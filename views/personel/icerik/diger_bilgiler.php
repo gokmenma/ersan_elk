@@ -25,10 +25,10 @@ use App\Helper\Form;
     <div class="col-md-6">
         <div class="card border">
 
-<!-- otomatik deploy kontrol -->
+
 
              <div class="card-header bg-transparent border-bottom">
-                <h5 class="card-title mb-0 text-primary"><i class="bx bx-group me-2"></i>Referans Bilgileri</h5>
+                <h5 class="card-title mb-0 text-primary"><i class="bx bx-group me-2"></i>Referans Bilgileri kontrol</h5>
             </div>
             <div class="card-body">
                 <div class="row mb-3">
