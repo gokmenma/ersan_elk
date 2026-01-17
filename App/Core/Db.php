@@ -4,10 +4,15 @@
 
 namespace App\Core;
 
-class Db {
+require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
+use Dotenv\Dotenv;
 
-   
-     private $host = "";
+
+class Db
+{
+
+
+    private $host = "";
     private $db_name = ""; // Update with your actual database name
     private $username = ""; // Update with your actual username
     private $password = ""; // Update with your actual password
@@ -22,7 +27,14 @@ class Db {
     public $db;
 
     //__construct() method is called when a new object is created
-    public function __construct() {
+
+    public function __construct()
+    {
+
+
+        $dotenv = Dotenv::createImmutable(dirname(__DIR__, 2));
+        $dotenv->load();
+
         /** .env dosyasından verileri oku */
         $this->host = $_ENV['DB_HOST'];
         $this->db_name = $_ENV['DB_NAME'];
@@ -34,7 +46,8 @@ class Db {
     }
 
 
-    public function getConnection() {
+    public function getConnection()
+    {
         $this->db = null;
         try {
             $this->db = new \PDO(
@@ -44,7 +57,7 @@ class Db {
             );
             $this->db->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
             $this->db->exec("set names utf8");
-        } catch(\PDOException $e) {
+        } catch (\PDOException $e) {
             error_log("Conection error: " . $e->getMessage());
             throw $e;
         }

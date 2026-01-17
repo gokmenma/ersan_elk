@@ -28,7 +28,7 @@ include 'layouts/session.php';
 
 <?php
 
-require_once __DIR__ . '/Autoloader.php';
+//require_once __DIR__ . '/Autoloader.php';
  require __DIR__ . '/vendor/autoload.php';
 setlocale(LC_CTYPE, 'tr_TR.UTF-8');
 
