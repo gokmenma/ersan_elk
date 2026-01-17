@@ -79,141 +79,151 @@
 </div>
 
 <!-- Yeni Talep Bildirimi Modal -->
-<div id="talep-modal" class="modal-overlay">
-    <div class="modal-content p-6 pt-3 max-h-[90vh] overflow-y-auto">
-        <div class="modal-handle"></div>
-
-        <div class="flex items-center justify-between mb-6">
-            <div class="flex items-center gap-3">
-                <span class="material-symbols-outlined text-primary text-2xl">edit_note</span>
-                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Talep Bildirimi</h3>
+<div id="talep-modal" class="modal-overlay" style="z-index: 200;">
+    <div class="modal-content" style="display: flex !important; flex-direction: column !important; max-height: 85vh !important; overflow: hidden !important; padding: 0 !important;">
+        <!-- Fixed Header -->
+        <div class="px-6 pt-3 pb-2 flex-shrink-0 bg-white dark:bg-card-dark z-10 border-b border-transparent">
+            <div class="modal-handle mb-4"></div>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-primary text-2xl">edit_note</span>
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white">Talep Bildirimi</h3>
+                </div>
+                <button onclick="Modal.close('talep-modal')"
+                    class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-slate-600">close</span>
+                </button>
             </div>
-            <button onclick="Modal.close('talep-modal')"
-                class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                <span class="material-symbols-outlined text-slate-600">close</span>
-            </button>
         </div>
 
-        <form id="talep-form" class="flex flex-col gap-4">
-            <input type="hidden" name="action" value="createTalepBildirimi">
-            <div>
-                <label class="form-label">Konum</label>
-                <div class="flex flex-col gap-2">
-                    <div class="flex gap-2">
-                        <input type="text" name="konum" id="konum-input" class="form-input flex-1"
-                            placeholder="Konum girin veya GPS kullanın" required>
-                        <button type="button" onclick="getLocation()" id="location-btn"
-                            class="flex items-center justify-center w-12 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-primary/10 hover:text-primary hover:border-primary transition-all">
-                            <span class="material-symbols-outlined">my_location</span>
+        <!-- Scrollable Content -->
+        <div class="p-6 pt-4 overflow-y-auto flex-1 pb-10" style="overscroll-behavior-y: contain;">
+            <form id="talep-form" class="flex flex-col gap-4">
+                <input type="hidden" name="action" value="createTalepBildirimi">
+                <div>
+                    <label class="form-label">Konum</label>
+                    <div class="flex flex-col gap-2">
+                        <div class="flex gap-2">
+                            <input type="text" name="konum" id="konum-input" class="form-input flex-1" 
+                                placeholder="Konum girin veya GPS kullanın" required>
+                            <button type="button" onclick="getLocation()" id="location-btn"
+                                class="flex items-center justify-center w-12 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-primary/10 hover:text-primary hover:border-primary transition-all">
+                                <span class="material-symbols-outlined">my_location</span>
+                            </button>
+                        </div>
+                        <div id="location-status" class="hidden text-xs text-center"></div>
+                        <input type="hidden" name="latitude" id="lat-input">
+                        <input type="hidden" name="longitude" id="lng-input">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label">Talep Türü</label>
+                    <div class="flex flex-wrap gap-2" id="kategori-chips">
+                        <button type="button" onclick="selectKategori(this, 'ariza')"
+                            class="kategori-chip px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
+                            🔧 Arıza
+                        </button>
+                        <button type="button" onclick="selectKategori(this, 'oneri')"
+                            class="kategori-chip px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
+                            💡 Öneri
+                        </button>
+                        <button type="button" onclick="selectKategori(this, 'sikayet')"
+                            class="kategori-chip px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
+                            ⚠️ Şikayet
+                        </button>
+                        <button type="button" onclick="selectKategori(this, 'istek')"
+                            class="kategori-chip px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
+                            📦 İstek
+                        </button>
+                        <button type="button" onclick="selectKategori(this, 'diger')"
+                            class="kategori-chip px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
+                            📝 Diğer
                         </button>
                     </div>
-                    <div id="location-status" class="hidden text-xs text-center"></div>
-                    <input type="hidden" name="latitude" id="lat-input">
-                    <input type="hidden" name="longitude" id="lng-input">
+                    <input type="hidden" name="kategori" id="kategori-input" required>
                 </div>
-            </div>
 
-            <div>
-                <label class="form-label">Talep Türü</label>
-                <div class="flex flex-wrap gap-2" id="kategori-chips">
-                    <button type="button" onclick="selectKategori(this, 'ariza')"
-                        class="kategori-chip px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
-                        🔧 Arıza
+                <div>
+                    <label class="form-label">Öncelik</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" onclick="selectOncelik(this, 'dusuk')"
+                            class="oncelik-btn py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
+                            <span class="text-green-500 text-lg">●</span>
+                            <span class="block text-xs mt-1">Düşük</span>
+                        </button>
+                        <button type="button" onclick="selectOncelik(this, 'orta')"
+                            class="oncelik-btn py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
+                            <span class="text-amber-500 text-lg">●</span>
+                            <span class="block text-xs mt-1">Orta</span>
+                        </button>
+                        <button type="button" onclick="selectOncelik(this, 'yuksek')"
+                            class="oncelik-btn py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
+                            <span class="text-red-500 text-lg">●</span>
+                            <span class="block text-xs mt-1">Yüksek</span>
+                        </button>
+                    </div>
+                    <input type="hidden" name="oncelik" id="oncelik-input" value="orta">
+                </div>
+
+                <div>
+                    <label class="form-label">Açıklama</label>
+                    <textarea name="aciklama" class="form-input min-h-[100px]" placeholder="Talebinizi detaylıca açıklayın..."
+                        required></textarea>
+                </div>
+
+                <div>
+                    <label class="form-label">Fotoğraf Ekle (Opsiyonel)</label>
+                    <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors"
+                        onclick="document.getElementById('foto-input').click()">
+                        <span class="material-symbols-outlined text-3xl text-slate-400">add_a_photo</span>
+                        <p class="text-xs text-slate-500 text-center">Yüklemek için tıklayın</p>
+                    </div>
+                    <input type="file" id="foto-input" name="foto" accept="image/*" class="hidden"
+                        onchange="previewFoto(this)">
+                    <div id="foto-preview" class="mt-2 hidden"></div>
+                </div>
+
+                <div class="flex gap-3 mt-2">
+                    <button type="button" onclick="Modal.close('talep-modal')"
+                        class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
+                        İptal
                     </button>
-                    <button type="button" onclick="selectKategori(this, 'oneri')"
-                        class="kategori-chip px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
-                        💡 Öneri
-                    </button>
-                    <button type="button" onclick="selectKategori(this, 'sikayet')"
-                        class="kategori-chip px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
-                        ⚠️ Şikayet
-                    </button>
-                    <button type="button" onclick="selectKategori(this, 'istek')"
-                        class="kategori-chip px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
-                        📦 İstek
-                    </button>
-                    <button type="button" onclick="selectKategori(this, 'diger')"
-                        class="kategori-chip px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
-                        📝 Diğer
+                    <button type="submit" class="flex-1 btn-primary py-3">
+                        Talebi Gönder
                     </button>
                 </div>
-                <input type="hidden" name="kategori" id="kategori-input" required>
-            </div>
-
-            <div>
-                <label class="form-label">Öncelik</label>
-                <div class="grid grid-cols-3 gap-2">
-                    <button type="button" onclick="selectOncelik(this, 'dusuk')"
-                        class="oncelik-btn py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
-                        <span class="text-green-500 text-lg">●</span>
-                        <span class="block text-xs mt-1">Düşük</span>
-                    </button>
-                    <button type="button" onclick="selectOncelik(this, 'orta')"
-                        class="oncelik-btn py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
-                        <span class="text-amber-500 text-lg">●</span>
-                        <span class="block text-xs mt-1">Orta</span>
-                    </button>
-                    <button type="button" onclick="selectOncelik(this, 'yuksek')"
-                        class="oncelik-btn py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
-                        <span class="text-red-500 text-lg">●</span>
-                        <span class="block text-xs mt-1">Yüksek</span>
-                    </button>
-                </div>
-                <input type="hidden" name="oncelik" id="oncelik-input" value="orta">
-            </div>
-
-            <div>
-                <label class="form-label">Açıklama</label>
-                <textarea name="aciklama" class="form-input min-h-[100px]"
-                    placeholder="Talebinizi detaylıca açıklayın..." required></textarea>
-            </div>
-
-            <div>
-                <label class="form-label">Fotoğraf Ekle (Opsiyonel)</label>
-                <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors"
-                    onclick="document.getElementById('foto-input').click()">
-                    <span class="material-symbols-outlined text-3xl text-slate-400">add_a_photo</span>
-                    <p class="text-xs text-slate-500 text-center">Yüklemek için tıklayın</p>
-                </div>
-                <input type="file" id="foto-input" name="foto" accept="image/*" class="hidden"
-                    onchange="previewFoto(this)">
-                <div id="foto-preview" class="mt-2 hidden"></div>
-            </div>
-
-            <div class="flex gap-3 mt-2">
-                <button type="button" onclick="Modal.close('talep-modal')"
-                    class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
-                    İptal
-                </button>
-                <button type="submit" class="flex-1 btn-primary py-3">
-                    Talebi Gönder
-                </button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 
 <!-- Talep Detay Modal -->
-<div id="talep-detay-modal" class="modal-overlay">
-    <div class="modal-content p-6 pt-3 max-h-[85vh] overflow-y-auto">
-        <div class="modal-handle"></div>
+<div id="talep-detay-modal" class="modal-overlay" style="z-index: 200;">
+    <div class="modal-content" style="display: flex !important; flex-direction: column !important; max-height: 85vh !important; overflow: hidden !important; padding: 0 !important;">
+        <!-- Fixed Header -->
+        <div class="px-6 pt-3 pb-2 flex-shrink-0 bg-white dark:bg-card-dark z-10 border-b border-transparent">
+            <div class="modal-handle mb-4"></div>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white" id="talep-modal-title">Talep Detayı</h3>
+                <button onclick="Modal.close('talep-detay-modal')"
+                    class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-slate-600">close</span>
+                </button>
+            </div>
+        </div>
 
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-slate-900 dark:text-white" id="talep-modal-title">Talep Detayı</h3>
+        <!-- Scrollable Content -->
+        <div class="p-6 pt-4 overflow-y-auto flex-1 pb-10" style="overscroll-behavior-y: contain;">
+            <div id="talep-detay-content">
+                <!-- Content will be loaded dynamically -->
+            </div>
+
             <button onclick="Modal.close('talep-detay-modal')"
-                class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                <span class="material-symbols-outlined text-slate-600">close</span>
+                class="w-full mt-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
+                Kapat
             </button>
         </div>
-
-        <div id="talep-detay-content">
-            <!-- Content will be loaded dynamically -->
-        </div>
-
-        <button onclick="Modal.close('talep-detay-modal')"
-            class="w-full mt-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
-            Kapat
-        </button>
     </div>
 </div>
 
@@ -502,12 +512,12 @@
                     </div>
                     ${talep.durum !== 'beklemede' ? `
                     <div class="flex items-start gap-3">
-                        <div class="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0">
-                            <span class="material-symbols-outlined text-white text-sm">engineering</span>
+                        <div class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-primary text-sm">pending</span>
                         </div>
                         <div>
-                            <p class="text-sm font-medium text-slate-900 dark:text-white">İnceleniyor</p>
-                            <p class="text-xs text-slate-500">Personel atandı</p>
+                            <p class="text-sm font-medium text-slate-900 dark:text-white">İşleme Alındı</p>
+                            <p class="text-xs text-slate-500">Talep inceleniyor</p>
                         </div>
                     </div>
                     ` : ''}
@@ -525,43 +535,7 @@
                 </div>
             </div>
         </div>
-    `;
-    }
-
-    async function submitTalepBildirimi(form) {
-        const formData = new FormData(form);
-
-        if (!document.getElementById('kategori-input').value) {
-            Toast.show('Lütfen bir kategori seçin', 'error');
-            return;
-        }
-
-        try {
-            Loading.show();
-
-            const response = await fetch('api.php', {
-                method: 'POST',
-                body: formData
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                Toast.show('Talebiniz başarıyla gönderildi', 'success');
-                Modal.close('talep-modal');
-                form.reset();
-                document.querySelectorAll('.kategori-chip').forEach(c => c.classList.remove('active'));
-                document.getElementById('foto-preview').classList.add('hidden');
-                loadTalepler();
-                loadTalepStats();
-            } else {
-                Toast.show(result.message || 'Bir hata oluştu', 'error');
-            }
-        } catch (error) {
-            Toast.show('Bir hata oluştu', 'error');
-        } finally {
-            Loading.hide();
-        }
+        `;
     }
 
     function getLocation() {
@@ -572,74 +546,98 @@
         const lngInput = document.getElementById('lng-input');
 
         if (!navigator.geolocation) {
-            Toast.show('Tarayıcınız konum servisini desteklemiyor', 'error');
+            status.textContent = 'Tarayıcınız konum servisini desteklemiyor';
+            status.classList.remove('hidden', 'text-green-500');
+            status.classList.add('text-red-500');
             return;
         }
 
-        btn.disabled = true;
-        btn.innerHTML = '<span class="animate-spin material-symbols-outlined">progress_activity</span>';
-        status.classList.remove('hidden');
-        status.className = 'text-xs text-center text-slate-500';
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span>';
         status.textContent = 'Konum alınıyor...';
+        status.classList.remove('hidden', 'text-red-500', 'text-green-500');
+        status.classList.add('text-slate-500');
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
-                const accuracy = position.coords.accuracy;
-
-                // Google Maps linki oluştur
-                const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
-
-                // Input'a linki ekle (mevcut değer varsa koru)
-                const currentValue = input.value.trim();
-                if (currentValue) {
-                    input.value = `${currentValue} (${mapLink})`;
-                } else {
-                    input.value = mapLink;
-                }
 
                 latInput.value = lat;
                 lngInput.value = lng;
-
-                btn.innerHTML = '<span class="material-symbols-outlined text-green-500">check_circle</span>';
-                btn.classList.add('bg-green-50', 'border-green-200', 'text-green-700');
-                btn.classList.remove('bg-slate-100', 'text-slate-600');
-                btn.disabled = false;
-
-                status.innerHTML = `
-                    <div class="flex items-center justify-center gap-1 text-green-600">
-                        <span class="font-medium">Konum eklendi</span>
-                        <span class="text-[10px] text-slate-400">(${Math.round(accuracy)}m)</span>
-                    </div>
-                `;
+                
+                // Google Maps linki oluştur
+                const mapsLink = `https://www.google.com/maps?q=${lat},${lng}`;
+                input.value = `Konum: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                
+                btn.innerHTML = '<span class="material-symbols-outlined text-green-500">my_location</span>';
+                btn.classList.add('border-green-500', 'bg-green-50', 'dark:bg-green-900/20');
+                
+                status.textContent = 'Konum başarıyla alındı';
+                status.classList.remove('text-slate-500', 'text-red-500');
+                status.classList.add('text-green-500');
             },
             (error) => {
-                btn.disabled = false;
-                btn.innerHTML = '<span class="material-symbols-outlined">my_location</span>';
-
-                let errorMsg = 'Konum alınamadı';
-                switch (error.code) {
+                let msg = 'Konum alınamadı';
+                switch(error.code) {
                     case error.PERMISSION_DENIED:
-                        errorMsg = 'Konum izni reddedildi';
+                        msg = 'Konum izni reddedildi';
                         break;
                     case error.POSITION_UNAVAILABLE:
-                        errorMsg = 'Konum bilgisi mevcut değil';
+                        msg = 'Konum bilgisi kullanılamıyor';
                         break;
                     case error.TIMEOUT:
-                        errorMsg = 'Konum isteği zaman aşımına uğradı';
+                        msg = 'Konum isteği zaman aşımına uğradı';
                         break;
                 }
-
-                status.className = 'text-xs text-center text-red-500';
-                status.textContent = errorMsg;
-                Toast.show(errorMsg, 'error');
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
+                
+                status.textContent = msg;
+                status.classList.remove('text-slate-500', 'text-green-500');
+                status.classList.add('text-red-500');
+                btn.innerHTML = '<span class="material-symbols-outlined text-red-500">location_off</span>';
             }
         );
+    }
+
+    async function submitTalepBildirimi(form) {
+        const formData = new FormData(form);
+        
+        try {
+            const response = await API.request('createTalepBildirimi', Object.fromEntries(formData));
+            
+            if (response.success) {
+                Modal.close('talep-modal');
+                form.reset();
+                
+                // Reset UI elements
+                document.getElementById('location-status').classList.add('hidden');
+                document.getElementById('location-btn').innerHTML = '<span class="material-symbols-outlined">my_location</span>';
+                document.getElementById('location-btn').classList.remove('border-green-500', 'bg-green-50', 'dark:bg-green-900/20');
+                document.getElementById('foto-preview').classList.add('hidden');
+                selectOncelik(document.querySelector('.oncelik-btn:nth-child(2)'), 'orta');
+                
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Başarılı',
+                    text: response.message || 'Talebiniz başarıyla oluşturuldu.',
+                    confirmButtonText: 'Tamam',
+                    customClass: {
+                        confirmButton: 'btn-primary px-6 py-2 rounded-xl'
+                    }
+                });
+                
+                loadTalepStats();
+                loadTalepler();
+            } else {
+                throw new Error(response.error || 'Bir hata oluştu');
+            }
+        } catch (error) {
+            console.error('Submit error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Hata',
+                text: error.message || 'Talep oluşturulurken bir sorun oluştu.',
+                confirmButtonText: 'Tamam'
+            });
+        }
     }
 </script>

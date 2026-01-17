@@ -21,7 +21,7 @@ $page = $_GET['p'] ?? 'home';
     $page == "gelir-gider/list" || $page == "temsilcilik/talep" ||
     $page == "tanimlamalar/gelir-gider-turu" ||
     $page == "demirbas/list" || "temsilcilik/duzenle" ||
-    $page == "personel/manage" 
+    $page == "personel/manage"
 ) { ?>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.js"></script>
@@ -147,7 +147,7 @@ if ($page == "slider/list" || $page == "slider/duzenle") {
     echo '<script src="views/slider/js/slider.js"></script>';
 }
 
-if($page == "kasa/duzenle" || $page == "kasa/list" ) {
+if ($page == "kasa/duzenle" || $page == "kasa/list") {
     echo '<script src="views/kasa/js/kasa.js"></script>';
 }
 
@@ -156,18 +156,18 @@ if($page == "kasa/duzenle" || $page == "kasa/list" ) {
 <!-- Datatable Scripts -->
 <?php if (
     $page == "home" ||
-    $page == "personel/manage" || $page == "personel/list"   ||
+    $page == "personel/manage" || $page == "personel/list" ||
     $page == "sube/duzenle" || $page == "sube/list" ||
     $page == "gelir-gider/list" ||
     $page == "temsilcilik/list" || $page == "temsilcilik/talep" || $page == "temsilcilik/duzenle" ||
     $page == "tanimlamalar/gelir-gider-turu" ||
     $page == "demirbas/list" || $page == "rehber/list" ||
     $page == "evrak-takip/list" || $page == "evrak-takip/giden-evrak" ||
-    $page == "slider/list" || 
+    $page == "slider/list" ||
     $page == "kullanici/list" || $page == "kullanici-gruplari/list" ||
     $page == "mail-sms/sms-gonder" ||
-    $page == "kasa/list" || $page== "gelir-gider/online-hesap-hareketleri" || $page == "tanimlamalar/ekip-kodu" ||
-    $page == "bordro/list" || $page == "demirbas/list"
+    $page == "kasa/list" || $page == "gelir-gider/online-hesap-hareketleri" || $page == "tanimlamalar/ekip-kodu" ||
+    $page == "bordro/list" || $page == "demirbas/list" || $page == "puantaj/list"
 
 ) { ?>
 
@@ -182,11 +182,8 @@ if($page == "kasa/duzenle" || $page == "kasa/list" ) {
 
 <!-- Bootstrap Bundle JS -->
 <script src="assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
-<script
-    type="text/javascript"
-    src="https://cdn.jsdelivr.net/npm/toastify-js"
-    onerror="(function(){var s=document.createElement('script');s.src='assets/libs/toastify/toastify.min.js';document.head.appendChild(s);})();"
-></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"
+    onerror="(function(){var s=document.createElement('script');s.src='assets/libs/toastify/toastify.min.js';document.head.appendChild(s);})();"></script>
 <!-- Menu Scripts -->
 <script src="assets/libs/metismenu/metisMenu.min.js"></script>
 

@@ -106,70 +106,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Hesaplama için dönem ve personel seçimi zorunludur.');
                 }
 
-                $Personel = new PersonelModel();
                 $hesaplananSayisi = 0;
 
                 foreach ($personel_ids as $bp_id) {
-                    // Bordro personel kaydını al
-                    $bp = $BordroPersonel->find(intval($bp_id));
-                    if (!$bp)
-                        continue;
-
-                    // Personel bilgisini al
-                    $personel = $Personel->find($bp->personel_id);
-                    if (!$personel)
-                        continue;
-
-                    // Brüt maaş (personelden al veya varsayılan)
-                    $brutMaas = floatval($personel->maas_tutari ?? 0);
-
-                    if ($brutMaas <= 0) {
-                        // Asgari ücret (2026 Ocak varsayımı)
-                        $brutMaas = 22104.00;
+                    if ($BordroPersonel->hesaplaMaas(intval($bp_id))) {
+                        $hesaplananSayisi++;
                     }
-
-                    // Ek Ödemeler ve Kesintiler
-                    $toplamEkOdeme = $BordroPersonel->getDonemEkOdemeleri($bp->personel_id, $donem_id);
-                    $toplamKesinti = $BordroPersonel->getDonemKesintileri($bp->personel_id, $donem_id);
-
-                    // SGK Primleri
-                    $sgkIsci = $brutMaas * 0.14; // %14
-                    $issizlikIsci = $brutMaas * 0.01; // %1
-
-                    // SGK Matrah
-                    $sgkMatrah = $brutMaas - $sgkIsci - $issizlikIsci;
-
-                    // Gelir Vergisi (İlk dilim %15 varsayımı - basitleştirilmiş hesap)
-                    $gelirVergisi = $sgkMatrah * 0.15;
-
-                    // Damga Vergisi
-                    $damgaVergisi = $brutMaas * 0.00759;
-
-                    // Net Maaş
-                    // Formül: (Brüt - Kesintiler) + Ek Ödemeler - Özel Kesintiler
-                    $netMaas = ($brutMaas - $sgkIsci - $issizlikIsci - $gelirVergisi - $damgaVergisi) + $toplamEkOdeme - $toplamKesinti;
-
-                    // İşveren Maliyetleri
-                    $sgkIsveren = $brutMaas * 0.205; // %20.5
-                    $issizlikIsveren = $brutMaas * 0.02; // %2
-                    $toplamMaliyet = $brutMaas + $sgkIsveren + $issizlikIsveren + $toplamEkOdeme; // Ek ödeme maliyete eklenir (basit mantık)
-
-                    // Kaydet
-                    $BordroPersonel->saveBordroHesaplama(intval($bp_id), [
-                        'brut_maas' => round($brutMaas, 2),
-                        'sgk_isci' => round($sgkIsci, 2),
-                        'issizlik_isci' => round($issizlikIsci, 2),
-                        'gelir_vergisi' => round($gelirVergisi, 2),
-                        'damga_vergisi' => round($damgaVergisi, 2),
-                        'net_maas' => round($netMaas, 2),
-                        'sgk_isveren' => round($sgkIsveren, 2),
-                        'issizlik_isveren' => round($issizlikIsveren, 2),
-                        'toplam_maliyet' => round($toplamMaliyet, 2),
-                        'toplam_kesinti' => round($toplamKesinti, 2),
-                        'toplam_ek_odeme' => round($toplamEkOdeme, 2)
-                    ]);
-
-                    $hesaplananSayisi++;
                 }
 
                 echo json_encode([
@@ -218,12 +160,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<tr><td class="text-muted">İşsizlik İşçi (%1):</td><td class="text-danger">-' . ($bp->issizlik_isci ? number_format($bp->issizlik_isci, 2, ',', '.') . ' ₺' : '-') . '</td></tr>';
                 $html .= '<tr><td class="text-muted">Gelir Vergisi:</td><td class="text-danger">-' . ($bp->gelir_vergisi ? number_format($bp->gelir_vergisi, 2, ',', '.') . ' ₺' : '-') . '</td></tr>';
                 $html .= '<tr><td class="text-muted">Damga Vergisi:</td><td class="text-danger">-' . ($bp->damga_vergisi ? number_format($bp->damga_vergisi, 2, ',', '.') . ' ₺' : '-') . '</td></tr>';
-                
-                if ($bp->toplam_ek_odeme > 0) {
-                    $html .= '<tr><td class="text-muted">Ek Ödemeler:</td><td class="text-success">+' . number_format($bp->toplam_ek_odeme, 2, ',', '.') . ' ₺</td></tr>';
+
+                // Anlık Ek Ödeme ve Kesintileri Çek
+                $guncelEkOdeme = $BordroPersonel->getDonemEkOdemeleri($bp->personel_id, $bp->donem_id);
+                $guncelKesinti = $BordroPersonel->getDonemKesintileri($bp->personel_id, $bp->donem_id);
+
+                if ($guncelEkOdeme > 0) {
+                    $html .= '<tr><td class="text-muted">Ek Ödemeler:</td><td class="text-success">+' . number_format($guncelEkOdeme, 2, ',', '.') . ' ₺</td></tr>';
                 }
-                if ($bp->toplam_kesinti > 0) {
-                    $html .= '<tr><td class="text-muted">Özel Kesintiler:</td><td class="text-danger">-' . number_format($bp->toplam_kesinti, 2, ',', '.') . ' ₺</td></tr>';
+                if ($guncelKesinti > 0) {
+                    $html .= '<tr><td class="text-muted">Özel Kesintiler:</td><td class="text-danger">-' . number_format($guncelKesinti, 2, ',', '.') . ' ₺</td></tr>';
                 }
 
                 $html .= '<tr class="table-success"><td class="fw-bold">Net Maaş:</td><td class="fw-bold text-success fs-5">' . ($bp->net_maas ? number_format($bp->net_maas, 2, ',', '.') . ' ₺' : '-') . '</td></tr>';
@@ -325,6 +271,66 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'status' => 'success',
                     'message' => 'Ödeme dağılımı kaydedildi.'
                 ]);
+                break;
+
+            // Personel Gelir Ekle
+            case 'personel-gelir-ekle':
+                $personel_id = intval($_POST['personel_id'] ?? 0);
+                $donem_id = intval($_POST['donem_id'] ?? 0);
+                $aciklama = trim($_POST['aciklama'] ?? '');
+                $tutar = floatval($_POST['tutar'] ?? 0);
+                $tur = trim($_POST['ek_odeme_tur'] ?? 'diger'); // Tür parametresi eklendi
+
+                if ($personel_id <= 0 || $donem_id <= 0) {
+                    throw new Exception('Geçersiz personel veya dönem.');
+                }
+                // Açıklama zorunlu değil artık, opsiyonel olabilir veya tür seçildiyse açıklama boş olabilir.
+                // Ancak mevcut yapıda açıklama inputu var.
+
+                if ($tutar <= 0) {
+                    throw new Exception('Tutar 0\'dan büyük olmalıdır.');
+                }
+
+                if ($BordroPersonel->addEkOdeme($personel_id, $donem_id, $aciklama, $tutar, $tur)) {
+                    // Otomatik maaş hesapla
+                    $BordroPersonel->hesaplaMaasByPersonelDonem($personel_id, $donem_id);
+
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Gelir başarıyla eklendi ve maaş güncellendi.'
+                    ]);
+                } else {
+                    throw new Exception('Gelir eklenirken bir hata oluştu.');
+                }
+                break;
+
+            // Personel Kesinti Ekle
+            case 'personel-kesinti-ekle':
+                $personel_id = intval($_POST['personel_id'] ?? 0);
+                $donem_id = intval($_POST['donem_id'] ?? 0);
+                $aciklama = trim($_POST['aciklama'] ?? '');
+                $tutar = floatval($_POST['tutar'] ?? 0);
+                $tur = trim($_POST['kesinti_tur'] ?? 'diger'); // Tür parametresi eklendi
+
+                if ($personel_id <= 0 || $donem_id <= 0) {
+                    throw new Exception('Geçersiz personel veya dönem.');
+                }
+
+                if ($tutar <= 0) {
+                    throw new Exception('Tutar 0\'dan büyük olmalıdır.');
+                }
+
+                if ($BordroPersonel->addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur)) {
+                    // Otomatik maaş hesapla
+                    $BordroPersonel->hesaplaMaasByPersonelDonem($personel_id, $donem_id);
+
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Kesinti başarıyla eklendi ve maaş güncellendi.'
+                    ]);
+                } else {
+                    throw new Exception('Kesinti eklenirken bir hata oluştu.');
+                }
                 break;
 
             default:

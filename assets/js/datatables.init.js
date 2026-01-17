@@ -11,6 +11,10 @@ function getDatatableOptions() {
     dom: 't<"row"<"col-sm-12 col-md-6 d-flex align-items-center justify-content-start"i<"ms-3 text-nowrap"l>><"col-sm-12 col-md-6 d-flex justify-content-end"p>>',
     language: {
       url: "assets/js/tr.json",
+      emptyTable:
+        '<div class="text-center py-5"><div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-4" style="width: 100px; height: 100px; background: linear-gradient(135deg, rgba(85,110,230,0.15) 0%, rgba(85,110,230,0.05) 100%); border: 2px dashed rgba(85,110,230,0.3);"><i class="bx bx-folder-open text-primary" style="font-size: 48px;"></i></div><h5 class="text-dark fw-semibold mb-2">Veri Bulunamadı</h5><p class="text-muted mb-0" style="max-width: 280px; margin: 0 auto;">Bu tabloda henüz gösterilecek kayıt bulunmuyor.</p></div>',
+      zeroRecords:
+        '<div class="text-center py-5"><div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-4" style="width: 100px; height: 100px; background: linear-gradient(135deg, rgba(241,180,76,0.15) 0%, rgba(241,180,76,0.05) 100%); border: 2px dashed rgba(241,180,76,0.3);"><i class="bx bx-search-alt text-warning" style="font-size: 48px;"></i></div><h5 class="text-dark fw-semibold mb-2">Sonuç Bulunamadı</h5><p class="text-muted mb-0" style="max-width: 280px; margin: 0 auto;">Arama kriterlerinize uygun kayıt bulunamadı.</p></div>',
     },
     buttons: ["excel"],
 
@@ -18,7 +22,6 @@ function getDatatableOptions() {
 
     initComplete: function (settings, json) {
       var api = this.api();
-      var tableId = settings.sTableId;
       var tableId = settings.sTableId;
       $("#" + tableId + " thead").append('<tr class="search-input-row"></tr>');
 
@@ -47,11 +50,6 @@ function getDatatableOptions() {
           input.classList.add("form-control-sm");
           input.setAttribute("autocomplete", "off");
 
-          // // Append input element to the new row
-          // $("#" + tableId + " .search-input-row").append(
-          //   $('<th class="search">').append(input)
-          // );
-
           // Append input element to the new row
           const th = $('<th class="search">').append(input);
           $("#" + tableId + " .search-input-row").append(th);
@@ -67,16 +65,11 @@ function getDatatableOptions() {
           const isColumnVisible =
             column.visible() && !$(column.header()).hasClass("dtr-hidden");
 
-          //  const isColumnVisible =
-          //  column.visible() && $(column.header()).css("display") !== "none";
-
           if (!isColumnVisible) {
             th.hide(); // Sütun gerçekten görünmüyorsa input'u da gizle
           }
         } else {
           // Eğer "İşlem" sütunuysa, boş bir th ekleyin
-
-          // Sütun görünürse <th> elemanını ekle
           $("#" + tableId + " .search-input-row").append("<th></th>");
         }
       });
@@ -105,8 +98,6 @@ function getDatatableOptions() {
     },
   };
 }
-
-
 
 $("#exportExcel").on("click", function () {
   table.button(".buttons-excel").trigger();

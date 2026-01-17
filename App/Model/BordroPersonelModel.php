@@ -18,12 +18,17 @@ class BordroPersonelModel extends Model
     /**
      * Belirli bir dönemdeki tüm personelleri getirir
      */
+    /**
+     * Belirli bir dönemdeki tüm personelleri getirir
+     */
     public function getPersonellerByDonem($donem_id)
     {
         $sql = $this->db->prepare("
             SELECT bp.*, p.adi_soyadi, p.tc_kimlik_no, p.departman, p.gorev, 
                    p.ise_giris_tarihi, p.isten_cikis_tarihi, p.maas_tutari,
-                   p.cep_telefonu, p.resim_yolu
+                   p.cep_telefonu, p.resim_yolu,
+                   (SELECT COALESCE(SUM(tutar), 0) FROM personel_kesintileri WHERE personel_id = bp.personel_id AND donem_id = bp.donem_id AND silinme_tarihi IS NULL) as guncel_toplam_kesinti,
+                   (SELECT COALESCE(SUM(tutar), 0) FROM personel_ek_odemeler WHERE personel_id = bp.personel_id AND donem_id = bp.donem_id AND silinme_tarihi IS NULL) as guncel_toplam_ek_odeme
             FROM {$this->table} bp
             INNER JOIN personel p ON bp.personel_id = p.id
             WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL
@@ -145,8 +150,6 @@ class BordroPersonelModel extends Model
                 sgk_isveren = :sgk_isveren,
                 issizlik_isveren = :issizlik_isveren,
                 toplam_maliyet = :toplam_maliyet,
-                toplam_kesinti = :toplam_kesinti,
-                toplam_ek_odeme = :toplam_ek_odeme,
                 hesaplama_tarihi = NOW()
             WHERE id = :id
         ");
@@ -161,8 +164,6 @@ class BordroPersonelModel extends Model
         $sql->bindParam(':sgk_isveren', $hesaplamaData['sgk_isveren']);
         $sql->bindParam(':issizlik_isveren', $hesaplamaData['issizlik_isveren']);
         $sql->bindParam(':toplam_maliyet', $hesaplamaData['toplam_maliyet']);
-        $sql->bindParam(':toplam_kesinti', $hesaplamaData['toplam_kesinti']);
-        $sql->bindParam(':toplam_ek_odeme', $hesaplamaData['toplam_ek_odeme']);
 
         return $sql->execute();
     }
@@ -188,7 +189,7 @@ class BordroPersonelModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT SUM(tutar) as toplam 
-            FROM personel_ek_odemeleri 
+            FROM personel_ek_odemeler 
             WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
         ");
         $sql->execute([$personel_id, $donem_id]);
@@ -224,5 +225,104 @@ class BordroPersonelModel extends Model
         ");
         $sql->execute([$personel_id]);
         return $sql->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Personele kesinti ekler
+     */
+    /**
+     * Personele kesinti ekler
+     */
+    public function addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur = 'diger')
+    {
+        $sql = $this->db->prepare("
+            INSERT INTO personel_kesintileri (personel_id, donem_id, aciklama, tutar, tur, created_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+        ");
+        return $sql->execute([$personel_id, $donem_id, $aciklama, $tutar, $tur]);
+    }
+
+    /**
+     * Personele ek ödeme ekler
+     */
+    public function addEkOdeme($personel_id, $donem_id, $aciklama, $tutar, $tur = 'diger')
+    {
+        $sql = $this->db->prepare("
+            INSERT INTO personel_ek_odemeler (personel_id, donem_id, aciklama, tutar, tur, created_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+        ");
+        return $sql->execute([$personel_id, $donem_id, $aciklama, $tutar, $tur]);
+    }
+
+    /**
+     * Tek bir personelin maaşını hesaplar ve günceller
+     */
+    public function hesaplaMaas($bordro_personel_id)
+    {
+        // Bordro kaydını ve personel detaylarını çek
+        $sql = $this->db->prepare("
+            SELECT bp.*, p.maas_tutari 
+            FROM {$this->table} bp
+            INNER JOIN personel p ON bp.personel_id = p.id
+            WHERE bp.id = ?
+        ");
+        $sql->execute([$bordro_personel_id]);
+        $kayit = $sql->fetch(PDO::FETCH_OBJ);
+
+        if (!$kayit)
+            return false;
+
+        $brutMaas = floatval($kayit->maas_tutari ?? 0);
+        if ($brutMaas <= 0)
+            $brutMaas = 22104.00; // Varsayılan asgari ücret
+
+        // Ek Ödemeler ve Kesintiler
+        $toplamEkOdeme = $this->getDonemEkOdemeleri($kayit->personel_id, $kayit->donem_id);
+        $toplamKesinti = $this->getDonemKesintileri($kayit->personel_id, $kayit->donem_id);
+
+        // Hesaplamalar
+        $sgkIsci = $brutMaas * 0.14;
+        $issizlikIsci = $brutMaas * 0.01;
+        $sgkMatrah = $brutMaas - $sgkIsci - $issizlikIsci;
+        $gelirVergisi = $sgkMatrah * 0.15;
+        $damgaVergisi = $brutMaas * 0.00759;
+
+        // Net Maaş = (Brüt - Vergiler) + Ek Ödemeler - Kesintiler
+        $netMaas = ($brutMaas - $sgkIsci - $issizlikIsci - $gelirVergisi - $damgaVergisi) + $toplamEkOdeme - $toplamKesinti;
+
+        // İşveren Maliyetleri
+        $sgkIsveren = $brutMaas * 0.205;
+        $issizlikIsveren = $brutMaas * 0.02;
+        $toplamMaliyet = $brutMaas + $sgkIsveren + $issizlikIsveren + $toplamEkOdeme;
+
+        // Kaydet
+        return $this->saveBordroHesaplama($bordro_personel_id, [
+            'brut_maas' => round($brutMaas, 2),
+            'sgk_isci' => round($sgkIsci, 2),
+            'issizlik_isci' => round($issizlikIsci, 2),
+            'gelir_vergisi' => round($gelirVergisi, 2),
+            'damga_vergisi' => round($damgaVergisi, 2),
+            'net_maas' => round($netMaas, 2),
+            'sgk_isveren' => round($sgkIsveren, 2),
+            'issizlik_isveren' => round($issizlikIsveren, 2),
+            'toplam_maliyet' => round($toplamMaliyet, 2),
+            'toplam_kesinti' => round($toplamKesinti, 2),
+            'toplam_ek_odeme' => round($toplamEkOdeme, 2)
+        ]);
+    }
+
+    /**
+     * Personel ID ve Dönem ID'ye göre maaş hesaplar
+     */
+    public function hesaplaMaasByPersonelDonem($personel_id, $donem_id)
+    {
+        $sql = $this->db->prepare("SELECT id FROM {$this->table} WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL");
+        $sql->execute([$personel_id, $donem_id]);
+        $bp = $sql->fetch(PDO::FETCH_OBJ);
+
+        if ($bp) {
+            return $this->hesaplaMaas($bp->id);
+        }
+        return false;
     }
 }

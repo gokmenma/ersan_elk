@@ -49,5 +49,18 @@ use App\Helper\Form;
                 </div>
             </div>
         </div>
+
+        <div class="card border mt-3">
+            <div class="card-header bg-transparent border-bottom">
+                <h5 class="card-title mb-0 text-primary"><i class="bx bx-key me-2"></i>Giriş Bilgileri</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12">
+                        <?php echo Form::FormFloatInput("password", "sifre", "", "Şifre (Değiştirmek için doldurun)", "Şifre", "lock"); ?>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>

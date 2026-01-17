@@ -70,10 +70,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Diğer hataları raporla (Örn: boyut sınırı)
                     throw new Exception("Dosya yükleme hatası. Hata Kodu: " . $_FILES['resim_yolu']['error']);
                 }
-                
+
                 file_put_contents($debugLog, $logContent, FILE_APPEND);
             }
-            
+
             // Action alanını veritabanına kaydetmemek için çıkar
             unset($data['action']);
             unset($data['personel_id']);
@@ -82,14 +82,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // Boş string değerleri null yap
             foreach ($data as $key => $value) {
-                if ($value === '') {
+                if ($value === '' && $key != "sifre" ) {
                     $data[$key] = null;
                 }
                 /** tarih ise formatını değiştir */
                 if (strpos($key, 'tarih') !== false) {
                     $data[$key] = Date::Ymd($value);
                 }
+
+                //şifreyi hash ile kaydet (sadece boş değilse)
+                if ($key == 'sifre' && !empty($value)) {
+                    $data[$key] = password_hash($value, PASSWORD_DEFAULT);
+                }else if($key == 'sifre' && empty($value)){
+                    unset($data['sifre']);
+                }
             }
+
 
             //echo json_encode($data); exit();
             $Personel->saveWithAttr($data);
@@ -147,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
 
             $inputFileName = $_FILES['excel_file']['tmp_name'];
-            
+
             // PhpSpreadsheet kontrolü
             if (!class_exists('\PhpOffice\PhpSpreadsheet\IOFactory')) {
                 throw new Exception("PhpSpreadsheet kütüphanesi yüklü değil.");
@@ -162,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
 
             // Başlıkları al (1. satır) ve temizle
-            $headers = array_map(function($h) {
+            $headers = array_map(function ($h) {
                 // Türkçe karakter düzeltmesi ve küçük harfe çevirme
                 $h = str_replace(['İ', 'I', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç'], ['i', 'ı', 'ğ', 'ü', 'ş', 'ö', 'ç'], $h ?? '');
                 return mb_strtolower(trim($h), 'UTF-8');
@@ -170,23 +178,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // Sütun eşleştirme haritası
             $columnMap = [
-                'firma_id'     => ['firma', 'firma adı', 'firma adi'],
+                'firma_id' => ['firma', 'firma adı', 'firma adi'],
                 'tc_kimlik_no' => ['tc', 'tc kimlik', 'tc kimlik no', 'tckn', 'tc no', 'kimlik no', 'tc kimlik numarası'],
-                'adi_soyadi'   => ['ad soyad', 'adi soyadi', 'ad', 'isim', 'personel adı', 'ad ve soyad', 'adı soyadı'],
-                'anne_adi'     => ['anne adı', 'anne adi'],
-                'baba_adi'     => ['baba adı', 'baba adi'],
+                'adi_soyadi' => ['ad soyad', 'adi soyadi', 'ad', 'isim', 'personel adı', 'ad ve soyad', 'adı soyadı'],
+                'anne_adi' => ['anne adı', 'anne adi'],
+                'baba_adi' => ['baba adı', 'baba adi'],
                 'dogum_tarihi' => ['doğum tarihi', 'dogum tarihi', 'dt'],
-                'dogum_yeri_il'=> ['doğum yeri il', 'dogum yeri il'],
-                'dogum_yeri_ilce'=> ['doğum yeri ilçe', 'dogum yeri ilce'],
-                'adres'        => ['adres'],
-                'cinsiyet'     => ['cinsiyet'],
+                'dogum_yeri_il' => ['doğum yeri il', 'dogum yeri il'],
+                'dogum_yeri_ilce' => ['doğum yeri ilçe', 'dogum yeri ilce'],
+                'adres' => ['adres'],
+                'cinsiyet' => ['cinsiyet'],
                 'medeni_durum' => ['medeni durum'],
                 'esi_calisiyor_mu' => ['eşi çalışıyor mu', 'esi calisiyor mu'],
                 'seyahat_engeli' => ['seyahat engeli'],
                 'ehliyet_sinifi' => ['ehliyet sınıfı', 'ehliyet sinifi'],
-                'kan_grubu'    => ['kan grubu'],
+                'kan_grubu' => ['kan grubu'],
                 'cep_telefonu' => ['telefon', 'cep telefonu', 'gsm', 'mobil', 'cep'],
-                'cep_telefonu_2'=> ['2. cep telefonu', 'telefon 2'],
+                'cep_telefonu_2' => ['2. cep telefonu', 'telefon 2'],
                 'email_adresi' => ['email', 'e-posta', 'mail', 'eposta'],
                 'ayakkabi_numarasi' => ['ayakkabı no', 'ayakkabi no'],
                 'ust_beden_no' => ['üst beden no', 'ust beden no'],
@@ -197,20 +205,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'acil_kisi_adi_soyadi' => ['acil durum kişisi', 'acil kisi adi soyadi'],
                 'acil_kisi_yakinlik' => ['acil durum yakınlık', 'acil kisi yakinlik'],
                 'acil_kisi_telefonu' => ['acil durum telefonu', 'acil kisi telefonu'],
-                'aktif_mi'     => ['aktif mi', 'durum'],
+                'aktif_mi' => ['aktif mi', 'durum'],
                 'ise_giris_tarihi' => ['işe giriş tarihi', 'ise giris tarihi'],
                 'isten_cikis_tarihi' => ['işten çıkış tarihi', 'isten cikis tarihi'],
-                'sgk_no'       => ['sgk no'],
+                'sgk_no' => ['sgk no'],
                 'sgk_yapilan_firma' => ['sgk yapılan firma', 'sgk yapilan firma'],
                 'personel_sinifi' => ['personel sınıfı', 'personel sinifi'],
-                'departman'    => ['departman', 'birim', 'bölüm'],
-                'gorev'        => ['görev', 'unvan', 'pozisyon'],
-                'takim'        => ['takım', 'takim'],
+                'departman' => ['departman', 'birim', 'bölüm'],
+                'gorev' => ['görev', 'unvan', 'pozisyon'],
+                'takim' => ['takım', 'takim'],
                 'dss_sinifi_ust' => ['dss sınıfı üst', 'dss sinifi ust'],
                 'dss_sinifi_alt' => ['dss sınıfı alt', 'dss sinifi alt'],
                 'iban_numarasi' => ['iban numarası', 'iban no'],
-                'maas_durumu'  => ['maaş durumu', 'maas durumu'],
-                'maas_tutari'  => ['maaş tutarı', 'maas tutari'],
+                'maas_durumu' => ['maaş durumu', 'maas durumu'],
+                'maas_tutari' => ['maaş tutarı', 'maas tutari'],
                 'maas_birim_saat' => ['saatlik ücret', 'maas birim saat']
             ];
 
@@ -240,7 +248,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $key = mb_strtolower($key, 'UTF-8');
                 $firmaMap[trim($key)] = $f->id;
             }
-            
+
             // Varsayılan Firma (Session'dan)
             $defaultFirmaId = $_SESSION['firma_id'] ?? $_SESSION['firma_id'] ?? null;
 
@@ -252,7 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             for ($i = 1; $i < count($rows); $i++) {
                 $row = $rows[$i];
                 $rowNum = $i + 1;
-                
+
                 // Boş satır kontrolü (TC yoksa atla)
                 $tcIndex = $colIndices['tc_kimlik_no'];
                 $tcNo = isset($row[$tcIndex]) ? trim($row[$tcIndex]) : '';
@@ -261,11 +269,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $nameIndex = $colIndices['adi_soyadi'] ?? -1;
                 $name = ($nameIndex >= 0 && isset($row[$nameIndex])) ? trim($row[$nameIndex]) : 'Bilinmeyen İsim';
 
-                if (empty($tcNo)) continue;
+                if (empty($tcNo))
+                    continue;
 
                 // TC Kimlik kontrolü (Veritabanında var mı?)
                 $existing = $Personel->where('tc_kimlik_no', $tcNo);
-                
+
                 // Eğer kayıt varsa atla
                 if (!empty($existing) && count($existing) > 0) {
                     $skippedCount++;
@@ -278,13 +287,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $newData['tc_kimlik_no'] = $tcNo;
 
                 foreach ($colIndices as $dbCol => $index) {
-                    if ($dbCol == 'tc_kimlik_no') continue;
-                    
+                    if ($dbCol == 'tc_kimlik_no')
+                        continue;
+
                     $val = isset($row[$index]) ? trim($row[$index]) : null;
 
                     // Tarih düzeltme
                     if (in_array($dbCol, ['dogum_tarihi', 'ise_giris_tarihi', 'isten_cikis_tarihi']) && !empty($val)) {
-                         try {
+                        try {
                             if (is_numeric($val)) {
                                 $val = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($val)->format('Y-m-d');
                             } else {
@@ -293,9 +303,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     $val = date('Y-m-d', $timestamp);
                                 }
                             }
-                         } catch (Exception $e) {
-                             $val = null;
-                         }
+                        } catch (Exception $e) {
+                            $val = null;
+                        }
                     }
 
                     // Firma ID Dönüşümü
@@ -304,18 +314,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $searchVal = str_replace(['İ', 'I', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç'], ['i', 'ı', 'ğ', 'ü', 'ş', 'ö', 'ç'], $val);
                             $searchVal = mb_strtolower($searchVal, 'UTF-8');
                             $searchVal = trim($searchVal);
-    
+
                             if (isset($firmaMap[$searchVal])) {
                                 $val = $firmaMap[$searchVal];
                             } else {
-                                $val = null; 
+                                $val = null;
                             }
                         }
                     }
 
                     $newData[$dbCol] = $val;
                 }
-                
+
                 // Firma ID Kontrolü ve Varsayılan Atama
                 if (empty($newData['firma_id'])) {
                     if ($defaultFirmaId) {
@@ -326,7 +336,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 // Varsayılan değerler
-                if (!isset($newData['aktif_mi'])) $newData['aktif_mi'] = 1; 
+                if (!isset($newData['aktif_mi']))
+                    $newData['aktif_mi'] = 1;
 
                 try {
                     $PersonelNew = new PersonelModel();
@@ -336,20 +347,59 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $errorDetails[] = "Satır $rowNum ($name): Kayıt eklenirken hata oluştu - " . $e->getMessage();
                 }
             }
-            
+
             $responseMessage = "İşlem tamamlandı.\nBaşarıyla Eklenen: $addedCount";
             if ($skippedCount > 0 || count($errorDetails) > 0) {
-                 // Sadece benzersiz hataları saymak daha mantıklı ama errorDetails zaten tüm hataları içeriyor (TC hatası dahil)
-                 $totalErrors = count($errorDetails);
-                 $responseMessage .= "\nAtlanan/Hatalı: " . $totalErrors;
+                // Sadece benzersiz hataları saymak daha mantıklı ama errorDetails zaten tüm hataları içeriyor (TC hatası dahil)
+                $totalErrors = count($errorDetails);
+                $responseMessage .= "\nAtlanan/Hatalı: " . $totalErrors;
             }
-            
+
             // Hata detaylarını da gönder
             echo json_encode([
-                'status' => 'success', 
+                'status' => 'success',
                 'message' => $responseMessage,
                 'errors' => $errorDetails
             ]);
+
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'update-login-info') {
+        try {
+            $personel_id = $_POST['personel_id'] ?? 0;
+            $sifre = $_POST['sifre'] ?? '';
+            $sifre_confirm = $_POST['sifre_confirm'] ?? '';
+
+            if (empty($sifre) || empty($sifre_confirm)) {
+                throw new Exception("Şifre alanları boş bırakılamaz.");
+            }
+
+            if ($sifre !== $sifre_confirm) {
+                throw new Exception("Şifreler eşleşmiyor.");
+            }
+
+            if (strlen($sifre) < 6) {
+                throw new Exception("Şifre en az 6 karakter olmalıdır.");
+            }
+
+            $personel = $Personel->find($personel_id);
+            if (!$personel) {
+                throw new Exception("Personel bulunamadı.");
+            }
+
+            $hashed_password = password_hash($sifre, PASSWORD_DEFAULT);
+
+            // Personel tablosunu güncelle
+            $updateData = [
+                'id' => $personel->id,
+                'sifre' => $hashed_password
+            ];
+
+            $Personel->saveWithAttr($updateData);
+            $message = "Personel giriş şifresi başarıyla güncellendi.";
+
+            echo json_encode(['status' => 'success', 'message' => $message]);
 
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

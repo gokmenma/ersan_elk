@@ -93,78 +93,79 @@ foreach ($ekip_kodlari_raw as $item) {
 
 
                     <!-- Nav tabs -->
-                    <ul class="nav nav-tabs" role="tablist">
+                    <ul class="nav nav-tabs overflow-x-auto" role="tablist">
                         <li class="nav-item" role="presentation">
                             <a class="nav-link active" data-bs-toggle="tab" href="#home" role="tab"
                                 aria-selected="false" tabindex="-1">
                                 <span class="d-block d-sm-none"><i class="fas fa-home"></i></span>
-                                <span class="d-none d-sm-block">Genel Bilgiler</span>
+                                <span class="d-none d-sm-block"><i class="fas fa-home me-1"></i> Genel Bilgiler</span>
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
                             <a class="nav-link" data-bs-toggle="tab" href="#calisma" role="tab" aria-selected="false"
                                 tabindex="-1">
                                 <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
-                                <span class="d-none d-sm-block">Çalışma Bilgileri</span>
+                                <span class="d-none d-sm-block"><i class="far fa-user me-1"></i> Çalışma Bilgileri</span>
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
                             <a class="nav-link" data-bs-toggle="tab" href="#finansal" role="tab" aria-selected="false"
                                 tabindex="-1">
-                                <span class="d-block d-sm-none"><i class="fas fa-cog"></i></span>
-                                <span class="d-none d-sm-block">Finansal Bilgileri</span>
+                                <span class="d-block d-sm-none"><i class="fas fa-wallet"></i></span>
+                                <span class="d-none d-sm-block"><i class="fas fa-wallet me-1"></i> Finansal Bilgileri</span>
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
                             <a class="nav-link" data-bs-toggle="tab" href="#diger" role="tab" aria-selected="true">
                                 <span class="d-block d-sm-none"><i class="far fa-envelope"></i></span>
-                                <span class="d-none d-sm-block">Diğer Bilgiler</span>
+                                <span class="d-none d-sm-block"><i class="far fa-envelope me-1"></i> Diğer Bilgiler</span>
                             </a>
                         </li>
                         <?php if ($id > 0): ?>
                             <li class="nav-item" role="presentation">
                                 <a class="nav-link" data-bs-toggle="tab" href="#izinler" role="tab" aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-calendar-event"></i></span>
-                                    <span class="d-none d-sm-block">İzinler</span>
+                                    <span class="d-none d-sm-block"><i class="bx bx-calendar-event me-1"></i> İzinler</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <a class="nav-link" data-bs-toggle="tab" href="#zimmetler" role="tab" aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-devices"></i></span>
-                                    <span class="d-none d-sm-block">Zimmetler</span>
+                                    <span class="d-none d-sm-block"><i class="bx bx-devices me-1"></i> Zimmetler</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <a class="nav-link" data-bs-toggle="tab" href="#kesintiler" role="tab" aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-minus-circle"></i></span>
-                                    <span class="d-none d-sm-block">Kesintiler</span>
+                                    <span class="d-none d-sm-block"><i class="bx bx-minus-circle me-1"></i> Kesintiler</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <a class="nav-link" data-bs-toggle="tab" href="#ek_odemeler" role="tab" aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-plus-circle"></i></span>
-                                    <span class="d-none d-sm-block">Ek Ödemeler</span>
+                                    <span class="d-none d-sm-block"><i class="bx bx-plus-circle me-1"></i> Ek Ödemeler</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <a class="nav-link" data-bs-toggle="tab" href="#icralar" role="tab" aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-gavel"></i></span>
-                                    <span class="d-none d-sm-block">İcralar</span>
+                                    <span class="d-none d-sm-block"><i class="bx bx-gavel me-1"></i> İcralar</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <a class="nav-link" data-bs-toggle="tab" href="#finansal_islemler" role="tab"
                                     aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-lira"></i></span>
-                                    <span class="d-none d-sm-block">Hesap Hareketleri</span>
+                                    <span class="d-none d-sm-block"><i class="bx bx-lira me-1"></i> Hesap Hareketleri</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <a class="nav-link" data-bs-toggle="tab" href="#evraklar" role="tab" aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-file"></i></span>
-                                    <span class="d-none d-sm-block">Evraklar</span>
+                                    <span class="d-none d-sm-block"><i class="bx bx-file me-1"></i> Evraklar</span>
                                 </a>
                             </li>
+                        
                         <?php endif; ?>
                     </ul>
 

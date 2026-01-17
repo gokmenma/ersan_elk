@@ -27,34 +27,36 @@ $workTypes = $Puantaj->getWorkTypes();
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                     <h4 class="card-title">Filtreleme</h4>
-                     <form method="GET" action="">
+                    <h4 class="card-title">Filtreleme</h4>
+                    <form method="GET" action="">
                         <input type="hidden" name="p" value="puantaj/list">
                         <div class="row">
                             <div class="col-md-3">
                                 <label class="form-label">Başlangıç Tarihi</label>
-                                <input type="date" name="start_date" class="form-control flatpickr" autocomplete="off" value="<?= $startDate ?>">
+                                <input type="date" name="start_date" class="form-control flatpickr" autocomplete="off"
+                                    value="<?= $startDate ?>">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Bitiş Tarihi</label>
-                                <input type="date" name="end_date" class="form-control flatpickr" autocomplete="off" value="<?= $endDate ?>">
+                                <input type="date" name="end_date" class="form-control flatpickr" autocomplete="off"
+                                    value="<?= $endDate ?>">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Personel (Ekip)</label>
                                 <select name="ekip_kodu" class="form-control select2">
                                     <option value="">Tümü</option>
-                                    <?php foreach($personeller as $personel): ?>
+                                    <?php foreach ($personeller as $personel): ?>
                                         <option value="<?= $personel->adi_soyadi ?>" <?= $ekipKodu == $personel->adi_soyadi ? 'selected' : '' ?>>
                                             <?= $personel->adi_soyadi ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                             <div class="col-md-3">
+                            <div class="col-md-3">
                                 <label class="form-label">Yapılan İş</label>
                                 <select name="work_type" class="form-control select2">
                                     <option value="">Tümü</option>
-                                    <?php foreach($workTypes as $wt): ?>
+                                    <?php foreach ($workTypes as $wt): ?>
                                         <option value="<?= $wt ?>" <?= $workType == $wt ? 'selected' : '' ?>>
                                             <?= $wt ?>
                                         </option>
@@ -68,21 +70,21 @@ $workTypes = $Puantaj->getWorkTypes();
                                 <a href="index.php?p=puantaj/list" class="btn btn-secondary">Temizle</a>
                             </div>
                         </div>
-                     </form>
+                    </form>
                 </div>
             </div>
-            
+
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h4 class="card-title">İş Listesi</h4>
-                     <div>
+                    <div>
                         <a href="index.php?p=puantaj/upload" class="btn btn-success">
                             <i class="bx bxs-file-import"></i> Excel Yükle
                         </a>
                     </div>
                 </div>
                 <div class="card-body">
-                    <table id="puantajTable" class="table table-bordered dt-responsive nowrap w-100">
+                    <table id="puantajTable" class="table datatable table-bordered dt-responsive nowrap w-100">
                         <thead>
                             <tr>
                                 <th>Firma</th>
@@ -95,7 +97,7 @@ $workTypes = $Puantaj->getWorkTypes();
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach($records as $record): ?>
+                            <?php foreach ($records as $record): ?>
                                 <tr>
                                     <td><?= $record->firma ?></td>
                                     <td><?= $record->is_emri_tipi ?></td>
@@ -133,8 +135,8 @@ $workTypes = $Puantaj->getWorkTypes();
 </div>
 
 <script>
-    $(document).ready(function() {
-        $('#puantajTable').DataTable();
+    $(document).ready(function () {
+        // $('#puantajTable').DataTable();
         // Initialize select2 if available
         if ($.fn.select2) {
             $('.select2').select2();

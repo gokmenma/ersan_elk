@@ -21,7 +21,7 @@ class PersonelEkOdemelerModel extends Model
             SELECT *
             FROM {$this->table}
             WHERE personel_id = ? AND silinme_tarihi IS NULL 
-            ORDER BY donem DESC, created_at DESC
+            ORDER BY donem_id DESC, created_at DESC
         ");
         $sql->execute([$personel_id]);
         return $sql->fetchAll(PDO::FETCH_OBJ);

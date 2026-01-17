@@ -50,7 +50,7 @@ $ek_odeme_turleri = [
                                 <?php foreach ($ek_odemeler as $k): ?>
                                     <?php $enc_id = Security::encrypt($k->id); ?>
                                     <tr data-id="<?= $enc_id ?>">
-                                        <td><?= App\Helper\Helper::getDonemAdi($k->donem) ?></td>
+                                        <td><?= App\Helper\Helper::getDonemAdi($k->donem_id) ?></td>
                                         <td>
                                             <span class="badge bg-soft-success text-success">
                                                 <?= isset($ek_odeme_turleri[$k->tur]) ? $ek_odeme_turleri[$k->tur] : ucfirst($k->tur) ?>

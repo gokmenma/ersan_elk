@@ -38,10 +38,10 @@ class BordroDonemModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
-     /**
-      * Dönemlerin yıllana göre yılları getirir
-      */
-         public function getYearsByDonem()
+    /**
+     * Dönemlerin yıllana göre yılları getirir
+     */
+    public function getYearsByDonem()
     {
         $sql = $this->db->prepare(" 
             SELECT DISTINCT YEAR(baslangic_tarihi) AS yil_key, YEAR(baslangic_tarihi) AS yil_val

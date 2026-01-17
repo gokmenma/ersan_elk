@@ -39,13 +39,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $personel = $stmt->fetch(PDO::FETCH_OBJ);
 
         if ($personel) {
+            // Şifre kontrolü - hash'lenmiş şifre ile doğrula
 
-            // Şifre kontrolü
-            // Not: Gerçek sistemde password_verify kullanılmalı
-            // Geliştirme ortamı için '123456' şifresini veya veritabanındaki şifreyi kabul ediyoruz
+
             $dbPassword = $personel->sifre ?? '';
-
-            if ($password === '123456' || $password === $dbPassword) {
+            
+            // Şifre boşsa veya null ise giriş yapılamaz
+            if (empty($dbPassword)) {
+                $error = 'Bu hesap için henüz şifre belirlenmemiş. Lütfen yöneticinizle iletişime geçin.';
+            } elseif (password_verify($password, $dbPassword)) {
                 $_SESSION['personel_id'] = $personel->id;
                 $_SESSION['personel_tc'] = $personel->tc_kimlik_no;
                 $_SESSION['personel_adi'] = $personel->adi_soyadi;
@@ -200,19 +202,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <span class="material-symbols-outlined text-lg">arrow_forward</span>
             </button>
         </form>
-
-        <!-- Demo Info -->
-        <div class="mt-6 p-4 bg-slate-50 rounded-xl">
-            <p class="text-xs text-slate-500 text-center mb-2">Demo Hesap Bilgileri:</p>
-            <div class="flex justify-center gap-4 text-xs">
-                <span class="bg-white px-3 py-1.5 rounded-lg border border-slate-200">
-                    <strong class="text-slate-600">TC:</strong> 12345678901
-                </span>
-                <span class="bg-white px-3 py-1.5 rounded-lg border border-slate-200">
-                    <strong class="text-slate-600">Şifre:</strong> 123456
-                </span>
-            </div>
-        </div>
     </div>
 
     <!-- Footer -->

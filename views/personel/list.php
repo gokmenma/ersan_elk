@@ -111,7 +111,7 @@ $personeller = $Personel->all();
                                     class="bx bx-plus label-icon"></i> Yeni Personel</a>
                             <button type="button" id="btnEditSelected"
                                 class="btn btn-primary waves-effect waves-light me-1" disabled>
-                                <i class="bx bx-edit-alt"></i> Düzenle
+                                <i class="bx bx-edit-alt"></i> Görüntüle
                             </button>
                             <button type="button" id="btnDeleteSelected"
                                 class="btn btn-danger waves-effect waves-light me-1" disabled>

@@ -10,6 +10,7 @@ use App\Model\PersonelKesintileriModel;
 use App\Model\PersonelEkOdemelerModel;
 use App\Model\PersonelIcralariModel;
 use App\Model\BordroDonemModel;
+use App\Model\UserModel;
 use App\Helper\Security;
 
 $id = $_GET['id'] ?? 0;
@@ -141,12 +142,12 @@ switch ($tab) {
     case 'ek_odemeler':
         $PersonelEkOdemelerModel = new PersonelEkOdemelerModel();
         $ek_odemeler = $PersonelEkOdemelerModel->getPersonelEkOdemeler($id);
-        
+
         // Açık dönemleri getir
         $BordroDonemModel = new BordroDonemModel();
         $donemler_raw = $BordroDonemModel->getAllDonems(date('Y'));
         $acik_donemler = [];
-        
+
         foreach ($donemler_raw as $d) {
             if (isset($d->kapali_mi) && $d->kapali_mi == 0) {
                 $key = date('Y-m', strtotime($d->baslangic_tarihi));
@@ -155,7 +156,7 @@ switch ($tab) {
                 $acik_donemler[$key] = $d->donem_adi ?? $ay_adi;
             }
         }
-        
+
         if (empty($acik_donemler)) {
             $acik_donemler[date('Y-m')] = date('m/Y') . ' (Otomatik)';
         }
@@ -165,12 +166,12 @@ switch ($tab) {
     case 'kesintiler':
         $PersonelKesintileriModel = new PersonelKesintileriModel();
         $kesintiler = $PersonelKesintileriModel->getPersonelKesintileri($id);
-        
+
         // Açık dönemleri getir
         $BordroDonemModel = new BordroDonemModel();
         $donemler_raw = $BordroDonemModel->getAllDonems(date('Y')); // Şimdilik bu yılın dönemlerini çekiyoruz
         $acik_donemler = [];
-        
+
         // Önceki yıldan kalan açık dönem olabilir mi? Genelde hayır ama kontrol edilebilir.
         // Şimdilik sadece bu yılın açık dönemlerini alıyoruz.
         foreach ($donemler_raw as $d) {
@@ -183,7 +184,7 @@ switch ($tab) {
                 $acik_donemler[$key] = $d->donem_adi ?? $ay_adi;
             }
         }
-        
+
         // Eğer hiç açık dönem yoksa manuel giriş için fallback (şimdiki ay)
         if (empty($acik_donemler)) {
             $acik_donemler[date('Y-m')] = date('m/Y') . ' (Otomatik)';

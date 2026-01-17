@@ -441,6 +441,111 @@ $(document).ready(function () {
       },
     });
   });
+  // Personel Gelir Ekle Butonu
+  $(document).on("click", ".btn-gelir-ekle", function () {
+    const id = $(this).data("id");
+    const ad = $(this).data("ad");
+
+    $("#gelir_personel_id").val(id);
+    $("#gelir_personel_ad").text(ad);
+    $("#formPersonelGelirEkle")[0].reset();
+    $("#modalPersonelGelirEkle").modal("show");
+  });
+
+  // Personel Kesinti Ekle Butonu
+  $(document).on("click", ".btn-kesinti-ekle", function () {
+    const id = $(this).data("id");
+    const ad = $(this).data("ad");
+
+    $("#kesinti_personel_id").val(id);
+    $("#kesinti_personel_ad").text(ad);
+    $("#formPersonelKesintiEkle")[0].reset();
+    $("#modalPersonelKesintiEkle").modal("show");
+  });
+
+  // Personel Gelir Ekle Form Submit
+  $("#formPersonelGelirEkle").on("submit", function (e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    formData.append("action", "personel-gelir-ekle");
+
+    $.ajax({
+      url: "views/bordro/api.php",
+      type: "POST",
+      data: formData,
+      processData: false,
+      contentType: false,
+      dataType: "json",
+      success: function (response) {
+        if (response.status === "success") {
+          $("#modalPersonelGelirEkle").modal("hide");
+          Swal.fire({
+            icon: "success",
+            title: "Başarılı!",
+            text: response.message,
+            confirmButtonText: "Tamam",
+          }).then(() => {
+            location.reload();
+          });
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Hata!",
+            text: response.message,
+          });
+        }
+      },
+      error: function () {
+        Swal.fire({
+          icon: "error",
+          title: "Hata!",
+          text: "Bir hata oluştu.",
+        });
+      },
+    });
+  });
+
+  // Personel Kesinti Ekle Form Submit
+  $("#formPersonelKesintiEkle").on("submit", function (e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    formData.append("action", "personel-kesinti-ekle");
+
+    $.ajax({
+      url: "views/bordro/api.php",
+      type: "POST",
+      data: formData,
+      processData: false,
+      contentType: false,
+      dataType: "json",
+      success: function (response) {
+        if (response.status === "success") {
+          $("#modalPersonelKesintiEkle").modal("hide");
+          Swal.fire({
+            icon: "success",
+            title: "Başarılı!",
+            text: response.message,
+            confirmButtonText: "Tamam",
+          }).then(() => {
+            location.reload();
+          });
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Hata!",
+            text: response.message,
+          });
+        }
+      },
+      error: function () {
+        Swal.fire({
+          icon: "error",
+          title: "Hata!",
+          text: "Bir hata oluştu.",
+        });
+      },
+    });
+  });
 });
 
 // function initDataTable() {
@@ -527,7 +632,7 @@ function hesaplaEldenOdeme() {
       $("#odeme_net_maas")
         .text()
         .replace(/[^\d,]/g, "")
-        .replace(",", ".")
+        .replace(",", "."),
     ) || 0;
   const banka = parseFloat($("#banka_odemesi").val()) || 0;
   const sodexo = parseFloat($("#sodexo_odemesi").val()) || 0;

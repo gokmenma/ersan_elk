@@ -126,21 +126,28 @@ class Model extends Db
     {
         $setClause = '';
 
-        if ($this->find($this->attributes[$this->primaryKey]) === false) {
+        if (!$this->find($this->attributes[$this->primaryKey])) {
             throw new \Exception('Kayıt bulunamadı.' . $this->attributes[$this->primaryKey]);
         }
 
+        $params = [];
         foreach ($this->attributes as $key => $value) {
+            if ($key === $this->primaryKey) continue;
             $setClause .= "$key = :$key, ";
+            $params[":$key"] = $value;
         }
         $setClause = rtrim($setClause, ', ');
 
-        $sql = $this->db->prepare("UPDATE $this->table SET $setClause WHERE $this->primaryKey = :$this->primaryKey");
+        if (empty($setClause)) {
+            return;
+        }
 
-        $sql->bindParam(":$this->primaryKey", $this->attributes[$this->primaryKey], PDO::PARAM_INT);
+        $sql = $this->db->prepare("UPDATE $this->table SET $setClause WHERE $this->primaryKey = :primary_key_id");
 
-        foreach ($this->attributes as $key => $value) {
-            $sql->bindValue(":$key", $value);
+        $sql->bindValue(":primary_key_id", $this->attributes[$this->primaryKey], PDO::PARAM_INT);
+
+        foreach ($params as $key => $value) {
+            $sql->bindValue($key, $value);
         }
 
         $sql->execute();
