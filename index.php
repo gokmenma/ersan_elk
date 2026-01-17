@@ -2,6 +2,11 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 include 'layouts/session.php';
+
+
+
+
+
 ?>
 <?php include 'layouts/main.php'; ?>
 
@@ -24,10 +29,15 @@ include 'layouts/session.php';
 <?php
 
 require_once __DIR__ . '/Autoloader.php';
+ require __DIR__ . '/vendor/autoload.php';
 setlocale(LC_CTYPE, 'tr_TR.UTF-8');
 
 use App\Helper\Route;
 use App\Model\MenuModel;
+
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv->load();
+
 
 
 

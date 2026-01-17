@@ -7,9 +7,9 @@ namespace App\Core;
 class Db {
 
    
-     private $host = "localhost";
-    private $db_name = "ersan_personel"; // Update with your actual database name
-    private $username = "root"; // Update with your actual username
+     private $host = "";
+    private $db_name = ""; // Update with your actual database name
+    private $username = ""; // Update with your actual username
     private $password = ""; // Update with your actual password
 
     // private $db_name = "mbeyazil_ersanelektrik"; // Update with your actual database name
@@ -23,6 +23,13 @@ class Db {
 
     //__construct() method is called when a new object is created
     public function __construct() {
+        /** .env dosyasından verileri oku */
+        $this->host = $_ENV['DB_HOST'];
+        $this->db_name = $_ENV['DB_NAME'];
+        $this->username = $_ENV['DB_USER'];
+        $this->password = $_ENV['DB_PASS'];
+
+
         $this->getConnection();
     }
 
