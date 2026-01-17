@@ -5,7 +5,28 @@ use App\Helper\Form;
 <div class="row">
     <!-- Sol Kolon: Referans -->
     <div class="col-md-6">
+
+    <div class="card border mt-3">
+            <div class="card-header bg-transparent border-bottom">
+                <h5 class="card-title mb-0 text-primary"><i class="bx bx-key me-2"></i>Giriş Bilgileri</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12">
+                        <?php echo Form::FormFloatInput("password", "sifre", "", "Şifre (Değiştirmek için doldurun)", "Şifre", "lock"); ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- Sağ Kolon: Acil Durum -->
+    <div class="col-md-6">
         <div class="card border">
+
+
+
              <div class="card-header bg-transparent border-bottom">
                 <h5 class="card-title mb-0 text-primary"><i class="bx bx-group me-2"></i>Referans Bilgileri</h5>
             </div>
@@ -25,10 +46,6 @@ use App\Helper\Form;
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- Sağ Kolon: Acil Durum -->
-    <div class="col-md-6">
         <div class="card border">
             <div class="card-header bg-transparent border-bottom">
                 <h5 class="card-title mb-0 text-primary"><i class="bx bx-first-aid me-2"></i>Acil Durum Kişisi</h5>
@@ -50,17 +67,6 @@ use App\Helper\Form;
             </div>
         </div>
 
-        <div class="card border mt-3">
-            <div class="card-header bg-transparent border-bottom">
-                <h5 class="card-title mb-0 text-primary"><i class="bx bx-key me-2"></i>Giriş Bilgileri</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-12">
-                        <?php echo Form::FormFloatInput("password", "sifre", "", "Şifre (Değiştirmek için doldurun)", "Şifre", "lock"); ?>
-                    </div>
-                </div>
-            </div>
-        </div>
+        
     </div>
 </div>
