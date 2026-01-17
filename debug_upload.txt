@@ -1,0 +1,190 @@
+--- Upload Start ---
+FILES: Array
+(
+    [resim_yolu] => Array
+        (
+            [name] => fav.jpg
+            [full_path] => fav.jpg
+            [type] => image/jpeg
+            [tmp_name] => C:\xampp\tmp\php334.tmp
+            [error] => 0
+            [size] => 16451
+        )
+
+)
+
+Upload Dir: C:\xampp\htdocs\ersan_elk\assets\images\users\
+Writable: Yes
+Target Path: C:\xampp\htdocs\ersan_elk\assets\images\users\personel_6967fd0e35684.jpg
+Move Success
+--- Upload Start ---
+FILES: Array
+(
+    [resim_yolu] => Array
+        (
+            [name] => avatar-10.jpg
+            [full_path] => avatar-10.jpg
+            [type] => image/jpeg
+            [tmp_name] => C:\xampp\tmp\phpAC10.tmp
+            [error] => 0
+            [size] => 9787
+        )
+
+)
+
+Upload Dir: C:\xampp\htdocs\ersan_elk\assets\images\users\
+Writable: Yes
+Target Path: C:\xampp\htdocs\ersan_elk\assets\images\users\personel_6967ff45b58b3.jpg
+Move Success
+--- Upload Start ---
+FILES: Array
+(
+    [resim_yolu] => Array
+        (
+            [name] => avatar-1.jpg
+            [full_path] => avatar-1.jpg
+            [type] => image/jpeg
+            [tmp_name] => C:\xampp\tmp\phpAEB.tmp
+            [error] => 0
+            [size] => 10483
+        )
+
+)
+
+Upload Dir: C:\xampp\htdocs\ersan_elk\assets\images\users\
+Writable: Yes
+Target Path: C:\xampp\htdocs\ersan_elk\assets\images\users\personel_6967ff5e0510a.jpg
+Move Success
+--- Upload Start ---
+FILES: Array
+(
+    [resim_yolu] => Array
+        (
+            [name] => avatar-3.jpg
+            [full_path] => avatar-3.jpg
+            [type] => image/jpeg
+            [tmp_name] => C:\xampp\tmp\php310E.tmp
+            [error] => 0
+            [size] => 13535
+        )
+
+)
+
+Upload Dir: C:\xampp\htdocs\ersan_elk\assets\images\users\
+Writable: Yes
+Target Path: C:\xampp\htdocs\ersan_elk\assets\images\users\personel_696806513f3b5.jpg
+Move Success
+--- Upload Start ---
+FILES: Array
+(
+    [resim_yolu] => Array
+        (
+            [name] => avatar-3.jpg
+            [full_path] => avatar-3.jpg
+            [type] => image/jpeg
+            [tmp_name] => C:\xampp\tmp\php5B1D.tmp
+            [error] => 0
+            [size] => 13535
+        )
+
+)
+
+Upload Dir: C:\xampp\htdocs\ersan_elk\assets\images\users\
+Writable: Yes
+Target Path: C:\xampp\htdocs\ersan_elk\assets\images\users\personel_6968065c03418.jpg
+Move Success
+--- Upload Start ---
+FILES: Array
+(
+    [resim_yolu] => Array
+        (
+            [name] => avatar-6.jpg
+            [full_path] => avatar-6.jpg
+            [type] => image/jpeg
+            [tmp_name] => C:\xampp\tmp\phpE2CA.tmp
+            [error] => 0
+            [size] => 10282
+        )
+
+)
+
+Upload Dir: C:\xampp\htdocs\ersan_elk\assets\images\users\
+Writable: Yes
+Target Path: C:\xampp\htdocs\ersan_elk\assets\images\users\personel_696808497b1cd.jpg
+Move Success
+--- Upload Start ---
+FILES: Array
+(
+    [resim_yolu] => Array
+        (
+            [name] => avatar-4.jpg
+            [full_path] => avatar-4.jpg
+            [type] => image/jpeg
+            [tmp_name] => C:\xampp\tmp\php29E5.tmp
+            [error] => 0
+            [size] => 9093
+        )
+
+)
+
+Upload Dir: C:\xampp\htdocs\ersan_elk\assets\images\users\
+Writable: Yes
+Target Path: C:\xampp\htdocs\ersan_elk\assets\images\users\personel_6968ac32b2870.jpg
+Move Success
+--- Upload Start ---
+FILES: Array
+(
+    [resim_yolu] => Array
+        (
+            [name] => avatar-1.jpg
+            [full_path] => avatar-1.jpg
+            [type] => image/jpeg
+            [tmp_name] => C:\xampp\tmp\php3BF3.tmp
+            [error] => 0
+            [size] => 10483
+        )
+
+)
+
+Upload Dir: C:\xampp\htdocs\ersan_elk\assets\images\users\
+Writable: Yes
+Target Path: C:\xampp\htdocs\ersan_elk\assets\images\users\personel_6968ac78d8455.jpg
+Move Success
+--- Upload Start ---
+FILES: Array
+(
+    [resim_yolu] => Array
+        (
+            [name] => avatar-7.jpg
+            [full_path] => avatar-7.jpg
+            [type] => image/jpeg
+            [tmp_name] => C:\xampp\tmp\phpD035.tmp
+            [error] => 0
+            [size] => 9901
+        )
+
+)
+
+Upload Dir: C:\xampp\htdocs\ersan_elk\assets\images\users\
+Writable: Yes
+Target Path: C:\xampp\htdocs\ersan_elk\assets\images\users\personel_6968ac9ece7c0.jpg
+Move Success
+--- Upload Start ---
+FILES: Array
+(
+    [resim_yolu] => Array
+        (
+            [name] => avatar-1.jpg
+            [full_path] => avatar-1.jpg
+            [type] => image/jpeg
+            [tmp_name] => C:\xampp\tmp\phpA75A.tmp
+            [error] => 0
+            [size] => 10483
+        )
+
+)
+
+Upload Dir: C:\xampp\htdocs\ersan_elk\assets\images\users\
+Writable: Yes
+Target Path: C:\xampp\htdocs\ersan_elk\assets\images\users\personel_6969ee9f285af.jpg
+Move Success

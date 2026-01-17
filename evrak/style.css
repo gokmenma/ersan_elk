@@ -1,0 +1,57 @@
+body, html {
+    height: 100%;
+}
+
+body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f0f2f5;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.verification-container {
+    max-width: 550px;
+    width: 100%;
+    padding: 20px;
+}
+
+.verification-card {
+    background: #fff;
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease-in-out;
+}
+
+.verification-card .card-header {
+    background-color: transparent;
+    border-bottom: none;
+    padding-top: 2.5rem;
+}
+
+.input-group-text {
+    background-color: #e9ecef;
+    border: 1px solid #ced4da;
+}
+
+.result-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 2.5rem;
+}
+
+.success-icon {
+    background-color: #198754;
+    box-shadow: 0 0 0 5px rgba(25, 135, 84, 0.2);
+}
+
+.error-icon {
+    background-color: #dc3545;
+    box-shadow: 0 0 0 5px rgba(220, 53, 69, 0.2);
+}

@@ -1,0 +1,13 @@
+{
+    "require": {
+        "phpoffice/phpspreadsheet": "^4.2",
+        "dompdf/dompdf": "^3.1",
+        "mpdf/mpdf": "^8.2"
+    },
+    "autoload": {
+    "psr-4": {
+        "App\\": "App/"
+    }
+}
+ 
+}
