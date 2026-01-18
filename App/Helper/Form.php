@@ -31,30 +31,37 @@ class Form
                 >
             <label for="input-' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
             <div class="form-floating-icon">
-                <i data-feather="' . htmlspecialchars($icon) . '"></i>
+                ' . ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') . '
             </div>
         </div>';
     }
 
     //FormFloatTextarea
 
-    public static function FormFloatTextarea($name, $value, $placeholder, $label, $icon, 
-    $class = "form-control", $required = false, $minHeight = "100px",
-    $rows = 5)
-    {
+    public static function FormFloatTextarea(
+        $name,
+        $value,
+        $placeholder,
+        $label,
+        $icon,
+        $class = "form-control",
+        $required = false,
+        $minHeight = "100px",
+        $rows = 5
+    ) {
         return '
         <div class="form-floating form-floating-custom">
-            <textarea class="' . htmlspecialchars($class) . 
-                '" id="' . htmlspecialchars($name) . 
-                '" name="' . htmlspecialchars($name) .  
-                '" placeholder="' . htmlspecialchars($placeholder ?? '') . 
-                '" style="min-height: ' . htmlspecialchars($minHeight) . 
-                ';min-width:100%" ' . ($required ? 'required' : '') . '  rows="' . htmlspecialchars($rows) . '">' .
-                htmlspecialchars($value ?? '') . 
+            <textarea class="' . htmlspecialchars($class) .
+            '" id="' . htmlspecialchars($name) .
+            '" name="' . htmlspecialchars($name) .
+            '" placeholder="' . htmlspecialchars($placeholder ?? '') .
+            '" style="min-height: ' . htmlspecialchars($minHeight) .
+            ';min-width:100%" ' . ($required ? 'required' : '') . '  rows="' . htmlspecialchars($rows) . '">' .
+            htmlspecialchars($value ?? '') .
             '</textarea>
             <label for="input-' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
             <div class="form-floating-icon">
-                <i data-feather="' . htmlspecialchars($icon) . '"></i>
+                ' . ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') . '
             </div>
         </div>';
     }
@@ -93,13 +100,13 @@ class Form
     //     return $html;
     // }
 
-    
+
     public static function FormSelect2(
         $name,
         $options,
-        $selectedValue ,
+        $selectedValue,
         $label,
-        $icon='',
+        $icon = '',
         $valueField = 'key',
         $textField = '',
         $class = "form-select select2",
@@ -152,38 +159,38 @@ class Form
             if (is_array($text)) {
                 $text = '';
             }
-            $selected = (($value ) == $selectedValue ) ? ' selected' : '';
+            $selected = (($value) == $selectedValue) ? ' selected' : '';
             $html .= '<option value="' . htmlspecialchars($value ?? '') . '"' . $selected . '>' . htmlspecialchars($text ?? '') . '</option>';
         }
 
         $html .= '</select>
         <label for="input-' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
         <div class="form-floating-icon">
-            <i data-feather="' . htmlspecialchars($icon) . '"></i>
+            ' . ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') . '
         </div>
     </div>';
 
         return $html;
     }
 
- //Multiple Select2
-public static function FormMultipleSelect2(
-    $name,
-    $options,
-    $selectedValues = [],
-    $label = '',
-    $icon = '',
-    $valueField = '',
-    $textField = '',
-    $class = "form-select select2",
-    $required = false
-) {
-    // If valueField is empty, use key
-    if ($valueField === '') {
-        $valueField = 'key';
-    }
+    //Multiple Select2
+    public static function FormMultipleSelect2(
+        $name,
+        $options,
+        $selectedValues = [],
+        $label = '',
+        $icon = '',
+        $valueField = '',
+        $textField = '',
+        $class = "form-select select2",
+        $required = false
+    ) {
+        // If valueField is empty, use key
+        if ($valueField === '') {
+            $valueField = 'key';
+        }
 
-    $html = '
+        $html = '
     <div class="form-floating form-floating-custom">
         <select style="width:100%" 
                 class="' . htmlspecialchars($class) . '" 
@@ -192,26 +199,26 @@ public static function FormMultipleSelect2(
                 multiple="multiple" ' .
             ($required ? 'required' : '') . '>';
 
-    foreach ($options as $key => $option) {
-        if ($valueField === 'key') {
-            $value = $key;
-        } else {
-            $value = is_object($option) ? $option->$valueField : (is_string($option) ? $option : (string) $option);
+        foreach ($options as $key => $option) {
+            if ($valueField === 'key') {
+                $value = $key;
+            } else {
+                $value = is_object($option) ? $option->$valueField : (is_string($option) ? $option : (string) $option);
+            }
+            $text = is_object($option) ? ($textField ? $option->$textField : $option->$valueField) : (is_string($option) ? $option : (string) $option);
+            $selected = (in_array($value, (array) $selectedValues)) ? ' selected' : '';
+            $html .= '<option value="' . htmlspecialchars($value ?? '') . '"' . $selected . '>' . htmlspecialchars($text ?? '') . '</option>';
         }
-        $text = is_object($option) ? ($textField ? $option->$textField : $option->$valueField) : (is_string($option) ? $option : (string) $option);
-        $selected = (in_array($value, (array)$selectedValues)) ? ' selected' : '';
-        $html .= '<option value="' . htmlspecialchars($value ?? '') . '"' . $selected . '>' . htmlspecialchars($text ?? '') . '</option>';
-    }
 
-    $html .= '</select>
+        $html .= '</select>
         <label for="input-' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
         <div class="form-floating-icon">
-            <i data-feather="' . htmlspecialchars($icon) . '"></i>
+            ' . ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') . '
         </div>
     </div>';
 
-    return $html;
-}
+        return $html;
+    }
 
 
 
@@ -223,7 +230,7 @@ public static function FormMultipleSelect2(
         <input type="file" class="' . htmlspecialchars($class) . '" id="' . htmlspecialchars($name) . '" name="' . htmlspecialchars($name) . '" ' . ($required ? 'required' : '') . '>
         <label for="input-' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
         <div class="form-floating-icon">
-            <i data-feather="' . htmlspecialchars($icon) . '"></i>
+            ' . ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') . '
         </div>
     </div>';
     }

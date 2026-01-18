@@ -79,7 +79,7 @@ try {
             $data = array_map(function ($item) {
                 return [
                     'id' => $item->id,
-                    'donem' => $item->donem_adi,
+                    'donem_id' => $item->donem_adi,
                     'odeme_tarihi' => $item->odeme_tarihi ? date('d.m.Y', strtotime($item->odeme_tarihi)) : '-',
                     'net_tutar' => $item->net_maas,
                     'durum' => $item->durum ?? 'beklemede'
@@ -97,7 +97,7 @@ try {
             if ($bordro && $bordro->personel_id == $personel_id) {
                 response(true, [
                     'id' => $bordro->id,
-                    'donem' => 'Dönem ' . $bordro->donem_id, // Dönem adını çekmek için join lazım ama şimdilik ID
+                    'donem_id' => 'Dönem ' . $bordro->donem_id, // Dönem adını çekmek için join lazım ama şimdilik ID
                     'brut' => $bordro->brut_maas,
                     'sgk' => $bordro->sgk_isci,
                     'vergi' => $bordro->gelir_vergisi,
@@ -407,7 +407,98 @@ try {
                 'olusturma_tarihi' => date('Y-m-d H:i:s')
             ]);
 
-            response(true, null, 'Talebiniz başarıyla oluşturuldu. Referans No: ' . $ref_no);
+            $newId = (int) $TalepModel->getDb()->lastInsertId();
+            response(true, ['id' => $newId, 'ref_no' => $ref_no], 'Talebiniz başarıyla oluşturuldu. Referans No: ' . $ref_no);
+            break;
+
+        case 'updateTalepBildirimi':
+            $TalepModel = new App\Model\TalepModel();
+
+            $id = (int) ($_POST['id'] ?? 0);
+            $konum = $_POST['konum'] ?? '';
+            $kategori = $_POST['kategori'] ?? '';
+            $oncelik = $_POST['oncelik'] ?? 'orta';
+            $aciklama = $_POST['aciklama'] ?? '';
+            $latitude = $_POST['latitude'] ?? null;
+            $longitude = $_POST['longitude'] ?? null;
+
+            if ($id <= 0) {
+                throw new Exception('Geçersiz talep.');
+            }
+
+            if (empty($konum) || empty($kategori) || empty($aciklama)) {
+                throw new Exception('Lütfen tüm zorunlu alanları doldurun.');
+            }
+
+            $stmt = $TalepModel->getDb()->prepare("SELECT id, ref_no, foto, durum FROM personel_talepleri WHERE id = ? AND personel_id = ? AND deleted_at IS NULL LIMIT 1");
+            $stmt->execute([$id, $personel_id]);
+            $existing = $stmt->fetch(PDO::FETCH_OBJ);
+
+            if (!$existing) {
+                response(false, null, 'Talep bulunamadı.');
+            }
+
+            if ($existing->durum !== 'beklemede') {
+                response(false, null, 'Sadece beklemede olan talepler güncellenebilir.');
+            }
+
+            $foto_path = $existing->foto;
+            if (isset($_FILES['foto']) && $_FILES['foto']['error'] === 0) {
+                $upload_dir = '../../uploads/talepler/';
+                if (!file_exists($upload_dir)) {
+                    mkdir($upload_dir, 0777, true);
+                }
+
+                $file_ext = strtolower(pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION));
+                $allowed = ['jpg', 'jpeg', 'png', 'webp'];
+
+                if (in_array($file_ext, $allowed)) {
+                    $new_name = uniqid('tlp_') . '.' . $file_ext;
+                    if (move_uploaded_file($_FILES['foto']['tmp_name'], $upload_dir . $new_name)) {
+                        $foto_path = 'uploads/talepler/' . $new_name;
+                    }
+                }
+            }
+
+            $kategori_titles = [
+                'ariza' => 'Arıza Bildirimi',
+                'oneri' => 'Öneri',
+                'sikayet' => 'Şikayet',
+                'istek' => 'İstek',
+                'diger' => 'Diğer Talep'
+            ];
+            $baslik = $kategori_titles[$kategori] ?? 'Yeni Talep';
+
+            $update = $TalepModel->getDb()->prepare("
+                UPDATE personel_talepleri 
+                SET konum = ?, latitude = ?, longitude = ?, kategori = ?, oncelik = ?, baslik = ?, aciklama = ?, foto = ?
+                WHERE id = ? AND personel_id = ? AND durum = 'beklemede' AND deleted_at IS NULL
+            ");
+            $update->execute([$konum, $latitude, $longitude, $kategori, $oncelik, $baslik, $aciklama, $foto_path, $id, $personel_id]);
+
+            response(true, ['id' => $id, 'ref_no' => $existing->ref_no], 'Talebiniz güncellendi. Referans No: ' . $existing->ref_no);
+            break;
+
+        case 'deleteTalepBildirimi':
+            $TalepModel = new App\Model\TalepModel();
+            $id = (int) ($_POST['id'] ?? 0);
+
+            if ($id <= 0) {
+                throw new Exception('Geçersiz talep.');
+            }
+
+            $delete = $TalepModel->getDb()->prepare("
+                UPDATE personel_talepleri 
+                SET deleted_at = NOW()
+                WHERE id = ? AND personel_id = ? AND durum = 'beklemede' AND deleted_at IS NULL
+            ");
+            $delete->execute([$id, $personel_id]);
+
+            if ($delete->rowCount() === 0) {
+                response(false, null, 'Talep silinemedi (sadece beklemede olan talepler silinebilir).');
+            }
+
+            response(true, ['id' => $id], 'Talep silindi.');
             break;
 
         // ===== Profil İşlemleri =====

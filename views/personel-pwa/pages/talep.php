@@ -14,7 +14,7 @@
                 <h1 class="text-xl font-bold text-slate-900 dark:text-white">Talepler</h1>
                 <p class="text-sm text-slate-500">Taleplerinizi takip edin</p>
             </div>
-            <button onclick="Modal.open('talep-modal')" class="btn-primary flex items-center gap-2 px-4 py-2.5 text-sm">
+            <button onclick="openNewTalepModal()" class="btn-primary flex items-center gap-2 px-4 py-2.5 text-sm">
                 <span class="material-symbols-outlined text-lg">add_circle</span>
                 <span>Bildir</span>
             </button>
@@ -89,7 +89,7 @@
                     <span class="material-symbols-outlined text-primary text-2xl">edit_note</span>
                     <h3 class="text-lg font-bold text-slate-900 dark:text-white">Talep Bildirimi</h3>
                 </div>
-                <button onclick="Modal.close('talep-modal')"
+                <button onclick="closeTalepModal()"
                     class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                     <span class="material-symbols-outlined text-slate-600">close</span>
                 </button>
@@ -185,11 +185,11 @@
                 </div>
 
                 <div class="flex gap-3 mt-2">
-                    <button type="button" onclick="Modal.close('talep-modal')"
+                    <button type="button" onclick="closeTalepModal()"
                         class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
                         İptal
                     </button>
-                    <button type="submit" class="flex-1 btn-primary py-3">
+                    <button type="submit" class="flex-1 btn-primary py-3" id="talebiGonder">
                         Talebi Gönder
                     </button>
                 </div>
@@ -253,6 +253,7 @@
 <script>
     let currentTalepTab = 'tum';
     let taleplerData = [];
+    let editingTalepId = null;
 
     document.addEventListener('DOMContentLoaded', function () {
         loadTalepStats();
@@ -267,6 +268,24 @@
         // Default selections
         selectOncelik(document.querySelector('.oncelik-btn:nth-child(2)'), 'orta');
     });
+
+    function openNewTalepModal() {
+        setTalepFormMode(null);
+        Modal.open('talep-modal');
+    }
+
+    function closeTalepModal() {
+        setTalepFormMode(null);
+        Modal.close('talep-modal');
+    }
+
+    function setTalepFormMode(talepId) {
+        editingTalepId = talepId ? Number(talepId) : null;
+        const submitBtn = document.getElementById('talebiGonder');
+        if (submitBtn) {
+            submitBtn.textContent = editingTalepId ? 'Güncelle' : 'Talebi Gönder';
+        }
+    }
 
     async function loadTalepStats() {
         try {
@@ -345,6 +364,18 @@
                             <p class="font-bold text-sm text-slate-900 dark:text-white mt-1">${talep.baslik}</p>
                             <p class="text-xs text-slate-500 mt-0.5">${talep.konum}</p>
                         </div>
+                        ${talep.durum === 'beklemede' ? `
+                        <div class="flex flex-col items-end gap-2 flex-shrink-0">
+                            <button type="button" onclick="event.stopPropagation(); startEditTalep(${talep.id});"
+                                class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:bg-primary/10 hover:text-primary hover:border-primary transition-all">
+                                <span class="material-symbols-outlined text-[20px]">edit</span>
+                            </button>
+                            <button type="button" onclick="event.stopPropagation(); deleteTalep(${talep.id});"
+                                class="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 flex items-center justify-center border border-red-200 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all">
+                                <span class="material-symbols-outlined text-[20px]">delete</span>
+                            </button>
+                        </div>
+                        ` : ''}
                     </div>
                     <div class="flex items-center justify-between mt-3">
                         <span class="badge ${getStatusBadge(talep.durum)}">${talep.durum_text}</span>
@@ -452,7 +483,7 @@
     async function showTalepDetay(id) {
         Modal.open('talep-detay-modal');
 
-        const talep = taleplerData.find(a => a.id === id);
+        const talep = taleplerData.find(a => Number(a.id) === Number(id));
         if (!talep) return;
 
         document.getElementById('talep-modal-title').textContent = '#' + talep.ref_no;
@@ -496,6 +527,17 @@
                 <img src="${talep.foto}" class="w-full max-w-[200px] rounded-xl">
             </div>
             ` : ''}
+
+            ${talep.durum === 'beklemede' ? `
+            <div class="grid grid-cols-2 gap-3 pt-2">
+                <button type="button" onclick="startEditTalep(${Number(talep.id)})" class="btn-primary py-3">
+                    Güncelle
+                </button>
+                <button type="button" onclick="deleteTalep(${Number(talep.id)})" class="py-3 bg-red-500 text-white font-semibold rounded-xl">
+                    Sil
+                </button>
+            </div>
+            ` : ''}
             
             <!-- Timeline -->
             <div class="mt-2">
@@ -536,6 +578,95 @@
             </div>
         </div>
         `;
+    }
+
+    function startEditTalep(id) {
+        const talep = taleplerData.find(a => Number(a.id) === Number(id));
+        if (!talep) return;
+
+        setTalepFormMode(id);
+
+        const form = document.getElementById('talep-form');
+        if (!form) return;
+
+        const konumInput = document.getElementById('konum-input');
+        const latInput = document.getElementById('lat-input');
+        const lngInput = document.getElementById('lng-input');
+        const aciklamaInput = form.querySelector('textarea[name="aciklama"]');
+
+        if (konumInput) konumInput.value = talep.konum || '';
+        if (latInput) latInput.value = talep.latitude || '';
+        if (lngInput) lngInput.value = talep.longitude || '';
+        if (aciklamaInput) aciklamaInput.value = talep.aciklama || '';
+
+        document.getElementById('location-status').classList.add('hidden');
+        document.getElementById('location-btn').innerHTML = '<span class="material-symbols-outlined">my_location</span>';
+        document.getElementById('location-btn').classList.remove('border-green-500', 'bg-green-50', 'dark:bg-green-900/20');
+        removeFoto();
+
+        const kategori = talep.kategori || '';
+        const kategoriBtn = Array.from(document.querySelectorAll('.kategori-chip')).find((btn) => {
+            const onClick = btn.getAttribute('onclick') || '';
+            return onClick.includes(`'${kategori}'`);
+        });
+        if (kategoriBtn) selectKategori(kategoriBtn, kategori);
+
+        const oncelik = talep.oncelik || 'orta';
+        const oncelikBtn = Array.from(document.querySelectorAll('.oncelik-btn')).find((btn) => {
+            const onClick = btn.getAttribute('onclick') || '';
+            return onClick.includes(`'${oncelik}'`);
+        });
+        if (oncelikBtn) selectOncelik(oncelikBtn, oncelik);
+
+        Modal.close('talep-detay-modal');
+        Modal.open('talep-modal');
+    }
+
+    async function deleteTalep(id) {
+        const talep = taleplerData.find(a => Number(a.id) === Number(id));
+        if (!talep) return;
+
+        try {
+            const result = await Swal.fire({
+                icon: 'warning',
+                title: 'Silmek istediğinize emin misiniz?',
+                text: `#${talep.ref_no} numaralı talep silinecek.`,
+                showCancelButton: true,
+                confirmButtonText: 'Sil',
+                cancelButtonText: 'İptal',
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b'
+            });
+
+            if (!result.isConfirmed) return;
+
+            const response = await API.request('deleteTalepBildirimi', { id: Number(id) });
+            if (!response.success) {
+                throw new Error(response.message || response.error || 'Silme işlemi başarısız');
+            }
+
+            Modal.close('talep-detay-modal');
+            await Swal.fire({
+                icon: 'success',
+                title: 'Silindi',
+                text: response.message || 'Talep silindi.',
+                confirmButtonText: 'Tamam',
+                customClass: {
+                    confirmButton: 'btn-primary px-6 py-2 rounded-xl'
+                }
+            });
+
+            await loadTalepler();
+            await loadTalepStats();
+        } catch (error) {
+            console.error('Delete error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Hata',
+                text: error.message || 'Silme işlemi sırasında bir sorun oluştu.',
+                confirmButtonText: 'Tamam'
+            });
+        }
     }
 
     function getLocation() {
@@ -600,12 +731,29 @@
 
     async function submitTalepBildirimi(form) {
         const formData = new FormData(form);
+        let $btn = document.getElementById("talebiGonder");
+        let $originalHtml = $btn.innerHTML;
         
         try {
-            const response = await API.request('createTalepBildirimi', Object.fromEntries(formData));
+
+            $btn.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span>';
+            $btn.disabled = true;
+
+            const payload = Object.fromEntries(formData);
+            delete payload.action;
+
+            const action = editingTalepId ? 'updateTalepBildirimi' : 'createTalepBildirimi';
+            const openedTalepId = editingTalepId ? Number(editingTalepId) : null;
+            const response = await API.request(action, {
+                ...payload,
+                ...(editingTalepId ? { id: Number(editingTalepId) } : {})
+            });
+            const createdTalepId = response?.data?.id ? Number(response.data.id) : null;
             
-            if (response.success) {
-                Modal.close('talep-modal');
+            $btn.innerHTML = $originalHtml;
+            $btn.disabled = false;
+            if (response.success) { 
+                closeTalepModal();
                 form.reset();
                 
                 // Reset UI elements
@@ -626,7 +774,11 @@
                 });
                 
                 loadTalepStats();
-                loadTalepler();
+                await loadTalepler();
+                const detailId = createdTalepId || openedTalepId;
+                if (detailId) {
+                    showTalepDetay(detailId);
+                }
             } else {
                 throw new Error(response.error || 'Bir hata oluştu');
             }

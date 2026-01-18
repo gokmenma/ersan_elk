@@ -32,7 +32,7 @@ try {
         case 'save_kesinti':
             $data = [
                 'personel_id' => $personel_id,
-                'donem' => $_POST['kesinti_donem'],
+                'donem_id' => $_POST['kesinti_donem'],
                 'tur' => $_POST['kesinti_tur'],
                 'tutar' => $_POST['tutar'],
                 'aciklama' => $_POST['aciklama'] ?? '',

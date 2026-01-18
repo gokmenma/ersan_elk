@@ -226,9 +226,17 @@ $ek_odeme_turleri = [
                                                                         </td>
                                                                         <td class="text-end text-success">
                                                                             <?= $personel->guncel_toplam_ek_odeme > 0 ? number_format($personel->guncel_toplam_ek_odeme, 2, ',', '.') . ' ₺' : '-' ?>
+                                                                            <i class="bx bx-list-ul ms-1 text-primary cursor-pointer btn-detail-ekodeme" 
+                                                                               data-id="<?= $personel->personel_id ?>" 
+                                                                               data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"
+                                                                               title="Detayları Gör"></i>
                                                                         </td>
                                                                         <td class="text-end text-danger">
                                                                             <?= $personel->guncel_toplam_kesinti > 0 ? number_format($personel->guncel_toplam_kesinti, 2, ',', '.') . ' ₺' : '-' ?>
+                                                                            <i class="bx bx-list-ul ms-1 text-danger cursor-pointer btn-detail-kesinti" 
+                                                                               data-id="<?= $personel->personel_id ?>" 
+                                                                               data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"
+                                                                               title="Detayları Gör"></i>
                                                                         </td>
                                                                         <td class="text-end fw-bold text-success">
                                                                             <?= $personel->net_maas ? number_format($personel->net_maas, 2, ',', '.') . ' ₺' : '-' ?>
@@ -524,43 +532,68 @@ $ek_odeme_turleri = [
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="bx bx-plus-circle me-2"></i>Personel Gelir Ekle</h5>
+                <h5 class="modal-title"><i class="bx bx-plus-circle me-2"></i>Personel Gelir Yönetimi</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="formPersonelGelirEkle">
-                <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
-                <input type="hidden" name="personel_id" id="gelir_personel_id">
-                <div class="modal-body">
-                    <div class="alert alert-success mb-3">
-                        <strong id="gelir_personel_ad"></strong> için gelir ekleniyor.
-                    </div>
-                    
-                    <div class="mb-3">
-                        <?= Form::FormSelect2(
-                            name: "ek_odeme_tur",
-                            options: $ek_odeme_turleri,
-                            selectedValue: '',
-                            label: "Ek Ödeme Türü",
-                            icon: "list",
-                            valueField: '',
-                            textField: '',
-                            required: true
-                        ) ?>
-                    </div>
+            <div class="modal-body bg-light">
+                <div class="alert alert-success mb-3">
+                    <strong id="gelir_personel_ad"></strong> için gelir yönetimi.
+                </div>
 
-                    <div class="mb-3">
-                        <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="gelir_tutar"') ?>
-                    </div>
+                <!-- Yeni Gelir Ekle Accordion -->
+                <div class="accordion mb-3" id="accordionGelirEkle">
+                    <div class="accordion-item border-0 shadow-sm">
+                        <h2 class="accordion-header" id="headingGelir">
+                            <button class="accordion-button collapsed fw-medium" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapseGelir" aria-expanded="false" aria-controls="collapseGelir">
+                                <i class="bx bx-plus me-2 text-success"></i> Yeni Gelir Ekle
+                            </button>
+                        </h2>
+                        <div id="collapseGelir" class="accordion-collapse collapse" aria-labelledby="headingGelir"
+                            data-bs-parent="#accordionGelirEkle">
+                            <div class="accordion-body bg-white">
+                                <form id="formPersonelGelirEkle">
+                                    <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
+                                    <input type="hidden" name="personel_id" id="gelir_personel_id">
+                                    <input type="hidden" name="id" id="gelir_edit_id" value="0">
 
-                    <div class="mb-3">
-                        <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama giriniz", "Açıklama", "message-square", "form-control", false, null, "off", false, 'id="gelir_aciklama"') ?>
+                                    <div class="mb-3">
+                                        <?= Form::FormSelect2(
+                                            name: "ek_odeme_tur",
+                                            options: $ek_odeme_turleri,
+                                            selectedValue: '',
+                                            label: "Ek Ödeme Türü",
+                                            icon: "list",
+                                            valueField: '',
+                                            textField: '',
+                                            required: true
+                                        ) ?>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="gelir_tutar"') ?>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama giriniz", "Açıklama", "message-square", "form-control", false, null, "off", false, 'id="gelir_aciklama"') ?>
+                                    </div>
+
+                                    <div class="text-end">
+                                        <button type="submit" class="btn btn-success"><i class="bx bx-save me-1"></i>Kaydet</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="submit" class="btn btn-success"><i class="bx bx-save me-1"></i>Kaydet</button>
+
+                <div id="listPersonelGelirler" class="mt-3">
+                    <!-- Gelir listesi buraya yüklenecek -->
                 </div>
-            </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
         </div>
     </div>
 </div>
@@ -569,44 +602,69 @@ $ek_odeme_turleri = [
 <div class="modal fade" id="modalPersonelKesintiEkle" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="bx bx-minus-circle me-2"></i>Personel Kesinti Ekle</h5>
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bx bx-minus-circle me-2"></i>Personel Kesinti Yönetimi</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="formPersonelKesintiEkle">
-                <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
-                <input type="hidden" name="personel_id" id="kesinti_personel_id">
-                <div class="modal-body">
-                    <div class="alert alert-info mb-3">
-                        <strong id="kesinti_personel_ad"></strong> için kesinti ekleniyor.
-                    </div>
+            <div class="modal-body bg-light">
+                <div class="alert alert-danger mb-3 bg-danger bg-opacity-10 text-danger border-danger border-opacity-25">
+                    <strong id="kesinti_personel_ad"></strong> için kesinti yönetimi.
+                </div>
 
-                    <div class="mb-3">
-                        <?= Form::FormSelect2(
-                            name: "kesinti_tur",
-                            options: $kesinti_turleri,
-                            selectedValue: '',
-                            label: "Kesinti Türü",
-                            icon: "list",
-                            valueField: '',
-                            textField: '',
-                            required: true
-                        ) ?>
-                    </div>
+                <!-- Yeni Kesinti Ekle Accordion -->
+                <div class="accordion mb-3" id="accordionKesintiEkle">
+                    <div class="accordion-item border-0 shadow-sm">
+                        <h2 class="accordion-header" id="headingKesinti">
+                            <button class="accordion-button collapsed fw-medium" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapseKesinti" aria-expanded="false" aria-controls="collapseKesinti">
+                                <i class="bx bx-minus me-2 text-danger"></i> Yeni Kesinti Ekle
+                            </button>
+                        </h2>
+                        <div id="collapseKesinti" class="accordion-collapse collapse" aria-labelledby="headingKesinti"
+                            data-bs-parent="#accordionKesintiEkle">
+                            <div class="accordion-body bg-white">
+                                <form id="formPersonelKesintiEkle">
+                                    <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
+                                    <input type="hidden" name="personel_id" id="kesinti_personel_id">
+                                    <input type="hidden" name="id" id="kesinti_edit_id" value="0">
 
-                    <div class="mb-3">
-                        <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="kesinti_tutar"') ?>
-                    </div>
+                                    <div class="mb-3">
+                                        <?= Form::FormSelect2(
+                                            name: "kesinti_tur",
+                                            options: $kesinti_turleri,
+                                            selectedValue: '',
+                                            label: "Kesinti Türü",
+                                            icon: "list",
+                                            valueField: '',
+                                            textField: '',
+                                            required: true
+                                        ) ?>
+                                    </div>
 
-                    <div class="mb-3">
-                        <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama giriniz", "Açıklama", "message-square", "form-control", false, null, "off", false, 'id="kesinti_aciklama"') ?>
+                                    <div class="mb-3">
+                                        <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="kesinti_tutar"') ?>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama giriniz", "Açıklama", "message-square", "form-control", false, null, "off", false, 'id="kesinti_aciklama"') ?>
+                                    </div>
+
+                                    <div class="text-end">
+                                        <button type="submit" class="btn btn-danger"><i class="bx bx-save me-1"></i>Kaydet</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="submit" class="btn btn-primary"><i class="bx bx-save me-1"></i>Kaydet</button>
+
+                <div id="listPersonelKesintiler" class="mt-3">
+                    <!-- Kesinti listesi buraya yüklenecek -->
                 </div>
-            </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
         </div>
     </div>
 </div>
@@ -631,4 +689,4 @@ $ek_odeme_turleri = [
         pointer-events: none;
     }
 </style>
-<script src="views/bordro/js/bordro.js"></script>
+<script src="views/bordro/js/bordro.js?v=<?= time() ?>"></script>

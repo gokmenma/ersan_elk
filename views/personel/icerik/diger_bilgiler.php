@@ -14,6 +14,8 @@ use App\Helper\Form;
                 <div class="row">
                     <div class="col-md-12">
                         <?php echo Form::FormFloatInput("password", "sifre", "", "Şifre (Değiştirmek için doldurun)", "Şifre", "lock"); ?>
+                   
+                   <span class="text-muted gap-2">Personelin programa giriş için kullandığı şifreyi sıfırlayabilirsiniz</span>
                     </div>
                 </div>
             </div>

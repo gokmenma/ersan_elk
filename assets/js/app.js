@@ -33,6 +33,15 @@ function confirmAndDelete(url, formData, buttonElement, tableId) {
     });
 }
 
+/**firma_id'de değişikliği dinle */
+$(document).on('change', '#firma_id', function() {
+  var firma_id = $(this).val();
+ const params = new URLSearchParams(window.location.search);
+const p = params.get('p');
+  window.location.href = '/set-session.php?firma_id=' + firma_id + '&p=' + p;
+
+});
+
 //number classına sahip inputlara sadece sayısal değer girilmesini sağlar
 //Örnek kullanım: <input type="text" class="number">
 var numberInputs = document.querySelectorAll(".number");

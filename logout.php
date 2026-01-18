@@ -28,7 +28,8 @@ header("Location: login.php");
                         <div class="d-flex flex-column h-100">
                             <div class="mb-4 mb-md-5 text-center">
                                 <a href="index.php" class="d-block auth-logo">
-                                    <img src="assets/images/logo-sm.svg" alt="" height="28"> <span class="logo-txt">Dason</span>
+                                    <img src="assets/images/logo-sm.svg" alt="" height="28"> <span
+                                        class="logo-txt">Dason</span>
                                 </a>
                             </div>
                             <div class="auth-content my-auto">
@@ -41,21 +42,27 @@ header("Location: login.php");
 
                                     <div class="mt-4 pt-2">
                                         <h5>You are Logged Out</h5>
-                                        <p class="text-muted font-size-15">Thank you for using <span class="fw-semibold text-dark">Dason</span></p>
+                                        <p class="text-muted font-size-15">Thank you for using <span
+                                                class="fw-semibold text-dark">Dason</span></p>
                                         <div class="mt-4">
-                                            <a href="login.php" class="btn btn-primary w-100 waves-effect waves-light">Sign In</a>
+                                            <a href="login.php"
+                                                class="btn btn-primary w-100 waves-effect waves-light">Sign In</a>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div class="mt-5 text-center">
-                                    <p class="text-muted mb-0">Don't have an account ? <a href="register.php" class="text-primary fw-semibold"> Signup</a> </p>
+                                    <p class="text-muted mb-0">Don't have an account ? <a href="register.php"
+                                            class="text-primary fw-semibold"> Signup</a> </p>
                                 </div>
                             </div>
                             <div class="mt-4 mt-md-5 text-center">
-                                <p class="mb-0">© <script>
+                                <p class="mb-0">©
+                                    <script>
                                         document.write(new Date().getFullYear())
-                                    </script> Dason . Crafted with <i class="mdi mdi-heart text-danger"></i> by Themesdesign</p>
+                                    </script> Dason . Crafted with <i class="mdi mdi-heart text-danger"></i> by
+                                    Themesdesign
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -83,15 +90,23 @@ header("Location: login.php");
                         <div class="col-xl-7">
                             <div class="p-0 p-sm-4 px-xl-0">
                                 <div id="reviewcarouselIndicators" class="carousel slide" data-bs-ride="carousel">
-                                    <div class="carousel-indicators auth-carousel carousel-indicators-rounded justify-content-center mb-0">
-                                        <button type="button" data-bs-target="#reviewcarouselIndicators" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1">
-                                            <img src="assets/images/users/avatar-1.jpg" class="avatar-md img-fluid rounded-circle d-block" alt="...">
+                                    <div
+                                        class="carousel-indicators auth-carousel carousel-indicators-rounded justify-content-center mb-0">
+                                        <button type="button" data-bs-target="#reviewcarouselIndicators"
+                                            data-bs-slide-to="0" class="active" aria-current="true"
+                                            aria-label="Slide 1">
+                                            <img src="assets/images/users/avatar-1.jpg"
+                                                class="avatar-md img-fluid rounded-circle d-block" alt="...">
                                         </button>
-                                        <button type="button" data-bs-target="#reviewcarouselIndicators" data-bs-slide-to="1" aria-label="Slide 2">
-                                            <img src="assets/images/users/avatar-2.jpg" class="avatar-md img-fluid rounded-circle d-block" alt="...">
+                                        <button type="button" data-bs-target="#reviewcarouselIndicators"
+                                            data-bs-slide-to="1" aria-label="Slide 2">
+                                            <img src="assets/images/users/avatar-2.jpg"
+                                                class="avatar-md img-fluid rounded-circle d-block" alt="...">
                                         </button>
-                                        <button type="button" data-bs-target="#reviewcarouselIndicators" data-bs-slide-to="2" aria-label="Slide 3">
-                                            <img src="assets/images/users/avatar-3.jpg" class="avatar-md img-fluid rounded-circle d-block" alt="...">
+                                        <button type="button" data-bs-target="#reviewcarouselIndicators"
+                                            data-bs-slide-to="2" aria-label="Slide 3">
+                                            <img src="assets/images/users/avatar-3.jpg"
+                                                class="avatar-md img-fluid rounded-circle d-block" alt="...">
                                         </button>
                                     </div>
                                     <!-- end carouselIndicators -->

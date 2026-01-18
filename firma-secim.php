@@ -1,4 +1,4 @@
-<?php 
+<?php
 require_once "vendor/autoload.php";
 
 use App\Model\FirmaModel;
@@ -13,12 +13,30 @@ $User = new UserModel();
 $branchs = $Firma->all();
 //Helper::dd($branchs);
 
+// Varsayılan firma cookie kontrolü - otomatik yönlendirme
+if (isset($_COOKIE['varsayilan_firma_id']) && !empty($_COOKIE['varsayilan_firma_id'])) {
+    $varsayilan_firma_id = (int) $_COOKIE['varsayilan_firma_id'];
+    // Firma hala aktif mi kontrol et
+    $firma_aktif = false;
+    foreach ($branchs as $branch) {
+        if ($branch->id == $varsayilan_firma_id) {
+            $firma_aktif = true;
+            break;
+        }
+    }
+    if ($firma_aktif) {
+        $_SESSION['firma_id'] = $varsayilan_firma_id;
+        header("Location: /set-session.php?firma_id=" . $varsayilan_firma_id);
+        exit;
+    }
+}
+
 //**Eğer 1 adet sube varsa direkt yönlendir */
-if(count($branchs) == 1){
+if (count($branchs) == 1) {
     $only_branch = $branchs[0];
     $_SESSION['sube_id'] = $only_branch->id;
-    header("Location: /set-session.php?sube_id=" . $only_branch->id);
-
+    header("Location: /set-session.php?firma_id=" . $only_branch->id);
+    exit;
 }
 
 ?>
@@ -30,7 +48,7 @@ if(count($branchs) == 1){
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Şube Seçimi | Canşen</title>
+    <title>Firma Seçimi | Ersan Elektrik</title>
     <!-- Google Fonts: Modern bir yazı tipi -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,8 +56,13 @@ if(count($branchs) == 1){
     <!-- Font Awesome: İkonlar için -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
     <!-- Animate.css for entrance animations -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+
+
+
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap');
+
         :root {
             --primary: #6366f1;
             --primary-hover: #4f46e5;
@@ -59,7 +82,7 @@ if(count($branchs) == 1){
         }
 
         body {
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Roboto Condensed', sans-serif;
             background: #0f172a;
             color: var(--text-main);
             display: flex;
@@ -116,8 +139,13 @@ if(count($branchs) == 1){
         }
 
         @keyframes float {
-            0% { transform: translate(0, 0) scale(1); }
-            100% { transform: translate(50px, 50px) scale(1.1); }
+            0% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            100% {
+                transform: translate(50px, 50px) scale(1.1);
+            }
         }
 
         .branch-selector-container {
@@ -295,6 +323,78 @@ if(count($branchs) == 1){
             gap: 15px;
         }
 
+        /* Varsayılan Firma Checkbox Stili */
+        .default-firm-option {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+
+        .default-firm-option:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .default-firm-option input[type="checkbox"] {
+            display: none;
+        }
+
+        .default-firm-option .checkbox-custom {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--glass-border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .default-firm-option .checkbox-custom i {
+            font-size: 14px;
+            color: #fff;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.2s ease;
+        }
+
+        .default-firm-option input[type="checkbox"]:checked+.checkbox-custom {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .default-firm-option input[type="checkbox"]:checked+.checkbox-custom i {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .default-firm-option .checkbox-label {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 400;
+            transition: color 0.3s ease;
+        }
+
+        .default-firm-option:hover .checkbox-label,
+        .default-firm-option input[type="checkbox"]:checked~.checkbox-label {
+            color: var(--text-main);
+        }
+
+        .default-firm-option .skip-info {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.4);
+            margin-left: 5px;
+        }
+
         #continue-btn {
             width: 100%;
             padding: 18px;
@@ -341,7 +441,9 @@ if(count($branchs) == 1){
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         /* Mobil Cihazlar için Ayarlamalar */
@@ -382,8 +484,9 @@ if(count($branchs) == 1){
         </div>
 
         <div class="branch-grid">
-            <?php foreach($branchs as $index => $branch) { ?>
-                <div class="branch-card animate__animated animate__fadeInUp" style="animation-delay: <?php echo ($index * 0.1) + 0.2 ?>s" data-branch-id="<?php echo $branch->id ?>">
+            <?php foreach ($branchs as $index => $branch) { ?>
+                <div class="branch-card animate__animated animate__fadeInUp"
+                    style="animation-delay: <?php echo ($index * 0.1) + 0.2 ?>s" data-branch-id="<?php echo $branch->id ?>">
                     <div class="checkmark"><i class="fas fa-check-circle"></i></div>
                     <div class="card-icon-wrapper">
                         <i class="card-icon fa-solid fa-store"></i>
@@ -395,6 +498,14 @@ if(count($branchs) == 1){
         </div>
 
         <div class="actions">
+            <label class="default-firm-option" for="varsayilan-firma">
+                <input type="checkbox" id="varsayilan-firma" name="varsayilan_firma">
+                <span class="checkbox-custom"><i class="fas fa-check"></i></span>
+                <span class="checkbox-label">
+                    Varsayılan olarak bu firmayı seç
+                    <span class="skip-info">(Bu adımı atla)</span>
+                </span>
+            </label>
             <button id="continue-btn" disabled>
                 <span>Devam Et</span>
                 <div class="loading-spinner"></div>
@@ -417,7 +528,7 @@ if(count($branchs) == 1){
                     branchCards.forEach(c => c.classList.remove('selected'));
                     card.classList.add('selected');
                     continueBtn.disabled = false;
-                    
+
                     // Subtle haptic-like feedback
                     if (window.navigator.vibrate) {
                         window.navigator.vibrate(5);
@@ -427,19 +538,26 @@ if(count($branchs) == 1){
 
             continueBtn.addEventListener('click', () => {
                 const selectedCard = document.querySelector('.branch-card.selected');
-                
+
                 if (selectedCard) {
                     const branchId = selectedCard.dataset.branchId;
-                    
+
                     // UI Feedback
                     btnText.textContent = 'Yönlendiriliyor...';
                     btnIcon.style.display = 'none';
                     btnSpinner.style.display = 'block';
                     continueBtn.disabled = true;
 
-                    // Redirect
+                    // Varsayılan firma checkbox kontrolü
+                    const isDefault = document.getElementById('varsayilan-firma').checked;
+
+                    // Redirect with default firm parameter
                     setTimeout(() => {
-                        window.location.href = `/set-session.php?firma_id=${branchId}`;
+                        let url = `/set-session.php?firma_id=${branchId}`;
+                        if (isDefault) {
+                            url += '&varsayilan=1';
+                        }
+                        window.location.href = url;
                     }, 600);
                 }
             });

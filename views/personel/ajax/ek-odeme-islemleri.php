@@ -25,7 +25,7 @@ try {
         case 'save_ek_odeme':
             $data = [
                 'personel_id' => $personel_id,
-                'donem' => $_POST['ek_odeme_donem'],
+                'donem_id' => $_POST['ek_odeme_donem'],
                 'tur' => $_POST['ek_odeme_tur'],
                 'tutar' => $_POST['tutar'],
                 'aciklama' => $_POST['aciklama'] ?? ''

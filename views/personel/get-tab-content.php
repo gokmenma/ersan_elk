@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
+use App\Helper\Helper;
 use App\Model\PersonelModel;
 use App\Model\PersonelIzinleriModel;
 use App\Model\DemirbasZimmetModel;
@@ -151,11 +152,13 @@ switch ($tab) {
         foreach ($donemler_raw as $d) {
             if (isset($d->kapali_mi) && $d->kapali_mi == 0) {
                 $key = date('Y-m', strtotime($d->baslangic_tarihi));
-                setlocale(LC_TIME, 'tr_TR.UTF-8');
-                $ay_adi = strftime('%B %Y', strtotime($d->baslangic_tarihi));
-                $acik_donemler[$key] = $d->donem_adi ?? $ay_adi;
+                $formatter = new IntlDateFormatter('tr_TR', IntlDateFormatter::LONG, IntlDateFormatter::NONE, null, null, 'MMMM yyyy');
+                $ay_adi = $formatter->format(strtotime($d->baslangic_tarihi));
+                $acik_donemler[$d->id] = $d->donem_adi ?? $ay_adi;
             }
         }
+
+        //Helper::dd($acik_donemler);
 
         if (empty($acik_donemler)) {
             $acik_donemler[date('Y-m')] = date('m/Y') . ' (Otomatik)';
@@ -179,8 +182,8 @@ switch ($tab) {
                 // YYYY-MM formatında key oluştur
                 $key = date('Y-m', strtotime($d->baslangic_tarihi));
                 // Türkçe ay ismini al
-                setlocale(LC_TIME, 'tr_TR.UTF-8');
-                $ay_adi = strftime('%B %Y', strtotime($d->baslangic_tarihi));
+                $formatter = new IntlDateFormatter('tr_TR', IntlDateFormatter::LONG, IntlDateFormatter::NONE, null, null, 'MMMM yyyy');
+                $ay_adi = $formatter->format(strtotime($d->baslangic_tarihi));
                 $acik_donemler[$key] = $d->donem_adi ?? $ay_adi;
             }
         }

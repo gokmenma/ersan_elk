@@ -71,4 +71,136 @@ class AvansModel extends Model
 
         return max(0, $limit - $kullanilan);
     }
+
+    /**
+     * Firma bazında bekleyen avans sayısını getirir
+     */
+    public function getBekleyenAvansSayisi()
+    {
+        $sql = $this->db->prepare("
+            SELECT COUNT(*) as count 
+            FROM {$this->table} pa 
+            JOIN personel p ON pa.personel_id = p.id 
+            WHERE pa.durum = 'beklemede' AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+        ");
+        $sql->execute([$_SESSION['firma_id']]);
+        return $sql->fetch(PDO::FETCH_OBJ)->count ?? 0;
+    }
+
+    /**
+     * Firma bazında bekleyen avans listesini getirir (dashboard için)
+     */
+    public function getBekleyenAvanslarForDashboard($limit = 5)
+    {
+        $limit = (int) $limit;
+        $sql = $this->db->prepare("
+            SELECT 'Avans' as tip, pa.id, pa.personel_id, pa.talep_tarihi as tarih, pa.durum, pa.tutar as detay 
+            FROM {$this->table} pa 
+            JOIN personel p ON pa.personel_id = p.id 
+            WHERE pa.durum = 'beklemede' AND pa.silinme_tarihi IS NULL AND p.firma_id = ? 
+            LIMIT {$limit}
+        ");
+        $sql->execute([$_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Tüm bekleyen avans taleplerini personel bilgileriyle getirir
+     */
+    public function getButunBekleyenAvanslar()
+    {
+        $sql = $this->db->prepare("
+            SELECT pa.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, p.maas_tutari
+            FROM {$this->table} pa 
+            JOIN personel p ON pa.personel_id = p.id 
+            WHERE pa.durum = 'beklemede' AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            ORDER BY pa.talep_tarihi DESC
+        ");
+        $sql->execute([$_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Onaylanmış avans taleplerini personel bilgileriyle getirir
+     */
+    public function getOnaylanmisAvanslar($limit = 50)
+    {
+        $sql = $this->db->prepare("
+            SELECT pa.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, p.maas_tutari
+            FROM {$this->table} pa 
+            JOIN personel p ON pa.personel_id = p.id 
+            WHERE pa.durum = 'onaylandi' AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            ORDER BY pa.onay_tarihi DESC
+            LIMIT ?
+        ");
+        $sql->execute([$_SESSION['firma_id'], $limit]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+
+    /**
+     * Avans durumunu günceller (onay/ret)
+     */
+    public function updateDurum($id, $durum, $aciklama = null)
+    {
+        $onay_tarihi = in_array($durum, ['onaylandi', 'reddedildi']) ? date('Y-m-d H:i:s') : null;
+        $onaylayan_id = $_SESSION['user_id'] ?? null;
+
+        $sql = $this->db->prepare("
+            UPDATE {$this->table} 
+            SET durum = ?, onay_aciklama = ?, onay_tarihi = ?, onaylayan_id = ?
+            WHERE id = ?
+        ");
+        return $sql->execute([$durum, $aciklama, $onay_tarihi, $onaylayan_id, $id]);
+    }
+
+    /**
+     * Avans detayını getirir
+     */
+    public function getAvansDetay($id)
+    {
+        $sql = $this->db->prepare("
+            SELECT pa.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, p.maas_tutari
+            FROM {$this->table} pa 
+            JOIN personel p ON pa.personel_id = p.id 
+            WHERE pa.id = ?
+        ");
+        $sql->execute([$id]);
+        return $sql->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Onaylanan avansı personel hesabına işler (kesinti olarak ekler)
+     */
+    public function avansHesabaIsle($avans_id, $donem_id = null)
+    {
+        $avans = $this->find($avans_id);
+        if (!$avans) {
+            return false;
+        }
+
+        // Eğer dönem ID verilmediyse mevcut dönemi bul
+        if (!$donem_id) {
+            $donemSql = $this->db->prepare("
+                SELECT id FROM bordro_donemi 
+                WHERE baslangic_tarihi <= CURDATE() AND bitis_tarihi >= CURDATE() AND kapali_mi = 0
+                LIMIT 1
+            ");
+            $donemSql->execute();
+            $donem = $donemSql->fetch(PDO::FETCH_OBJ);
+            $donem_id = $donem ? $donem->id : null;
+        }
+
+        if ($donem_id) {
+            // Avansı kesinti olarak ekle
+            $sql = $this->db->prepare("
+                INSERT INTO personel_kesintileri (personel_id, donem_id, tur, aciklama, tutar, olusturma_tarihi)
+                VALUES (?, ?, 'avans', ?, ?, NOW())
+            ");
+            $aciklama = 'Avans - ' . date('d.m.Y', strtotime($avans->talep_tarihi));
+            return $sql->execute([$avans->personel_id, $donem_id, $aciklama, $avans->tutar]);
+        }
+
+        return true;
+    }
 }

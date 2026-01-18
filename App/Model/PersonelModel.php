@@ -17,11 +17,21 @@ class PersonelModel extends Model
     }
 
     /**Tüm aktif personelleri getirir */
-    public function all(){
-        $query = $this->db->prepare("Select * from $this->table");
-        $query->execute();
+    public function all()
+    {
+        $query = $this->db->prepare("Select * from $this->table where firma_id = :firma_id");
+        $query->execute([
+            'firma_id' => $_SESSION['firma_id']
+        ]);
         return $query->fetchAll(PDO::FETCH_OBJ);
 
+    }
+
+    public function where($column, $value)
+    {
+        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE $column = ? AND firma_id = ?");
+        $sql->execute(array($value, $_SESSION['firma_id']));
+        return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
 }

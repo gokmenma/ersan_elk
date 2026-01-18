@@ -36,9 +36,13 @@ const App = {
     document.body.addEventListener(
       "touchmove",
       (e) => {
-        if (document.querySelector(".modal-overlay.active")) {
-          e.preventDefault();
-        }
+        const activeModal = document.querySelector(".modal-overlay.active");
+        if (!activeModal) return;
+
+        const modalContent = e.target.closest(".modal-content");
+        if (modalContent && activeModal.contains(modalContent)) return;
+
+        e.preventDefault();
       },
       { passive: false }
     );

@@ -3,6 +3,7 @@
 namespace App\Model;
 
 use App\Model\Model;
+use App\Model\BordroParametreModel;
 use PDO;
 
 class BordroPersonelModel extends Model
@@ -150,6 +151,8 @@ class BordroPersonelModel extends Model
                 sgk_isveren = :sgk_isveren,
                 issizlik_isveren = :issizlik_isveren,
                 toplam_maliyet = :toplam_maliyet,
+                kumulatif_matrah = :kumulatif_matrah,
+                hesaplama_detay = :hesaplama_detay,
                 hesaplama_tarihi = NOW()
             WHERE id = :id
         ");
@@ -164,6 +167,10 @@ class BordroPersonelModel extends Model
         $sql->bindParam(':sgk_isveren', $hesaplamaData['sgk_isveren']);
         $sql->bindParam(':issizlik_isveren', $hesaplamaData['issizlik_isveren']);
         $sql->bindParam(':toplam_maliyet', $hesaplamaData['toplam_maliyet']);
+        $kumulatif = $hesaplamaData['kumulatif_matrah'] ?? 0;
+        $sql->bindParam(':kumulatif_matrah', $kumulatif);
+        $hesaplamaDetay = $hesaplamaData['hesaplama_detay'] ?? null;
+        $sql->bindParam(':hesaplama_detay', $hesaplamaDetay);
 
         return $sql->execute();
     }
@@ -256,14 +263,19 @@ class BordroPersonelModel extends Model
 
     /**
      * Tek bir personelin maaşını hesaplar ve günceller
+     * Parametrelere dayalı gelişmiş hesaplama
      */
     public function hesaplaMaas($bordro_personel_id)
     {
+        // BordroParametreModel'i kullan
+        $parametreModel = new BordroParametreModel();
+
         // Bordro kaydını ve personel detaylarını çek
         $sql = $this->db->prepare("
-            SELECT bp.*, p.maas_tutari 
+            SELECT bp.*, p.maas_tutari, bd.baslangic_tarihi, bd.bitis_tarihi
             FROM {$this->table} bp
             INNER JOIN personel p ON bp.personel_id = p.id
+            INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
             WHERE bp.id = ?
         ");
         $sql->execute([$bordro_personel_id]);
@@ -272,28 +284,211 @@ class BordroPersonelModel extends Model
         if (!$kayit)
             return false;
 
+        // Dönem tarihi - parametreleri bu tarihe göre çek
+        $donemTarihi = $kayit->baslangic_tarihi ?? date('Y-m-d');
+        $donemAy = date('n', strtotime($donemTarihi));
+        $donemYil = date('Y', strtotime($donemTarihi));
+
+        // Çalışma günü sayısı (aylık varsayılan 26 gün)
+        $calismaGunuSayisi = $parametreModel->getGenelAyar('calisma_gunu_sayisi', $donemTarihi) ?? 26;
+
+        // Genel ayarları çek
+        $sgkIsciOrani = ($parametreModel->getGenelAyar('sgk_isci_orani', $donemTarihi) ?? 14) / 100;
+        $issizlikIsciOrani = ($parametreModel->getGenelAyar('issizlik_isci_orani', $donemTarihi) ?? 1) / 100;
+        $sgkIsverenOrani = ($parametreModel->getGenelAyar('sgk_isveren_orani', $donemTarihi) ?? 20.5) / 100;
+        $issizlikIsverenOrani = ($parametreModel->getGenelAyar('issizlik_isveren_orani', $donemTarihi) ?? 2) / 100;
+        $damgaVergisiOrani = ($parametreModel->getGenelAyar('damga_vergisi_orani', $donemTarihi) ?? 0.759) / 100;
+
+        // Brüt maaş
         $brutMaas = floatval($kayit->maas_tutari ?? 0);
-        if ($brutMaas <= 0)
-            $brutMaas = 22104.00; // Varsayılan asgari ücret
+        if ($brutMaas <= 0) {
+            $brutMaas = $parametreModel->getGenelAyar('asgari_ucret_brut', $donemTarihi) ?? 33030.00;
+        }
 
-        // Ek Ödemeler ve Kesintiler
-        $toplamEkOdeme = $this->getDonemEkOdemeleri($kayit->personel_id, $kayit->donem_id);
-        $toplamKesinti = $this->getDonemKesintileri($kayit->personel_id, $kayit->donem_id);
+        // Ek Ödemeler ve Kesintileri detaylı çek
+        $ekOdemeler = $this->getDonemEkOdemeleriListe($kayit->personel_id, $kayit->donem_id);
+        $kesintiler = $this->getDonemKesintileriListe($kayit->personel_id, $kayit->donem_id);
 
-        // Hesaplamalar
-        $sgkIsci = $brutMaas * 0.14;
-        $issizlikIsci = $brutMaas * 0.01;
-        $sgkMatrah = $brutMaas - $sgkIsci - $issizlikIsci;
-        $gelirVergisi = $sgkMatrah * 0.15;
-        $damgaVergisi = $brutMaas * 0.00759;
+        // Hesaplama için değişkenler
+        $brutEkOdemeler = 0;       // Brüt maaşa eklenecek (SGK + Vergi hesaplanacak)
+        $netEkOdemeler = 0;        // Direct net'e eklenecek
+        $vergiliMatrahEkleri = 0;  // Sadece gelir vergisi matrahına eklenecek
+        $sgkMatrahEkleri = 0;      // SGK matrahına eklenecek
+        $toplamKesinti = 0;        // Net'ten düşülecek kesintiler
 
-        // Net Maaş = (Brüt - Vergiler) + Ek Ödemeler - Kesintiler
-        $netMaas = ($brutMaas - $sgkIsci - $issizlikIsci - $gelirVergisi - $damgaVergisi) + $toplamEkOdeme - $toplamKesinti;
+        // JSON detay için diziler
+        $ekOdemeDetaylari = [];
+        $kesintiDetaylari = [];
+
+        // Her ek ödemeyi parametresine göre işle
+        foreach ($ekOdemeler as $odeme) {
+            $tutar = floatval($odeme->tutar);
+            $parametre = $parametreModel->getByKod($odeme->tur, $donemTarihi);
+
+            // Detay kaydı
+            $detay = [
+                'kod' => $odeme->tur,
+                'tutar' => $tutar,
+                'aciklama' => $odeme->aciklama ?? null
+            ];
+
+            if (!$parametre) {
+                // Parametre bulunamadıysa varsayılan olarak net ekle
+                $netEkOdemeler += $tutar;
+                $detay['etiket'] = $odeme->tur;
+                $detay['hesaplama_tipi'] = 'net';
+                $detay['net_etki'] = $tutar;
+                $ekOdemeDetaylari[] = $detay;
+                continue;
+            }
+
+            $detay['etiket'] = $parametre->etiket;
+            $detay['hesaplama_tipi'] = $parametre->hesaplama_tipi;
+            $detay['sgk_dahil'] = (bool) $parametre->sgk_matrahi_dahil;
+            $detay['gv_dahil'] = (bool) $parametre->gelir_vergisi_dahil;
+
+            switch ($parametre->hesaplama_tipi) {
+                case 'brut':
+                    // Brüt: Tüm vergi/SGK hesaplamalarına dahil
+                    $brutEkOdemeler += $tutar;
+                    if ($parametre->sgk_matrahi_dahil) {
+                        $sgkMatrahEkleri += $tutar;
+                    }
+                    if ($parametre->gelir_vergisi_dahil) {
+                        $vergiliMatrahEkleri += $tutar;
+                    }
+                    $detay['net_etki'] = $tutar; // Brütten kesinti yapılacak
+                    break;
+
+                case 'kismi_muaf':
+                    // Kısmi Muaf: Belirli limite kadar vergisiz
+                    $muafLimit = 0;
+                    if ($parametre->muaf_limit_tipi === 'gunluk') {
+                        $muafLimit = floatval($parametre->gunluk_muaf_limit) * $calismaGunuSayisi;
+                    } elseif ($parametre->muaf_limit_tipi === 'aylik') {
+                        $muafLimit = floatval($parametre->aylik_muaf_limit);
+                    }
+
+                    $muafKisim = min($tutar, $muafLimit);
+                    $vergiliKisim = max(0, $tutar - $muafLimit);
+
+                    // Muaf kısım net'e direkt eklenir
+                    $netEkOdemeler += $muafKisim;
+
+                    // Vergili kısım hesaplamalara dahil
+                    if ($vergiliKisim > 0) {
+                        if ($parametre->sgk_matrahi_dahil) {
+                            $sgkMatrahEkleri += $vergiliKisim;
+                        }
+                        if ($parametre->gelir_vergisi_dahil) {
+                            $vergiliMatrahEkleri += $vergiliKisim;
+                        }
+                    }
+
+                    $detay['muaf_limit_tipi'] = $parametre->muaf_limit_tipi;
+                    $detay['gunluk_limit'] = $parametre->gunluk_muaf_limit;
+                    $detay['aylik_limit'] = $muafLimit;
+                    $detay['muaf_kisim'] = round($muafKisim, 2);
+                    $detay['vergili_kisim'] = round($vergiliKisim, 2);
+                    $detay['net_etki'] = round($muafKisim, 2);
+                    break;
+
+                case 'net':
+                default:
+                    // Net: Direkt net maaşa eklenir
+                    $netEkOdemeler += $tutar;
+                    $detay['net_etki'] = $tutar;
+                    break;
+            }
+
+            $ekOdemeDetaylari[] = $detay;
+        }
+
+        // Her kesintiyi işle
+        foreach ($kesintiler as $kesinti) {
+            $tutar = floatval($kesinti->tutar);
+            $toplamKesinti += $tutar;
+
+            $parametre = $parametreModel->getByKod($kesinti->tur, $donemTarihi);
+
+            $kesintiDetaylari[] = [
+                'kod' => $kesinti->tur,
+                'etiket' => $parametre ? $parametre->etiket : $kesinti->tur,
+                'tutar' => $tutar,
+                'aciklama' => $kesinti->aciklama ?? null
+            ];
+        }
+
+        // ========== HESAPLAMALAR ==========
+
+        // SGK Matrahı = Brüt Maaş + SGK'ya dahil ek ödemeler
+        $sgkMatrahi = $brutMaas + $sgkMatrahEkleri;
+
+        // SGK İşçi Payı
+        $sgkIsci = $sgkMatrahi * $sgkIsciOrani;
+        $issizlikIsci = $sgkMatrahi * $issizlikIsciOrani;
+
+        // Gelir Vergisi Matrahı = SGK Matrahı - SGK Kesintileri + Vergiye tabi ek ödemeler
+        $gelirVergisiMatrahi = ($brutMaas - $sgkIsci - $issizlikIsci) + $vergiliMatrahEkleri;
+
+        // Kümülatif Gelir Vergisi Hesaplaması
+        // Önceki ayların matrahını getir
+        $kumulatifMatrah = $this->getKumulatifMatrah($kayit->personel_id, $donemYil, $donemAy);
+        $yeniKumulatifMatrah = $kumulatifMatrah + $gelirVergisiMatrahi;
+
+        $gelirVergisi = $parametreModel->hesaplaGelirVergisi($yeniKumulatifMatrah, $gelirVergisiMatrahi, $donemYil);
+
+        // Damga Vergisi = Brüt toplam üzerinden
+        $damgaVergisiMatrahi = $brutMaas + $brutEkOdemeler;
+        $damgaVergisi = $damgaVergisiMatrahi * $damgaVergisiOrani;
+
+        // Net Maaş Hesabı
+        // Net = (Brüt - Yasal Kesintiler) + Net Ek Ödemeler - Diğer Kesintiler
+        $netMaas = ($brutMaas - $sgkIsci - $issizlikIsci - $gelirVergisi - $damgaVergisi)
+            + $netEkOdemeler
+            - $toplamKesinti;
+
+        // Toplam ek ödemeler (gösterim için)
+        $toplamEkOdeme = $brutEkOdemeler + $netEkOdemeler;
 
         // İşveren Maliyetleri
-        $sgkIsveren = $brutMaas * 0.205;
-        $issizlikIsveren = $brutMaas * 0.02;
-        $toplamMaliyet = $brutMaas + $sgkIsveren + $issizlikIsveren + $toplamEkOdeme;
+        $sgkIsveren = $sgkMatrahi * $sgkIsverenOrani;
+        $issizlikIsveren = $sgkMatrahi * $issizlikIsverenOrani;
+        $toplamMaliyet = $brutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler;
+
+        // Hesaplama Snapshot (JSON)
+        $hesaplamaDetay = [
+            'hesaplama_tarihi' => date('Y-m-d H:i:s'),
+            'donem' => [
+                'id' => $kayit->donem_id,
+                'baslangic' => $donemTarihi,
+                'ay' => $donemAy,
+                'yil' => $donemYil
+            ],
+            'parametreler' => [
+                'sgk_isci_orani' => $sgkIsciOrani * 100,
+                'issizlik_isci_orani' => $issizlikIsciOrani * 100,
+                'sgk_isveren_orani' => $sgkIsverenOrani * 100,
+                'issizlik_isveren_orani' => $issizlikIsverenOrani * 100,
+                'damga_vergisi_orani' => $damgaVergisiOrani * 100,
+                'calisma_gunu_sayisi' => $calismaGunuSayisi
+            ],
+            'matrahlar' => [
+                'sgk_matrahi' => round($sgkMatrahi, 2),
+                'gelir_vergisi_matrahi' => round($gelirVergisiMatrahi, 2),
+                'damga_vergisi_matrahi' => round($damgaVergisiMatrahi, 2),
+                'onceki_kumulatif' => round($kumulatifMatrah, 2),
+                'yeni_kumulatif' => round($yeniKumulatifMatrah, 2)
+            ],
+            'ek_odemeler' => $ekOdemeDetaylari,
+            'kesintiler' => $kesintiDetaylari,
+            'ozet' => [
+                'brut_ek_odemeler' => round($brutEkOdemeler, 2),
+                'net_ek_odemeler' => round($netEkOdemeler, 2),
+                'sgk_matrah_ekleri' => round($sgkMatrahEkleri, 2),
+                'vergili_matrah_ekleri' => round($vergiliMatrahEkleri, 2)
+            ]
+        ];
 
         // Kaydet
         return $this->saveBordroHesaplama($bordro_personel_id, [
@@ -307,8 +502,31 @@ class BordroPersonelModel extends Model
             'issizlik_isveren' => round($issizlikIsveren, 2),
             'toplam_maliyet' => round($toplamMaliyet, 2),
             'toplam_kesinti' => round($toplamKesinti, 2),
-            'toplam_ek_odeme' => round($toplamEkOdeme, 2)
+            'toplam_ek_odeme' => round($toplamEkOdeme, 2),
+            'kumulatif_matrah' => round($yeniKumulatifMatrah, 2),
+            'hesaplama_detay' => json_encode($hesaplamaDetay, JSON_UNESCAPED_UNICODE)
         ]);
+    }
+
+    /**
+     * Personelin yılbaşından bu aya kadar kümülatif gelir vergisi matrahını getirir
+     */
+    private function getKumulatifMatrah($personel_id, $yil, $ay)
+    {
+        // Bu yılın Ocak'tan önceki aya kadar toplam gelir vergisi matrahı
+        $sql = $this->db->prepare("
+            SELECT COALESCE(SUM(bp.brut_maas - bp.sgk_isci - bp.issizlik_isci), 0) as toplam_matrah
+            FROM {$this->table} bp
+            INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
+            WHERE bp.personel_id = ?
+            AND YEAR(bd.baslangic_tarihi) = ?
+            AND MONTH(bd.baslangic_tarihi) < ?
+            AND bp.hesaplama_tarihi IS NOT NULL
+        ");
+        $sql->execute([$personel_id, $yil, $ay]);
+        $result = $sql->fetch(PDO::FETCH_OBJ);
+
+        return floatval($result->toplam_matrah ?? 0);
     }
 
     /**
@@ -324,5 +542,68 @@ class BordroPersonelModel extends Model
             return $this->hesaplaMaas($bp->id);
         }
         return false;
+    }
+
+    /**
+     * Personelin dönemdeki kesintilerini türe göre detaylı getirir
+     */
+    public function getDonemKesintileriDetay($personel_id, $donem_id)
+    {
+        $sql = $this->db->prepare("
+            SELECT tur, SUM(tutar) as toplam_tutar, COUNT(*) as adet
+            FROM personel_kesintileri 
+            WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
+            GROUP BY tur
+            ORDER BY toplam_tutar DESC
+        ");
+        $sql->execute([$personel_id, $donem_id]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Personelin dönemdeki ek ödemelerini türe göre detaylı getirir
+     */
+    public function getDonemEkOdemeleriDetay($personel_id, $donem_id)
+    {
+        $sql = $this->db->prepare("
+            SELECT tur, SUM(tutar) as toplam_tutar, COUNT(*) as adet
+            FROM personel_ek_odemeler 
+            WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
+            GROUP BY tur
+            ORDER BY toplam_tutar DESC
+        ");
+        $sql->execute([$personel_id, $donem_id]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Personelin dönemdeki tüm kesinti kayıtlarını getirir (detaylı liste için)
+     */
+    public function getDonemKesintileriListe($personel_id, $donem_id)
+    {
+        $sql = $this->db->prepare("
+            SELECT pk.*, pi.dosya_no, pi.icra_dairesi
+            FROM personel_kesintileri pk
+            LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
+            WHERE pk.personel_id = ? AND pk.donem_id = ? AND pk.silinme_tarihi IS NULL
+            ORDER BY pk.created_at DESC
+        ");
+        $sql->execute([$personel_id, $donem_id]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Personelin dönemdeki tüm ek ödeme kayıtlarını getirir (detaylı liste için)
+     */
+    public function getDonemEkOdemeleriListe($personel_id, $donem_id)
+    {
+        $sql = $this->db->prepare("
+            SELECT *
+            FROM personel_ek_odemeler 
+            WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
+            ORDER BY created_at DESC
+        ");
+        $sql->execute([$personel_id, $donem_id]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 }

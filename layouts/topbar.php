@@ -13,6 +13,8 @@ if (!empty($_SESSION['lang'])) {
 
 $FirmaModel = new FirmaModel();
 
+//seçili firma
+
 $firma_option = $FirmaModel->option();
 
 //Helper::dd($firma_option);
@@ -26,20 +28,21 @@ $firma_option = $FirmaModel->option();
             <div class="navbar-brand-box">
                 <a href="index.php" class="logo logo-dark">
                     <span class="logo-sm">
-                        <img src="<?php echo Helper::base_url("assets/images/logo.png")?>" alt="" height="30">
+                        <img src="<?php echo Helper::base_url("assets/images/logo.png") ?>" alt="" height="30">
                     </span>
                     <span class="logo-lg">
-                        <img src="<?php echo Helper::base_url("assets/images/logo.png")?>" alt="" height="24"> <span
+                        <img src="<?php echo Helper::base_url("assets/images/logo.png") ?>" alt="" height="24"> <span
                             class="logo-txt"></span>
                     </span>
                 </a>
 
                 <a href="index.php" class="logo logo-light">
                     <span class="logo-sm">
-                        <img src="<?php echo Helper::base_url("assets/images/logo.png")?>" alt="" height="30">
+                        <img src="<?php echo Helper::base_url("assets/images/logo.png") ?>" alt="" height="30">
                     </span>
                     <span class="logo-lg">
-                        <img src="<?php echo Helper::base_url("assets/images/logo.png")?>" alt="" height="36"><span class="logo-txt">
+                        <img src="<?php echo Helper::base_url("assets/images/logo.png") ?>" alt="" height="36"><span
+                            class="logo-txt">
                         </span>
                     </span>
                 </a>
@@ -51,20 +54,20 @@ $firma_option = $FirmaModel->option();
 
             <!-- App Search-->
             <form class="app-search d-none d-lg-block" style="width: 200px;">
-            
 
-            <?php
 
-            echo Form::FormSelect2(
-                name: "firma_id",
-                options:  $firma_option,
-                valueField: "id",
-                textField: "firma_adi",
-                selectedValue:  81,
-                label: "Firma",
-                icon: "git-branch",
-                class:'form-control select2 w-100 p-1'
-            ); ?>
+                <?php
+
+                echo Form::FormSelect2(
+                    name: "firma_id",
+                    options: $firma_option,
+                    valueField: "id",
+                    textField: "firma_adi",
+                    selectedValue: $_SESSION['firma_id'],
+                    label: "Firma",
+                    icon: "git-branch",
+                    class: 'form-control select2 w-100 p-1'
+                ); ?>
             </form>
         </div>
 
@@ -93,7 +96,7 @@ $firma_option = $FirmaModel->option();
 
             <div class="dropdown d-inline-block language-switch">
 
-                
+
             </div>
 
             <div class="dropdown d-none d-sm-inline-block">
@@ -179,8 +182,8 @@ $firma_option = $FirmaModel->option();
                         <a href="#!" class="text-reset notification-item">
                             <div class="d-flex">
                                 <div class="flex-shrink-0 me-3">
-                                    <img src="assets/images/users/avatar-3.jpg"
-                                        class="rounded-circle avatar-sm" alt="user-pic">
+                                    <img src="assets/images/users/avatar-3.jpg" class="rounded-circle avatar-sm"
+                                        alt="user-pic">
                                 </div>
                                 <div class="flex-grow-1">
                                     <h6 class="mb-1"><?php echo $language['James_Lemire'] ?> </h6>
@@ -204,7 +207,8 @@ $firma_option = $FirmaModel->option();
                                     <h6 class="mb-1"><?php echo $language['Your_order_is_placed'] ?> </h6>
                                     <div class="font-size-13 text-muted">
                                         <p class="mb-1">
-                                            <?php echo $language['If_several_languages_coalesce_the_grammar'] ?> </p>
+                                            <?php echo $language['If_several_languages_coalesce_the_grammar'] ?>
+                                        </p>
                                         <p class="mb-0"><i class="mdi mdi-clock-outline"></i> <span>3
                                                 <?php echo $language['min_ago'] ?> </span></p>
                                     </div>
@@ -222,7 +226,8 @@ $firma_option = $FirmaModel->option();
                                     <h6 class="mb-1"><?php echo $language['Your_item_is_shipped'] ?> </h6>
                                     <div class="font-size-13 text-muted">
                                         <p class="mb-1">
-                                            <?php echo $language['If_several_languages_coalesce_the_grammar'] ?> </p>
+                                            <?php echo $language['If_several_languages_coalesce_the_grammar'] ?>
+                                        </p>
                                         <p class="mb-0"><i class="mdi mdi-clock-outline"></i> <span>3
                                                 <?php echo $language['min_ago'] ?> </span></p>
                                     </div>
@@ -281,6 +286,8 @@ $firma_option = $FirmaModel->option();
                     <a class="dropdown-item" href="auth-lock-screen.php"><i
                             class="mdi mdi-lock font-size-16 align-middle me-1"></i> Kilitle</a>
                     <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="firma-degistir.php"><i
+                            class="mdi mdi-swap-horizontal font-size-16 align-middle me-1"></i> Firma Değiştir</a>
                     <a class="dropdown-item" href="logout.php"><i
                             class="mdi mdi-logout font-size-16 align-middle me-1"></i> Çıkış Yap</a>
                 </div>

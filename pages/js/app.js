@@ -33,6 +33,8 @@ function confirmAndDelete(url, formData, buttonElement, tableId) {
     });
 }
 
+
+
 //number classına sahip inputlara sadece sayısal değer girilmesini sağlar
 //Örnek kullanım: <input type="text" class="number">
 var numberInputs = document.querySelectorAll(".number");

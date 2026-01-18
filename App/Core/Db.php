@@ -51,12 +51,12 @@ class Db
         $this->db = null;
         try {
             $this->db = new \PDO(
-                "mysql:host=" . $this->host . ";dbname=" . $this->db_name,
+                "mysql:host=" . $this->host . ";dbname=" . $this->db_name . ";charset=utf8mb4",
                 $this->username,
                 $this->password
             );
             $this->db->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-            $this->db->exec("set names utf8");
+            $this->db->exec("set names utf8mb4");
         } catch (\PDOException $e) {
             error_log("Conection error: " . $e->getMessage());
             throw $e;

@@ -76,4 +76,99 @@ class TalepModel extends Model
 
         return $prefix . str_pad($num, 3, '0', STR_PAD_LEFT);
     }
+
+    /**
+     * Firma bazında bekleyen talep sayısını getirir
+     */
+    public function getBekleyenTalepSayisi()
+    {
+        $sql = $this->db->prepare("
+            SELECT COUNT(*) as count 
+            FROM {$this->table} pt 
+            JOIN personel p ON pt.personel_id = p.id 
+            WHERE pt.durum != 'cozuldu' AND pt.deleted_at IS NULL AND p.firma_id = ?
+        ");
+        $sql->execute([$_SESSION['firma_id']]);
+        return $sql->fetch(PDO::FETCH_OBJ)->count ?? 0;
+    }
+
+    /**
+     * Firma bazında bekleyen talep listesini getirir (dashboard için)
+     */
+    public function getBekleyenTaleplerForDashboard($limit = 5)
+    {
+        $limit = (int) $limit;
+        $sql = $this->db->prepare("
+            SELECT 'Talep' as tip, pt.id, pt.personel_id, pt.olusturma_tarihi as tarih, pt.durum, pt.baslik as detay 
+            FROM {$this->table} pt 
+            JOIN personel p ON pt.personel_id = p.id 
+            WHERE pt.durum != 'cozuldu' AND pt.deleted_at IS NULL AND p.firma_id = ? 
+            LIMIT {$limit}
+        ");
+        $sql->execute([$_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Tüm bekleyen genel talepleri personel bilgileriyle getirir
+     */
+    public function getButunBekleyenTalepler()
+    {
+        $sql = $this->db->prepare("
+            SELECT pt.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev
+            FROM {$this->table} pt 
+            JOIN personel p ON pt.personel_id = p.id 
+            WHERE pt.durum != 'cozuldu' AND pt.deleted_at IS NULL AND p.firma_id = ?
+            ORDER BY pt.olusturma_tarihi DESC
+        ");
+        $sql->execute([$_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Talebin durumunu günceller
+     */
+    public function updateDurum($id, $durum, $cozum_aciklama = null)
+    {
+        $cozum_tarihi = ($durum == 'cozuldu') ? date('Y-m-d H:i:s') : null;
+
+        $sql = $this->db->prepare("
+            UPDATE {$this->table} 
+            SET durum = ?, cozum_aciklama = ?, cozum_tarihi = ?
+            WHERE id = ?
+        ");
+        return $sql->execute([$durum, $cozum_aciklama, $cozum_tarihi, $id]);
+    }
+
+    /**
+     * Talep detayını getirir
+     */
+    public function getTalepDetay($id)
+    {
+        $sql = $this->db->prepare("
+            SELECT pt.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev
+            FROM {$this->table} pt 
+            JOIN personel p ON pt.personel_id = p.id 
+            WHERE pt.id = ?
+        ");
+        $sql->execute([$id]);
+        return $sql->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Çözülmüş talepleri personel bilgileriyle getirir
+     */
+    public function getCozulmusTalepler($limit = 50)
+    {
+        $sql = $this->db->prepare("
+            SELECT pt.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev
+            FROM {$this->table} pt 
+            JOIN personel p ON pt.personel_id = p.id 
+            WHERE pt.durum = 'cozuldu' AND pt.deleted_at IS NULL AND p.firma_id = ?
+            ORDER BY pt.cozum_tarihi DESC
+            LIMIT ?
+        ");
+        $sql->execute([$_SESSION['firma_id'], $limit]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
 }
