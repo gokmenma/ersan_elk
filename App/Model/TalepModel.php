@@ -160,15 +160,16 @@ class TalepModel extends Model
      */
     public function getCozulmusTalepler($limit = 50)
     {
+        $limit = (int) $limit;
         $sql = $this->db->prepare("
             SELECT pt.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
             WHERE pt.durum = 'cozuldu' AND pt.deleted_at IS NULL AND p.firma_id = ?
             ORDER BY pt.cozum_tarihi DESC
-            LIMIT ?
+            LIMIT {$limit}
         ");
-        $sql->execute([$_SESSION['firma_id'], $limit]);
+        $sql->execute([$_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 }

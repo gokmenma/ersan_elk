@@ -125,15 +125,16 @@ class AvansModel extends Model
      */
     public function getOnaylanmisAvanslar($limit = 50)
     {
+        $limit = (int) $limit;
         $sql = $this->db->prepare("
             SELECT pa.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, p.maas_tutari
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
             WHERE pa.durum = 'onaylandi' AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
             ORDER BY pa.onay_tarihi DESC
-            LIMIT ?
+            LIMIT {$limit}
         ");
-        $sql->execute([$_SESSION['firma_id'], $limit]);
+        $sql->execute([$_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 

@@ -100,6 +100,7 @@ class PersonelIzinleriModel extends Model
      */
     public function getAktifIzinler($limit = 10)
     {
+        $limit = (int) $limit;
         $today = date('Y-m-d');
         $sql = $this->db->prepare("
             SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman 
@@ -107,9 +108,9 @@ class PersonelIzinleriModel extends Model
             JOIN personel p ON pi.personel_id = p.id 
             WHERE pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ? AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = ?
             ORDER BY pi.bitis_tarihi ASC
-            LIMIT ?
+            LIMIT {$limit}
         ");
-        $sql->execute([$today, $today, $_SESSION['firma_id'], $limit]);
+        $sql->execute([$today, $today, $_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -134,15 +135,16 @@ class PersonelIzinleriModel extends Model
      */
     public function getOnaylanmisIzinler($limit = 50)
     {
+        $limit = (int) $limit;
         $sql = $this->db->prepare("
             SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             WHERE pi.onay_durumu = 'Onaylandı' AND p.firma_id = ?
             ORDER BY pi.talep_tarihi DESC
-            LIMIT ?
+            LIMIT {$limit}
         ");
-        $sql->execute([$_SESSION['firma_id'], $limit]);
+        $sql->execute([$_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
