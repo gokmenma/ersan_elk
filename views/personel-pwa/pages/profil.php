@@ -3,6 +3,8 @@
  * Personel PWA - Profil Sayfası
  * Personel bilgileri ve ayarlar
  */
+use App\Helper\Helper;
+use App\Helper\Date;
 ?>
 
 <div class="flex flex-col min-h-screen pb-8">
@@ -88,7 +90,7 @@
                 <div class="flex-1">
                     <p class="text-xs text-slate-500">Doğum Tarihi</p>
                     <p class="text-sm font-semibold text-slate-900 dark:text-white">
-                        <?php echo $personel->dogum_tarihi ?? '01.01.1990'; ?>
+                        <?php echo Date::dmY($personel->dogum_tarihi ?? null); ?>
                     </p>
                 </div>
             </div>
@@ -100,7 +102,7 @@
                 <div class="flex-1">
                     <p class="text-xs text-slate-500">İşe Başlama Tarihi</p>
                     <p class="text-sm font-semibold text-slate-900 dark:text-white">
-                        <?php echo $personel->ise_baslama_tarihi ?? '01.01.2021'; ?>
+                        <?php echo Date::dmY($personel->ise_baslama_tarihi ?? null) ?? '01.01.2021'; ?>
                     </p>
                 </div>
             </div>

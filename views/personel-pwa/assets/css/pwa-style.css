@@ -28,7 +28,11 @@ html {
 }
 
 body {
-  font-family: "Roboto Condensed", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    "Roboto Condensed",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
   overscroll-behavior-y: contain;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -42,13 +46,192 @@ textarea {
   font-family: inherit;
 }
 
-/* ===== SweetAlert2 Font Override ===== */
+/* ===== SweetAlert2 Custom Styles ===== */
 div:where(.swal2-container) .swal2-popup,
 div:where(.swal2-container) .swal2-title,
 div:where(.swal2-container) .swal2-html-container,
 div:where(.swal2-container) .swal2-confirm,
 div:where(.swal2-container) .swal2-cancel {
-  font-family: "Roboto Condensed", -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-family:
+    "Roboto Condensed",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif !important;
+}
+
+/* Custom Popup */
+.swal-custom-popup {
+  border-radius: 1.5rem !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+.dark .swal-custom-popup {
+  background: var(--card-dark) !important;
+  color: white !important;
+}
+
+/* Custom Title */
+.swal-custom-title {
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+  margin-top: 1rem !important;
+  padding: 0 1.5rem !important;
+}
+
+.dark .swal-custom-title {
+  color: white !important;
+}
+
+/* Custom Content */
+.swal-custom-content {
+  font-size: 0.875rem !important;
+  color: #64748b !important;
+  padding: 0 1.5rem !important;
+  margin: 0.5rem 0 0 0 !important;
+}
+
+.dark .swal-custom-content {
+  color: #94a3b8 !important;
+}
+
+/* Custom Actions Container */
+.swal-custom-actions {
+  width: 100% !important;
+  display: flex !important;
+  gap: 0.75rem !important;
+  padding: 1.5rem !important;
+  margin: 0 !important;
+}
+
+.swal-actions-two {
+  flex-direction: row !important;
+}
+
+/* Custom Icon Styles */
+.swal-custom-icon {
+  width: 5rem !important;
+  height: 5rem !important;
+  margin: 1.5rem auto 0.5rem !important;
+  border-width: 4px !important;
+}
+
+.swal-icon-question {
+  border-color: rgba(19, 91, 236, 0.2) !important;
+  color: var(--primary) !important;
+}
+
+.swal-icon-question .swal2-icon-content {
+  color: var(--primary) !important;
+}
+
+.swal-icon-success {
+  border-color: rgba(16, 185, 129, 0.2) !important;
+  color: var(--success) !important;
+}
+
+.swal-icon-success [class^="swal2-success-line"] {
+  background-color: var(--success) !important;
+}
+
+.swal-icon-success .swal2-success-ring {
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+.swal-icon-error {
+  border-color: rgba(239, 68, 68, 0.2) !important;
+  color: var(--danger) !important;
+}
+
+.swal-icon-error .swal2-x-mark-line-left,
+.swal-icon-error .swal2-x-mark-line-right {
+  background-color: var(--danger) !important;
+}
+
+.swal-icon-warning {
+  border-color: rgba(245, 158, 11, 0.2) !important;
+  color: var(--warning) !important;
+}
+
+.swal-icon-warning .swal2-icon-content {
+  color: var(--warning) !important;
+}
+
+/* Custom Confirm Button */
+.swal-custom-confirm {
+  flex: 1 !important;
+  padding: 0.875rem 1.5rem !important;
+  border-radius: 0.75rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  border: none !important;
+  margin: 0 !important;
+}
+
+.swal-confirm-primary {
+  background: var(--primary) !important;
+  color: white !important;
+  box-shadow: 0 4px 14px rgba(19, 91, 236, 0.3) !important;
+}
+
+.swal-confirm-primary:hover {
+  background: var(--primary-dark) !important;
+  box-shadow: 0 6px 20px rgba(19, 91, 236, 0.4) !important;
+}
+
+.swal-confirm-danger {
+  background: var(--danger) !important;
+  color: white !important;
+}
+
+.swal-confirm-danger:hover {
+  background: #dc2626 !important;
+}
+
+.swal-confirm-warning {
+  background: var(--warning) !important;
+  color: white !important;
+}
+
+.swal-confirm-warning:hover {
+  background: #d97706 !important;
+}
+
+.swal-confirm-full {
+  width: 100% !important;
+  flex: none !important;
+}
+
+/* Custom Cancel Button */
+.swal-custom-cancel {
+  flex: 1 !important;
+  padding: 0.875rem 1.5rem !important;
+  border-radius: 0.75rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  border: none !important;
+  margin: 0 !important;
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+}
+
+.swal-custom-cancel:hover {
+  background: #e2e8f0 !important;
+}
+
+.dark .swal-custom-cancel {
+  background: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+.dark .swal-custom-cancel:hover {
+  background: #475569 !important;
 }
 
 /* ===== Safe Area Support ===== */
@@ -62,11 +245,19 @@ div:where(.swal2-container) .swal2-cancel {
 
 /* ===== Material Icons ===== */
 .material-symbols-outlined {
-  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 24;
 }
 
 .material-symbols-outlined.filled {
-  font-variation-settings: "FILL" 1, "wght" 500, "GRAD" 0, "opsz" 24;
+  font-variation-settings:
+    "FILL" 1,
+    "wght" 500,
+    "GRAD" 0,
+    "opsz" 24;
 }
 
 /* ===== Navigation Styles ===== */
@@ -625,7 +816,9 @@ div:where(.swal2-container) .swal2-cancel {
 
 /* ===== Preloader Styles ===== */
 #loading-overlay {
-  transition: opacity 0.4s ease, visibility 0.4s ease;
+  transition:
+    opacity 0.4s ease,
+    visibility 0.4s ease;
 }
 
 #loading-overlay.hidden {

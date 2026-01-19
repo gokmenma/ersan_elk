@@ -42,10 +42,11 @@ class UserModel extends Model
     {
         $ownerID = $_SESSION["owner_id"];
 
-        $sql = $this->db->prepare("SELECT * 
-                                   FROM $this->table 
-                                   WHERE owner_id = :owner_id 
-                                   ORDER BY id DESC");
+        $sql = $this->db->prepare("SELECT * ,ur.role_name   
+                                   FROM $this->table u
+                                   LEFT JOIN user_roles ur ON ur.id = u.roles
+                                   WHERE u.owner_id = :owner_id 
+                                   ORDER BY u.id DESC");
         $sql->execute([
             'owner_id' => $ownerID
         ]);
@@ -133,5 +134,74 @@ class UserModel extends Model
         return ob_get_clean(); // 🔚 HTML'yi döndür
     }
 
+
+    /** Kullanıcının yetkili olduğu Firmaları getirir */
+    public function getUserFirmList()
+    {
+        $query = $this->db->prepare("Select id, firma_ids from $this->table");
+        $query->execute();
+        return $query->fetchAll(PDO::FETCH_OBJ);
+    }
+
+
+    /** İzin onayı yapacak ilk personeli getir */
+    public function getIzinOnayPersonel()
+    {
+        $query = $this->db->prepare("SELECT * FROM $this->table where izin_onayi_yapacakmi = ?
+        ORDER BY izin_onay_sirasi LIMIT 1");
+        $query->execute(["Evet"]);
+        return $query->fetch(PDO::FETCH_OBJ);
+    }
+
+    /** 
+     * Belirli bir talep türü için mail bildirimlerini açık olan kullanıcıları getirir
+     * @param string $talepTuru 'avans', 'izin', 'genel', 'ariza'
+     * @return array Kullanıcı listesi
+     */
+    public function getMailBildirimKullanicilari(string $talepTuru): array
+    {
+        $column_map = [
+            'avans' => 'mail_avans_talep',
+            'izin' => 'mail_izin_talep',
+            'genel' => 'mail_genel_talep',
+            'ariza' => 'mail_ariza_talep'
+        ];
+
+        if (!isset($column_map[$talepTuru])) {
+            return [];
+        }
+
+        $column = $column_map[$talepTuru];
+        $query = $this->db->prepare("SELECT * FROM $this->table WHERE $column = ? AND email_adresi IS NOT NULL AND email_adresi != ''");
+        $query->execute(['Evet']);
+        return $query->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Belirli bir kullanıcının belirli bir talep türü için mail alıp almadığını kontrol eder
+     * @param int $userId Kullanıcı ID'si
+     * @param string $talepTuru 'avans', 'izin', 'genel', 'ariza'
+     * @return bool True ise mail alır, false ise almaz
+     */
+    public function checkMailBildirimi(int $userId, string $talepTuru): bool
+    {
+        $column_map = [
+            'avans' => 'mail_avans_talep',
+            'izin' => 'mail_izin_talep',
+            'genel' => 'mail_genel_talep',
+            'ariza' => 'mail_ariza_talep'
+        ];
+
+        if (!isset($column_map[$talepTuru])) {
+            return false;
+        }
+
+        $column = $column_map[$talepTuru];
+        $query = $this->db->prepare("SELECT $column FROM $this->table WHERE id = ?");
+        $query->execute([$userId]);
+        $result = $query->fetch(PDO::FETCH_OBJ);
+
+        return $result && $result->$column === 'Evet';
+    }
 
 }

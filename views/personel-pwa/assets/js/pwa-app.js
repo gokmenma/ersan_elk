@@ -11,6 +11,7 @@ const App = {
     this.checkDarkMode();
     this.setupEventListeners();
     this.checkOnlineStatus();
+    Push.init();
   },
 
   checkDarkMode() {
@@ -44,7 +45,7 @@ const App = {
 
         e.preventDefault();
       },
-      { passive: false }
+      { passive: false },
     );
   },
 
@@ -92,7 +93,7 @@ const Loading = {
             loader.classList.add(
               "bg-white/80",
               "dark:bg-background-dark/80",
-              "backdrop-blur-sm"
+              "backdrop-blur-sm",
             );
           }
         }, 500);
@@ -121,10 +122,10 @@ const Toast = {
                       type === "success"
                         ? "check_circle"
                         : type === "error"
-                        ? "error"
-                        : type === "warning"
-                        ? "warning"
-                        : "info"
+                          ? "error"
+                          : type === "warning"
+                            ? "warning"
+                            : "info"
                     }
                 </span>
                 <span>${message}</span>
@@ -142,74 +143,136 @@ const Toast = {
 
 // ===== Alert Functions =====
 const Alert = {
-  // Custom mixin for consistent styling
-  mixin: null,
-
-  init() {
-    if (typeof Swal !== "undefined") {
-      this.mixin = Swal.mixin({
-        customClass: {
-          confirmButton: "btn-primary px-6 py-2.5 rounded-xl font-medium ml-2",
-          cancelButton:
-            "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-6 py-2.5 rounded-xl font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors mr-2",
-          popup: "rounded-2xl dark:bg-card-dark dark:text-white",
-          title: "text-xl font-bold text-slate-900 dark:text-white",
-          htmlContainer: "text-slate-600 dark:text-slate-400",
-        },
-        buttonsStyling: false,
-        reverseButtons: true,
-      });
-    }
+  // Base custom class configuration
+  baseClass: {
+    popup: "swal-custom-popup",
+    title: "swal-custom-title",
+    htmlContainer: "swal-custom-content",
+    actions: "swal-custom-actions",
+    confirmButton: "swal-custom-confirm",
+    cancelButton: "swal-custom-cancel",
+    icon: "swal-custom-icon",
   },
 
-  async confirm(title, text, confirmText = "Evet", cancelText = "İptal") {
-    if (!this.mixin) this.init();
-
-    const result = await this.mixin.fire({
+  async confirm(title, text, confirmText = "Evet", cancelText = "Vazgeç") {
+    const result = await Swal.fire({
       title: title,
       text: text,
       icon: "question",
       showCancelButton: true,
       confirmButtonText: confirmText,
       cancelButtonText: cancelText,
-      iconColor: "#135bec",
+      buttonsStyling: false,
+      reverseButtons: true,
+      width: 320,
+      padding: 0,
+      customClass: {
+        popup: "swal-custom-popup",
+        title: "swal-custom-title",
+        htmlContainer: "swal-custom-content",
+        actions: "swal-custom-actions swal-actions-two",
+        confirmButton: "swal-custom-confirm swal-confirm-primary",
+        cancelButton: "swal-custom-cancel",
+        icon: "swal-custom-icon swal-icon-question",
+      },
+    });
+    return result.isConfirmed;
+  },
+
+  // Delete confirmation with red button and warning icon
+  async confirmDelete(
+    title,
+    text,
+    confirmText = "Evet, Sil",
+    cancelText = "Vazgeç",
+  ) {
+    const result = await Swal.fire({
+      title: title,
+      text: text,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: confirmText,
+      cancelButtonText: cancelText,
+      buttonsStyling: false,
+      reverseButtons: true,
+      width: 320,
+      padding: 0,
+      customClass: {
+        popup: "swal-custom-popup",
+        title: "swal-custom-title",
+        htmlContainer: "swal-custom-content",
+        actions: "swal-custom-actions swal-actions-two",
+        confirmButton: "swal-custom-confirm swal-confirm-danger",
+        cancelButton: "swal-custom-cancel",
+        icon: "swal-custom-icon swal-icon-warning",
+      },
     });
     return result.isConfirmed;
   },
 
   success(title, text) {
-    if (!this.mixin) this.init();
-
-    return this.mixin.fire({
+    return Swal.fire({
       title: title,
       text: text,
       icon: "success",
       confirmButtonText: "Tamam",
-      iconColor: "#10b981",
+      showCancelButton: false,
+      buttonsStyling: false,
+      width: 320,
+      padding: 0,
+      customClass: {
+        popup: "swal-custom-popup",
+        title: "swal-custom-title",
+        htmlContainer: "swal-custom-content",
+        actions: "swal-custom-actions",
+        confirmButton:
+          "swal-custom-confirm swal-confirm-primary swal-confirm-full",
+        icon: "swal-custom-icon swal-icon-success",
+      },
     });
   },
 
   error(title, text) {
-    if (!this.mixin) this.init();
-
-    return this.mixin.fire({
+    return Swal.fire({
       title: title,
       text: text,
       icon: "error",
       confirmButtonText: "Tamam",
-      iconColor: "#ef4444",
+      showCancelButton: false,
+      buttonsStyling: false,
+      width: 320,
+      padding: 0,
+      customClass: {
+        popup: "swal-custom-popup",
+        title: "swal-custom-title",
+        htmlContainer: "swal-custom-content",
+        actions: "swal-custom-actions",
+        confirmButton:
+          "swal-custom-confirm swal-confirm-danger swal-confirm-full",
+        icon: "swal-custom-icon swal-icon-error",
+      },
     });
   },
 
   warning(title, text) {
-    if (!this.mixin) this.init();
-
-    return this.mixin.fire({
+    return Swal.fire({
       title: title,
       text: text,
       icon: "warning",
       confirmButtonText: "Tamam",
-      iconColor: "#f59e0b",
+      showCancelButton: false,
+      buttonsStyling: false,
+      width: 320,
+      padding: 0,
+      customClass: {
+        popup: "swal-custom-popup",
+        title: "swal-custom-title",
+        htmlContainer: "swal-custom-content",
+        actions: "swal-custom-actions",
+        confirmButton:
+          "swal-custom-confirm swal-confirm-warning swal-confirm-full",
+        icon: "swal-custom-icon swal-icon-warning",
+      },
     });
   },
 };
@@ -354,6 +417,110 @@ const Format = {
     if (diffDay < 7) return `${diffDay} gün önce`;
 
     return this.dateShort(dateString);
+  },
+};
+
+// ===== Push Notifications =====
+const Push = {
+  publicKey: null,
+  subscription: null,
+
+  init: async () => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      console.log("Push messaging is not supported");
+      return;
+    }
+
+    // Service Worker'ın hazır olmasını bekle
+    const registration = await navigator.serviceWorker.ready;
+
+    // Mevcut aboneliği kontrol et
+    Push.subscription = await registration.pushManager.getSubscription();
+
+    if (Push.subscription) {
+      console.log("User is already subscribed:", Push.subscription);
+      // Sunucuyla senkronize et (opsiyonel)
+      Push.sendSubscriptionToBackEnd(Push.subscription);
+    }
+  },
+
+  // VAPID key'i sunucudan al
+  getVapidKey: async () => {
+    if (Push.publicKey) return Push.publicKey;
+
+    try {
+      const response = await API.request("get-vapid-key");
+      if (response.success) {
+        Push.publicKey = response.data.publicKey;
+        return Push.publicKey;
+      }
+    } catch (error) {
+      console.error("Failed to get VAPID key:", error);
+    }
+    return null;
+  },
+
+  // Kullanıcıyı abone yap
+  subscribe: async () => {
+    try {
+      const vapidKey = await Push.getVapidKey();
+      if (!vapidKey) {
+        Toast.show("Bildirim anahtarı alınamadı", "error");
+        return false;
+      }
+
+      const registration = await navigator.serviceWorker.ready;
+      const convertedVapidKey = Push.urlBase64ToUint8Array(vapidKey);
+
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedVapidKey,
+      });
+
+      Push.subscription = subscription;
+      await Push.sendSubscriptionToBackEnd(subscription);
+
+      Toast.show("Bildirimler başarıyla açıldı", "success");
+      return true;
+    } catch (error) {
+      console.error("Failed to subscribe the user: ", error);
+      if (Notification.permission === "denied") {
+        Toast.show(
+          "Bildirim izni reddedildi. Tarayıcı ayarlarından izin verin.",
+          "error",
+        );
+      } else {
+        Toast.show("Bildirim aboneliği başarısız oldu", "error");
+      }
+      return false;
+    }
+  },
+
+  // Aboneliği sunucuya gönder
+  sendSubscriptionToBackEnd: async (subscription) => {
+    try {
+      await API.request("save-subscription", {
+        subscription: JSON.stringify(subscription),
+      });
+    } catch (error) {
+      console.error("Failed to send subscription to backend:", error);
+    }
+  },
+
+  // Helper function
+  urlBase64ToUint8Array: (base64String) => {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding)
+      .replace(/\-/g, "+")
+      .replace(/_/g, "/");
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
   },
 };
 

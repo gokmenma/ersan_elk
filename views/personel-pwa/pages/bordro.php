@@ -54,12 +54,12 @@
         <div
             class="px-4 py-2 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 sticky top-[73px] z-20">
             <div class="flex gap-2">
-                <button onclick="changeTab('bordro')" class="tab-btn active px-4 py-2 text-sm font-semibold rounded-lg"
+                <!-- <button onclick="changeTab('bordro')" class="tab-btn active px-4 py-2 text-sm font-semibold rounded-lg"
                     data-tab="bordro">
                     Bordrolar
-                </button>
+                </button> -->
                 <button onclick="changeTab('avans')"
-                    class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg text-slate-500" data-tab="avans">
+                    class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg active text-slate-500" data-tab="avans">
                     Avans Talepleri
                 </button>
             </div>
@@ -68,17 +68,17 @@
         <!-- Content Area -->
         <div class="flex-1 px-4 py-4">
             <!-- Bordro List -->
-            <div id="bordro-tab" class="tab-content">
+          <!--  <div id="bordro-tab" class="tab-content">
                 <div class="flex flex-col gap-3" id="bordro-list">
-                    <!-- Bordro items will be loaded here -->
+                     Bordro items will be loaded here 
                     <div class="shimmer h-20 rounded-xl"></div>
                     <div class="shimmer h-20 rounded-xl"></div>
                     <div class="shimmer h-20 rounded-xl"></div>
                 </div>
-            </div>
+            </div>-->
 
             <!-- Avans List -->
-            <div id="avans-tab" class="tab-content hidden">
+            <div id="avans-tab" class="tab-content">
                 <div class="flex flex-col gap-3" id="avans-list">
                     <!-- Avans items will be loaded here -->
                 </div>
@@ -191,7 +191,8 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        loadBordrolar();
+        //Müşteri şimdiilik bordrolar görünmesin dedi
+        //loadBordrolar();
         loadAvansTalepleri();
         loadStats();
 

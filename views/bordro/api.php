@@ -822,6 +822,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 ]);
                 break;
 
+            // Dönem Sil (soft delete)
+            case 'donem-sil':
+                $donem_id = intval($_POST['donem_id'] ?? 0);
+
+                if ($donem_id <= 0) {
+                    throw new Exception('Geçersiz dönem.');
+                }
+
+                // Dönemin kapalı olup olmadığını kontrol et
+                $donem = $BordroDonem->getDonemById($donem_id);
+                if (!$donem) {
+                    throw new Exception('Dönem bulunamadı.');
+                }
+
+                if ($donem->kapali_mi == 1) {
+                    throw new Exception('Kapalı dönemler silinemez. Önce dönemi açmanız gerekir.');
+                }
+
+                // Soft delete uygula
+                if ($BordroDonem->deleteDonem($donem_id)) {
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Dönem başarıyla silindi.'
+                    ]);
+                } else {
+                    throw new Exception('Dönem silinirken bir hata oluştu.');
+                }
+                break;
+
             default:
                 throw new Exception('Geçersiz işlem.');
         }

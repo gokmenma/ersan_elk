@@ -61,6 +61,9 @@ $(document).on("click", "#userSaveBtn", function () {
         required: true,
         email: true,
       },
+      user_firms:{
+        required: true,
+      },
       telefon: {
         required: true,
       },
@@ -105,6 +108,9 @@ $(document).on("click", "#userSaveBtn", function () {
       telefon: {
         required: "Telefon numarası zorunludur.",
       },
+      user_firms:{
+        required: "Firma seçimi zorunludur.",
+      },
       password: {
         required: "Parola zorunludur.",
         minlength: "Parola en az 8 karakter olmalıdır.",
@@ -139,20 +145,17 @@ $(document).on("click", "#userSaveBtn", function () {
       
       var title = data.status == "success" ? "Başarılı" : "Hata";
       
-      //tabloya yeni bir satır ekle
-      if (data.status == "success") {
-        if (row && row.node()) {
-          $(row.node()).html(data.rowData);
-        } else {
-          table.row.add($(data.rowData)).draw(false);
-        }
-      }
-
       swal.fire({
         title: title,
         text: data.message,
         icon: data.status,
         confirmButtonText: "Tamam",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          if (data.status == "success") {
+            location.reload();
+          }
+        }
       });
     });
 });

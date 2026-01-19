@@ -80,7 +80,8 @@
 
 <!-- Yeni Talep Bildirimi Modal -->
 <div id="talep-modal" class="modal-overlay" style="z-index: 200;">
-    <div class="modal-content" style="display: flex !important; flex-direction: column !important; max-height: 85vh !important; overflow: hidden !important; padding: 0 !important;">
+    <div class="modal-content"
+        style="display: flex !important; flex-direction: column !important; max-height: 85vh !important; overflow: hidden !important; padding: 0 !important;">
         <!-- Fixed Header -->
         <div class="px-6 pt-3 pb-2 flex-shrink-0 bg-white dark:bg-card-dark z-10 border-b border-transparent">
             <div class="modal-handle mb-4"></div>
@@ -104,7 +105,7 @@
                     <label class="form-label">Konum</label>
                     <div class="flex flex-col gap-2">
                         <div class="flex gap-2">
-                            <input type="text" name="konum" id="konum-input" class="form-input flex-1" 
+                            <input type="text" name="konum" id="konum-input" class="form-input flex-1"
                                 placeholder="Konum girin veya GPS kullanın" required>
                             <button type="button" onclick="getLocation()" id="location-btn"
                                 class="flex items-center justify-center w-12 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-primary/10 hover:text-primary hover:border-primary transition-all">
@@ -168,8 +169,8 @@
 
                 <div>
                     <label class="form-label">Açıklama</label>
-                    <textarea name="aciklama" class="form-input min-h-[100px]" placeholder="Talebinizi detaylıca açıklayın..."
-                        required></textarea>
+                    <textarea name="aciklama" class="form-input min-h-[100px]"
+                        placeholder="Talebinizi detaylıca açıklayın..." required></textarea>
                 </div>
 
                 <div>
@@ -200,7 +201,8 @@
 
 <!-- Talep Detay Modal -->
 <div id="talep-detay-modal" class="modal-overlay" style="z-index: 200;">
-    <div class="modal-content" style="display: flex !important; flex-direction: column !important; max-height: 85vh !important; overflow: hidden !important; padding: 0 !important;">
+    <div class="modal-content"
+        style="display: flex !important; flex-direction: column !important; max-height: 85vh !important; overflow: hidden !important; padding: 0 !important;">
         <!-- Fixed Header -->
         <div class="px-6 pt-3 pb-2 flex-shrink-0 bg-white dark:bg-card-dark z-10 border-b border-transparent">
             <div class="modal-handle mb-4"></div>
@@ -528,16 +530,7 @@
             </div>
             ` : ''}
 
-            ${talep.durum === 'beklemede' ? `
-            <div class="grid grid-cols-2 gap-3 pt-2">
-                <button type="button" onclick="startEditTalep(${Number(talep.id)})" class="btn-primary py-3">
-                    Güncelle
-                </button>
-                <button type="button" onclick="deleteTalep(${Number(talep.id)})" class="py-3 bg-red-500 text-white font-semibold rounded-xl">
-                    Sil
-                </button>
-            </div>
-            ` : ''}
+     
             
             <!-- Timeline -->
             <div class="mt-2">
@@ -627,18 +620,14 @@
         if (!talep) return;
 
         try {
-            const result = await Swal.fire({
-                icon: 'warning',
-                title: 'Silmek istediğinize emin misiniz?',
-                text: `#${talep.ref_no} numaralı talep silinecek.`,
-                showCancelButton: true,
-                confirmButtonText: 'Sil',
-                cancelButtonText: 'İptal',
-                confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#64748b'
-            });
+            const isConfirmed = await Alert.confirmDelete(
+                'Silmek istediğinize emin misiniz?',
+                `#${talep.ref_no} numaralı talep silinecek.`,
+                'Evet, Sil',
+                'Vazgeç'
+            );
 
-            if (!result.isConfirmed) return;
+            if (!isConfirmed) return;
 
             const response = await API.request('deleteTalepBildirimi', { id: Number(id) });
             if (!response.success) {
@@ -646,26 +635,13 @@
             }
 
             Modal.close('talep-detay-modal');
-            await Swal.fire({
-                icon: 'success',
-                title: 'Silindi',
-                text: response.message || 'Talep silindi.',
-                confirmButtonText: 'Tamam',
-                customClass: {
-                    confirmButton: 'btn-primary px-6 py-2 rounded-xl'
-                }
-            });
+            await Alert.success('Silindi', response.message || 'Talep silindi.');
 
             await loadTalepler();
             await loadTalepStats();
         } catch (error) {
             console.error('Delete error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Hata',
-                text: error.message || 'Silme işlemi sırasında bir sorun oluştu.',
-                confirmButtonText: 'Tamam'
-            });
+            Alert.error('Hata', error.message || 'Silme işlemi sırasında bir sorun oluştu.');
         }
     }
 
@@ -695,21 +671,21 @@
 
                 latInput.value = lat;
                 lngInput.value = lng;
-                
+
                 // Google Maps linki oluştur
                 const mapsLink = `https://www.google.com/maps?q=${lat},${lng}`;
                 input.value = `Konum: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-                
+
                 btn.innerHTML = '<span class="material-symbols-outlined text-green-500">my_location</span>';
                 btn.classList.add('border-green-500', 'bg-green-50', 'dark:bg-green-900/20');
-                
+
                 status.textContent = 'Konum başarıyla alındı';
                 status.classList.remove('text-slate-500', 'text-red-500');
                 status.classList.add('text-green-500');
             },
             (error) => {
                 let msg = 'Konum alınamadı';
-                switch(error.code) {
+                switch (error.code) {
                     case error.PERMISSION_DENIED:
                         msg = 'Konum izni reddedildi';
                         break;
@@ -720,7 +696,7 @@
                         msg = 'Konum isteği zaman aşımına uğradı';
                         break;
                 }
-                
+
                 status.textContent = msg;
                 status.classList.remove('text-slate-500', 'text-green-500');
                 status.classList.add('text-red-500');
@@ -733,7 +709,7 @@
         const formData = new FormData(form);
         let $btn = document.getElementById("talebiGonder");
         let $originalHtml = $btn.innerHTML;
-        
+
         try {
 
             $btn.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span>';
@@ -749,30 +725,22 @@
                 ...(editingTalepId ? { id: Number(editingTalepId) } : {})
             });
             const createdTalepId = response?.data?.id ? Number(response.data.id) : null;
-            
+
             $btn.innerHTML = $originalHtml;
             $btn.disabled = false;
-            if (response.success) { 
+            if (response.success) {
                 closeTalepModal();
                 form.reset();
-                
+
                 // Reset UI elements
                 document.getElementById('location-status').classList.add('hidden');
                 document.getElementById('location-btn').innerHTML = '<span class="material-symbols-outlined">my_location</span>';
                 document.getElementById('location-btn').classList.remove('border-green-500', 'bg-green-50', 'dark:bg-green-900/20');
                 document.getElementById('foto-preview').classList.add('hidden');
                 selectOncelik(document.querySelector('.oncelik-btn:nth-child(2)'), 'orta');
-                
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Başarılı',
-                    text: response.message || 'Talebiniz başarıyla oluşturuldu.',
-                    confirmButtonText: 'Tamam',
-                    customClass: {
-                        confirmButton: 'btn-primary px-6 py-2 rounded-xl'
-                    }
-                });
-                
+
+                await Alert.success('Başarılı', response.message || 'Talebiniz başarıyla oluşturuldu.');
+
                 loadTalepStats();
                 await loadTalepler();
                 const detailId = createdTalepId || openedTalepId;
@@ -784,12 +752,7 @@
             }
         } catch (error) {
             console.error('Submit error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Hata',
-                text: error.message || 'Talep oluşturulurken bir sorun oluştu.',
-                confirmButtonText: 'Tamam'
-            });
+            Alert.error('Hata', error.message || 'Talep oluşturulurken bir sorun oluştu.');
         }
     }
 </script>

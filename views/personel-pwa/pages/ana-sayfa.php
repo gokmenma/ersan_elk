@@ -3,6 +3,8 @@
  * Personel PWA - Ana Sayfa
  * Özet bilgiler ve hızlı işlemler
  */
+use App\Helper\Helper;
+
 ?>
 
 <div class="flex flex-col min-h-screen">
@@ -126,8 +128,8 @@
                     <span class="material-symbols-outlined text-slate-600 dark:text-slate-300">receipt_long</span>
                 </div>
                 <div>
-                    <h3 class="font-bold text-sm text-slate-900 dark:text-white">Bordro Görüntüle</h3>
-                    <p class="text-xs text-slate-500">PDF indir</p>
+                    <h3 class="font-bold text-sm text-slate-900 dark:text-white">Avanslar</h3>
+                    <p class="text-xs text-slate-500">Avans Talebi Yap</p>
                 </div>
             </a>
 

@@ -103,10 +103,35 @@ class TanimlamalarModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function getIsTurleri()
+    {
+        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE grup = ? and silinme_tarihi IS NULL ORDER BY id DESC");
+        $sql->execute(['is_turu']);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
     //Tur adını getir
     public function getTurAdi($id)
     {
         $data = $this->find($id);
         return $data->tur_adi;
+    }
+
+    /**
+     * Belirli bir sütun değerine göre kayıt bul
+     * @param string $column Aranacak sütun adı
+     * @param mixed $value Aranacak değer
+     * @param string|null $additionalWhere Ek WHERE koşulu
+     * @return object|null Bulunan kayıt veya null
+     */
+    public function findByColumn($column, $value, $additionalWhere = null)
+    {
+        $sql = "SELECT * FROM $this->table WHERE $column = ?";
+        if ($additionalWhere) {
+            $sql .= " AND " . $additionalWhere;
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$value]);
+        return $stmt->fetch(PDO::FETCH_OBJ) ?: null;
     }
 }

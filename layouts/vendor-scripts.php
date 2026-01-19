@@ -167,7 +167,8 @@ if ($page == "kasa/duzenle" || $page == "kasa/list") {
     $page == "kullanici/list" || $page == "kullanici-gruplari/list" ||
     $page == "mail-sms/sms-gonder" ||
     $page == "kasa/list" || $page == "gelir-gider/online-hesap-hareketleri" || $page == "tanimlamalar/ekip-kodu" ||
-    $page == "bordro/list" || $page == "demirbas/list" || $page == "puantaj/list"
+    $page == "bordro/list" || $page == "demirbas/list" || $page == "puantaj/list" ||
+    $page == "tanimlamalar/is-turu"
 
 ) { ?>
 

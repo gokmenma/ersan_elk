@@ -1,10 +1,12 @@
 <?php
 
-require_once "../../../vendor/autoload.php";
+require_once dirname(__DIR__, 3) . '/bootstrap.php';
+
 // Betiğin çıktısının JSON olacağını en başta belirtin.
 header('Content-Type: application/json; charset=utf-8');
 
 use App\Model\SettingsModel;
+use App\Model\MesajLogModel;
 
 // Yanıt için standart bir yapı oluşturun.
 $apiResponse = [
@@ -14,6 +16,10 @@ $apiResponse = [
 ];
 
 try {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
     // 1. Adım: JavaScript'ten gönderilen JSON verisini alın.
     $postData = json_decode(file_get_contents('php://input'), true);
 
@@ -21,14 +27,14 @@ try {
     $messageText = $postData['message'] ?? '';
     $recipients = $postData['recipients'] ?? [];
     $msgheader = $postData['senderID'] ?? ''; // Varsayılan başlık
-    
+
     // 2. Adım: Netgsm API kimlik bilgilerini ayarla.
     $username = $postData['username'] ?? ''; // Varsayılan kullanıcı adı
     $password = $postData['password'] ?? ''; // Varsayılan şifre
 
- 
-       
-   
+
+
+
     if (empty($username) || empty($password) || empty($msgheader)) {
         //eğer passsword ve username boş ise ayarlardan al
         $Settings = new SettingsModel();
@@ -36,7 +42,7 @@ try {
         $username = $allSettings['sms_api_kullanici'] ?? '';
         $password = $allSettings['sms_api_sifre'] ?? '';
         $msgheader = $allSettings['sms_baslik'] ?? '';
-   
+
     }
 
 
@@ -53,10 +59,10 @@ try {
         // Her bir alıcı numarası için bir mesaj nesnesi oluşturup diziye ekle
         $messagesPayload[] = [
             'msg' => $messageText,
-            'no' => (string)$recipientNumber // Numaranın string olduğundan emin ol
+            'no' => (string) $recipientNumber // Numaranın string olduğundan emin ol
         ];
     }
-    
+
     // 3. Adım: Netgsm'e gönderilecek ana veri yapısını oluşturun.
     $data = [
         "msgheader" => $msgheader, // Gönderici başlığı
@@ -68,7 +74,7 @@ try {
 
     // API URL'si ve kimlik bilgileri
     $url = "https://api.netgsm.com.tr/sms/rest/v2/send";
-  
+
 
     // cURL işlemleri...
     $ch = curl_init();
@@ -94,9 +100,42 @@ try {
         $apiResponse['message'] = count($recipients) . ' alıcıya SMS gönderim kuyruğuna alındı.';
         $apiResponse['data'] = $netgsmResult;
         $apiResponse["postdata"] = $data; // Gönderilen veriyi de yanıt olarak ekle
+
+        // Loglama
+        try {
+            $MesajLogModel = new MesajLogModel();
+            $firmaId = $_SESSION['firma_id'] ?? $_SESSION['site_id'] ?? 0;
+
+            $MesajLogModel->logSms(
+                $firmaId,
+                $msgheader,
+                $recipients,
+                $messageText,
+                'success'
+            );
+        } catch (Exception $e) {
+            // Loglama hatası akışı bozmasın
+        }
+
     } else {
         $apiResponse['message'] = 'Netgsm API Hatası: ' . ($netgsmResult['description'] ?? 'Bilinmeyen hata.');
         $apiResponse['data'] = $netgsmResult;
+
+        // Başarısız loglama
+        try {
+            $MesajLogModel = new MesajLogModel();
+            $firmaId = $_SESSION['firma_id'] ?? $_SESSION['site_id'] ?? 0;
+
+            $MesajLogModel->logSms(
+                $firmaId,
+                $msgheader,
+                $recipients,
+                $messageText,
+                'failed'
+            );
+        } catch (Exception $e) {
+            // Loglama hatası akışı bozmasın
+        }
     }
 
 } catch (Exception $e) {

@@ -56,12 +56,16 @@ class BordroPersonelModel extends Model
             'personel_id'
         );
 
+
+        /**Firma id'yi Session'dan al */
+        $firma_id = $_SESSION['firma_id'];
         // Uygun personelleri bul
         // İşten çıkış tarihi: NULL, '0000-00-00', boş string veya dönem başlangıcından büyük/eşit olanlar
         $sql = $this->db->prepare("
             SELECT id, adi_soyadi, ise_giris_tarihi, isten_cikis_tarihi 
             FROM personel 
             WHERE aktif_mi = 1
+            AND firma_id = :firma_id
             AND (
                 ise_giris_tarihi IS NULL 
                 OR ise_giris_tarihi = ''
@@ -77,6 +81,8 @@ class BordroPersonelModel extends Model
         ");
         $sql->bindParam(':baslangic_tarihi', $baslangic_tarihi);
         $sql->bindParam(':bitis_tarihi', $bitis_tarihi);
+        $sql->bindParam(':firma_id', $firma_id);
+
         $sql->execute();
         $uygunPersoneller = $sql->fetchAll(PDO::FETCH_OBJ);
 
@@ -208,11 +214,12 @@ class BordroPersonelModel extends Model
     public function getPersonelBordrolari($personel_id)
     {
         $sql = $this->db->prepare("
-            SELECT bp.*, bd.donem_adi, bd.yil, bd.ay
+            SELECT bp.*, bd.donem_adi, bd.baslangic_tarihi
             FROM {$this->table} bp
-            INNER JOIN bordro_donemleri bd ON bp.donem_id = bd.id
-            WHERE bp.personel_id = ? AND bp.silinme_tarihi IS NULL
-            ORDER BY bd.yil DESC, bd.ay DESC
+            LEFT JOIN bordro_donemi bd ON bp.donem_id = bd.id
+            WHERE bp.personel_id = ? 
+            AND bp.silinme_tarihi IS NULL
+            ORDER BY bp.id DESC
         ");
         $sql->execute([$personel_id]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
@@ -220,15 +227,17 @@ class BordroPersonelModel extends Model
 
     /**
      * Personelin toplam kazanç bilgilerini getirir (Dashboard için)
+     * Tüm dönemlerdeki net maaşların toplamı
      */
     public function getPersonelFinansalOzet($personel_id)
     {
         $sql = $this->db->prepare("
             SELECT 
-                SUM(net_maas) as toplam_hakedis,
-                SUM(CASE WHEN durum = 'odendi' THEN net_maas ELSE 0 END) as alinan_odeme
-            FROM {$this->table}
-            WHERE personel_id = ? AND silinme_tarihi IS NULL
+                SUM(bp.net_maas) as toplam_hakedis,
+                SUM(bp.net_maas) as alinan_odeme
+            FROM {$this->table} bp
+            INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
+            WHERE bp.personel_id = ? AND bp.silinme_tarihi IS NULL
         ");
         $sql->execute([$personel_id]);
         return $sql->fetch(PDO::FETCH_OBJ);
@@ -243,7 +252,7 @@ class BordroPersonelModel extends Model
     public function addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur = 'diger')
     {
         $sql = $this->db->prepare("
-            INSERT INTO personel_kesintileri (personel_id, donem_id, aciklama, tutar, tur, created_at)
+            INSERT INTO personel_kesintileri (personel_id, donem_id, aciklama, tutar, tur, olusturma_tarihi)
             VALUES (?, ?, ?, ?, ?, NOW())
         ");
         return $sql->execute([$personel_id, $donem_id, $aciklama, $tutar, $tur]);
@@ -586,7 +595,7 @@ class BordroPersonelModel extends Model
             FROM personel_kesintileri pk
             LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
             WHERE pk.personel_id = ? AND pk.donem_id = ? AND pk.silinme_tarihi IS NULL
-            ORDER BY pk.created_at DESC
+            ORDER BY pk.olusturma_tarihi DESC
         ");
         $sql->execute([$personel_id, $donem_id]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
@@ -604,6 +613,38 @@ class BordroPersonelModel extends Model
             ORDER BY created_at DESC
         ");
         $sql->execute([$personel_id, $donem_id]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Banka export için dönemdeki personellerin detaylı bilgilerini getirir
+     * Personel tablosundan tüm gerekli alanları çeker
+     */
+    public function getPersonellerByDonemDetayli($donem_id)
+    {
+        $sql = $this->db->prepare("
+            SELECT bp.*, 
+                   bp.banka_odemesi,
+                   bp.sodexo_odemesi,
+                   bp.net_maas,
+                   p.adi_soyadi, 
+                   p.tc_kimlik_no, 
+                   p.anne_adi,
+                   p.baba_adi,
+                   p.dogum_tarihi,
+                   p.dogum_yeri_il,
+                   p.dogum_yeri_ilce,
+                   p.adres,
+                   p.cinsiyet,
+                   p.cep_telefonu,
+                   p.email_adresi,
+                   p.iban_numarasi
+            FROM {$this->table} bp
+            INNER JOIN personel p ON bp.personel_id = p.id
+            WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL
+            ORDER BY p.adi_soyadi ASC
+        ");
+        $sql->execute([$donem_id]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 }

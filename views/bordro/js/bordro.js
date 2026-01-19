@@ -17,6 +17,81 @@ $(document).ready(function () {
     }
   });
 
+  // Dönem Sil butonu
+  $("#donemSil").on("click", function () {
+    const donemId = $("#donemSelect").val();
+    const donemAdi = $("#donemSelect option:selected").text();
+
+    if (!donemId) {
+      Swal.fire({
+        icon: "warning",
+        title: "Uyarı",
+        text: "Silinecek bir dönem seçili değil.",
+      });
+      return;
+    }
+
+    Swal.fire({
+      title: "Dönemi Silmek İstediğinize Emin misiniz?",
+      html: `<strong>${donemAdi}</strong> dönemi ve bu döneme ait tüm bordro kayıtları silinecek!<br><br><span class="text-danger"><i class="bx bx-error-circle"></i> Bu işlem geri alınamaz.</span>`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Evet, Sil",
+      cancelButtonText: "İptal",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        $.ajax({
+          url: "views/bordro/api.php",
+          type: "POST",
+          data: {
+            action: "donem-sil",
+            donem_id: donemId,
+          },
+          dataType: "json",
+          beforeSend: function () {
+            Swal.fire({
+              title: "Siliniyor...",
+              text: "Dönem silme işlemi gerçekleştiriliyor.",
+              allowOutsideClick: false,
+              didOpen: () => {
+                Swal.showLoading();
+              },
+            });
+          },
+          success: function (response) {
+            if (response.status === "success") {
+              Swal.fire({
+                icon: "success",
+                title: "Başarılı!",
+                text: response.message,
+                confirmButtonText: "Tamam",
+              }).then(() => {
+                // Yılı koruyarak sayfayı yenile
+                const yil = $("#yilSelect").val();
+                window.location.href = "index.php?p=bordro/list&yil=" + yil;
+              });
+            } else {
+              Swal.fire({
+                icon: "error",
+                title: "Hata!",
+                text: response.message,
+              });
+            }
+          },
+          error: function () {
+            Swal.fire({
+              icon: "error",
+              title: "Hata!",
+              text: "Bir hata oluştu.",
+            });
+          },
+        });
+      }
+    });
+  });
+
   // Yeni Dönem Formu - Form submit'i engelle
   $("#formYeniDonem").on("submit", function (e) {
     e.preventDefault();
@@ -381,6 +456,15 @@ $(document).ready(function () {
     }
   });
 
+  // Excel Export (Banka Formatı)
+  $("#btnExportExcelBanka").on("click", function () {
+    const donemId = $("#donemSelect").val();
+    if (donemId) {
+      window.location.href =
+        "views/bordro/excel-banka-export.php?donem_id=" + donemId;
+    }
+  });
+
   // Ödeme Dağıt Butonu
   $(document).on("click", ".btn-odeme", function () {
     const id = $(this).data("id");
@@ -451,220 +535,250 @@ $(document).ready(function () {
     $("#gelir_personel_ad").text(ad);
     $("#gelir_edit_id").val(0); // Reset edit ID
     $("#formPersonelGelirEkle")[0].reset();
-    $("#formPersonelGelirEkle button[type='submit']").html('<i class="bx bx-save me-1"></i>Kaydet'); // Reset button
-    
+    $("#formPersonelGelirEkle button[type='submit']").html(
+      '<i class="bx bx-save me-1"></i>Kaydet',
+    ); // Reset button
+
     // Kart vurgusunu kaldır
-    $(".card.border-primary").removeClass("border-primary bg-primary bg-opacity-10");
-    
+    $(".card.border-primary").removeClass(
+      "border-primary bg-primary bg-opacity-10",
+    );
+
     // Listeyi getir
     loadGelirListesi(id, donemId);
-    
+
     // Accordion'ı aç (ekle butonuysa) veya kapat (detay butonuysa)
-    if($(this).hasClass('btn-detail-ekodeme')) {
-        $("#collapseGelir").removeClass('show');
+    if ($(this).hasClass("btn-detail-ekodeme")) {
+      $("#collapseGelir").removeClass("show");
     } else {
-        $("#collapseGelir").addClass('show');
+      $("#collapseGelir").addClass("show");
     }
-    
+
     $("#modalPersonelGelirEkle").modal("show");
   });
 
   // Personel Kesinti Ekle Butonu
-  $(document).on("click", ".btn-kesinti-ekle, .btn-detail-kesinti", function () {
-    const id = $(this).data("id");
-    const ad = $(this).data("ad");
-    const donemId = $("#donemSelect").val();
+  $(document).on(
+    "click",
+    ".btn-kesinti-ekle, .btn-detail-kesinti",
+    function () {
+      const id = $(this).data("id");
+      const ad = $(this).data("ad");
+      const donemId = $("#donemSelect").val();
 
-    $("#kesinti_personel_id").val(id);
-    $("#kesinti_personel_ad").text(ad);
-    $("#kesinti_edit_id").val(0); // Reset edit ID
-    $("#formPersonelKesintiEkle")[0].reset();
-    $("#formPersonelKesintiEkle button[type='submit']").html('<i class="bx bx-save me-1"></i>Kaydet'); // Reset button
-    
-    // Kart vurgusunu kaldır
-    $(".card.border-danger").removeClass("border-danger bg-danger bg-opacity-10");
-    
-    // Listeyi getir
-    loadKesintiListesi(id, donemId);
-    
-    // Accordion'ı aç (ekle butonuysa) veya kapat (detay butonuysa)
-    if($(this).hasClass('btn-detail-kesinti')) {
-        $("#collapseKesinti").removeClass('show');
-    } else {
-        $("#collapseKesinti").addClass('show');
-    }
-    
-    $("#modalPersonelKesintiEkle").modal("show");
-  });
+      $("#kesinti_personel_id").val(id);
+      $("#kesinti_personel_ad").text(ad);
+      $("#kesinti_edit_id").val(0); // Reset edit ID
+      $("#formPersonelKesintiEkle")[0].reset();
+      $("#formPersonelKesintiEkle button[type='submit']").html(
+        '<i class="bx bx-save me-1"></i>Kaydet',
+      ); // Reset button
+
+      // Kart vurgusunu kaldır
+      $(".card.border-danger").removeClass(
+        "border-danger bg-danger bg-opacity-10",
+      );
+
+      // Listeyi getir
+      loadKesintiListesi(id, donemId);
+
+      // Accordion'ı aç (ekle butonuysa) veya kapat (detay butonuysa)
+      if ($(this).hasClass("btn-detail-kesinti")) {
+        $("#collapseKesinti").removeClass("show");
+      } else {
+        $("#collapseKesinti").addClass("show");
+      }
+
+      $("#modalPersonelKesintiEkle").modal("show");
+    },
+  );
 
   // Gelir Düzenle Butonu
-  $(document).on("click", ".btn-edit-gelir", function() {
-      const id = $(this).data("id");
-      const tur = $(this).data("tur");
-      const tutar = $(this).data("tutar");
-      const aciklama = $(this).data("aciklama");
+  $(document).on("click", ".btn-edit-gelir", function () {
+    const id = $(this).data("id");
+    const tur = $(this).data("tur");
+    const tutar = $(this).data("tutar");
+    const aciklama = $(this).data("aciklama");
 
-      // Önceki aktif karttan class'ı kaldır
-      $(".card.border-primary").removeClass("border-primary bg-primary bg-opacity-10");
+    // Önceki aktif karttan class'ı kaldır
+    $(".card.border-primary").removeClass(
+      "border-primary bg-primary bg-opacity-10",
+    );
 
-      // Tıklanan butona ait kartı bul ve aktif class'ı ekle
-      $(this).closest(".card").addClass("border-primary bg-primary bg-opacity-10");
+    // Tıklanan butona ait kartı bul ve aktif class'ı ekle
+    $(this)
+      .closest(".card")
+      .addClass("border-primary bg-primary bg-opacity-10");
 
-      $("#gelir_edit_id").val(id);
-      $("#formPersonelGelirEkle select[name='ek_odeme_tur']").val(tur).trigger('change');
-      $("#gelir_tutar").val(tutar);
-      $("#gelir_aciklama").val(aciklama);
-      
-      $("#formPersonelGelirEkle button[type='submit']").html('<i class="bx bx-check-circle me-1"></i>Güncelle');
-      
-      // Accordion'ı aç
-      $("#collapseGelir").addClass('show');
+    $("#gelir_edit_id").val(id);
+    $("#formPersonelGelirEkle select[name='ek_odeme_tur']")
+      .val(tur)
+      .trigger("change");
+    $("#gelir_tutar").val(tutar);
+    $("#gelir_aciklama").val(aciklama);
+
+    $("#formPersonelGelirEkle button[type='submit']").html(
+      '<i class="bx bx-check-circle me-1"></i>Güncelle',
+    );
+
+    // Accordion'ı aç
+    $("#collapseGelir").addClass("show");
   });
 
   // Kesinti Düzenle Butonu
-  $(document).on("click", ".btn-edit-kesinti", function() {
-      const id = $(this).data("id");
-      const tur = $(this).data("tur");
-      const tutar = $(this).data("tutar");
-      const aciklama = $(this).data("aciklama");
+  $(document).on("click", ".btn-edit-kesinti", function () {
+    const id = $(this).data("id");
+    const tur = $(this).data("tur");
+    const tutar = $(this).data("tutar");
+    const aciklama = $(this).data("aciklama");
 
-      // Önceki aktif karttan class'ı kaldır
-      $(".card.border-danger").removeClass("border-danger bg-danger bg-opacity-10");
+    // Önceki aktif karttan class'ı kaldır
+    $(".card.border-danger").removeClass(
+      "border-danger bg-danger bg-opacity-10",
+    );
 
-      // Tıklanan butona ait kartı bul ve aktif class'ı ekle
-      $(this).closest(".card").addClass("border-danger bg-danger bg-opacity-10");
+    // Tıklanan butona ait kartı bul ve aktif class'ı ekle
+    $(this).closest(".card").addClass("border-danger bg-danger bg-opacity-10");
 
-      $("#kesinti_edit_id").val(id);
-      $("#formPersonelKesintiEkle select[name='kesinti_tur']").val(tur).trigger('change');
-      $("#kesinti_tutar").val(tutar);
-      $("#kesinti_aciklama").val(aciklama);
-      
-      $("#formPersonelKesintiEkle button[type='submit']").html('<i class="bx bx-check-circle me-1"></i>Güncelle');
-      
-      // Accordion'ı aç
-      $("#collapseKesinti").addClass('show');
+    $("#kesinti_edit_id").val(id);
+    $("#formPersonelKesintiEkle select[name='kesinti_tur']")
+      .val(tur)
+      .trigger("change");
+    $("#kesinti_tutar").val(tutar);
+    $("#kesinti_aciklama").val(aciklama);
+
+    $("#formPersonelKesintiEkle button[type='submit']").html(
+      '<i class="bx bx-check-circle me-1"></i>Güncelle',
+    );
+
+    // Accordion'ı aç
+    $("#collapseKesinti").addClass("show");
   });
 
   // Gelir Silme Butonu
-  $(document).on("click", ".btn-delete-gelir", function(e) {
-      e.preventDefault();
-      const id = $(this).data("id");
-      const personelId = $("#gelir_personel_id").val();
-      const donemId = $("#donemSelect").val();
+  $(document).on("click", ".btn-delete-gelir", function (e) {
+    e.preventDefault();
+    const id = $(this).data("id");
+    const personelId = $("#gelir_personel_id").val();
+    const donemId = $("#donemSelect").val();
 
-      console.log("Gelir silme isteği:", { id, personelId, donemId });
+    console.log("Gelir silme isteği:", { id, personelId, donemId });
 
-      Swal.fire({
-          title: "Silmek istediğinize emin misiniz?",
-          text: "Bu işlem geri alınamaz!",
-          icon: "warning",
-          showCancelButton: true,
-          confirmButtonColor: "#d33",
-          confirmButtonText: "Evet, Sil",
-          cancelButtonText: "İptal"
-      }).then((result) => {
-          if (result.isConfirmed) {
-              $.ajax({
-                  url: "views/bordro/api.php",
-                  type: "POST",
-                  data: {
-                      action: "personel-ek-odeme-sil",
-                      id: id,
-                      personel_id: personelId,
-                      donem_id: donemId
-                  },
-                  dataType: "json",
-                  success: function(response) {
-                      if (response.status === "success") {
-                          Swal.fire({
-                              icon: "success",
-                              title: "Silindi!",
-                              text: response.message,
-                              timer: 1500,
-                              showConfirmButton: false
-                          });
-                          
-                          loadGelirListesi(personelId, donemId);
-                          
-                          // Edit modundaysa ve silinen kayıt editlenen kayıt ise formu resetle
-                          if($("#gelir_edit_id").val() == id) {
-                              $("#gelir_edit_id").val(0);
-                              $("#formPersonelGelirEkle")[0].reset();
-                              $("#formPersonelGelirEkle button[type='submit']").html('<i class="bx bx-save me-1"></i>Kaydet');
-                              $("#collapseGelir").removeClass('show');
-                          }
-                      } else {
-                          Swal.fire("Hata", response.message, "error");
-                      }
-                  },
-                  error: function(xhr, status, error) {
-                      console.error("Delete Error:", error);
-                      Swal.fire("Hata", "Bir hata oluştu: " + error, "error");
-                  }
+    Swal.fire({
+      title: "Silmek istediğinize emin misiniz?",
+      text: "Bu işlem geri alınamaz!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      confirmButtonText: "Evet, Sil",
+      cancelButtonText: "İptal",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        $.ajax({
+          url: "views/bordro/api.php",
+          type: "POST",
+          data: {
+            action: "personel-ek-odeme-sil",
+            id: id,
+            personel_id: personelId,
+            donem_id: donemId,
+          },
+          dataType: "json",
+          success: function (response) {
+            if (response.status === "success") {
+              Swal.fire({
+                icon: "success",
+                title: "Silindi!",
+                text: response.message,
+                timer: 1500,
+                showConfirmButton: false,
               });
-          }
-      });
+
+              loadGelirListesi(personelId, donemId);
+
+              // Edit modundaysa ve silinen kayıt editlenen kayıt ise formu resetle
+              if ($("#gelir_edit_id").val() == id) {
+                $("#gelir_edit_id").val(0);
+                $("#formPersonelGelirEkle")[0].reset();
+                $("#formPersonelGelirEkle button[type='submit']").html(
+                  '<i class="bx bx-save me-1"></i>Kaydet',
+                );
+                $("#collapseGelir").removeClass("show");
+              }
+            } else {
+              Swal.fire("Hata", response.message, "error");
+            }
+          },
+          error: function (xhr, status, error) {
+            console.error("Delete Error:", error);
+            Swal.fire("Hata", "Bir hata oluştu: " + error, "error");
+          },
+        });
+      }
+    });
   });
 
   // Kesinti Silme Butonu
-  $(document).on("click", ".btn-delete-kesinti", function(e) {
-      e.preventDefault();
-      const id = $(this).data("id");
-      const personelId = $("#kesinti_personel_id").val();
-      const donemId = $("#donemSelect").val();
+  $(document).on("click", ".btn-delete-kesinti", function (e) {
+    e.preventDefault();
+    const id = $(this).data("id");
+    const personelId = $("#kesinti_personel_id").val();
+    const donemId = $("#donemSelect").val();
 
-      console.log("Kesinti silme isteği:", { id, personelId, donemId });
+    console.log("Kesinti silme isteği:", { id, personelId, donemId });
 
-      Swal.fire({
-          title: "Silmek istediğinize emin misiniz?",
-          text: "Bu işlem geri alınamaz!",
-          icon: "warning",
-          showCancelButton: true,
-          confirmButtonColor: "#d33",
-          confirmButtonText: "Evet, Sil",
-          cancelButtonText: "İptal"
-      }).then((result) => {
-          if (result.isConfirmed) {
-              $.ajax({
-                  url: "views/bordro/api.php",
-                  type: "POST",
-                  data: {
-                      action: "personel-kesinti-sil",
-                      id: id,
-                      personel_id: personelId,
-                      donem_id: donemId
-                  },
-                  dataType: "json",
-                  success: function(response) {
-                      if (response.status === "success") {
-                          Swal.fire({
-                              icon: "success",
-                              title: "Silindi!",
-                              text: response.message,
-                              timer: 1500,
-                              showConfirmButton: false
-                          });
-                          
-                          loadKesintiListesi(personelId, donemId);
-                          
-                          // Edit modundaysa ve silinen kayıt editlenen kayıt ise formu resetle
-                          if($("#kesinti_edit_id").val() == id) {
-                              $("#kesinti_edit_id").val(0);
-                              $("#formPersonelKesintiEkle")[0].reset();
-                              $("#formPersonelKesintiEkle button[type='submit']").html('<i class="bx bx-save me-1"></i>Kaydet');
-                              $("#collapseKesinti").removeClass('show');
-                          }
-                      } else {
-                          Swal.fire("Hata", response.message, "error");
-                      }
-                  },
-                  error: function(xhr, status, error) {
-                      console.error("Delete Error:", error);
-                      Swal.fire("Hata", "Bir hata oluştu: " + error, "error");
-                  }
+    Swal.fire({
+      title: "Silmek istediğinize emin misiniz?",
+      text: "Bu işlem geri alınamaz!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      confirmButtonText: "Evet, Sil",
+      cancelButtonText: "İptal",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        $.ajax({
+          url: "views/bordro/api.php",
+          type: "POST",
+          data: {
+            action: "personel-kesinti-sil",
+            id: id,
+            personel_id: personelId,
+            donem_id: donemId,
+          },
+          dataType: "json",
+          success: function (response) {
+            if (response.status === "success") {
+              Swal.fire({
+                icon: "success",
+                title: "Silindi!",
+                text: response.message,
+                timer: 1500,
+                showConfirmButton: false,
               });
-          }
-      });
+
+              loadKesintiListesi(personelId, donemId);
+
+              // Edit modundaysa ve silinen kayıt editlenen kayıt ise formu resetle
+              if ($("#kesinti_edit_id").val() == id) {
+                $("#kesinti_edit_id").val(0);
+                $("#formPersonelKesintiEkle")[0].reset();
+                $("#formPersonelKesintiEkle button[type='submit']").html(
+                  '<i class="bx bx-save me-1"></i>Kaydet',
+                );
+                $("#collapseKesinti").removeClass("show");
+              }
+            } else {
+              Swal.fire("Hata", response.message, "error");
+            }
+          },
+          error: function (xhr, status, error) {
+            console.error("Delete Error:", error);
+            Swal.fire("Hata", "Bir hata oluştu: " + error, "error");
+          },
+        });
+      }
+    });
   });
 
   // Personel Gelir Ekle Form Submit
@@ -864,26 +978,29 @@ function formatMoney(amount) {
 }
 
 function loadGelirListesi(personelId, donemId) {
-    $("#listPersonelGelirler").html('<div class="text-center py-3"><div class="spinner-border text-success" role="status"></div></div>');
-    
-    $.ajax({
-        url: "views/bordro/api.php",
-        type: "POST",
-        data: {
-            action: "get-personel-ek-odeme-listesi",
-            personel_id: personelId,
-            donem_id: donemId
-        },
-        dataType: "json",
-        success: function(response) {
-            if (response.status === "success") {
-                let html = '';
-                
-                if (response.data.length === 0) {
-                    html = '<div class="text-center text-muted py-3"><i class="bx bx-info-circle fs-1 mb-2"></i><br>Kayıtlı gelir bulunamadı.</div>';
-                } else {
-                    response.data.forEach(item => {
-                        html += `
+  $("#listPersonelGelirler").html(
+    '<div class="text-center py-3"><div class="spinner-border text-success" role="status"></div></div>',
+  );
+
+  $.ajax({
+    url: "views/bordro/api.php",
+    type: "POST",
+    data: {
+      action: "get-personel-ek-odeme-listesi",
+      personel_id: personelId,
+      donem_id: donemId,
+    },
+    dataType: "json",
+    success: function (response) {
+      if (response.status === "success") {
+        let html = "";
+
+        if (response.data.length === 0) {
+          html =
+            '<div class="text-center text-muted py-3"><i class="bx bx-info-circle fs-1 mb-2"></i><br>Kayıtlı gelir bulunamadı.</div>';
+        } else {
+          response.data.forEach((item) => {
+            html += `
                         <div class="card mb-2 border shadow-sm">
                             <div class="card-body p-3">
                                 <div class="d-flex align-items-center">
@@ -896,11 +1013,11 @@ function loadGelirListesi(personelId, donemId) {
                                     </div>
                                     <div class="flex-grow-1">
                                         <h6 class="mb-1 text-uppercase text-success fw-bold">${item.tur}</h6>
-                                        <p class="text-muted mb-0 small">${item.aciklama || 'Açıklama yok'}</p>
+                                        <p class="text-muted mb-0 small">${item.aciklama || "Açıklama yok"}</p>
                                     </div>
                                     <div class="flex-shrink-0 text-end mx-3">
                                         <h5 class="mb-1 text-success fw-bold">+${formatMoney(item.tutar)} ₺</h5>
-                                        <small class="text-muted" style="font-size: 11px;">${new Date(item.created_at).toLocaleDateString('tr-TR')}</small>
+                                        <small class="text-muted" style="font-size: 11px;">${new Date(item.created_at).toLocaleDateString("tr-TR")}</small>
                                     </div>
                                     <div class="flex-shrink-0">
                                         <div class="d-flex flex-column gap-1">
@@ -908,7 +1025,7 @@ function loadGelirListesi(personelId, donemId) {
                                                 data-id="${item.id}" 
                                                 data-tur="${item.tur}" 
                                                 data-tutar="${item.tutar}" 
-                                                data-aciklama="${item.aciklama || ''}">
+                                                data-aciklama="${item.aciklama || ""}">
                                                 <i class="bx bx-edit"></i>
                                             </button>
                                             <button type="button" class="btn btn-sm btn-soft-danger btn-delete-gelir" data-id="${item.id}">
@@ -919,35 +1036,38 @@ function loadGelirListesi(personelId, donemId) {
                                 </div>
                             </div>
                         </div>`;
-                    });
-                }
-                $("#listPersonelGelirler").html(html);
-            }
+          });
         }
-    });
+        $("#listPersonelGelirler").html(html);
+      }
+    },
+  });
 }
 
 function loadKesintiListesi(personelId, donemId) {
-    $("#listPersonelKesintiler").html('<div class="text-center py-3"><div class="spinner-border text-danger" role="status"></div></div>');
-    
-    $.ajax({
-        url: "views/bordro/api.php",
-        type: "POST",
-        data: {
-            action: "get-personel-kesinti-listesi",
-            personel_id: personelId,
-            donem_id: donemId
-        },
-        dataType: "json",
-        success: function(response) {
-            if (response.status === "success") {
-                let html = '';
-                
-                if (response.data.length === 0) {
-                    html = '<div class="text-center text-muted py-3"><i class="bx bx-info-circle fs-1 mb-2"></i><br>Kayıtlı kesinti bulunamadı.</div>';
-                } else {
-                    response.data.forEach(item => {
-                        html += `
+  $("#listPersonelKesintiler").html(
+    '<div class="text-center py-3"><div class="spinner-border text-danger" role="status"></div></div>',
+  );
+
+  $.ajax({
+    url: "views/bordro/api.php",
+    type: "POST",
+    data: {
+      action: "get-personel-kesinti-listesi",
+      personel_id: personelId,
+      donem_id: donemId,
+    },
+    dataType: "json",
+    success: function (response) {
+      if (response.status === "success") {
+        let html = "";
+
+        if (response.data.length === 0) {
+          html =
+            '<div class="text-center text-muted py-3"><i class="bx bx-info-circle fs-1 mb-2"></i><br>Kayıtlı kesinti bulunamadı.</div>';
+        } else {
+          response.data.forEach((item) => {
+            html += `
                         <div class="card mb-2 border shadow-sm">
                             <div class="card-body p-3">
                                 <div class="d-flex align-items-center">
@@ -960,11 +1080,11 @@ function loadKesintiListesi(personelId, donemId) {
                                     </div>
                                     <div class="flex-grow-1">
                                         <h6 class="mb-1 text-uppercase text-danger fw-bold">${item.tur}</h6>
-                                        <p class="text-muted mb-0 small">${item.aciklama || 'Açıklama yok'}</p>
+                                        <p class="text-muted mb-0 small">${item.aciklama || "Açıklama yok"}</p>
                                     </div>
                                     <div class="flex-shrink-0 text-end mx-3">
                                         <h5 class="mb-1 text-danger fw-bold">-${formatMoney(item.tutar)} ₺</h5>
-                                        <small class="text-muted" style="font-size: 11px;">${new Date(item.created_at).toLocaleDateString('tr-TR')}</small>
+                                        <small class="text-muted" style="font-size: 11px;">${new Date(item.created_at).toLocaleDateString("tr-TR")}</small>
                                     </div>
                                     <div class="flex-shrink-0">
                                         <div class="d-flex flex-column gap-1">
@@ -972,7 +1092,7 @@ function loadKesintiListesi(personelId, donemId) {
                                                 data-id="${item.id}" 
                                                 data-tur="${item.tur}" 
                                                 data-tutar="${item.tutar}" 
-                                                data-aciklama="${item.aciklama || ''}">
+                                                data-aciklama="${item.aciklama || ""}">
                                                 <i class="bx bx-edit"></i>
                                             </button>
                                             <button type="button" class="btn btn-sm btn-outline-danger btn-delete-kesinti" data-id="${item.id}">
@@ -983,10 +1103,10 @@ function loadKesintiListesi(personelId, donemId) {
                                 </div>
                             </div>
                         </div>`;
-                    });
-                }
-                $("#listPersonelKesintiler").html(html);
-            }
+          });
         }
-    });
+        $("#listPersonelKesintiler").html(html);
+      }
+    },
+  });
 }

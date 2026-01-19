@@ -188,3 +188,22 @@ Upload Dir: C:\xampp\htdocs\ersan_elk\assets\images\users\
 Writable: Yes
 Target Path: C:\xampp\htdocs\ersan_elk\assets\images\users\personel_6969ee9f285af.jpg
 Move Success
+--- Upload Start ---
+FILES: Array
+(
+    [resim_yolu] => Array
+        (
+            [name] => avatar-8.jpg
+            [full_path] => avatar-8.jpg
+            [type] => image/jpeg
+            [tmp_name] => C:\xampp\tmp\php6E82.tmp
+            [error] => 0
+            [size] => 9705
+        )
+
+)
+
+Upload Dir: C:\xampp\htdocs\ersan_elk\assets\images\users\
+Writable: Yes
+Target Path: C:\xampp\htdocs\ersan_elk\assets\images\users\personel_696e785cbfd22.jpg
+Move Success

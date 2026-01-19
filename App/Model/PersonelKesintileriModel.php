@@ -22,7 +22,7 @@ class PersonelKesintileriModel extends Model
             FROM {$this->table} pk
             LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
             WHERE pk.personel_id = ? AND pk.silinme_tarihi IS NULL 
-            ORDER BY pk.donem_id DESC, pk.created_at DESC
+            ORDER BY pk.donem_id DESC, pk.olusturma_tarihi DESC
         ");
         $sql->execute([$personel_id]);
         return $sql->fetchAll(PDO::FETCH_OBJ);

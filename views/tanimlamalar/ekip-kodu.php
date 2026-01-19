@@ -118,7 +118,7 @@ $ekipler = $Tanimlamalar->getEkipKodlari();
             </div>
             <div class="modal-body">
                 <form id="actionForm">
-                    <input type="text" name="ekip_id" id="ekip_id" class="form-control" value="0">
+                    <input type="hidden" name="ekip_id" id="ekip_id" class="form-control" value="0">
 
                     <div class="row mb-3">
 

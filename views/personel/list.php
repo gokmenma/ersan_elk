@@ -201,28 +201,34 @@ $personeller = $Personel->all();
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <div
+                        class="alert alert-success bg-success bg-opacity-10 border border-success border-opacity-25 mb-3">
+                        <div class="d-flex align-items-start">
+                            <i class="bx bx-download fs-4 me-2 text-success"></i>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1"><strong>Şablon Dosyasını İndirin</strong></h6>
+                                <p class="mb-2 small text-muted">
+                                    Personelleri Excelden yüklemek için şablonunu indirin.
+                                </p>
+                                <a href="javascript:void()" id="btnDownloadTemplate"
+                                    class="btn btn-sm btn-success">
+                                    <i class="bx bx-download me-1"></i>Personel Şablonunu İndir
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 <form id="importExcelForm" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label for="excelFile" class="form-label">Excel Dosyası Seçin (.xlsx, .xls)</label>
                         <input class="form-control" type="file" id="excelFile" name="excel_file" accept=".xlsx, .xls"
                             required>
                     </div>
-                    <div class="alert alert-info">
-                        <small>
-                            <strong>Not:</strong> Sistem, <strong>TC Kimlik Numarası</strong> eşleşen kayıtları
-                            atlayacak ve sadece yeni kayıtları ekleyecektir.
-                            <br>
-                            Desteklenen Sütun Başlıkları: <em>TC Kimlik No, Adı Soyadı, Telefon, Email, Departman,
-                                Görev</em>
-                        </small>
-                    </div>
+                    
                 </form>
             </div>
             <div class="modal-footer">
-                <div class="d-flex justify-content-between w-100">
-                    <button type="button" class="btn btn-info" id="btnDownloadTemplate">
-                        <i class="bx bx-download me-1"></i> Örnek Şablon İndir
-                    </button>
+                <div class="float-end">
+                    
                     <div>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                         <button type="button" class="btn btn-primary" id="btnUploadExcel">Yükle</button>

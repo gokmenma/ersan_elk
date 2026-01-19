@@ -45,8 +45,8 @@ $dotenv->load();
 $Menus = new MenuModel();
 
 //Eğer oturum açmamışsa giriş sayfasına yönlendir
-if (!isset($_SESSION['id'] ) || !isset($_SESSION['sube_id'])) {
-    header("Location: " . "/admin/logout.php");
+if (!isset($_SESSION['id'] ) || !isset($_SESSION['firma_id'])) {
+    header("Location: " . "/logout.php");
     exit();
 }
 

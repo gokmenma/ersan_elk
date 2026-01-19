@@ -180,7 +180,7 @@ use App\Helper\Form;
                             name: "senderId",
                             label: "Gönderen Adı",
                             options: [
-                                "1" => "CANSAGLKSEN"
+                                "1" => "ERSANELKTRK"
                             ],
                             selectedValue: 1,
                             icon: "send"

@@ -356,6 +356,13 @@
                 </div>
             </div>
             
+            ${izin.red_nedeni ? `
+            <div class="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 p-3 rounded-xl">
+                <p class="text-xs text-red-500 mb-1 font-medium">Red Nedeni</p>
+                <p class="text-sm text-red-700 dark:text-red-400">${izin.red_nedeni}</p>
+            </div>
+            ` : ''}
+            
             <div class="grid grid-cols-2 gap-4">
                 <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl">
                     <p class="text-xs text-slate-500 mb-1">Başlangıç</p>

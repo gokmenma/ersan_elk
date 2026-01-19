@@ -31,9 +31,13 @@ class FirmaModel extends Model
         return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
-    /** Firmaları getirir */
-    // public function all(){
+    /**Firma Listesi */
+    public function getFirmaList(){
+        $query = $this->db->prepare("Select id, firma_adi from $this->table where silinme_tarihi is null");
+        $query->execute();
+        return $query->fetchAll(PDO::FETCH_OBJ);
+    }
 
-    // }
+   
 
 }

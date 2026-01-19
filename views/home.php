@@ -213,53 +213,80 @@ if (!isset($toplam_bakiye))
                             </thead>
                             <tbody>
                                 <?php if (empty($recent_requests)): ?>
-                                        <tr>
-                                            <td colspan="5" class="text-center">Bekleyen talep bulunmamaktadır.</td>
-                                        </tr>
+                                    <tr>
+                                        <td colspan="5" class="text-center">Bekleyen talep bulunmamaktadır.</td>
+                                    </tr>
                                 <?php else: ?>
-                                        <?php foreach ($recent_requests as $req):
-                                            $personel = $personel_map[$req->personel_id] ?? null;
-                                            $badgeClass = 'badge-warning';
-                                            if ($req->tip == 'Avans')
-                                                $badgeClass = 'badge-success';
-                                            if ($req->tip == 'İzin')
-                                                $badgeClass = 'badge-primary';
-                                            if ($req->tip == 'Talep')
-                                                $badgeClass = 'badge-info';
-                                            ?>
-                                                <tr>
-                                                    <td>
-                                                        <?php if ($personel): ?>
-                                                                <div class="d-flex align-items-center">
-                                                                    <div class="flex-shrink-0 me-3">
-                                                                        <img src="<?php echo !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>" alt="" class="avatar-xs rounded-circle">
-                                                                    </div>
-                                                                    <div class="flex-grow-1">
-                                                                        <h5 class="font-size-14 mb-1"><?php echo $personel->adi_soyadi; ?></h5>
-                                                                        <p class="text-muted mb-0 font-size-12"><?php echo $personel->departman; ?></p>
-                                                                    </div>
+                                    <?php foreach ($recent_requests as $req):
+                                        $personel = $personel_map[$req->personel_id] ?? null;
+                                        $badgeClass = 'badge-warning';
+                                        if ($req->tip == 'Avans')
+                                            $badgeClass = 'badge-success';
+                                        if ($req->tip == 'İzin')
+                                            $badgeClass = 'badge-primary';
+                                        if ($req->tip == 'Talep')
+                                            $badgeClass = 'badge-info';
+                                        ?>
+                                        <tr>
+                                            <td>
+                                                <?php if ($personel): ?>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="flex-shrink-0 me-3">
+                                                            <img src="<?php echo !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
+                                                                alt="" class="avatar-xs rounded-circle">
+                                                        </div>
+                                                        <div class="flex-grow-1">
+                                                            <h5 class="font-size-14 mb-1"><?php echo $personel->adi_soyadi; ?></h5>
+                                                            <p class="text-muted mb-0 font-size-12">
+                                                                <?php echo $personel->departman; ?>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                <?php else: ?>
+                                                    Personel #<?php echo $req->personel_id; ?>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><span
+                                                    class="badge <?php echo $badgeClass; ?> font-size-12"><?php echo $req->tip; ?></span>
+                                            </td>
+                                            <td>
+                                                <?php
+                                                if ($req->tip == 'Avans')
+                                                    echo number_format($req->detay, 2) . ' ₺';
+                                                elseif ($req->tip == 'İzin')
+                                                    echo ucfirst($req->detay);
+                                                else
+                                                    echo $req->detay;
+                                                ?>
+                                            </td>
+                                            <td><?php echo date('d.m.Y', strtotime($req->tarih)); ?></td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <button type="button" class="btn btn-info btn-sm btn-home-detay"
+                                                        data-id="<?php echo $req->id; ?>" data-tip="<?php echo $req->tip; ?>"
+                                                        data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                        data-detay="<?php echo htmlspecialchars($req->tip == 'Avans' ? number_format($req->detay, 2) . ' ₺' : $req->detay); ?>"
+                                                        data-tarih="<?php echo date('d.m.Y', strtotime($req->tarih)); ?>"
+                                                        title="Detay">
+                                                        <i class='bx bx-show'></i>
+                                                    </button>
+                                                    <?php
+                                                    $tabParam = 'avans';
+                                                    if ($req->tip == 'Avans')
+                                                        $tabParam = 'avans';
+                                                    elseif ($req->tip == 'İzin')
+                                                        $tabParam = 'izin';
+                                                    else
+                                                        $tabParam = 'talep';
+                                                    ?>
+                                                                    <a href="index.php?p=talepler/list&tab=<?php echo $tabParam; ?>" 
+                                                                        class="btn btn-primary btn-sm" title="Talepler Sayfasına Git">
+                                                                        <i class='bx bx-right-arrow-alt'></i>
+                                                                    </a>
                                                                 </div>
-                                                        <?php else: ?>
-                                                                Personel #<?php echo $req->personel_id; ?>
-                                                        <?php endif; ?>
-                                                    </td>
-                                                    <td><span class="badge <?php echo $badgeClass; ?> font-size-12"><?php echo $req->tip; ?></span></td>
-                                                    <td>
-                                                        <?php
-                                                        if ($req->tip == 'Avans')
-                                                            echo number_format($req->detay, 2) . ' ₺';
-                                                        elseif ($req->tip == 'İzin')
-                                                            echo ucfirst($req->detay);
-                                                        else
-                                                            echo $req->detay;
-                                                        ?>
-                                                    </td>
-                                                    <td><?php echo date('d.m.Y', strtotime($req->tarih)); ?></td>
-                                                    <td>
-                                                        <a href="index.php?p=<?php echo ($req->tip == 'Avans' || $req->tip == 'İzin') ? 'bordro/index' : 'talep/index'; ?>" class="btn btn-primary btn-sm btn-rounded waves-effect waves-light">İncele</a>
-                                                    </td>
-                                                </tr>
-                                        <?php endforeach; ?>
+                                                            </td>
+                                                        </tr>
+                                            <?php endforeach; ?>
                                 <?php endif; ?>
                             </tbody>
                         </table>
@@ -286,45 +313,45 @@ if (!isset($toplam_bakiye))
                             </thead>
                             <tbody>
                                 <?php if (empty($active_leaves)): ?>
-                                        <tr>
-                                            <td colspan="4" class="text-center">Şu anda izinde olan personel bulunmamaktadır.</td>
-                                        </tr>
+                                            <tr>
+                                                <td colspan="4" class="text-center">Şu anda izinde olan personel bulunmamaktadır.</td>
+                                            </tr>
                                 <?php else: ?>
-                                        <?php foreach ($active_leaves as $leave):
-                                            $bitis = new DateTime($leave->bitis_tarihi);
-                                            $bugun = new DateTime();
-                                            $kalan = $bugun->diff($bitis)->days;
+                                            <?php foreach ($active_leaves as $leave):
+                                                $bitis = new DateTime($leave->bitis_tarihi);
+                                                $bugun = new DateTime();
+                                                $kalan = $bugun->diff($bitis)->days;
 
-                                            $badgeClass = 'badge-primary';
-                                            if ($leave->izin_tipi == 'hastalik')
-                                                $badgeClass = 'badge-danger';
-                                            if ($leave->izin_tipi == 'mazeret')
-                                                $badgeClass = 'badge-warning';
-                                            ?>
-                                                <tr>
-                                                    <td>
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="flex-shrink-0 me-3">
-                                                                <img src="<?php echo !empty($leave->resim_yolu) ? $leave->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
-                                                                    alt="" class="avatar-xs rounded-circle">
-                                                            </div>
-                                                            <div class="flex-grow-1">
-                                                                <h5 class="font-size-14 mb-1"><?php echo $leave->adi_soyadi; ?></h5>
-                                                                <p class="text-muted mb-0 font-size-12"><?php echo $leave->departman; ?></p>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge <?php echo $badgeClass; ?> font-size-12">
-                                                            <?php echo ucfirst($leave->izin_tipi); ?>
-                                                        </span>
-                                                    </td>
-                                                    <td><?php echo date('d.m.Y', strtotime($leave->bitis_tarihi)); ?></td>
-                                                    <td>
-                                                        <span class="badge badge-info"><?php echo $kalan; ?> Gün Kaldı</span>
-                                                    </td>
-                                                </tr>
-                                        <?php endforeach; ?>
+                                                $badgeClass = 'badge-primary';
+                                                if ($leave->izin_tipi == 'hastalik')
+                                                    $badgeClass = 'badge-danger';
+                                                if ($leave->izin_tipi == 'mazeret')
+                                                    $badgeClass = 'badge-warning';
+                                                ?>
+                                                        <tr>
+                                                            <td>
+                                                                <div class="d-flex align-items-center">
+                                                                    <div class="flex-shrink-0 me-3">
+                                                                        <img src="<?php echo !empty($leave->resim_yolu) ? $leave->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
+                                                                            alt="" class="avatar-xs rounded-circle">
+                                                                    </div>
+                                                                    <div class="flex-grow-1">
+                                                                        <h5 class="font-size-14 mb-1"><?php echo $leave->adi_soyadi; ?></h5>
+                                                                        <p class="text-muted mb-0 font-size-12"><?php echo $leave->departman; ?></p>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge <?php echo $badgeClass; ?> font-size-12">
+                                                                    <?php echo ucfirst($leave->izin_tipi); ?>
+                                                                </span>
+                                                            </td>
+                                                            <td><?php echo date('d.m.Y', strtotime($leave->bitis_tarihi)); ?></td>
+                                                            <td>
+                                                                <span class="badge badge-info"><?php echo $kalan; ?> Gün Kaldı</span>
+                                                            </td>
+                                                        </tr>
+                                            <?php endforeach; ?>
                                 <?php endif; ?>
                             </tbody>
                         </table>
@@ -353,120 +380,347 @@ if (!isset($toplam_bakiye))
             </div>
         </div>
     </div>
-    <script src="assets/libs/apexcharts/apexcharts.min.js "></script>
-    <script>
-        var months = <?php echo json_encode($months); ?>;
-        var totals = <?php echo json_encode($totals); ?>;
+</div>
 
-        var options = {
-            chart: {
-                type: 'line'
+<!-- Talep Detay Modal - Premium Tasarım -->
+<style>
+    .modal-detay-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1em;
+        text-align: center;
+    }
+    .modal-detay-header.tip-avans {
+        background: linear-gradient(135deg, #34c38f 0%, #1abc9c 100%);
+    }
+    .modal-detay-header.tip-izin {
+        background: linear-gradient(135deg, #556ee6 0%, #3b5998 100%);
+    }
+    .modal-detay-header.tip-talep {
+        background: linear-gradient(135deg, #50a5f1 0%, #3498db 100%);
+    }
+    .modal-detay-header .icon-wrapper {
+        width: 70px;
+        height: 70px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        backdrop-filter: blur(10px);
+    }
+    .modal-detay-header .icon-wrapper i {
+        font-size: 32px;
+        color: #fff;
+    }
+    .modal-detay-header h5 {
+        color: #fff;
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.25rem;
+    }
+    .modal-detay-header .badge-tip {
+        background: rgba(255,255,255,0.25);
+        color: #fff;
+        padding: 0.5rem 1.25rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        border-radius: 50px;
+        display: inline-block;
+        margin-bottom: 0.5rem;
+    }
+    .modal-detay-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        transition: all 0.2s ease;
+    }
+    .modal-detay-card:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .modal-detay-card .label {
+        color: #6c757d;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.35rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+    }
+    .modal-detay-card .label i {
+        font-size: 14px;
+        opacity: 0.7;
+    }
+    .modal-detay-card .value {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    .modal-detay-card.tip-avans { border-left-color: #34c38f; }
+    .modal-detay-card.tip-izin { border-left-color: #556ee6; }
+    .modal-detay-card.tip-talep { border-left-color: #50a5f1; }
+    #modalHomeDetay .modal-content {
+        border: none;
+        border-radius: 1rem;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        overflow: hidden;
+    }
+    #modalHomeDetay .modal-body {
+        padding: 1.5rem;
+        background: #fafbfc;
+    }
+    #modalHomeDetay .modal-footer {
+        background: #fff;
+        border-top: 1px solid #e9ecef;
+        padding: 1rem 1.5rem;
+    }
+    #modalHomeDetay .btn-close-custom {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: 32px;
+        height: 32px;
+        background: rgba(255,255,255,0.2);
+        border: none;
+        border-radius: 50%;
+        color: #fff;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        z-index: 10;
+    }
+    #modalHomeDetay .btn-close-custom:hover {
+        background: rgba(255,255,255,0.3);
+        transform: rotate(90deg);
+    }
+</style>
+
+<div class="modal fade" id="modalHomeDetay" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-detay-header" id="modalHeader">
+                <button type="button" class="btn-close-custom" data-bs-dismiss="modal">
+                    <i class="bx bx-x"></i>
+                </button>
+                <div class="icon-wrapper">
+                    <i class="bx bx-file" id="modalHeaderIcon"></i>
+                </div>
+                <span class="badge-tip" id="modalTalepTipi">Avans</span>
+                <h5>Talep Detayı</h5>
+            </div>
+            <div class="modal-body">
+                <div class="modal-detay-card" id="cardPersonel">
+                    <div class="label"><i class="bx bx-user"></i> Personel</div>
+                    <div class="value" id="modalPersonel">-</div>
+                </div>
+                <div class="modal-detay-card" id="cardDetay">
+                    <div class="label"><i class="bx bx-info-circle"></i> Detay Bilgisi</div>
+                    <div class="value" id="modalDetay">-</div>
+                </div>
+                <div class="modal-detay-card">
+                    <div class="label"><i class="bx bx-calendar"></i> Talep Tarihi</div>
+                    <div class="value" id="modalTarih">-</div>
+                </div>
+                <div class="modal-detay-card">
+                    <div class="label"><i class="bx bx-loader-circle"></i> Durum</div>
+                    <div class="value">
+                        <span class="badge bg-warning text-dark px-3 py-2">
+                            <i class="bx bx-time me-1"></i>Beklemede
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">
+                    <i class="bx bx-x me-1"></i>Kapat
+                </button>
+                <a href="#" id="modalGitBtn" class="btn btn-primary px-4">
+                    <i class="bx bx-right-arrow-alt me-1"></i>Talep Sayfasına Git
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="assets/libs/apexcharts/apexcharts.min.js"></script>
+<script>
+    var months = <?php echo json_encode($months); ?>;
+    var totals = <?php echo json_encode($totals); ?>;
+
+    var options = {
+        chart: {
+            type: 'line'
+        },
+        series: [{
+            name: 'Üye Sayısı',
+            data: totals
+        }],
+        xaxis: {
+            categories: months
+        }
+    }
+
+    var chart = new ApexCharts(document.querySelector("#chart"), options);
+    chart.render();
+</script>
+
+<script>
+    var options = {
+        series: [{
+            name: 'Gelir',
+            data: [44, 55, 57, 56, 61, 58, 63, 60, 66, 85, 96, 85]
+        }, {
+            name: 'Gider',
+            data: [76, 85, 101, 98, 87, 105, 91, 114, 94, 78, 77, 25]
+        }],
+        chart: {
+            type: 'bar',
+            height: 350
+        },
+        plotOptions: {
+            bar: {
+                horizontal: false,
+                columnWidth: '75%',
+                borderRadius: 4,
+                borderRadiusApplication: 'end'
             },
-            series: [{
-                name: 'Üye Sayısı',
-                data: totals
-            }],
-            xaxis: {
-                categories: months
+        },
+        dataLabels: {
+            enabled: false
+        },
+        stroke: {
+            show: true,
+            width: 2,
+            colors: ['transparent']
+        },
+        xaxis: {
+            categories: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'],
+        },
+        yaxis: {
+            title: {
+                text: '$ (thousands)'
+            }
+        },
+        colors: ['#7AC6D2', '#E16A54', '#9C27B0'],
+        fill: {
+            opacity: 1
+        },
+        tooltip: {
+            y: {
+                formatter: function (val) {
+                    return "$ " + val + " thousands"
+                }
             }
         }
+    };
 
-        var chart = new ApexCharts(document.querySelector("#chart"), options);
+    var chart2 = new ApexCharts(document.querySelector("#chart2"), options);
+    chart2.render();
+</script>
 
-        chart.render();
-    </script>
+<script>
+    var gelir = <?php echo json_encode($toplam_gelir); ?>;
+    var gider = <?php echo json_encode($toplam_gider); ?>;
+    var bakiye = <?php echo json_encode($toplam_bakiye); ?>;
 
-    <script>
-        var options = {
-            series: [{
-                name: 'Gelir',
-                data: [44, 55, 57, 56, 61, 58, 63, 60, 66, 85, 96, 85]
-            }, {
-                name: 'Gider',
-                data: [76, 85, 101, 98, 87, 105, 91, 114, 94,
-                    78, 77, 25
-                ]
-            }],
-            chart: {
-                type: 'bar',
-                height: 350
-            },
-            plotOptions: {
-                bar: {
-                    horizontal: false,
-                    columnWidth: '75%',
-                    borderRadius: 4,
-                    borderRadiusApplication: 'end'
+    var options = {
+        series: [gelir, gider, bakiye],
+        chart: {
+            type: 'polarArea',
+        },
+        labels: ['Gider', 'Gelir', 'Kasa'],
+        stroke: {
+            colors: ['#fff']
+        },
+        fill: {
+            opacity: 0.8
+        },
+        responsive: [{
+            breakpoint: 480,
+            options: {
+                chart: {
+                    width: 200
                 },
-            },
-            dataLabels: {
-                enabled: false
-            },
-            stroke: {
-                show: true,
-                width: 2,
-                colors: ['transparent']
-            },
-            xaxis: {
-                categories: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki',
-                    'Kas', 'Ara'
-                ],
-            },
-            yaxis: {
-                title: {
-                    text: '$ (thousands)'
-                }
-            },
-            colors: ['#7AC6D2', '#E16A54', '#9C27B0'],
-            fill: {
-                opacity: 1
-            },
-
-            tooltip: {
-                y: {
-                    formatter: function (val) {
-                        return "$ " + val + " thousands"
-                    }
+                legend: {
+                    position: 'bottom'
                 }
             }
-        };
+        }]
+    };
 
-        var chart = new ApexCharts(document.querySelector("#chart2"), options);
-        chart.render();
-    </script>
+    var chart3 = new ApexCharts(document.querySelector("#chart3"), options);
+    chart3.render();
+</script>
 
-    <script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Detay butonları için event listener
+    document.querySelectorAll('.btn-home-detay').forEach(function(btn) {
+        btn.addEventListener('click', function () {
+            var tip = this.dataset.tip;
+            var personel = this.dataset.personel;
+            var detay = this.dataset.detay;
+            var tarih = this.dataset.tarih;
 
-        var gelir = <?php echo json_encode($toplam_gelir); ?>;
-        var gider = <?php echo json_encode($toplam_gider); ?>;
-        var bakiye = <?php echo json_encode($toplam_bakiye); ?>;
+            // Header class ve ikon belirleme
+            var headerClass = '';
+            var headerIcon = 'bx-file';
+            var cardBorderClass = '';
+            
+            if (tip === 'Avans') {
+                headerClass = 'tip-avans';
+                headerIcon = 'bx-money';
+                cardBorderClass = 'tip-avans';
+            } else if (tip === 'İzin') {
+                headerClass = 'tip-izin';
+                headerIcon = 'bx-calendar-check';
+                cardBorderClass = 'tip-izin';
+            } else if (tip === 'Talep') {
+                headerClass = 'tip-talep';
+                headerIcon = 'bx-message-square-detail';
+                cardBorderClass = 'tip-talep';
+            }
 
-        var options = {
-            series: [gelir, gider, bakiye],
-            chart: {
-                type: 'polarArea',
-            },
-            labels: ['Gider', 'Gelir', 'Kasa'],
-            stroke: {
-                colors: ['#fff']
-            },
-            fill: {
-                opacity: 0.8
-            },
-            responsive: [{
-                breakpoint: 480,
-                options: {
-                    chart: {
-                        width: 200
-                    },
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }]
-        };
+            // Header güncelle
+            var modalHeader = document.getElementById('modalHeader');
+            modalHeader.className = 'modal-detay-header ' + headerClass;
+            
+            // Tip badge güncelle
+            document.getElementById('modalTalepTipi').textContent = tip;
+            
+            // Header ikonunu güncelle
+            document.getElementById('modalHeaderIcon').className = 'bx ' + headerIcon;
 
-        var chart = new ApexCharts(document.querySelector("#chart3"), options);
-        chart.render();
+            // İçerikleri doldur
+            document.getElementById('modalPersonel').textContent = personel;
+            document.getElementById('modalDetay').textContent = detay;
+            document.getElementById('modalTarih').textContent = tarih;
+            
+            // Kartların border rengini güncelle
+            document.querySelectorAll('.modal-detay-card').forEach(function(card) {
+                card.classList.remove('tip-avans', 'tip-izin', 'tip-talep');
+                if (cardBorderClass) card.classList.add(cardBorderClass);
+            });
 
-    </script>
+            // Git butonunun link'ini ayarla
+            var tabParam = 'avans';
+            if (tip === 'Avans') tabParam = 'avans';
+            else if (tip === 'İzin') tabParam = 'izin';
+            else tabParam = 'talep';
+
+            document.getElementById('modalGitBtn').href = 'index.php?p=talepler/list&tab=' + tabParam;
+
+            // Modal'ı aç
+            new bootstrap.Modal(document.getElementById('modalHomeDetay')).show();
+        });
+    });
+});
+</script>

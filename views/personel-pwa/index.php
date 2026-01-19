@@ -132,7 +132,7 @@ if (!in_array($page, $allowed_pages)) {
         <a href="?page=bordro"
             class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'bordro' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
             <span class="material-symbols-outlined <?php echo $page === 'bordro' ? 'filled' : ''; ?>">payments</span>
-            <span class="text-[10px] font-semibold">Bordro</span>
+            <span class="text-[10px] font-semibold">Avans</span>
         </a>
         <a href="?page=izin"
             class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'izin' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
@@ -158,11 +158,11 @@ if (!in_array($page, $allowed_pages)) {
         <div class="loader-container">
             <div class="premium-loader">
                 <div class="premium-loader-inner">
-                    <span class="material-symbols-outlined">bolt</span>
+                    <span class="material-symbols-outlined"></span>
                 </div>
             </div>
             <div class="flex flex-col items-center gap-1">
-                <h2 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Ersan<span
+                <h2 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Ersan <span
                         class="text-primary">Elektrik</span></h2>
                 <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Yükleniyor...</p>
             </div>

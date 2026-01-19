@@ -14,9 +14,6 @@ const PRECACHE_ASSETS = [
   "./assets/js/pwa-app.js",
   "./manifest.json",
   "./offline.html",
-  "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap",
-  "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap",
-  "https://cdn.tailwindcss.com?plugins=forms,container-queries",
 ];
 
 // Install event - önbellekleme
@@ -30,7 +27,7 @@ self.addEventListener("install", (event) => {
       })
       .then(() => {
         self.skipWaiting();
-      })
+      }),
   );
 });
 
@@ -46,12 +43,12 @@ self.addEventListener("activate", (event) => {
               console.log("Deleting old cache:", cacheName);
               return caches.delete(cacheName);
             }
-          })
+          }),
         );
       })
       .then(() => {
         self.clients.claim();
-      })
+      }),
   );
 });
 
@@ -70,9 +67,9 @@ self.addEventListener("fetch", (event) => {
               success: false,
               message: "Çevrimdışı modda API erişimi yok",
             }),
-            { headers: { "Content-Type": "application/json" } }
+            { headers: { "Content-Type": "application/json" } },
           );
-        })
+        }),
     );
     return;
   }
@@ -82,7 +79,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(event.request).catch(() => {
         return caches.match(OFFLINE_URL);
-      })
+      }),
     );
     return;
   }
@@ -108,20 +105,31 @@ self.addEventListener("fetch", (event) => {
 
       // Önbellekte varsa hemen dön, yoksa fetch'i bekle
       return cachedResponse || fetchPromise;
-    })
+    }),
   );
 });
 
 // Push notification
 self.addEventListener("push", (event) => {
+  let data = {};
+
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { body: event.data.text() };
+    }
+  }
+
+  const title = data.title || "Ersan Elektrik";
   const options = {
-    body: event.data ? event.data.text() : "Yeni bildiriminiz var",
-    icon: "./assets/icons/icon-192.png",
+    body: data.body || "Yeni bildiriminiz var",
+    icon: data.icon || "./assets/icons/icon-192.png",
     badge: "./assets/icons/badge-72.png",
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
-      primaryKey: 1,
+      url: data.url || "index.php",
     },
     actions: [
       { action: "explore", title: "Görüntüle" },
@@ -129,17 +137,32 @@ self.addEventListener("push", (event) => {
     ],
   };
 
-  event.waitUntil(
-    self.registration.showNotification("Ersan Elektrik", options)
-  );
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 // Notification click
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  if (event.action === "explore") {
-    event.waitUntil(clients.openWindow("index.php"));
+  if (event.action === "explore" || !event.action) {
+    const urlToOpen = event.notification.data.url || "index.php";
+
+    event.waitUntil(
+      clients.matchAll({ type: "window" }).then((windowClients) => {
+        // Eğer açık bir pencere varsa ona odaklan
+        for (let i = 0; i < windowClients.length; i++) {
+          const client = windowClients[i];
+          // URL kontrolü tam eşleşme yerine içeriyor mu diye bakabiliriz
+          if ("focus" in client) {
+            return client.focus().then((c) => c.navigate(urlToOpen));
+          }
+        }
+        // Yoksa yeni pencere aç
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen);
+        }
+      }),
+    );
   }
 });
 

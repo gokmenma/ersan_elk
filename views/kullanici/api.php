@@ -23,45 +23,56 @@ if ($_POST["action"] == "kullanici-kaydet") {
     $rowData = ''; // Satır verisi başlangıç değeri
 
     //User_branchs multiple select, bunu virgül ile birleştir
-    if(isset($_POST['user_branchs']) && is_array($_POST['user_branchs'])){
+    if (isset($_POST['user_firms']) && is_array($_POST['user_firms'])) {
 
-        $user_branchs = implode(',', $_POST['user_branchs']);
-    }else{
-     $user_branchs = '';
+        $user_firma_ids = implode(',', $_POST['user_firms']);
+    } else {
+        $user_firma_ids = '';
     }
-    
+
     try {
+        // Mail bildirim checkbox'larını işle (checkbox işaretliyse 'Evet', değilse 'Hayır')
+        $mail_avans_talep = isset($_POST['mail_avans_talep']) && $_POST['mail_avans_talep'] == 'Evet' ? 'Evet' : 'Hayır';
+        $mail_izin_talep = isset($_POST['mail_izin_talep']) && $_POST['mail_izin_talep'] == 'Evet' ? 'Evet' : 'Hayır';
+        $mail_genel_talep = isset($_POST['mail_genel_talep']) && $_POST['mail_genel_talep'] == 'Evet' ? 'Evet' : 'Hayır';
+        $mail_ariza_talep = isset($_POST['mail_ariza_talep']) && $_POST['mail_ariza_talep'] == 'Evet' ? 'Evet' : 'Hayır';
+
         $data = [
-            'id' => $id , // Eğer id varsa deşifre et
+            'id' => $id, // Eğer id varsa deşifre et
             'user_name' => $_POST['user_name'],
             'adi_soyadi' => $_POST['adi_soyadi'],
             'email_adresi' => $_POST['email_adresi'],
             'telefon' => $_POST['telefon'],
-            'unvani' => $_POST['unvani'],
             'gorevi' => $_POST['gorevi'],
             'aciklama' => $_POST['aciklama'],
             'owner_id' => $_SESSION["owner_id"],
             'roles' => ($_POST['roles']),
-            'sube_id' => $user_branchs
+            'firma_ids' => $user_firma_ids,
+            'izin_onayi_yapacakmi' => $_POST['izin_onayi_yapacakmi'],
+            'izin_onay_sirasi' => $_POST['izin_onay_sirasi'],
+            'mail_avans_talep' => $mail_avans_talep,
+            'mail_izin_talep' => $mail_izin_talep,
+            'mail_genel_talep' => $mail_genel_talep,
+            'mail_ariza_talep' => $mail_ariza_talep
         ];
         if (!empty($_POST['password'])) {
             $data['password'] = password_hash($_POST['password'], PASSWORD_BCRYPT);
         }
 
-        
+
 
         $lastInsertedId = $User->saveWithAttr($data) ?? $_POST['user_id'];
 
         //Eklenen kullanıcıya ait verileri satıra aktarmak için verileri getir
-        $rowData = $User->renderUserTableRow(Security::decrypt($lastInsertedId),$id == 0 ? true : false);
+        //$rowData = $User->renderUserTableRow(Security::decrypt($lastInsertedId), $id == 0 ? true : false);
 
 
 
         $status = "success";
-        $message = "Kullanıcı başarıyla kaydedildi.";
+        $message = "Kullanıcı başarıyla kaydedildi." ;
     } catch (PDOException $ex) {
 
-        if( $ex->getCode() == 23000) { // 23000 hata kodu, genellikle benzersiz kısıtlama ihlali anlamına gelir
+        if ($ex->getCode() == 23000) { // 23000 hata kodu, genellikle benzersiz kısıtlama ihlali anlamına gelir
             $message = "Bu kullanıcı adı veya e-posta zaten kayıtlı.";
         } else {
             $message = $ex->getMessage();
@@ -80,7 +91,7 @@ if ($_POST["action"] == "kullanici-kaydet") {
 
 //Kullanıcı silme işlemi
 if ($_POST["action"] == "kullanici-sil") {
-    $id = $_POST['id'] ;
+    $id = $_POST['id'];
 
     try {
         $User->delete($id);

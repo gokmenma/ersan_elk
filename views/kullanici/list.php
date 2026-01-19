@@ -55,7 +55,7 @@ $users = $User->getUsers();
                                 <th class="text-center">Sıra</th>
                                 <th style="width:25%">Kullanıcı Adı</th>
                                 <th>Adı Soyadi</th>
-                                <th class="text-center">Unvanı</th>
+                                <th class="text-center">Görevi</th>
                                 <th class="text-center">E-Posta</th>
                                 <th class="text-center">Telefon</th>
                                 <th>Kayıt Tarihi</th>
@@ -71,15 +71,25 @@ $users = $User->getUsers();
                             foreach ($users as $user) {
                                 $i++;
                                 $enc_id = Security::encrypt($user->id);
+                                $badge_color =[
+                                    "Admin"=>"success",
+                                    "Users"=>"primary"
+                                   
+                                ];
+
+
                             ?>
                                 <tr data-id="<?php echo $enc_id ?>">
                                     <td class="text-center">
                                         <?php echo $i ?>
                                     </td>
 
-                                    <td><?php echo $user->user_name ?></td>
+                                    <td style="width:10%">
+                                        <span class="badge bg-<?php echo $badge_color[$user->role_name] ?>"><?php echo $user->role_name ?></span>
+                                        <?php echo $user->user_name ?>
+                                    </td>
                                     <td><?php echo $user->adi_soyadi ?></td>
-                                    <td class="text-center"><?php echo $user->unvani ?></td>
+                                    <td class="text-center"><?php echo $user->gorevi ?></td>
                                     <td class="text-center"><?php echo $user->email_adresi ?></td>
                                     <td class="text-center"><?php echo $user->telefon ?></td>
                                     <td><?php echo $user->created_at ?></td>
