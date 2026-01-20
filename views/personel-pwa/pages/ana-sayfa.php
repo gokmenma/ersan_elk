@@ -165,7 +165,18 @@ use App\Helper\Helper;
 <div id="notification-modal" class="modal-overlay">
     <div class="modal-content p-6 pt-3">
         <div class="modal-handle"></div>
-        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Bildirimler</h3>
+        
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Bildirimler</h3>
+            <div class="flex items-center gap-2">
+                <button onclick="markAllAsRead()" class="text-xs text-primary font-medium" title="Tümünü Okundu İşaretle">
+                    <span class="material-symbols-outlined text-lg">done_all</span>
+                </button>
+                <button onclick="deleteAllNotifications()" class="text-xs text-red-500 font-medium" title="Tümünü Sil">
+                    <span class="material-symbols-outlined text-lg">delete_sweep</span>
+                </button>
+            </div>
+        </div>
 
         <div id="notification-list" class="flex flex-col gap-3 max-h-[60vh] overflow-y-auto">
             <!-- Bildirimler buraya yüklenecek -->
@@ -203,11 +214,16 @@ use App\Helper\Helper;
     <div class="modal-content p-6 pt-3">
         <div class="modal-handle"></div>
         
-        <div class="flex items-center gap-3 mb-4">
-            <button onclick="closeNotificationDetail()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                <span class="material-symbols-outlined text-slate-600">arrow_back</span>
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+                <button onclick="closeNotificationDetail()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-slate-600">arrow_back</span>
+                </button>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Bildirim Detayı</h3>
+            </div>
+            <button onclick="deleteCurrentNotification()" class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center" title="Sil">
+                <span class="material-symbols-outlined text-red-600 text-lg">delete</span>
             </button>
-            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Bildirim Detayı</h3>
         </div>
 
         <div id="notification-detail-content" class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
@@ -225,6 +241,7 @@ use App\Helper\Helper;
     // Global data
     var allActivitiesData = [];
     var allNotificationsData = [];
+    var currentNotificationIndex = -1;
 
     document.addEventListener('DOMContentLoaded', function () {
         // Load dashboard data
@@ -252,12 +269,13 @@ use App\Helper\Helper;
         try {
             var response = await API.request('getMyNotifications');
             if (response.success && response.data) {
-                var count = response.data.length;
+                // Sadece okunmamış bildirimleri say
+                var unreadCount = response.data.filter(function(n) { return !n.okundu; }).length;
                 var badge = document.getElementById('notification-badge');
                 if (badge) {
-                    if (count > 0) {
+                    if (unreadCount > 0) {
                         badge.style.display = 'flex';
-                        badge.textContent = count > 9 ? '9+' : count;
+                        badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
                     } else {
                         badge.style.display = 'none';
                     }
@@ -353,12 +371,16 @@ use App\Helper\Helper;
             if (response.success && response.data && response.data.length > 0) {
                 allNotificationsData = response.data;
                 container.innerHTML = response.data.map(function(notification, index) {
-                    return '<div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" onclick="showNotificationDetail(' + index + ')">' +
+                    var unreadIndicator = notification.okundu ? '' : '<div class="absolute top-2 left-2 w-2 h-2 bg-primary rounded-full"></div>';
+                    var bgClass = notification.okundu ? 'bg-slate-50 dark:bg-slate-800' : 'bg-blue-50 dark:bg-blue-900/20 border border-primary/20';
+                    
+                    return '<div class="relative flex items-start gap-3 p-3 ' + bgClass + ' rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" onclick="showNotificationDetail(' + index + ')">' +
+                        unreadIndicator +
                         '<div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">' +
                             '<span class="material-symbols-outlined text-blue-600 text-lg">notifications</span>' +
                         '</div>' +
                         '<div class="flex-1 min-w-0">' +
-                            '<p class="text-sm font-medium text-slate-900 dark:text-white">' + escapeHtml(notification.title) + '</p>' +
+                            '<p class="text-sm font-medium text-slate-900 dark:text-white ' + (notification.okundu ? '' : 'font-bold') + '">' + escapeHtml(notification.title) + '</p>' +
                             '<p class="text-xs text-slate-500 line-clamp-2">' + escapeHtml(notification.body) + '</p>' +
                             '<p class="text-[10px] text-primary mt-1">' + notification.time_ago + '</p>' +
                         '</div>' +
@@ -374,9 +396,18 @@ use App\Helper\Helper;
         }
     }
 
-    function showNotificationDetail(index) {
+    async function showNotificationDetail(index) {
         var notification = allNotificationsData[index];
         if (!notification) return;
+
+        currentNotificationIndex = index;
+
+        // Bildirimi okundu olarak işaretle
+        if (!notification.okundu) {
+            await API.request('markNotificationRead', { notification_id: notification.id });
+            allNotificationsData[index].okundu = true;
+            loadNotificationCount(); // Badge'i güncelle
+        }
 
         var container = document.getElementById('notification-detail-content');
         container.innerHTML = 
@@ -401,7 +432,67 @@ use App\Helper\Helper;
         Modal.close('notification-detail-modal');
         setTimeout(function() {
             Modal.open('notification-modal');
+            loadNotifications(); // Listeyi güncelle
         }, 200);
+    }
+
+    async function deleteCurrentNotification() {
+        if (currentNotificationIndex < 0) return;
+        
+        var notification = allNotificationsData[currentNotificationIndex];
+        if (!notification) return;
+
+        var confirmed = await Alert.confirm('Bildirimi Sil', 'Bu bildirimi silmek istediğinize emin misiniz?', 'Evet, Sil', 'Vazgeç');
+        if (!confirmed) return;
+
+        try {
+            var response = await API.request('deleteNotification', { notification_id: notification.id });
+            if (response.success) {
+                Toast.show('Bildirim silindi', 'success');
+                allNotificationsData.splice(currentNotificationIndex, 1);
+                currentNotificationIndex = -1;
+                loadNotificationCount();
+                closeNotificationDetail();
+            } else {
+                Toast.show(response.message || 'Bir hata oluştu', 'error');
+            }
+        } catch (error) {
+            Toast.show('Bir hata oluştu', 'error');
+        }
+    }
+
+    async function markAllAsRead() {
+        try {
+            var response = await API.request('markAllNotificationsRead');
+            if (response.success) {
+                Toast.show('Tüm bildirimler okundu olarak işaretlendi', 'success');
+                loadNotifications();
+                loadNotificationCount();
+            } else {
+                Toast.show(response.message || 'Bir hata oluştu', 'error');
+            }
+        } catch (error) {
+            Toast.show('Bir hata oluştu', 'error');
+        }
+    }
+
+    async function deleteAllNotifications() {
+        var confirmed = await Alert.confirm('Tüm Bildirimleri Sil', 'Tüm bildirimleri silmek istediğinize emin misiniz?', 'Evet, Tümünü Sil', 'Vazgeç');
+        if (!confirmed) return;
+
+        try {
+            var response = await API.request('deleteAllNotifications');
+            if (response.success) {
+                Toast.show('Tüm bildirimler silindi', 'success');
+                allNotificationsData = [];
+                loadNotifications();
+                loadNotificationCount();
+            } else {
+                Toast.show(response.message || 'Bir hata oluştu', 'error');
+            }
+        } catch (error) {
+            Toast.show('Bir hata oluştu', 'error');
+        }
     }
 
     function escapeHtml(text) {

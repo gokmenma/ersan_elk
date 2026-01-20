@@ -875,20 +875,41 @@ try {
 
             $db = $PersonelModel->getDb();
 
+            // personel_bildirim_durumu tablosu yoksa oluştur
+            $db->exec("CREATE TABLE IF NOT EXISTS personel_bildirim_durumu (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                personel_id INT NOT NULL,
+                mesaj_log_id INT NOT NULL,
+                okundu TINYINT(1) DEFAULT 0,
+                okunma_tarihi DATETIME NULL,
+                silindi TINYINT(1) DEFAULT 0,
+                silme_tarihi DATETIME NULL,
+                UNIQUE KEY unique_personel_mesaj (personel_id, mesaj_log_id)
+            )");
+
             // mesaj_log tablosundan push bildirimlerini çek
             // recipients alanında personel adı veya "Tüm Aboneler" ibaresi geçenleri al
-            $sql = "SELECT * FROM mesaj_log 
-                    WHERE type = 'push' 
+            // silindi olarak işaretlenmemiş olanları getir
+            $sql = "SELECT m.*, 
+                    COALESCE(pbd.okundu, 0) as okundu,
+                    pbd.okunma_tarihi
+                    FROM mesaj_log m
+                    LEFT JOIN personel_bildirim_durumu pbd ON m.id = pbd.mesaj_log_id AND pbd.personel_id = :personel_id
+                    WHERE m.type = 'push' 
                     AND (
-                        recipients LIKE :personel_adi 
-                        OR recipients LIKE '%Tüm Aboneler%'
-                        OR recipients LIKE '%Test Kullanıcısı%'
+                        m.recipients LIKE :personel_adi 
+                        OR m.recipients LIKE '%Tüm Aboneler%'
+                        OR m.recipients LIKE '%Test Kullanıcısı%'
                     )
-                    ORDER BY created_at DESC 
-                    LIMIT 20";
+                    AND (pbd.silindi IS NULL OR pbd.silindi = 0)
+                    ORDER BY m.created_at DESC 
+                    LIMIT 50";
 
             $stmt = $db->prepare($sql);
-            $stmt->execute([':personel_adi' => '%' . $personelAdi . '%']);
+            $stmt->execute([
+                ':personel_id' => $personel_id,
+                ':personel_adi' => '%' . $personelAdi . '%'
+            ]);
             $notifications = $stmt->fetchAll(PDO::FETCH_OBJ);
 
             $data = array_map(function ($item) {
@@ -921,12 +942,142 @@ try {
                     'body' => $item->message,
                     'time_ago' => $timeAgo,
                     'created_at' => $item->created_at,
-                    'status' => $item->status
+                    'status' => $item->status,
+                    'okundu' => (bool) $item->okundu
                 ];
             }, $notifications);
 
             response(true, $data);
             break;
+
+        case 'markNotificationRead':
+            $mesaj_log_id = $data['notification_id'] ?? null;
+
+            if (!$mesaj_log_id) {
+                response(false, null, 'Bildirim ID gerekli');
+            }
+
+            $PersonelModel = new PersonelModel();
+            $db = $PersonelModel->getDb();
+
+            // Upsert - varsa güncelle, yoksa ekle
+            $sql = "INSERT INTO personel_bildirim_durumu (personel_id, mesaj_log_id, okundu, okunma_tarihi)
+                    VALUES (:personel_id, :mesaj_log_id, 1, NOW())
+                    ON DUPLICATE KEY UPDATE okundu = 1, okunma_tarihi = NOW()";
+
+            $stmt = $db->prepare($sql);
+            $result = $stmt->execute([
+                ':personel_id' => $personel_id,
+                ':mesaj_log_id' => $mesaj_log_id
+            ]);
+
+            if ($result) {
+                response(true, null, 'Bildirim okundu olarak işaretlendi');
+            } else {
+                response(false, null, 'İşlem başarısız');
+            }
+            break;
+
+        case 'markAllNotificationsRead':
+            $PersonelModel = new PersonelModel();
+            $personelData = $PersonelModel->find($personel_id);
+            $personelAdi = $personelData->adi_soyadi ?? '';
+            $db = $PersonelModel->getDb();
+
+            // Personele ait tüm bildirimleri bul
+            $sql = "SELECT id FROM mesaj_log 
+                    WHERE type = 'push' 
+                    AND (
+                        recipients LIKE :personel_adi 
+                        OR recipients LIKE '%Tüm Aboneler%'
+                        OR recipients LIKE '%Test Kullanıcısı%'
+                    )";
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute([':personel_adi' => '%' . $personelAdi . '%']);
+            $notifications = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            // Her birini okundu olarak işaretle
+            $insertSql = "INSERT INTO personel_bildirim_durumu (personel_id, mesaj_log_id, okundu, okunma_tarihi)
+                          VALUES (:personel_id, :mesaj_log_id, 1, NOW())
+                          ON DUPLICATE KEY UPDATE okundu = 1, okunma_tarihi = NOW()";
+
+            $insertStmt = $db->prepare($insertSql);
+
+            foreach ($notifications as $notifId) {
+                $insertStmt->execute([
+                    ':personel_id' => $personel_id,
+                    ':mesaj_log_id' => $notifId
+                ]);
+            }
+
+            response(true, null, 'Tüm bildirimler okundu olarak işaretlendi');
+            break;
+
+        case 'deleteNotification':
+            $mesaj_log_id = $data['notification_id'] ?? null;
+
+            if (!$mesaj_log_id) {
+                response(false, null, 'Bildirim ID gerekli');
+            }
+
+            $PersonelModel = new PersonelModel();
+            $db = $PersonelModel->getDb();
+
+            // Upsert - varsa güncelle, yoksa ekle (silindi olarak işaretle)
+            $sql = "INSERT INTO personel_bildirim_durumu (personel_id, mesaj_log_id, silindi, silme_tarihi)
+                    VALUES (:personel_id, :mesaj_log_id, 1, NOW())
+                    ON DUPLICATE KEY UPDATE silindi = 1, silme_tarihi = NOW()";
+
+            $stmt = $db->prepare($sql);
+            $result = $stmt->execute([
+                ':personel_id' => $personel_id,
+                ':mesaj_log_id' => $mesaj_log_id
+            ]);
+
+            if ($result) {
+                response(true, null, 'Bildirim silindi');
+            } else {
+                response(false, null, 'İşlem başarısız');
+            }
+            break;
+
+        case 'deleteAllNotifications':
+            $PersonelModel = new PersonelModel();
+            $personelData = $PersonelModel->find($personel_id);
+            $personelAdi = $personelData->adi_soyadi ?? '';
+            $db = $PersonelModel->getDb();
+
+            // Personele ait tüm bildirimleri bul
+            $sql = "SELECT id FROM mesaj_log 
+                    WHERE type = 'push' 
+                    AND (
+                        recipients LIKE :personel_adi 
+                        OR recipients LIKE '%Tüm Aboneler%'
+                        OR recipients LIKE '%Test Kullanıcısı%'
+                    )";
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute([':personel_adi' => '%' . $personelAdi . '%']);
+            $notifications = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            // Her birini silindi olarak işaretle
+            $insertSql = "INSERT INTO personel_bildirim_durumu (personel_id, mesaj_log_id, silindi, silme_tarihi)
+                          VALUES (:personel_id, :mesaj_log_id, 1, NOW())
+                          ON DUPLICATE KEY UPDATE silindi = 1, silme_tarihi = NOW()";
+
+            $insertStmt = $db->prepare($insertSql);
+
+            foreach ($notifications as $notifId) {
+                $insertStmt->execute([
+                    ':personel_id' => $personel_id,
+                    ':mesaj_log_id' => $notifId
+                ]);
+            }
+
+            response(true, null, 'Tüm bildirimler silindi');
+            break;
+
 
         // ===== Puantaj / İş Takip =====
         case 'getPuantajData':
