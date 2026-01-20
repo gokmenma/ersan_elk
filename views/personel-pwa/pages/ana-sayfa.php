@@ -33,7 +33,7 @@ use App\Helper\Helper;
                         <h1 class="text-xl font-bold"><?php echo $personel->adi_soyadi ?? 'Personel'; ?></h1>
                     </div>
                 </div>
-                <button onclick="Modal.open('notification-modal')"
+                <button onclick="openNotificationModal()"
                     class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center relative">
                     <span class="material-symbols-outlined">notifications</span>
                     <span id="notification-badge"
@@ -157,7 +157,6 @@ use App\Helper\Helper;
             <div id="activities-loading" class="flex items-center justify-center py-8">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-            <!-- Activities will be loaded here -->
         </div>
     </section>
 </div>
@@ -255,135 +254,104 @@ use App\Helper\Helper;
                 allActivitiesData = response.data;
                 // Show first 5 activities on homepage
                 const displayActivities = response.data.slice(0, 5);
-                container.innerHTML = displayActivities.map((activity, index) => renderActivityItem(activity, index === displayActivities.length - 1)).join('');
+                container.innerHTML = displayActivities.map(function(activity, index) {
+                    return renderActivityItem(activity, index === displayActivities.length - 1);
+                }).join('');
             } else {
-                container.innerHTML = `
-                    <div class="flex flex-col items-center justify-center py-8 text-center">
-                        <span class="material-symbols-outlined text-4xl text-slate-300 mb-2">timeline</span>
-                        <p class="text-sm text-slate-500">Henüz etkinlik yok</p>
-                    </div>
-                `;
+                container.innerHTML = '<div class="flex flex-col items-center justify-center py-8 text-center"><span class="material-symbols-outlined text-4xl text-slate-300 mb-2">timeline</span><p class="text-sm text-slate-500">Henüz etkinlik yok</p></div>';
             }
         } catch (error) {
             console.error('Activities load error:', error);
-            container.innerHTML = `
-                <div class="flex flex-col items-center justify-center py-8 text-center">
-                    <span class="material-symbols-outlined text-4xl text-red-300 mb-2">error</span>
-                    <p class="text-sm text-slate-500">Etkinlikler yüklenemedi</p>
-                </div>
-            `;
+            container.innerHTML = '<div class="flex flex-col items-center justify-center py-8 text-center"><span class="material-symbols-outlined text-4xl text-red-300 mb-2">error</span><p class="text-sm text-slate-500">Etkinlikler yüklenemedi</p></div>';
         }
     }
 
-    function renderActivityItem(activity, isLast = false) {
-        const iconColorMap = {
+    function renderActivityItem(activity, isLast) {
+        var iconColorMap = {
             'blue': 'bg-blue-100 dark:bg-blue-900/30 text-blue-600',
             'green': 'bg-green-100 dark:bg-green-900/30 text-green-600',
             'orange': 'bg-orange-100 dark:bg-orange-900/30 text-orange-600',
             'primary': 'bg-primary/10 text-primary'
         };
 
-        const badgeClassMap = {
+        var badgeClassMap = {
             'success': 'badge-success',
             'warning': 'badge-warning',
             'danger': 'badge-danger',
             'gray': 'badge-gray'
         };
 
-        const iconClass = iconColorMap[activity.icon_color] || iconColorMap['primary'];
-        const badgeClass = badgeClassMap[activity.status_badge] || 'badge-gray';
-        const borderClass = isLast ? '' : 'border-b border-slate-100 dark:border-slate-800';
+        var iconClass = iconColorMap[activity.icon_color] || iconColorMap['primary'];
+        var badgeClass = badgeClassMap[activity.status_badge] || 'badge-gray';
+        var borderClass = isLast ? '' : 'border-b border-slate-100 dark:border-slate-800';
 
-        return `
-            <div class="activity-item flex items-center gap-4 p-4 ${borderClass}">
-                <div class="w-10 h-10 rounded-full ${iconClass} flex items-center justify-center">
-                    <span class="material-symbols-outlined text-xl">${escapeHtml(activity.icon)}</span>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-semibold text-slate-900 dark:text-white truncate">${escapeHtml(activity.title)}</p>
-                    <p class="text-xs text-slate-500 truncate">${escapeHtml(activity.description)}</p>
-                </div>
-                <div class="text-right flex-shrink-0">
-                    <p class="text-xs text-slate-400">${escapeHtml(activity.time_ago)}</p>
-                    <span class="badge ${badgeClass}">${escapeHtml(activity.status_text)}</span>
-                </div>
-            </div>
-        `;
+        return '<div class="activity-item flex items-center gap-4 p-4 ' + borderClass + '">' +
+            '<div class="w-10 h-10 rounded-full ' + iconClass + ' flex items-center justify-center">' +
+                '<span class="material-symbols-outlined text-xl">' + escapeHtml(activity.icon) + '</span>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+                '<p class="text-sm font-semibold text-slate-900 dark:text-white truncate">' + escapeHtml(activity.title) + '</p>' +
+                '<p class="text-xs text-slate-500 truncate">' + escapeHtml(activity.description) + '</p>' +
+            '</div>' +
+            '<div class="text-right flex-shrink-0">' +
+                '<p class="text-xs text-slate-400">' + escapeHtml(activity.time_ago) + '</p>' +
+                '<span class="badge ' + badgeClass + '">' + escapeHtml(activity.status_text) + '</span>' +
+            '</div>' +
+        '</div>';
     }
 
     function showAllActivities() {
-        const container = document.getElementById('all-activities-list');
+        var container = document.getElementById('all-activities-list');
         
         if (allActivitiesData.length > 0) {
-            container.innerHTML = allActivitiesData.map((activity, index) => renderActivityItem(activity, index === allActivitiesData.length - 1)).join('');
+            container.innerHTML = allActivitiesData.map(function(activity, index) {
+                return renderActivityItem(activity, index === allActivitiesData.length - 1);
+            }).join('');
         } else {
-            container.innerHTML = `
-                <div class="flex flex-col items-center justify-center py-8 text-center">
-                    <span class="material-symbols-outlined text-4xl text-slate-300 mb-2">timeline</span>
-                    <p class="text-sm text-slate-500">Henüz etkinlik yok</p>
-                </div>
-            `;
+            container.innerHTML = '<div class="flex flex-col items-center justify-center py-8 text-center"><span class="material-symbols-outlined text-4xl text-slate-300 mb-2">timeline</span><p class="text-sm text-slate-500">Henüz etkinlik yok</p></div>';
         }
         
         Modal.open('all-activities-modal');
     }
 
+    function openNotificationModal() {
+        Modal.open('notification-modal');
+        loadNotifications();
+    }
+
     async function loadNotifications() {
-        const container = document.getElementById('notification-list');
-        container.innerHTML = `
-            <div class="flex items-center justify-center py-8">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-        `;
+        var container = document.getElementById('notification-list');
+        container.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>';
 
         try {
-            const response = await API.request('getMyNotifications');
+            var response = await API.request('getMyNotifications');
             
             if (response.success && response.data && response.data.length > 0) {
-                container.innerHTML = response.data.map(notification => `
-                    <div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                            <span class="material-symbols-outlined text-blue-600 text-lg">notifications</span>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-slate-900 dark:text-white">${escapeHtml(notification.title)}</p>
-                            <p class="text-xs text-slate-500 line-clamp-2">${escapeHtml(notification.body)}</p>
-                            <p class="text-[10px] text-primary mt-1">${notification.time_ago}</p>
-                        </div>
-                    </div>
-                `).join('');
+                container.innerHTML = response.data.map(function(notification) {
+                    return '<div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">' +
+                        '<div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">' +
+                            '<span class="material-symbols-outlined text-blue-600 text-lg">notifications</span>' +
+                        '</div>' +
+                        '<div class="flex-1 min-w-0">' +
+                            '<p class="text-sm font-medium text-slate-900 dark:text-white">' + escapeHtml(notification.title) + '</p>' +
+                            '<p class="text-xs text-slate-500 line-clamp-2">' + escapeHtml(notification.body) + '</p>' +
+                            '<p class="text-[10px] text-primary mt-1">' + notification.time_ago + '</p>' +
+                        '</div>' +
+                    '</div>';
+                }).join('');
             } else {
-                container.innerHTML = `
-                    <div class="flex flex-col items-center justify-center py-8 text-center">
-                        <span class="material-symbols-outlined text-4xl text-slate-300 mb-2">notifications_off</span>
-                        <p class="text-sm text-slate-500">Henüz bildirim yok</p>
-                    </div>
-                `;
+                container.innerHTML = '<div class="flex flex-col items-center justify-center py-8 text-center"><span class="material-symbols-outlined text-4xl text-slate-300 mb-2">notifications_off</span><p class="text-sm text-slate-500">Henüz bildirim yok</p></div>';
             }
         } catch (error) {
             console.error('Notifications load error:', error);
-            container.innerHTML = `
-                <div class="flex flex-col items-center justify-center py-8 text-center">
-                    <span class="material-symbols-outlined text-4xl text-red-300 mb-2">error</span>
-                    <p class="text-sm text-slate-500">Bildirimler yüklenemedi</p>
-                </div>
-            `;
+            container.innerHTML = '<div class="flex flex-col items-center justify-center py-8 text-center"><span class="material-symbols-outlined text-4xl text-red-300 mb-2">error</span><p class="text-sm text-slate-500">Bildirimler yüklenemedi</p></div>';
         }
     }
 
     function escapeHtml(text) {
         if (!text) return '';
-        const div = document.createElement('div');
+        var div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
-
-    // Override Modal.open for notification modal
-    const originalModalOpen = Modal.open;
-    Modal.open = function(modalId) {
-        originalModalOpen.call(this, modalId);
-        if (modalId === 'notification-modal') {
-            loadNotifications();
-        }
-    };
 </script>
