@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'publicKey' => 'BG_LhFXOJoH2uMsIJGItBD9OzL6n9dbJbMFqZayiS84Lg_tffiJOhbYabBZjP0Vj-VC18co3JN5_ImnBRFC3acbM',
-    'privateKey' => '2NdHootdz1a-8m0n4S-vnO0xGdppAyq9EmQTt_nPvjo',
+    'publicKey' => 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U',
+    'privateKey' => 'UUxI4O8-FbRouAevSmBQ6o18hgE4nSG3qwvJTfKc-ls',
     'subject' => 'mailto:info@ersanelektrik.com'
 ];
