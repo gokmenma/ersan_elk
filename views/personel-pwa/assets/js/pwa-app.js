@@ -501,7 +501,7 @@ const Push = {
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: convertedVapidKey,
+        applicationServerKey: convertedVapidKey.buffer,
       });
 
       Push.subscription = subscription;
