@@ -479,7 +479,7 @@ const Push = {
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: convertedVapidKey,
+        applicationServerKey: convertedVapidKey.buffer, // .buffer ekledik
       });
 
       Push.subscription = subscription;
