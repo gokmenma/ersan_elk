@@ -469,14 +469,9 @@ const Push = {
   // Kullanıcıyı abone yap
   subscribe: async () => {
     try {
-      const vapidKey = await Push.getVapidKey();
-      console.log("VAPID Key from server:", vapidKey);
-      console.log("VAPID Key length:", vapidKey ? vapidKey.length : 0);
-
-      if (!vapidKey) {
-        Toast.show("Bildirim anahtarı alınamadı", "error");
-        return false;
-      }
+      // Hardcoded VAPID Key for testing
+      const vapidKey =
+        "BGSV9o3jOcpLBMINUUEuw6Nesv7cj3wGjjlzQQcZ9b4qkSr6sQlNF7np44jlMNuqMuYKicmVrJK05yIPXx4lGP0";
 
       const registration = await navigator.serviceWorker.ready;
 
@@ -495,13 +490,17 @@ const Push = {
       }
 
       console.log("Service Worker is active:", registration);
-      const convertedVapidKey = Push.urlBase64ToUint8Array(vapidKey);
-      console.log("Converted VAPID Key:", convertedVapidKey);
-      console.log("Converted Key length:", convertedVapidKey.length);
+
+      // Simple conversion
+      const binaryStr = atob(vapidKey.replace(/-/g, "+").replace(/_/g, "/"));
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: convertedVapidKey.buffer,
+        applicationServerKey: bytes,
       });
 
       Push.subscription = subscription;
