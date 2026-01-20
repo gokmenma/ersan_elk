@@ -329,24 +329,6 @@ $logs = $mesajLogModel->getLogs(['type' => 'push']);
         });
 
         // Test bildirimi
-        document.getElementById('btnTestBildirim').addEventListener('click', function () {
-            Swal.fire({
-                title: 'Gönderiliyor...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            const formData = new FormData();
-            formData.append('action', 'test-notification');
-
-            fetch(API_URL, { method: 'POST', body: formData })
-                .then(res => res.json())
-                .then(data => {
-                    data.status === 'success'
-                        ? Swal.fire('Başarılı', data.message, 'success')
-                        : Swal.fire('Hata', data.message, 'error');
-                })
-                .catch(() => Swal.fire('Hata', 'Test gönderilemedi.', 'error'));
-        });
+        
     });
 </script>
