@@ -464,6 +464,9 @@ const Push = {
   subscribe: async () => {
     try {
       const vapidKey = await Push.getVapidKey();
+      console.log("VAPID Key from server:", vapidKey);
+      console.log("VAPID Key length:", vapidKey ? vapidKey.length : 0);
+
       if (!vapidKey) {
         Toast.show("Bildirim anahtarı alınamadı", "error");
         return false;
@@ -471,6 +474,8 @@ const Push = {
 
       const registration = await navigator.serviceWorker.ready;
       const convertedVapidKey = Push.urlBase64ToUint8Array(vapidKey);
+      console.log("Converted VAPID Key:", convertedVapidKey);
+      console.log("Converted Key length:", convertedVapidKey.length);
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
