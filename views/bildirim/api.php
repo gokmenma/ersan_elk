@@ -11,6 +11,11 @@ use App\Model\PersonelModel;
 
 header('Content-Type: application/json; charset=utf-8');
 
+// Hataları ekrana basma, JSON yapısını bozar
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+error_reporting(E_ALL);
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $action = $_POST['action'] ?? '';
 
@@ -124,10 +129,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             default:
                 throw new Exception('Geçersiz işlem.');
         }
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         echo json_encode([
             'status' => 'error',
-            'message' => $e->getMessage()
+            'message' => $e->getMessage() . ' (' . basename($e->getFile()) . ':' . $e->getLine() . ')'
         ]);
     }
 } else {

@@ -82,11 +82,18 @@ class PushNotificationService
         // Bildirimleri gönder
         $results = $this->webPush->flush();
 
+        $successCount = 0;
+
         // Sonuçları işle ve geçersiz abonelikleri temizle
         foreach ($results as $report) {
-            if (!$report->isSuccess()) {
+            if ($report->isSuccess()) {
+                $successCount++;
+            } else {
                 // Endpoint'i al
                 $endpoint = $report->getRequest()->getUri()->__toString();
+
+                // Log error
+                error_log("Push Notification Error for {$endpoint}: " . $report->getReason());
 
                 // Eğer abonelik süresi dolmuşsa veya geçersizse veritabanından sil
                 if ($report->isSubscriptionExpired()) {
@@ -95,6 +102,6 @@ class PushNotificationService
             }
         }
 
-        return true;
+        return $successCount > 0;
     }
 }

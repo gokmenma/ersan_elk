@@ -139,38 +139,48 @@ $personeller = $Personel->all();
                                 <th>EMAIL</th>
                                 <th>DEPARTMAN</th>
                                 <th>GÖREV</th>
+                                <th class="text-center">BİLDİRİM</th>
                                 <th>DURUM</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($personeller as $personel) { ?>
 
-                                        <tr>
-                                            <td>
-                                                <div class="form-check font-size-16">
-                                                    <input class="form-check-input" type="checkbox"
-                                                        id="orderidcheck<?= $personel->personel_id ?>">
-                                                    <label class="form-check-label"
-                                                        for="orderidcheck<?= $personel->personel_id ?>"></label>
-                                                </div>
-                                            </td>
-                                            <td class="text-center"><?= $personel->id ?></td>
-                                            <td>
-                                                <div class="personel-name-container">
-                                                    <?= $personel->adi_soyadi ?>
-                                                    <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
-                                                        alt="<?= $personel->adi_soyadi ?>" class="personel-hover-image">
-                                                </div>
-                                            </td>
-                                            <td><?= $personel->tc_kimlik_no ?></td>
-                                            <td><?= $personel->cinsiyet ?></td>
-                                            <td><?= $personel->dogum_tarihi ?></td>
-                                            <td><i class="feather feather-smartphone"></i><?= $personel->cep_telefonu ?></td>
-                                            <td><?= $personel->email_adresi ?></td>
-                                            <td><?= $personel->departman ?></td>
-                                            <td><?= $personel->gorev ?></td>
-                                            <td><?= $personel->aktif_mi ? 'Aktif' : 'Pasif' ?></td>
-                                        </tr>
+                                <tr>
+                                    <td>
+                                        <div class="form-check font-size-16">
+                                            <input class="form-check-input" type="checkbox"
+                                                id="orderidcheck<?= $personel->personel_id ?>">
+                                            <label class="form-check-label"
+                                                for="orderidcheck<?= $personel->personel_id ?>"></label>
+                                        </div>
+                                    </td>
+                                    <td class="text-center"><?= $personel->id ?></td>
+                                    <td>
+                                        <div class="personel-name-container">
+                                            <?= $personel->adi_soyadi ?>
+                                            <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
+                                                alt="<?= $personel->adi_soyadi ?>" class="personel-hover-image">
+                                        </div>
+                                    </td>
+                                    <td><?= $personel->tc_kimlik_no ?></td>
+                                    <td><?= $personel->cinsiyet ?></td>
+                                    <td><?= $personel->dogum_tarihi ?></td>
+                                    <td><i class="feather feather-smartphone"></i><?= $personel->cep_telefonu ?></td>
+                                    <td><?= $personel->email_adresi ?></td>
+                                    <td><?= $personel->departman ?></td>
+                                    <td><?= $personel->gorev ?></td>
+                                    <td class="text-center">
+                                        <?php if (isset($personel->bildirim_abonesi) && $personel->bildirim_abonesi): ?>
+                                            <span class="badge bg-success"><i
+                                                    class="bx bx-check-double font-size-13 align-middle me-1"></i>Açık</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-danger"><i
+                                                    class="bx bx-x font-size-13 align-middle me-1"></i>Kapalı</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?= $personel->aktif_mi ? 'Aktif' : 'Pasif' ?></td>
+                                </tr>
 
 
 
@@ -201,34 +211,32 @@ $personeller = $Personel->all();
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div
-                        class="alert alert-success bg-success bg-opacity-10 border border-success border-opacity-25 mb-3">
-                        <div class="d-flex align-items-start">
-                            <i class="bx bx-download fs-4 me-2 text-success"></i>
-                            <div class="flex-grow-1">
-                                <h6 class="mb-1"><strong>Şablon Dosyasını İndirin</strong></h6>
-                                <p class="mb-2 small text-muted">
-                                    Personelleri Excelden yüklemek için şablonunu indirin.
-                                </p>
-                                <a href="javascript:void()" id="btnDownloadTemplate"
-                                    class="btn btn-sm btn-success">
-                                    <i class="bx bx-download me-1"></i>Personel Şablonunu İndir
-                                </a>
-                            </div>
+                <div class="alert alert-success bg-success bg-opacity-10 border border-success border-opacity-25 mb-3">
+                    <div class="d-flex align-items-start">
+                        <i class="bx bx-download fs-4 me-2 text-success"></i>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1"><strong>Şablon Dosyasını İndirin</strong></h6>
+                            <p class="mb-2 small text-muted">
+                                Personelleri Excelden yüklemek için şablonunu indirin.
+                            </p>
+                            <a href="javascript:void()" id="btnDownloadTemplate" class="btn btn-sm btn-success">
+                                <i class="bx bx-download me-1"></i>Personel Şablonunu İndir
+                            </a>
                         </div>
                     </div>
+                </div>
                 <form id="importExcelForm" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label for="excelFile" class="form-label">Excel Dosyası Seçin (.xlsx, .xls)</label>
                         <input class="form-control" type="file" id="excelFile" name="excel_file" accept=".xlsx, .xls"
                             required>
                     </div>
-                    
+
                 </form>
             </div>
             <div class="modal-footer">
                 <div class="float-end">
-                    
+
                     <div>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                         <button type="button" class="btn btn-primary" id="btnUploadExcel">Yükle</button>

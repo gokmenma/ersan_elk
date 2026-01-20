@@ -19,7 +19,14 @@ class PersonelModel extends Model
     /**Tüm aktif personelleri getirir */
     public function all()
     {
-        $query = $this->db->prepare("Select * from $this->table where firma_id = :firma_id");
+        $sql = "SELECT p.*, 
+                CASE WHEN ps.id IS NOT NULL THEN 1 ELSE 0 END as bildirim_abonesi
+                FROM {$this->table} p 
+                LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
+                WHERE p.firma_id = :firma_id
+                GROUP BY p.id";
+
+        $query = $this->db->prepare($sql);
         $query->execute([
             'firma_id' => $_SESSION['firma_id']
         ]);
