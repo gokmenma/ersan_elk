@@ -198,9 +198,33 @@ use App\Helper\Helper;
     </div>
 </div>
 
+<!-- Notification Detail Modal -->
+<div id="notification-detail-modal" class="modal-overlay">
+    <div class="modal-content p-6 pt-3">
+        <div class="modal-handle"></div>
+        
+        <div class="flex items-center gap-3 mb-4">
+            <button onclick="closeNotificationDetail()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <span class="material-symbols-outlined text-slate-600">arrow_back</span>
+            </button>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Bildirim Detayı</h3>
+        </div>
+
+        <div id="notification-detail-content" class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
+            <!-- Detail content -->
+        </div>
+
+        <button onclick="closeNotificationDetail()"
+            class="w-full mt-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
+            Kapat
+        </button>
+    </div>
+</div>
+
 <script>
-    // Global activities data
-    let allActivitiesData = [];
+    // Global data
+    var allActivitiesData = [];
+    var allNotificationsData = [];
 
     document.addEventListener('DOMContentLoaded', function () {
         // Load dashboard data
@@ -213,7 +237,7 @@ use App\Helper\Helper;
 
     async function loadDashboardData() {
         try {
-            const response = await API.request('getDashboardData');
+            var response = await API.request('getDashboardData');
             if (response.success) {
                 document.getElementById('total-earning').textContent = Format.currency(response.data.total_earning || 0);
                 document.getElementById('received-payment').textContent = Format.currency(response.data.received_payment || 0);
@@ -226,10 +250,10 @@ use App\Helper\Helper;
 
     async function loadNotificationCount() {
         try {
-            const response = await API.request('getMyNotifications');
+            var response = await API.request('getMyNotifications');
             if (response.success && response.data) {
-                const count = response.data.length;
-                const badge = document.getElementById('notification-badge');
+                var count = response.data.length;
+                var badge = document.getElementById('notification-badge');
                 if (badge) {
                     if (count > 0) {
                         badge.style.display = 'flex';
@@ -245,15 +269,15 @@ use App\Helper\Helper;
     }
 
     async function loadRecentActivities() {
-        const container = document.getElementById('activities-container');
+        var container = document.getElementById('activities-container');
         
         try {
-            const response = await API.request('getRecentActivities');
+            var response = await API.request('getRecentActivities');
             
             if (response.success && response.data && response.data.length > 0) {
                 allActivitiesData = response.data;
                 // Show first 5 activities on homepage
-                const displayActivities = response.data.slice(0, 5);
+                var displayActivities = response.data.slice(0, 5);
                 container.innerHTML = displayActivities.map(function(activity, index) {
                     return renderActivityItem(activity, index === displayActivities.length - 1);
                 }).join('');
@@ -327,8 +351,9 @@ use App\Helper\Helper;
             var response = await API.request('getMyNotifications');
             
             if (response.success && response.data && response.data.length > 0) {
-                container.innerHTML = response.data.map(function(notification) {
-                    return '<div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">' +
+                allNotificationsData = response.data;
+                container.innerHTML = response.data.map(function(notification, index) {
+                    return '<div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" onclick="showNotificationDetail(' + index + ')">' +
                         '<div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">' +
                             '<span class="material-symbols-outlined text-blue-600 text-lg">notifications</span>' +
                         '</div>' +
@@ -337,6 +362,7 @@ use App\Helper\Helper;
                             '<p class="text-xs text-slate-500 line-clamp-2">' + escapeHtml(notification.body) + '</p>' +
                             '<p class="text-[10px] text-primary mt-1">' + notification.time_ago + '</p>' +
                         '</div>' +
+                        '<span class="material-symbols-outlined text-slate-400 text-lg self-center">chevron_right</span>' +
                     '</div>';
                 }).join('');
             } else {
@@ -346,6 +372,36 @@ use App\Helper\Helper;
             console.error('Notifications load error:', error);
             container.innerHTML = '<div class="flex flex-col items-center justify-center py-8 text-center"><span class="material-symbols-outlined text-4xl text-red-300 mb-2">error</span><p class="text-sm text-slate-500">Bildirimler yüklenemedi</p></div>';
         }
+    }
+
+    function showNotificationDetail(index) {
+        var notification = allNotificationsData[index];
+        if (!notification) return;
+
+        var container = document.getElementById('notification-detail-content');
+        container.innerHTML = 
+            '<div class="flex items-center gap-3 mb-4">' +
+                '<div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">' +
+                    '<span class="material-symbols-outlined text-blue-600 text-2xl">notifications</span>' +
+                '</div>' +
+                '<div>' +
+                    '<p class="text-xs text-primary font-medium">' + escapeHtml(notification.time_ago) + '</p>' +
+                '</div>' +
+            '</div>' +
+            '<h4 class="text-lg font-bold text-slate-900 dark:text-white mb-3">' + escapeHtml(notification.title) + '</h4>' +
+            '<p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">' + escapeHtml(notification.body) + '</p>';
+
+        Modal.close('notification-modal');
+        setTimeout(function() {
+            Modal.open('notification-detail-modal');
+        }, 200);
+    }
+
+    function closeNotificationDetail() {
+        Modal.close('notification-detail-modal');
+        setTimeout(function() {
+            Modal.open('notification-modal');
+        }, 200);
     }
 
     function escapeHtml(text) {
