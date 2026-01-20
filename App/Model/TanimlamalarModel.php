@@ -143,6 +143,13 @@ class TanimlamalarModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function getIzinTurleri()
+    {
+        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE grup = ? and silinme_tarihi IS NULL ORDER BY id DESC");
+        $sql->execute(['izin_turu']);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
     //Tur adını getir
     public function getTurAdi($id)
     {
