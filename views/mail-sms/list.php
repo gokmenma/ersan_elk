@@ -103,9 +103,16 @@ $logs = $MesajLogModel->getLogs($filters);
                                         ? '<span class="badge bg-success">Başarılı</span>'
                                         : '<span class="badge bg-danger">Başarısız</span>';
 
-                                    $icon = $log->type == 'email'
-                                        ? '<i class="fas fa-envelope text-primary fa-lg"></i>'
-                                        : '<i class="fas fa-sms text-warning fa-lg"></i>';
+                                    if($log->type == 'email'){
+                                        $icon = '<i class="fas fa-envelope text-primary fa-lg"></i>';
+                                    }elseif($log->type == 'sms'){
+                                        $icon = '<i class="fas fa-sms text-warning fa-lg"></i>';
+                                    }elseif($log->type == 'push'){
+                                        $icon = '<i class="fas fa-bell text-info fa-lg"></i>';
+                                    }else{
+                                        $icon = '<i class="fas fa-question text-secondary fa-lg"></i>';
+                                    }
+                                    
                                     ?>
                                     <tr>
                                         <td><?php echo $log->id; ?></td>
