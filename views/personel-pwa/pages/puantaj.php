@@ -51,12 +51,12 @@ use App\Helper\Date;
             <div class="flex items-center gap-2">
                 <div class="flex-1">
                     <label class="text-xs text-slate-500 mb-1 block">Başlangıç</label>
-                    <input type="date" id="filter-start-date" class="form-input text-sm"
+                    <input type="date" id="filter-start-date" class="form-input text-sm" 
                         value="<?php echo date('Y-m-01'); ?>" onchange="loadPuantajData()">
                 </div>
                 <div class="flex-1">
                     <label class="text-xs text-slate-500 mb-1 block">Bitiş</label>
-                    <input type="date" id="filter-end-date" class="form-input text-sm"
+                    <input type="date" id="filter-end-date" class="form-input text-sm" 
                         value="<?php echo date('Y-m-d'); ?>" onchange="loadPuantajData()">
                 </div>
             </div>
@@ -73,10 +73,6 @@ use App\Helper\Date;
         <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Yapılan İşler</h3>
         <div id="puantaj-list" class="flex flex-col gap-3">
             <!-- Skeleton loader -->
-            <div class="card p-4 animate-pulse">
-                <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4 mb-2"></div>
-                <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
-            </div>
             <div class="card p-4 animate-pulse">
                 <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4 mb-2"></div>
                 <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
@@ -123,7 +119,7 @@ use App\Helper\Date;
     let puantajData = [];
     let workTypes = [];
 
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', function() {
         loadWorkTypes();
         loadPuantajData();
     });
@@ -149,7 +145,7 @@ use App\Helper\Date;
     async function loadPuantajData() {
         const listContainer = document.getElementById('puantaj-list');
         const emptyState = document.getElementById('empty-state');
-
+        
         // Show skeleton
         listContainer.innerHTML = `
             <div class="card p-4 animate-pulse">
@@ -212,7 +208,7 @@ use App\Helper\Date;
 
         emptyState.classList.add('hidden');
         listContainer.innerHTML = puantajData.map(item => `
-            <div class="card p-4 hover:shadow-md transition-shadow cursor-pointer" onclick="showPuantajDetail(${item.id})">
+            <div class="card p-4 hover:shadow-md transition-shadow cursor-pointer" onclick="showPuantajDetail('${item.id}')">
                 <div class="flex items-start gap-4">
                     <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0
                         ${item.acik_olanlar > 0 ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-green-100 dark:bg-green-900/30'}">
@@ -245,8 +241,12 @@ use App\Helper\Date;
     }
 
     function showPuantajDetail(id) {
-        const item = puantajData.find(p => p.id === id);
-        if (!item) return;
+        // String karşılaştırması yap (sunucu string gönderebilir)
+        const item = puantajData.find(p => String(p.id) === String(id));
+        if (!item) {
+            console.error('Puantaj item bulunamadı:', id, 'Mevcut veriler:', puantajData.map(p => p.id));
+            return;
+        }
 
         const content = document.getElementById('puantaj-detail-content');
         content.innerHTML = `

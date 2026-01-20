@@ -173,8 +173,9 @@ use App\Helper\Date;
                     <p class="text-xs text-slate-500" id="notification-status">Durum kontrol ediliyor...</p>
                 </div>
                 <button type="button" id="notification-toggle-btn" onclick="toggleNotifications()"
+                    data-subscribed="false"
                     class="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold">
-                    Aç
+                    ...
                 </button>
             </div>
 

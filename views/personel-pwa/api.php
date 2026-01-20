@@ -841,6 +841,32 @@ try {
             }
             break;
 
+        case 'check-subscription-status':
+            $PushSubscriptionModel = new PushSubscriptionModel();
+            $db = $PushSubscriptionModel->getDb();
+
+            $stmt = $db->prepare("SELECT COUNT(*) FROM push_subscriptions WHERE personel_id = ?");
+            $stmt->execute([$personel_id]);
+            $count = (int) $stmt->fetchColumn();
+
+            response(true, ['subscribed' => $count > 0, 'count' => $count]);
+            break;
+
+        case 'remove-subscription':
+            $PushSubscriptionModel = new PushSubscriptionModel();
+            $db = $PushSubscriptionModel->getDb();
+
+            // Tüm abonelikleri sil
+            $stmt = $db->prepare("DELETE FROM push_subscriptions WHERE personel_id = ?");
+            $result = $stmt->execute([$personel_id]);
+
+            if ($result) {
+                response(true, null, 'Bildirim aboneliği kaldırıldı');
+            } else {
+                response(false, null, 'Abonelik kaldırılırken bir hata oluştu');
+            }
+            break;
+
         // ===== Puantaj / İş Takip =====
         case 'getPuantajData':
             $PersonelModel = new PersonelModel();
