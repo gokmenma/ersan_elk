@@ -178,6 +178,12 @@ if (!in_array($page, $allowed_pages)) {
         </div>
         <div class="px-4 pb-4">
             <div class="flex flex-col gap-1">
+                <a href="javascript:void(0)" onclick="logout()" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'profil' ? 'bg-primary/10' : ''; ?>">
+                    <div class="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-red-600 text-lg">logout</span>
+                    </div>
+                    <span class="font-medium text-slate-900 dark:text-white text-sm">Çıkış Yap</span>
+                </a>
                 <a href="?page=profil" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'profil' ? 'bg-primary/10' : ''; ?>">
                     <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                         <span class="material-symbols-outlined text-blue-600 text-lg">person</span>
@@ -263,6 +269,25 @@ if (!in_array($page, $allowed_pages)) {
                     });
             });
         }
+    </script>
+    <script>
+         async function logout() {
+        const isConfirmed = await Alert.confirm(
+            'Çıkış Yap',
+            'Çıkış yapmak istediğinize emin misiniz?',
+            'Evet, Çıkış Yap',
+            'Vazgeç'
+        );
+
+        if (!isConfirmed) return;
+
+        try {
+            const response = await API.request('logout');
+            window.location.href = 'login.php';
+        } catch (error) {
+            window.location.href = 'login.php';
+        }
+    }
     </script>
 </body>
 
