@@ -275,7 +275,7 @@ if (!in_array($page, $allowed_pages)) {
         const isConfirmed = await Alert.confirm(
             'Çıkış Yap',
             'Çıkış yapmak istediğinize emin misiniz?',
-            'Evet, Çıkış Yap',
+            'Çıkış Yap',
             'Vazgeç'
         );
 
