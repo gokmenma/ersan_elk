@@ -59,7 +59,7 @@ if (!in_array($page, $allowed_pages)) {
     <meta name="theme-color" content="#135bec">
     <meta name="description" content="Ersan Elektrik - Mobil Uygulama">
 
-    <title>Ersan Elektrik</title>
+    <title>Ersan Elektrik | Personel Yönetimi</title>
 
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
@@ -108,7 +108,7 @@ if (!in_array($page, $allowed_pages)) {
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="assets/css/pwa-style.css">
-<link rel="canonical" href="https:/www.personel.softran.online/index" />
+    <link rel="canonical" href="https:/www.personel.softran.online/index" />
 
 </head>
 
@@ -178,6 +178,7 @@ if (!in_array($page, $allowed_pages)) {
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="assets/js/pwa-app.js"></script>
+    <script src="assets/js/notification-helper.js"></script>
 
     <!-- Service Worker Registration -->
     <script>

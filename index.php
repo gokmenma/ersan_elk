@@ -12,7 +12,7 @@ include 'layouts/session.php';
 
 <head>
 
-    <title>Cansen | Ana Sayfa</title>
+    <title>Ersan Elektrik | Personel Yönetimi</title>
 
     <?php include 'layouts/head.php'; ?>
     <link href="assets/libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css" rel="stylesheet"

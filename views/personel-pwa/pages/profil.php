@@ -163,20 +163,19 @@ use App\Helper\Date;
     <section class="px-4 mt-6">
         <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Hızlı Ayarlar</h3>
         <div class="card overflow-hidden">
-            <div class="flex items-center gap-4 p-4 border-b border-slate-100 dark:border-slate-800">
+            <div class="flex items-center gap-4 p-4 border-b border-slate-100 dark:border-slate-800"
+                id="notification-setting">
                 <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
                     <span class="material-symbols-outlined text-purple-600">notifications</span>
                 </div>
                 <div class="flex-1">
                     <p class="text-sm font-semibold text-slate-900 dark:text-white">Bildirimler</p>
-                    <p class="text-xs text-slate-500">Push bildirimleri al</p>
+                    <p class="text-xs text-slate-500" id="notification-status">Durum kontrol ediliyor...</p>
                 </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" class="sr-only peer" checked>
-                    <div
-                        class="w-11 h-6 bg-slate-200 peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary">
-                    </div>
-                </label>
+                <button type="button" id="notification-toggle-btn" onclick="toggleNotifications()"
+                    class="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold">
+                    Aç
+                </button>
             </div>
 
             <div class="flex items-center gap-4 p-4 border-b border-slate-100 dark:border-slate-800">
