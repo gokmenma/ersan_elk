@@ -841,6 +841,86 @@ try {
             }
             break;
 
+        // ===== Puantaj / İş Takip =====
+        case 'getPuantajData':
+            $PersonelModel = new PersonelModel();
+            $personelData = $PersonelModel->find($personel_id);
+
+            if (!$personelData || empty($personelData->ekip_no)) {
+                response(true, [
+                    'items' => [],
+                    'stats' => ['toplam' => 0, 'sonuclanan' => 0, 'acik' => 0]
+                ]);
+            }
+
+            $ekipKodu = $personelData->ekip_no;
+            $startDate = $_POST['start_date'] ?? '';
+            $endDate = $_POST['end_date'] ?? '';
+            $workType = $_POST['work_type'] ?? '';
+
+            // Query ile veri çek
+            $sql = "SELECT * FROM yapilan_isler WHERE ekip_kodu = ?";
+            $params = [$ekipKodu];
+
+            if (!empty($startDate)) {
+                $sql .= " AND tarih >= ?";
+                $params[] = $startDate;
+            }
+
+            if (!empty($endDate)) {
+                $sql .= " AND tarih <= ?";
+                $params[] = $endDate;
+            }
+
+            if (!empty($workType)) {
+                $sql .= " AND is_emri_tipi = ?";
+                $params[] = $workType;
+            }
+
+            $sql .= " ORDER BY tarih DESC LIMIT 100";
+
+            $stmt = $PersonelModel->getDb()->prepare($sql);
+            $stmt->execute($params);
+            $items = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+            // İstatistikler
+            $totalSonuclanan = 0;
+            $totalAcik = 0;
+
+            foreach ($items as $item) {
+                $totalSonuclanan += (int) ($item->sonuclanmis ?? 0);
+                $totalAcik += (int) ($item->acik_olanlar ?? 0);
+            }
+
+            response(true, [
+                'items' => $items,
+                'stats' => [
+                    'toplam' => count($items),
+                    'sonuclanan' => $totalSonuclanan,
+                    'acik' => $totalAcik
+                ]
+            ]);
+            break;
+
+        case 'getPuantajWorkTypes':
+            $PersonelModel = new PersonelModel();
+            $personelData = $PersonelModel->find($personel_id);
+
+            if (!$personelData || empty($personelData->ekip_no)) {
+                response(true, []);
+            }
+
+            $ekipKodu = $personelData->ekip_no;
+
+            $stmt = $PersonelModel->getDb()->prepare(
+                "SELECT DISTINCT is_emri_tipi FROM yapilan_isler WHERE ekip_kodu = ? AND is_emri_tipi IS NOT NULL AND is_emri_tipi != '' ORDER BY is_emri_tipi"
+            );
+            $stmt->execute([$ekipKodu]);
+            $types = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            response(true, $types);
+            break;
+
         case 'logout':
             session_destroy();
             response(true, null, 'Çıkış yapıldı');

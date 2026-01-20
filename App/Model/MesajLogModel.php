@@ -44,6 +44,21 @@ class MesajLogModel extends Model
         return $this->saveWithAttr($data);
     }
 
+    public function logPush($firmaId, $title, $body, $recipients, $payload, $status)
+    {
+        $data = [
+            'firma_id' => $firmaId,
+            'type' => 'push',
+            'sender' => $_SESSION['user_name'] ?? 'Sistem',
+            'recipients' => is_array($recipients) ? json_encode($recipients, JSON_UNESCAPED_UNICODE) : $recipients,
+            'subject' => $title,
+            'message' => $body,
+            'attachments' => is_array($payload) ? json_encode($payload, JSON_UNESCAPED_UNICODE) : $payload,
+            'status' => $status
+        ];
+        return $this->saveWithAttr($data);
+    }
+
     public function getLogs($filters = [])
     {
         $sql = "SELECT * FROM {$this->table} WHERE 1=1";

@@ -8,6 +8,7 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 use App\Service\PushNotificationService;
 use App\Model\PushSubscriptionModel;
 use App\Model\PersonelModel;
+use App\Model\MesajLogModel;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -22,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $pushService = new PushNotificationService();
     $subscriptionModel = new PushSubscriptionModel();
     $personelModel = new PersonelModel();
+    $mesajLogModel = new MesajLogModel();
 
     try {
         switch ($action) {
@@ -82,6 +84,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
+                $recipientNames = [];
+                if ($alici_tipi === 'toplu') {
+                    $recipientNames[] = "Tüm Aboneler (" . count($personelIds) . " kişi)";
+                } else {
+                    foreach ($personelIds as $pid) {
+                        $p = $personelModel->find($pid);
+                        if ($p) {
+                            $recipientNames[] = $p->adi_soyadi;
+                        }
+                    }
+                }
+
+                $logStatus = ($hata == 0) ? 'success' : (($gonderildi > 0) ? 'partial' : 'failed');
+                $mesajLogModel->logPush(
+                    $_SESSION['firma_id'] ?? 0,
+                    $baslik,
+                    $mesaj,
+                    $recipientNames,
+                    $payload,
+                    $logStatus
+                );
+
                 $message = "Bildirim gönderildi. Başarılı: $gonderildi";
                 if ($hata > 0) {
                     $message .= ", Hatalı: $hata";
@@ -122,7 +146,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'message' => 'Test bildirimi gönderildi!'
                     ]);
                 } else {
-                    throw new Exception('Test bildirimi gönderilemedi.');
+                    $mesajLogModel->logPush(
+                        $_SESSION['firma_id'] ?? 0,
+                        $payload['title'],
+                        $payload['body'],
+                        ['Test Kullanıcısı'],
+                        $payload,
+                        'success'
+                    );
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Test bildirimi gönderildi!'
+                    ]);
                 }
                 break;
 

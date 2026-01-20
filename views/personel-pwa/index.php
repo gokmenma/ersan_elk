@@ -42,7 +42,7 @@ if (!$personel) {
 
 // Sayfa yönlendirmesi
 $page = $_GET['page'] ?? 'ana-sayfa';
-$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil'];
+$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj'];
 
 if (!in_array($page, $allowed_pages)) {
     $page = 'ana-sayfa';
@@ -138,8 +138,7 @@ if (!in_array($page, $allowed_pages)) {
         </a>
         <a href="?page=izin"
             class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'izin' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-            <span
-                class="material-symbols-outlined <?php echo $page === 'izin' ? 'filled' : ''; ?>">calendar_today</span>
+            <span class="material-symbols-outlined <?php echo $page === 'izin' ? 'filled' : ''; ?>">calendar_today</span>
             <span class="text-[10px] font-semibold">İzinler</span>
         </a>
         <a href="?page=talep"
@@ -147,11 +146,11 @@ if (!in_array($page, $allowed_pages)) {
             <span class="material-symbols-outlined <?php echo $page === 'talep' ? 'filled' : ''; ?>">assignment</span>
             <span class="text-[10px] font-semibold">Talepler</span>
         </a>
-        <a href="?page=profil"
-            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'profil' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-            <span class="material-symbols-outlined <?php echo $page === 'profil' ? 'filled' : ''; ?>">person</span>
-            <span class="text-[10px] font-semibold">Profil</span>
-        </a>
+        <button type="button" onclick="toggleMoreMenu()"
+            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo in_array($page, ['profil', 'puantaj']) ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+            <span class="material-symbols-outlined <?php echo in_array($page, ['profil', 'puantaj']) ? 'filled' : ''; ?>">more_horiz</span>
+            <span class="text-[10px] font-semibold">Diğer</span>
+        </button>
     </nav>
 
     <!-- Loading Overlay -->
@@ -171,6 +170,32 @@ if (!in_array($page, $allowed_pages)) {
         </div>
     </div>
 
+    <!-- More Menu Bottom Sheet -->
+    <div id="more-menu-overlay" class="fixed inset-0 bg-black/50 z-[60] opacity-0 pointer-events-none transition-opacity duration-300" onclick="closeMoreMenu()"></div>
+    <div id="more-menu-sheet" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-2xl z-[61] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom">
+        <div class="flex justify-center pt-2 pb-1">
+            <div class="w-8 h-1 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
+        </div>
+        <div class="px-4 pb-4">
+            <div class="flex flex-col gap-1">
+                <a href="?page=profil" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'profil' ? 'bg-primary/10' : ''; ?>">
+                    <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-blue-600 text-lg">person</span>
+                    </div>
+                    <span class="font-medium text-slate-900 dark:text-white text-sm">Profil</span>
+                    <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
+                </a>
+                <a href="?page=puantaj" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'puantaj' ? 'bg-primary/10' : ''; ?>">
+                    <div class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-purple-600 text-lg">checklist</span>
+                    </div>
+                    <span class="font-medium text-slate-900 dark:text-white text-sm">İş Takip</span>
+                    <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toast-container" class="fixed top-4 left-4 right-4 z-[110] flex flex-col gap-2"></div>
 
@@ -179,6 +204,51 @@ if (!in_array($page, $allowed_pages)) {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="assets/js/pwa-app.js"></script>
     <script src="assets/js/notification-helper.js"></script>
+
+    <!-- More Menu Scripts -->
+    <script>
+        function toggleMoreMenu() {
+            const overlay = document.getElementById('more-menu-overlay');
+            const sheet = document.getElementById('more-menu-sheet');
+            
+            const isOpen = !overlay.classList.contains('pointer-events-none');
+            
+            if (isOpen) {
+                closeMoreMenu();
+            } else {
+                overlay.classList.remove('pointer-events-none', 'opacity-0');
+                overlay.classList.add('opacity-100');
+                sheet.classList.remove('translate-y-full');
+            }
+        }
+
+        function closeMoreMenu() {
+            const overlay = document.getElementById('more-menu-overlay');
+            const sheet = document.getElementById('more-menu-sheet');
+            
+            overlay.classList.add('pointer-events-none', 'opacity-0');
+            overlay.classList.remove('opacity-100');
+            sheet.classList.add('translate-y-full');
+        }
+
+        // Swipe down to close
+        let startY = 0;
+        const moreSheet = document.getElementById('more-menu-sheet');
+        if (moreSheet) {
+            moreSheet.addEventListener('touchstart', (e) => {
+                startY = e.touches[0].clientY;
+            });
+
+            moreSheet.addEventListener('touchmove', (e) => {
+                const currentY = e.touches[0].clientY;
+                const diff = currentY - startY;
+                
+                if (diff > 50) {
+                    closeMoreMenu();
+                }
+            });
+        }
+    </script>
 
     <!-- Service Worker Registration -->
     <script>
