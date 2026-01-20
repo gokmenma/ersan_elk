@@ -112,12 +112,7 @@
             <div>
                 <label class="form-label">İzin Türü</label>
                 <select name="izin_tipi" class="form-input form-select" required>
-                    <option value="">Seçiniz...</option>
-                    <option value="yillik">Yıllık İzin</option>
-                    <option value="mazeret">Mazeret İzni</option>
-                    <option value="hastalik">Hastalık İzni</option>
-                    <option value="dogum">Doğum / Babalık İzni</option>
-                    <option value="ucretsiz">Ücretsiz İzin</option>
+                    <option value="">Yükleniyor...</option>
                 </select>
             </div>
 
@@ -189,8 +184,10 @@
 <script>
     let currentFilter = 'all';
     let izinlerData = [];
+    let izinTurleri = [];
 
     document.addEventListener('DOMContentLoaded', function () {
+        loadIzinTurleri();
         loadIzinStats();
         loadIzinler();
 
@@ -200,6 +197,31 @@
             await submitIzinTalebi(this);
         });
     });
+
+    async function loadIzinTurleri() {
+        try {
+            const response = await API.request('getIzinTurleri');
+            if (response.success) {
+                izinTurleri = response.data;
+                const select = document.querySelector('select[name="izin_tipi"]');
+
+                // Mevcut seçenekleri temizle
+                select.innerHTML = '<option value="">Seçiniz...</option>';
+
+                // İzin türlerini ekle
+                izinTurleri.forEach(tur => {
+                    const option = document.createElement('option');
+                    option.value = tur.id;
+                    option.textContent = tur.tur_adi;
+                    select.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('İzin türleri yüklenemedi:', error);
+            const select = document.querySelector('select[name="izin_tipi"]');
+            select.innerHTML = '<option value="">Hata oluştu</option>';
+        }
+    }
 
     async function loadIzinStats() {
         try {
@@ -264,8 +286,8 @@
         container.innerHTML = filtered.map(izin => `
         <div class="card p-4" onclick="showIzinDetay(${izin.id})">
             <div class="flex items-start gap-4">
-                <div class="w-12 h-12 rounded-xl ${getIzinTypeColor(izin.izin_tipi)} flex items-center justify-center flex-shrink-0">
-                    <span class="material-symbols-outlined text-xl">${getIzinTypeIcon(izin.izin_tipi)}</span>
+                <div class="w-12 h-12 rounded-xl ${izin.renk} flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-xl">${izin.ikon}</span>
                 </div>
                 <div class="flex-1 min-w-0">
                     <div class="flex items-start justify-between gap-2">
@@ -307,28 +329,6 @@
         renderIzinler();
     }
 
-    function getIzinTypeColor(type) {
-        switch (type) {
-            case 'yillik': return 'bg-blue-100 dark:bg-blue-900/30 text-blue-600';
-            case 'mazeret': return 'bg-amber-100 dark:bg-amber-900/30 text-amber-600';
-            case 'hastalik': return 'bg-red-100 dark:bg-red-900/30 text-red-600';
-            case 'dogum': return 'bg-pink-100 dark:bg-pink-900/30 text-pink-600';
-            case 'ucretsiz': return 'bg-gray-100 dark:bg-gray-900/30 text-gray-600';
-            default: return 'bg-primary/10 text-primary';
-        }
-    }
-
-    function getIzinTypeIcon(type) {
-        switch (type) {
-            case 'yillik': return 'beach_access';
-            case 'mazeret': return 'event_note';
-            case 'hastalik': return 'medical_services';
-            case 'dogum': return 'child_friendly';
-            case 'ucretsiz': return 'money_off';
-            default: return 'event';
-        }
-    }
-
     function getStatusBadge(status) {
         switch (status) {
             case 'onaylandi': return 'badge-success';
@@ -341,15 +341,14 @@
     async function showIzinDetay(id) {
         Modal.open('izin-detay-modal');
 
-        // parseInt kullanarak string/integer uyumsuzluğunu çöz
         const izin = izinlerData.find(i => parseInt(i.id) === parseInt(id));
         if (!izin) return;
 
         document.getElementById('izin-detay-content').innerHTML = `
         <div class="flex flex-col gap-4">
             <div class="flex items-center gap-3 mb-2">
-                <div class="w-12 h-12 rounded-xl ${getIzinTypeColor(izin.izin_tipi)} flex items-center justify-center">
-                    <span class="material-symbols-outlined text-xl">${getIzinTypeIcon(izin.izin_tipi)}</span>
+                <div class="w-12 h-12 rounded-xl ${izin.renk} flex items-center justify-center">
+                    <span class="material-symbols-outlined text-xl">${izin.ikon}</span>
                 </div>
                 <div>
                     <p class="font-bold text-slate-900 dark:text-white">${izin.izin_tipi_text}</p>

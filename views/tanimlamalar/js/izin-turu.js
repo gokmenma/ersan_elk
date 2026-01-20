@@ -10,6 +10,8 @@ $(document).on("click", "#actionEkle", function () {
   // Varsayılan değerler
   $("#ucretli_mi").prop("checked", true);
   $("#personel_gorebilir").prop("checked", true);
+  $("#renk").val("bg-primary/10 text-primary");
+  $("#ikon").val("event");
 });
 
 $(document).on("click", "#actionKaydet", function () {
@@ -98,10 +100,7 @@ $(document).on("click", ".duzenle", function (e) {
     .then((response) => response.json())
     .then((data) => {
       if (data.status == "success") {
-        $("#izin_turu_id").val(id); // Şifreli ID'yi inputa koy (API tarafında kontrol edilecek)
-        // Not: API'den dönen data.encrypted_id'yi kullanmak daha güvenli olabilir ama
-        // mevcut yapıda id parametresi şifreli gönderiliyor ve API bunu çözüp işlem yapıyor.
-        // Kaydetme işleminde bu değer tekrar gönderilecek.
+        $("#izin_turu_id").val(id);
 
         $("#izin_turu").val(data.data.tur_adi);
         $("#aciklama").val(data.data.aciklama);
@@ -112,6 +111,10 @@ $(document).on("click", ".duzenle", function (e) {
           "checked",
           data.data.personel_gorebilir == 1,
         );
+
+        // Renk ve İkon
+        $("#renk").val(data.data.renk || "bg-primary/10 text-primary");
+        $("#ikon").val(data.data.ikon || "event");
 
         $("#actionModalLabel").html(
           '<i class="bx bx-edit me-2"></i>İzin Türü Düzenle',

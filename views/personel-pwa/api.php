@@ -266,6 +266,24 @@ try {
             break;
 
         // ===== İzin İşlemleri =====
+        case 'getIzinTurleri':
+            $TanimlamalarModel = new App\Model\TanimlamalarModel();
+            // Personelin görebileceği izin türlerini getir
+            $izinTurleri = $TanimlamalarModel->getDb()->query("SELECT * FROM tanimlamalar WHERE grup = 'izin_turu' AND personel_gorebilir = 1 AND silinme_tarihi IS NULL ORDER BY tur_adi ASC")->fetchAll(PDO::FETCH_OBJ);
+
+            $data = array_map(function ($item) {
+                return [
+                    'id' => $item->id, // ID'yi value olarak kullanacağız
+                    'tur_adi' => $item->tur_adi,
+                    'renk' => $item->renk ?? 'bg-primary/10 text-primary',
+                    'ikon' => $item->ikon ?? 'event',
+                    'aciklama' => $item->aciklama
+                ];
+            }, $izinTurleri);
+
+            response(true, $data);
+            break;
+
         case 'getIzinStats':
             $IzinModel = new PersonelIzinleriModel();
             // TODO: İzin istatistiklerini hesapla
@@ -280,6 +298,7 @@ try {
             $IzinModel = new PersonelIzinleriModel();
             $izinler = $IzinModel->getPersonelIzinleri($personel_id);
 
+            // Eski tip izinler için hardcoded liste
             $izin_tipleri = [
                 'yillik' => 'Yıllık İzin',
                 'mazeret' => 'Mazeret İzni',
@@ -288,10 +307,18 @@ try {
                 'ucretsiz' => 'Ücretsiz İzin'
             ];
 
-            $data = array_map(function ($item) use ($izin_tipleri) {
+            // Yeni tip izinler için DB'den çek
+            $TanimlamalarModel = new App\Model\TanimlamalarModel();
+            $dbIzinTurleri = $TanimlamalarModel->getDb()->query("SELECT * FROM tanimlamalar WHERE grup = 'izin_turu'")->fetchAll(PDO::FETCH_OBJ);
+            $dbIzinMap = [];
+            foreach ($dbIzinTurleri as $tur) {
+                $dbIzinMap[$tur->id] = $tur;
+            }
+
+            $data = array_map(function ($item) use ($izin_tipleri, $dbIzinMap) {
                 // Onay durumu kontrolü
                 $main_durum = mb_strtolower($item->onay_durumu ?? '', 'UTF-8');
-                $cancel_target = mb_strtolower('İptal Edildi', 'UTF-8'); // Handles dotted I conversion
+                $cancel_target = mb_strtolower('İptal Edildi', 'UTF-8');
 
                 if ($main_durum === 'iptal edildi' || $main_durum === $cancel_target) {
                     $durum_raw = 'İptal Edildi';
@@ -300,7 +327,6 @@ try {
                 }
 
                 $durum = mb_strtolower($durum_raw, 'UTF-8');
-                // ucfirst for UTF-8
                 $durum_text = mb_convert_case($durum, MB_CASE_TITLE, "UTF-8");
 
                 if ($durum == 'beklemede')
@@ -313,7 +339,44 @@ try {
                     $durum_text = 'İptal Edildi';
 
                 $izin_tipi = $item->izin_tipi ?? '';
-                $izin_tipi_text = $izin_tipleri[$izin_tipi] ?? $izin_tipi;
+                $izin_tipi_text = '';
+                $renk = 'bg-primary/10 text-primary';
+                $ikon = 'event';
+
+                if (is_numeric($izin_tipi) && isset($dbIzinMap[$izin_tipi])) {
+                    // DB'den gelen yeni tip izin
+                    $tur = $dbIzinMap[$izin_tipi];
+                    $izin_tipi_text = $tur->tur_adi;
+                    $renk = $tur->renk ?? $renk;
+                    $ikon = $tur->ikon ?? $ikon;
+                } else {
+                    // Eski tip izin
+                    $izin_tipi_text = $izin_tipleri[$izin_tipi] ?? $izin_tipi;
+
+                    // Eski tipler için renk/ikon mapping
+                    switch ($izin_tipi) {
+                        case 'yillik':
+                            $renk = 'bg-blue-100 dark:bg-blue-900/30 text-blue-600';
+                            $ikon = 'beach_access';
+                            break;
+                        case 'mazeret':
+                            $renk = 'bg-amber-100 dark:bg-amber-900/30 text-amber-600';
+                            $ikon = 'event_note';
+                            break;
+                        case 'hastalik':
+                            $renk = 'bg-red-100 dark:bg-red-900/30 text-red-600';
+                            $ikon = 'medical_services';
+                            break;
+                        case 'dogum':
+                            $renk = 'bg-pink-100 dark:bg-pink-900/30 text-pink-600';
+                            $ikon = 'child_friendly';
+                            break;
+                        case 'ucretsiz':
+                            $renk = 'bg-gray-100 dark:bg-gray-900/30 text-gray-600';
+                            $ikon = 'money_off';
+                            break;
+                    }
+                }
 
                 if (empty($izin_tipi_text)) {
                     $izin_tipi_text = 'İzin Türü Belirtilmemiş';
@@ -322,7 +385,6 @@ try {
                 // Red nedenini bul
                 $red_nedeni = null;
                 if ($durum == 'reddedildi' && !empty($item->onaylar)) {
-                    // Son onay kaydına bak
                     $son_onay = end($item->onaylar);
                     if ($son_onay && $son_onay->durum == 'Reddedildi') {
                         $red_nedeni = $son_onay->aciklama;
@@ -340,7 +402,9 @@ try {
                     'durum' => $durum,
                     'durum_text' => $durum_text,
                     'aciklama' => $item->aciklama,
-                    'red_nedeni' => $red_nedeni
+                    'red_nedeni' => $red_nedeni,
+                    'renk' => $renk,
+                    'ikon' => $ikon
                 ];
             }, $izinler);
 
@@ -386,7 +450,8 @@ try {
                     $PersonelModel = new PersonelModel();
                     $talep_eden = $PersonelModel->find($personel_id);
 
-                    // İzin türü etiketleri
+                    // İzin türü adını belirle
+                    $izin_tipi_text = $izin_tipi;
                     $izin_tipleri = [
                         'yillik' => 'Yıllık İzin',
                         'mazeret' => 'Mazeret İzni',
@@ -394,6 +459,16 @@ try {
                         'dogum' => 'Doğum / Babalık İzni',
                         'ucretsiz' => 'Ücretsiz İzin'
                     ];
+
+                    if (isset($izin_tipleri[$izin_tipi])) {
+                        $izin_tipi_text = $izin_tipleri[$izin_tipi];
+                    } elseif (is_numeric($izin_tipi)) {
+                        $TanimlamalarModel = new App\Model\TanimlamalarModel();
+                        $tur = $TanimlamalarModel->find($izin_tipi);
+                        if ($tur) {
+                            $izin_tipi_text = $tur->tur_adi;
+                        }
+                    }
 
                     // Mail şablonunu yükle
                     $mail_template_path = dirname(__DIR__) . '/mail-template/izin_onay.php';
@@ -403,7 +478,7 @@ try {
                     $replacements = [
                         '{{ONAYLAYAN_AD_SOYAD}}' => $izin_onayi_yapacak_personel->adi_soyadi ?? 'Yetkili',
                         '{{TALEP_EDEN_AD_SOYAD}}' => $talep_eden->adi_soyadi ?? 'Personel',
-                        '{{IZIN_TURU}}' => $izin_tipleri[$izin_tipi] ?? $izin_tipi,
+                        '{{IZIN_TURU}}' => $izin_tipi_text,
                         '{{BASLANGIC_TARIHI}}' => date('d.m.Y', strtotime($baslangic)),
                         '{{BITIS_TARIHI}}' => date('d.m.Y', strtotime($bitis)),
                         '{{ACIKLAMA}}' => !empty($aciklama) ? nl2br(htmlspecialchars($aciklama)) : 'Açıklama belirtilmemiş',

@@ -11,6 +11,10 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
 
 ?>
 
+<!-- Material Icons -->
+<link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+
 <div class="container-fluid">
 
     <!-- start page title -->
@@ -50,6 +54,7 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
                             <tr>
                                 <th class="text-center" style="width:5%">Sıra</th>
                                 <th class="text-center">İzin Türü</th>
+                                <th class="text-center">Görünüm (PWA)</th>
                                 <th class="text-center" style="width:12%">Ücret Durumu</th>
                                 <th class="text-center" style="width:12%">Personel Görebilir</th>
                                 <th class="text-center">Açıklama</th>
@@ -61,6 +66,26 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
                         <tbody>
 
                             <?php
+                            // Tailwind renklerini CSS stillerine çeviren fonksiyon
+                            function getStyleFromTailwind($tailwindClass)
+                            {
+                                if (strpos($tailwindClass, 'blue') !== false)
+                                    return 'background-color: #dbeafe; color: #2563eb;';
+                                if (strpos($tailwindClass, 'amber') !== false)
+                                    return 'background-color: #fef3c7; color: #d97706;';
+                                if (strpos($tailwindClass, 'red') !== false)
+                                    return 'background-color: #fee2e2; color: #dc2626;';
+                                if (strpos($tailwindClass, 'pink') !== false)
+                                    return 'background-color: #fce7f3; color: #db2777;';
+                                if (strpos($tailwindClass, 'gray') !== false)
+                                    return 'background-color: #f3f4f6; color: #4b5563;';
+                                if (strpos($tailwindClass, 'green') !== false)
+                                    return 'background-color: #dcfce7; color: #16a34a;';
+                                if (strpos($tailwindClass, 'purple') !== false)
+                                    return 'background-color: #f3e8ff; color: #9333ea;';
+                                return 'background-color: rgba(85, 110, 230, 0.1); color: #556ee6;'; // Varsayılan
+                            }
+
                             $i = 0;
                             foreach ($izinTurleri as $izinTuru) {
                                 $i++;
@@ -75,15 +100,31 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
                                 $gorebilirBadge = $izinTuru->personel_gorebilir == 1
                                     ? '<span class="badge bg-info"><i class="bx bx-show me-1"></i>Evet</span>'
                                     : '<span class="badge bg-secondary"><i class="bx bx-hide me-1"></i>Hayır</span>';
+
+                                // Renk ve İkon önizleme
+                                $renkClass = $izinTuru->renk ?? 'bg-primary/10 text-primary';
+                                $ikonName = $izinTuru->ikon ?? 'event';
+                                $inlineStyle = getStyleFromTailwind($renkClass);
+
+                                $gorunumHtml = '
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <div class="d-flex align-items-center justify-content-center rounded p-2" style="' . $inlineStyle . ' width: 40px; height: 40px;">
+                                        <span class="material-symbols-outlined" style="font-size: 24px;">' . $ikonName . '</span>
+                                    </div>
+                                    <div class="ms-2 text-start">
+                                        <small class="d-block text-muted" style="font-size: 10px;">' . $ikonName . '</small>
+                                    </div>
+                                </div>';
                                 ?>
                                 <tr id="row_<?php echo $izinTuru->id; ?>">
                                     <td class="text-center">
                                         <?php echo $izinTuru->id ?>
                                     </td>
                                     <td class="text-center">
-                                        <strong>
-                                            <?php echo $izinTuru->tur_adi ?>
-                                        </strong>
+                                        <strong><?php echo $izinTuru->tur_adi ?></strong>
+                                    </td>
+                                    <td class="text-center">
+                                        <?php echo $gorunumHtml; ?>
                                     </td>
                                     <td class="text-center">
                                         <?php echo $ucretBadge ?>
@@ -155,6 +196,63 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
 
                                 ); ?>
                         </div>
+                    </div>
+
+
+                    <div class="row mb-3">
+                         <div class="col-md-6">
+                            <?php echo
+                                Form::FormSelect2(
+                                    name:"renk",
+                                     options: [
+                                        "bg-primary/10 text-primary" => "Varsayılan (Mavi)",
+                                        "bg-blue-100 dark:bg-blue-900/30 text-blue-600" => "Mavi (Yıllık)",
+                                        "bg-amber-100 dark:bg-amber-900/30 text-amber-600" => "Turuncu (Mazeret)",
+                                        "bg-red-100 dark:bg-red-900/30 text-red-600" => "Kırmızı (Hastalık)",
+                                        "bg-pink-100 dark:bg-pink-900/30 text-pink-600" => "Pembe (Doğum)",
+                                        "bg-gray-100 dark:bg-gray-900/30 text-gray-600" => "Gri (Ücretsiz)",
+                                        "bg-green-100 dark:bg-green-900/30 text-green-600" => "Yeşil",
+                                        "bg-purple-100 dark:bg-purple-900/30 text-purple-600" => "Mor",
+                                    ],
+                                    selectedValue :'',
+                                    label:'Renk',
+                                    icon:'columns',
+                                    class:'form-control select2'
+                                    
+                                    
+
+                                ); ?>
+                        </div>
+                     
+                        <div class="col-md-6">
+                            <?php echo
+                                Form::FormSelect2(
+                                    name:"ikon",
+                                     options: [
+                                        "event" => "Takvim (Varsayılan)",
+                                        "beach_access" => "Plaj (Yıllık)",
+                                        "event_note" => "Notlu Takvim (Mazeret)",
+                                        "medical_services" => "Sağlık (Hastalık)",
+                                        "child_friendly" => "Bebek (Doğum)",
+                                        "money_off" => "Para Yok (Ücretsiz)",
+                                        "flight" => "Uçak",
+                                        "home" => "Ev",
+                                        "work_off" => "İş Yok",
+                                        "celebration" => "Kutlama",
+                                     
+                                    ],
+                                    selectedValue :'',
+                                    label:'İkon',
+                                    icon:'home',
+                                    class:'form-control select2'
+                                    
+                                    
+
+                                ); ?>
+                        </div>
+
+                              
+                        
                     </div>
 
                     <div class="row mb-3">

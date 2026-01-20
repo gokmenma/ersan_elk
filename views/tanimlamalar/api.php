@@ -344,7 +344,9 @@ if (isset($_POST["action"]) && $_POST["action"] == "izin-turu-kaydet") {
             "tur_adi" => $_POST["izin_turu"],
             "aciklama" => $_POST["aciklama"],
             "ucretli_mi" => $_POST["ucretli_mi"],
-            "personel_gorebilir" => $_POST["personel_gorebilir"]
+            "personel_gorebilir" => $_POST["personel_gorebilir"],
+            "renk" => $_POST["renk"],
+            "ikon" => $_POST["ikon"]
         ];
 
         if ($id == 0) {
