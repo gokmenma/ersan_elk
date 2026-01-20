@@ -108,7 +108,7 @@ if (!in_array($page, $allowed_pages)) {
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="assets/css/pwa-style.css">
-    <link rel="canonical" href="https:/www.personel.softran.online/index" />
+    <link rel="canonical" href="https://www.personel.softran.online/index.php" />
 
 </head>
 

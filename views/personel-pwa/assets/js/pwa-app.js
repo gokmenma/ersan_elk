@@ -426,6 +426,12 @@ const Push = {
   subscription: null,
 
   init: async () => {
+    if (!window.isSecureContext) {
+      console.error("Push messaging requires a secure context (HTTPS).");
+      Toast.show("Bildirimler için HTTPS bağlantısı gereklidir!", "error");
+      return;
+    }
+
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
       console.log("Push messaging is not supported");
       return;
