@@ -2,7 +2,7 @@
 use App\Model\PersonelModel;
 use App\Helper\Helper;
 
-$Personel = new PersonelModel;
+$Personel = new PersonelModel();
 
 
 $personeller = $Personel->all();

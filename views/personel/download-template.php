@@ -68,7 +68,7 @@ try {
         'Personel Sınıfı' => 'personel_sinifi',
         'Departman' => 'departman',
         'Görev' => 'gorev',
-        'Takım' => 'takim',
+        'Takım' => 'ekip_no',
         'DSS Sınıfı Üst' => 'dss_sinifi_ust',
         'DSS Sınıfı Alt' => 'dss_sinifi_alt',
         'IBAN Numarası' => 'iban_numarasi',
@@ -85,17 +85,17 @@ try {
 
         // Hücreye değeri yaz
         $sheet->setCellValue($columnLetter . '1', $header);
-        
+
         // Sütun genişliğini otomatik ayarla
         $sheet->getColumnDimension($columnLetter)->setAutoSize(true);
-        
+
         // Başlık stili
         $style = $sheet->getStyle($columnLetter . '1');
         $style->getFont()->setBold(true);
         $style->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FFCCCCCC'); // Gri arka plan
-        
+
         $colIndex++;
     }
 
@@ -106,10 +106,10 @@ try {
         if (class_exists('\App\Model\FirmaModel')) {
             $FirmaModel = new \App\Model\FirmaModel();
             $firmalar = $FirmaModel->option();
-            
+
             if ($firmalar && count($firmalar) > 0) {
                 $firmaList = [];
-                foreach($firmalar as $f) {
+                foreach ($firmalar as $f) {
                     // Virgül içeren firma adlarını temizle veya yönet
                     $cleanName = str_replace(',', ' ', $f->firma_adi);
                     $firmaList[] = $cleanName;
@@ -206,22 +206,23 @@ try {
     header('Content-Disposition: attachment;filename="personel_yukleme_sablonu.xlsx"');
     header('Cache-Control: max-age=0');
     // HTTP/1.1
-    header('Pragma: public'); 
+    header('Pragma: public');
 
     $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
     $writer->save('php://output');
     exit;
 
 } catch (Exception $e) {
-     // Hata durumunda tamponu temizle ve hatayı göster
-     if (ob_get_length()) ob_end_clean();
-     
-     // Hata sayfasını HTML olarak göster (kullanıcı daha rahat okusun)
-     header('Content-Type: text/html; charset=utf-8');
-     echo '<div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #f44336; background-color: #ffebee; color: #c62828; border-radius: 5px;">';
-     echo '<h3>Şablon Oluşturulurken Hata Oluştu</h3>';
-     echo '<p>' . htmlspecialchars($e->getMessage()) . '</p>';
-     echo '<button onclick="window.history.back()" style="padding: 10px 20px; background: #555; color: white; border: none; cursor: pointer;">Geri Dön</button>';
-     echo '</div>';
+    // Hata durumunda tamponu temizle ve hatayı göster
+    if (ob_get_length())
+        ob_end_clean();
+
+    // Hata sayfasını HTML olarak göster (kullanıcı daha rahat okusun)
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #f44336; background-color: #ffebee; color: #c62828; border-radius: 5px;">';
+    echo '<h3>Şablon Oluşturulurken Hata Oluştu</h3>';
+    echo '<p>' . htmlspecialchars($e->getMessage()) . '</p>';
+    echo '<button onclick="window.history.back()" style="padding: 10px 20px; background: #555; color: white; border: none; cursor: pointer;">Geri Dön</button>';
+    echo '</div>';
 }
 ?>

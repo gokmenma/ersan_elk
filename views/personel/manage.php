@@ -14,16 +14,15 @@ if ($personel) {
     $adi_soyadi_ekipno = "Yeni Personel";
 }
 
-
 $TanimlamalarModel = new TanimlamalarModel();
-$ekip_kodlari_raw = $TanimlamalarModel->getEkipKodlari();
+$mevcutEkipNo = $personel->ekip_no ?? null;
+$ekip_kodlari_raw = $TanimlamalarModel->getMusaitEkipKodlari($mevcutEkipNo);
 $ekip_kodlari_options = ['' => 'Seçiniz'];
 foreach ($ekip_kodlari_raw as $item) {
     $ekip_kodlari_options[$item->tur_adi] = $item->tur_adi;
 }
 ?>
 <div class="container-fluid">
-
 
     <!-- start page title -->
     <?php
@@ -34,10 +33,7 @@ foreach ($ekip_kodlari_raw as $item) {
     <!-- end page title -->
 
     <div class="row">
-
         <div class="col-12">
-
-            <!-- end row -->
             <div class="card">
                 <div class="card-header">
                     <div class="row align-items-center">
@@ -105,20 +101,23 @@ foreach ($ekip_kodlari_raw as $item) {
                             <a class="nav-link" data-bs-toggle="tab" href="#calisma" role="tab" aria-selected="false"
                                 tabindex="-1">
                                 <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
-                                <span class="d-none d-sm-block"><i class="far fa-user me-1"></i> Çalışma Bilgileri</span>
+                                <span class="d-none d-sm-block"><i class="far fa-user me-1"></i> Çalışma
+                                    Bilgileri</span>
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
                             <a class="nav-link" data-bs-toggle="tab" href="#finansal" role="tab" aria-selected="false"
                                 tabindex="-1">
                                 <span class="d-block d-sm-none"><i class="fas fa-wallet"></i></span>
-                                <span class="d-none d-sm-block"><i class="fas fa-wallet me-1"></i> Finansal Bilgileri</span>
+                                <span class="d-none d-sm-block"><i class="fas fa-wallet me-1"></i> Finansal
+                                    Bilgileri</span>
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
                             <a class="nav-link" data-bs-toggle="tab" href="#diger" role="tab" aria-selected="true">
                                 <span class="d-block d-sm-none"><i class="far fa-envelope"></i></span>
-                                <span class="d-none d-sm-block"><i class="far fa-envelope me-1"></i> Diğer Bilgiler</span>
+                                <span class="d-none d-sm-block"><i class="far fa-envelope me-1"></i> Diğer
+                                    Bilgiler</span>
                             </a>
                         </li>
                         <?php if ($id > 0): ?>
@@ -135,15 +134,19 @@ foreach ($ekip_kodlari_raw as $item) {
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link" data-bs-toggle="tab" href="#kesintiler" role="tab" aria-selected="false">
+                                <a class="nav-link" data-bs-toggle="tab" href="#kesintiler" role="tab"
+                                    aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-minus-circle"></i></span>
-                                    <span class="d-none d-sm-block"><i class="bx bx-minus-circle me-1"></i> Kesintiler</span>
+                                    <span class="d-none d-sm-block"><i class="bx bx-minus-circle me-1"></i>
+                                        Kesintiler</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link" data-bs-toggle="tab" href="#ek_odemeler" role="tab" aria-selected="false">
+                                <a class="nav-link" data-bs-toggle="tab" href="#ek_odemeler" role="tab"
+                                    aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-plus-circle"></i></span>
-                                    <span class="d-none d-sm-block"><i class="bx bx-plus-circle me-1"></i> Ek Ödemeler</span>
+                                    <span class="d-none d-sm-block"><i class="bx bx-plus-circle me-1"></i> Ek
+                                        Ödemeler</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
@@ -165,7 +168,7 @@ foreach ($ekip_kodlari_raw as $item) {
                                     <span class="d-none d-sm-block"><i class="bx bx-file me-1"></i> Evraklar</span>
                                 </a>
                             </li>
-                        
+
                         <?php endif; ?>
                     </ul>
 
@@ -296,7 +299,7 @@ foreach ($ekip_kodlari_raw as $item) {
 
                                 /**Sayfada Select2 varsa init yap */
                                 if ($(".select2").length > 0) {
-                                    $(".select2").each(function() {
+                                    $(".select2").each(function () {
                                         $(this).select2({
                                             dropdownParent: $(this).closest('.modal').length ? $(this).closest('.modal') : $(document.body)
                                         });

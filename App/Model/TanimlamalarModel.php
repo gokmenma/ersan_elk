@@ -103,6 +103,39 @@ class TanimlamalarModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
+    /**
+     * Aktif personeli olmayan (müsait) ekip kodlarını getirir
+     * @param string|null $includeEkipNo Dahil edilecek ekip kodu (güncelleme işlemlerinde mevcut personelin ekip kodunu göstermek için)
+     * @return array Müsait ekip kodları listesi
+     */
+    public function getMusaitEkipKodlari($includeEkipNo = null)
+    {
+        // Aktif personeli olan ekip kodlarını bul
+        $aktifEkipKodlari = [];
+        $personelSql = $this->db->prepare("SELECT DISTINCT ekip_no FROM personel WHERE ekip_no IS NOT NULL AND ekip_no != '' AND aktif_mi = 1 AND firma_id = ?");
+        $personelSql->execute([$_SESSION['firma_id']]);
+        $aktifEkipKodlariResult = $personelSql->fetchAll(PDO::FETCH_COLUMN);
+
+        // Dahil edilecek ekip kodu varsa, onu aktif listesinden çıkar
+        if ($includeEkipNo) {
+            $aktifEkipKodlariResult = array_filter($aktifEkipKodlariResult, function ($kod) use ($includeEkipNo) {
+                return $kod !== $includeEkipNo;
+            });
+        }
+
+        // Tüm ekip kodlarını al
+        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE grup = ? ORDER BY id DESC");
+        $sql->execute(['ekip_kodu']);
+        $tumEkipKodlari = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        // Aktif personeli olmayan ekip kodlarını filtrele
+        $musaitEkipKodlari = array_filter($tumEkipKodlari, function ($item) use ($aktifEkipKodlariResult) {
+            return !in_array($item->tur_adi, $aktifEkipKodlariResult);
+        });
+
+        return array_values($musaitEkipKodlari); // Reindex array
+    }
+
     public function getIsTurleri()
     {
         $sql = $this->db->prepare("SELECT * FROM $this->table WHERE grup = ? and silinme_tarihi IS NULL ORDER BY id DESC");

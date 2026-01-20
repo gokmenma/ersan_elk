@@ -1,22 +1,24 @@
 <?php
 use App\Helper\Security;
 use App\Helper\Form;
+use App\Model\BordroParametreModel;
 
-// İstatistikler
+// Bordro parametrelerinden gelir türlerini getir
+$BordroParametreModel = new BordroParametreModel();
+$gelir_turleri_param = $BordroParametreModel->getGelirTurleri();
+
+// İstatistikler - Sadece tek seferlik ve aktif sürekli ödemeleri say
 $toplamEkOdeme = 0;
+$aktifSurekliOdeme = 0;
 foreach ($ek_odemeler as $k) {
-    $toplamEkOdeme += $k->tutar;
+    if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->aktif ?? 1) == 1) {
+        $aktifSurekliOdeme++;
+    }
+    // Tek seferlik ve sabit tutarların toplamı
+    if (($k->tekrar_tipi ?? 'tek_sefer') == 'tek_sefer' || (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->hesaplama_tipi ?? 'sabit') == 'sabit')) {
+        $toplamEkOdeme += $k->tutar ?? 0;
+    }
 }
-
-$ek_odeme_turleri = [
-    '' => "Seçiniz",
-    'prim' => 'Prim',
-    'mesai' => 'Fazla Mesai',
-    'ikramiye' => 'İkramiye',
-    'yol' => 'Yol Yardımı',
-    'yemek' => 'Yemek Yardımı',
-    'diger' => 'Diğer'
-];
 ?>
 
 <div class="row">
@@ -25,8 +27,13 @@ $ek_odeme_turleri = [
         <div class="card border">
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-3">
-                    <h5 class="card-title mb-0 text-success"><i class="bx bx-plus-circle me-2"></i>Personel Ek Ödemeleri</h5>
+                    <h5 class="card-title mb-0 text-success"><i class="bx bx-plus-circle me-2"></i>Personel Ek Ödemeleri
+                    </h5>
                     <span class="badge bg-success">Toplam: <?= number_format($toplamEkOdeme, 2, ',', '.') ?> TL</span>
+                    <?php if ($aktifSurekliOdeme > 0): ?>
+                        <span class="badge bg-warning text-dark"><i class="bx bx-refresh me-1"></i><?= $aktifSurekliOdeme ?>
+                            Sürekli Ödeme</span>
+                    <?php endif; ?>
                 </div>
                 <button type="button" class="btn btn-sm btn-success" id="btnOpenEkOdemeModal">
                     <i class="bx bx-plus"></i> Yeni Ek Ödeme Ekle
@@ -37,11 +44,13 @@ $ek_odeme_turleri = [
                     <table class="table table-hover mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Dönem</th>
                                 <th>Tür</th>
-                                <th>Tutar</th>
+                                <th>Tekrar</th>
+                                <th>Hesaplama</th>
+                                <th>Tutar / Oran</th>
+                                <th>Dönem</th>
                                 <th>Açıklama</th>
-                                <th>Tarih</th>
+                                <th>Durum</th>
                                 <th class="text-center">İşlem</th>
                             </tr>
                         </thead>
@@ -50,16 +59,66 @@ $ek_odeme_turleri = [
                                 <?php foreach ($ek_odemeler as $k): ?>
                                     <?php $enc_id = Security::encrypt($k->id); ?>
                                     <tr data-id="<?= $enc_id ?>">
-                                        <td><?= App\Helper\Helper::getDonemAdi($k->donem_id) ?></td>
                                         <td>
                                             <span class="badge bg-soft-success text-success">
-                                                <?= isset($ek_odeme_turleri[$k->tur]) ? $ek_odeme_turleri[$k->tur] : ucfirst($k->tur) ?>
+                                                <?= $k->parametre_adi ?? ucfirst($k->tur ?? 'Diğer') ?>
                                             </span>
                                         </td>
-                                        <td class="fw-bold"><?= number_format($k->tutar, 2, ',', '.') ?> TL</td>
+                                        <td>
+                                            <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
+                                                <span class="badge bg-warning text-dark"><i
+                                                        class="bx bx-refresh me-1"></i>Sürekli</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-secondary">Tek Seferlik</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php
+                                            $hesaplama_labels = [
+                                                'sabit' => '<i class="bx bx-money"></i> Sabit Tutar',
+                                                'oran_net' => '<i class="bx bx-percent"></i> Net Üzerinden',
+                                                'oran_brut' => '<i class="bx bx-percent"></i> Brüt Üzerinden'
+                                            ];
+                                            echo $hesaplama_labels[$k->hesaplama_tipi ?? 'sabit'] ?? 'Sabit Tutar';
+                                            ?>
+                                        </td>
+                                        <td class="fw-bold">
+                                            <?php if (($k->hesaplama_tipi ?? 'sabit') == 'sabit'): ?>
+                                                <?= number_format($k->tutar ?? 0, 2, ',', '.') ?> TL
+                                            <?php else: ?>
+                                                %<?= number_format($k->oran ?? 0, 2, ',', '.') ?>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
+                                                <small>
+                                                    <?= $k->baslangic_donemi ? date('d.m.Y', strtotime($k->baslangic_donemi)) : '-' ?>
+                                                    <i class="bx bx-right-arrow-alt"></i>
+                                                    <?= $k->bitis_donemi ? date('d.m.Y', strtotime($k->bitis_donemi)) : '<span class="text-success">Süresiz</span>' ?>
+                                                </small>
+                                            <?php else: ?>
+                                                <?= App\Helper\Helper::getDonemAdi($k->donem_id) ?>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?= htmlspecialchars($k->aciklama ?? '-') ?></td>
-                                        <td><?= date('d.m.Y H:i', strtotime($k->created_at)) ?></td>
+                                        <td>
+                                            <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
+                                                <?php if (($k->aktif ?? 1) == 1): ?>
+                                                    <span class="badge bg-success">Aktif</span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-secondary">Pasif</span>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                <span class="badge bg-light text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="text-center">
+                                            <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->aktif ?? 1) == 1): ?>
+                                                <button type="button" class="btn btn-sm btn-warning btn-personel-ek-odeme-sonlandir"
+                                                    data-id="<?= $k->id ?>" title="Sonlandır">
+                                                    <i class="bx bx-stop"></i>
+                                                </button>
+                                            <?php endif; ?>
                                             <button type="button" class="btn btn-sm btn-danger btn-personel-ek-odeme-sil"
                                                 data-id="<?= $k->id ?>" title="Sil">
                                                 <i class="bx bx-trash"></i>
@@ -69,7 +128,7 @@ $ek_odeme_turleri = [
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="6" class="text-center py-4">
+                                    <td colspan="8" class="text-center py-4">
                                         <span class="text-muted">Kayıtlı ek ödeme bulunamadı.</span>
                                     </td>
                                 </tr>
@@ -84,7 +143,7 @@ $ek_odeme_turleri = [
 
 <!-- Ek Ödeme Ekle Modal -->
 <div class="modal fade" id="modalPersonelEkOdemeEkle" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
                 <h5 class="modal-title"><i class="bx bx-plus-circle me-2"></i>Yeni Ek Ödeme Ekle</h5>
@@ -93,36 +152,113 @@ $ek_odeme_turleri = [
             <form id="formPersonelEkOdemeEkle">
                 <input type="hidden" name="personel_id" value="<?= $id ?>">
                 <div class="modal-body">
+                    <!-- Ek Ödeme Türü Seçimi (Parametrelerden) -->
                     <div class="mb-3">
+                        <label class="form-label fw-semibold">Ek Ödeme Türü <span class="text-danger">*</span></label>
+                        <select class="form-select select2" id="ek_odeme_parametre_id" name="parametre_id" required
+                            style="width: 100%">
+                            <option value="">Ek ödeme türü seçiniz...</option>
+                            <?php foreach ($gelir_turleri_param as $param): ?>
+                                <option value="<?= $param->id ?>" data-kod="<?= $param->kod ?>"
+                                    data-hesaplama="<?= $param->hesaplama_tipi ?>" data-oran="<?= $param->oran ?? 0 ?>"
+                                    data-tutar="<?= $param->varsayilan_tutar ?? 0 ?>">
+                                    <?= htmlspecialchars($param->etiket) ?>
+                                    <?php if (strpos($param->hesaplama_tipi ?? '', 'oran') !== false && ($param->oran ?? 0) > 0): ?>
+                                        (%<?= $param->oran ?>)
+                                    <?php endif; ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <!-- Tekrar Tipi Seçimi -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Ödeme Tipi</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check form-check-success">
+                                <input class="form-check-input" type="radio" name="ek_tekrar_tipi"
+                                    id="ek_tekrar_tek_sefer" value="tek_sefer" checked>
+                                <label class="form-check-label" for="ek_tekrar_tek_sefer">
+                                    <i class="bx bx-calendar-check me-1"></i> Tek Seferlik
+                                </label>
+                            </div>
+                            <div class="form-check form-check-warning">
+                                <input class="form-check-input" type="radio" name="ek_tekrar_tipi"
+                                    id="ek_tekrar_surekli" value="surekli">
+                                <label class="form-check-label" for="ek_tekrar_surekli">
+                                    <i class="bx bx-refresh me-1"></i> Sürekli (Her Ay)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dönem Seçimi - Tek Seferlik -->
+                    <div class="mb-3" id="ek_div_tek_sefer_donem">
                         <?= Form::FormSelect2(
                             name: "ek_odeme_donem",
-                            options: $acik_donemler, 
-                            selectedValue: date('Y-m'),  
-                            label:"Dönem Seçin", 
-                            icon: "calendar", 
-                            valueField: '', 
-                            textField: '', 
-                            required: true, 
-                            ) ?>
+                            options: $acik_donemler,
+                            selectedValue: array_key_first($acik_donemler) ?? '',
+                            label: "Dönem Seçin",
+                            icon: "calendar",
+                            valueField: '',
+                            textField: '',
+                            required: true,
+                        ) ?>
                     </div>
 
+                    <!-- Tarih Aralığı - Sürekli -->
+                    <div class="row d-none" id="ek_div_surekli_donem">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Başlangıç Tarihi <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="ek_odeme_baslangic_donemi"
+                                name="baslangic_donemi" value="<?= date('Y-m-d') ?>">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Bitiş Tarihi <small class="text-muted">(Boş =
+                                    Süresiz)</small></label>
+                            <input type="date" class="form-control" id="ek_odeme_bitis_donemi" name="bitis_donemi">
+                        </div>
+                    </div>
+
+                    <!-- Hesaplama Tipi -->
                     <div class="mb-3">
-                        <?= Form::FormSelect2(
-                            name: "ek_odeme_tur",
-                            options: $ek_odeme_turleri, 
-                            selectedValue: '',  
-                            label:"Ek Ödeme Türü", 
-                            icon: "list", 
-                            valueField: '', 
-                            textField: '', 
-                            required: true
-                            ) ?>
+                        <label class="form-label fw-semibold">Hesaplama Tipi</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="ek_hesaplama_tipi"
+                                    id="ek_hesaplama_sabit" value="sabit" checked>
+                                <label class="form-check-label" for="ek_hesaplama_sabit">
+                                    <i class="bx bx-money me-1"></i> Sabit Tutar
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="ek_hesaplama_tipi"
+                                    id="ek_hesaplama_oran_net" value="oran_net">
+                                <label class="form-check-label" for="ek_hesaplama_oran_net">
+                                    <i class="bx bx-percent me-1"></i> Net Maaş Üzerinden (%)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="ek_hesaplama_tipi"
+                                    id="ek_hesaplama_oran_brut" value="oran_brut">
+                                <label class="form-check-label" for="ek_hesaplama_oran_brut">
+                                    <i class="bx bx-percent me-1"></i> Brüt Maaş Üzerinden (%)
+                                </label>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="mb-3">
-                        <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="ek_odeme_tutar"') ?>
+                    <!-- Tutar/Oran Girişi -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3" id="ek_div_tutar">
+                            <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="ek_odeme_tutar" min="0"') ?>
+                        </div>
+                        <div class="col-md-6 mb-3 d-none" id="ek_div_oran">
+                            <?= Form::FormFloatInput("number", "oran", "", "0", "Oran (%)", "percent", "form-control", false, null, "off", false, 'step="0.01" id="ek_odeme_oran" min="0" max="100"') ?>
+                        </div>
                     </div>
 
+                    <!-- Açıklama -->
                     <div class="mb-3">
                         <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama giriniz", "Açıklama", "message-square", "form-control", false, null, "off", false, 'id="ek_odeme_aciklama"') ?>
                     </div>

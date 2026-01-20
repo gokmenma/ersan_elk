@@ -1,20 +1,24 @@
 <?php
 use App\Helper\Security;
 use App\Helper\Form;
+use App\Model\BordroParametreModel;
 
-// İstatistikler
+// Bordro parametrelerinden kesinti türlerini getir
+$BordroParametreModel = new BordroParametreModel();
+$kesinti_turleri_param = $BordroParametreModel->getKesintiTurleri();
+
+// İstatistikler - Sadece tek seferlik ve aktif sürekli kesintileri say
 $toplamKesinti = 0;
+$aktifSurekliKesinti = 0;
 foreach ($kesintiler as $k) {
-    $toplamKesinti += $k->tutar;
+    if ($k->tekrar_tipi == 'surekli' && $k->aktif == 1) {
+        $aktifSurekliKesinti++;
+    }
+    // Tek seferlik kesintilerin tutarını topla
+    if ($k->tekrar_tipi == 'tek_sefer' || ($k->tekrar_tipi == 'surekli' && $k->hesaplama_tipi == 'sabit')) {
+        $toplamKesinti += $k->tutar ?? 0;
+    }
 }
-
-$kesinti_turleri = [
-    '' => "Seçiniz",
-    'icra' => 'İcra',
-    'avans' => 'Avans',
-    'nafaka' => 'Nafaka',
-    'diger' => 'Diğer'
-];
 ?>
 
 <div class="row">
@@ -23,8 +27,13 @@ $kesinti_turleri = [
         <div class="card border">
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-3">
-                    <h5 class="card-title mb-0 text-primary"><i class="bx bx-minus-circle me-2"></i>Personel Kesintileri</h5>
+                    <h5 class="card-title mb-0 text-primary"><i class="bx bx-minus-circle me-2"></i>Personel Kesintileri
+                    </h5>
                     <span class="badge bg-danger">Toplam: <?= number_format($toplamKesinti, 2, ',', '.') ?> TL</span>
+                    <?php if ($aktifSurekliKesinti > 0): ?>
+                        <span class="badge bg-warning text-dark"><i
+                                class="bx bx-refresh me-1"></i><?= $aktifSurekliKesinti ?> Sürekli Kesinti</span>
+                    <?php endif; ?>
                 </div>
                 <button type="button" class="btn btn-sm btn-primary" id="btnOpenKesintiModal">
                     <i class="bx bx-plus"></i> Yeni Kesinti Ekle
@@ -35,12 +44,13 @@ $kesinti_turleri = [
                     <table class="table table-hover mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Dönem</th>
                                 <th>Tür</th>
-                                <th>Tutar</th>
+                                <th>Tekrar</th>
+                                <th>Hesaplama</th>
+                                <th>Tutar / Oran</th>
+                                <th>Dönem</th>
                                 <th>Açıklama</th>
-                                <th>İcra Dosyası</th>
-                                <th>Tarih</th>
+                                <th>Durum</th>
                                 <th class="text-center">İşlem</th>
                             </tr>
                         </thead>
@@ -49,23 +59,70 @@ $kesinti_turleri = [
                                 <?php foreach ($kesintiler as $k): ?>
                                     <?php $enc_id = Security::encrypt($k->id); ?>
                                     <tr data-id="<?= $enc_id ?>">
-                                        <td><?= App\Helper\Helper::getDonemAdi($k->donem_id) ?></td>
                                         <td>
                                             <span class="badge bg-soft-info text-info">
-                                                <?= ucfirst($k->tur) ?>
+                                                <?= $k->parametre_adi ?? ucfirst($k->tur) ?>
                                             </span>
-                                        </td>
-                                        <td class="fw-bold"><?= number_format($k->tutar, 2, ',', '.') ?> TL</td>
-                                        <td><?= htmlspecialchars($k->aciklama ?? '-') ?></td>
-                                        <td>
                                             <?php if ($k->tur == 'icra' && $k->dosya_no): ?>
-                                                <small><?= htmlspecialchars($k->icra_dairesi . ' - ' . $k->dosya_no) ?></small>
-                                            <?php else: ?>
-                                                -
+                                                <br><small
+                                                    class="text-muted"><?= htmlspecialchars($k->icra_dairesi . ' - ' . $k->dosya_no) ?></small>
                                             <?php endif; ?>
                                         </td>
-                                        <td><?= date('d.m.Y H:i', strtotime($k->created_at)) ?></td>
+                                        <td>
+                                            <?php if ($k->tekrar_tipi == 'surekli'): ?>
+                                                <span class="badge bg-warning text-dark"><i
+                                                        class="bx bx-refresh me-1"></i>Sürekli</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-secondary">Tek Seferlik</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php
+                                            $hesaplama_labels = [
+                                                'sabit' => '<i class="bx bx-money"></i> Sabit Tutar',
+                                                'oran_net' => '<i class="bx bx-percent"></i> Net Üzerinden',
+                                                'oran_brut' => '<i class="bx bx-percent"></i> Brüt Üzerinden'
+                                            ];
+                                            echo $hesaplama_labels[$k->hesaplama_tipi ?? 'sabit'] ?? 'Sabit Tutar';
+                                            ?>
+                                        </td>
+                                        <td class="fw-bold">
+                                            <?php if (($k->hesaplama_tipi ?? 'sabit') == 'sabit'): ?>
+                                                <?= number_format($k->tutar ?? 0, 2, ',', '.') ?> TL
+                                            <?php else: ?>
+                                                %<?= number_format($k->oran ?? 0, 2, ',', '.') ?>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if ($k->tekrar_tipi == 'surekli'): ?>
+                                                <small>
+                                                    <?= $k->baslangic_donemi ? date('d.m.Y', strtotime($k->baslangic_donemi)) : '-' ?>
+                                                    <i class="bx bx-right-arrow-alt"></i>
+                                                    <?= $k->bitis_donemi ? date('d.m.Y', strtotime($k->bitis_donemi)) : '<span class="text-success">Süresiz</span>' ?>
+                                                </small>
+                                            <?php else: ?>
+                                                <?= App\Helper\Helper::getDonemAdi($k->donem_id) ?>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?= htmlspecialchars($k->aciklama ?? '-') ?></td>
+                                        <td>
+                                            <?php if ($k->tekrar_tipi == 'surekli'): ?>
+                                                <?php if ($k->aktif == 1): ?>
+                                                    <span class="badge bg-success">Aktif</span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-secondary">Pasif</span>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                <span class="badge bg-light text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="text-center">
+                                            <?php if ($k->tekrar_tipi == 'surekli' && $k->aktif == 1): ?>
+                                                <button type="button" class="btn btn-sm btn-warning btn-personel-kesinti-sonlandir"
+                                                    data-id="<?= $k->id ?>" title="Sonlandır">
+                                                    <i class="bx bx-stop"></i>
+                                                </button>
+                                            <?php endif; ?>
                                             <button type="button" class="btn btn-sm btn-danger btn-personel-kesinti-sil"
                                                 data-id="<?= $k->id ?>" title="Sil">
                                                 <i class="bx bx-trash"></i>
@@ -75,7 +132,7 @@ $kesinti_turleri = [
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="7" class="text-center py-4">
+                                    <td colspan="8" class="text-center py-4">
                                         <span class="text-muted">Kayıtlı kesinti bulunamadı.</span>
                                     </td>
                                 </tr>
@@ -90,7 +147,7 @@ $kesinti_turleri = [
 
 <!-- Kesinti Ekle Modal -->
 <div class="modal fade" id="modalPersonelKesintiEkle" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title"><i class="bx bx-minus-circle me-2"></i>Yeni Kesinti Ekle</h5>
@@ -99,32 +156,113 @@ $kesinti_turleri = [
             <form id="formPersonelKesintiEkle">
                 <input type="hidden" name="personel_id" value="<?= $id ?>">
                 <div class="modal-body">
+                    <!-- Kesinti Türü Seçimi (Parametrelerden) -->
                     <div class="mb-3">
+                        <label class="form-label fw-semibold">Kesinti Türü <span class="text-danger">*</span></label>
+                        <select class="form-select select2" id="kesinti_parametre_id" name="parametre_id" required
+                            style="width: 100%">
+                            <option value="">Kesinti türü seçiniz...</option>
+                            <?php foreach ($kesinti_turleri_param as $param): ?>
+                                <option value="<?= $param->id ?>" data-kod="<?= $param->kod ?>"
+                                    data-hesaplama="<?= $param->hesaplama_tipi ?>" data-oran="<?= $param->oran ?? 0 ?>"
+                                    data-tutar="<?= $param->varsayilan_tutar ?? 0 ?>">
+                                    <?= htmlspecialchars($param->etiket) ?>
+                                    <?php if (strpos($param->hesaplama_tipi, 'oran') !== false && $param->oran > 0): ?>
+                                        (%<?= $param->oran ?>)
+                                    <?php endif; ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <!-- Tekrar Tipi Seçimi -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Kesinti Tipi</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check form-check-primary">
+                                <input class="form-check-input" type="radio" name="tekrar_tipi" id="tekrar_tek_sefer"
+                                    value="tek_sefer" checked>
+                                <label class="form-check-label" for="tekrar_tek_sefer">
+                                    <i class="bx bx-calendar-check me-1"></i> Tek Seferlik
+                                </label>
+                            </div>
+                            <div class="form-check form-check-warning">
+                                <input class="form-check-input" type="radio" name="tekrar_tipi" id="tekrar_surekli"
+                                    value="surekli">
+                                <label class="form-check-label" for="tekrar_surekli">
+                                    <i class="bx bx-refresh me-1"></i> Sürekli (Her Ay)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dönem Seçimi - Tek Seferlik -->
+                    <div class="mb-3" id="div_tek_sefer_donem">
                         <?= Form::FormSelect2(
                             name: "kesinti_donem",
-                            options: $acik_donemler, 
-                            selectedValue: date('Y-m'),  
-                            label:"Dönem Seçin", 
-                            icon: "calendar", 
-                            valueField: '', 
-                            textField: '', 
-                            required: true, 
-                            ) ?>
+                            options: $acik_donemler,
+                            selectedValue: array_key_first($acik_donemler) ?? '',
+                            label: "Dönem Seçin",
+                            icon: "calendar",
+                            valueField: '',
+                            textField: '',
+                            required: true,
+                        ) ?>
                     </div>
 
+                    <!-- Tarih Aralığı - Sürekli -->
+                    <div class="row d-none" id="div_surekli_donem">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Başlangıç Tarihi <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="kesinti_baslangic_donemi"
+                                name="baslangic_donemi" value="<?= date('Y-m-d') ?>">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Bitiş Tarihi <small class="text-muted">(Boş =
+                                    Süresiz)</small></label>
+                            <input type="date" class="form-control" id="kesinti_bitis_donemi" name="bitis_donemi">
+                        </div>
+                    </div>
+
+                    <!-- Hesaplama Tipi -->
                     <div class="mb-3">
-                        <?= Form::FormSelect2(
-                            name: "kesinti_tur",
-                            options: $kesinti_turleri, 
-                            selectedValue: '',  
-                            label:"Kesinti Türü", 
-                            icon: "list", 
-                            valueField: '', 
-                            textField: '', 
-                            required: true
-                            ) ?>
+                        <label class="form-label fw-semibold">Hesaplama Tipi</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="hesaplama_tipi" id="hesaplama_sabit"
+                                    value="sabit" checked>
+                                <label class="form-check-label" for="hesaplama_sabit">
+                                    <i class="bx bx-money me-1"></i> Sabit Tutar
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="hesaplama_tipi"
+                                    id="hesaplama_oran_net" value="oran_net">
+                                <label class="form-check-label" for="hesaplama_oran_net">
+                                    <i class="bx bx-percent me-1"></i> Net Maaş Üzerinden (%)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="hesaplama_tipi"
+                                    id="hesaplama_oran_brut" value="oran_brut">
+                                <label class="form-check-label" for="hesaplama_oran_brut">
+                                    <i class="bx bx-percent me-1"></i> Brüt Maaş Üzerinden (%)
+                                </label>
+                            </div>
+                        </div>
                     </div>
 
+                    <!-- Tutar/Oran Girişi -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3" id="div_tutar">
+                            <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="kesinti_tutar" min="0"') ?>
+                        </div>
+                        <div class="col-md-6 mb-3 d-none" id="div_oran">
+                            <?= Form::FormFloatInput("number", "oran", "", "0", "Oran (%)", "percent", "form-control", false, null, "off", false, 'step="0.01" id="kesinti_oran" min="0" max="100"') ?>
+                        </div>
+                    </div>
+
+                    <!-- İcra Dosyası Seçimi -->
                     <div class="mb-3 d-none" id="div_icra_secimi">
                         <div class="form-floating form-floating-custom">
                             <select class="form-select select2" id="kesinti_icra_id" name="icra_id" style="width: 100%">
@@ -137,14 +275,12 @@ $kesinti_turleri = [
                             </div>
                         </div>
                         <div class="form-text text-warning mt-2" id="no_icra_warning" style="display:none;">
-                            <i class="bx bx-info-circle me-1"></i> Aktif icra dosyası bulunamadı. Lütfen önce icra dosyası ekleyin.
+                            <i class="bx bx-info-circle me-1"></i> Aktif icra dosyası bulunamadı. Lütfen önce icra
+                            dosyası ekleyin.
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="kesinti_tutar"') ?>
-                    </div>
-
+                    <!-- Açıklama -->
                     <div class="mb-3">
                         <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama giriniz", "Açıklama", "message-square", "form-control", false, null, "off", false, 'id="kesinti_aciklama"') ?>
                     </div>

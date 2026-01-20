@@ -345,13 +345,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<table class="table table-sm mb-0">';
                 $html .= '<tbody>';
 
-                if (empty($ekOdemelerDetay)) {
+                // Puantaj dışı ek ödemeleri grupla
+                $ekOdemelerNonPuantaj = [];
+                $puantajOdemeler = [];
+
+                // Tüm ek ödemeleri (listeli) al
+                $tumEkOdemeler = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
+
+                foreach ($tumEkOdemeler as $odeme) {
+                    if (strpos($odeme->aciklama ?? '', '[Puantaj]') === 0) {
+                        // Puantaj ödemesi - ayrı göster
+                        $puantajOdemeler[] = $odeme;
+                    } else {
+                        // Diğer ödemeler - grupla
+                        $tur = $odeme->tur;
+                        if (!isset($ekOdemelerNonPuantaj[$tur])) {
+                            $ekOdemelerNonPuantaj[$tur] = ['toplam' => 0, 'adet' => 0];
+                        }
+                        $ekOdemelerNonPuantaj[$tur]['toplam'] += floatval($odeme->tutar);
+                        $ekOdemelerNonPuantaj[$tur]['adet']++;
+                    }
+                }
+
+                if (empty($ekOdemelerNonPuantaj) && empty($puantajOdemeler)) {
                     $html .= '<tr><td class="text-center text-muted py-3" colspan="2"><i class="bx bx-info-circle me-1"></i>Ek ödeme yok</td></tr>';
                 } else {
-                    foreach ($ekOdemelerDetay as $ekOdeme) {
-                        $turEtiket = $ekOdemeTurEtiketleri[$ekOdeme->tur] ?? ucfirst($ekOdeme->tur);
-                        $adetStr = $ekOdeme->adet > 1 ? ' <small class="text-muted">(' . $ekOdeme->adet . ' adet)</small>' : '';
-                        $html .= '<tr><td class="ps-3">' . htmlspecialchars($turEtiket) . $adetStr . '</td><td class="text-end pe-3 text-success">+' . number_format($ekOdeme->toplam_tutar, 2, ',', '.') . ' ₺</td></tr>';
+                    // Önce normal ek ödemeleri göster
+                    foreach ($ekOdemelerNonPuantaj as $tur => $data) {
+                        $turEtiket = $ekOdemeTurEtiketleri[$tur] ?? ucfirst($tur);
+                        $adetStr = $data['adet'] > 1 ? ' <small class="text-muted">(' . $data['adet'] . ' adet)</small>' : '';
+                        $html .= '<tr><td class="ps-3">' . htmlspecialchars($turEtiket) . $adetStr . '</td><td class="text-end pe-3 text-success">+' . number_format($data['toplam'], 2, ',', '.') . ' ₺</td></tr>';
+                    }
+
+                    // Puantaj ödemelerini ayrı ayrı göster
+                    if (!empty($puantajOdemeler)) {
+                        $html .= '<tr><td colspan="2" class="ps-3 pt-2 pb-1"><small class="text-muted fw-medium"><i class="bx bx-briefcase me-1"></i>Puantaj Ödemeleri</small></td></tr>';
+                        foreach ($puantajOdemeler as $puantaj) {
+                            // [Puantaj] AÇMA İŞ EMRİ (1 Adet) formatından temiz açıklama çıkar
+                            $aciklama = str_replace('[Puantaj] ', '', $puantaj->aciklama ?? '');
+                            $html .= '<tr><td class="ps-4 small">' . htmlspecialchars($aciklama) . '</td><td class="text-end pe-3 text-success">+' . number_format($puantaj->tutar, 2, ',', '.') . ' ₺</td></tr>';
+                        }
                     }
                 }
 
@@ -849,6 +882,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 } else {
                     throw new Exception('Dönem silinirken bir hata oluştu.');
                 }
+                break;
+
+            // Sürekli kesinti ve ek ödemeleri döneme aktar
+            case 'surekli-kayitlari-olustur':
+                $donem_id = intval($_POST['donem_id'] ?? 0);
+
+                if ($donem_id <= 0) {
+                    throw new Exception('Geçersiz dönem.');
+                }
+
+                // Dönemdeki tüm personeller için sürekli kesinti/ek ödemeleri oluştur
+                $sonuc = $BordroPersonel->olusturDonemSurekliKayitlar($donem_id);
+
+                $mesaj = '';
+                if ($sonuc['kesinti'] > 0 || $sonuc['ek_odeme'] > 0) {
+                    $mesaj = "{$sonuc['kesinti']} kesinti ve {$sonuc['ek_odeme']} ek ödeme kaydı otomatik oluşturuldu.";
+                } else {
+                    $mesaj = 'Aktarılacak sürekli kesinti veya ek ödeme bulunamadı.';
+                }
+
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => $mesaj,
+                    'data' => $sonuc
+                ]);
                 break;
 
             default:

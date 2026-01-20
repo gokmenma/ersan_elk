@@ -179,18 +179,16 @@ switch ($tab) {
         // Şimdilik sadece bu yılın açık dönemlerini alıyoruz.
         foreach ($donemler_raw as $d) {
             if (isset($d->kapali_mi) && $d->kapali_mi == 0) {
-                // YYYY-MM formatında key oluştur
-                $key = date('Y-m', strtotime($d->baslangic_tarihi));
                 // Türkçe ay ismini al
                 $formatter = new IntlDateFormatter('tr_TR', IntlDateFormatter::LONG, IntlDateFormatter::NONE, null, null, 'MMMM yyyy');
                 $ay_adi = $formatter->format(strtotime($d->baslangic_tarihi));
-                $acik_donemler[$key] = $d->donem_adi ?? $ay_adi;
+                $acik_donemler[$d->id] = $d->donem_adi ?? $ay_adi;
             }
         }
 
         // Eğer hiç açık dönem yoksa manuel giriş için fallback (şimdiki ay)
         if (empty($acik_donemler)) {
-            $acik_donemler[date('Y-m')] = date('m/Y') . ' (Otomatik)';
+            $acik_donemler[0] = date('m/Y') . ' (Dönem Yok)';
         }
 
         include_once __DIR__ . "/icerik/kesintiler.php";

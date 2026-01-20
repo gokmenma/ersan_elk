@@ -145,6 +145,22 @@ $isTurleri = $Tanimlamalar->getIsTurleri();
                                 ); ?>
                         </div>
                     </div>
+                    <div class="row mb-3">
+
+                        <div class="col-md-12">
+                            <?php echo
+                                Form::FormFloatInput(
+                                    "text",
+                                    "is_turu_ucret",
+                                    "",
+                                    "İş Türü Ücreti giriniz!",
+                                    "İş Türü Ücreti",
+                                    "dollar-sign",
+                                    "form-control money"
+
+                                ); ?>
+                        </div>
+                    </div>
 
                     <div class="row mb-3">
                         <div class="col-md-12">

@@ -4,5 +4,5 @@
 <meta content="Themesdesign" name="author" />
 <!-- App favicon -->
 <link rel="shortcut icon" href="../../assets/images/fav.jpg">
-<link rel="canonical" href="https:/www.admin.cansagliksen.org.tr/index" />
+<link rel="canonical" href="https:/www.softran.online/index" />
 

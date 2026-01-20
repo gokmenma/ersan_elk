@@ -271,6 +271,239 @@ class BordroPersonelModel extends Model
     }
 
     /**
+     * Personelin sürekli kesintilerini dönem için otomatik oluşturur
+     * Bordro hesaplaması yapılmadan önce çağrılmalıdır
+     * 
+     * @param int $personel_id Personel ID
+     * @param int $donem_id Dönem ID
+     * @param string $donem YYYY-MM formatında dönem
+     * @param float $brutMaas Personelin brüt maaşı (oran hesabı için)
+     * @param float $netMaas Personelin net maaşı (oran hesabı için)
+     * @return int Oluşturulan kayıt sayısı
+     */
+    public function olusturSurekliKesintiler($personel_id, $donem_id, $donem, $brutMaas = 0, $netMaas = 0)
+    {
+        $PersonelKesintileriModel = new \App\Model\PersonelKesintileriModel();
+
+        // Aktif sürekli kesintileri getir
+        $surekliKesintiler = $PersonelKesintileriModel->getAktifSurekliKesintiler($personel_id, $donem);
+
+        $olusturulanSayisi = 0;
+
+        foreach ($surekliKesintiler as $kesinti) {
+            // Tutarı hesapla
+            $tutar = 0;
+            $hesaplamaTipi = $kesinti->hesaplama_tipi ?? 'sabit';
+
+            if ($hesaplamaTipi === 'sabit') {
+                $tutar = floatval($kesinti->tutar ?? 0);
+            } elseif ($hesaplamaTipi === 'oran_net' && $netMaas > 0) {
+                $oran = floatval($kesinti->oran ?? 0);
+                $tutar = $netMaas * ($oran / 100);
+            } elseif ($hesaplamaTipi === 'oran_brut' && $brutMaas > 0) {
+                $oran = floatval($kesinti->oran ?? 0);
+                $tutar = $brutMaas * ($oran / 100);
+            } else {
+                // Oran hesabı için maaş değeri yoksa, parametre varsayılan tutarını kullan
+                $tutar = floatval($kesinti->tutar ?? 0);
+            }
+
+            // Dönem için kesinti oluştur
+            $result = $PersonelKesintileriModel->olusturDonemKesintisi($kesinti, $donem_id, round($tutar, 2));
+
+            if ($result) {
+                $olusturulanSayisi++;
+            }
+        }
+
+        return $olusturulanSayisi;
+    }
+
+    /**
+     * Personelin sürekli ek ödemelerini dönem için otomatik oluşturur
+     * Bordro hesaplaması yapılmadan önce çağrılmalıdır
+     * 
+     * @param int $personel_id Personel ID
+     * @param int $donem_id Dönem ID
+     * @param string $donem YYYY-MM formatında dönem
+     * @param float $brutMaas Personelin brüt maaşı (oran hesabı için)
+     * @param float $netMaas Personelin net maaşı (oran hesabı için)
+     * @return int Oluşturulan kayıt sayısı
+     */
+    public function olusturSurekliEkOdemeler($personel_id, $donem_id, $donem, $brutMaas = 0, $netMaas = 0)
+    {
+        $PersonelEkOdemelerModel = new \App\Model\PersonelEkOdemelerModel();
+
+        // Aktif sürekli ek ödemeleri getir
+        $surekliOdemeler = $PersonelEkOdemelerModel->getAktifSurekliOdemeler($personel_id, $donem);
+
+        $olusturulanSayisi = 0;
+
+        foreach ($surekliOdemeler as $odeme) {
+            // Tutarı hesapla
+            $tutar = 0;
+            $hesaplamaTipi = $odeme->hesaplama_tipi ?? 'sabit';
+
+            if ($hesaplamaTipi === 'sabit') {
+                $tutar = floatval($odeme->tutar ?? 0);
+            } elseif ($hesaplamaTipi === 'oran_net' && $netMaas > 0) {
+                $oran = floatval($odeme->oran ?? 0);
+                $tutar = $netMaas * ($oran / 100);
+            } elseif ($hesaplamaTipi === 'oran_brut' && $brutMaas > 0) {
+                $oran = floatval($odeme->oran ?? 0);
+                $tutar = $brutMaas * ($oran / 100);
+            } else {
+                // Oran hesabı için maaş değeri yoksa, varsayılan tutarı kullan
+                $tutar = floatval($odeme->tutar ?? 0);
+            }
+
+            // Dönem için ek ödeme oluştur
+            $result = $PersonelEkOdemelerModel->olusturDonemOdemesi($odeme, $donem_id, round($tutar, 2));
+
+            if ($result) {
+                $olusturulanSayisi++;
+            }
+        }
+
+        return $olusturulanSayisi;
+    }
+
+    /**
+     * Dönemdeki tüm personeller için sürekli kesinti/ek ödemeleri otomatik oluşturur
+     * @param int $donem_id Dönem ID
+     * @return array ['kesinti' => int, 'ek_odeme' => int] Oluşturulan kayıt sayıları
+     */
+    public function olusturDonemSurekliKayitlar($donem_id)
+    {
+        // Dönem bilgisini çek
+        $sql = $this->db->prepare("SELECT baslangic_tarihi FROM bordro_donemi WHERE id = ?");
+        $sql->execute([$donem_id]);
+        $donemBilgi = $sql->fetch(PDO::FETCH_OBJ);
+
+        if (!$donemBilgi) {
+            return ['kesinti' => 0, 'ek_odeme' => 0];
+        }
+
+        $donem = date('Y-m', strtotime($donemBilgi->baslangic_tarihi));
+
+        // Dönemdeki personelleri getir
+        $personeller = $this->getPersonellerByDonem($donem_id);
+
+        $toplamKesinti = 0;
+        $toplamEkOdeme = 0;
+
+        foreach ($personeller as $personel) {
+            // Brüt ve net maaşı personel kaydından al
+            $brutMaas = floatval($personel->maas_tutari ?? 0);
+            $netMaas = floatval($personel->net_maas ?? 0);
+
+            // Net maaş yoksa brütten tahmin et (yaklaşık %70)
+            if ($netMaas <= 0 && $brutMaas > 0) {
+                $netMaas = $brutMaas * 0.70;
+            }
+
+            $toplamKesinti += $this->olusturSurekliKesintiler(
+                $personel->personel_id,
+                $donem_id,
+                $donem,
+                $brutMaas,
+                $netMaas
+            );
+
+            $toplamEkOdeme += $this->olusturSurekliEkOdemeler(
+                $personel->personel_id,
+                $donem_id,
+                $donem,
+                $brutMaas,
+                $netMaas
+            );
+        }
+
+        return ['kesinti' => $toplamKesinti, 'ek_odeme' => $toplamEkOdeme];
+    }
+
+    /**
+     * Personelin puantaj (yapılan işler) verilerine göre ek ödemelerini oluşturur
+     */
+    public function olusturPuantajOdemeleri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
+    {
+        // 1. Personelin ekip kodunu bul
+        $PersonelModel = new \App\Model\PersonelModel();
+        $personel = $PersonelModel->find($personel_id);
+
+        if (!$personel || empty($personel->ekip_no)) {
+            return;
+        }
+
+        $ekipKodu = $personel->ekip_no;
+
+        // 2. Önceki puantaj kaynaklı ek ödemeleri temizle (duplicate önlemek için)
+        // Açıklamada "[Puantaj]" etiketi olanları siliyoruz
+        $deleteSql = $this->db->prepare("
+            DELETE FROM personel_ek_odemeler 
+            WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[Puantaj]%'
+        ");
+        $deleteSql->execute([$personel_id, $donem_id]);
+
+        // 3. Yapılan işleri getir ve grupla
+        // is_emri_tipi'ne göre gruplayıp sayılarını alıyoruz
+        // Not: yapilan_isler tablosunda firma_id yok, firma adı text olarak 'firma' kolonunda tutuluyor
+        $sql = $this->db->prepare("
+            SELECT is_emri_tipi, COUNT(*) as adet
+            FROM yapilan_isler 
+            WHERE ekip_kodu = ? 
+            AND tarih BETWEEN ? AND ?
+            AND is_emri_tipi IS NOT NULL 
+            AND is_emri_tipi != ''
+            GROUP BY is_emri_tipi
+        ");
+        $sql->execute([$ekipKodu, $baslangic_tarihi, $bitis_tarihi]);
+        $yapilanIsler = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        if (empty($yapilanIsler)) {
+            return;
+        }
+
+        // 4. Tanımlamalar tablosundan ücretleri al
+        // Tüm iş türlerini çekip bir map oluşturuyoruz
+        $TanimlamalarModel = new \App\Model\TanimlamalarModel();
+        $isTurleri = $TanimlamalarModel->getIsTurleri(); // grup = 'is_turu'
+
+        $ucretMap = [];
+        foreach ($isTurleri as $tur) {
+            $ucretMap[$tur->tur_adi] = floatval($tur->is_turu_ucret ?? 0);
+        }
+
+        // 5. Ek ödemeleri oluştur
+        $PersonelEkOdemelerModel = new \App\Model\PersonelEkOdemelerModel();
+
+        foreach ($yapilanIsler as $is) {
+            $isTipi = $is->is_emri_tipi;
+            $adet = $is->adet;
+
+            // Ücreti bul
+            $birimUcret = $ucretMap[$isTipi] ?? 0;
+
+            if ($birimUcret > 0) {
+                $toplamTutar = $adet * $birimUcret;
+                $aciklama = "[Puantaj] $isTipi ($adet Adet)";
+
+                // Ek ödeme ekle
+                $PersonelEkOdemelerModel->saveWithAttr([
+                    'personel_id' => $personel_id,
+                    'donem_id' => $donem_id,
+                    'tur' => 'prim', // Prim olarak sınıflandırıyoruz
+                    'aciklama' => $aciklama,
+                    'tutar' => $toplamTutar,
+                    'tekrar_tipi' => 'tek_sefer',
+                    'aktif' => 1,
+                    'created_at' => date('Y-m-d H:i:s')
+                ]);
+            }
+        }
+    }
+
+    /**
      * Tek bir personelin maaşını hesaplar ve günceller
      * Parametrelere dayalı gelişmiş hesaplama
      */
@@ -297,6 +530,24 @@ class BordroPersonelModel extends Model
         $donemTarihi = $kayit->baslangic_tarihi ?? date('Y-m-d');
         $donemAy = date('n', strtotime($donemTarihi));
         $donemYil = date('Y', strtotime($donemTarihi));
+        $donem = date('Y-m', strtotime($donemTarihi));
+
+        // Brüt maaş (sürekli kayıtların oran hesabı için önce al)
+        $brutMaas = floatval($kayit->maas_tutari ?? 0);
+        if ($brutMaas <= 0) {
+            $brutMaas = $parametreModel->getGenelAyar('asgari_ucret_brut', $donemTarihi) ?? 33030.00;
+        }
+
+        // Net maaş tahmini (sürekli kayıtların oran hesabı için - brütün %70'i)
+        $netMaasTahmini = $brutMaas * 0.70;
+
+        // ========== SÜREKLİ KESİNTİ VE EK ÖDEMELERİ DÖNEME AKTAR ==========
+        // Bu işlem, aktif sürekli kayıtları bordro dönemine tek seferlik olarak ekler
+        $this->olusturSurekliKesintiler($kayit->personel_id, $kayit->donem_id, $donem, $brutMaas, $netMaasTahmini);
+        $this->olusturSurekliEkOdemeler($kayit->personel_id, $kayit->donem_id, $donem, $brutMaas, $netMaasTahmini);
+
+        // Puantaj (Yapılan İşler) Hesaplaması
+        $this->olusturPuantajOdemeleri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
         // Çalışma günü sayısı (aylık varsayılan 26 gün)
         $calismaGunuSayisi = $parametreModel->getGenelAyar('calisma_gunu_sayisi', $donemTarihi) ?? 26;
@@ -308,13 +559,7 @@ class BordroPersonelModel extends Model
         $issizlikIsverenOrani = ($parametreModel->getGenelAyar('issizlik_isveren_orani', $donemTarihi) ?? 2) / 100;
         $damgaVergisiOrani = ($parametreModel->getGenelAyar('damga_vergisi_orani', $donemTarihi) ?? 0.759) / 100;
 
-        // Brüt maaş
-        $brutMaas = floatval($kayit->maas_tutari ?? 0);
-        if ($brutMaas <= 0) {
-            $brutMaas = $parametreModel->getGenelAyar('asgari_ucret_brut', $donemTarihi) ?? 33030.00;
-        }
-
-        // Ek Ödemeler ve Kesintileri detaylı çek
+        // Ek Ödemeler ve Kesintileri detaylı çek (sürekli kayıtlar da artık dahil)
         $ekOdemeler = $this->getDonemEkOdemeleriListe($kayit->personel_id, $kayit->donem_id);
         $kesintiler = $this->getDonemKesintileriListe($kayit->personel_id, $kayit->donem_id);
 

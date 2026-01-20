@@ -15,15 +15,164 @@ class PersonelEkOdemelerModel extends Model
         parent::__construct($this->table);
     }
 
+    /**
+     * Personelin tüm ek ödemelerini getirir (listeleme için)
+     * Sürekli ödemeler için ana_odeme_id NULL olanları gösterir
+     */
     public function getPersonelEkOdemeler($personel_id)
     {
         $sql = $this->db->prepare("
-            SELECT *
-            FROM {$this->table}
-            WHERE personel_id = ? AND silinme_tarihi IS NULL 
-            ORDER BY donem_id DESC, created_at DESC
+            SELECT peo.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu
+            FROM {$this->table} peo
+            LEFT JOIN bordro_parametreleri bp ON peo.parametre_id = bp.id
+            WHERE peo.personel_id = ? 
+              AND peo.silinme_tarihi IS NULL 
+              AND peo.ana_odeme_id IS NULL
+            ORDER BY peo.tekrar_tipi DESC, peo.baslangic_donemi DESC, peo.donem_id DESC, peo.created_at DESC
         ");
         $sql->execute([$personel_id]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Personelin aktif sürekli ek ödemelerini getirir
+     * @param int $personel_id
+     * @param string $donem YYYY-MM formatında dönem (dönem başlangıç tarihi olarak kullanılır)
+     * @return array
+     */
+    public function getAktifSurekliOdemeler($personel_id, $donem)
+    {
+        // Dönemden tarih oluştur (ayın ilk günü)
+        $donemTarih = $donem . '-01';
+
+        $sql = $this->db->prepare("
+            SELECT peo.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bp.hesaplama_tipi as param_hesaplama_tipi
+            FROM {$this->table} peo
+            LEFT JOIN bordro_parametreleri bp ON peo.parametre_id = bp.id
+            WHERE peo.personel_id = ? 
+              AND peo.tekrar_tipi = 'surekli'
+              AND peo.aktif = 1
+              AND peo.silinme_tarihi IS NULL
+              AND peo.ana_odeme_id IS NULL
+              AND peo.baslangic_donemi <= ?
+              AND (peo.bitis_donemi IS NULL OR peo.bitis_donemi >= ?)
+            ORDER BY peo.created_at ASC
+        ");
+        $sql->execute([$personel_id, $donemTarih, $donemTarih]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Dönem için sürekli ödemeden otomatik oluşturulan kayıt var mı kontrol eder
+     */
+    public function donemdeKaynakKayitVarMi($ana_odeme_id, $donem_id)
+    {
+        $sql = $this->db->prepare("
+            SELECT COUNT(*) as adet 
+            FROM {$this->table} 
+            WHERE ana_odeme_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
+        ");
+        $sql->execute([$ana_odeme_id, $donem_id]);
+        return $sql->fetch(PDO::FETCH_OBJ)->adet > 0;
+    }
+
+    /**
+     * Sürekli ödemeden dönem için otomatik ek ödeme oluşturur
+     * @param object $surekliOdeme Sürekli ödeme kaydı
+     * @param int $donem_id Dönem ID
+     * @param float $tutar Hesaplanan tutar (oran bazlı ise hesaplanmış tutar)
+     * @return int|string|bool Eklenen kayıt ID'si veya false
+     */
+    public function olusturDonemOdemesi($surekliOdeme, $donem_id, $tutar)
+    {
+        // Bu dönem için zaten kayıt var mı kontrol et
+        if ($this->donemdeKaynakKayitVarMi($surekliOdeme->id, $donem_id)) {
+            return false; // Zaten mevcut
+        }
+
+        $data = [
+            'personel_id' => $surekliOdeme->personel_id,
+            'donem_id' => $donem_id,
+            'tur' => $surekliOdeme->tur,
+            'tekrar_tipi' => 'tek_sefer', // Oluşturulan kayıt tek seferlik olarak işaretlenir
+            'hesaplama_tipi' => $surekliOdeme->hesaplama_tipi,
+            'tutar' => $tutar,
+            'oran' => $surekliOdeme->oran,
+            'aciklama' => $surekliOdeme->aciklama . ' (Otomatik)',
+            'parametre_id' => $surekliOdeme->parametre_id,
+            'ana_odeme_id' => $surekliOdeme->id, // Ana kayıt referansı
+            'aktif' => 1
+        ];
+
+        return $this->saveWithAttr($data);
+    }
+
+    /**
+     * Sürekli ödemeyi pasife alır (sonlandırır)
+     */
+    public function sonlandirSurekliOdeme($id, $bitis_donemi = null)
+    {
+        $bitis = $bitis_donemi ?? date('Y-m');
+        $sql = $this->db->prepare("
+            UPDATE {$this->table} 
+            SET bitis_donemi = ?, aktif = 0, updated_at = NOW()
+            WHERE id = ? AND tekrar_tipi = 'surekli'
+        ");
+        return $sql->execute([$bitis, $id]);
+    }
+
+    /**
+     * Ek ödeme detayını getirir
+     */
+    public function getEkOdeme($id)
+    {
+        $sql = $this->db->prepare("
+            SELECT peo.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu
+            FROM {$this->table} peo
+            LEFT JOIN bordro_parametreleri bp ON peo.parametre_id = bp.id
+            WHERE peo.id = ?
+        ");
+        $sql->execute([$id]);
+        return $sql->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Ek ödeme günceller
+     */
+    public function updateEkOdeme($id, $data)
+    {
+        $sets = [];
+        $params = [];
+
+        foreach ($data as $key => $value) {
+            $sets[] = "{$key} = ?";
+            $params[] = $value;
+        }
+
+        $sets[] = "updated_at = NOW()";
+        $params[] = $id;
+
+        $sql = $this->db->prepare("
+            UPDATE {$this->table} 
+            SET " . implode(', ', $sets) . "
+            WHERE id = ?
+        ");
+        return $sql->execute($params);
+    }
+
+    /**
+     * Ana ödemeden oluşturulan tüm dönem kayıtlarını getirir
+     */
+    public function getDonemKayitlari($ana_odeme_id)
+    {
+        $sql = $this->db->prepare("
+            SELECT peo.*, bd.donem_adi
+            FROM {$this->table} peo
+            LEFT JOIN bordro_donemi bd ON peo.donem_id = bd.id
+            WHERE peo.ana_odeme_id = ? AND peo.silinme_tarihi IS NULL
+            ORDER BY peo.donem_id DESC
+        ");
+        $sql->execute([$ana_odeme_id]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 }

@@ -129,6 +129,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
             "id" => $id,
             "type" => 0, // İş türü için type 0
             "grup" => "is_turu",
+            "is_turu_ucret" => $_POST["is_turu_ucret"],
             "tur_adi" => $_POST["is_turu"],
             "aciklama" => $_POST["aciklama"],
         ];

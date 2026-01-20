@@ -9,6 +9,7 @@ use App\Model\TalepModel;
 use App\Model\AvansModel;
 use App\Model\PersonelIzinleriModel;
 use App\Model\PersonelModel;
+use App\Service\PushNotificationService;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -172,6 +173,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $avansModel->avansHesabaIsle($id);
                     }
 
+                    // Push Bildirim Gönder
+                    try {
+                        $avans = $avansModel->find($id);
+                        if ($avans && $avans->personel_id) {
+                            $pushService = new PushNotificationService();
+                            $pushService->sendToPersonel($avans->personel_id, [
+                                'title' => '✅ Avans Onaylandı',
+                                'body' => number_format($avans->tutar, 2, ',', '.') . ' TL tutarındaki avans talebiniz onaylandı.',
+                                'url' => 'index.php?page=bordro'
+                            ]);
+                        }
+                    } catch (Exception $e) {
+                        // Bildirim hatası loglansın ama işlemi engellemesin
+                        error_log('Push notification error: ' . $e->getMessage());
+                    }
+
                     echo json_encode([
                         'status' => 'success',
                         'message' => 'Avans talebi onaylandı.'
@@ -195,6 +212,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 if ($avansModel->updateDurum($id, 'reddedildi', $aciklama)) {
+                    // Push Bildirim Gönder
+                    try {
+                        $avans = $avansModel->find($id);
+                        if ($avans && $avans->personel_id) {
+                            $pushService = new PushNotificationService();
+                            $pushService->sendToPersonel($avans->personel_id, [
+                                'title' => '❌ Avans Reddedildi',
+                                'body' => 'Avans talebiniz reddedildi. Detaylar için uygulamayı kontrol edin.',
+                                'url' => 'index.php?page=bordro'
+                            ]);
+                        }
+                    } catch (Exception $e) {
+                        error_log('Push notification error: ' . $e->getMessage());
+                    }
+
                     echo json_encode([
                         'status' => 'success',
                         'message' => 'Avans talebi reddedildi.'
@@ -214,6 +246,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 if ($izinModel->updateDurum($id, 'Onaylandı', $aciklama)) {
+                    // Push Bildirim Gönder
+                    try {
+                        $izin = $izinModel->find($id);
+                        if ($izin && $izin->personel_id) {
+                            $pushService = new PushNotificationService();
+                            $pushService->sendToPersonel($izin->personel_id, [
+                                'title' => '✅ İzin Onaylandı',
+                                'body' => 'İzin talebiniz onaylandı. İyi tatiller!',
+                                'url' => 'index.php?page=izin'
+                            ]);
+                        }
+                    } catch (Exception $e) {
+                        error_log('Push notification error: ' . $e->getMessage());
+                    }
+
                     echo json_encode([
                         'status' => 'success',
                         'message' => 'İzin talebi onaylandı.'
@@ -237,6 +284,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 if ($izinModel->updateDurum($id, 'Reddedildi', $aciklama)) {
+                    // Push Bildirim Gönder
+                    try {
+                        $izin = $izinModel->find($id);
+                        if ($izin && $izin->personel_id) {
+                            $pushService = new PushNotificationService();
+                            $pushService->sendToPersonel($izin->personel_id, [
+                                'title' => '❌ İzin Reddedildi',
+                                'body' => 'İzin talebiniz reddedildi. Detaylar için uygulamayı kontrol edin.',
+                                'url' => 'index.php?page=izin'
+                            ]);
+                        }
+                    } catch (Exception $e) {
+                        error_log('Push notification error: ' . $e->getMessage());
+                    }
+
                     echo json_encode([
                         'status' => 'success',
                         'message' => 'İzin talebi reddedildi.'
@@ -256,6 +318,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 if ($talepModel->updateDurum($id, 'cozuldu', $aciklama)) {
+                    // Push Bildirim Gönder
+                    try {
+                        $talep = $talepModel->find($id);
+                        if ($talep && $talep->personel_id) {
+                            $pushService = new PushNotificationService();
+                            $pushService->sendToPersonel($talep->personel_id, [
+                                'title' => '✅ Talep Çözüldü',
+                                'body' => 'Talebiniz çözüldü olarak işaretlendi.',
+                                'url' => 'index.php?page=talep'
+                            ]);
+                        }
+                    } catch (Exception $e) {
+                        error_log('Push notification error: ' . $e->getMessage());
+                    }
+
                     echo json_encode([
                         'status' => 'success',
                         'message' => 'Talep çözüldü olarak işaretlendi.'

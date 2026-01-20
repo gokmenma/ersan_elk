@@ -82,7 +82,7 @@ $(document).ready(function () {
               } else {
                 Swal.fire("Hata!", res.message, "error");
               }
-            }
+            },
           );
         }
       });
@@ -107,7 +107,7 @@ $(document).ready(function () {
               "src",
               data.resim_yolu
                 ? data.resim_yolu
-                : "assets/images/users/user-dummy-img.jpg"
+                : "assets/images/users/user-dummy-img.jpg",
             );
             $("#detailAdSoyad").text(data.adi_soyadi);
             $("#detailGorev").text(data.gorev);
@@ -128,7 +128,7 @@ $(document).ready(function () {
             $("#detailAnneAdi").text(data.anne_adi);
             $("#detailBabaAdi").text(data.baba_adi);
             $("#detailDogumYeri").text(
-              (data.dogum_yeri_il || "") + " / " + (data.dogum_yeri_ilce || "")
+              (data.dogum_yeri_il || "") + " / " + (data.dogum_yeri_ilce || ""),
             );
 
             // İletişim Bilgileri Tab
@@ -146,20 +146,22 @@ $(document).ready(function () {
 
             // Modalı göster
             var myModal = new bootstrap.Modal(
-              document.getElementById("personelDetailModal")
+              document.getElementById("personelDetailModal"),
             );
             myModal.show();
           } else {
             Swal.fire("Hata!", res.message, "error");
           }
-        }
+        },
       );
     }
   });
 
   // Excel Import Modal Aç
   $("#btnImportExcel").click(function () {
-    var myModal = new bootstrap.Modal(document.getElementById("importExcelModal"));
+    var myModal = new bootstrap.Modal(
+      document.getElementById("importExcelModal"),
+    );
     myModal.show();
   });
 
@@ -175,61 +177,107 @@ $(document).ready(function () {
 
     // Dosya seçili mi kontrol et
     if ($("#excelFile").val() == "") {
-        Swal.fire("Uyarı", "Lütfen bir dosya seçiniz.", "warning");
-        return;
+      Swal.fire("Uyarı", "Lütfen bir dosya seçiniz.", "warning");
+      return;
     }
 
     // Yükleniyor göster
     Swal.fire({
-        title: 'Yükleniyor...',
-        text: 'Personel listesi işleniyor, lütfen bekleyin.',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
+      title: "Yükleniyor...",
+      text: "Personel listesi işleniyor, lütfen bekleyin.",
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
     });
 
     $.ajax({
-        url: "views/personel/api.php",
-        type: "POST",
-        data: formData,
-        contentType: false,
-        processData: false,
-        success: function (response) {
-            try {
-                let res = JSON.parse(response);
-                if (res.status === "success") {
-                    let message = res.message.replace(/\n/g, "<br>");
-                    let icon = "success";
-                    
-                    if (res.errors && res.errors.length > 0) {
-                        icon = "warning";
-                        message += "<br><br><strong>Hata Detayları:</strong><br><div style='text-align:left; max-height: 200px; overflow-y: auto; font-size: 0.9em; border: 1px solid #eee; padding: 10px; background: #f9f9f9;'><ul>";
-                        res.errors.forEach(err => {
-                            message += `<li>${err}</li>`;
-                        });
-                        message += "</ul></div>";
-                    }
+      url: "views/personel/api.php",
+      type: "POST",
+      data: formData,
+      contentType: false,
+      processData: false,
+      success: function (response) {
+        try {
+          let res = JSON.parse(response);
+          if (res.status === "success") {
+            let message = res.message.replace(/\n/g, "<br>");
+            let icon = "success";
 
-                    Swal.fire({
-                        title: "İşlem Tamamlandı",
-                        html: message,
-                        icon: icon,
-                        width: '600px'
-                    }).then(() => {
-                        location.reload();
-                    });
-                } else {
-                    Swal.fire("Hata", res.message, "error");
-                }
-            } catch (e) {
-                Swal.fire("Hata", "Sunucudan geçersiz yanıt alındı.", "error");
-                console.error(response);
+            if (res.errors && res.errors.length > 0) {
+              icon = "warning";
+              message +=
+                "<br><br><strong>Hata Detayları:</strong><br><div style='text-align:left; max-height: 200px; overflow-y: auto; font-size: 0.9em; border: 1px solid #eee; padding: 10px; background: #f9f9f9;'><ul>";
+              res.errors.forEach((err) => {
+                message += `<li>${err}</li>`;
+              });
+              message += "</ul></div>";
             }
-        },
-        error: function () {
-            Swal.fire("Hata", "İşlem sırasında bir hata oluştu.", "error");
+
+            Swal.fire({
+              title: "İşlem Tamamlandı",
+              html: message,
+              icon: icon,
+              width: "600px",
+            }).then(() => {
+              location.reload();
+            });
+          } else {
+            Swal.fire("Hata", res.message, "error");
+          }
+        } catch (e) {
+          Swal.fire("Hata", "Sunucudan geçersiz yanıt alındı.", "error");
+          console.error(response);
         }
+      },
+      error: function () {
+        Swal.fire("Hata", "İşlem sırasında bir hata oluştu.", "error");
+      },
     });
+  });
+  // Excel Export Button Click
+  $("#exportExcel").click(function () {
+    var btn = $(this);
+    var originalText = btn.html();
+
+    // Buton metnini ve durumunu güncelle
+    btn.html('<i class="bx bx-loader bx-spin label-icon"></i> Aktarılıyor...');
+    btn.prop("disabled", true);
+
+    fetch("views/personel/export-excel.php")
+      .then((resp) => {
+        if (resp.status !== 200) {
+          return resp.text().then((text) => {
+            throw new Error(text || "Export failed");
+          });
+        }
+        return resp.blob();
+      })
+      .then((blob) => {
+        // Dosyayı indir
+        var url = window.URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        // Dosya ismini tarihli yap
+        var date = new Date().toISOString().slice(0, 10);
+        a.download = "personel_listesi_" + date + ".xlsx";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      })
+      .catch((err) => {
+        console.error(err);
+        Swal.fire(
+          "Hata",
+          "Excel aktarımı sırasında bir hata oluştu: " + err.message,
+          "error",
+        );
+      })
+      .finally(() => {
+        // Butonu eski haline getir
+        btn.html(originalText);
+        btn.prop("disabled", false);
+      });
   });
 });

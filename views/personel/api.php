@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // Boş string değerleri null yap
             foreach ($data as $key => $value) {
-                if ($value === '' && $key != "sifre" ) {
+                if ($value === '' && $key != "sifre") {
                     $data[$key] = null;
                 }
                 /** tarih ise formatını değiştir */
@@ -93,13 +93,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 //şifreyi hash ile kaydet (sadece boş değilse)
                 if ($key == 'sifre' && !empty($value)) {
                     $data[$key] = password_hash($value, PASSWORD_DEFAULT);
-                }else if($key == 'sifre' && empty($value)){
+                } else if ($key == 'sifre' && empty($value)) {
                     unset($data['sifre']);
                 }
             }
 
 
             //echo json_encode($data); exit();
+
+            // Ekip kodu kontrolü - Aynı ekip kodunda aktif personel var mı?
+            $ekip_no = $data['ekip_no'] ?? null;
+            $aktif_mi = $data['aktif_mi'] ?? 1;
+
+            // Eğer ekip kodu varsa ve personel aktif olarak kaydediliyorsa kontrol et
+            if (!empty($ekip_no) && $aktif_mi == 1) {
+                $exclude_id = ($personel_id > 0) ? $personel_id : null;
+                $mevcutPersonel = $Personel->getAktifPersonelByEkipNo($ekip_no, $exclude_id);
+
+                if ($mevcutPersonel) {
+                    throw new Exception("Bu ekip kodunda ({$ekip_no}) zaten aktif bir personel bulunmaktadır: {$mevcutPersonel->adi_soyadi}. Aynı ekip kodunda birden fazla aktif personel olamaz.");
+                }
+            }
+
             $Personel->saveWithAttr($data);
 
             if ($personel_id > 0) {
@@ -213,7 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'personel_sinifi' => ['personel sınıfı', 'personel sinifi'],
                 'departman' => ['departman', 'birim', 'bölüm'],
                 'gorev' => ['görev', 'unvan', 'pozisyon'],
-                'takim' => ['takım', 'takim'],
+                'ekip_no' => ['takım', 'takim', 'ekip no', 'ekip_no'],
                 'dss_sinifi_ust' => ['dss sınıfı üst', 'dss sinifi ust'],
                 'dss_sinifi_alt' => ['dss sınıfı alt', 'dss sinifi alt'],
                 'iban_numarasi' => ['iban numarası', 'iban no'],
@@ -253,6 +268,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $defaultFirmaId = $_SESSION['firma_id'] ?? $_SESSION['firma_id'] ?? null;
 
             $addedCount = 0;
+            $updatedCount = 0;
             $skippedCount = 0;
             $errorDetails = [];
 
@@ -274,17 +290,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // TC Kimlik kontrolü (Veritabanında var mı?)
                 $existing = $Personel->where('tc_kimlik_no', $tcNo);
+                $isUpdate = false;
+                $existingId = null;
 
-                // Eğer kayıt varsa atla
+                // Eğer kayıt varsa güncelleme moduna geç
                 if (!empty($existing) && count($existing) > 0) {
-                    $skippedCount++;
-                    $errorDetails[] = "Satır $rowNum ($name - $tcNo): Bu TC Kimlik Numarası ile kayıtlı personel zaten mevcut.";
-                    continue;
+                    $isUpdate = true;
+                    $existingId = $existing[0]->id;
                 }
 
                 // Yeni kayıt verilerini hazırla
                 $newData = [];
                 $newData['tc_kimlik_no'] = $tcNo;
+
+                if ($isUpdate) {
+                    $newData['id'] = $existingId;
+                }
 
                 foreach ($colIndices as $dbCol => $index) {
                     if ($dbCol == 'tc_kimlik_no')
@@ -331,26 +352,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($defaultFirmaId) {
                         $newData['firma_id'] = $defaultFirmaId;
                     }
-                    // Firma bulunamadı ve varsayılan yoksa, DB'ye null gidecek.
-                    // DB kısıtlamasına göre hata verebilir veya null kaydedebilir.
                 }
 
                 // Varsayılan değerler
                 if (!isset($newData['aktif_mi']))
                     $newData['aktif_mi'] = 1;
 
+                // Ekip kodu kontrolü - Aynı ekip kodunda aktif personel var mı?
+                $ekipNo = $newData['ekip_no'] ?? null;
+                if (!empty($ekipNo) && $newData['aktif_mi'] == 1) {
+                    // Güncelleme ise mevcut ID'yi hariç tutarak kontrol et
+                    $mevcutPersonel = $Personel->getAktifPersonelByEkipNo($ekipNo, $existingId);
+                    if ($mevcutPersonel) {
+                        $skippedCount++;
+                        $errorDetails[] = "Satır $rowNum ($name): Bu ekip kodunda ({$ekipNo}) zaten aktif bir personel bulunmaktadır: {$mevcutPersonel->adi_soyadi}";
+                        continue;
+                    }
+                }
+
                 try {
                     $PersonelNew = new PersonelModel();
                     $PersonelNew->saveWithAttr($newData);
-                    $addedCount++;
+
+                    if ($isUpdate) {
+                        $updatedCount++;
+                    } else {
+                        $addedCount++;
+                    }
                 } catch (Exception $e) {
-                    $errorDetails[] = "Satır $rowNum ($name): Kayıt eklenirken hata oluştu - " . $e->getMessage();
+                    $errorDetails[] = "Satır $rowNum ($name): Kayıt " . ($isUpdate ? "güncellenirken" : "eklenirken") . " hata oluştu - " . $e->getMessage();
                 }
             }
 
-            $responseMessage = "İşlem tamamlandı.\nBaşarıyla Eklenen: $addedCount";
+            $responseMessage = "İşlem tamamlandı.\nBaşarıyla Eklenen: $addedCount\nBaşarıyla Güncellenen: $updatedCount";
             if ($skippedCount > 0 || count($errorDetails) > 0) {
-                // Sadece benzersiz hataları saymak daha mantıklı ama errorDetails zaten tüm hataları içeriyor (TC hatası dahil)
                 $totalErrors = count($errorDetails);
                 $responseMessage .= "\nAtlanan/Hatalı: " . $totalErrors;
             }
