@@ -867,6 +867,67 @@ try {
             }
             break;
 
+        case 'getMyNotifications':
+            // Personele gönderilen push bildirimlerini getir
+            $PersonelModel = new PersonelModel();
+            $personelData = $PersonelModel->find($personel_id);
+            $personelAdi = $personelData->adi_soyadi ?? '';
+
+            $db = $PersonelModel->getDb();
+
+            // mesaj_log tablosundan push bildirimlerini çek
+            // recipients alanında personel adı veya "Tüm Aboneler" ibaresi geçenleri al
+            $sql = "SELECT * FROM mesaj_log 
+                    WHERE type = 'push' 
+                    AND (
+                        recipients LIKE :personel_adi 
+                        OR recipients LIKE '%Tüm Aboneler%'
+                        OR recipients LIKE '%Test Kullanıcısı%'
+                    )
+                    ORDER BY created_at DESC 
+                    LIMIT 20";
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute([':personel_adi' => '%' . $personelAdi . '%']);
+            $notifications = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+            $data = array_map(function ($item) {
+                // Zaman farkını hesapla
+                $created = new DateTime($item->created_at);
+                $now = new DateTime();
+                $diff = $now->diff($created);
+
+                if ($diff->days == 0) {
+                    if ($diff->h == 0) {
+                        if ($diff->i == 0) {
+                            $timeAgo = 'Az önce';
+                        } else {
+                            $timeAgo = $diff->i . ' dk önce';
+                        }
+                    } else {
+                        $timeAgo = $diff->h . ' saat önce';
+                    }
+                } elseif ($diff->days == 1) {
+                    $timeAgo = 'Dün';
+                } elseif ($diff->days < 7) {
+                    $timeAgo = $diff->days . ' gün önce';
+                } else {
+                    $timeAgo = date('d M', strtotime($item->created_at));
+                }
+
+                return [
+                    'id' => $item->id,
+                    'title' => $item->subject,
+                    'body' => $item->message,
+                    'time_ago' => $timeAgo,
+                    'created_at' => $item->created_at,
+                    'status' => $item->status
+                ];
+            }, $notifications);
+
+            response(true, $data);
+            break;
+
         // ===== Puantaj / İş Takip =====
         case 'getPuantajData':
             $PersonelModel = new PersonelModel();
@@ -945,6 +1006,177 @@ try {
             $types = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
             response(true, $types);
+            break;
+
+        case 'getRecentActivities':
+            $PersonelModel = new PersonelModel();
+            $db = $PersonelModel->getDb();
+            $limit = 10;
+
+            // İzin talepleri
+            $izinSql = "SELECT 
+                            'izin' as type,
+                            id,
+                            CASE 
+                                WHEN onay_durumu = 'Onaylandı' THEN CONCAT(izin_tipi, ' İzni Onaylandı')
+                                WHEN onay_durumu = 'Reddedildi' THEN CONCAT(izin_tipi, ' İzni Reddedildi')
+                                WHEN onay_durumu = 'iptal edildi' THEN CONCAT(izin_tipi, ' İzni İptal Edildi')
+                                ELSE CONCAT(izin_tipi, ' İzin Talebi')
+                            END as title,
+                            CONCAT(DATE_FORMAT(baslangic_tarihi, '%d.%m'), ' - ', DATE_FORMAT(bitis_tarihi, '%d.%m'), ' tarihli talebiniz') as description,
+                            onay_durumu as status,
+                            COALESCE(guncelleme_tarihi, olusturma_tarihi) as activity_date
+                        FROM personel_izinleri
+                        WHERE personel_id = ? AND silinme_tarihi IS NULL
+                        ORDER BY activity_date DESC
+                        LIMIT ?";
+
+            // Avans talepleri
+            $avansSql = "SELECT 
+                            'avans' as type,
+                            id,
+                            CASE 
+                                WHEN durum = 'onaylandi' THEN 'Avans Talebi Onaylandı'
+                                WHEN durum = 'reddedildi' THEN 'Avans Talebi Reddedildi'
+                                ELSE 'Avans Talebi Oluşturuldu'
+                            END as title,
+                            CONCAT(FORMAT(tutar, 0, 'tr_TR'), ' ₺ tutarında avans talebiniz') as description,
+                            durum as status,
+                            COALESCE(onay_tarihi, talep_tarihi) as activity_date
+                        FROM personel_avanslari
+                        WHERE personel_id = ? AND silinme_tarihi IS NULL
+                        ORDER BY activity_date DESC
+                        LIMIT ?";
+
+            // Genel talepler
+            $talepSql = "SELECT 
+                            'talep' as type,
+                            id,
+                            CASE 
+                                WHEN durum = 'cozuldu' THEN CONCAT('Talep #', ref_no, ' Çözüldü')
+                                WHEN durum = 'devam' THEN CONCAT('Talep #', ref_no, ' İnceleniyor')
+                                ELSE CONCAT('Talep #', ref_no, ' Oluşturuldu')
+                            END as title,
+                            CONCAT(baslik, ' - ', konum) as description,
+                            durum as status,
+                            COALESCE(cozum_tarihi, olusturma_tarihi) as activity_date
+                        FROM personel_talepleri
+                        WHERE personel_id = ? AND deleted_at IS NULL
+                        ORDER BY activity_date DESC
+                        LIMIT ?";
+
+            // Bordrolar
+            $bordroSql = "SELECT 
+                            'bordro' as type,
+                            bp.id,
+                            CONCAT('Bordro Hazırlandı - ', bd.donem_adi) as title,
+                            CONCAT(FORMAT(bp.net_maas, 2, 'tr_TR'), ' ₺ net ödeme') as description,
+                            'tamamlandi' as status,
+                            bp.olusturma_tarihi as activity_date
+                        FROM bordro_personel bp
+                        JOIN bordro_donemi bd ON bp.donem_id = bd.id
+                        WHERE bp.personel_id = ? AND bp.silinme_tarihi IS NULL
+                        ORDER BY activity_date DESC
+                        LIMIT ?";
+
+            // Verileri çek
+            $activities = [];
+
+            // İzinler
+            $stmt = $db->prepare($izinSql);
+            $stmt->execute([$personel_id, $limit]);
+            $izinler = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $activities = array_merge($activities, $izinler);
+
+            // Avanslar
+            $stmt = $db->prepare($avansSql);
+            $stmt->execute([$personel_id, $limit]);
+            $avanslar = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $activities = array_merge($activities, $avanslar);
+
+            // Talepler
+            $stmt = $db->prepare($talepSql);
+            $stmt->execute([$personel_id, $limit]);
+            $talepler = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $activities = array_merge($activities, $talepler);
+
+            // Bordrolar
+            $stmt = $db->prepare($bordroSql);
+            $stmt->execute([$personel_id, $limit]);
+            $bordrolar = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $activities = array_merge($activities, $bordrolar);
+
+            // Tarihe göre sırala (en yeni önce)
+            usort($activities, function ($a, $b) {
+                return strtotime($b['activity_date']) - strtotime($a['activity_date']);
+            });
+
+            // İlk N kaydı al
+            $activities = array_slice($activities, 0, $limit);
+
+            // Her etkinlik için formatla
+            $formattedActivities = array_map(function ($item) {
+                // İkon ve renk belirle
+                $iconMap = [
+                    'izin' => ['icon' => 'event_available', 'color' => 'blue'],
+                    'avans' => ['icon' => 'payments', 'color' => 'green'],
+                    'talep' => ['icon' => 'assignment', 'color' => 'orange'],
+                    'bordro' => ['icon' => 'receipt_long', 'color' => 'primary']
+                ];
+
+                $statusMap = [
+                    // İzin durumları
+                    'Onaylandı' => ['text' => 'Onaylandı', 'badge' => 'success'],
+                    'onaylandi' => ['text' => 'Onaylandı', 'badge' => 'success'],
+                    'Reddedildi' => ['text' => 'Reddedildi', 'badge' => 'danger'],
+                    'reddedildi' => ['text' => 'Reddedildi', 'badge' => 'danger'],
+                    'beklemede' => ['text' => 'Beklemede', 'badge' => 'warning'],
+                    'iptal edildi' => ['text' => 'İptal Edildi', 'badge' => 'gray'],
+                    // Talep durumları
+                    'devam' => ['text' => 'İnceleniyor', 'badge' => 'warning'],
+                    'cozuldu' => ['text' => 'Çözüldü', 'badge' => 'success'],
+                    // Bordro
+                    'tamamlandi' => ['text' => 'Tamamlandı', 'badge' => 'gray']
+                ];
+
+                $type = $item['type'];
+                $status = strtolower($item['status'] ?? 'beklemede');
+
+                // Göreceli zaman hesapla
+                $activityTime = strtotime($item['activity_date']);
+                $now = time();
+                $diff = $now - $activityTime;
+
+                if ($diff < 60) {
+                    $timeAgo = 'Az önce';
+                } elseif ($diff < 3600) {
+                    $timeAgo = floor($diff / 60) . 'd önce';
+                } elseif ($diff < 86400) {
+                    $timeAgo = floor($diff / 3600) . 's önce';
+                } elseif ($diff < 172800) {
+                    $timeAgo = 'Dün';
+                } elseif ($diff < 604800) {
+                    $timeAgo = floor($diff / 86400) . ' gün önce';
+                } else {
+                    $timeAgo = date('d M', $activityTime);
+                }
+
+                return [
+                    'id' => $item['id'],
+                    'type' => $type,
+                    'icon' => $iconMap[$type]['icon'] ?? 'info',
+                    'icon_color' => $iconMap[$type]['color'] ?? 'gray',
+                    'title' => $item['title'],
+                    'description' => $item['description'],
+                    'status' => $status,
+                    'status_text' => $statusMap[$status]['text'] ?? ucfirst($status),
+                    'status_badge' => $statusMap[$status]['badge'] ?? 'gray',
+                    'time_ago' => $timeAgo,
+                    'activity_date' => $item['activity_date']
+                ];
+            }, $activities);
+
+            response(true, $formattedActivities);
             break;
 
         case 'logout':

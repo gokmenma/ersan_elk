@@ -341,7 +341,8 @@
     async function showIzinDetay(id) {
         Modal.open('izin-detay-modal');
 
-        const izin = izinlerData.find(i => i.id === id);
+        // parseInt kullanarak string/integer uyumsuzluğunu çöz
+        const izin = izinlerData.find(i => parseInt(i.id) === parseInt(id));
         if (!izin) return;
 
         document.getElementById('izin-detay-content').innerHTML = `

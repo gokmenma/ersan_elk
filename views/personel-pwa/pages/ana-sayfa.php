@@ -36,8 +36,8 @@ use App\Helper\Helper;
                 <button onclick="Modal.open('notification-modal')"
                     class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center relative">
                     <span class="material-symbols-outlined">notifications</span>
-                    <span
-                        class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                    <span id="notification-badge"
+                        class="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full text-[10px] font-bold flex items-center justify-center border-2 border-primary hidden"></span>
                 </button>
             </div>
 
@@ -149,55 +149,15 @@ use App\Helper\Helper;
     <section class="px-4 mt-6 mb-8">
         <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-bold text-slate-900 dark:text-white">Son Etkinlikler</h2>
-            <button class="text-primary text-sm font-semibold">Tümünü gör</button>
+            <button onclick="showAllActivities()" class="text-primary text-sm font-semibold">Tümünü gör</button>
         </div>
 
-        <div class="card overflow-hidden">
-            <!-- Activity 1 -->
-            <div class="activity-item flex items-center gap-4 p-4 border-b border-slate-100 dark:border-slate-800">
-                <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-blue-600 text-xl">verified</span>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-semibold text-slate-900 dark:text-white truncate">Yıllık İzin Onaylandı</p>
-                    <p class="text-xs text-slate-500 truncate">20-25 Aralık tarihli talebiniz onaylandı.</p>
-                </div>
-                <div class="text-right">
-                    <p class="text-xs text-slate-400">2s önce</p>
-                    <span class="badge badge-success">Onaylandı</span>
-                </div>
+        <div id="activities-container" class="card overflow-hidden">
+            <!-- Loading State -->
+            <div id="activities-loading" class="flex items-center justify-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-
-            <!-- Activity 2 -->
-            <div class="activity-item flex items-center gap-4 p-4 border-b border-slate-100 dark:border-slate-800">
-                <div
-                    class="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-orange-600 text-xl">pending_actions</span>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-semibold text-slate-900 dark:text-white truncate">Talep #442</p>
-                    <p class="text-xs text-slate-500 truncate">Ofis 4B klima onarım talebi inceleniyor.</p>
-                </div>
-                <div class="text-right">
-                    <p class="text-xs text-slate-400">Dün</p>
-                    <span class="badge badge-warning">İnceleniyor</span>
-                </div>
-            </div>
-
-            <!-- Activity 3 -->
-            <div class="activity-item flex items-center gap-4 p-4">
-                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-primary text-xl">payments</span>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-semibold text-slate-900 dark:text-white truncate">Bordro Hazırlandı</p>
-                    <p class="text-xs text-slate-500 truncate">Aralık 2024 bordro ekstresi erişime açıldı.</p>
-                </div>
-                <div class="text-right">
-                    <p class="text-xs text-slate-400">28 Ara</p>
-                    <span class="badge badge-gray">Tamamlandı</span>
-                </div>
-            </div>
+            <!-- Activities will be loaded here -->
         </div>
     </section>
 </div>
@@ -208,28 +168,10 @@ use App\Helper\Helper;
         <div class="modal-handle"></div>
         <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Bildirimler</h3>
 
-        <div class="flex flex-col gap-3">
-            <div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <span class="material-symbols-outlined text-blue-600 text-lg">info</span>
-                </div>
-                <div>
-                    <p class="text-sm font-medium text-slate-900 dark:text-white">Yeni bordronuz hazır</p>
-                    <p class="text-xs text-slate-500">Aralık 2024 bordronuzu görüntüleyebilirsiniz.</p>
-                    <p class="text-[10px] text-slate-400 mt-1">2 saat önce</p>
-                </div>
-            </div>
-
-            <div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                    <span class="material-symbols-outlined text-green-600 text-lg">check_circle</span>
-                </div>
-                <div>
-                    <p class="text-sm font-medium text-slate-900 dark:text-white">İzin talebiniz onaylandı</p>
-                    <p class="text-xs text-slate-500">20-25 Aralık tarihli izin talebiniz yönetici tarafından onaylandı.
-                    </p>
-                    <p class="text-[10px] text-slate-400 mt-1">1 gün önce</p>
-                </div>
+        <div id="notification-list" class="flex flex-col gap-3 max-h-[60vh] overflow-y-auto">
+            <!-- Bildirimler buraya yüklenecek -->
+            <div class="flex items-center justify-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
         </div>
 
@@ -240,10 +182,34 @@ use App\Helper\Helper;
     </div>
 </div>
 
+<!-- All Activities Modal -->
+<div id="all-activities-modal" class="modal-overlay">
+    <div class="modal-content p-6 pt-3 max-h-[85vh]">
+        <div class="modal-handle"></div>
+        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Tüm Etkinlikler</h3>
+
+        <div id="all-activities-list" class="flex flex-col gap-2 max-h-[60vh] overflow-y-auto">
+            <!-- All activities will be loaded here -->
+        </div>
+
+        <button onclick="Modal.close('all-activities-modal')"
+            class="w-full mt-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
+            Kapat
+        </button>
+    </div>
+</div>
+
 <script>
+    // Global activities data
+    let allActivitiesData = [];
+
     document.addEventListener('DOMContentLoaded', function () {
         // Load dashboard data
         loadDashboardData();
+        // Load notification count
+        loadNotificationCount();
+        // Load recent activities
+        loadRecentActivities();
     });
 
     async function loadDashboardData() {
@@ -258,4 +224,166 @@ use App\Helper\Helper;
             console.error('Dashboard data load error:', error);
         }
     }
+
+    async function loadNotificationCount() {
+        try {
+            const response = await API.request('getMyNotifications');
+            if (response.success && response.data) {
+                const count = response.data.length;
+                const badge = document.getElementById('notification-badge');
+                if (badge) {
+                    if (count > 0) {
+                        badge.style.display = 'flex';
+                        badge.textContent = count > 9 ? '9+' : count;
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Notification count error:', error);
+        }
+    }
+
+    async function loadRecentActivities() {
+        const container = document.getElementById('activities-container');
+        
+        try {
+            const response = await API.request('getRecentActivities');
+            
+            if (response.success && response.data && response.data.length > 0) {
+                allActivitiesData = response.data;
+                // Show first 5 activities on homepage
+                const displayActivities = response.data.slice(0, 5);
+                container.innerHTML = displayActivities.map((activity, index) => renderActivityItem(activity, index === displayActivities.length - 1)).join('');
+            } else {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-8 text-center">
+                        <span class="material-symbols-outlined text-4xl text-slate-300 mb-2">timeline</span>
+                        <p class="text-sm text-slate-500">Henüz etkinlik yok</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Activities load error:', error);
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-8 text-center">
+                    <span class="material-symbols-outlined text-4xl text-red-300 mb-2">error</span>
+                    <p class="text-sm text-slate-500">Etkinlikler yüklenemedi</p>
+                </div>
+            `;
+        }
+    }
+
+    function renderActivityItem(activity, isLast = false) {
+        const iconColorMap = {
+            'blue': 'bg-blue-100 dark:bg-blue-900/30 text-blue-600',
+            'green': 'bg-green-100 dark:bg-green-900/30 text-green-600',
+            'orange': 'bg-orange-100 dark:bg-orange-900/30 text-orange-600',
+            'primary': 'bg-primary/10 text-primary'
+        };
+
+        const badgeClassMap = {
+            'success': 'badge-success',
+            'warning': 'badge-warning',
+            'danger': 'badge-danger',
+            'gray': 'badge-gray'
+        };
+
+        const iconClass = iconColorMap[activity.icon_color] || iconColorMap['primary'];
+        const badgeClass = badgeClassMap[activity.status_badge] || 'badge-gray';
+        const borderClass = isLast ? '' : 'border-b border-slate-100 dark:border-slate-800';
+
+        return `
+            <div class="activity-item flex items-center gap-4 p-4 ${borderClass}">
+                <div class="w-10 h-10 rounded-full ${iconClass} flex items-center justify-center">
+                    <span class="material-symbols-outlined text-xl">${escapeHtml(activity.icon)}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-slate-900 dark:text-white truncate">${escapeHtml(activity.title)}</p>
+                    <p class="text-xs text-slate-500 truncate">${escapeHtml(activity.description)}</p>
+                </div>
+                <div class="text-right flex-shrink-0">
+                    <p class="text-xs text-slate-400">${escapeHtml(activity.time_ago)}</p>
+                    <span class="badge ${badgeClass}">${escapeHtml(activity.status_text)}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    function showAllActivities() {
+        const container = document.getElementById('all-activities-list');
+        
+        if (allActivitiesData.length > 0) {
+            container.innerHTML = allActivitiesData.map((activity, index) => renderActivityItem(activity, index === allActivitiesData.length - 1)).join('');
+        } else {
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-8 text-center">
+                    <span class="material-symbols-outlined text-4xl text-slate-300 mb-2">timeline</span>
+                    <p class="text-sm text-slate-500">Henüz etkinlik yok</p>
+                </div>
+            `;
+        }
+        
+        Modal.open('all-activities-modal');
+    }
+
+    async function loadNotifications() {
+        const container = document.getElementById('notification-list');
+        container.innerHTML = `
+            <div class="flex items-center justify-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+        `;
+
+        try {
+            const response = await API.request('getMyNotifications');
+            
+            if (response.success && response.data && response.data.length > 0) {
+                container.innerHTML = response.data.map(notification => `
+                    <div class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-blue-600 text-lg">notifications</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-slate-900 dark:text-white">${escapeHtml(notification.title)}</p>
+                            <p class="text-xs text-slate-500 line-clamp-2">${escapeHtml(notification.body)}</p>
+                            <p class="text-[10px] text-primary mt-1">${notification.time_ago}</p>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-8 text-center">
+                        <span class="material-symbols-outlined text-4xl text-slate-300 mb-2">notifications_off</span>
+                        <p class="text-sm text-slate-500">Henüz bildirim yok</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Notifications load error:', error);
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-8 text-center">
+                    <span class="material-symbols-outlined text-4xl text-red-300 mb-2">error</span>
+                    <p class="text-sm text-slate-500">Bildirimler yüklenemedi</p>
+                </div>
+            `;
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Override Modal.open for notification modal
+    const originalModalOpen = Modal.open;
+    Modal.open = function(modalId) {
+        originalModalOpen.call(this, modalId);
+        if (modalId === 'notification-modal') {
+            loadNotifications();
+        }
+    };
 </script>
