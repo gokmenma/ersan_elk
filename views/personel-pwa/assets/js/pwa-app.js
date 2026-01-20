@@ -473,6 +473,22 @@ const Push = {
       }
 
       const registration = await navigator.serviceWorker.ready;
+
+      if (!registration.active) {
+        console.log("Service Worker not active yet, waiting...");
+        await new Promise((resolve) => {
+          const checkActive = () => {
+            if (registration.active) {
+              resolve();
+            } else {
+              setTimeout(checkActive, 100);
+            }
+          };
+          checkActive();
+        });
+      }
+
+      console.log("Service Worker is active:", registration);
       const convertedVapidKey = Push.urlBase64ToUint8Array(vapidKey);
       console.log("Converted VAPID Key:", convertedVapidKey);
       console.log("Converted Key length:", convertedVapidKey.length);
