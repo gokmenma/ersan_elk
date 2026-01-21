@@ -3,7 +3,7 @@
  * Offline desteği ve önbellekleme
  */
 
-const CACHE_NAME = "personel-pwa-v1";
+const CACHE_NAME = "personel-pwa-v2";
 const OFFLINE_URL = "offline.html";
 
 // Önbelleğe alınacak dosyalar
@@ -120,6 +120,8 @@ self.addEventListener("push", (event) => {
       data = { body: event.data.text() };
     }
   }
+
+  console.log("Push Data Received:", data);
 
   const title = data.title || "Ersan Elektrik";
   const options = {
