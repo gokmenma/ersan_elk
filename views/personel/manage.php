@@ -168,6 +168,13 @@ foreach ($ekip_kodlari_raw as $item) {
                                     <span class="d-none d-sm-block"><i class="bx bx-file me-1"></i> Evraklar</span>
                                 </a>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link" data-bs-toggle="tab" href="#puantaj" role="tab" aria-selected="false">
+                                    <span class="d-block d-sm-none"><i class="bx bx-time-five"></i></span>
+                                    <span class="d-none d-sm-block"><i class="bx bx-time-five me-1"></i> Puantaj/İş
+                                        Takip</span>
+                                </a>
+                            </li>
 
                         <?php endif; ?>
                     </ul>
@@ -256,6 +263,14 @@ foreach ($ekip_kodlari_raw as $item) {
                         </div>
                         <div class="tab-pane" id="evraklar" role="tabpanel" data-loaded="false"
                             data-url="views/personel/get-tab-content.php?tab=evraklar&id=<?php echo $id; ?>">
+                            <div class="text-center p-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Yükleniyor...</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane" id="puantaj" role="tabpanel" data-loaded="false"
+                            data-url="views/personel/get-tab-content.php?tab=puantaj&id=<?php echo $id; ?>">
                             <div class="text-center p-5">
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">Yükleniyor...</span>

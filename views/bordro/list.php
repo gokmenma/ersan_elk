@@ -406,69 +406,76 @@ $ek_odeme_turleri = [
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                     <button type="submit" class="btn btn-success"><i class="bx bx-check me-1"></i>Dönem Oluştur</button>
                 </div>
-                <div class="modal-content">
-                    <div class="modal-header bg-primary text-white">
-                        <h5 class="modal-title"><i class="bx bx-wallet me-2"></i>Ödeme Dağıt</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <form id="formOdemeDagit">
-                        <input type="hidden" name="id" id="odeme_bordro_id">
-                        <div class="modal-body">
-                            <div class="alert alert-info mb-3">
-                                <strong id="odeme_personel_ad"></strong><br>
-                                Net Maaş: <strong class="text-success" id="odeme_net_maas"></strong>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="banka_odemesi" class="form-label">
-                                    <i class="bx bx-credit-card me-1 text-primary"></i> Banka Ödemesi
-                                </label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" id="banka_odemesi" name="banka_odemesi"
-                                        step="0.01" min="0" value="0">
-                                    <span class="input-group-text">₺</span>
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="sodexo_odemesi" class="form-label">
-                                    <i class="bx bx-food-menu me-1 text-info"></i> Sodexo/Yemek Kartı
-                                </label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" id="sodexo_odemesi" name="sodexo_odemesi"
-                                        step="0.01" min="0" value="0">
-                                    <span class="input-group-text">₺</span>
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="diger_odeme" class="form-label">
-                                    <i class="bx bx-money me-1 text-secondary"></i> Diğer Ödemeler
-                                </label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" id="diger_odeme" name="diger_odeme"
-                                        step="0.01" min="0" value="0">
-                                    <span class="input-group-text">₺</span>
-                                </div>
-                            </div>
-
-                            <hr>
-
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span><i class="bx bx-wallet me-1 text-warning"></i> <strong>Elden
-                                        Ödenecek:</strong></span>
-                                <span class="fs-5 fw-bold text-warning" id="elden_odeme_goster">0,00 ₺</span>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                            <button type="submit" class="btn btn-primary"><i class="bx bx-save me-1"></i>Kaydet</button>
-                        </div>
-                    </form>
-                </div>
+            </form>
         </div>
     </div>
+</div>
 
+<!-- Ödeme Dağıt Modal -->
+<div class="modal fade" id="odemeDagitModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bx bx-wallet me-2"></i>Ödeme Dağıt</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formOdemeDagit">
+                <input type="hidden" name="id" id="odeme_bordro_id">
+                <div class="modal-body">
+                    <div class="alert alert-info mb-3">
+                        <strong id="odeme_personel_ad"></strong><br>
+                        Net Maaş: <strong class="text-success" id="odeme_net_maas"></strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="banka_odemesi" class="form-label">
+                            <i class="bx bx-credit-card me-1 text-primary"></i> Banka Ödemesi
+                        </label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="banka_odemesi" name="banka_odemesi"
+                                step="0.01" min="0" value="0">
+                            <span class="input-group-text">₺</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="sodexo_odemesi" class="form-label">
+                            <i class="bx bx-food-menu me-1 text-info"></i> Sodexo/Yemek Kartı
+                        </label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="sodexo_odemesi" name="sodexo_odemesi"
+                                step="0.01" min="0" value="0">
+                            <span class="input-group-text">₺</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="diger_odeme" class="form-label">
+                            <i class="bx bx-money me-1 text-secondary"></i> Diğer Ödemeler
+                        </label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="diger_odeme" name="diger_odeme"
+                                step="0.01" min="0" value="0">
+                            <span class="input-group-text">₺</span>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span><i class="bx bx-wallet me-1 text-warning"></i> <strong>Elden
+                                Ödenecek:</strong></span>
+                        <span class="fs-5 fw-bold text-warning" id="elden_odeme_goster">0,00 ₺</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary"><i class="bx bx-save me-1"></i>Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
     <!-- Gelir Ekle Modal -->
     <div class="modal fade" id="gelirEkleModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">

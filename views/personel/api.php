@@ -448,4 +448,81 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         echo json_encode(['status' => 'error', 'message' => 'Geçersiz işlem.']);
     }
 }
+
+if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+    $action = $_GET['action'] ?? '';
+    $Personel = new PersonelModel();
+
+    if ($action == 'export-puantaj') {
+        try {
+            $id = $_GET['id'] ?? 0;
+            $personel = $Personel->find($id);
+            if (!$personel) {
+                throw new Exception("Personel bulunamadı.");
+            }
+
+            $ekip_no = $personel->ekip_no ?? '';
+            $ise_giris = $personel->ise_giris_tarihi ?? '';
+            $isten_cikis = $personel->isten_cikis_tarihi ?? date('Y-m-d');
+
+            $sql = "SELECT * FROM yapilan_isler WHERE ekip_kodu = ? AND tarih >= ? AND tarih <= ? ORDER BY tarih DESC";
+            $stmt = $Personel->getDb()->prepare($sql);
+            $stmt->execute([$ekip_no, $ise_giris, $isten_cikis]);
+            $isler = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+            // Excel oluşturma
+            $vendorAutoload = dirname(__DIR__, 2) . '/vendor/autoload.php';
+            if (file_exists($vendorAutoload)) {
+                require_once $vendorAutoload;
+            } else {
+                throw new Exception("Excel kütüphanesi bulunamadı.");
+            }
+
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+
+            // Başlıklar
+            $headers = ['Tarih', 'İş Emri No', 'İş Tipi', 'Açıklama', 'Süre/Miktar', 'Durum'];
+            $col = 'A';
+            foreach ($headers as $header) {
+                $sheet->setCellValue($col . '1', $header);
+                $col++;
+            }
+
+            // Veriler
+            $row = 2;
+            foreach ($isler as $is) {
+                $sheet->setCellValue('A' . $row, $is->tarih);
+                $sheet->setCellValue('B' . $row, $is->is_emri_no ?? '-');
+                $sheet->setCellValue('C' . $row, $is->is_emri_tipi ?? '-');
+                $sheet->setCellValue('D' . $row, $is->aciklama ?? '-');
+                $sheet->setCellValue('E' . $row, $is->miktar ?? '-');
+                $sheet->setCellValue('F' . $row, $is->onay_durumu ?? 'Beklemede');
+                $row++;
+            }
+
+            // Basit slugify (Helper::slugify yoksa)
+            $slugify = function($text) {
+                $find = ['İ', 'ı', 'ğ', 'Ğ', 'ü', 'Ü', 'ş', 'Ş', 'ö', 'Ö', 'ç', 'Ç'];
+                $replace = ['i', 'i', 'g', 'g', 'u', 'u', 's', 's', 'o', 'o', 'c', 'c'];
+                $text = str_replace($find, $replace, $text);
+                $text = preg_replace('/[^a-zA-Z0-9]/', '_', $text);
+                return strtolower($text);
+            };
+
+            $fileName = "Puantaj_" . $slugify($personel->adi_soyadi) . "_" . date('Ymd') . ".xlsx";
+
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment;filename="' . $fileName . '"');
+            header('Cache-Control: max-age=0');
+
+            $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
+            $writer->save('php://output');
+            exit;
+
+        } catch (Exception $e) {
+            die($e->getMessage());
+        }
+    }
+}
 ?>

@@ -335,6 +335,7 @@ $(document).ready(function () {
   // Detay Görüntüle
   $(document).on("click", ".btn-detail", function () {
     const id = $(this).data("id");
+    console.log("Bordro Detay tıklandı, ID:", id);
 
     $.ajax({
       url: "views/bordro/api.php",
@@ -347,7 +348,7 @@ $(document).ready(function () {
       success: function (response) {
         if (response.status === "success") {
           $("#bordroDetailContent").html(response.html);
-          $("#bordroDetailModal").modal("show");
+          showModal("bordroDetailModal");
         } else {
           Swal.fire({
             icon: "error",
@@ -355,6 +356,9 @@ $(document).ready(function () {
             text: response.message,
           });
         }
+      },
+      error: function (xhr, status, error) {
+        console.error("Detay getirme hatası:", error);
       },
     });
   });
@@ -482,7 +486,7 @@ $(document).ready(function () {
     $("#diger_odeme").val(diger);
 
     hesaplaEldenOdeme();
-    $("#odemeDagitModal").modal("show");
+    showModal("odemeDagitModal");
   });
 
   // Ödeme inputları değiştiğinde elden ödemeyi hesapla
@@ -506,7 +510,7 @@ $(document).ready(function () {
       dataType: "json",
       success: function (response) {
         if (response.status === "success") {
-          $("#odemeDagitModal").modal("hide");
+          hideModal("odemeDagitModal");
           Swal.fire({
             icon: "success",
             title: "Başarılı!",
@@ -527,17 +531,26 @@ $(document).ready(function () {
   });
   // Personel Gelir Ekle Butonu
   $(document).on("click", ".btn-gelir-ekle, .btn-detail-ekodeme", function () {
+    console.log("Gelir Ekle/Detay tıklandı");
     const id = $(this).data("id");
     const ad = $(this).data("ad");
     const donemId = $("#donemSelect").val();
 
+    console.log("Personel ID:", id, "Ad:", ad, "Dönem:", donemId);
+
     $("#gelir_personel_id").val(id);
     $("#gelir_personel_ad").text(ad);
     $("#gelir_edit_id").val(0); // Reset edit ID
-    $("#formPersonelGelirEkle")[0].reset();
-    $("#formPersonelGelirEkle button[type='submit']").html(
-      '<i class="bx bx-save me-1"></i>Kaydet',
-    ); // Reset button
+
+    const form = $("#formPersonelGelirEkle");
+    if (form.length > 0) {
+      form.trigger("reset");
+      form
+        .find("button[type='submit']")
+        .html('<i class="bx bx-save me-1"></i>Kaydet');
+    } else {
+      console.error("Form #formPersonelGelirEkle bulunamadı!");
+    }
 
     // Kart vurgusunu kaldır
     $(".card.border-primary").removeClass(
@@ -554,7 +567,7 @@ $(document).ready(function () {
       $("#collapseGelir").addClass("show");
     }
 
-    $("#modalPersonelGelirEkle").modal("show");
+    showModal("modalPersonelGelirEkle");
   });
 
   // Personel Kesinti Ekle Butonu
@@ -562,17 +575,26 @@ $(document).ready(function () {
     "click",
     ".btn-kesinti-ekle, .btn-detail-kesinti",
     function () {
+      console.log("Kesinti Ekle/Detay tıklandı");
       const id = $(this).data("id");
       const ad = $(this).data("ad");
       const donemId = $("#donemSelect").val();
 
+      console.log("Personel ID:", id, "Ad:", ad, "Dönem:", donemId);
+
       $("#kesinti_personel_id").val(id);
       $("#kesinti_personel_ad").text(ad);
       $("#kesinti_edit_id").val(0); // Reset edit ID
-      $("#formPersonelKesintiEkle")[0].reset();
-      $("#formPersonelKesintiEkle button[type='submit']").html(
-        '<i class="bx bx-save me-1"></i>Kaydet',
-      ); // Reset button
+
+      const form = $("#formPersonelKesintiEkle");
+      if (form.length > 0) {
+        form.trigger("reset");
+        form
+          .find("button[type='submit']")
+          .html('<i class="bx bx-save me-1"></i>Kaydet');
+      } else {
+        console.error("Form #formPersonelKesintiEkle bulunamadı!");
+      }
 
       // Kart vurgusunu kaldır
       $(".card.border-danger").removeClass(
@@ -589,7 +611,7 @@ $(document).ready(function () {
         $("#collapseKesinti").addClass("show");
       }
 
-      $("#modalPersonelKesintiEkle").modal("show");
+      showModal("modalPersonelKesintiEkle");
     },
   );
 
@@ -796,7 +818,7 @@ $(document).ready(function () {
       dataType: "json",
       success: function (response) {
         if (response.status === "success") {
-          $("#modalPersonelGelirEkle").modal("hide");
+          hideModal("modalPersonelGelirEkle");
           Swal.fire({
             icon: "success",
             title: "Başarılı!",
@@ -838,7 +860,7 @@ $(document).ready(function () {
       dataType: "json",
       success: function (response) {
         if (response.status === "success") {
-          $("#modalPersonelKesintiEkle").modal("hide");
+          hideModal("modalPersonelKesintiEkle");
           Swal.fire({
             icon: "success",
             title: "Başarılı!",
@@ -917,7 +939,7 @@ function uploadExcelFile(formData, title, modalId) {
     dataType: "json",
     success: function (response) {
       if (response.status === "success") {
-        $(modalId).modal("hide");
+        hideModal(modalId.replace("#", ""));
         Swal.fire({
           icon: "success",
           title: "Başarılı!",
@@ -1295,3 +1317,61 @@ $(document).on("click", "#btnPrintBordro", function () {
     printWindow.print();
   };
 });
+
+/**
+ * Bootstrap Modal'ı güvenli bir şekilde açar
+ * @param {string} modalId - Modal elementinin ID'si (başında # olmadan)
+ */
+function showModal(modalId) {
+  console.log("showModal çağrıldı:", modalId);
+  const el = document.getElementById(modalId);
+  if (!el) {
+    console.error("Modal element bulunamadı:", modalId);
+    return;
+  }
+
+  try {
+    if (window.bootstrap && window.bootstrap.Modal) {
+      const modal = bootstrap.Modal.getOrCreateInstance(el);
+      modal.show();
+      console.log("Bootstrap 5 Modal açıldı");
+    } else if ($.fn.modal) {
+      $(el).modal("show");
+      console.log("jQuery Bootstrap Modal açıldı");
+    } else {
+      console.error("Bootstrap Modal kütüphanesi bulunamadı!");
+      // Fallback: Manuel olarak class ekle (yetersiz ama denenebilir)
+      $(el).addClass("show").css("display", "block");
+      $("body")
+        .addClass("modal-open")
+        .append('<div class="modal-backdrop fade show"></div>');
+    }
+  } catch (e) {
+    console.error("Modal açılırken hata oluştu:", e);
+  }
+}
+
+/**
+ * Bootstrap Modal'ı güvenli bir şekilde kapatır
+ * @param {string} modalId - Modal elementinin ID'si (başında # olmadan)
+ */
+function hideModal(modalId) {
+  console.log("hideModal çağrıldı:", modalId);
+  const el = document.getElementById(modalId);
+  if (!el) return;
+
+  try {
+    if (window.bootstrap && window.bootstrap.Modal) {
+      const modal = bootstrap.Modal.getInstance(el);
+      if (modal) modal.hide();
+    } else if ($.fn.modal) {
+      $(el).modal("hide");
+    } else {
+      $(el).removeClass("show").css("display", "none");
+      $(".modal-backdrop").remove();
+      $("body").removeClass("modal-open");
+    }
+  } catch (e) {
+    console.error("Modal kapatılırken hata oluştu:", e);
+  }
+}
