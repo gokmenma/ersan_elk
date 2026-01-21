@@ -1,7 +1,6 @@
 /* PWA Personel Portalı - Custom Styles */
 @import url("https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap");
 
-
 /* ===== CSS Variables ===== */
 :root {
   --primary: #135bec;
@@ -33,10 +32,13 @@ body {
   font-family: var(--font-family);
   font-optical-sizing: auto;
   font-weight: 600;
-  font-style: normal; 
+  font-style: normal;
   overscroll-behavior-y: contain;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 button,
@@ -45,6 +47,8 @@ optgroup,
 select,
 textarea {
   font-family: inherit;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* ===== SweetAlert2 Custom Styles ===== */
@@ -54,7 +58,6 @@ div:where(.swal2-container) .swal2-html-container,
 div:where(.swal2-container) .swal2-confirm,
 div:where(.swal2-container) .swal2-cancel {
   font-family: var(--font-family) !important;
-
 }
 
 /* Custom Popup */
@@ -401,7 +404,6 @@ div:where(.swal2-container) .swal2-cancel {
   font-size: 0.9375rem;
   transition: all 0.2s ease;
   background: white;
-
 }
 
 .dark .form-input {
@@ -423,7 +425,7 @@ div:where(.swal2-container) .swal2-cancel {
   background-repeat: no-repeat;
   background-size: 1.25rem;
   padding-right: 2.5rem;
-    border: 1px solid #d0d2d4 !important;
+  border: 1px solid #d0d2d4 !important;
   border-radius: 0.25rem !important;
 }
 

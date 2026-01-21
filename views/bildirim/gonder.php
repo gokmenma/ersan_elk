@@ -119,7 +119,7 @@ $logs = $mesajLogModel->getLogs(['type' => 'push']);
     <?php include 'layouts/breadcrumb.php'; ?>
 
     <div class="row g-3">
-   <!-- Sağ Kolon: İstatistikler -->
+        <!-- Sağ Kolon: İstatistikler -->
         <div class="col-lg-5">
             <div class="row g-3">
                 <div class="col-4">
@@ -156,8 +156,8 @@ $logs = $mesajLogModel->getLogs(['type' => 'push']);
                 </div>
             </div>
 
- 
-            
+
+
         </div>
 
 
@@ -239,6 +239,17 @@ $logs = $mesajLogModel->getLogs(['type' => 'push']);
                                 ) ?>
                             </div>
 
+                            <!-- Resim -->
+                            <div class="col-12">
+                                <label for="resim" class="form-label text-muted small">Bildirim Resmi (İsteğe
+                                    Bağlı)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bx bx-image"></i></span>
+                                    <input type="file" class="form-control" id="resim" name="resim" accept="image/*">
+                                </div>
+                                <div class="form-text">Önerilen boyut: 512x256px. Max: 2MB.</div>
+                            </div>
+
                             <!-- Mesaj -->
                             <div class="col-12">
                                 <?= Form::FormFloatTextarea(
@@ -265,10 +276,10 @@ $logs = $mesajLogModel->getLogs(['type' => 'push']);
                 </div>
             </div>
 
-         
+
         </div>
 
-     
+
     </div>
 </div>
 
@@ -329,6 +340,6 @@ $logs = $mesajLogModel->getLogs(['type' => 'push']);
         });
 
         // Test bildirimi
-        
+
     });
 </script>

@@ -37,11 +37,54 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Başlık ve mesaj zorunludur.');
                 }
 
+                // Resim Yükleme İşlemi
+                $imageUrl = null;
+                if (isset($_FILES['resim']) && $_FILES['resim']['error'] === UPLOAD_ERR_OK) {
+                    $uploadDir = dirname(__DIR__, 2) . '/uploads/notifications/';
+                    if (!file_exists($uploadDir)) {
+                        mkdir($uploadDir, 0777, true);
+                    }
+
+                    $fileInfo = pathinfo($_FILES['resim']['name']);
+                    $extension = strtolower($fileInfo['extension']);
+                    $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+                    if (!in_array($extension, $allowedExtensions)) {
+                        throw new Exception('Geçersiz dosya formatı. Sadece resim dosyaları yüklenebilir.');
+                    }
+
+                    if ($_FILES['resim']['size'] > 2 * 1024 * 1024) { // 2MB
+                        throw new Exception('Dosya boyutu 2MB\'dan büyük olamaz.');
+                    }
+
+                    $fileName = uniqid('push_') . '.' . $extension;
+                    $uploadFile = $uploadDir . $fileName;
+
+                    if (move_uploaded_file($_FILES['resim']['tmp_name'], $uploadFile)) {
+                        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+                        $host = $_SERVER['HTTP_HOST'];
+                        $scriptPath = dirname($_SERVER['SCRIPT_NAME']); // /ersan_elk/views/bildirim
+                        $basePath = dirname($scriptPath, 2); // /ersan_elk
+                        // Windows path düzeltmesi
+                        $basePath = str_replace('\\', '/', $basePath);
+                        if ($basePath === '/' || $basePath === '.')
+                            $basePath = '';
+
+                        $imageUrl = "$protocol://$host$basePath/uploads/notifications/$fileName";
+                    } else {
+                        throw new Exception('Dosya yüklenirken bir hata oluştu.');
+                    }
+                }
+
                 $payload = [
                     'title' => $baslik,
                     'body' => $mesaj,
                     'url' => $hedef_sayfa ?: 'index.php'
                 ];
+
+                if ($imageUrl) {
+                    $payload['image'] = $imageUrl;
+                }
 
                 $gonderildi = 0;
                 $hata = 0;
