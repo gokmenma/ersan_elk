@@ -197,6 +197,7 @@ $ek_odeme_turleri = [
                                         </th>
                                         <th style="width: 20px;">TC Kimlik No</th>
                                         <th>Personel</th>
+                                        <th class="text-center">Çalışma Günü</th>
                                         <th class="text-end">Top. Ek Ödeme</th>
                                         <th class="text-end">Top. Kesinti</th>
                                         <th class="text-end">Net Maaş</th>
@@ -210,7 +211,7 @@ $ek_odeme_turleri = [
                                 <tbody>
                                     <?php if (empty($personeller)): ?>
                                         <tr>
-                                            <td colspan="11" class="text-center text-muted py-4">
+                                            <td colspan="12" class="text-center text-muted py-4">
                                                 <i class="bx bx-user-x fs-1 d-block mb-2"></i>
                                                 Bu döneme henüz personel eklenmemiş.<br>
                                                 <small>"Personelleri Güncelle" butonuna tıklayarak personelleri
@@ -221,6 +222,17 @@ $ek_odeme_turleri = [
                                         <?php foreach ($personeller as $personel): ?>
                                             <?php
                                             $eldenOdeme = ($personel->net_maas ?? 0) - ($personel->banka_odemesi ?? 0) - ($personel->sodexo_odemesi ?? 0) - ($personel->diger_odeme ?? 0);
+
+                                            // Ücretsiz izin gün sayısını hesapla
+                                            $ucretsizIzinGunu = 0;
+                                            if (!empty($personel->hesaplama_detay)) {
+                                                $detay = json_decode($personel->hesaplama_detay, true);
+                                                if (isset($detay['matrahlar']['ucretsiz_izin_kesinti']) && isset($detay['matrahlar']['brut_maas']) && $detay['matrahlar']['brut_maas'] > 0) {
+                                                    $gunlukUcret = $detay['matrahlar']['brut_maas'] / 30;
+                                                    $ucretsizIzinGunu = round($detay['matrahlar']['ucretsiz_izin_kesinti'] / $gunlukUcret);
+                                                }
+                                            }
+                                            $calismaGunu = 30 - $ucretsizIzinGunu;
                                             ?>
                                             <tr data-id="<?= $personel->id ?>">
                                                 <td>
@@ -238,7 +250,15 @@ $ek_odeme_turleri = [
                                                             class="fw-medium"><?= htmlspecialchars($personel->adi_soyadi) ?></span>
                                                     </div>
                                                 </td>
-                                                <td class="text-end text-success">
+                                            
+                                                <td
+                                                    class="text-center <?= $ucretsizIzinGunu > 0 ? 'text-warning fw-bold' : 'text-secondary' ?>">
+                                                    <?= $calismaGunu ?> gün
+                                                    <?php if ($ucretsizIzinGunu > 0): ?>
+                                                        <small class="d-block text-danger">(-<?= $ucretsizIzinGunu ?> izin)</small>
+                                                    <?php endif; ?>
+                                                </td>
+                                                    <td class="text-end text-success">
                                                     <?= $personel->guncel_toplam_ek_odeme > 0 ? number_format($personel->guncel_toplam_ek_odeme, 2, ',', '.') . ' ₺' : '-' ?>
                                                     <i class="bx bx-list-ul ms-1 text-primary cursor-pointer btn-detail-ekodeme"
                                                         data-id="<?= $personel->personel_id ?>"

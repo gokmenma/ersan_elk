@@ -27,7 +27,7 @@ class BordroPersonelModel extends Model
         $sql = $this->db->prepare("
             SELECT bp.*, p.adi_soyadi, p.tc_kimlik_no, p.departman, p.gorev, 
                    p.ise_giris_tarihi, p.isten_cikis_tarihi, p.maas_tutari,
-                   p.cep_telefonu, p.resim_yolu,
+                   p.cep_telefonu, p.resim_yolu, bp.hesaplama_detay,
                    (SELECT COALESCE(SUM(tutar), 0) FROM personel_kesintileri WHERE personel_id = bp.personel_id AND donem_id = bp.donem_id AND silinme_tarihi IS NULL) as guncel_toplam_kesinti,
                    (SELECT COALESCE(SUM(tutar), 0) FROM personel_ek_odemeler WHERE personel_id = bp.personel_id AND donem_id = bp.donem_id AND silinme_tarihi IS NULL) as guncel_toplam_ek_odeme
             FROM {$this->table} bp
