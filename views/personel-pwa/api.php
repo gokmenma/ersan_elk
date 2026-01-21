@@ -331,26 +331,36 @@ try {
 
                 if ($durum == 'beklemede')
                     $durum_text = 'Beklemede';
-                if ($durum == 'onaylandi' || $durum == 'onaylandı')
+                if ($durum == 'onaylandi' || $durum == 'onaylandı') {
+                    $durum = 'onaylandi'; // Normalize status for frontend
                     $durum_text = 'Onaylandı';
+                }
                 if ($durum == 'reddedildi')
                     $durum_text = 'Reddedildi';
-                if ($durum == 'iptal edildi' || $durum == $cancel_target)
+                if ($durum == 'iptal edildi' || $durum == $cancel_target) {
+                    $durum = 'iptal_edildi'; // Normalize status
                     $durum_text = 'İptal Edildi';
+                }
 
                 $izin_tipi = $item->izin_tipi ?? '';
                 $izin_tipi_text = '';
                 $renk = 'bg-primary/10 text-primary';
                 $ikon = 'event';
 
-                if (is_numeric($izin_tipi) && isset($dbIzinMap[$izin_tipi])) {
-                    // DB'den gelen yeni tip izin
-                    $tur = $dbIzinMap[$izin_tipi];
-                    $izin_tipi_text = $tur->tur_adi;
-                    $renk = $tur->renk ?? $renk;
-                    $ikon = $tur->ikon ?? $ikon;
+                if (is_numeric($izin_tipi)) {
+                    // DB'den gelen yeni tip izin (ID)
+                    if (isset($dbIzinMap[$izin_tipi])) {
+                        $tur = $dbIzinMap[$izin_tipi];
+                        $izin_tipi_text = $tur->tur_adi;
+                        $renk = $tur->renk ?? $renk;
+                        $ikon = $tur->ikon ?? $ikon;
+                    } else {
+                        // ID var ama tanım bulunamadı (silinmiş olabilir)
+                        // Eski tiplerde numeric ID yoktu, o yüzden bu bir ID'dir.
+                        $izin_tipi_text = "İzin Türü #$izin_tipi";
+                    }
                 } else {
-                    // Eski tip izin
+                    // Eski tip izin (String key)
                     $izin_tipi_text = $izin_tipleri[$izin_tipi] ?? $izin_tipi;
 
                     // Eski tipler için renk/ikon mapping
@@ -378,7 +388,7 @@ try {
                     }
                 }
 
-                if (empty($izin_tipi_text)) {
+                if (empty($izin_tipi_text) || $izin_tipi_text == '0') {
                     $izin_tipi_text = 'İzin Türü Belirtilmemiş';
                 }
 

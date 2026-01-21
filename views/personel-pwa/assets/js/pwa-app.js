@@ -76,14 +76,14 @@ const Navigation = {
     let touchEndX = 0;
     let touchEndY = 0;
 
-    const minSwipeDistance = 75; // Minimum distance for swipe
-    const maxVerticalDistance = 50; // Maximum vertical distance to ignore scrolling
+    const minSwipeDistance = 50; // Reduced from 75
+    const maxVerticalDistance = 100; // Increased from 50 to allow diagonal swipes
 
     document.addEventListener(
       "touchstart",
       (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-        touchStartY = e.changedTouches[0].screenY;
+        touchStartX = e.changedTouches[0].clientX;
+        touchStartY = e.changedTouches[0].clientY;
       },
       { passive: true },
     );
@@ -91,8 +91,8 @@ const Navigation = {
     document.addEventListener(
       "touchend",
       (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        touchEndY = e.changedTouches[0].screenY;
+        touchEndX = e.changedTouches[0].clientX;
+        touchEndY = e.changedTouches[0].clientY;
         this.handleSwipe(
           touchStartX,
           touchStartY,

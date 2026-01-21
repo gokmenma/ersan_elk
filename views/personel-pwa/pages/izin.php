@@ -331,9 +331,12 @@
 
     function getStatusBadge(status) {
         switch (status) {
-            case 'onaylandi': return 'badge-success';
+            case 'onaylandi':
+            case 'onaylandı':
+                return 'badge-success bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
             case 'beklemede': return 'badge-warning';
             case 'reddedildi': return 'badge-danger';
+            case 'iptal_edildi': return 'badge-gray bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400';
             default: return 'badge-gray';
         }
     }
