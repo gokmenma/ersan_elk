@@ -517,7 +517,7 @@ const Push = {
   init: async () => {
     if (!window.isSecureContext) {
       console.error("Push messaging requires a secure context (HTTPS).");
-      Toast.show("Bildirimler için HTTPS bağlantısı gereklidir!", "error");
+      // Toast.show("Bildirimler için HTTPS bağlantısı gereklidir!", "error");
       return;
     }
 
@@ -536,6 +536,28 @@ const Push = {
       console.log("User is already subscribed:", Push.subscription);
       // Sunucuyla senkronize et (opsiyonel)
       Push.sendSubscriptionToBackEnd(Push.subscription);
+    } else {
+      // Abonelik yok, izin durumunu kontrol et
+      if (Notification.permission === "default") {
+        // İzin sıfırlanmış veya henüz istenmemiş
+        // Kullanıcıya sor
+        setTimeout(async () => {
+          const confirmed = await Alert.confirm(
+            "Bildirim İzni",
+            "Önemli gelişmelerden haberdar olmak için bildirimleri açmak ister misiniz?",
+            "Evet, Aç",
+            "Daha Sonra",
+          );
+
+          if (confirmed) {
+            Push.subscribe();
+          }
+        }, 2000); // Uygulama açıldıktan biraz sonra sor
+      } else if (Notification.permission === "granted") {
+        // İzin var ama abonelik yok (muhtemelen silinmiş), tekrar abone ol
+        console.log("Permission granted but no subscription, resubscribing...");
+        Push.subscribe();
+      }
     }
   },
 
