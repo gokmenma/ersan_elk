@@ -1,6 +1,7 @@
 /* PWA Personel Portalı - Custom Styles */
 @import url("https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap");
 
+
 /* ===== CSS Variables ===== */
 :root {
   --primary: #135bec;
@@ -14,6 +15,7 @@
   --danger: #ef4444;
   --safe-area-inset-top: env(safe-area-inset-top, 0px);
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --font-family: "Roboto Condensed", sans-serif;
 }
 
 /* ===== Base Styles ===== */
@@ -28,11 +30,10 @@ html {
 }
 
 body {
-  font-family:
-    "Roboto Condensed",
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
+  font-family: var(--font-family);
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-style: normal; 
   overscroll-behavior-y: contain;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -52,11 +53,8 @@ div:where(.swal2-container) .swal2-title,
 div:where(.swal2-container) .swal2-html-container,
 div:where(.swal2-container) .swal2-confirm,
 div:where(.swal2-container) .swal2-cancel {
-  font-family:
-    "Roboto Condensed",
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif !important;
+  font-family: var(--font-family) !important;
+
 }
 
 /* Custom Popup */
