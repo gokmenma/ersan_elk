@@ -171,6 +171,7 @@ class BordroParametreModel extends Model
             'gecerlilik_baslangic',
             'gecerlilik_bitis',
             'varsayilan_tutar',
+            'oran',
             'aciklama',
             'sira',
             'aktif'

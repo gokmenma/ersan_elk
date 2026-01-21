@@ -141,6 +141,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 if ($pushService->sendToPersonel($testPersonelId, $payload)) {
+                    $mesajLogModel->logPush(
+                        $_SESSION['firma_id'] ?? 0,
+                        $payload['title'],
+                        $payload['body'],
+                        ['Test Kullanıcısı'],
+                        $payload,
+                        'success'
+                    );
                     echo json_encode([
                         'status' => 'success',
                         'message' => 'Test bildirimi gönderildi!'

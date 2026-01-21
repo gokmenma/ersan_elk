@@ -222,6 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'nafaka' => 'Nafaka',
                     'ceza' => 'Ceza',
                     'izin_kesinti' => 'Ücretsiz İzin',
+                    'bes_kesinti' => 'BES Kesintisi',
                     'diger' => 'Diğer Kesinti'
                 ];
 

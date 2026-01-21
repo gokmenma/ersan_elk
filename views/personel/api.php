@@ -96,6 +96,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 } else if ($key == 'sifre' && empty($value)) {
                     unset($data['sifre']);
                 }
+
+                /**Parasal tutarlar için money formatını kaldır */
+                if (strpos($key, 'ucret') !== false) {
+                    $data[$key] = Helper::formattedMoneyToNumber($value);
+                }
             }
 
 
@@ -234,7 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'iban_numarasi' => ['iban numarası', 'iban no'],
                 'maas_durumu' => ['maaş durumu', 'maas durumu'],
                 'maas_tutari' => ['maaş tutarı', 'maas tutari'],
-                'maas_birim_saat' => ['saatlik ücret', 'maas birim saat']
+                'gunluk_ucret' => ['gunluk ucret', 'gunluk ucret']
             ];
 
             $colIndices = [];

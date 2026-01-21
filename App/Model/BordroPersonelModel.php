@@ -679,6 +679,36 @@ class BordroPersonelModel extends Model
     }
 
     /**
+     * Personelin BES kesintisini oluşturur
+     */
+    public function olusturBesKesintisi($personel_id, $donem_id, $sgkMatrahi, $donemTarihi)
+    {
+        // Önceki BES kesintilerini temizle
+        $deleteSql = $this->db->prepare("
+            DELETE FROM personel_kesintileri 
+            WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[BES]%'
+        ");
+        $deleteSql->execute([$personel_id, $donem_id]);
+
+        // Parametreyi getir
+        $parametreModel = new BordroParametreModel();
+        $besParam = $parametreModel->getByKod('bes_kesinti', $donemTarihi);
+
+        $oran = 3; // Varsayılan %3
+        if ($besParam && isset($besParam->oran) && $besParam->oran > 0) {
+            $oran = floatval($besParam->oran);
+        }
+
+        // Kesinti tutarını hesapla
+        $tutar = $sgkMatrahi * ($oran / 100);
+
+        if ($tutar > 0) {
+            $aciklama = "[BES] Bireysel Emeklilik Kesintisi (%$oran)";
+            $this->addKesinti($personel_id, $donem_id, $aciklama, round($tutar, 2), 'bes_kesinti');
+        }
+    }
+
+    /**
      * Tek bir personelin maaşını hesaplar ve günceller
      * Parametrelere dayalı gelişmiş hesaplama
      */
@@ -689,7 +719,7 @@ class BordroPersonelModel extends Model
 
         // Bordro kaydını ve personel detaylarını çek
         $sql = $this->db->prepare("
-            SELECT bp.*, p.maas_tutari, bd.baslangic_tarihi, bd.bitis_tarihi
+            SELECT bp.*, p.maas_tutari, p.bes_kesintisi_varmi, bd.baslangic_tarihi, bd.bitis_tarihi
             FROM {$this->table} bp
             INNER JOIN personel p ON bp.personel_id = p.id
             INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
@@ -727,10 +757,45 @@ class BordroPersonelModel extends Model
         // ========== ÜCRETSİZ İZİN KESİNTİLERİ ==========
         // Dönem içindeki onaylanmış ücretsiz izinleri bulup kesinti olarak ekle
         // Günlük ücret = Brüt maaş / 30, Kesinti = Günlük ücret × Ücretsiz izin gün sayısı
-        $this->olusturUcretsizIzinKesintileri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, $brutMaas);
+        $ucretsizIzinSonuc = $this->olusturUcretsizIzinKesintileri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, $brutMaas);
+        $ucretsizIzinKesinti = $ucretsizIzinSonuc['toplam_kesinti'] ?? 0;
 
-        // Çalışma günü sayısı (aylık varsayılan 26 gün)
+        // Çalışma günü sayısı (aylık varsayılan 26 gün) - BES hesabı için gerekli
         $calismaGunuSayisi = $parametreModel->getGenelAyar('calisma_gunu_sayisi', $donemTarihi) ?? 26;
+
+        // ========== BES KESİNTİSİ ==========
+        if (isset($kayit->bes_kesintisi_varmi) && $kayit->bes_kesintisi_varmi === 'Evet') {
+            // SGK Matrahını tahmin et (Ek ödemelerden gelen SGK matrahı ile)
+            $tempEkOdemeler = $this->getDonemEkOdemeleriListe($kayit->personel_id, $kayit->donem_id);
+            $tempSgkMatrahEkleri = 0;
+
+            foreach ($tempEkOdemeler as $odeme) {
+                $param = $parametreModel->getByKod($odeme->tur, $donemTarihi);
+                if ($param && $param->sgk_matrahi_dahil) {
+                    $tutar = floatval($odeme->tutar);
+                    // Muafiyet hesabı
+                    $muafLimit = 0;
+                    if ($param->hesaplama_tipi === 'kismi_muaf') {
+                        if ($param->muaf_limit_tipi === 'gunluk') {
+                            $muafLimit = floatval($param->gunluk_muaf_limit) * $calismaGunuSayisi;
+                        } elseif ($param->muaf_limit_tipi === 'aylik') {
+                            $muafLimit = floatval($param->aylik_muaf_limit);
+                        }
+                        $vergiliKisim = max(0, $tutar - $muafLimit);
+                        $tempSgkMatrahEkleri += $vergiliKisim;
+                    } elseif ($param->hesaplama_tipi === 'brut') {
+                        $tempSgkMatrahEkleri += $tutar;
+                    }
+                }
+            }
+
+            $tempCalisanBrut = max(0, $brutMaas - $ucretsizIzinKesinti);
+            $tempSgkMatrahi = $tempCalisanBrut + $tempSgkMatrahEkleri;
+
+            $this->olusturBesKesintisi($kayit->personel_id, $kayit->donem_id, $tempSgkMatrahi, $donemTarihi);
+        }
+
+
 
         // Genel ayarları çek
         $sgkIsciOrani = ($parametreModel->getGenelAyar('sgk_isci_orani', $donemTarihi) ?? 14) / 100;

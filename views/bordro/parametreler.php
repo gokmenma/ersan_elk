@@ -187,8 +187,9 @@ $kategoriOptions = [
                                                             <div
                                                                 class="d-flex align-items-center justify-content-between w-100 me-3">
                                                                 <div>
-                                                                    <code class="me-2"><?= htmlspecialchars($kod) ?></code>
                                                                     <strong><?= htmlspecialchars($ilkParam->etiket) ?></strong>
+                                                                    <br>
+                                                                    <code class="me-2"><?= htmlspecialchars($kod) ?></code>
                                                                 </div>
                                                                 <div class="d-flex align-items-center gap-2">
                                                                     <?php
@@ -333,11 +334,25 @@ $kategoriOptions = [
                                                             <div
                                                                 class="d-flex align-items-center justify-content-between w-100 me-3">
                                                                 <div>
-                                                                    <code class="me-2"><?= htmlspecialchars($kod) ?></code>
                                                                     <strong><?= htmlspecialchars($ilkParam->etiket) ?></strong>
+                                                                    <br>
+                                                                    <code class="me-2"><?= htmlspecialchars($kod) ?></code>
                                                                 </div>
                                                                 <div class="d-flex align-items-center gap-2">
-                                                                    <span class="badge bg-secondary">Net Kesinti</span>
+                                                                    <?php
+                                                                    $badge = match ($ilkParam->hesaplama_tipi) {
+                                                                        'netten' => 'bg-secondary',
+                                                                        'brutten' => 'bg-danger',
+                                                                        'sgk_matrahindan' => 'bg-warning text-dark',
+                                                                        'oran_bazli_vergi' => 'bg-info',
+                                                                        'oran_bazli_sgk' => 'bg-primary',
+                                                                        'oran_bazli_net' => 'bg-dark',
+                                                                        default => 'bg-secondary'
+                                                                    };
+                                                                    ?>
+                                                                    <span class="badge <?= $badge ?>">
+                                                                        <?= $hesaplamaTipleri[$ilkParam->hesaplama_tipi] ?? $ilkParam->hesaplama_tipi ?>
+                                                                    </span>
                                                                     <?php if ($donemSayisi > 1): ?>
                                                                         <span class="badge bg-info"><?= $donemSayisi ?> dönem</span>
                                                                     <?php endif; ?>
@@ -666,18 +681,21 @@ $kategoriOptions = [
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="sgk_matrahi_dahil"
                                         name="sgk_matrahi_dahil" value="1">
-                                    <label class="form-check-label" for="sgk_matrahi_dahil">SGK Matrahına Dahil</label>
+                                    <label class="form-check-label" for="sgk_matrahi_dahil" id="sgk_matrah_label">SGK
+                                        Matrahına Dahil</label>
                                 </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="gelir_vergisi_dahil"
                                         name="gelir_vergisi_dahil" value="1" checked>
-                                    <label class="form-check-label" for="gelir_vergisi_dahil">Gelir Vergisine
+                                    <label class="form-check-label" for="gelir_vergisi_dahil"
+                                        id="gelir_vergisi_label">Gelir Vergisine
                                         Dahil</label>
                                 </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="damga_vergisi_dahil"
                                         name="damga_vergisi_dahil" value="1">
-                                    <label class="form-check-label" for="damga_vergisi_dahil">Damga Vergisine
+                                    <label class="form-check-label" for="damga_vergisi_dahil"
+                                        id="damga_vergisi_label">Damga Vergisine
                                         Dahil</label>
                                 </div>
                             </div>
@@ -697,7 +715,7 @@ $kategoriOptions = [
 
                     <div class="row">
                         <div class="col-md-6 mb-3" id="divTutar">
-                            <?= Form::FormFloatInput("number", "varsayilan_tutar", "0", "0.00", "Varsayılan Tutar", "bx bx-money", "form-control", false, null, "off", false, 'step="0.01"') ?>
+                            <?= Form::FormFloatInput("text", "varsayilan_tutar", "0", "0.00", "Varsayılan Tutar", "dollar-sign", "form-control money", false, null, "off", false) ?>
                         </div>
                         <div class="col-md-6 mb-3" id="divOran" style="display: none;">
                             <?= Form::FormFloatInput("number", "oran", "0", "0", "Oran (%)", "bx bx-percentage", "form-control", false, null, "off", false, 'step="0.01"') ?>
@@ -790,16 +808,16 @@ $kategoriOptions = [
                 <input type="hidden" name="id" id="ayar_id">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <?= Form::FormFloatInput("text", "parametre_kodu", "", "Örn: asgari_ucret_brut", "Parametre Kodu", "bx bx-hash", "form-control", true) ?>
+                        <?= Form::FormFloatInput("text", "parametre_kodu", "", "Örn: asgari_ucret_brut", "Parametre Kodu", "hash", "form-control", true) ?>
                     </div>
                     <div class="mb-3">
-                        <?= Form::FormFloatInput("text", "parametre_adi", "", "Örn: Asgari Ücret (Brüt)", "Parametre Adı", "bx bx-label", "form-control", true) ?>
+                        <?= Form::FormFloatInput("text", "parametre_adi", "", "Örn: Asgari Ücret (Brüt)", "Parametre Adı", "label", "form-control", true) ?>
                     </div>
                     <div class="mb-3">
-                        <?= Form::FormFloatInput("number", "deger", "", "0.00", "Değer", "bx bx-money", "form-control", true, null, "off", false, 'step="0.01"') ?>
+                        <?= Form::FormFloatInput("text", "deger", "", "0.00", "Değer", "money", "form-control money", true, null, "off", false) ?>
                     </div>
                     <div class="mb-3">
-                        <?= Form::FormFloatInput("date", "ayar_gecerlilik_baslangic", date('Y-m-d'), "", "Geçerlilik Başlangıç", "bx bx-calendar", "form-control", true) ?>
+                        <?= Form::FormFloatInput("date", "ayar_gecerlilik_baslangic", date('Y-m-d'), "", "Geçerlilik Başlangıç", "calendar", "form-control", true) ?>
                     </div>
                     <div class="mb-3">
                         <?= Form::FormFloatInput("text", "ayar_aciklama", "", "Açıklama...", "Açıklama", "bx bx-message-detail", "form-control") ?>
@@ -909,6 +927,19 @@ $kategoriOptions = [
             $('#damga_vergisi_dahil').prop('checked', param.damga_vergisi_dahil == 1);
 
             $('#modalParametreEkle .modal-title').html('<i class="bx bx-edit me-2"></i>Parametre Düzenle');
+
+            /**Kesinti Modalda Lalbellar değiştir */
+            if (param.kategori === 'gelir') {
+                $("#sgk_matrah_label").html("SGK Matrahına Dahil");
+                $("#gelir_vergisi_label").html("Gelir Vergisine Dahil");
+                $("#damga_vergisi_label").html("Damga Vergisine Dahil");
+            } else {
+
+                $("#sgk_matrah_label").html("SGK Matrahından Düşülür");
+                $("#gelir_vergisi_label").html("Gelir Vergisinden Düşülür");
+                $("#damga_vergisi_label").html("Damga Vergisinden Düşülür");
+            }
+
             $('#modalParametreEkle').modal('show');
         });
 
