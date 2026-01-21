@@ -11,6 +11,7 @@ const App = {
     this.checkDarkMode();
     this.setupEventListeners();
     this.checkOnlineStatus();
+    Navigation.init();
     Push.init();
   },
 
@@ -58,6 +59,94 @@ const App = {
     if (!isOnline) {
       Toast.show("Çevrimdışı moddasınız", "warning");
     }
+  },
+};
+
+// ===== Navigation Functions =====
+const Navigation = {
+  pages: ["ana-sayfa", "bordro", "izin", "talep"],
+
+  init() {
+    this.setupSwipe();
+  },
+
+  setupSwipe() {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+
+    const minSwipeDistance = 75; // Minimum distance for swipe
+    const maxVerticalDistance = 50; // Maximum vertical distance to ignore scrolling
+
+    document.addEventListener(
+      "touchstart",
+      (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+      },
+      { passive: true },
+    );
+
+    document.addEventListener(
+      "touchend",
+      (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        touchEndY = e.changedTouches[0].screenY;
+        this.handleSwipe(
+          touchStartX,
+          touchStartY,
+          touchEndX,
+          touchEndY,
+          minSwipeDistance,
+          maxVerticalDistance,
+        );
+      },
+      { passive: true },
+    );
+  },
+
+  handleSwipe(
+    startX,
+    startY,
+    endX,
+    endY,
+    minSwipeDistance,
+    maxVerticalDistance,
+  ) {
+    const diffX = endX - startX;
+    const diffY = endY - startY;
+
+    // Check if vertical movement is too much (likely scrolling)
+    if (Math.abs(diffY) > maxVerticalDistance) return;
+
+    // Check if horizontal movement is enough
+    if (Math.abs(diffX) < minSwipeDistance) return;
+
+    // Get current page from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentPage = urlParams.get("page") || "ana-sayfa";
+
+    const currentIndex = this.pages.indexOf(currentPage);
+    if (currentIndex === -1) return; // Not a swipeable page
+
+    if (diffX < 0) {
+      // Swipe Left -> Next Page (Right)
+      if (currentIndex < this.pages.length - 1) {
+        this.navigateTo(this.pages[currentIndex + 1]);
+      }
+    } else {
+      // Swipe Right -> Previous Page (Left)
+      if (currentIndex > 0) {
+        this.navigateTo(this.pages[currentIndex - 1]);
+      }
+    }
+  },
+
+  navigateTo(page) {
+    // Add slide animation class to body before navigating?
+    // For now just simple navigation
+    window.location.href = `?page=${page}`;
   },
 };
 
