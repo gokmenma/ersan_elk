@@ -1110,3 +1110,188 @@ function loadKesintiListesi(personelId, donemId) {
     },
   });
 }
+
+// Bordro Detay Yazdır/PDF
+$(document).on("click", "#btnPrintBordro", function () {
+  const printContent = document.getElementById("bordroDetailContent");
+  if (!printContent) return;
+
+  const printWindow = window.open("", "_blank", "width=900,height=700");
+  if (!printWindow) {
+    Swal.fire({
+      icon: "error",
+      title: "Hata!",
+      text: "Popup penceresi engellenmiş olabilir. Lütfen popup engelleyiciyi devre dışı bırakın.",
+    });
+    return;
+  }
+
+  const printStyles = `
+    <style>
+      @page {
+        size: A4;
+        margin: 15mm;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-size: 12px;
+        line-height: 1.4;
+        color: #333;
+        background: white;
+        padding: 20px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        margin: 0 -10px;
+      }
+      .col-md-3, .col-md-4, .col-md-6, .col-12 {
+        padding: 0 10px;
+        margin-bottom: 15px;
+      }
+      .col-md-3 { width: 25%; }
+      .col-md-4 { width: 33.33%; }
+      .col-md-6 { width: 50%; }
+      .col-12 { width: 100%; }
+      .card {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        overflow: hidden;
+      }
+      .card-header {
+        padding: 8px 12px;
+        font-weight: bold;
+        font-size: 11px;
+        border-bottom: 1px solid #ddd;
+      }
+      .card-body {
+        padding: 10px 12px;
+      }
+      .bg-danger { background-color: #dc3545 !important; color: white !important; }
+      .bg-warning { background-color: #ffc107 !important; color: #333 !important; }
+      .bg-success { background-color: #28a745 !important; color: white !important; }
+      .bg-primary { background-color: #0d6efd !important; color: white !important; }
+      .border-danger { border-color: #dc3545 !important; }
+      .border-warning { border-color: #ffc107 !important; }
+      .border-success { border-color: #28a745 !important; }
+      .text-danger { color: #dc3545 !important; }
+      .text-warning { color: #856404 !important; }
+      .text-success { color: #28a745 !important; }
+      .text-primary { color: #0d6efd !important; }
+      .text-muted { color: #6c757d !important; }
+      .text-end { text-align: right; }
+      .text-center { text-align: center; }
+      .fw-bold { font-weight: bold; }
+      .fw-medium { font-weight: 500; }
+      .fs-5 { font-size: 14px; }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+      }
+      table td, table th {
+        padding: 5px 8px;
+        border-bottom: 1px solid #eee;
+      }
+      table.table-sm td, table.table-sm th {
+        padding: 4px 6px;
+      }
+      .table-light { background-color: #f8f9fa; }
+      .table-success { background-color: #d4edda !important; }
+      .table-warning { background-color: #fff3cd !important; }
+      h6 {
+        font-size: 13px;
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+        border-bottom: 2px solid #0d6efd;
+      }
+      .border {
+        border: 1px solid #ddd !important;
+      }
+      .rounded {
+        border-radius: 6px;
+      }
+      .p-3 {
+        padding: 10px;
+      }
+      .mb-0 { margin-bottom: 0; }
+      .mb-3 { margin-bottom: 15px; }
+      .mt-3 { margin-top: 15px; }
+      .mt-4 { margin-top: 20px; }
+      .me-1, .me-2 { margin-right: 5px; }
+      .ps-3 { padding-left: 10px; }
+      .pe-3 { padding-right: 10px; }
+      .py-2 { padding-top: 6px; padding-bottom: 6px; }
+      small { font-size: 10px; }
+      .d-block { display: block; }
+      .h-100 { height: 100%; }
+      .print-header {
+        text-align: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #0d6efd;
+      }
+      .print-header h3 {
+        color: #0d6efd;
+        margin: 0;
+        font-size: 18px;
+      }
+      .print-header small {
+        color: #666;
+        font-size: 11px;
+      }
+      .print-footer {
+        margin-top: 30px;
+        padding-top: 15px;
+        border-top: 1px solid #ddd;
+        text-align: center;
+        font-size: 10px;
+        color: #666;
+      }
+      @media print {
+        body { padding: 0; }
+        .card { page-break-inside: avoid; }
+      }
+      i.bx { display: none; }
+      .bg-opacity-10 { opacity: 0.9; }
+    </style>
+  `;
+
+  const personelAdi =
+    printContent.querySelector(".fw-bold")?.textContent || "Bordro";
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Bordro Detayı - ${personelAdi}</title>
+      ${printStyles}
+    </head>
+    <body>
+      <div class="print-header">
+        <h3>BORDRO DETAY RAPORU</h3>
+        <small>Oluşturulma Tarihi: ${new Date().toLocaleString("tr-TR")}</small>
+      </div>
+      ${printContent.innerHTML}
+      <div class="print-footer">
+        Bu belge bordro sisteminden otomatik olarak oluşturulmuştur.
+      </div>
+    </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+
+  // Sayfa yüklendikten sonra yazdır
+  printWindow.onload = function () {
+    printWindow.focus();
+    printWindow.print();
+  };
+});

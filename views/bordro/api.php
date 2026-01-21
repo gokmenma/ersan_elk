@@ -221,6 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'avans' => 'Avans',
                     'nafaka' => 'Nafaka',
                     'ceza' => 'Ceza',
+                    'izin_kesinti' => 'Ücretsiz İzin',
                     'diger' => 'Diğer Kesinti'
                 ];
 
@@ -240,6 +241,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Toplamları hesapla
                 $guncelKesinti = $BordroPersonel->getDonemKesintileri($bp->personel_id, $bp->donem_id);
                 $guncelEkOdeme = $BordroPersonel->getDonemEkOdemeleri($bp->personel_id, $bp->donem_id);
+
+                // Günlük ücret ve çalışma günü hesapla
+                $brutMaas = floatval($bp->brut_maas ?? 0);
+                $gunlukUcret = $brutMaas / 30; // Sabit 30 güne böl
+
+                // Ücretsiz izin gün sayısını hesapla
+                $izinKesintileri = $BordroPersonel->getDonemKesintileriListe($bp->personel_id, $bp->donem_id);
+                $ucretsizIzinGunu = 0;
+                foreach ($izinKesintileri as $kesinti) {
+                    if (strpos($kesinti->aciklama ?? '', '[Ücretsiz İzin]') === 0) {
+                        // Açıklamadan gün sayısını çıkar: "[Ücretsiz İzin] İzin Adı (X gün x Y ₺)"
+                        if (preg_match('/\((\d+)\s*gün/', $kesinti->aciklama, $matches)) {
+                            $ucretsizIzinGunu += intval($matches[1]);
+                        }
+                    }
+                }
+                $calismaGunu = 30 - $ucretsizIzinGunu;
 
                 // HTML oluştur
                 $html = '<div class="row">';
@@ -261,6 +279,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<h6 class="border-bottom pb-2 mb-3"><i class="bx bx-money me-1"></i>Maaş Özeti</h6>';
                 $html .= '<table class="table table-sm">';
                 $html .= '<tr><td class="text-muted">Brüt Maaş:</td><td class="fw-bold text-primary">' . ($bp->brut_maas ? number_format($bp->brut_maas, 2, ',', '.') . ' ₺' : '-') . '</td></tr>';
+                $html .= '<tr><td class="text-muted">Günlük Ücret:</td><td class="text-secondary">' . number_format($gunlukUcret, 2, ',', '.') . ' ₺ <small class="text-muted">(Brüt / 30)</small></td></tr>';
+                $html .= '<tr><td class="text-muted">Çalışma Günü:</td><td class="' . ($ucretsizIzinGunu > 0 ? 'text-warning' : 'text-secondary') . '">' . $calismaGunu . ' gün' . ($ucretsizIzinGunu > 0 ? ' <small class="text-muted">(-' . $ucretsizIzinGunu . ' izin)</small>' : '') . '</td></tr>';
+
+                // Ücretsiz izin varsa, çalışılan brüt maaşı da göster
+                if ($ucretsizIzinGunu > 0) {
+                    $izinKesintisiTutar = $gunlukUcret * $ucretsizIzinGunu;
+                    $calisanBrutMaas = floatval($bp->brut_maas ?? 0) - $izinKesintisiTutar;
+                    $html .= '<tr class="table-warning"><td class="text-muted">Çalışılan Brüt:</td><td class="fw-bold text-warning">' . number_format($calisanBrutMaas, 2, ',', '.') . ' ₺ <small class="text-muted">(SGK matrahı)</small></td></tr>';
+                }
+
                 $html .= '<tr><td class="text-muted">Toplam Ek Ödeme:</td><td class="text-success fw-medium">+' . number_format($guncelEkOdeme, 2, ',', '.') . ' ₺</td></tr>';
                 $html .= '<tr><td class="text-muted">Toplam Kesinti:</td><td class="text-danger fw-medium">-' . number_format($guncelKesinti + floatval($bp->sgk_isci) + floatval($bp->issizlik_isci) + floatval($bp->gelir_vergisi) + floatval($bp->damga_vergisi), 2, ',', '.') . ' ₺</td></tr>';
                 $html .= '<tr class="table-success"><td class="fw-bold">Net Maaş:</td><td class="fw-bold text-success fs-5">' . ($bp->net_maas ? number_format($bp->net_maas, 2, ',', '.') . ' ₺' : '-') . '</td></tr>';
@@ -404,7 +432,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="row text-center">';
                 $html .= '<div class="col-md-4"><div class="border rounded p-3"><small class="text-muted d-block">SGK İşveren (%20.5)</small><span class="fs-5 fw-bold text-warning">' . ($bp->sgk_isveren ? number_format($bp->sgk_isveren, 2, ',', '.') . ' ₺' : '-') . '</span></div></div>';
                 $html .= '<div class="col-md-4"><div class="border rounded p-3"><small class="text-muted d-block">İşsizlik İşveren (%2)</small><span class="fs-5 fw-bold text-warning">' . ($bp->issizlik_isveren ? number_format($bp->issizlik_isveren, 2, ',', '.') . ' ₺' : '-') . '</span></div></div>';
-                $html .= '<div class="col-md-4"><div class="border rounded p-3 bg-primary bg-opacity-10"><small class="text-muted d-block">Toplam Maliyet</small><span class="fs-5 fw-bold text-primary">' . ($bp->toplam_maliyet ? number_format($bp->toplam_maliyet, 2, ',', '.') . ' ₺' : '-') . '</span></div></div>';
+                $html .= '<div class="col-md-4"><div class="border rounded p-3 bg text-white-primary bg-opacity-10"><small class="text-muted d-block">Toplam Maliyet</small><span class="fs-5 fw-bold text-primary">' . ($bp->toplam_maliyet ? number_format($bp->toplam_maliyet, 2, ',', '.') . ' ₺' : '-') . '</span></div></div>';
                 $html .= '</div>';
                 $html .= '</div>';
                 $html .= '</div>';

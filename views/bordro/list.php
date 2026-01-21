@@ -49,6 +49,7 @@ $kesinti_turleri = [
     'icra' => 'İcra',
     'avans' => 'Avans',
     'nafaka' => 'Nafaka',
+    'izin_kesinti' => 'Ücretsiz İzin',
     'diger' => 'Diğer'
 ];
 
@@ -113,10 +114,10 @@ $ek_odeme_turleri = [
                             data-bs-toggle="modal" data-bs-target="#yeniDonemModal">
                             <i class="bx bx-plus"></i>
                         </button>
-                        <?php if(!$donemKapali) { ?>
-                        <button type="button" id="donemSil" class="btn btn-outline-danger waves-effect waves-light">
-                            <i class="bx bx-trash"></i>
-                        </button>
+                        <?php if (!$donemKapali) { ?>
+                            <button type="button" id="donemSil" class="btn btn-outline-danger waves-effect waves-light">
+                                <i class="bx bx-trash"></i>
+                            </button>
                         <?php } ?>
 
                         <div class="d-flex flex-wrap gap-2 ms-auto">
@@ -296,8 +297,6 @@ $ek_odeme_turleri = [
                                                                 </a>
                                                             </li>
                                                             <li>
-                                        </li>
-          
                                                             </li>
                                                             <li>
                                                                 <a class="dropdown-item btn-gelir-ekle<?= $donemKapali ? ' disabled' : '' ?>"
@@ -316,8 +315,6 @@ $ek_odeme_turleri = [
                                                                 </a>
                                                             </li>
                                                             <li>
-                                        </li>
-                                     
                                                             </li>
                                                             <li>
                                                                 <a class="dropdown-item btn-remove text-danger<?= $donemKapali ? ' disabled' : '' ?>"
@@ -389,132 +386,302 @@ $ek_odeme_turleri = [
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                     <button type="submit" class="btn btn-success"><i class="bx bx-check me-1"></i>Dönem Oluştur</button>
                 </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Bordro Detay Modal -->
-<div class="modal fade" id="bordroDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="bx bx-detail me-2"></i>Bordro Detayı</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="bordroDetailContent"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Ödeme Dağıt Modal -->
-<div class="modal fade" id="odemeDagitModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="bx bx-wallet me-2"></i>Ödeme Dağıt</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="formOdemeDagit">
-                <input type="hidden" name="id" id="odeme_bordro_id">
-                <div class="modal-body">
-                    <div class="alert alert-info mb-3">
-                        <strong id="odeme_personel_ad"></strong><br>
-                        Net Maaş: <strong class="text-success" id="odeme_net_maas"></strong>
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title"><i class="bx bx-wallet me-2"></i>Ödeme Dağıt</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
+                    <form id="formOdemeDagit">
+                        <input type="hidden" name="id" id="odeme_bordro_id">
+                        <div class="modal-body">
+                            <div class="alert alert-info mb-3">
+                                <strong id="odeme_personel_ad"></strong><br>
+                                Net Maaş: <strong class="text-success" id="odeme_net_maas"></strong>
+                            </div>
 
-                    <div class="mb-3">
-                        <label for="banka_odemesi" class="form-label">
-                            <i class="bx bx-credit-card me-1 text-primary"></i> Banka Ödemesi
-                        </label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" id="banka_odemesi" name="banka_odemesi"
-                                step="0.01" min="0" value="0">
-                            <span class="input-group-text">₺</span>
+                            <div class="mb-3">
+                                <label for="banka_odemesi" class="form-label">
+                                    <i class="bx bx-credit-card me-1 text-primary"></i> Banka Ödemesi
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="banka_odemesi" name="banka_odemesi"
+                                        step="0.01" min="0" value="0">
+                                    <span class="input-group-text">₺</span>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="sodexo_odemesi" class="form-label">
+                                    <i class="bx bx-food-menu me-1 text-info"></i> Sodexo/Yemek Kartı
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="sodexo_odemesi" name="sodexo_odemesi"
+                                        step="0.01" min="0" value="0">
+                                    <span class="input-group-text">₺</span>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="diger_odeme" class="form-label">
+                                    <i class="bx bx-money me-1 text-secondary"></i> Diğer Ödemeler
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="diger_odeme" name="diger_odeme"
+                                        step="0.01" min="0" value="0">
+                                    <span class="input-group-text">₺</span>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span><i class="bx bx-wallet me-1 text-warning"></i> <strong>Elden
+                                        Ödenecek:</strong></span>
+                                <span class="fs-5 fw-bold text-warning" id="elden_odeme_goster">0,00 ₺</span>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="sodexo_odemesi" class="form-label">
-                            <i class="bx bx-food-menu me-1 text-info"></i> Sodexo/Yemek Kartı
-                        </label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" id="sodexo_odemesi" name="sodexo_odemesi"
-                                step="0.01" min="0" value="0">
-                            <span class="input-group-text">₺</span>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                            <button type="submit" class="btn btn-primary"><i class="bx bx-save me-1"></i>Kaydet</button>
                         </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="diger_odeme" class="form-label">
-                            <i class="bx bx-money me-1 text-secondary"></i> Diğer Ödemeler
-                        </label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" id="diger_odeme" name="diger_odeme" step="0.01"
-                                min="0" value="0">
-                            <span class="input-group-text">₺</span>
-                        </div>
-                    </div>
-
-                    <hr>
-
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span><i class="bx bx-wallet me-1 text-warning"></i> <strong>Elden Ödenecek:</strong></span>
-                        <span class="fs-5 fw-bold text-warning" id="elden_odeme_goster">0,00 ₺</span>
-                    </div>
+                    </form>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="submit" class="btn btn-primary"><i class="bx bx-save me-1"></i>Kaydet</button>
-                </div>
-            </form>
         </div>
     </div>
-</div>
 
-<!-- Gelir Ekle Modal -->
-<div class="modal fade" id="gelirEkleModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="bx bx-plus-circle me-2"></i>Gelir Ekle (Excel)</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <!-- Gelir Ekle Modal -->
+    <div class="modal fade" id="gelirEkleModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bx bx-plus-circle me-2"></i>Gelir Ekle (Excel)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="formGelirEkle" enctype="multipart/form-data">
+                    <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
+                    <div class="modal-body">
+                        <div
+                            class="alert alert-success bg-success bg-opacity-10 border border-success border-opacity-25 mb-3">
+                            <div class="d-flex align-items-start">
+                                <i class="bx bx-download fs-4 me-2 text-success"></i>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1"><strong>Şablon Dosyasını İndirin</strong></h6>
+                                    <p class="mb-2 small text-muted">
+                                        Tanımladığınız gelir parametrelerine göre hazırlanan Excel şablonunu indirin.
+                                    </p>
+                                    <a href="views/bordro/excel-sablon-olustur.php?tip=gelir&donem=<?= $selectedDonemId ?>"
+                                        class="btn btn-sm btn-success">
+                                        <i class="bx bx-download me-1"></i>Gelir Şablonunu İndir
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="gelirExcelFile" class="form-label">Excel Dosyası <span
+                                    class="text-danger">*</span></label>
+                            <input type="file" class="form-control" id="gelirExcelFile" name="excel_file"
+                                accept=".xlsx,.xls" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                        <button type="submit" class="btn btn-primary"><i class="bx bx-upload me-1"></i>Yükle</button>
+                    </div>
+                </form>
             </div>
-            <form id="formGelirEkle" enctype="multipart/form-data">
-                <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
-                <div class="modal-body">
-                    <div
-                        class="alert alert-success bg-success bg-opacity-10 border border-success border-opacity-25 mb-3">
-                        <div class="d-flex align-items-start">
-                            <i class="bx bx-download fs-4 me-2 text-success"></i>
-                            <div class="flex-grow-1">
-                                <h6 class="mb-1"><strong>Şablon Dosyasını İndirin</strong></h6>
-                                <p class="mb-2 small text-muted">
-                                    Tanımladığınız gelir parametrelerine göre hazırlanan Excel şablonunu indirin.
-                                </p>
-                                <a href="views/bordro/excel-sablon-olustur.php?tip=gelir&donem=<?= $selectedDonemId ?>"
-                                    class="btn btn-sm btn-success">
-                                    <i class="bx bx-download me-1"></i>Gelir Şablonunu İndir
-                                </a>
+        </div>
+    </div>
+
+    <!-- Kesinti Ekle Modal -->
+    <div class="modal fade" id="kesintiEkleModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bx bx-minus-circle me-2"></i>Kesinti Ekle (Excel)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="formKesintiEkle" enctype="multipart/form-data">
+                    <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
+                    <div class="modal-body">
+                        <div
+                            class="alert alert-danger bg-danger bg-opacity-10 border border-danger border-opacity-25 mb-3">
+                            <div class="d-flex align-items-start">
+                                <i class="bx bx-download fs-4 me-2 text-danger"></i>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1"><strong>Şablon Dosyasını İndirin</strong></h6>
+                                    <p class="mb-2 small text-muted">
+                                        Tanımladığınız kesinti parametrelerine göre hazırlanan Excel şablonunu indirin.
+                                    </p>
+                                    <a href="views/bordro/excel-sablon-olustur.php?tip=kesinti&donem=<?= $selectedDonemId ?>"
+                                        class="btn btn-sm btn-danger">
+                                        <i class="bx bx-download me-1"></i>Kesinti Şablonunu İndir
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="kesintiExcelFile" class="form-label">Excel Dosyası <span
+                                    class="text-danger">*</span></label>
+                            <input type="file" class="form-control" id="kesintiExcelFile" name="excel_file"
+                                accept=".xlsx,.xls" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                        <button type="submit" class="btn btn-danger"><i class="bx bx-upload me-1"></i>Yükle</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Personel Gelir Ekle Modal -->
+    <div class="modal fade" id="modalPersonelGelirEkle" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bx bx-plus-circle me-2"></i>Personel Gelir Yönetimi</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <div class="alert alert-success mb-3">
+                        <strong id="gelir_personel_ad"></strong> için gelir yönetimi.
+                    </div>
+
+                    <!-- Yeni Gelir Ekle Accordion -->
+                    <div class="accordion mb-3" id="accordionGelirEkle">
+                        <div class="accordion-item border-0 shadow-sm">
+                            <h2 class="accordion-header" id="headingGelir">
+                                <button class="accordion-button collapsed fw-medium" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#collapseGelir" aria-expanded="false"
+                                    aria-controls="collapseGelir">
+                                    <i class="bx bx-plus me-2 text-success"></i> Yeni Gelir Ekle
+                                </button>
+                            </h2>
+                            <div id="collapseGelir" class="accordion-collapse collapse" aria-labelledby="headingGelir"
+                                data-bs-parent="#accordionGelirEkle">
+                                <div class="accordion-body bg-white">
+                                    <form id="formPersonelGelirEkle">
+                                        <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
+                                        <input type="hidden" name="personel_id" id="gelir_personel_id">
+                                        <input type="hidden" name="id" id="gelir_edit_id" value="0">
+
+                                        <div class="mb-3">
+                                            <?= Form::FormSelect2(
+                                                name: "ek_odeme_tur",
+                                                options: $ek_odeme_turleri,
+                                                selectedValue: '',
+                                                label: "Ek Ödeme Türü",
+                                                icon: "list",
+                                                valueField: '',
+                                                textField: '',
+                                                required: true
+                                            ) ?>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="gelir_tutar"') ?>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama giriniz", "Açıklama", "message-square", "form-control", false, null, "off", false, 'id="gelir_aciklama"') ?>
+                                        </div>
+
+                                        <div class="text-end">
+                                            <button type="submit" class="btn btn-success"><i
+                                                    class="bx bx-save me-1"></i>Kaydet</button>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="gelirExcelFile" class="form-label">Excel Dosyası <span
-                                class="text-danger">*</span></label>
-                        <input type="file" class="form-control" id="gelirExcelFile" name="excel_file"
-                            accept=".xlsx,.xls" required>
+
+                    <div id="listPersonelGelirler" class="mt-3">
+                        <!-- Gelir listesi buraya yüklenecek -->
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="submit" class="btn btn-primary"><i class="bx bx-upload me-1"></i>Yükle</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Personel Kesinti Ekle Modal -->
+    <div class="modal fade" id="modalPersonelKesintiEkle" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bx bx-minus-circle me-2"></i>Personel Kesinti Yönetimi</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <div
+                        class="alert alert-danger mb-3 bg-danger bg-opacity-10 text-danger border-danger border-opacity-25">
+                        <strong id="kesinti_personel_ad"></strong> için kesinti yönetimi.
+                    </div>
+
+                    <!-- Yeni Kesinti Ekle Accordion -->
+                    <div class="accordion mb-3" id="accordionKesintiEkle">
+                        <div class="accordion-item border-0 shadow-sm">
+                            <h2 class="accordion-header" id="headingKesinti">
+                                <button class="accordion-button collapsed fw-medium" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#collapseKesinti" aria-expanded="false"
+                                    aria-controls="collapseKesinti">
+                                    <i class="bx bx-minus me-2 text-danger"></i> Yeni Kesinti Ekle
+                                </button>
+                            </h2>
+                            <div id="collapseKesinti" class="accordion-collapse collapse"
+                                aria-labelledby="headingKesinti" data-bs-parent="#accordionKesintiEkle">
+                                <div class="accordion-body bg-white">
+                                    <form id="formPersonelKesintiEkle">
+                                        <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
+                                        <input type="hidden" name="personel_id" id="kesinti_personel_id">
+                                        <input type="hidden" name="id" id="kesinti_edit_id" value="0">
+
+                                        <div class="mb-3">
+                                            <?= Form::FormSelect2(
+                                                name: "kesinti_tur",
+                                                options: $kesinti_turleri,
+                                                selectedValue: '',
+                                                label: "Kesinti Türü",
+                                                icon: "list",
+                                                valueField: '',
+                                                textField: '',
+                                                required: true
+                                            ) ?>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="kesinti_tutar"') ?>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama giriniz", "Açıklama", "message-square", "form-control", false, null, "off", false, 'id="kesinti_aciklama"') ?>
+                                        </div>
+
+                                        <div class="text-end">
+                                            <button type="submit" class="btn btn-danger"><i
+                                                    class="bx bx-save me-1"></i>Kaydet</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <label for="gelirExcelFile" class="form-label">Excel Dosyası <span
+                            class="text-danger">*</span></label>
+                    <input type="file" class="form-control" id="gelirExcelFile" name="excel_file" accept=".xlsx,.xls"
+                        required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="submit" class="btn btn-primary"><i class="bx bx-upload me-1"></i>Yükle</button>
+            </div>
             </form>
         </div>
     </div>
@@ -702,6 +869,27 @@ $ek_odeme_turleri = [
                 </div>
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bordro Detay Modal -->
+<div class="modal fade" id="bordroDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bx bx-detail me-2"></i>Bordro Detayı</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="bordroDetailBody">
+                <div id="bordroDetailContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-primary" id="btnPrintBordro">
+                    <i class="bx bx-printer me-1"></i> Yazdır / PDF
+                </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
             </div>
         </div>

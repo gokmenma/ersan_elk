@@ -504,6 +504,181 @@ class BordroPersonelModel extends Model
     }
 
     /**
+     * Personelin ücretsiz izin kesintilerini dönem için otomatik oluşturur
+     * Bordro hesaplaması yapılmadan önce çağrılmalıdır
+     * 
+     * Hesaplama:
+     * - Günlük ücret = Brüt maaş / 30 (sabit)
+     * - Kesinti = Günlük ücret × Ücretsiz izin gün sayısı (dönem içinde)
+     * 
+     * NOT: izin_tipi alanı hem metin ("Mazeret İzni") hem de ID (5) olarak saklanabiliyor.
+     * Bu fonksiyon her iki formatı da destekler.
+     * 
+     * @param int $personel_id Personel ID
+     * @param int $donem_id Dönem ID
+     * @param string $donem_baslangic Dönem başlangıç tarihi (Y-m-d)
+     * @param string $donem_bitis Dönem bitiş tarihi (Y-m-d)
+     * @param float $brutMaas Personelin brüt maaşı
+     * @return array ['toplam_gun' => int, 'toplam_kesinti' => float, 'izin_detaylari' => array]
+     */
+    public function olusturUcretsizIzinKesintileri($personel_id, $donem_id, $donem_baslangic, $donem_bitis, $brutMaas)
+    {
+        $sonuc = [
+            'toplam_gun' => 0,
+            'toplam_kesinti' => 0,
+            'izin_detaylari' => []
+        ];
+
+        // Günlük ücreti hesapla (brüt maaş / 30)
+        $gunlukUcret = $brutMaas / 30;
+
+        if ($gunlukUcret <= 0) {
+            return $sonuc;
+        }
+
+        // Önceki ücretsiz izin kesintilerini temizle (duplicate önlemek için)
+        // Açıklamada "[Ücretsiz İzin]" etiketi olanları siliyoruz
+        $deleteSql = $this->db->prepare("
+            DELETE FROM personel_kesintileri 
+            WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[Ücretsiz İzin]%'
+        ");
+        $deleteSql->execute([$personel_id, $donem_id]);
+
+        // Dönem tarihlerini DateTime objelerine çevir
+        $donemBaslangicDate = new \DateTime($donem_baslangic);
+        $donemBitisDate = new \DateTime($donem_bitis);
+
+        // Ücretsiz izin türlerini bul (tanimlamalar tablosundan ucretli_mi = 0 olanlar)
+        $izinTurleriSql = $this->db->prepare("
+            SELECT id, tur_adi FROM tanimlamalar 
+            WHERE grup = 'izin_turu' AND ucretli_mi = 0 AND silinme_tarihi IS NULL
+        ");
+        $izinTurleriSql->execute();
+        $ucretsizIzinTurleri = $izinTurleriSql->fetchAll(PDO::FETCH_OBJ);
+
+        if (empty($ucretsizIzinTurleri)) {
+            return $sonuc;
+        }
+
+        // Ücretsiz izin türlerinin ID'lerini ve adlarını bir map'e al
+        $izinTuruIds = [];
+        $izinTuruAdlari = [];  // ID => tur_adi
+        $izinTuruAdlariReverse = []; // tur_adi => tur_adi (metin kontrolü için)
+
+        foreach ($ucretsizIzinTurleri as $tur) {
+            $izinTuruIds[] = $tur->id;
+            $izinTuruAdlari[$tur->id] = $tur->tur_adi;
+            $izinTuruAdlariReverse[strtolower($tur->tur_adi)] = $tur->tur_adi;
+        }
+
+        // Personelin onaylanmış izinlerini çek (dönemle kesişen)
+        // Hem ID hem de metin bazlı izin türlerini kontrol ediyoruz
+        $idPlaceholders = implode(',', array_fill(0, count($izinTuruIds), '?'));
+
+        // Metin bazlı izin türü adlarını da placeholder olarak hazırla
+        $izinTuruAdlariArray = array_values($izinTuruAdlari);
+        $textPlaceholders = implode(',', array_fill(0, count($izinTuruAdlariArray), '?'));
+
+        $izinSql = $this->db->prepare("
+            SELECT pi.id, pi.izin_tipi, pi.baslangic_tarihi, pi.bitis_tarihi
+            FROM personel_izinleri pi
+            WHERE pi.personel_id = ?
+            AND pi.onay_durumu = 'Onaylandı'
+            AND (
+                pi.izin_tipi IN ($idPlaceholders) 
+                OR pi.izin_tipi IN ($textPlaceholders)
+            )
+            AND pi.baslangic_tarihi <= ?
+            AND pi.bitis_tarihi >= ?
+        ");
+
+        // Parametreleri birleştir: personel_id + ID'ler + metin adlar + tarihler
+        $params = array_merge(
+            [$personel_id],
+            $izinTuruIds,
+            $izinTuruAdlariArray,
+            [$donem_bitis, $donem_baslangic]
+        );
+        $izinSql->execute($params);
+        $izinler = $izinSql->fetchAll(PDO::FETCH_OBJ);
+
+        if (empty($izinler)) {
+            return $sonuc;
+        }
+
+        $toplamIzinGunu = 0;
+        $izinDetaylari = [];
+
+        foreach ($izinler as $izin) {
+            // İzin başlangıç ve bitiş tarihlerini al
+            $izinBaslangic = new \DateTime($izin->baslangic_tarihi);
+            $izinBitis = new \DateTime($izin->bitis_tarihi);
+
+            // Dönemle kesişen tarihleri bul
+            $kesisimBaslangic = max($izinBaslangic, $donemBaslangicDate);
+            $kesisimBitis = min($izinBitis, $donemBitisDate);
+
+            // Gün sayısını hesapla (başlangıç ve bitiş dahil)
+            if ($kesisimBaslangic <= $kesisimBitis) {
+                $gunSayisi = $kesisimBaslangic->diff($kesisimBitis)->days + 1;
+                $toplamIzinGunu += $gunSayisi;
+
+                // İzin türü adını belirle (ID veya metin olabilir)
+                $izinTuruAdi = 'Ücretsiz İzin';
+                if (is_numeric($izin->izin_tipi) && isset($izinTuruAdlari[$izin->izin_tipi])) {
+                    // ID bazlı
+                    $izinTuruAdi = $izinTuruAdlari[$izin->izin_tipi];
+                } elseif (isset($izinTuruAdlariReverse[strtolower($izin->izin_tipi)])) {
+                    // Metin bazlı
+                    $izinTuruAdi = $izinTuruAdlariReverse[strtolower($izin->izin_tipi)];
+                } else {
+                    // Eşleşme bulunamadı, olduğu gibi kullan
+                    $izinTuruAdi = $izin->izin_tipi;
+                }
+
+                $izinDetaylari[] = [
+                    'izin_id' => $izin->id,
+                    'izin_turu' => $izinTuruAdi,
+                    'izin_baslangic' => $izin->baslangic_tarihi,
+                    'izin_bitis' => $izin->bitis_tarihi,
+                    'donem_icinde_gun' => $gunSayisi
+                ];
+            }
+        }
+
+        if ($toplamIzinGunu <= 0) {
+            return $sonuc;
+        }
+
+        // Toplam kesintiyi hesapla
+        $toplamKesinti = round($gunlukUcret * $toplamIzinGunu, 2);
+
+        // İzin türlerine göre grupla ve açıklama oluştur
+        $izinGruplari = [];
+        foreach ($izinDetaylari as $detay) {
+            $turAdi = $detay['izin_turu'];
+            if (!isset($izinGruplari[$turAdi])) {
+                $izinGruplari[$turAdi] = 0;
+            }
+            $izinGruplari[$turAdi] += $detay['donem_icinde_gun'];
+        }
+
+        // Her izin türü için ayrı kesinti kaydı oluştur
+        foreach ($izinGruplari as $turAdi => $gunSayisi) {
+            $kesinti = round($gunlukUcret * $gunSayisi, 2);
+            $aciklama = "[Ücretsiz İzin] $turAdi ($gunSayisi gün x " . number_format($gunlukUcret, 2, ',', '.') . " ₺)";
+
+            $this->addKesinti($personel_id, $donem_id, $aciklama, $kesinti, 'izin_kesinti');
+        }
+
+        $sonuc['toplam_gun'] = $toplamIzinGunu;
+        $sonuc['toplam_kesinti'] = $toplamKesinti;
+        $sonuc['izin_detaylari'] = $izinDetaylari;
+
+        return $sonuc;
+    }
+
+    /**
      * Tek bir personelin maaşını hesaplar ve günceller
      * Parametrelere dayalı gelişmiş hesaplama
      */
@@ -548,6 +723,11 @@ class BordroPersonelModel extends Model
 
         // Puantaj (Yapılan İşler) Hesaplaması
         $this->olusturPuantajOdemeleri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+
+        // ========== ÜCRETSİZ İZİN KESİNTİLERİ ==========
+        // Dönem içindeki onaylanmış ücretsiz izinleri bulup kesinti olarak ekle
+        // Günlük ücret = Brüt maaş / 30, Kesinti = Günlük ücret × Ücretsiz izin gün sayısı
+        $this->olusturUcretsizIzinKesintileri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, $brutMaas);
 
         // Çalışma günü sayısı (aylık varsayılan 26 gün)
         $calismaGunuSayisi = $parametreModel->getGenelAyar('calisma_gunu_sayisi', $donemTarihi) ?? 26;
@@ -659,9 +839,20 @@ class BordroPersonelModel extends Model
         }
 
         // Her kesintiyi işle
+        // Ücretsiz izin kesintilerini ayrı tut (yasal kesinti hesabı için)
+        $ucretsizIzinKesinti = 0;
+        $digerKesintiler = 0;
+
         foreach ($kesintiler as $kesinti) {
             $tutar = floatval($kesinti->tutar);
             $toplamKesinti += $tutar;
+
+            // Ücretsiz izin kesintisini ayır
+            if ($kesinti->tur === 'izin_kesinti' || strpos($kesinti->aciklama ?? '', '[Ücretsiz İzin]') === 0) {
+                $ucretsizIzinKesinti += $tutar;
+            } else {
+                $digerKesintiler += $tutar;
+            }
 
             $parametre = $parametreModel->getByKod($kesinti->tur, $donemTarihi);
 
@@ -675,15 +866,25 @@ class BordroPersonelModel extends Model
 
         // ========== HESAPLAMALAR ==========
 
-        // SGK Matrahı = Brüt Maaş + SGK'ya dahil ek ödemeler
-        $sgkMatrahi = $brutMaas + $sgkMatrahEkleri;
+        // Ücretsiz izin kesintisi düşüldükten sonraki "çalışılan brüt maaş"
+        // Yasal kesintiler bu tutar üzerinden hesaplanacak
+        $calisanBrutMaas = $brutMaas - $ucretsizIzinKesinti;
+        if ($calisanBrutMaas < 0) {
+            $calisanBrutMaas = 0;
+        }
+
+        // SGK Matrahı = Çalışılan Brüt Maaş + SGK'ya dahil ek ödemeler
+        $sgkMatrahi = $calisanBrutMaas + $sgkMatrahEkleri;
 
         // SGK İşçi Payı
         $sgkIsci = $sgkMatrahi * $sgkIsciOrani;
         $issizlikIsci = $sgkMatrahi * $issizlikIsciOrani;
 
         // Gelir Vergisi Matrahı = SGK Matrahı - SGK Kesintileri + Vergiye tabi ek ödemeler
-        $gelirVergisiMatrahi = ($brutMaas - $sgkIsci - $issizlikIsci) + $vergiliMatrahEkleri;
+        $gelirVergisiMatrahi = ($calisanBrutMaas - $sgkIsci - $issizlikIsci) + $vergiliMatrahEkleri;
+        if ($gelirVergisiMatrahi < 0) {
+            $gelirVergisiMatrahi = 0;
+        }
 
         // Kümülatif Gelir Vergisi Hesaplaması
         // Önceki ayların matrahını getir
@@ -692,23 +893,26 @@ class BordroPersonelModel extends Model
 
         $gelirVergisi = $parametreModel->hesaplaGelirVergisi($yeniKumulatifMatrah, $gelirVergisiMatrahi, $donemYil);
 
-        // Damga Vergisi = Brüt toplam üzerinden
-        $damgaVergisiMatrahi = $brutMaas + $brutEkOdemeler;
+        // Damga Vergisi = Çalışılan brüt toplam üzerinden
+        $damgaVergisiMatrahi = $calisanBrutMaas + $brutEkOdemeler;
         $damgaVergisi = $damgaVergisiMatrahi * $damgaVergisiOrani;
 
         // Net Maaş Hesabı
-        // Net = (Brüt - Yasal Kesintiler) + Net Ek Ödemeler - Diğer Kesintiler
-        $netMaas = ($brutMaas - $sgkIsci - $issizlikIsci - $gelirVergisi - $damgaVergisi)
+        // Net = Brüt - Ücretsiz İzin - Yasal Kesintiler + Net Ek Ödemeler - Diğer Kesintiler
+        // NOT: Ücretsiz izin kesintisi zaten toplamKesinti içinde, yasal kesintiler çalışılan brüt üzerinden hesaplandı
+        $netMaas = $brutMaas
+            - $ucretsizIzinKesinti
+            - $sgkIsci - $issizlikIsci - $gelirVergisi - $damgaVergisi
             + $netEkOdemeler
-            - $toplamKesinti;
+            - $digerKesintiler;
 
         // Toplam ek ödemeler (gösterim için)
         $toplamEkOdeme = $brutEkOdemeler + $netEkOdemeler;
 
-        // İşveren Maliyetleri
+        // İşveren Maliyetleri (çalışılan brüt üzerinden)
         $sgkIsveren = $sgkMatrahi * $sgkIsverenOrani;
         $issizlikIsveren = $sgkMatrahi * $issizlikIsverenOrani;
-        $toplamMaliyet = $brutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler;
+        $toplamMaliyet = $calisanBrutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler;
 
         // Hesaplama Snapshot (JSON)
         $hesaplamaDetay = [
@@ -728,6 +932,9 @@ class BordroPersonelModel extends Model
                 'calisma_gunu_sayisi' => $calismaGunuSayisi
             ],
             'matrahlar' => [
+                'brut_maas' => round($brutMaas, 2),
+                'ucretsiz_izin_kesinti' => round($ucretsizIzinKesinti, 2),
+                'calisan_brut_maas' => round($calisanBrutMaas, 2),
                 'sgk_matrahi' => round($sgkMatrahi, 2),
                 'gelir_vergisi_matrahi' => round($gelirVergisiMatrahi, 2),
                 'damga_vergisi_matrahi' => round($damgaVergisiMatrahi, 2),

@@ -14,6 +14,31 @@ require_once dirname(dirname(__DIR__)) . '/Autoloader.php';
 use App\Helper\Helper;
 use App\Model\PersonelModel;
 
+// Oturum kontrolü öncesi beni hatırla kontrolü
+if (!isset($_SESSION['personel_id']) && isset($_COOKIE['remember_token'])) {
+    $token = $_COOKIE['remember_token'];
+    $parts = explode(':', base64_decode($token));
+
+    if (count($parts) === 2) {
+        $p_id = $parts[0];
+        $hash = $parts[1];
+
+        $PersonelModel = new PersonelModel();
+        $personel = $PersonelModel->find($p_id);
+
+        if ($personel) {
+            $checkHash = hash_hmac('sha256', $personel->id . $personel->sifre, 'ErsanElektrikPWASecretKey');
+            if ($hash === $checkHash) {
+                $_SESSION['personel_id'] = $personel->id;
+                $_SESSION['personel_tc'] = $personel->tc_kimlik_no;
+                $_SESSION['personel_adi'] = $personel->adi_soyadi;
+                // Cookie süresini uzat
+                setcookie('remember_token', $token, time() + (86400 * 30), "/");
+            }
+        }
+    }
+}
+
 // Oturum kontrolü
 if (!isset($_SESSION['personel_id'])) {
     header("Location: login.php");
@@ -138,7 +163,8 @@ if (!in_array($page, $allowed_pages)) {
         </a>
         <a href="?page=izin"
             class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'izin' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-            <span class="material-symbols-outlined <?php echo $page === 'izin' ? 'filled' : ''; ?>">calendar_today</span>
+            <span
+                class="material-symbols-outlined <?php echo $page === 'izin' ? 'filled' : ''; ?>">calendar_today</span>
             <span class="text-[10px] font-semibold">İzinler</span>
         </a>
         <a href="?page=talep"
@@ -148,7 +174,8 @@ if (!in_array($page, $allowed_pages)) {
         </a>
         <button type="button" onclick="toggleMoreMenu()"
             class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo in_array($page, ['profil', 'puantaj']) ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-            <span class="material-symbols-outlined <?php echo in_array($page, ['profil', 'puantaj']) ? 'filled' : ''; ?>">more_horiz</span>
+            <span
+                class="material-symbols-outlined <?php echo in_array($page, ['profil', 'puantaj']) ? 'filled' : ''; ?>">more_horiz</span>
             <span class="text-[10px] font-semibold">Diğer</span>
         </button>
     </nav>
@@ -171,28 +198,35 @@ if (!in_array($page, $allowed_pages)) {
     </div>
 
     <!-- More Menu Bottom Sheet -->
-    <div id="more-menu-overlay" class="fixed inset-0 bg-black/50 z-[60] opacity-0 pointer-events-none transition-opacity duration-300" onclick="closeMoreMenu()"></div>
-    <div id="more-menu-sheet" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-2xl z-[61] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom">
+    <div id="more-menu-overlay"
+        class="fixed inset-0 bg-black/50 z-[60] opacity-0 pointer-events-none transition-opacity duration-300"
+        onclick="closeMoreMenu()"></div>
+    <div id="more-menu-sheet"
+        class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-2xl z-[61] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom">
         <div class="flex justify-center pt-2 pb-1">
             <div class="w-8 h-1 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
         </div>
         <div class="px-4 pb-4">
             <div class="flex flex-col gap-1">
-                <a href="javascript:void(0)" onclick="logout()" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'profil' ? 'bg-primary/10' : ''; ?>">
+                <a href="javascript:void(0)" onclick="logout()"
+                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'profil' ? 'bg-primary/10' : ''; ?>">
                     <div class="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                         <span class="material-symbols-outlined text-red-600 text-lg">logout</span>
                     </div>
                     <span class="font-medium text-slate-900 dark:text-white text-sm">Çıkış Yap</span>
                 </a>
-                <a href="?page=profil" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'profil' ? 'bg-primary/10' : ''; ?>">
+                <a href="?page=profil"
+                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'profil' ? 'bg-primary/10' : ''; ?>">
                     <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                         <span class="material-symbols-outlined text-blue-600 text-lg">person</span>
                     </div>
                     <span class="font-medium text-slate-900 dark:text-white text-sm">Profil</span>
                     <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
                 </a>
-                <a href="?page=puantaj" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'puantaj' ? 'bg-primary/10' : ''; ?>">
-                    <div class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                <a href="?page=puantaj"
+                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'puantaj' ? 'bg-primary/10' : ''; ?>">
+                    <div
+                        class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
                         <span class="material-symbols-outlined text-purple-600 text-lg">checklist</span>
                     </div>
                     <span class="font-medium text-slate-900 dark:text-white text-sm">İş Takip</span>
@@ -216,9 +250,9 @@ if (!in_array($page, $allowed_pages)) {
         function toggleMoreMenu() {
             const overlay = document.getElementById('more-menu-overlay');
             const sheet = document.getElementById('more-menu-sheet');
-            
+
             const isOpen = !overlay.classList.contains('pointer-events-none');
-            
+
             if (isOpen) {
                 closeMoreMenu();
             } else {
@@ -231,7 +265,7 @@ if (!in_array($page, $allowed_pages)) {
         function closeMoreMenu() {
             const overlay = document.getElementById('more-menu-overlay');
             const sheet = document.getElementById('more-menu-sheet');
-            
+
             overlay.classList.add('pointer-events-none', 'opacity-0');
             overlay.classList.remove('opacity-100');
             sheet.classList.add('translate-y-full');
@@ -248,7 +282,7 @@ if (!in_array($page, $allowed_pages)) {
             moreSheet.addEventListener('touchmove', (e) => {
                 const currentY = e.touches[0].clientY;
                 const diff = currentY - startY;
-                
+
                 if (diff > 50) {
                     closeMoreMenu();
                 }
@@ -271,23 +305,23 @@ if (!in_array($page, $allowed_pages)) {
         }
     </script>
     <script>
-         async function logout() {
-        const isConfirmed = await Alert.confirm(
-            'Çıkış Yap',
-            'Çıkış yapmak istediğinize emin misiniz?',
-            'Çıkış Yap',
-            'Vazgeç'
-        );
+        async function logout() {
+            const isConfirmed = await Alert.confirm(
+                'Çıkış Yap',
+                'Çıkış yapmak istediğinize emin misiniz?',
+                'Çıkış Yap',
+                'Vazgeç'
+            );
 
-        if (!isConfirmed) return;
+            if (!isConfirmed) return;
 
-        try {
-            const response = await API.request('logout');
-            window.location.href = 'login.php';
-        } catch (error) {
-            window.location.href = 'login.php';
+            try {
+                const response = await API.request('logout');
+                window.location.href = 'login.php';
+            } catch (error) {
+                window.location.href = 'login.php';
+            }
         }
-    }
     </script>
 </body>
 

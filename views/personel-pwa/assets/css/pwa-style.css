@@ -398,11 +398,12 @@ div:where(.swal2-container) .swal2-cancel {
 .form-input {
   width: 100%;
   padding: 0.875rem 1rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.75rem !important;
+  border: 1px solid #d0d2d4 !important;
+  border-radius: 0.25rem !important;
   font-size: 0.9375rem;
   transition: all 0.2s ease;
   background: white;
+
 }
 
 .dark .form-input {
@@ -424,6 +425,8 @@ div:where(.swal2-container) .swal2-cancel {
   background-repeat: no-repeat;
   background-size: 1.25rem;
   padding-right: 2.5rem;
+    border: 1px solid #d0d2d4 !important;
+  border-radius: 0.25rem !important;
 }
 
 .form-label {

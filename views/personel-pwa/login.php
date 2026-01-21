@@ -12,6 +12,8 @@ require_once dirname(dirname(__DIR__)) . '/Autoloader.php';
 
 use App\Helper\Helper;
 use App\Model\PersonelModel;
+use App\Model\SettingsModel;
+use App\Model\MesajLogModel;
 
 // Zaten giriş yapmışsa ana sayfaya yönlendir
 if (isset($_SESSION['personel_id'])) {
@@ -20,6 +22,97 @@ if (isset($_SESSION['personel_id'])) {
 }
 
 $error = '';
+
+// Şifre sıfırlama isteği (AJAX)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'reset_password') {
+    header('Content-Type: application/json');
+    $response = ['status' => 'error', 'message' => 'Bir hata oluştu.'];
+
+    $phone = $_POST['phone'] ?? '';
+    // Telefon numarasını temizle (boşlukları vs sil)
+    $phone = preg_replace('/[^0-9]/', '', $phone);
+
+    if (empty($phone)) {
+        echo json_encode(['status' => 'error', 'message' => 'Lütfen telefon numaranızı girin.']);
+        exit;
+    }
+
+    try {
+        $PersonelModel = new PersonelModel();
+        $db = $PersonelModel->getDb();
+
+        // Başında 0 varsa veya yoksa diye kontrol et
+        $stmt = $db->prepare("SELECT * FROM personel WHERE Replace(Replace(cep_telefonu, ' ', ''), '-', '') LIKE :phone");
+        $stmt->execute(['phone' => "%" . substr($phone, -10)]); // Son 10 hanesine bak
+        $personel = $stmt->fetch(PDO::FETCH_OBJ);
+
+        if ($personel) {
+            // Yeni şifre oluştur
+            $newPass = rand(100000, 999999);
+            $newHash = password_hash($newPass, PASSWORD_DEFAULT);
+
+            // DB güncelle
+            $updateStmt = $db->prepare("UPDATE personel SET sifre = :sifre WHERE id = :id");
+            $update = $updateStmt->execute(['sifre' => $newHash, 'id' => $personel->id]);
+
+            if ($update) {
+                // SMS Gönderimi
+                $Settings = new SettingsModel();
+                $allSettings = $Settings->getAllSettingsAsKeyValue();
+                $username = $allSettings['sms_api_kullanici'] ?? '';
+                $password = $allSettings['sms_api_sifre'] ?? '';
+                $msgheader = $allSettings['sms_baslik'] ?? '';
+
+                if ($username && $password && $msgheader) {
+                    $messageText = "Sayın {$personel->adi_soyadi}, yeni şifreniz: {$newPass}";
+                    $recipients = [$personel->cep_telefonu];
+
+                    $data = [
+                        "msgheader" => $msgheader,
+                        "messages" => [
+                            ['msg' => $messageText, 'no' => $personel->cep_telefonu]
+                        ],
+                        "encoding" => "TR"
+                    ];
+
+                    $ch = curl_init();
+                    curl_setopt($ch, CURLOPT_URL, "https://api.netgsm.com.tr/sms/rest/v2/send");
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($ch, CURLOPT_POST, true);
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+                    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                        'Content-Type: application/json',
+                        'Authorization: Basic ' . base64_encode($username . ':' . $password)
+                    ]);
+
+                    $smsResponse = curl_exec($ch);
+                    curl_close($ch);
+
+                    // Loglama
+                    try {
+                        $MesajLogModel = new MesajLogModel();
+                        $firmaId = 1; // Varsayılan firma ID
+                        $MesajLogModel->logSms($firmaId, $msgheader, $recipients, $messageText, 'success');
+                    } catch (Exception $e) {
+                    }
+
+                    $response = ['status' => 'success', 'message' => 'Yeni şifreniz telefonunuza SMS olarak gönderildi.'];
+                } else {
+                    $response = ['status' => 'error', 'message' => 'SMS servisi yapılandırılmamış. Lütfen yönetici ile iletişime geçin.'];
+                }
+            } else {
+                $response = ['status' => 'error', 'message' => 'Şifre güncellenemedi.'];
+            }
+        } else {
+            $response = ['status' => 'error', 'message' => 'Bu telefon numarası ile kayıtlı personel bulunamadı.'];
+        }
+    } catch (Exception $e) {
+        $response = ['status' => 'error', 'message' => 'Sistem hatası: ' . $e->getMessage()];
+    }
+
+    echo json_encode($response);
+    exit;
+}
 
 // Form gönderilmişse
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -43,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 
             $dbPassword = $personel->sifre ?? '';
-            
+
             // Şifre boşsa veya null ise giriş yapılamaz
             if (empty($dbPassword)) {
                 $error = 'Bu hesap için henüz şifre belirlenmemiş. Lütfen yöneticinizle iletişime geçin.';
@@ -51,6 +144,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['personel_id'] = $personel->id;
                 $_SESSION['personel_tc'] = $personel->tc_kimlik_no;
                 $_SESSION['personel_adi'] = $personel->adi_soyadi;
+
+                // Beni Hatırla
+                if (isset($_POST['remember'])) {
+                    $token = base64_encode($personel->id . ':' . hash_hmac('sha256', $personel->id . $personel->sifre, 'ErsanElektrikPWASecretKey'));
+                    setcookie('remember_token', $token, time() + (86400 * 30), "/");
+                }
 
                 header("Location: index.php");
                 exit();
@@ -193,7 +292,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary">
                     <span class="text-sm text-slate-600">Beni hatırla</span>
                 </label>
-                <a href="#" class="text-sm text-primary font-semibold hover:underline">Şifremi Unuttum</a>
+                <a href="javascript:void(0)" onclick="openForgotModal()"
+                    class="text-sm text-primary font-semibold hover:underline">Şifremi Unuttum</a>
             </div>
 
             <button type="submit"
@@ -202,6 +302,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <span class="material-symbols-outlined text-lg">arrow_forward</span>
             </button>
         </form>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div id="forgot-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeForgotModal()"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 transform transition-transform duration-300 translate-y-full"
+            id="forgot-modal-content">
+            <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
+
+            <h3 class="text-xl font-bold text-slate-900 mb-2">Şifremi Unuttum</h3>
+            <p class="text-slate-500 text-sm mb-6">Kayıtlı telefon numaranızı girin, yeni şifrenizi SMS olarak
+                gönderelim.</p>
+
+            <form onsubmit="handleForgotSubmit(event)" class="flex flex-col gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-600 mb-2">Telefon Numarası</label>
+                    <div class="relative">
+                        <span
+                            class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">phone_iphone</span>
+                        <input type="tel" name="phone" id="forgot-phone"
+                            class="w-full pl-12 pr-4 py-3.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                            placeholder="05XX XXX XX XX" required>
+                    </div>
+                </div>
+
+                <button type="submit" id="forgot-submit-btn"
+                    class="w-full py-3.5 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark transition-all shadow-lg shadow-primary/30 flex items-center justify-center gap-2">
+                    <span>Şifre Gönder</span>
+                    <span class="material-symbols-outlined text-lg">send</span>
+                </button>
+            </form>
+
+            <button onclick="closeForgotModal()"
+                class="w-full py-3.5 mt-2 text-slate-500 font-semibold rounded-xl hover:bg-slate-50 transition-all">
+                Vazgeç
+            </button>
+        </div>
     </div>
 
     <!-- Footer -->
@@ -231,6 +368,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }, 300);
             });
         });
+
+        // Forgot Password Modal Logic
+        function openForgotModal() {
+            const modal = document.getElementById('forgot-modal');
+            const content = document.getElementById('forgot-modal-content');
+            modal.classList.remove('hidden');
+            // Trigger reflow
+            void modal.offsetWidth;
+            content.classList.remove('translate-y-full');
+        }
+
+        function closeForgotModal() {
+            const modal = document.getElementById('forgot-modal');
+            const content = document.getElementById('forgot-modal-content');
+            content.classList.add('translate-y-full');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        async function handleForgotSubmit(e) {
+            e.preventDefault();
+            const btn = document.getElementById('forgot-submit-btn');
+            const originalText = btn.innerHTML;
+            const phone = document.getElementById('forgot-phone').value;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span> Gönderiliyor...';
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'reset_password');
+                formData.append('phone', phone);
+
+                const response = await fetch('login.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    alert(result.message);
+                    closeForgotModal();
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                alert('Bir hata oluştu. Lütfen tekrar deneyin.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
     </script>
 </body>
 
