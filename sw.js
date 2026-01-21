@@ -126,6 +126,7 @@ self.addEventListener("push", (event) => {
     body: data.body || "Yeni bildiriminiz var",
     icon: data.icon || "./assets/icons/icon-192.png",
     badge: "./assets/icons/badge-72.png",
+    image: data.image,
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
