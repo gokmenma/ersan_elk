@@ -554,7 +554,18 @@ const Push = {
           }
         }, 2000); // Uygulama açıldıktan biraz sonra sor
       } else if (Notification.permission === "granted") {
-        // İzin var ama abonelik yok (muhtemelen silinmiş), tekrar abone ol
+        // İzin var ama abonelik yok
+        // Eğer kullanıcı manuel olarak kapatmışsa tekrar abone olma
+        if (
+          localStorage.getItem("notifications_manually_disabled") === "true"
+        ) {
+          console.log(
+            "Notifications manually disabled by user, skipping auto-resubscribe.",
+          );
+          return;
+        }
+
+        // Muhtemelen silinmiş, tekrar abone ol
         console.log("Permission granted but no subscription, resubscribing...");
         Push.subscribe();
       }

@@ -119,6 +119,10 @@ async function toggleNotifications() {
         btn.classList.remove("bg-green-500");
         btn.classList.add("bg-primary");
         btn.dataset.subscribed = "false";
+
+        // Manuel kapatıldığını işaretle
+        localStorage.setItem("notifications_manually_disabled", "true");
+
         Toast.show("Bildirimler kapatıldı", "success");
       } else {
         Toast.show(response.message || "Bir hata oluştu", "error");
@@ -139,6 +143,9 @@ async function toggleNotifications() {
         const subscribed = await Push.subscribe();
 
         if (subscribed) {
+          // Manuel kapatma işaretini kaldır
+          localStorage.removeItem("notifications_manually_disabled");
+
           statusEl.textContent = "Bildirimler açık";
           statusEl.classList.add("text-green-500");
           btn.textContent = "Kapat";
