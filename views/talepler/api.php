@@ -352,6 +352,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 if ($talepModel->updateDurum($id, 'islemde', null)) {
+                    // Push Bildirim Gönder
+                    try {
+                        $talep = $talepModel->getTalepDetay($id);
+                        if ($talep && $talep->personel_id) {
+                            $pushService = new PushNotificationService();
+                            $pushService->sendToPersonel($talep->personel_id, [
+                                'title' => '⚙️ Talep İşleme Alındı',
+                                'body' => 'Talebiniz işleme alındı. En kısa sürede çözüme kavuşturulacaktır.',
+                                'url' => 'index.php?page=talep'
+                            ]);
+                        }
+                    } catch (Exception $e) {
+                        error_log('Push notification error: ' . $e->getMessage());
+                    }
+
                     echo json_encode([
                         'status' => 'success',
                         'message' => 'Talep işleme alındı.'
