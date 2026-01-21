@@ -21,6 +21,9 @@
 * {
   -webkit-tap-highlight-color: transparent;
   box-sizing: border-box;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 html {
@@ -47,8 +50,8 @@ optgroup,
 select,
 textarea {
   font-family: inherit;
-  -webkit-user-select: text;
-  user-select: text;
+  -webkit-user-select: text !important;
+  user-select: text !important;
 }
 
 /* ===== SweetAlert2 Custom Styles ===== */

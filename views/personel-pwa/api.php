@@ -1255,7 +1255,7 @@ try {
                         FROM personel_izinleri
                         WHERE personel_id = ? AND silinme_tarihi IS NULL
                         ORDER BY activity_date DESC
-                        LIMIT ?";
+                        LIMIT $limit";
 
             // Avans talepleri
             $avansSql = "SELECT 
@@ -1272,7 +1272,7 @@ try {
                         FROM personel_avanslari
                         WHERE personel_id = ? AND silinme_tarihi IS NULL
                         ORDER BY activity_date DESC
-                        LIMIT ?";
+                        LIMIT $limit";
 
             // Genel talepler
             $talepSql = "SELECT 
@@ -1289,7 +1289,7 @@ try {
                         FROM personel_talepleri
                         WHERE personel_id = ? AND deleted_at IS NULL
                         ORDER BY activity_date DESC
-                        LIMIT ?";
+                        LIMIT $limit";
 
             // Bordrolar
             $bordroSql = "SELECT 
@@ -1303,32 +1303,32 @@ try {
                         JOIN bordro_donemi bd ON bp.donem_id = bd.id
                         WHERE bp.personel_id = ? AND bp.silinme_tarihi IS NULL
                         ORDER BY activity_date DESC
-                        LIMIT ?";
+                        LIMIT $limit";
 
             // Verileri çek
             $activities = [];
 
             // İzinler
             $stmt = $db->prepare($izinSql);
-            $stmt->execute([$personel_id, $limit]);
+            $stmt->execute([$personel_id]);
             $izinler = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $activities = array_merge($activities, $izinler);
 
             // Avanslar
             $stmt = $db->prepare($avansSql);
-            $stmt->execute([$personel_id, $limit]);
+            $stmt->execute([$personel_id]);
             $avanslar = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $activities = array_merge($activities, $avanslar);
 
             // Talepler
             $stmt = $db->prepare($talepSql);
-            $stmt->execute([$personel_id, $limit]);
+            $stmt->execute([$personel_id]);
             $talepler = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $activities = array_merge($activities, $talepler);
 
             // Bordrolar
             $stmt = $db->prepare($bordroSql);
-            $stmt->execute([$personel_id, $limit]);
+            $stmt->execute([$personel_id]);
             $bordrolar = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $activities = array_merge($activities, $bordrolar);
 

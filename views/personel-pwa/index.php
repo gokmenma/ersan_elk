@@ -132,7 +132,7 @@ if (!in_array($page, $allowed_pages)) {
     </script>
 
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="assets/css/pwa-style.css">
+    <link rel="stylesheet" href="assets/css/pwa-style.css?v=<?= time() ?>">
     <link rel="canonical" href="https://www.personel.softran.online/index.php" />
 
 </head>
