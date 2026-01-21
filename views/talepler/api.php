@@ -286,7 +286,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($izinModel->updateDurum($id, 'Reddedildi', $aciklama)) {
                     // Push Bildirim Gönder
                     try {
-                        $izin = $izinModel->find($id);
+                        // find yerine getIzinDetay kullanarak daha detaylı bilgi alalım
+                        $izin = $izinModel->getIzinDetay($id);
                         if ($izin && $izin->personel_id) {
                             $pushService = new PushNotificationService();
                             $pushService->sendToPersonel($izin->personel_id, [

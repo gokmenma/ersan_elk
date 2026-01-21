@@ -64,7 +64,7 @@ const App = {
 
 // ===== Navigation Functions =====
 const Navigation = {
-  pages: ["ana-sayfa", "bordro", "izin", "talep"],
+  pages: ["ana-sayfa", "bordro", "izin", "talep", "puantaj"],
 
   init() {
     this.setupSwipe();
