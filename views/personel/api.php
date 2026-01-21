@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 /**Parasal tutarlar için money formatını kaldır */
-                if (strpos($key, 'ucret') !== false) {
+                if (strpos($key, 'tutar') !== false) {
                     $data[$key] = Helper::formattedMoneyToNumber($value);
                 }
             }

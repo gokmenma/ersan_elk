@@ -719,7 +719,7 @@ class BordroPersonelModel extends Model
 
         // Bordro kaydını ve personel detaylarını çek
         $sql = $this->db->prepare("
-            SELECT bp.*, p.maas_tutari, p.bes_kesintisi_varmi, bd.baslangic_tarihi, bd.bitis_tarihi
+            SELECT bp.*, p.maas_tutari, p.maas_durumu, p.bes_kesintisi_varmi, bd.baslangic_tarihi, bd.bitis_tarihi
             FROM {$this->table} bp
             INNER JOIN personel p ON bp.personel_id = p.id
             INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
@@ -730,6 +730,9 @@ class BordroPersonelModel extends Model
 
         if (!$kayit)
             return false;
+
+        // Maaş durumu kontrolü (Net ise vergisiz/sigortasız)
+        $isNetMaas = (isset($kayit->maas_durumu) && mb_strtolower($kayit->maas_durumu, 'UTF-8') === 'net');
 
         // Dönem tarihi - parametreleri bu tarihe göre çek
         $donemTarihi = $kayit->baslangic_tarihi ?? date('Y-m-d');
@@ -764,7 +767,7 @@ class BordroPersonelModel extends Model
         $calismaGunuSayisi = $parametreModel->getGenelAyar('calisma_gunu_sayisi', $donemTarihi) ?? 26;
 
         // ========== BES KESİNTİSİ ==========
-        if (isset($kayit->bes_kesintisi_varmi) && $kayit->bes_kesintisi_varmi === 'Evet') {
+        if (!$isNetMaas && isset($kayit->bes_kesintisi_varmi) && $kayit->bes_kesintisi_varmi === 'Evet') {
             // SGK Matrahını tahmin et (Ek ödemelerden gelen SGK matrahı ile)
             $tempEkOdemeler = $this->getDonemEkOdemeleriListe($kayit->personel_id, $kayit->donem_id);
             $tempSgkMatrahEkleri = 0;
@@ -798,11 +801,20 @@ class BordroPersonelModel extends Model
 
 
         // Genel ayarları çek
-        $sgkIsciOrani = ($parametreModel->getGenelAyar('sgk_isci_orani', $donemTarihi) ?? 14) / 100;
-        $issizlikIsciOrani = ($parametreModel->getGenelAyar('issizlik_isci_orani', $donemTarihi) ?? 1) / 100;
-        $sgkIsverenOrani = ($parametreModel->getGenelAyar('sgk_isveren_orani', $donemTarihi) ?? 20.5) / 100;
-        $issizlikIsverenOrani = ($parametreModel->getGenelAyar('issizlik_isveren_orani', $donemTarihi) ?? 2) / 100;
-        $damgaVergisiOrani = ($parametreModel->getGenelAyar('damga_vergisi_orani', $donemTarihi) ?? 0.759) / 100;
+
+        if ($isNetMaas) {
+            $sgkIsciOrani = 0;
+            $issizlikIsciOrani = 0;
+            $sgkIsverenOrani = 0;
+            $issizlikIsverenOrani = 0;
+            $damgaVergisiOrani = 0;
+        } else {
+            $sgkIsciOrani = ($parametreModel->getGenelAyar('sgk_isci_orani', $donemTarihi) ?? 14) / 100;
+            $issizlikIsciOrani = ($parametreModel->getGenelAyar('issizlik_isci_orani', $donemTarihi) ?? 1) / 100;
+            $sgkIsverenOrani = ($parametreModel->getGenelAyar('sgk_isveren_orani', $donemTarihi) ?? 20.5) / 100;
+            $issizlikIsverenOrani = ($parametreModel->getGenelAyar('issizlik_isveren_orani', $donemTarihi) ?? 2) / 100;
+            $damgaVergisiOrani = ($parametreModel->getGenelAyar('damga_vergisi_orani', $donemTarihi) ?? 0.759) / 100;
+        }
 
         // Ek Ödemeler ve Kesintileri detaylı çek (sürekli kayıtlar da artık dahil)
         $ekOdemeler = $this->getDonemEkOdemeleriListe($kayit->personel_id, $kayit->donem_id);
@@ -956,7 +968,11 @@ class BordroPersonelModel extends Model
         $kumulatifMatrah = $this->getKumulatifMatrah($kayit->personel_id, $donemYil, $donemAy);
         $yeniKumulatifMatrah = $kumulatifMatrah + $gelirVergisiMatrahi;
 
-        $gelirVergisi = $parametreModel->hesaplaGelirVergisi($yeniKumulatifMatrah, $gelirVergisiMatrahi, $donemYil);
+        if ($isNetMaas) {
+            $gelirVergisi = 0;
+        } else {
+            $gelirVergisi = $parametreModel->hesaplaGelirVergisi($yeniKumulatifMatrah, $gelirVergisiMatrahi, $donemYil);
+        }
 
         // Damga Vergisi = Çalışılan brüt toplam üzerinden
         $damgaVergisiMatrahi = $calisanBrutMaas + $brutEkOdemeler;

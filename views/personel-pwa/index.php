@@ -131,6 +131,13 @@ if (!in_array($page, $allowed_pages)) {
         }
     </script>
 
+    <!-- Dark Mode Init -->
+    <script>
+        if (localStorage.getItem("darkMode") === "true") {
+            document.documentElement.classList.add("dark");
+        }
+    </script>
+
     <!-- Custom Styles -->
     <link rel="stylesheet" href="assets/css/pwa-style.css?v=<?= time() ?>">
     <link rel="canonical" href="https://www.personel.softran.online/index.php" />
