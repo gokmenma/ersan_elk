@@ -90,12 +90,12 @@ if (!in_array($page, $allowed_pages)) {
     <link rel="manifest" href="manifest.json">
 
     <!-- Favicon & App Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
 
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap"
-        rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -110,8 +110,8 @@ if (!in_array($page, $allowed_pages)) {
                         "primary": "#135bec",
                         "primary-dark": "#0d47c1",
                         "background-light": "#f6f6f8",
-                        "background-dark": "#1e293b",
-                        "card-dark": "#1a2130",
+                        "background-dark": "#121212",
+                        "card-dark": "#1e1e1e",
                     },
                     fontFamily: {
                         "display": ["Roboto Condensed", "sans-serif"]
@@ -142,8 +142,7 @@ if (!in_array($page, $allowed_pages)) {
 
 </head>
 
-<body
-    class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white min-h-screen pb-20">
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white min-h-screen pb-20">
 
     <!-- Status Bar Spacer (iOS) -->
     <div class="h-safe-top bg-primary"></div>
@@ -154,40 +153,31 @@ if (!in_array($page, $allowed_pages)) {
     </main>
 
     <!-- Bottom Navigation -->
-    <nav
-        class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 flex justify-around items-center py-2 px-4 z-50 safe-area-bottom">
-        <a href="?page=ana-sayfa"
-            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'ana-sayfa' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+    <nav class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark border-t border-slate-200 dark:border-slate-800 flex justify-around items-center py-2 px-4 z-50 safe-area-bottom">
+        <a href="?page=ana-sayfa" class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'ana-sayfa' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
             <span class="material-symbols-outlined <?php echo $page === 'ana-sayfa' ? 'filled' : ''; ?>">home</span>
             <span class="text-[10px] font-semibold">Ana Sayfa</span>
         </a>
-        <a href="?page=bordro"
-            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'bordro' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+        <a href="?page=bordro" class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'bordro' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
             <span class="material-symbols-outlined <?php echo $page === 'bordro' ? 'filled' : ''; ?>">payments</span>
             <span class="text-[10px] font-semibold">Avans</span>
         </a>
-        <a href="?page=izin"
-            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'izin' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-            <span
-                class="material-symbols-outlined <?php echo $page === 'izin' ? 'filled' : ''; ?>">calendar_today</span>
+        <a href="?page=izin" class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'izin' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+            <span class="material-symbols-outlined <?php echo $page === 'izin' ? 'filled' : ''; ?>">calendar_today</span>
             <span class="text-[10px] font-semibold">İzinler</span>
         </a>
-        <a href="?page=talep"
-            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'talep' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+        <a href="?page=talep" class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'talep' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
             <span class="material-symbols-outlined <?php echo $page === 'talep' ? 'filled' : ''; ?>">assignment</span>
             <span class="text-[10px] font-semibold">Talepler</span>
         </a>
-        <button type="button" onclick="toggleMoreMenu()"
-            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo in_array($page, ['profil', 'puantaj']) ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-            <span
-                class="material-symbols-outlined <?php echo in_array($page, ['profil', 'puantaj']) ? 'filled' : ''; ?>">more_horiz</span>
+        <button type="button" onclick="toggleMoreMenu()" class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo in_array($page, ['profil', 'puantaj']) ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+            <span class="material-symbols-outlined <?php echo in_array($page, ['profil', 'puantaj']) ? 'filled' : ''; ?>">more_horiz</span>
             <span class="text-[10px] font-semibold">Diğer</span>
         </button>
     </nav>
 
     <!-- Loading Overlay -->
-    <div id="loading-overlay"
-        class="fixed inset-0 bg-white dark:bg-background-dark z-[100] flex items-center justify-center transition-all duration-500">
+    <div id="loading-overlay" class="fixed inset-0 bg-white dark:bg-background-dark z-[100] flex items-center justify-center transition-all duration-500">
         <div class="loader-container">
             <div class="premium-loader">
                 <div class="premium-loader-inner">
@@ -195,43 +185,35 @@ if (!in_array($page, $allowed_pages)) {
                 </div>
             </div>
             <div class="flex flex-col items-center gap-1">
-                <h2 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Ersan <span
-                        class="text-primary">Elektrik</span></h2>
+                <h2 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Ersan <span class="text-primary">Elektrik</span></h2>
                 <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Yükleniyor...</p>
             </div>
         </div>
     </div>
 
     <!-- More Menu Bottom Sheet -->
-    <div id="more-menu-overlay"
-        class="fixed inset-0 bg-black/50 z-[60] opacity-0 pointer-events-none transition-opacity duration-300"
-        onclick="closeMoreMenu()"></div>
-    <div id="more-menu-sheet"
-        class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-2xl z-[61] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom">
+    <div id="more-menu-overlay" class="fixed inset-0 bg-black/50 z-[60] opacity-0 pointer-events-none transition-opacity duration-300" onclick="closeMoreMenu()"></div>
+    <div id="more-menu-sheet" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-2xl z-[61] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom">
         <div class="flex justify-center pt-2 pb-1">
             <div class="w-8 h-1 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
         </div>
         <div class="px-4 pb-4">
             <div class="flex flex-col gap-1">
-                <a href="javascript:void(0)" onclick="logout()"
-                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'profil' ? 'bg-primary/10' : ''; ?>">
+                <a href="javascript:void(0)" onclick="logout()" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'profil' ? 'bg-primary/10' : ''; ?>">
                     <div class="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                         <span class="material-symbols-outlined text-red-600 text-lg">logout</span>
                     </div>
                     <span class="font-medium text-slate-900 dark:text-white text-sm">Çıkış Yap</span>
                 </a>
-                <a href="?page=profil"
-                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'profil' ? 'bg-primary/10' : ''; ?>">
+                <a href="?page=profil" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'profil' ? 'bg-primary/10' : ''; ?>">
                     <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                         <span class="material-symbols-outlined text-blue-600 text-lg">person</span>
                     </div>
                     <span class="font-medium text-slate-900 dark:text-white text-sm">Profil</span>
                     <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
                 </a>
-                <a href="?page=puantaj"
-                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'puantaj' ? 'bg-primary/10' : ''; ?>">
-                    <div
-                        class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                <a href="?page=puantaj" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'puantaj' ? 'bg-primary/10' : ''; ?>">
+                    <div class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
                         <span class="material-symbols-outlined text-purple-600 text-lg">checklist</span>
                     </div>
                     <span class="font-medium text-slate-900 dark:text-white text-sm">İş Takip</span>

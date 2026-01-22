@@ -7,8 +7,8 @@
   --primary-dark: #0d47c1;
   --primary-light: #4a87f5;
   --background-light: #f6f6f8;
-  --background-dark: #1e293b;
-  --card-dark: #1a2130;
+  --background-dark: #121212;
+  --card-dark: #1e1e1e;
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
@@ -46,8 +46,9 @@ body {
 }
 
 .dark body {
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  background: radial-gradient(circle at center, #2a2a2a 0%, #0a0a0a 100%);
   min-height: 100vh;
+  background-attachment: fixed;
 }
 
 button,
@@ -416,9 +417,13 @@ div:where(.swal2-container) .swal2-cancel {
 }
 
 .dark .form-input {
-  background: var(--card-dark);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: white;
+  background: #121212;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #f1f5f9;
+}
+
+.dark .form-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .form-input:focus {
@@ -436,6 +441,16 @@ div:where(.swal2-container) .swal2-cancel {
   padding-right: 2.5rem;
   border: 1px solid #d0d2d4 !important;
   border-radius: 0.25rem !important;
+}
+
+.dark .form-select {
+  background-color: #121212;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #f1f5f9;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1.25rem;
 }
 
 .form-label {
