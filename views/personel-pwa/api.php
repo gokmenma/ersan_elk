@@ -22,6 +22,7 @@ use App\Helper\Helper;
 use App\Service\MailGonderService;
 use App\Model\PushSubscriptionModel;
 use App\Model\BildirimModel;
+use App\Model\UserModel;
 
 // Oturum kontrolü (logout hariç)
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
@@ -173,7 +174,7 @@ try {
                 $logFile = dirname(dirname(__DIR__)) . '/debug_bildirim.log';
                 file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Avans talebi süreci başladı. Personel ID: $personel_id\n", FILE_APPEND);
 
-                $UserModel = new App\Model\UserModel();
+                $UserModel = new UserModel();
                 $PersonelModel = new PersonelModel();
                 $talep_eden = $PersonelModel->find($personel_id);
                 file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Talep eden: " . ($talep_eden->adi_soyadi ?? 'Bulunamadı') . "\n", FILE_APPEND);
@@ -450,7 +451,10 @@ try {
             // İzin onayı yapacak personeli getir ve mail gönder
             // İzin onayı yapacak personeli getir ve bildirim/mail gönder
             try {
-                $UserModel = new App\Model\UserModel();
+                $logFile = dirname(dirname(__DIR__)) . '/debug_bildirim.log';
+                file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "İzin talebi süreci başladı. Personel ID: $personel_id\n", FILE_APPEND);
+
+                $UserModel = new UserModel();
                 $PersonelModel = new PersonelModel();
                 $talep_eden = $PersonelModel->find($personel_id);
 
@@ -487,10 +491,11 @@ try {
                     $recipients[$k->id] = $k;
                 }
 
+                file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Bildirim gidecek kullanıcı sayısı: " . count($recipients) . "\n", FILE_APPEND);
                 foreach ($recipients as $kullanici) {
                     try {
                         $BildirimModel = new BildirimModel();
-                        $BildirimModel->createNotification(
+                        $res = $BildirimModel->createNotification(
                             $kullanici->id,
                             'Yeni İzin Talebi',
                             ($talep_eden->adi_soyadi ?? 'Personel') . ' ' . $izin_tipi_text . ' talep etti.',
@@ -498,8 +503,9 @@ try {
                             'calendar',
                             'warning'
                         );
+                        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "İzin bildirimi oluşturuldu. Kullanıcı: {$kullanici->id}, Sonuç: $res\n", FILE_APPEND);
                     } catch (Exception $e) {
-                        error_log('Bildirim oluşturma hatası: ' . $e->getMessage());
+                        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "İzin bildirim hatası: " . $e->getMessage() . "\n", FILE_APPEND);
                     }
                 }
 
@@ -696,7 +702,10 @@ try {
 
             // Bildirim ve Mail Gönderimi
             try {
-                $UserModel = new App\Model\UserModel();
+                $logFile = dirname(dirname(__DIR__)) . '/debug_bildirim.log';
+                file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Talep bildirimi süreci başladı. Personel ID: $personel_id\n", FILE_APPEND);
+
+                $UserModel = new UserModel();
                 $PersonelModel = new PersonelModel();
                 $talep_eden = $PersonelModel->find($personel_id);
 
@@ -705,10 +714,12 @@ try {
 
                 // 1. Uygulama İçi Bildirimler
                 $bildirimKullanicilari = $UserModel->getInAppBildirimKullanicilari($bildirim_turu);
+                file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Talep bildirimi gidecek kullanıcı sayısı: " . count($bildirimKullanicilari) . "\n", FILE_APPEND);
+
                 foreach ($bildirimKullanicilari as $kullanici) {
                     try {
                         $BildirimModel = new BildirimModel();
-                        $BildirimModel->createNotification(
+                        $res = $BildirimModel->createNotification(
                             $kullanici->id,
                             "Yeni {$baslik}",
                             ($talep_eden->adi_soyadi ?? 'Personel') . " yeni bir talep oluşturdu: {$baslik}",
@@ -716,8 +727,9 @@ try {
                             'message-square',
                             'info'
                         );
+                        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Talep bildirimi oluşturuldu. Kullanıcı: {$kullanici->id}, Sonuç: $res\n", FILE_APPEND);
                     } catch (Exception $e) {
-                        error_log('Bildirim oluşturma hatası: ' . $e->getMessage());
+                        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Talep bildirim hatası: " . $e->getMessage() . "\n", FILE_APPEND);
                     }
                 }
 
