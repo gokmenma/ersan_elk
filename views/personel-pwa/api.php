@@ -18,6 +18,7 @@ use App\Helper\Security;
 use App\Helper\Helper;
 use App\Service\MailGonderService;
 use App\Model\PushSubscriptionModel;
+use App\Model\BildirimModel;
 
 // Oturum kontrolü (logout hariç)
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
@@ -219,6 +220,17 @@ try {
                             [$kullanici->email_adresi],
                             'Yeni Avans Talebi - ' . ($talep_eden->adi_soyadi ?? 'Personel'),
                             $mail_content
+                        );
+
+                        // Bildirim oluştur
+                        $BildirimModel = new BildirimModel();
+                        $BildirimModel->createNotification(
+                            $kullanici->id,
+                            'Yeni Avans Talebi',
+                            $talep_eden->adi_soyadi . ' ' . number_format($tutar, 2, ',', '.') . ' TL avans talep etti.',
+                            'index.php?page=bordro',
+                            'lira-sign',
+                            'success'
                         );
                     }
                 }
@@ -504,6 +516,17 @@ try {
                         'Yeni İzin Talebi - ' . ($talep_eden->adi_soyadi ?? 'Personel'),
                         $mail_content
                     );
+
+                    // Bildirim oluştur
+                    $BildirimModel = new BildirimModel();
+                    $BildirimModel->createNotification(
+                        $izin_onayi_yapacak_personel->id,
+                        'Yeni İzin Talebi',
+                        $talep_eden->adi_soyadi . ' ' . $izin_tipi_text . ' talep etti.',
+                        'index.php?page=izin',
+                        'calendar',
+                        'warning'
+                    );
                 }
             } catch (Exception $e) {
                 // Mail gönderme hatası loglansın ama kullanıcıya başarı mesajı verilsin
@@ -739,6 +762,17 @@ try {
                             [$kullanici->email_adresi],
                             "Yeni {$baslik} - Ref: {$ref_no}",
                             $mail_content
+                        );
+
+                        // Bildirim oluştur
+                        $BildirimModel = new BildirimModel();
+                        $BildirimModel->createNotification(
+                            $kullanici->id,
+                            "Yeni {$baslik}",
+                            $talep_eden->adi_soyadi . " yeni bir talep oluşturdu: {$baslik}",
+                            'index.php?page=talep',
+                            'message-square',
+                            'info'
                         );
                     }
                 }

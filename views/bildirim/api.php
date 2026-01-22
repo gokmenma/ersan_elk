@@ -9,6 +9,8 @@ use App\Service\PushNotificationService;
 use App\Model\PushSubscriptionModel;
 use App\Model\PersonelModel;
 use App\Model\MesajLogModel;
+use App\Model\BildirimModel;
+use App\Helper\Helper;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -210,6 +212,72 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'message' => 'Test bildirimi gönderildi!'
                     ]);
                 }
+                break;
+
+            // ===== In-App Notifications =====
+            case 'get-unread':
+                $userId = $_SESSION['user_id'] ?? 0;
+                if ($userId <= 0) {
+                    throw new Exception('Oturum bulunamadı.');
+                }
+
+                $BildirimModel = new BildirimModel();
+                $notifications = $BildirimModel->getUnreadNotifications($userId);
+                $count = count($notifications);
+
+                // Format for frontend
+                $formatted = [];
+                foreach ($notifications as $n) {
+                    $formatted[] = [
+                        'id' => $n->id,
+                        'title' => $n->title,
+                        'message' => $n->message,
+                        'link' => $n->link,
+                        'icon' => $n->icon,
+                        'color' => $n->color,
+                        'time_ago' => Helper::timeAgo($n->created_at) // Assuming Helper::timeAgo exists, otherwise use date
+                    ];
+                }
+
+                // If Helper::timeAgo doesn't exist, let's use a simple calculation or just return the date
+                if (!method_exists('App\Helper\Helper', 'timeAgo')) {
+                    foreach ($formatted as &$f) {
+                        $f['time_ago'] = date('H:i', strtotime($notifications[0]->created_at ?? 'now')); // Fallback
+                    }
+                }
+
+                echo json_encode([
+                    'status' => 'success',
+                    'count' => $count,
+                    'notifications' => $formatted
+                ]);
+                break;
+
+            case 'mark-read':
+                $userId = $_SESSION['user_id'] ?? 0;
+                $id = $_POST['id'] ?? 0;
+
+                if ($userId <= 0 || $id <= 0) {
+                    throw new Exception('Geçersiz parametre.');
+                }
+
+                $BildirimModel = new BildirimModel();
+                $BildirimModel->markAsRead($id, $userId);
+
+                echo json_encode(['status' => 'success']);
+                break;
+
+            case 'mark-all-read':
+                $userId = $_SESSION['user_id'] ?? 0;
+
+                if ($userId <= 0) {
+                    throw new Exception('Oturum bulunamadı.');
+                }
+
+                $BildirimModel = new BildirimModel();
+                $BildirimModel->markAllAsRead($userId);
+
+                echo json_encode(['status' => 'success']);
                 break;
 
             default:

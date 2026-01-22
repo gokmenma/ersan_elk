@@ -88,7 +88,7 @@ class Helper
     {
         return self::GIDEN_EVRAK_AMACI[$type];
     }
-    
+
 
     public static function formattedMoneyToNumber($value)
     {
@@ -108,16 +108,16 @@ class Helper
 
     public static function base_url($path = '')
     {
-      
+
         $page = $_SERVER['SCRIPT_FILENAME'];
-        $main_file = ['index.php', 'login.php', 'register.php', 'forgot-password.php', 'reset-password.php','logout.php'];
+        $main_file = ['index.php', 'login.php', 'register.php', 'forgot-password.php', 'reset-password.php', 'logout.php'];
 
         if (!in_array(basename($page), $main_file)) {
             $prefix = "../../";
         } else {
             $prefix = "";
         }
-         
+
         return $prefix . $path;
 
     }
@@ -137,64 +137,66 @@ class Helper
     }
 
 
-public static function trUpper($text) {
-    $search = ['i', 'ı', 'ğ', 'ü', 'ş', 'ö', 'ç'];
-    $replace = ['İ', 'I', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç'];
-    $text = str_replace($search, $replace, $text);
-    return mb_strtoupper($text, "UTF-8");
-}
-
-public static function gidenEki($kurumAdi) {
-    $kurumAdi = (string)($kurumAdi ?? '');
-    $kurumAdi = trim($kurumAdi);
-    if ($kurumAdi === '') {
-        return '';
+    public static function trUpper($text)
+    {
+        $search = ['i', 'ı', 'ğ', 'ü', 'ş', 'ö', 'ç'];
+        $replace = ['İ', 'I', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç'];
+        $text = str_replace($search, $replace, $text);
+        return mb_strtoupper($text, "UTF-8");
     }
 
-    // Sonda noktalama varsa eki noktalamanın önüne eklemek için ayır
-    // Örn: "... Bakanlığı." => "... Bakanlığına."
-    $punct = '';
-    if (preg_match('/([\.!\?,;:\)\]\}]+)$/u', $kurumAdi, $m)) {
-        $punct = $m[1];
-        $kurumAdi = mb_substr($kurumAdi, 0, mb_strlen($kurumAdi) - mb_strlen($punct));
-        $kurumAdi = rtrim($kurumAdi);
-    }
-
-    // Zaten yönelme ekiyle bitiyorsa tekrar ekleme (büyük/küçük harf duyarsız)
-    // Örn: "... REKTÖRLÜĞÜNE" veya "... Bakanlığına"
-    $lower = mb_strtolower($kurumAdi, 'UTF-8');
-    if (preg_match('/(\s|^)[^\s]+(na|ne)$/u', $lower)) {
-        return $kurumAdi . $punct;
-    }
-
-    // Türkçe ünlüler (hem küçük hem büyük)
-    $kalinUnluler = ['a', 'ı', 'o', 'u', 'A', 'I', 'O', 'U', 'İ', 'Â', 'Û'];
-    $inceUnluler  = ['e', 'i', 'ö', 'ü', 'E', 'İ', 'Ö', 'Ü'];
-    $unluler = array_unique(array_merge($kalinUnluler, $inceUnluler));
-
-    // Son ünlüyü bul
-    $sonUnlu = null;
-    for ($i = mb_strlen($kurumAdi) - 1; $i >= 0; $i--) {
-        $harf = mb_substr($kurumAdi, $i, 1);
-        if (in_array($harf, $unluler, true)) {
-            $sonUnlu = $harf;
-            break;
+    public static function gidenEki($kurumAdi)
+    {
+        $kurumAdi = (string) ($kurumAdi ?? '');
+        $kurumAdi = trim($kurumAdi);
+        if ($kurumAdi === '') {
+            return '';
         }
+
+        // Sonda noktalama varsa eki noktalamanın önüne eklemek için ayır
+        // Örn: "... Bakanlığı." => "... Bakanlığına."
+        $punct = '';
+        if (preg_match('/([\.!\?,;:\)\]\}]+)$/u', $kurumAdi, $m)) {
+            $punct = $m[1];
+            $kurumAdi = mb_substr($kurumAdi, 0, mb_strlen($kurumAdi) - mb_strlen($punct));
+            $kurumAdi = rtrim($kurumAdi);
+        }
+
+        // Zaten yönelme ekiyle bitiyorsa tekrar ekleme (büyük/küçük harf duyarsız)
+        // Örn: "... REKTÖRLÜĞÜNE" veya "... Bakanlığına"
+        $lower = mb_strtolower($kurumAdi, 'UTF-8');
+        if (preg_match('/(\s|^)[^\s]+(na|ne)$/u', $lower)) {
+            return $kurumAdi . $punct;
+        }
+
+        // Türkçe ünlüler (hem küçük hem büyük)
+        $kalinUnluler = ['a', 'ı', 'o', 'u', 'A', 'I', 'O', 'U', 'İ', 'Â', 'Û'];
+        $inceUnluler = ['e', 'i', 'ö', 'ü', 'E', 'İ', 'Ö', 'Ü'];
+        $unluler = array_unique(array_merge($kalinUnluler, $inceUnluler));
+
+        // Son ünlüyü bul
+        $sonUnlu = null;
+        for ($i = mb_strlen($kurumAdi) - 1; $i >= 0; $i--) {
+            $harf = mb_substr($kurumAdi, $i, 1);
+            if (in_array($harf, $unluler, true)) {
+                $sonUnlu = $harf;
+                break;
+            }
+        }
+
+        if ($sonUnlu === null) {
+            return $kurumAdi . $punct;
+        }
+
+        $yonelmeEki = in_array($sonUnlu, $kalinUnluler, true) ? 'a' : 'e';
+
+        // Kurum adları genellikle "...lığı" / "...lüğü" gibi ünlü ile biter; pratik kullanımda "-na/-ne" bekleniyor.
+        // Ünlüyle bitiyorsa kaynaştırma "n" (örn: "Bakanlığı" -> "Bakanlığına"), ünsüzle bitiyorsa yok.
+        $sonHarf = mb_substr($kurumAdi, -1);
+        $kaynastirma = in_array($sonHarf, $unluler, true) ? 'n' : '';
+
+        return $kurumAdi . $kaynastirma . $yonelmeEki . $punct;
     }
-
-    if ($sonUnlu === null) {
-        return $kurumAdi . $punct;
-    }
-
-    $yonelmeEki = in_array($sonUnlu, $kalinUnluler, true) ? 'a' : 'e';
-
-    // Kurum adları genellikle "...lığı" / "...lüğü" gibi ünlü ile biter; pratik kullanımda "-na/-ne" bekleniyor.
-    // Ünlüyle bitiyorsa kaynaştırma "n" (örn: "Bakanlığı" -> "Bakanlığına"), ünsüzle bitiyorsa yok.
-    $sonHarf = mb_substr($kurumAdi, -1);
-    $kaynastirma = in_array($sonHarf, $unluler, true) ? 'n' : '';
-
-    return $kurumAdi . $kaynastirma . $yonelmeEki . $punct;
-}
 
 
     public static function getDonemAdi($donem)
@@ -202,15 +204,25 @@ public static function gidenEki($kurumAdi) {
         if (empty($donem)) {
             return '-';
         }
-        
+
         $aylar = [
-            '01' => 'Ocak', '02' => 'Şubat', '03' => 'Mart', '04' => 'Nisan',
-            '05' => 'Mayıs', '06' => 'Haziran', '07' => 'Temmuz', '08' => 'Ağustos',
-            '09' => 'Eylül', '10' => 'Ekim', '11' => 'Kasım', '12' => 'Aralık'
+            '01' => 'Ocak',
+            '02' => 'Şubat',
+            '03' => 'Mart',
+            '04' => 'Nisan',
+            '05' => 'Mayıs',
+            '06' => 'Haziran',
+            '07' => 'Temmuz',
+            '08' => 'Ağustos',
+            '09' => 'Eylül',
+            '10' => 'Ekim',
+            '11' => 'Kasım',
+            '12' => 'Aralık'
         ];
 
         $parts = explode('-', $donem);
-        if (count($parts) < 2) return $donem;
+        if (count($parts) < 2)
+            return $donem;
 
         $yil = $parts[0];
         $ay = $parts[1];
@@ -220,10 +232,10 @@ public static function gidenEki($kurumAdi) {
 
 
     /* dd fonskiyonu
-    * 
-    * @param mixed $data
-    * @return void
-    */
+     * 
+     * @param mixed $data
+     * @return void
+     */
     public static function dd($data)
     {
         echo '<pre>';
@@ -232,5 +244,30 @@ public static function gidenEki($kurumAdi) {
         die();
     }
 
+    public static function timeAgo($datetime, $full = false)
+    {
+        $now = new \DateTime;
+        $ago = new \DateTime($datetime);
+        $diff = $now->diff($ago);
 
+        $string = array(
+            'y' => 'yıl',
+            'm' => 'ay',
+            'd' => 'gün',
+            'h' => 'saat',
+            'i' => 'dakika',
+            's' => 'saniye',
+        );
+        foreach ($string as $k => &$v) {
+            if ($diff->$k) {
+                $v = $diff->$k . ' ' . $v;
+            } else {
+                unset($string[$k]);
+            }
+        }
+
+        if (!$full)
+            $string = array_slice($string, 0, 1);
+        return $string ? implode(', ', $string) . ' önce' : 'şimdi';
+    }
 }

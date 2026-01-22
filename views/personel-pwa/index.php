@@ -90,8 +90,6 @@ if (!in_array($page, $allowed_pages)) {
     <link rel="manifest" href="manifest.json">
 
     <!-- Favicon & App Icons -->
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
-    <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap"
@@ -112,7 +110,7 @@ if (!in_array($page, $allowed_pages)) {
                         "primary": "#135bec",
                         "primary-dark": "#0d47c1",
                         "background-light": "#f6f6f8",
-                        "background-dark": "#101622",
+                        "background-dark": "#1e293b",
                         "card-dark": "#1a2130",
                     },
                     fontFamily: {
