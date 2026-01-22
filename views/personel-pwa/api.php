@@ -164,6 +164,59 @@ try {
                 'durum' => 'beklemede',
                 'talep_tarihi' => date('Y-m-d H:i:s')
             ]);
+
+            // Bildirim ve Mail Gönderimi
+            try {
+                $UserModel = new App\Model\UserModel();
+                $PersonelModel = new PersonelModel();
+                $talep_eden = $PersonelModel->find($personel_id);
+
+                // 1. Uygulama İçi Bildirimler (Email bağımsız)
+                $bildirimKullanicilari = $UserModel->getInAppBildirimKullanicilari('avans');
+                foreach ($bildirimKullanicilari as $kullanici) {
+                    try {
+                        $BildirimModel = new BildirimModel();
+                        $BildirimModel->createNotification(
+                            $kullanici->id,
+                            'Yeni Avans Talebi',
+                            ($talep_eden->adi_soyadi ?? 'Personel') . ' ' . number_format($tutar, 2, ',', '.') . ' TL avans talep etti.',
+                            'index.php?page=bordro',
+                            'lira-sign',
+                            'success'
+                        );
+                    } catch (Exception $e) {
+                        error_log('Bildirim oluşturma hatası: ' . $e->getMessage());
+                    }
+                }
+
+                // 2. Mail Gönderimi (Sadece email adresi olanlara)
+                $mailKullanicilari = $UserModel->getMailBildirimKullanicilari('avans');
+                foreach ($mailKullanicilari as $kullanici) {
+                    try {
+                        $mail_content = "
+                            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
+                                <h2 style='color: #5b73e8;'>Yeni Avans Talebi</h2>
+                                <p><strong>" . ($talep_eden->adi_soyadi ?? 'Personel') . "</strong> tarafından <strong>" . number_format($tutar, 2, ',', '.') . " TL</strong> tutarında avans talebi oluşturuldu.</p>
+                                <p>Talebi incelemek için sisteme giriş yapabilirsiniz.</p>
+                            </div>
+                        ";
+
+                        $MailGonderService->gonder(
+                            [$kullanici->email_adresi],
+                            'Yeni Avans Talebi - ' . ($talep_eden->adi_soyadi ?? 'Personel'),
+                            $mail_content
+                        );
+                    } catch (Exception $e) {
+                        error_log('Avans mail gönderme hatası: ' . $e->getMessage());
+                    }
+                }
+            } catch (Exception $e) {
+                error_log('Avans bildirim süreci hatası: ' . $e->getMessage());
+            }
+
+            response(true, null, 'Avans talebiniz başarıyla oluşturuldu');
+            break;
+
         case 'updateAvansTalebi':
             $id = $_POST['id'] ?? 0;
             $tutar = $_POST['tutar'] ?? 0;
@@ -388,38 +441,47 @@ try {
             // İzin onayı yapacak personeli getir ve bildirim/mail gönder
             try {
                 $UserModel = new App\Model\UserModel();
+                $PersonelModel = new PersonelModel();
+                $talep_eden = $PersonelModel->find($personel_id);
+
+                // İzin türü adını belirle
+                $izin_tipi_text = $izin_tipi;
+                $izin_tipleri = [
+                    'yillik' => 'Yıllık İzin',
+                    'mazeret' => 'Mazeret İzni',
+                    'hastalik' => 'Hastalık İzni',
+                    'dogum' => 'Doğum / Babalık İzni',
+                    'ucretsiz' => 'Ücretsiz İzin'
+                ];
+
+                if (isset($izin_tipleri[$izin_tipi])) {
+                    $izin_tipi_text = $izin_tipleri[$izin_tipi];
+                } elseif (is_numeric($izin_tipi)) {
+                    $TanimlamalarModel = new App\Model\TanimlamalarModel();
+                    $tur = $TanimlamalarModel->find($izin_tipi);
+                    if ($tur) {
+                        $izin_tipi_text = $tur->tur_adi;
+                    }
+                }
+
+                // 1. Uygulama İçi Bildirimler
+                // Hem onaylayacak kişiye hem de bildirimleri açık olan yöneticilere gönder
+                $bildirimKullanicilari = $UserModel->getInAppBildirimKullanicilari('izin');
                 $izin_onayi_yapacak_personel = $UserModel->getIzinOnayPersonel();
 
+                $recipients = [];
                 if ($izin_onayi_yapacak_personel) {
-                    // Talep eden personel bilgilerini al
-                    $PersonelModel = new PersonelModel();
-                    $talep_eden = $PersonelModel->find($personel_id);
+                    $recipients[$izin_onayi_yapacak_personel->id] = $izin_onayi_yapacak_personel;
+                }
+                foreach ($bildirimKullanicilari as $k) {
+                    $recipients[$k->id] = $k;
+                }
 
-                    // İzin türü adını belirle
-                    $izin_tipi_text = $izin_tipi;
-                    $izin_tipleri = [
-                        'yillik' => 'Yıllık İzin',
-                        'mazeret' => 'Mazeret İzni',
-                        'hastalik' => 'Hastalık İzni',
-                        'dogum' => 'Doğum / Babalık İzni',
-                        'ucretsiz' => 'Ücretsiz İzin'
-                    ];
-
-                    if (isset($izin_tipleri[$izin_tipi])) {
-                        $izin_tipi_text = $izin_tipleri[$izin_tipi];
-                    } elseif (is_numeric($izin_tipi)) {
-                        $TanimlamalarModel = new App\Model\TanimlamalarModel();
-                        $tur = $TanimlamalarModel->find($izin_tipi);
-                        if ($tur) {
-                            $izin_tipi_text = $tur->tur_adi;
-                        }
-                    }
-
-                    // 1. Bildirim Oluştur (Mailden bağımsız)
+                foreach ($recipients as $kullanici) {
                     try {
                         $BildirimModel = new BildirimModel();
                         $BildirimModel->createNotification(
-                            $izin_onayi_yapacak_personel->id,
+                            $kullanici->id,
                             'Yeni İzin Talebi',
                             ($talep_eden->adi_soyadi ?? 'Personel') . ' ' . $izin_tipi_text . ' talep etti.',
                             'index.php?page=izin',
@@ -429,39 +491,47 @@ try {
                     } catch (Exception $e) {
                         error_log('Bildirim oluşturma hatası: ' . $e->getMessage());
                     }
+                }
 
-                    // 2. Mail Gönder
-                    if (!empty($izin_onayi_yapacak_personel->email_adresi)) {
-                        try {
-                            // Mail şablonunu yükle
-                            $mail_template_path = dirname(__DIR__) . '/mail-template/izin_onay.php';
-                            if (file_exists($mail_template_path)) {
-                                $mail_content = file_get_contents($mail_template_path);
-
-                                // Değişkenleri değiştir
-                                $replacements = [
-                                    '{{ONAYLAYAN_AD_SOYAD}}' => $izin_onayi_yapacak_personel->adi_soyadi ?? 'Yetkili',
-                                    '{{TALEP_EDEN_AD_SOYAD}}' => $talep_eden->adi_soyadi ?? 'Personel',
-                                    '{{IZIN_TURU}}' => $izin_tipi_text,
-                                    '{{BASLANGIC_TARIHI}}' => date('d.m.Y', strtotime($baslangic)),
-                                    '{{BITIS_TARIHI}}' => date('d.m.Y', strtotime($bitis)),
-                                    '{{ACIKLAMA}}' => !empty($aciklama) ? nl2br(htmlspecialchars($aciklama)) : 'Açıklama belirtilmemiş',
-                                    '{{ONAY_LINKI}}' => (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/views/personel/',
-                                    '{{YIL}}' => date('Y')
-                                ];
-
-                                $mail_content = str_replace(array_keys($replacements), array_values($replacements), $mail_content);
-
-                                // Mail gönder
-                                $MailGonderService->gonder(
-                                    [$izin_onayi_yapacak_personel->email_adresi],
-                                    'Yeni İzin Talebi - ' . ($talep_eden->adi_soyadi ?? 'Personel'),
-                                    $mail_content
-                                );
-                            }
-                        } catch (Exception $e) {
-                            error_log('İzin talebi mail gönderme hatası: ' . $e->getMessage());
+                // 2. Mail Gönderimi (Sadece email adresi olanlara)
+                $mailKullanicilari = $UserModel->getMailBildirimKullanicilari('izin');
+                if ($izin_onayi_yapacak_personel && !empty($izin_onayi_yapacak_personel->email_adresi)) {
+                    // Onaylayacak kişiyi de ekle (eğer listede yoksa)
+                    $found = false;
+                    foreach ($mailKullanicilari as $mk) {
+                        if ($mk->id == $izin_onayi_yapacak_personel->id) {
+                            $found = true;
+                            break;
                         }
+                    }
+                    if (!$found)
+                        $mailKullanicilari[] = $izin_onayi_yapacak_personel;
+                }
+
+                foreach ($mailKullanicilari as $kullanici) {
+                    try {
+                        $mail_template_path = dirname(__DIR__) . '/mail-template/izin_onay.php';
+                        if (file_exists($mail_template_path)) {
+                            $mail_content = file_get_contents($mail_template_path);
+                            $replacements = [
+                                '{{ONAYLAYAN_AD_SOYAD}}' => $kullanici->adi_soyadi ?? 'Yetkili',
+                                '{{TALEP_EDEN_AD_SOYAD}}' => $talep_eden->adi_soyadi ?? 'Personel',
+                                '{{IZIN_TURU}}' => $izin_tipi_text,
+                                '{{BASLANGIC_TARIHI}}' => date('d.m.Y', strtotime($baslangic)),
+                                '{{BITIS_TARIHI}}' => date('d.m.Y', strtotime($bitis)),
+                                '{{ACIKLAMA}}' => !empty($aciklama) ? nl2br(htmlspecialchars($aciklama)) : 'Açıklama belirtilmemiş',
+                                '{{ONAY_LINKI}}' => (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/views/personel/',
+                                '{{YIL}}' => date('Y')
+                            ];
+                            $mail_content = str_replace(array_keys($replacements), array_values($replacements), $mail_content);
+                            $MailGonderService->gonder(
+                                [$kullanici->email_adresi],
+                                'Yeni İzin Talebi - ' . ($talep_eden->adi_soyadi ?? 'Personel'),
+                                $mail_content
+                            );
+                        }
+                    } catch (Exception $e) {
+                        error_log('İzin talebi mail gönderme hatası: ' . $e->getMessage());
                     }
                 }
             } catch (Exception $e) {
@@ -618,107 +688,101 @@ try {
             try {
                 $UserModel = new App\Model\UserModel();
                 $PersonelModel = new PersonelModel();
+                $talep_eden = $PersonelModel->find($personel_id);
 
-                // Kategori bazında mail bildirimi türünü belirle
-                $mail_bildirim_turu = ($kategori == 'ariza') ? 'ariza' : 'genel';
+                // Kategori bazında bildirim türünü belirle
+                $bildirim_turu = ($kategori == 'ariza') ? 'ariza' : 'genel';
 
-                // İlgili bildirim türü açık olan kullanıcıları getir
-                $bildirimKullanicilari = $UserModel->getMailBildirimKullanicilari($mail_bildirim_turu);
+                // 1. Uygulama İçi Bildirimler
+                $bildirimKullanicilari = $UserModel->getInAppBildirimKullanicilari($bildirim_turu);
+                foreach ($bildirimKullanicilari as $kullanici) {
+                    try {
+                        $BildirimModel = new BildirimModel();
+                        $BildirimModel->createNotification(
+                            $kullanici->id,
+                            "Yeni {$baslik}",
+                            ($talep_eden->adi_soyadi ?? 'Personel') . " yeni bir talep oluşturdu: {$baslik}",
+                            'index.php?page=talep',
+                            'message-square',
+                            'info'
+                        );
+                    } catch (Exception $e) {
+                        error_log('Bildirim oluşturma hatası: ' . $e->getMessage());
+                    }
+                }
 
-                if (!empty($bildirimKullanicilari)) {
-                    // Talep eden personel bilgilerini al
-                    $talep_eden = $PersonelModel->find($personel_id);
+                // 2. Mail Gönderimi
+                $mailKullanicilari = $UserModel->getMailBildirimKullanicilari($bildirim_turu);
+                foreach ($mailKullanicilari as $kullanici) {
+                    try {
+                        // Öncelik renk haritası
+                        $oncelik_renk = [
+                            'dusuk' => '#28a745',
+                            'orta' => '#ffc107',
+                            'yuksek' => '#dc3545'
+                        ];
 
-                    // Öncelik renk haritası
-                    $oncelik_renk = [
-                        'dusuk' => '#28a745',
-                        'orta' => '#ffc107',
-                        'yuksek' => '#dc3545'
-                    ];
+                        $oncelik_text = [
+                            'dusuk' => 'Düşük',
+                            'orta' => 'Orta',
+                            'yuksek' => 'Yüksek'
+                        ];
 
-                    $oncelik_text = [
-                        'dusuk' => 'Düşük',
-                        'orta' => 'Orta',
-                        'yuksek' => 'Yüksek'
-                    ];
+                        $mail_content = "
+                            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
+                                <h2 style='color: #5b73e8;'>Yeni {$baslik}</h2>
+                                <p>Sayın <strong>{$kullanici->adi_soyadi}</strong>,</p>
+                                <p><strong>" . ($talep_eden->adi_soyadi ?? 'Personel') . "</strong> tarafından yeni bir talep bildirimi oluşturuldu.</p>
+                                <div style='background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;'>
+                                    <h3 style='margin-top: 0;'>Talep Detayları</h3>
+                                    <table style='width: 100%;'>
+                                        <tr>
+                                            <td style='padding: 5px;'><strong>Referans No:</strong></td>
+                                            <td style='padding: 5px;'><span style='background-color: #e3f2fd; padding: 3px 8px; border-radius: 3px; font-weight: bold;'>{$ref_no}</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td style='padding: 5px;'><strong>Personel:</strong></td>
+                                            <td style='padding: 5px;'>" . ($talep_eden->adi_soyadi ?? 'Personel') . "</td>
+                                        </tr>
+                                        <tr>
+                                            <td style='padding: 5px;'><strong>Kategori:</strong></td>
+                                            <td style='padding: 5px;'>{$baslik}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style='padding: 5px;'><strong>Konum:</strong></td>
+                                            <td style='padding: 5px;'>{$konum}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style='padding: 5px;'><strong>Öncelik:</strong></td>
+                                            <td style='padding: 5px;'>
+                                                <span style='background-color: {$oncelik_renk[$oncelik]}; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold;'>
+                                                    {$oncelik_text[$oncelik]}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style='padding: 5px;'><strong>Açıklama:</strong></td>
+                                            <td style='padding: 5px;'>" . nl2br(htmlspecialchars($aciklama)) . "</td>
+                                        </tr>
+                                        <tr>
+                                            <td style='padding: 5px;'><strong>Talep Tarihi:</strong></td>
+                                            <td style='padding: 5px;'>" . date('d.m.Y H:i') . "</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <p>Talebi incelemek için sisteme giriş yapabilirsiniz.</p>
+                                <hr style='margin: 20px 0;'>
+                                <p style='font-size: 12px; color: #666;'>Bu bir otomatik bildirimdir. Lütfen yanıtlamayınız.</p>
+                            </div>
+                        ";
 
-                    foreach ($bildirimKullanicilari as $kullanici) {
-                        // 1. Bildirim Oluştur (Mailden bağımsız)
-                        try {
-                            $BildirimModel = new BildirimModel();
-                            $BildirimModel->createNotification(
-                                $kullanici->id,
-                                "Yeni {$baslik}",
-                                $talep_eden->adi_soyadi . " yeni bir talep oluşturdu: {$baslik}",
-                                'index.php?page=talep',
-                                'message-square',
-                                'info'
-                            );
-                        } catch (Exception $e) {
-                            error_log('Bildirim oluşturma hatası: ' . $e->getMessage());
-                        }
-
-                        // 2. Mail Gönder
-                        if (!empty($kullanici->email_adresi)) {
-                            try {
-                                // Mail içeriğini hazırla
-                                $mail_content = "
-                                    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-                                        <h2 style='color: #5b73e8;'>Yeni {$baslik}</h2>
-                                        <p>Sayın <strong>{$kullanici->adi_soyadi}</strong>,</p>
-                                        <p><strong>{$talep_eden->adi_soyadi}</strong> tarafından yeni bir talep bildirimi oluşturuldu.</p>
-                                        <div style='background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;'>
-                                            <h3 style='margin-top: 0;'>Talep Detayları</h3>
-                                            <table style='width: 100%;'>
-                                                <tr>
-                                                    <td style='padding: 5px;'><strong>Referans No:</strong></td>
-                                                    <td style='padding: 5px;'><span style='background-color: #e3f2fd; padding: 3px 8px; border-radius: 3px; font-weight: bold;'>{$ref_no}</span></td>
-                                                </tr>
-                                                <tr>
-                                                    <td style='padding: 5px;'><strong>Personel:</strong></td>
-                                                    <td style='padding: 5px;'>{$talep_eden->adi_soyadi}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td style='padding: 5px;'><strong>Kategori:</strong></td>
-                                                    <td style='padding: 5px;'>{$baslik}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td style='padding: 5px;'><strong>Konum:</strong></td>
-                                                    <td style='padding: 5px;'>{$konum}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td style='padding: 5px;'><strong>Öncelik:</strong></td>
-                                                    <td style='padding: 5px;'>
-                                                        <span style='background-color: {$oncelik_renk[$oncelik]}; color: white; padding: 3px 8px; border-radius: 3px; font-weight: bold;'>
-                                                            {$oncelik_text[$oncelik]}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td style='padding: 5px;'><strong>Açıklama:</strong></td>
-                                                    <td style='padding: 5px;'>" . nl2br(htmlspecialchars($aciklama)) . "</td>
-                                                </tr>
-                                                <tr>
-                                                    <td style='padding: 5px;'><strong>Talep Tarihi:</strong></td>
-                                                    <td style='padding: 5px;'>" . date('d.m.Y H:i') . "</td>
-                                                </tr>
-                                            </table>
-                                        </div>
-                                        <p>Talebi incelemek için sisteme giriş yapabilirsiniz.</p>
-                                        <hr style='margin: 20px 0;'>
-                                        <p style='font-size: 12px; color: #666;'>Bu bir otomatik bildirimdir. Lütfen yanıtlamayınız.</p>
-                                    </div>
-                                ";
-
-                                $MailGonderService->gonder(
-                                    [$kullanici->email_adresi],
-                                    "Yeni {$baslik} - Ref: {$ref_no}",
-                                    $mail_content
-                                );
-                            } catch (Exception $e) {
-                                error_log('Talep bildirimi mail gönderme hatası: ' . $e->getMessage());
-                            }
-                        }
+                        $MailGonderService->gonder(
+                            [$kullanici->email_adresi],
+                            "Yeni {$baslik} - Ref: {$ref_no}",
+                            $mail_content
+                        );
+                    } catch (Exception $e) {
+                        error_log('Talep bildirimi mail gönderme hatası: ' . $e->getMessage());
                     }
                 }
             } catch (Exception $e) {

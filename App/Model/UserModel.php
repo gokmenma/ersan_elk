@@ -177,6 +177,31 @@ class UserModel extends Model
         return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
+    /** 
+     * Belirli bir talep türü için uygulama içi bildirimleri açık olan kullanıcıları getirir
+     * @param string $talepTuru 'avans', 'izin', 'genel', 'ariza'
+     * @return array Kullanıcı listesi
+     */
+    public function getInAppBildirimKullanicilari(string $talepTuru): array
+    {
+        $column_map = [
+            'avans' => 'mail_avans_talep',
+            'izin' => 'mail_izin_talep',
+            'genel' => 'mail_genel_talep',
+            'ariza' => 'mail_ariza_talep'
+        ];
+
+        if (!isset($column_map[$talepTuru])) {
+            return [];
+        }
+
+        $column = $column_map[$talepTuru];
+        // Email adresi zorunluluğu yok
+        $query = $this->db->prepare("SELECT * FROM $this->table WHERE $column = ?");
+        $query->execute(['Evet']);
+        return $query->fetchAll(PDO::FETCH_OBJ);
+    }
+
     /**
      * Belirli bir kullanıcının belirli bir talep türü için mail alıp almadığını kontrol eder
      * @param int $userId Kullanıcı ID'si

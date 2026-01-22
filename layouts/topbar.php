@@ -156,44 +156,81 @@ $firma_option = $FirmaModel->option();
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="dropdown d-inline-block">
-                    <button type="button" class="btn header-item right-bar-toggle me-2">
-                        <i data-feather="settings" class="icon-lg"></i>
-                    </button>
-                </div>
-
-                <div class="dropdown d-inline-block">
-                    <button type="button" class="btn header-item bg-light-subtle border-start border-end"
-                        id="page-header-user-dropdown" data-bs-toggle="dropdown" aria-haspopup="true"
-                        aria-expanded="false">
-                        <img class="rounded-circle header-profile-user user-profile-image"
-                            src="<?php echo Helper::base_url('assets/images/users/avatar-1.jpg'); ?>"
-                            alt="Header Avatar" id="user_image">
-                        <span class="d-none d-xl-inline-block ms-1 fw-medium setting_user_name"
-                            id="setting_user_name"><?php echo $_SESSION["user_full_name"]; ?></span>
-                        <i class="mdi mdi-chevron-down d-none d-xl-inline-block"></i>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-end">
-                        <!-- item-->
-                        <a class="dropdown-item" href="apps-contacts-profile.php"><i
-                                class="mdi mdi-face-profile font-size-16 align-middle me-1"></i> Profil</a>
-                        <a class="dropdown-item" href="auth-lock-screen.php"><i
-                                class="mdi mdi-lock font-size-16 align-middle me-1"></i> Kilitle</a>
-                        <div class="dropdown-divider"></div>
-                        <a class="dropdown-item" href="firma-degistir.php"><i
-                                class="mdi mdi-swap-horizontal font-size-16 align-middle me-1"></i> Firma Değiştir</a>
-                        <a class="dropdown-item" href="logout.php"><i
-                                class="mdi mdi-logout font-size-16 align-middle me-1"></i> Çıkış Yap</a>
+            <div class="dropdown d-inline-block">
+                <button type="button" class="btn header-item noti-icon position-relative"
+                    id="page-header-notifications-dropdown" data-bs-toggle="dropdown" aria-haspopup="true"
+                    aria-expanded="false">
+                    <i data-feather="bell" class="icon-lg"></i>
+                    <span class="badge bg-danger rounded-pill" id="notification-badge" style="display: none;">0</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0"
+                    aria-labelledby="page-header-notifications-dropdown">
+                    <div class="p-3">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <h6 class="m-0"> <?php echo $language['Notifications'] ?> </h6>
+                            </div>
+                            <div class="col-auto">
+                                <a href="javascript:void(0);" id="mark-all-read"
+                                    class="small text-reset text-decoration-underline">
+                                    Tümünü Okundu İşaretle
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div data-simplebar style="max-height: 230px;" id="notification-list">
+                        <!-- Notifications will be loaded here -->
+                    </div>
+                    <div class="p-2 border-top d-grid">
+                        <a class="btn btn-sm btn-link font-size-14 text-center" href="index.php?p=mail-sms/list">
+                            <i class="mdi mdi-arrow-right-circle me-1"></i>
+                            <span>Tümünü Gör</span>
+                        </a>
                     </div>
                 </div>
-
             </div>
+
+            <div class="dropdown d-inline-block">
+                <button type="button" class="btn header-item right-bar-toggle me-2">
+                    <i data-feather="settings" class="icon-lg"></i>
+                </button>
+            </div>
+
+            <div class="dropdown d-inline-block">
+                <button type="button" class="btn header-item bg-light-subtle border-start border-end"
+                    id="page-header-user-dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <img class="rounded-circle header-profile-user user-profile-image"
+                        src="<?php echo Helper::base_url('assets/images/users/avatar-1.jpg'); ?>" alt="Header Avatar"
+                        id="user_image">
+                    <span class="d-none d-xl-inline-block ms-1 fw-medium setting_user_name"
+                        id="setting_user_name"><?php echo $_SESSION["user_full_name"]; ?></span>
+                    <i class="mdi mdi-chevron-down d-none d-xl-inline-block"></i>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end">
+                    <!-- item-->
+                    <a class="dropdown-item" href="apps-contacts-profile.php"><i
+                            class="mdi mdi-face-profile font-size-16 align-middle me-1"></i> Profil</a>
+                    <a class="dropdown-item" href="auth-lock-screen.php"><i
+                            class="mdi mdi-lock font-size-16 align-middle me-1"></i> Kilitle</a>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="firma-degistir.php"><i
+                            class="mdi mdi-swap-horizontal font-size-16 align-middle me-1"></i> Firma Değiştir</a>
+                    <a class="dropdown-item" href="logout.php"><i
+                            class="mdi mdi-logout font-size-16 align-middle me-1"></i> Çıkış Yap</a>
+                </div>
+            </div>
+
         </div>
+    </div>
 </header>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        let lastNotificationId = 0;
+        let isFirstLoad = true;
+
         function fetchNotifications() {
             $.post('views/bildirim/api.php', { action: 'get-unread' }, function (response) {
                 if (response.status === 'success') {
@@ -208,8 +245,28 @@ $firma_option = $FirmaModel->option();
                     if (response.notifications.length === 0) {
                         html = '<div class="text-center p-3 text-muted">Bildirim yok</div>';
                     } else {
+                        let maxId = 0;
                         response.notifications.forEach(function (n) {
-                            // Icon mapping correction if needed
+                            if (n.id > maxId) maxId = n.id;
+
+                            // Show toast for new notifications
+                            if (!isFirstLoad && n.id > lastNotificationId) {
+                                if (typeof Toastify !== 'undefined') {
+                                    Toastify({
+                                        text: `<strong>${n.title}</strong><br>${n.message}`,
+                                        duration: 5000,
+                                        close: true,
+                                        gravity: "top",
+                                        position: "right",
+                                        backgroundColor: n.color === 'danger' ? "#f46a6a" : (n.color === 'warning' ? "#f1b44c" : "#34c38f"),
+                                        escapeMarkup: false,
+                                        onClick: function () {
+                                            window.location.href = n.link;
+                                        }
+                                    }).showToast();
+                                }
+                            }
+
                             let iconClass = n.icon;
                             if (!iconClass.startsWith('bx-') && !iconClass.startsWith('mdi-')) {
                                 iconClass = 'bx-' + iconClass;
@@ -234,8 +291,13 @@ $firma_option = $FirmaModel->option();
                             </a>
                         `;
                         });
+
+                        if (maxId > lastNotificationId) {
+                            lastNotificationId = maxId;
+                        }
                     }
                     $('#notification-list').html(html);
+                    isFirstLoad = false;
                 }
             }, 'json');
         }
@@ -243,8 +305,8 @@ $firma_option = $FirmaModel->option();
         // Initial fetch
         fetchNotifications();
 
-        // Poll every 30 seconds
-        setInterval(fetchNotifications, 30000);
+        // Poll every 10 seconds for instant feel
+        setInterval(fetchNotifications, 10000);
 
         window.markAsRead = function (id) {
             $.post('views/bildirim/api.php', { action: 'mark-read', id: id });
