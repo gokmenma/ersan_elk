@@ -12,13 +12,16 @@ use App\Model\FirmaModel;
 $User = new UserModel();
 $UserRoles = new UserRolesModel();
 
-$user = $User->find(Security::decrypt($_GET['id']) ?? 0);
+$id = $_GET['id'] ?? 0;
+$decrypted_id = Security::decrypt($id);
+
+$user = $User->find($decrypted_id ?: 0);
 $usergroups = $UserRoles->getGroupsOptions();
+
 
 $firma = new FirmaModel();
 $firmalar = $firma->getFirmaList();
-$user_firmler = explode(',', $user->firma_ids ?? '');
-
+$user_firmler = explode(',', $user ? ($user->firma_ids ?? '') : '');
 ?>
 
 <style>
@@ -70,7 +73,8 @@ $user_firmler = explode(',', $user->firma_ids ?? '');
         transition: all 0.3s ease;
         cursor: pointer;
         position: relative;
-        margin-bottom: 0; /* Label olduğu için margin sıfırlama */
+        margin-bottom: 0;
+        /* Label olduğu için margin sıfırlama */
     }
 
     .user-modal .mail-notification-item:hover {
@@ -223,8 +227,8 @@ $user_firmler = explode(',', $user->firma_ids ?? '');
                 <span>Avans Talepleri</span>
             </label>
             <label class="mail-notification-item" for="mail_izin_talep">
-                <input class="form-check-input" type="checkbox" id="mail_izin_talep" name="mail_izin_talep"
-                    value="Evet" <?= ($user->mail_izin_talep ?? 'Hayır') == 'Evet' ? 'checked' : '' ?>>
+                <input class="form-check-input" type="checkbox" id="mail_izin_talep" name="mail_izin_talep" value="Evet"
+                    <?= ($user->mail_izin_talep ?? 'Hayır') == 'Evet' ? 'checked' : '' ?>>
                 <i data-feather="calendar"></i>
                 <span>İzin Talepleri</span>
             </label>

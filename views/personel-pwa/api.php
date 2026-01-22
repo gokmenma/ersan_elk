@@ -8,6 +8,9 @@ header('Content-Type: application/json; charset=utf-8');
 
 session_start();
 
+ini_set('error_log', dirname(dirname(__DIR__)) . '/pwa_api_error.log');
+ini_set('log_errors', 1);
+
 require_once dirname(dirname(__DIR__)) . '/Autoloader.php';
 
 use App\Model\PersonelModel;
@@ -167,16 +170,22 @@ try {
 
             // Bildirim ve Mail Gönderimi
             try {
+                $logFile = dirname(dirname(__DIR__)) . '/debug_bildirim.log';
+                file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Avans talebi süreci başladı. Personel ID: $personel_id\n", FILE_APPEND);
+
                 $UserModel = new App\Model\UserModel();
                 $PersonelModel = new PersonelModel();
                 $talep_eden = $PersonelModel->find($personel_id);
+                file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Talep eden: " . ($talep_eden->adi_soyadi ?? 'Bulunamadı') . "\n", FILE_APPEND);
 
                 // 1. Uygulama İçi Bildirimler (Email bağımsız)
                 $bildirimKullanicilari = $UserModel->getInAppBildirimKullanicilari('avans');
+                file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Bildirim gidecek kullanıcı sayısı: " . count($bildirimKullanicilari) . "\n", FILE_APPEND);
+
                 foreach ($bildirimKullanicilari as $kullanici) {
                     try {
                         $BildirimModel = new BildirimModel();
-                        $BildirimModel->createNotification(
+                        $res = $BildirimModel->createNotification(
                             $kullanici->id,
                             'Yeni Avans Talebi',
                             ($talep_eden->adi_soyadi ?? 'Personel') . ' ' . number_format($tutar, 2, ',', '.') . ' TL avans talep etti.',
@@ -184,8 +193,9 @@ try {
                             'lira-sign',
                             'success'
                         );
+                        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Bildirim oluşturuldu. Kullanıcı: {$kullanici->id}, Sonuç: $res\n", FILE_APPEND);
                     } catch (Exception $e) {
-                        error_log('Bildirim oluşturma hatası: ' . $e->getMessage());
+                        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Bildirim oluşturma hatası: " . $e->getMessage() . "\n", FILE_APPEND);
                     }
                 }
 

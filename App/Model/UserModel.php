@@ -11,6 +11,7 @@ class UserModel extends Model
 {
     protected $table = 'users';
 
+
     public function __construct()
     {
         parent::__construct();
@@ -42,7 +43,7 @@ class UserModel extends Model
     {
         $ownerID = $_SESSION["owner_id"];
 
-        $sql = $this->db->prepare("SELECT * ,ur.role_name   
+        $sql = $this->db->prepare("SELECT u.* ,ur.role_name   
                                    FROM $this->table u
                                    LEFT JOIN user_roles ur ON ur.id = u.roles
                                    WHERE u.owner_id = :owner_id 
