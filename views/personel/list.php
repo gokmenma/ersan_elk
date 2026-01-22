@@ -1,6 +1,7 @@
 <?php
 use App\Model\PersonelModel;
 use App\Helper\Helper;
+use App\Helper\Date;
 
 $Personel = new PersonelModel();
 
@@ -133,11 +134,9 @@ $personeller = $Personel->all();
                                 <th class="text-center">ID</th>
                                 <th>ADI SOYADI</th>
                                 <th>TC KİMLİK NO</th>
-                                <th>CİNSİYET</th>
-                                <th>DOĞUM TARİHİ</th>
+                                <th>İŞE BAŞLAMA TARİHİ</th>
                                 <th>CEP TELEFONU</th>
                                 <th>EMAIL</th>
-                                <th>DEPARTMAN</th>
                                 <th>GÖREV</th>
                                 <th class="text-center">BİLDİRİM</th>
                                 <th>DURUM</th>
@@ -158,17 +157,15 @@ $personeller = $Personel->all();
                                     <td class="text-center"><?= $personel->id ?></td>
                                     <td>
                                         <div class="personel-name-container">
-                                            <?= $personel->adi_soyadi ?>
+                                            <a href="index?p=personel/manage&id=<?= $personel->id ?>"><?= $personel->adi_soyadi ?></a>
                                             <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
                                                 alt="<?= $personel->adi_soyadi ?>" class="personel-hover-image">
                                         </div>
                                     </td>
                                     <td><?= $personel->tc_kimlik_no ?></td>
-                                    <td><?= $personel->cinsiyet ?></td>
-                                    <td><?= $personel->dogum_tarihi ?></td>
+                                    <td><?= Date::dmy($personel->ise_giris_tarihi) ?></td>
                                     <td><i class="feather feather-smartphone"></i><?= $personel->cep_telefonu ?></td>
                                     <td><?= $personel->email_adresi ?></td>
-                                    <td><?= $personel->departman ?></td>
                                     <td><?= $personel->gorev ?></td>
                                     <td class="text-center">
                                         <?php if (isset($personel->bildirim_abonesi) && $personel->bildirim_abonesi): ?>

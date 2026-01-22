@@ -580,23 +580,21 @@ class BordroPersonelModel extends Model
         $textPlaceholders = implode(',', array_fill(0, count($izinTuruAdlariArray), '?'));
 
         $izinSql = $this->db->prepare("
-            SELECT pi.id, pi.izin_tipi, pi.baslangic_tarihi, pi.bitis_tarihi
+            SELECT pi.id, pi.izin_tipi_id, pi.baslangic_tarihi, pi.bitis_tarihi
             FROM personel_izinleri pi
             WHERE pi.personel_id = ?
             AND pi.onay_durumu = 'Onaylandı'
             AND (
-                pi.izin_tipi IN ($idPlaceholders) 
-                OR pi.izin_tipi IN ($textPlaceholders)
+                pi.izin_tipi_id IN ($idPlaceholders) 
             )
             AND pi.baslangic_tarihi <= ?
             AND pi.bitis_tarihi >= ?
         ");
 
-        // Parametreleri birleştir: personel_id + ID'ler + metin adlar + tarihler
+        // Parametreleri birleştir: personel_id + ID'ler + tarihler
         $params = array_merge(
             [$personel_id],
             $izinTuruIds,
-            $izinTuruAdlariArray,
             [$donem_bitis, $donem_baslangic]
         );
         $izinSql->execute($params);
@@ -623,17 +621,10 @@ class BordroPersonelModel extends Model
                 $gunSayisi = $kesisimBaslangic->diff($kesisimBitis)->days + 1;
                 $toplamIzinGunu += $gunSayisi;
 
-                // İzin türü adını belirle (ID veya metin olabilir)
+                // İzin türü adını belirle
                 $izinTuruAdi = 'Ücretsiz İzin';
-                if (is_numeric($izin->izin_tipi) && isset($izinTuruAdlari[$izin->izin_tipi])) {
-                    // ID bazlı
-                    $izinTuruAdi = $izinTuruAdlari[$izin->izin_tipi];
-                } elseif (isset($izinTuruAdlariReverse[strtolower($izin->izin_tipi)])) {
-                    // Metin bazlı
-                    $izinTuruAdi = $izinTuruAdlariReverse[strtolower($izin->izin_tipi)];
-                } else {
-                    // Eşleşme bulunamadı, olduğu gibi kullan
-                    $izinTuruAdi = $izin->izin_tipi;
+                if (isset($izinTuruAdlari[$izin->izin_tipi_id])) {
+                    $izinTuruAdi = $izinTuruAdlari[$izin->izin_tipi_id];
                 }
 
                 $izinDetaylari[] = [

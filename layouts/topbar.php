@@ -170,7 +170,7 @@ $firma_option = $FirmaModel->option();
                     <div class="p-3">
                         <div class="row align-items-center">
                             <div class="col">
-                                <h6 class="m-0"> <?php echo $language['Notifications'] ?> </h6>
+                                <h6 class="m-0"> Bildirimler</h6>
                             </div>
                             <div class="col-auto">
                                 <a href="javascript:void(0);" id="mark-all-read"

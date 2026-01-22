@@ -164,7 +164,7 @@ document.addEventListener("DOMContentLoaded", function () {
         "</td></tr>";
       html +=
         '<tr><td class="text-muted bg-light">İzin Türü</td><td><span class="badge bg-primary">' +
-        ucfirst(data.izin_tipi) +
+        (data.izin_tipi_adi || data.izin_tipi || "-") +
         "</span></td></tr>";
       html +=
         '<tr><td class="text-muted bg-light">Tarih Aralığı</td><td>' +

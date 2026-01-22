@@ -8,12 +8,20 @@ use App\Helper\Helper;
 $BordroDonem = new BordroDonemModel();
 $BordroPersonel = new BordroPersonelModel();
 
+
 // Seçili yıl ve dönem
 $selectedYil = $_GET['yil'] ?? date('Y');
-$selectedDonemId = $_GET['donem'] ?? null;
+$selectedDonemId = $_GET['donem'] ?? $_SESSION['selectedDonemId'] ?? null;
+
+/**Eğer bir kere dönem seçilmişse onu session'a ata */
+if($selectedDonemId){
+    $_SESSION['selectedDonemId'] = $selectedDonemId;
+}
 
 // İlgili yıldaki Tüm dönemleri getir
 $donemler = $BordroDonem->getAllDonems($selectedYil);
+
+
 
 // Yılları çıkar
 $yil_option = $BordroDonem->getYearsByDonem();
@@ -247,7 +255,8 @@ $ek_odeme_turleri = [
                                                         <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
                                                             alt="" class="rounded-circle avatar-sm me-2">
                                                         <span
-                                                            class="fw-medium"><?= htmlspecialchars($personel->adi_soyadi) ?></span>
+                                                            class="fw-medium">
+                                                            <a href="index?p=personel/manage&id=<?= $personel->personel_id ?>"><?= htmlspecialchars($personel->adi_soyadi) ?></a></span>
                                                     </div>
                                                 </td>
                                             

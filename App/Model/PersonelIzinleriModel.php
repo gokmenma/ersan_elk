@@ -30,10 +30,12 @@ class PersonelIzinleriModel extends Model
                     io.onay_durumu as onay_durumu_text,
                     io.onay_tarihi,
                     io.aciklama as onay_aciklama,
-                    u.adi_soyadi as onaylayan_adi_soyadi
+                    u.adi_soyadi as onaylayan_adi_soyadi,
+                    t.tur_adi as izin_tipi_adi
                 FROM $this->table as pi
                 LEFT JOIN izin_onaylari as io ON io.izin_id = pi.id
                 LEFT JOIN users as u ON u.id = io.onaylayan_id
+                LEFT JOIN tanimlamalar as t ON t.id = pi.izin_tipi_id
                 WHERE pi.personel_id = ?
                 ORDER BY pi.id DESC, io.id ASC";
 
@@ -85,9 +87,10 @@ class PersonelIzinleriModel extends Model
     {
         $limit = (int) $limit;
         $sql = $this->db->prepare("
-            SELECT 'İzin' as tip, pi.id, pi.personel_id, pi.talep_tarihi as tarih, pi.onay_durumu as durum, pi.izin_tipi as detay 
+            SELECT 'İzin' as tip, pi.id, pi.personel_id, pi.talep_tarihi as tarih, pi.onay_durumu as durum, t.tur_adi as detay 
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
+            LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.onay_durumu = 'beklemede' AND p.firma_id = ? 
             LIMIT {$limit}
         ");
@@ -103,9 +106,10 @@ class PersonelIzinleriModel extends Model
         $limit = (int) $limit;
         $today = date('Y-m-d');
         $sql = $this->db->prepare("
-            SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman 
+            SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman, t.tur_adi as izin_tipi_adi
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
+            LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ? AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = ?
             ORDER BY pi.bitis_tarihi ASC
             LIMIT {$limit}
@@ -120,9 +124,10 @@ class PersonelIzinleriModel extends Model
     public function getButunBekleyenIzinler()
     {
         $sql = $this->db->prepare("
-            SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev
+            SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
+            LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.onay_durumu = 'beklemede' AND p.firma_id = ?
             ORDER BY pi.talep_tarihi DESC
         ");
@@ -137,9 +142,10 @@ class PersonelIzinleriModel extends Model
     {
         $limit = (int) $limit;
         $sql = $this->db->prepare("
-            SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev
+            SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
+            LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.onay_durumu = 'Onaylandı' AND p.firma_id = ?
             ORDER BY pi.talep_tarihi DESC
             LIMIT {$limit}
@@ -186,9 +192,10 @@ class PersonelIzinleriModel extends Model
     public function getIzinDetay($id)
     {
         $sql = $this->db->prepare("
-            SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev
+            SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
+            LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.id = ?
         ");
         $sql->execute([$id]);

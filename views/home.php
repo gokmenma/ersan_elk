@@ -53,9 +53,7 @@ $avanslar = $stmt->fetchAll(PDO::FETCH_OBJ);
 
 // İzinler
 try {
-    $stmt = $db->prepare("SELECT 'İzin' as tip, id, personel_id, talep_tarihi as tarih, onay_durumu as durum, izin_tipi as detay FROM personel_izinleri WHERE onay_durumu = 'beklemede' LIMIT 5");
-    $stmt->execute();
-    $izinler = $stmt->fetchAll(PDO::FETCH_OBJ);
+    $izinler = $izinModel->getBekleyenIzinlerForDashboard(5);
 } catch (\Exception $e) {
     $izinler = [];
 }
@@ -92,17 +90,11 @@ if (!empty($recent_requests)) {
 }
 
 // Şu anda izinde olanlar
-$today = date('Y-m-d');
-$stmt = $db->prepare("
-    SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman 
-    FROM personel_izinleri pi 
-    JOIN personel p ON pi.personel_id = p.id 
-    WHERE pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ? AND pi.onay_durumu = 'Onaylandı'
-    ORDER BY pi.bitis_tarihi ASC
-    LIMIT 10
-");
-$stmt->execute([$today, $today]);
-$active_leaves = $stmt->fetchAll(PDO::FETCH_OBJ);
+try {
+    $active_leaves = $izinModel->getAktifIzinler(10);
+} catch (\Exception $e) {
+    $active_leaves = [];
+}
 
 // Chart değişkenleri
 if (!isset($months))
@@ -254,7 +246,7 @@ if (!isset($toplam_bakiye))
                                                 if ($req->tip == 'Avans')
                                                     echo number_format($req->detay, 2) . ' ₺';
                                                 elseif ($req->tip == 'İzin')
-                                                    echo ucfirst($req->detay);
+                                                    echo htmlspecialchars($req->detay);
                                                 else
                                                     echo $req->detay;
                                                 ?>
@@ -343,7 +335,7 @@ if (!isset($toplam_bakiye))
                                                             </td>
                                                             <td>
                                                                 <span class="badge <?php echo $badgeClass; ?> font-size-12">
-                                                                    <?php echo ucfirst($leave->izin_tipi); ?>
+                                                                    <?php echo htmlspecialchars($leave->izin_tipi_adi ?? $leave->izin_tipi ?? 'İzin'); ?>
                                                                 </span>
                                                             </td>
                                                             <td><?php echo date('d.m.Y', strtotime($leave->bitis_tarihi)); ?></td>

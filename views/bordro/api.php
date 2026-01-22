@@ -279,8 +279,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="col-md-6">';
                 $html .= '<h6 class="border-bottom pb-2 mb-3"><i class="bx bx-money me-1"></i>Maaş Özeti</h6>';
                 $html .= '<table class="table table-sm">';
-                $html .= '<tr><td class="text-muted">Brüt Maaş:</td><td class="fw-bold text-primary">' . ($bp->brut_maas ? number_format($bp->brut_maas, 2, ',', '.') . ' ₺' : '-') . '</td></tr>';
-                $html .= '<tr><td class="text-muted">Günlük Ücret:</td><td class="text-secondary">' . number_format($gunlukUcret, 2, ',', '.') . ' ₺ <small class="text-muted">(Brüt / 30)</small></td></tr>';
+                $html .= '<tr><td class="text-muted">' . $personel->maas_durumu . ' Maaş:</td><td class="fw-bold text-primary">' . ($bp->brut_maas ? number_format($bp->brut_maas, 2, ',', '.') . ' ₺' : '-') . '</td></tr>';
+                $html .= '<tr><td class="text-muted">Günlük Ücret:</td><td class="text-secondary">' . number_format($gunlukUcret, 2, ',', '.') . ' ₺ <small class="text-muted">(' . $personel->maas_durumu . ' / 30)</small></td></tr>';
                 $html .= '<tr><td class="text-muted">Çalışma Günü:</td><td class="' . ($ucretsizIzinGunu > 0 ? 'text-warning' : 'text-secondary') . '">' . $calismaGunu . ' gün' . ($ucretsizIzinGunu > 0 ? ' <small class="text-muted">(-' . $ucretsizIzinGunu . ' izin)</small>' : '') . '</td></tr>';
 
                 // Ücretsiz izin varsa, çalışılan brüt maaşı da göster

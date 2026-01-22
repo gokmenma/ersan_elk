@@ -168,6 +168,7 @@ try {
                 'durum' => 'beklemede',
                 'talep_tarihi' => date('Y-m-d H:i:s')
             ]);
+            $newId = $AvansModel->getDb()->lastInsertId();
 
             // Bildirim ve Mail Gönderimi
             try {
@@ -190,7 +191,7 @@ try {
                             $kullanici->id,
                             'Yeni Avans Talebi',
                             ($talep_eden->adi_soyadi ?? 'Personel') . ' ' . number_format($tutar, 2, ',', '.') . ' TL avans talep etti.',
-                            'index.php?page=bordro',
+                            'index.php?p=talepler/list&tab=avans&id=' . $newId,
                             'lira-sign',
                             'success'
                         );
@@ -296,24 +297,7 @@ try {
             $IzinModel = new PersonelIzinleriModel();
             $izinler = $IzinModel->getPersonelIzinleri($personel_id);
 
-            // Eski tip izinler için hardcoded liste
-            $izin_tipleri = [
-                'yillik' => 'Yıllık İzin',
-                'mazeret' => 'Mazeret İzni',
-                'hastalik' => 'Hastalık İzni',
-                'dogum' => 'Doğum / Babalık İzni',
-                'ucretsiz' => 'Ücretsiz İzin'
-            ];
-
-            // Yeni tip izinler için DB'den çek
-            $TanimlamalarModel = new App\Model\TanimlamalarModel();
-            $dbIzinTurleri = $TanimlamalarModel->getDb()->query("SELECT * FROM tanimlamalar WHERE grup = 'izin_turu'")->fetchAll(PDO::FETCH_OBJ);
-            $dbIzinMap = [];
-            foreach ($dbIzinTurleri as $tur) {
-                $dbIzinMap[$tur->id] = $tur;
-            }
-
-            $data = array_map(function ($item) use ($izin_tipleri, $dbIzinMap) {
+            $data = array_map(function ($item) {
                 // Onay durumu kontrolü
                 $main_durum = mb_strtolower($item->onay_durumu ?? '', 'UTF-8');
                 $cancel_target = mb_strtolower('İptal Edildi', 'UTF-8');
@@ -340,55 +324,9 @@ try {
                     $durum_text = 'İptal Edildi';
                 }
 
-                $izin_tipi = $item->izin_tipi ?? '';
-                $izin_tipi_text = '';
+                $izin_tipi_text = $item->izin_tipi_adi ?? 'İzin Türü Belirtilmemiş';
                 $renk = 'bg-primary/10 text-primary';
                 $ikon = 'event';
-
-                if (is_numeric($izin_tipi)) {
-                    // DB'den gelen yeni tip izin (ID)
-                    if (isset($dbIzinMap[$izin_tipi])) {
-                        $tur = $dbIzinMap[$izin_tipi];
-                        $izin_tipi_text = $tur->tur_adi;
-                        $renk = $tur->renk ?? $renk;
-                        $ikon = $tur->ikon ?? $ikon;
-                    } else {
-                        // ID var ama tanım bulunamadı (silinmiş olabilir)
-                        // Eski tiplerde numeric ID yoktu, o yüzden bu bir ID'dir.
-                        $izin_tipi_text = "İzin Türü #$izin_tipi";
-                    }
-                } else {
-                    // Eski tip izin (String key)
-                    $izin_tipi_text = $izin_tipleri[$izin_tipi] ?? $izin_tipi;
-
-                    // Eski tipler için renk/ikon mapping
-                    switch ($izin_tipi) {
-                        case 'yillik':
-                            $renk = 'bg-blue-100 dark:bg-blue-900/30 text-blue-600';
-                            $ikon = 'beach_access';
-                            break;
-                        case 'mazeret':
-                            $renk = 'bg-amber-100 dark:bg-amber-900/30 text-amber-600';
-                            $ikon = 'event_note';
-                            break;
-                        case 'hastalik':
-                            $renk = 'bg-red-100 dark:bg-red-900/30 text-red-600';
-                            $ikon = 'medical_services';
-                            break;
-                        case 'dogum':
-                            $renk = 'bg-pink-100 dark:bg-pink-900/30 text-pink-600';
-                            $ikon = 'child_friendly';
-                            break;
-                        case 'ucretsiz':
-                            $renk = 'bg-gray-100 dark:bg-gray-900/30 text-gray-600';
-                            $ikon = 'money_off';
-                            break;
-                    }
-                }
-
-                if (empty($izin_tipi_text) || $izin_tipi_text == '0') {
-                    $izin_tipi_text = 'İzin Türü Belirtilmemiş';
-                }
 
                 // Red nedenini bul
                 $red_nedeni = null;
@@ -401,7 +339,7 @@ try {
 
                 return [
                     'id' => $item->id,
-                    'izin_tipi' => $izin_tipi,
+                    'izin_tipi' => $item->izin_tipi_id,
                     'izin_tipi_text' => $izin_tipi_text,
                     'baslangic' => date('d.m.Y', strtotime($item->baslangic_tarihi)),
                     'bitis' => date('d.m.Y', strtotime($item->bitis_tarihi)),
@@ -440,13 +378,14 @@ try {
             $IzinModel = new PersonelIzinleriModel();
             $IzinModel->saveWithAttr([
                 'personel_id' => $personel_id,
-                'izin_tipi' => $izin_tipi,
+                'izin_tipi_id' => $izin_tipi,
                 'baslangic_tarihi' => $baslangic,
                 'bitis_tarihi' => $bitis,
                 'toplam_gun' => $toplam_gun,
                 'aciklama' => $aciklama,
                 'olusturma_tarihi' => date('Y-m-d H:i:s')
             ]);
+            $newId = $IzinModel->getDb()->lastInsertId();
 
             // İzin onayı yapacak personeli getir ve mail gönder
             // İzin onayı yapacak personeli getir ve bildirim/mail gönder
@@ -499,7 +438,7 @@ try {
                             $kullanici->id,
                             'Yeni İzin Talebi',
                             ($talep_eden->adi_soyadi ?? 'Personel') . ' ' . $izin_tipi_text . ' talep etti.',
-                            'index.php?page=izin',
+                            'index.php?p=talepler/list&tab=izin&id=' . $newId,
                             'calendar',
                             'warning'
                         );
@@ -723,7 +662,7 @@ try {
                             $kullanici->id,
                             "Yeni {$baslik}",
                             ($talep_eden->adi_soyadi ?? 'Personel') . " yeni bir talep oluşturdu: {$baslik}",
-                            'index.php?page=talep',
+                            'index.php?p=talepler/list&tab=talep&id=' . $newId,
                             'message-square',
                             'info'
                         );

@@ -81,7 +81,7 @@ $row++;
 
 // İçerik Satırları
 $infoRows = [
-    ['Ad Soyad:', $personel->adi_soyadi ?? '-', 'Brüt Maaş:', number_format($bordro->brut_maas ?? 0, 2, ',', '.') . ' ₺'],
+    ['Ad Soyad:', $personel->adi_soyadi ?? '-', $personel->maas_durumu . ' Maaş:', number_format($bordro->brut_maas ?? 0, 2, ',', '.') . ' ₺'],
     ['TC Kimlik:', $personel->tc_kimlik_no ?? '-', 'Toplam Ek Ödeme:', '+' . number_format($guncelEkOdeme, 2, ',', '.') . ' ₺'],
     ['Departman:', $personel->departman ?? '-', 'Toplam Kesinti:', '-' . number_format($guncelKesinti + floatval($bordro->sgk_isci) + floatval($bordro->issizlik_isci) + floatval($bordro->gelir_vergisi) + floatval($bordro->damga_vergisi), 2, ',', '.') . ' ₺'],
     ['Görev:', $personel->gorev ?? '-', 'Net Maaş:', number_format($bordro->net_maas ?? 0, 2, ',', '.') . ' ₺'],

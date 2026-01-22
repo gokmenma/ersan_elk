@@ -47,8 +47,6 @@ class PermissionsModel extends Model
             'Mail & Sms Yönetimi'    => 'send',
             'Rehber Yönetimi'        => 'book',
             'Ayarlar'                => 'settings',
-            'Slider Yönetimi'        => 'chevrons-right',
-            'Site Yönetimi'          => 'layout',
             'default'                =>  'layout'
         ];
 
@@ -88,10 +86,13 @@ class PermissionsModel extends Model
      */
     private function fetchAllPermissionsFromDb(): array
     {
-        $sql = "SELECT id, name, description, group_name, permission_level, is_required 
+        $sql = "SELECT id, name, description, group_name, permission_level, is_required
                 FROM {$this->table} 
+                WHERE is_active = ?
                 ORDER BY group_name, id";
-        $stmt = $this->db->query($sql);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([1]);
+
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
     

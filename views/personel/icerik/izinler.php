@@ -4,12 +4,12 @@ use App\Helper\Form;
 use App\Helper\Helper;
 
 
-$izin_turleri = [
-    'Yıllık İzin' => 'Yıllık İzin',
-    'Mazeret İzni' => 'Mazeret İzni',
-    'Ücretsiz İzin' => 'Ücretsiz İzin',
-    'Rapor' => 'Rapor'
-];
+$db = (new \App\Core\Db())->getConnection();
+$izin_turleri_query = $db->query("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'izin_turu' AND silinme_tarihi IS NULL ORDER BY tur_adi ASC");
+$izin_turleri = [];
+while ($row = $izin_turleri_query->fetch(PDO::FETCH_OBJ)) {
+    $izin_turleri[$row->id] = $row->tur_adi;
+}
 
 $izin_durumlari = [
     'Gerceklesti' => 'Gerçekleşti',
@@ -37,11 +37,13 @@ $onay_durumlari = [
         <div class="card border">
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0 text-primary"><i class="bx bx-calendar-event me-2"></i>İzin Bilgileri</h5>
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalIzinEkle"><i class="bx bx-plus"></i> Yeni İzin Ekle</button>
+                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                    data-bs-target="#modalIzinEkle"><i class="bx bx-plus"></i> Yeni İzin Ekle</button>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-selected datatable table-responsive dt-responsive table-bordered nowrap w-100">
+                    <table
+                        class="table table-selected datatable table-responsive dt-responsive table-bordered nowrap w-100">
                         <thead class="table-light">
                             <tr>
                                 <th>İzin Türü</th>
@@ -57,7 +59,7 @@ $onay_durumlari = [
                             <?php if (isset($izinler) && count($izinler) > 0): ?>
                                 <?php foreach ($izinler as $izin): ?>
                                     <tr>
-                                        <td><?= htmlspecialchars($izin->izin_tipi ?? '') ?></td>
+                                        <td><?= htmlspecialchars($izin->izin_tipi_adi ?? $izin->izin_tipi ?? '') ?></td>
                                         <td><?= date('d.m.Y', strtotime($izin->baslangic_tarihi ?? 'now')) ?></td>
                                         <td><?= date('d.m.Y', strtotime($izin->bitis_tarihi ?? 'now')) ?></td>
                                         <td><?= htmlspecialchars($izin->sure ?? '-') ?></td>
@@ -90,7 +92,10 @@ $onay_durumlari = [
                                         </td>
                                         <td>
                                             <?php if (($izin->son_durum ?? 'Beklemede') == 'Beklemede'): ?>
-                                                <a href="javascript:void()" class="btn btn-sm btn-outline-danger btn-izin-sil" data-id="<?= $izin->id ?>" data-durum="<?= htmlspecialchars($izin->son_durum ?? 'Beklemede') ?>"><i class="bx bx-trash"></i></a>
+                                                <a href="javascript:void()" class="btn btn-sm btn-outline-danger btn-izin-sil"
+                                                    data-id="<?= $izin->id ?>"
+                                                    data-durum="<?= htmlspecialchars($izin->son_durum ?? 'Beklemede') ?>"><i
+                                                        class="bx bx-trash"></i></a>
                                             <?php else: ?>
                                             <?php endif; ?>
                                         </td>
@@ -121,9 +126,9 @@ $onay_durumlari = [
                 <?php if (isset($toplam_hakedis)): ?>
                     <?php
                     $formatGun = function ($n) {
-                        $n = (float)$n;
+                        $n = (float) $n;
                         if (abs($n - round($n)) < 0.00001) {
-                            return (string)(int)round($n);
+                            return (string) (int) round($n);
                         }
                         return number_format($n, 1, ',', '.');
                     };
@@ -132,15 +137,18 @@ $onay_durumlari = [
                         <div class="row text-center">
                             <div class="col-4 border-end">
                                 <strong class="d-block small text-muted text-uppercase">Toplam Hakediş</strong>
-                                <span class="fs-5 fw-bold text-primary"><?= htmlspecialchars($formatGun($toplam_hakedis)) ?> Gün</span>
+                                <span class="fs-5 fw-bold text-primary"><?= htmlspecialchars($formatGun($toplam_hakedis)) ?>
+                                    Gün</span>
                             </div>
                             <div class="col-4 border-end">
                                 <strong class="d-block small text-muted text-uppercase">Kullanılan</strong>
-                                <span class="fs-5 fw-bold text-danger"><?= htmlspecialchars($formatGun($kullanilan_izin)) ?> Gün</span>
+                                <span class="fs-5 fw-bold text-danger"><?= htmlspecialchars($formatGun($kullanilan_izin)) ?>
+                                    Gün</span>
                             </div>
                             <div class="col-4">
                                 <strong class="d-block small text-muted text-uppercase">Kalan</strong>
-                                <span class="fs-5 fw-bold text-success"><?= htmlspecialchars($formatGun($kalan_izin)) ?> Gün</span>
+                                <span class="fs-5 fw-bold text-success"><?= htmlspecialchars($formatGun($kalan_izin)) ?>
+                                    Gün</span>
                             </div>
                         </div>
                     </div>
@@ -199,7 +207,9 @@ $onay_durumlari = [
                             <div class="input-group" style="height: 58px;">
                                 <span class="input-group-text"><i class="bx bx-search"></i></span>
                                 <div class="form-floating form-floating-custom flex-grow-1">
-                                    <input type="text" class="form-control" id="onaylayan_ara" placeholder="Onaylayan Personel Ara" style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
+                                    <input type="text" class="form-control" id="onaylayan_ara"
+                                        placeholder="Onaylayan Personel Ara"
+                                        style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
                                     <label for="onaylayan_ara">Onaylayan Personel Ara</label>
                                 </div>
                                 <input type="hidden" id="onaylayan_id" name="onaylayan_id">
@@ -221,8 +231,10 @@ $onay_durumlari = [
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bx bx-x"></i> Vazgeç</button>
-                <button type="button" class="btn btn-primary" id="btnIzinKaydet"><i class="bx bx-save"></i> Kaydet</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bx bx-x"></i>
+                    Vazgeç</button>
+                <button type="button" class="btn btn-primary" id="btnIzinKaydet"><i class="bx bx-save"></i>
+                    Kaydet</button>
             </div>
         </div>
     </div>
