@@ -129,4 +129,41 @@ class PermissionsModel extends Model
         $result = $sql->fetchColumn();
         return $result !== false ? (int)$result : null;
     }
+
+    
+
+    /**
+     * Bir kullanıcının ID'sine göre, rolü üzerinden sahip olduğu tüm izinlerin adlarını
+     * içeren düz bir dizi döndürür.
+     * 
+     * @param int $userId
+     * @return array Örnek: ['kullanici_listele', 'kullanici_ekle', 'rapor_goruntule']
+     */
+    public function getPermissionsForUser(int $userId): array
+    {
+        // 1. Kullanıcının rol ID'sini al.
+        // Eğer getUserRoleID metodu zaten varsa, onu kullanın.
+        // Yoksa aşağıdaki gibi bir sorgu yazılabilir.
+        $stmt = $this->db->prepare("SELECT roles FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $roleId = $stmt->fetchColumn();
+
+        if (empty($roleId)) {
+            return []; // Rolü olmayan kullanıcının izni yoktur.
+        }
+
+        // 2. Rol ID'sine göre tüm izin adlarını çek.
+        // Gerekli tablolar: user_role_permissions (ara tablo), permissions (izinlerin adları)
+        $sql = "SELECT p.auth_name
+            FROM user_role_permissions urp
+            JOIN permissions p ON urp.permission_id = p.id
+            WHERE urp.role_id = ?";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$roleId]);
+
+        // fetchAll(PDO::FETCH_COLUMN) sadece 'permission_name' sütununu içeren
+        // ['izin1', 'izin2', ...] şeklinde düz bir dizi döndürür.
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
 }

@@ -1,9 +1,11 @@
 <?php
 
-namespace App\Services;
+namespace App\Service;
 
+use App\Helper\Helper;
 use App\Controllers\AuthController;
-use Model\PermissionsModel;
+use App\Model\PermissionsModel;
+use Exception;
 
 class Gate
 {
@@ -41,6 +43,8 @@ class Gate
      */
     public static function allows(string $permissionName): bool
     {
+
+
         $user = AuthController::user();
         if (!$user) {
             return false;
@@ -52,15 +56,12 @@ class Gate
             return true;
         }
 
-        // Kullanıcının izinlerini alalım.
+        // /@/ Kullanıcının izinlerini alalım.
         $permissionModel = new PermissionsModel();
         // Bu metodu bir sonraki adımda güncelleyeceğiz.
         $userPermissions = $permissionModel->getPermissionsForUser($user->id);
-
         return in_array($permissionName, $userPermissions) ? true : false;
     }
-
-
 
     /**
      * Belirtilen izni kontrol eder. Eğer kullanıcının izni yoksa,
@@ -69,10 +70,10 @@ class Gate
      * olarak kullanılmak üzere tasarlanmıştır.
      * 
      * @param string $permissionName Gerekli olan iznin adı (örn: 'kullanici_ekle').
-     * @param string|null $customMessage (İsteğe bağlı) Varsayılan mesaj yerine gösterilecek özel HTML mesajı.
+     * param string|null $customMessage (İsteğe bağlı) Varsayılan mesaj yerine gösterilecek özel HTML mesajı.
      * @return void Metot, izin varsa hiçbir şey yapmaz, yoksa betiği sonlandırır.
      */
-    public static function authorizeOrDie(string $permissionName, ?string $customMessage = null, bool $redirectUrl = true): void
+    public static function authorizeOrDie(string $permissionName, ?string $customMessage = null, bool $redirectUrl = false): void
     {
         // Temel yetki kontrolünü `allows()` metodu ile yapıyoruz.
         // Bu, kod tekrarını önler.
@@ -85,22 +86,19 @@ class Gate
 
         // Loglama yapmak iyi bir pratiktir.
         $user = AuthController::user();
-        \getLogger()->warning("Yetkisiz erişim denemesi engellendi.", [
-            'user_id' => $user->id ?? 'Bilinmiyor',
-            'email' => $user->email ?? 'Giriş yapılmamış',
-            'ip' => $_SERVER['REMOTE_ADDR'],
-            'required_permission' => $permissionName,
-            'url' => $_SERVER['REQUEST_URI']
-        ]);
+
 
         // Gösterilecek mesajı belirle.
         if ($customMessage == null) {
             $customMessage = "Bu işlemi gerçekleştirmek veya bu sayfayı görüntülemek için gerekli yetkiye sahip değilsiniz.";
-        };
+        }
+        ;
 
         if ($redirectUrl) {
             // Belirtilen URL'ye yönlendir
-            header("Location: /unauthorize");
+
+            echo "<script> window.location.href = '/unauthorize.php'; </script>";
+            exit;
         } else {
 
 
@@ -125,40 +123,55 @@ class Gate
             // Genellikle bir sayfanın altındaki footer veya diğer bileşenlerin
             // yüklenmesini önlemek için bu gereklidir.
             exit;
-        };
-    }
-
-
-
-/**
- * API'ler için yetki kontrolü yapar, yetkisi yoksa JSON döndürüp exit yapar
- * @param string $permissionName
- */
-public static function can(string $permissionName): void
-{
-    if (!self::allows($permissionName)) {
-        $res = [
-            "status" => "error",
-            "message" => "Bu işlemi yapmaya yetkiniz yok.",
-            "data" => []
-        ];
-        echo json_encode($res, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-}
-
-   /** Site sakini mi değil mi ?
-     * 
-     * @return boolean
-     */
-    public static function isResident()
-    {
-        if($_SESSION["user"]->roles == 3){
-            return true;
         }
-        return false;
+        ;
     }
 
 
 
+    /**
+     * API'ler için yetki kontrolü yapar, yetkisi yoksa JSON döndürüp exit yapar
+     * @param string $permissionName
+     */
+    public static function can(string $permissionName): void
+    {
+        if (!self::allows($permissionName)) {
+            $res = [
+                "status" => "error",
+                "message" => "Bu işlemi yapmaya yetkiniz yok.",
+                "data" => []
+            ];
+            echo json_encode($res, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
+
+
+    /**
+     * Yetki yoksa alert mesaj basar
+     */
+    public static function canWithMessage(string $permissionName): bool
+    {
+        try {
+            self::allows($permissionName);
+            return true;
+
+        } catch (Exception $e) {
+
+            echo "
+                <div class='alert alert-danger alert-dismissible alert-label-icon label-arrow fade show p-4 px-5' role='alert'>
+                    <i class='mdi mdi-block-helper label-icon'></i>
+                    <strong class='ms-3'>Uyarı!</strong> - {$e->getMessage()}
+                    <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button>
+                </div>
+                ";
+
+            return false;
+        }
+    }
+
+
+
+
 }
+

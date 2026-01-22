@@ -2,12 +2,12 @@
 use App\Model\PersonelModel;
 use App\Helper\Helper;
 use App\Helper\Date;
+use App\Service\Gate;
 
 $Personel = new PersonelModel();
-
-
+if(Gate::canWithMessage("personel_listesi")){
+    
 $personeller = $Personel->all();
-
 ?>
 <div class="container-fluid">
 
@@ -409,3 +409,5 @@ $personeller = $Personel->all();
         </div>
     </div>
 </div>
+
+<?php } ?>

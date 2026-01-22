@@ -19,6 +19,7 @@ use App\InterFaces\LoggerInterface;
 use App\Service\FileLogger;
 use App\Service\DataBaseLogger;
 use App\Core\Db;
+use App\Exceptions\AuthorizationException;
 
 
 
@@ -39,6 +40,7 @@ function getDbConnection(): PDO
     // Singleton Db sınıfından PDO bağlantısını al
     return $db->getConnection();
 }
+
 
 
 // --- LOGLAMA SERVİSİNİN KURULUMU ---
