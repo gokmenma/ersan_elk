@@ -1078,7 +1078,7 @@ try {
             break;
 
         case 'markNotificationRead':
-            $mesaj_log_id = $data['notification_id'] ?? null;
+            $mesaj_log_id = $_POST['notification_id'] ?? null;
 
             if (!$mesaj_log_id) {
                 response(false, null, 'Bildirim ID gerekli');
@@ -1142,7 +1142,7 @@ try {
             break;
 
         case 'deleteNotification':
-            $mesaj_log_id = $data['notification_id'] ?? null;
+            $mesaj_log_id = $_POST['notification_id'] ?? null;
 
             if (!$mesaj_log_id) {
                 response(false, null, 'Bildirim ID gerekli');
