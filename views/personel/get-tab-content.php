@@ -12,6 +12,8 @@ use App\Model\PersonelEkOdemelerModel;
 use App\Model\PersonelIcralariModel;
 use App\Model\BordroDonemModel;
 use App\Model\UserModel;
+use App\Model\AvansModel;
+use App\Model\BordroPersonelModel;
 use App\Helper\Security;
 
 $id = $_GET['id'] ?? 0;
@@ -135,6 +137,28 @@ switch ($tab) {
         include_once __DIR__ . "/icerik/zimmetler.php";
         break;
     case 'finansal_islemler':
+        $AvansModel = new AvansModel();
+        $avanslar = $AvansModel->getPersonelAvanslari($id);
+
+        $BordroPersonelModel = new BordroPersonelModel();
+        $bordrolar = $BordroPersonelModel->getPersonelBordrolari($id);
+
+        $PersonelEkOdemelerModel = new \App\Model\PersonelEkOdemelerModel();
+        $ek_odemeler = $PersonelEkOdemelerModel->getPersonelEkOdemeler($id);
+
+        $PersonelKesintileriModel = new \App\Model\PersonelKesintileriModel();
+        $kesintiler = $PersonelKesintileriModel->getPersonelKesintileri($id);
+
+        // Dönemleri de getir (modal için)
+        $BordroDonemModel = new \App\Model\BordroDonemModel();
+        $donemler_raw = $BordroDonemModel->getAllDonems(date('Y'));
+        $acik_donemler = [];
+        foreach ($donemler_raw as $d) {
+            if (isset($d->kapali_mi) && $d->kapali_mi == 0) {
+                $acik_donemler[$d->id] = $d->donem_adi;
+            }
+        }
+
         include_once __DIR__ . "/icerik/finansal_islemler.php";
         break;
     case 'evraklar':

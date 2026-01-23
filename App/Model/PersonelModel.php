@@ -71,4 +71,6 @@ class PersonelModel extends Model
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
 
+   
+
 }

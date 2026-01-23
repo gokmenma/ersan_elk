@@ -3,6 +3,13 @@ use App\Helper\Form;
 use App\Helper\Helper;
 use App\Helper\Date;
 
+/** Ekip Bölge */
+$ekip_bolgeleri_raw = $TanimlamalarModel->getEkipBolgeleri();
+$ekip_bolge_options = ['' => 'Seçiniz'];
+foreach ($ekip_bolgeleri_raw as $bolge) {
+    $ekip_bolge_options[$bolge] = $bolge;
+}
+
 ?>
 
 <div class="row">
@@ -21,7 +28,7 @@ use App\Helper\Date;
                         <?php echo Form::FormFloatInput("text", "isten_cikis_tarihi", Date::dmY($personel->isten_cikis_tarihi ?? ""), "İşten Çıkış", "İşten Çıkış Tarihi", "calendar", "form-control flatpickr"); ?>
                     </div>
                     <div class="col-md-4">
-                         <?php echo Form::FormSelect2("aktif_mi", ['1' => 'Aktif', '0' => 'Pasif'], $personel->aktif_mi ?? '1', "Durum", "toggle-right"); ?>
+                        <?php echo Form::FormSelect2("aktif_mi", ['1' => 'Aktif', '0' => 'Pasif'], $personel->aktif_mi ?? '1', "Durum", "toggle-right"); ?>
                     </div>
                 </div>
                 <div class="row mb-3">
@@ -36,11 +43,11 @@ use App\Helper\Date;
                     </div>
                 </div>
 
-    
+
             </div>
         </div>
     </div>
-    
+
     <!-- Sağ Kolon: Ekip Bilgileri -->
     <div class="col-md-6">
         <div class="card border h-100">
@@ -49,7 +56,10 @@ use App\Helper\Date;
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-12">
+                    <div class="col-md-4">
+                        <?php echo Form::FormSelect2("ekip_bolge", $ekip_bolge_options, $personel->ekip_bolge ?? "", "Ekip Bölge", "map-pin"); ?>
+                    </div>
+                    <div class="col-md-8">
                         <?php echo Form::FormSelect2("ekip_no", $ekip_kodlari_options, $personel->ekip_no ?? "", "Ekip Numarası", "hash"); ?>
                     </div>
                 </div>
@@ -57,3 +67,45 @@ use App\Helper\Date;
         </div>
     </div>
 </div>
+
+<script>
+    $(document).ready(function () {
+        $('#ekip_bolge').on('change', function () {
+            var bolge = $(this).val();
+            var personel_id = $('#personel_id').val();
+            var $ekipSelect = $('#ekip_no');
+
+            // Temizle ve yükleniyor göster
+            $ekipSelect.empty().append('<option value="">Yükleniyor...</option>').trigger('change');
+
+            if (bolge) {
+                $.ajax({
+                    url: 'views/personel/api.php',
+                    type: 'POST',
+                    data: {
+                        action: 'get-ekip-kodlari-by-bolge',
+                        bolge: bolge,
+                        personel_id: personel_id
+                    },
+                    dataType: 'json',
+                    success: function (response) {
+                        var currentValue = $ekipSelect.val();
+                        $ekipSelect.empty().append('<option value="">Seçiniz</option>');
+                        if (response.status === 'success') {
+                            $.each(response.data, function (index, item) {
+                                var selected = (item.id == currentValue) ? 'selected' : '';
+                                $ekipSelect.append('<option value="' + item.id + '" ' + selected + '>' + item.tur_adi + '</option>');
+                            });
+                        }
+                        $ekipSelect.trigger('change');
+                    },
+                    error: function () {
+                        $ekipSelect.empty().append('<option value="">Hata oluştu!</option>').trigger('change');
+                    }
+                });
+            } else {
+                $ekipSelect.empty().append('<option value="">Önce Bölge Seçin</option>').trigger('change');
+            }
+        });
+    });
+</script>

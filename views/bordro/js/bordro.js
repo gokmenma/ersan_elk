@@ -205,14 +205,21 @@ $(document).ready(function () {
 
   // Checkbox işlemleri
   $("#selectAll").on("change", function () {
-    $(".personel-check").prop("checked", $(this).prop("checked"));
+    const isChecked = $(this).prop("checked");
+    const table = $("#bordroTable").DataTable();
+    // Tüm sayfalardaki checkboxları seç/kaldır
+    table.$(".personel-check").prop("checked", isChecked);
     updateButtonStates();
   });
 
   $(document).on("change", ".personel-check", function () {
     updateButtonStates();
+    const table = $("#bordroTable").DataTable();
+    const allCheckboxes = table.$(".personel-check");
+    const checkedCheckboxes = table.$(".personel-check:checked");
     const allChecked =
-      $(".personel-check:checked").length === $(".personel-check").length;
+      allCheckboxes.length > 0 &&
+      checkedCheckboxes.length === allCheckboxes.length;
     $("#selectAll").prop("checked", allChecked);
   });
 
@@ -220,9 +227,10 @@ $(document).ready(function () {
   $("#btnHesapla").on("click", function () {
     let selectedIds = getSelectedIds();
 
-    // Eğer hiç personel seçilmemişse tümünü seç
+    // Eğer hiç personel seçilmemişse tümünü seç (tüm sayfalardan)
     if (selectedIds.length === 0) {
-      $(".personel-check").each(function () {
+      const table = $("#bordroTable").DataTable();
+      table.$(".personel-check").each(function () {
         selectedIds.push($(this).val());
       });
     }
@@ -449,6 +457,15 @@ $(document).ready(function () {
     formData.append("action", "kesinti-ekle");
 
     uploadExcelFile(formData, "Kesintiler Ekleniyor", "#kesintiEkleModal");
+  });
+
+  // Ödeme Dağıt (Excel) Form
+  $("#formOdemeEkle").on("submit", function (e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    formData.append("action", "odeme-dagit-excel");
+
+    uploadExcelFile(formData, "Ödemeler Dağıtılıyor", "#odemeEkleModal");
   });
 
   // Excel Export
@@ -909,15 +926,19 @@ $(document).ready(function () {
 
 function getSelectedIds() {
   const ids = [];
-  $(".personel-check:checked").each(function () {
+  const table = $("#bordroTable").DataTable();
+  table.$(".personel-check:checked").each(function () {
     ids.push($(this).val());
   });
   return ids;
 }
 
 function updateButtonStates() {
-  const selectedCount = $(".personel-check:checked").length;
-  $("#btnHesapla, #btnExportExcel").prop("disabled", selectedCount === 0);
+  const table = $("#bordroTable").DataTable();
+  const selectedCount = table.$(".personel-check:checked").length;
+  // Maaş hesapla butonu her zaman aktif kalsın (seçim yoksa hepsini hesaplar)
+  // Sadece export butonu seçim varsa aktif olsun (veya o da hepsi için çalışabilir ama mevcut yapıyı koruyalım)
+  $("#btnExportExcel").prop("disabled", selectedCount === 0);
 }
 
 function uploadExcelFile(formData, title, modalId) {

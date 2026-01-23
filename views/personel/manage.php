@@ -7,19 +7,27 @@ use App\Helper\Helper;
 $id = $_GET['id'] ?? 0;
 $PersonelModel = new PersonelModel();
 $personel = $id > 0 ? $PersonelModel->find($id) : null;
+$TanimlamalarModel = new TanimlamalarModel();
 
 if ($personel) {
-    $adi_soyadi_ekipno = $personel->adi_soyadi . "-" . $personel->ekip_no;
+
+    $ekip_adi = $personel->ekip_no ? $TanimlamalarModel->getTurAdi($personel->ekip_no) : "Ekip Yok";
+    $adi_soyadi_ekipno = $personel->adi_soyadi . " - " . $ekip_adi;
 } else {
     $adi_soyadi_ekipno = "Yeni Personel";
 }
 
-$TanimlamalarModel = new TanimlamalarModel();
+
 $mevcutEkipNo = $personel->ekip_no ?? null;
-$ekip_kodlari_raw = $TanimlamalarModel->getMusaitEkipKodlari($mevcutEkipNo);
+$mevcutBolge = $personel->ekip_bolge ?? null;
+if ($mevcutBolge) {
+    $ekip_kodlari_raw = $TanimlamalarModel->getMusaitEkipKodlariByBolge($mevcutBolge, $mevcutEkipNo);
+} else {
+    $ekip_kodlari_raw = $TanimlamalarModel->getMusaitEkipKodlari($mevcutEkipNo);
+}
 $ekip_kodlari_options = ['' => 'Seçiniz'];
 foreach ($ekip_kodlari_raw as $item) {
-    $ekip_kodlari_options[$item->tur_adi] = $item->tur_adi;
+    $ekip_kodlari_options[$item->id] = $item->tur_adi;
 }
 ?>
 <div class="container-fluid">

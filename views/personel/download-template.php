@@ -49,6 +49,7 @@ try {
         'Ehliyet Sınıfı' => 'ehliyet_sinifi',
         'Kan Grubu' => 'kan_grubu',
         'Cep Telefonu' => 'cep_telefonu',
+        'Program Şifre' => 'sifre',
         '2. Cep Telefonu' => 'cep_telefonu_2',
         'E-posta Adresi' => 'email_adresi',
         'Ayakkabı No' => 'ayakkabi_numarasi',
@@ -68,18 +69,23 @@ try {
         'Personel Sınıfı' => 'personel_sinifi',
         'Departman' => 'departman',
         'Görev' => 'gorev',
+        'Ekip Bölge' => 'ekip_bolge',
         'Takım' => 'ekip_no',
         'DSS Sınıfı Üst' => 'dss_sinifi_ust',
         'DSS Sınıfı Alt' => 'dss_sinifi_alt',
+        'Banka' => 'banka',
         'IBAN Numarası' => 'iban_numarasi',
         'Maaş Durumu' => 'maas_durumu',
         'Maaş Tutarı' => 'maas_tutari',
-        'Saatlik Ücret' => 'maas_birim_saat'
+        'Saatlik Ücret' => 'maas_birim_saat',
+        'Bes Kesintisi Var mı?' => 'bes_kesintisi_varmi',
     ];
 
-    // Başlıkları yaz
+    // Başlıkları yaz ve sütun indekslerini kaydet
     $colIndex = 1;
+    $fieldToCol = [];
     foreach ($columns as $header => $dbField) {
+        $fieldToCol[$dbField] = $colIndex;
         // Sütun harfini bul (Örn: 1 -> A, 2 -> B)
         $columnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
 
@@ -134,11 +140,11 @@ try {
     $aktifList = '"1,0"';
 
     // Veri Doğrulama (Data Validation) - 100 satır için uygula
-    $rowCount = 100;
     for ($i = 2; $i <= $rowCount; $i++) {
-        // Firma (A sütunu)
-        if (!empty($firmaListStr)) {
-            $objValidation = $sheet->getCell("A$i")->getDataValidation();
+        // Firma
+        if (!empty($firmaListStr) && isset($fieldToCol['firma_id'])) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($fieldToCol['firma_id']);
+            $objValidation = $sheet->getCell($col . $i)->getDataValidation();
             $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
             $objValidation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
             $objValidation->setAllowBlank(true);
@@ -148,54 +154,85 @@ try {
             $objValidation->setFormula1($firmaListStr);
         }
 
-        // Cinsiyet (J sütunu - 10. sütun)
-        $objValidation = $sheet->getCell(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(10) . $i)->getDataValidation();
-        $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-        $objValidation->setAllowBlank(true);
-        $objValidation->setShowDropDown(true);
-        $objValidation->setFormula1($cinsiyetList);
+        // Cinsiyet
+        if (isset($fieldToCol['cinsiyet'])) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($fieldToCol['cinsiyet']);
+            $objValidation = $sheet->getCell($col . $i)->getDataValidation();
+            $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $objValidation->setAllowBlank(true);
+            $objValidation->setShowDropDown(true);
+            $objValidation->setFormula1($cinsiyetList);
+        }
 
-        // Medeni Durum (K sütunu - 11. sütun)
-        $objValidation = $sheet->getCell(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(11) . $i)->getDataValidation();
-        $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-        $objValidation->setAllowBlank(true);
-        $objValidation->setShowDropDown(true);
-        $objValidation->setFormula1($medeniList);
+        // Medeni Durum
+        if (isset($fieldToCol['medeni_durum'])) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($fieldToCol['medeni_durum']);
+            $objValidation = $sheet->getCell($col . $i)->getDataValidation();
+            $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $objValidation->setAllowBlank(true);
+            $objValidation->setShowDropDown(true);
+            $objValidation->setFormula1($medeniList);
+        }
 
-        // Eşi Çalışıyor mu (L sütunu - 12. sütun)
-        $objValidation = $sheet->getCell(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(12) . $i)->getDataValidation();
-        $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-        $objValidation->setAllowBlank(true);
-        $objValidation->setShowDropDown(true);
-        $objValidation->setFormula1($evetHayirList);
+        // Eşi Çalışıyor mu
+        if (isset($fieldToCol['esi_calisiyor_mu'])) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($fieldToCol['esi_calisiyor_mu']);
+            $objValidation = $sheet->getCell($col . $i)->getDataValidation();
+            $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $objValidation->setAllowBlank(true);
+            $objValidation->setShowDropDown(true);
+            $objValidation->setFormula1($evetHayirList);
+        }
 
-        // Seyahat Engeli (M sütunu - 13. sütun)
-        $objValidation = $sheet->getCell(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(13) . $i)->getDataValidation();
-        $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-        $objValidation->setAllowBlank(true);
-        $objValidation->setShowDropDown(true);
-        $objValidation->setFormula1($varYokList);
+        // Seyahat Engeli
+        if (isset($fieldToCol['seyahat_engeli'])) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($fieldToCol['seyahat_engeli']);
+            $objValidation = $sheet->getCell($col . $i)->getDataValidation();
+            $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $objValidation->setAllowBlank(true);
+            $objValidation->setShowDropDown(true);
+            $objValidation->setFormula1($varYokList);
+        }
 
-        // Aktif mi (AB sütunu - 28. sütun)
-        $objValidation = $sheet->getCell(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(28) . $i)->getDataValidation();
-        $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-        $objValidation->setAllowBlank(true);
-        $objValidation->setShowDropDown(true);
-        $objValidation->setFormula1($aktifList);
+        // Aktif mi
+        if (isset($fieldToCol['aktif_mi'])) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($fieldToCol['aktif_mi']);
+            $objValidation = $sheet->getCell($col . $i)->getDataValidation();
+            $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $objValidation->setAllowBlank(true);
+            $objValidation->setShowDropDown(true);
+            $objValidation->setFormula1($aktifList);
+        }
 
-        // Personel Sınıfı (AI sütunu - 35. sütun)
-        $objValidation = $sheet->getCell(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(35) . $i)->getDataValidation();
-        $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-        $objValidation->setAllowBlank(true);
-        $objValidation->setShowDropDown(true);
-        $objValidation->setFormula1($personelSinifiList);
+        // Personel Sınıfı
+        if (isset($fieldToCol['personel_sinifi'])) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($fieldToCol['personel_sinifi']);
+            $objValidation = $sheet->getCell($col . $i)->getDataValidation();
+            $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $objValidation->setAllowBlank(true);
+            $objValidation->setShowDropDown(true);
+            $objValidation->setFormula1($personelSinifiList);
+        }
 
-        // Maaş Durumu (AM sütunu - 42. sütun)
-        $objValidation = $sheet->getCell(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(42) . $i)->getDataValidation();
-        $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
-        $objValidation->setAllowBlank(true);
-        $objValidation->setShowDropDown(true);
-        $objValidation->setFormula1($maasDurumuList);
+        // Maaş Durumu
+        if (isset($fieldToCol['maas_durumu'])) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($fieldToCol['maas_durumu']);
+            $objValidation = $sheet->getCell($col . $i)->getDataValidation();
+            $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $objValidation->setAllowBlank(true);
+            $objValidation->setShowDropDown(true);
+            $objValidation->setFormula1($maasDurumuList);
+        }
+
+        // BES Kesintisi
+        if (isset($fieldToCol['bes_kesintisi_varmi'])) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($fieldToCol['bes_kesintisi_varmi']);
+            $objValidation = $sheet->getCell($col . $i)->getDataValidation();
+            $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $objValidation->setAllowBlank(true);
+            $objValidation->setShowDropDown(true);
+            $objValidation->setFormula1($evetHayirList);
+        }
     }
 
     // Çıktı tamponunu temizle (Böylece sadece Excel dosyası gider)

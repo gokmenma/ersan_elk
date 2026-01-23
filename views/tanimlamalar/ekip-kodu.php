@@ -50,6 +50,8 @@ $ekipler = $Tanimlamalar->getEkipKodlari();
                         <thead>
                             <tr>
                                 <th class="text-center">Sıra</th>
+
+                                <th class="text-center">Bölge</th>
                                 <th class="text-center">Ekip Kodu</th>
                                 <th class="text-center">Açıklama</th>
                                 <th style="width:5%">İşlem</th>
@@ -68,6 +70,9 @@ $ekipler = $Tanimlamalar->getEkipKodlari();
                                 <tr id="row_<?php echo $ekip->id; ?>">
                                     <td class="text-center">
                                         <?php echo $ekip->id ?>
+                                    </td>
+                                    <td class="text-center">
+                                        <?php echo $ekip->ekip_bolge ?>
                                     </td>
                                     <td class="text-center">
                                         <?php echo $ekip->tur_adi ?>
@@ -120,6 +125,22 @@ $ekipler = $Tanimlamalar->getEkipKodlari();
                 <form id="actionForm">
                     <input type="hidden" name="ekip_id" id="ekip_id" class="form-control" value="0">
 
+                    <div class="row mb-3">
+
+                        <div class="col-md-12">
+                            <?php echo
+                                Form::FormFloatInput(
+                                    "text",
+                                    "ekip_bolge",
+                                    "",
+                                    "Ekip Bölge giriniz!",
+                                    "Ekip Bölge",
+                                    "map-pin",
+                                    "form-control"
+
+                                ); ?>
+                        </div>
+                    </div>
                     <div class="row mb-3">
 
                         <div class="col-md-12">

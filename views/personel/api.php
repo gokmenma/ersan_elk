@@ -10,6 +10,13 @@ use App\Model\PersonelModel;
 use App\Helper\Security;
 use App\Helper\Helper;
 use App\Helper\Date;
+use App\Model\TanimlamalarModel;
+
+
+
+
+$Tanimlamalar = new TanimlamalarModel();
+
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $action = $_POST['action'] ?? '';
@@ -78,6 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             unset($data['action']);
             unset($data['personel_id']);
             $data["id"] = $personel_id;
+            $data["firma_id"] = $_SESSION['firma_id'];
 
 
             // Boş string değerleri null yap
@@ -98,8 +106,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 /**Parasal tutarlar için money formatını kaldır */
-                if (strpos($key, 'tutar') !== false) {
+                if (strpos($key, 'tutar') !== false || $key == 'gunluk_ucret') {
                     $data[$key] = Helper::formattedMoneyToNumber($value);
+                }
+
+                // Evet/Hayır -> 1/0 dönüşümü (tinyint alanlar için)
+                if (in_array($key, ['bes_kesintisi_varmi', 'aktif_mi'])) {
+                    if (mb_strtolower($value, 'UTF-8') == 'evet' || $value === '1' || $value === 1) {
+                        $data[$key] = 1;
+                    } elseif (mb_strtolower($value, 'UTF-8') == 'hayır' || mb_strtolower($value, 'UTF-8') == 'hayir' || $value === '0' || $value === 0) {
+                        $data[$key] = 0;
+                    }
                 }
             }
 
@@ -140,6 +157,50 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $id = $_POST['id'];
             $Personel->delete($id, false); // false: decrypt işlemi yapılmasın (id direkt geliyorsa)
             echo json_encode(['status' => 'success', 'message' => 'Personel başarıyla silindi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'manual-gelir-ekle') {
+        try {
+            $data = $_POST;
+            $PersonelEkOdemelerModel = new \App\Model\PersonelEkOdemelerModel();
+
+            $saveData = [
+                'personel_id' => $data['personel_id'],
+                'donem_id' => $data['donem_id'],
+                'tur' => $data['tur'] ?? 'diger',
+                'aciklama' => $data['aciklama'],
+                'tutar' => Helper::formattedMoneyToNumber($data['tutar']),
+                'durum' => $data['durum'] ?? 'onaylandi',
+                'tekrar_tipi' => 'tek_sefer',
+                'aktif' => 1,
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+
+            $PersonelEkOdemelerModel->saveWithAttr($saveData);
+            echo json_encode(['status' => 'success', 'message' => 'Gelir başarıyla eklendi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'manual-kesinti-ekle') {
+        try {
+            $data = $_POST;
+            $PersonelKesintileriModel = new \App\Model\PersonelKesintileriModel();
+
+            $saveData = [
+                'personel_id' => $data['personel_id'],
+                'donem_id' => $data['donem_id'],
+                'tur' => $data['tur'] ?? 'diger',
+                'aciklama' => $data['aciklama'],
+                'tutar' => Helper::formattedMoneyToNumber($data['tutar']),
+                'durum' => $data['durum'] ?? 'onaylandi',
+                'tekrar_tipi' => 'tek_sefer',
+                'aktif' => 1,
+                'olusturma_tarihi' => date('Y-m-d H:i:s')
+            ];
+
+            $PersonelKesintileriModel->saveWithAttr($saveData);
+            echo json_encode(['status' => 'success', 'message' => 'Kesinti başarıyla eklendi.']);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
@@ -214,6 +275,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'ehliyet_sinifi' => ['ehliyet sınıfı', 'ehliyet sinifi'],
                 'kan_grubu' => ['kan grubu'],
                 'cep_telefonu' => ['telefon', 'cep telefonu', 'gsm', 'mobil', 'cep'],
+                'sifre' => ['program şifresi', 'program sifresi', 'program şifre', 'program sifre', 'şifre', 'sifre', 'password'],
                 'cep_telefonu_2' => ['2. cep telefonu', 'telefon 2'],
                 'email_adresi' => ['email', 'e-posta', 'mail', 'eposta'],
                 'ayakkabi_numarasi' => ['ayakkabı no', 'ayakkabi no'],
@@ -233,13 +295,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'personel_sinifi' => ['personel sınıfı', 'personel sinifi'],
                 'departman' => ['departman', 'birim', 'bölüm'],
                 'gorev' => ['görev', 'unvan', 'pozisyon'],
-                'ekip_no' => ['takım', 'takim', 'ekip no', 'ekip_no'],
-                'dss_sinifi_ust' => ['dss sınıfı üst', 'dss sinifi ust'],
-                'dss_sinifi_alt' => ['dss sınıfı alt', 'dss sinifi alt'],
-                'iban_numarasi' => ['iban numarası', 'iban no'],
-                'maas_durumu' => ['maaş durumu', 'maas durumu'],
-                'maas_tutari' => ['maaş tutarı', 'maas tutari'],
-                'gunluk_ucret' => ['gunluk ucret', 'gunluk ucret']
+                'ekip_bolge' => ['ekip bölge', 'ekip bolge', 'bölge', 'bolge', 'bölge adı', 'bolge adi'],
+                'ekip_no' => ['takım', 'takim', 'ekip no', 'ekip_no', 'ekip kodu', 'ekip kod'],
+                'banka' => ['banka', 'banka adı', 'banka adi'],
+                'iban_numarasi' => ['iban numarası', 'iban no', 'iban', 'iban numarasi', 'ıban numarası', 'ıban no', 'ıban', 'ıban numarasi'],
+                'maas_durumu' => ['maaş durumu', 'maas durumu', 'maaş tipi', 'maas tipi'],
+                'maas_tutari' => ['maaş tutarı', 'maas tutari', 'maaş'],
+                'gunluk_ucret' => ['günlük ücret', 'gunluk ucret'],
+                'bes_kesintisi_varmi' => ['bes kesintisi var mı?', 'bes kesintisi var mi?', 'bes kesintisi', 'bes']
             ];
 
             $colIndices = [];
@@ -320,18 +383,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     // Tarih düzeltme
                     if (in_array($dbCol, ['dogum_tarihi', 'ise_giris_tarihi', 'isten_cikis_tarihi']) && !empty($val)) {
-                        try {
-                            if (is_numeric($val)) {
-                                $val = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($val)->format('Y-m-d');
-                            } else {
-                                $timestamp = strtotime(str_replace(['.', '/'], '-', $val));
-                                if ($timestamp) {
-                                    $val = date('Y-m-d', $timestamp);
-                                }
-                            }
-                        } catch (Exception $e) {
-                            $val = null;
-                        }
+                        $val = Date::convertExcelDate($val);
                     }
 
                     // Firma ID Dönüşümü
@@ -349,6 +401,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                     }
 
+                    /**Şifreyi hash ile kaydet */
+                    if ($dbCol == 'sifre') {
+                        if (!empty($val)) {
+                            $val = password_hash($val, PASSWORD_DEFAULT);
+                        }
+                    }
+
+                    // Para formatı düzeltme
+                    if (in_array($dbCol, ['maas_tutari', 'gunluk_ucret']) && !empty($val)) {
+                        $val = Helper::formattedMoneyToNumber($val);
+                    }
+
+                    // Evet/Hayır -> 1/0 dönüşümü (tinyint alanlar için)
+                    if (in_array($dbCol, ['bes_kesintisi_varmi', 'aktif_mi'])) {
+                        if (mb_strtolower($val, 'UTF-8') == 'evet' || $val === '1' || $val === 1) {
+                            $val = 1;
+                        } elseif (mb_strtolower($val, 'UTF-8') == 'hayır' || mb_strtolower($val, 'UTF-8') == 'hayir' || $val === '0' || $val === 0) {
+                            $val = 0;
+                        }
+                    }
+
                     $newData[$dbCol] = $val;
                 }
 
@@ -363,17 +436,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (!isset($newData['aktif_mi']))
                     $newData['aktif_mi'] = 1;
 
-                // Ekip kodu kontrolü - Aynı ekip kodunda aktif personel var mı?
-                $ekipNo = $newData['ekip_no'] ?? null;
-                if (!empty($ekipNo) && $newData['aktif_mi'] == 1) {
-                    // Güncelleme ise mevcut ID'yi hariç tutarak kontrol et
-                    $mevcutPersonel = $Personel->getAktifPersonelByEkipNo($ekipNo, $existingId);
-                    if ($mevcutPersonel) {
-                        $skippedCount++;
-                        $errorDetails[] = "Satır $rowNum ($name): Bu ekip kodunda ({$ekipNo}) zaten aktif bir personel bulunmaktadır: {$mevcutPersonel->adi_soyadi}";
-                        continue;
+                // Ekip kodu işlemleri
+                $ekipKodString = $newData['ekip_no'] ?? null;
+                if (!empty($ekipKodString)) {
+                    // Tanımlamalarda bu ekip kodu var mı?
+                    $ekipKodRecord = $Tanimlamalar->getEkipKodId($ekipKodString);
+
+                    if ($ekipKodRecord) {
+                        $ekipId = $ekipKodRecord->id;
+                    } else {
+                        // Tanımlamalarda yoksa yeni ekle
+                        $tanimData = [
+                            'id' => 0,
+                            'grup' => 'ekip_kodu',
+                            'ekip_bolge' => $newData['ekip_bolge'],
+                            'tur_adi' => $ekipKodString,
+                            'aciklama' => "Personel Yükleme sırasında otomatik tanımlandı",
+                            'firma_id' => $_SESSION['firma_id']
+                        ];
+                        $encId = $Tanimlamalar->saveWithAttr($tanimData);
+                        $ekipId = Security::decrypt($encId);
+                    }
+
+                    // Personel verisine ID'yi ata
+                    $newData['ekip_no'] = $ekipId;
+
+                    // Bu ekip ID'sine sahip başka aktif personel var mı?
+                    if ($newData['aktif_mi'] == 1) {
+                        // Güncelleme ise mevcut ID'yi hariç tutarak kontrol et
+                        $mevcutPersonel = $Personel->getAktifPersonelByEkipNo($ekipId, $existingId);
+                        if ($mevcutPersonel) {
+                            $skippedCount++;
+                            $errorDetails[] = "Satır $rowNum ($name): Bu ekip kodunda ({$ekipKodString}) zaten aktif bir personel bulunmaktadır: {$mevcutPersonel->adi_soyadi}";
+                            continue;
+                        }
                     }
                 }
+
+
+
+
 
                 try {
                     $PersonelNew = new PersonelModel();
@@ -444,6 +546,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
+    } elseif ($action == 'get-ekip-kodlari-by-bolge') {
+        try {
+            $bolge = $_POST['bolge'] ?? '';
+            $personel_id = $_POST['personel_id'] ?? 0;
+
+            $PersonelModel = new PersonelModel();
+            $personel = $personel_id > 0 ? $PersonelModel->find($personel_id) : null;
+            $mevcutEkipNo = $personel->ekip_no ?? null;
+
+            $Tanimlamalar = new TanimlamalarModel();
+            $ekip_kodlari = $Tanimlamalar->getMusaitEkipKodlariByBolge($bolge, $mevcutEkipNo);
+
+            echo json_encode(['status' => 'success', 'data' => $ekip_kodlari]);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Geçersiz işlem.']);
     }
@@ -502,7 +620,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
             }
 
             // Basit slugify (Helper::slugify yoksa)
-            $slugify = function($text) {
+            $slugify = function ($text) {
                 $find = ['İ', 'ı', 'ğ', 'Ğ', 'ü', 'Ü', 'ş', 'Ş', 'ö', 'Ö', 'ç', 'Ç'];
                 $replace = ['i', 'i', 'g', 'g', 'u', 'u', 's', 's', 'o', 'o', 'c', 'c'];
                 $text = str_replace($find, $replace, $text);

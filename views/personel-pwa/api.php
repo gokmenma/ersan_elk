@@ -361,7 +361,11 @@ try {
             $izin_tipi = $_POST['izin_tipi'] ?? '';
             $baslangic = $_POST['baslangic_tarihi'] ?? '';
             $bitis = $_POST['bitis_tarihi'] ?? '';
+
+            // Güvenlik: Açıklama alanını temizle (XSS/Script koruması)
             $aciklama = $_POST['aciklama'] ?? '';
+            $aciklama = strip_tags($aciklama);
+            $aciklama = htmlspecialchars($aciklama, ENT_QUOTES, 'UTF-8');
 
             if (empty($izin_tipi)) {
                 response(false, null, 'Lütfen izin türünü seçiniz.');
@@ -371,11 +375,37 @@ try {
                 response(false, null, 'Lütfen tarihleri seçiniz.');
             }
 
+            $IzinModel = new PersonelIzinleriModel();
+
+            // Çakışma Kontrolü
+            // Seçilen tarih aralığında (başlangıç ve bitiş dahil) başka bir izin var mı?
+            // Durumu 'beklemede', 'onaylandi' veya 'onaylandı' olanları kontrol et.
+            $sql = "SELECT COUNT(*) as sayi FROM personel_izinleri 
+                    WHERE personel_id = :personel_id 
+                    AND silinme_tarihi IS NULL 
+                    AND (onay_durumu = 'beklemede' OR onay_durumu = 'onaylandi' OR onay_durumu = 'onaylandı')
+                    AND (
+                        (baslangic_tarihi <= :bitis AND bitis_tarihi >= :baslangic)
+                    )";
+
+            $stmt = $IzinModel->getDb()->prepare($sql);
+            $stmt->execute([
+                ':personel_id' => $personel_id,
+                ':baslangic' => $baslangic,
+                ':bitis' => $bitis
+            ]);
+            $cakisma = $stmt->fetch(PDO::FETCH_OBJ);
+
+            if ($cakisma && $cakisma->sayi > 0) {
+                response(false, null, 'Seçilen tarih aralığında bekleyen veya onaylanmış başka bir izin talebiniz bulunmaktadır. Lütfen tarihleri kontrol ediniz.');
+            }
+
             // Gün sayısını hesapla
             $diff = strtotime($bitis) - strtotime($baslangic);
             $toplam_gun = round($diff / (60 * 60 * 24)) + 1;
 
-            $IzinModel = new PersonelIzinleriModel();
+            // $IzinModel zaten yukarıda tanımlandı
+
             $IzinModel->saveWithAttr([
                 'personel_id' => $personel_id,
                 'izin_tipi_id' => $izin_tipi,

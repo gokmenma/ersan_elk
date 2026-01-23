@@ -863,71 +863,50 @@ div:where(.swal2-container) .swal2-cancel {
   gap: 1.5rem;
 }
 
-.premium-loader {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
+.ekg-loader {
+  width: 200px;
+  height: 60px;
   position: relative;
-  background: conic-gradient(from 0deg, transparent 0%, var(--primary) 100%);
-  animation: spin 1s linear infinite;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2px;
 }
 
-.premium-loader::after {
-  content: "";
+.ekg-svg {
   width: 100%;
   height: 100%;
-  border-radius: 50%;
-  background: white;
-  position: absolute;
-  inset: 2px;
+  overflow: visible;
 }
 
-.dark .premium-loader::after {
-  background: var(--background-dark);
+.ekg-line-bg {
+  fill: none;
+  stroke: #e2e8f0;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.premium-loader-inner {
-  width: 40px;
-  height: 40px;
-  background: var(--primary);
-  border-radius: 50%;
-  z-index: 10;
-  box-shadow: 0 0 20px rgba(19, 91, 236, 0.5);
-  animation: pulse 2s ease-in-out infinite;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.dark .ekg-line-bg {
+  stroke: #334155;
 }
 
-.premium-loader-inner span {
-  color: white;
-  font-size: 24px;
+.ekg-line {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: ekg-draw 2s linear infinite;
+  filter: drop-shadow(0 0 4px var(--primary));
 }
 
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes pulse {
+@keyframes ekg-draw {
   0% {
-    transform: scale(0.85);
-    box-shadow: 0 0 0 0 rgba(19, 91, 236, 0.7);
-  }
-  70% {
-    transform: scale(1);
-    box-shadow: 0 0 0 10px rgba(19, 91, 236, 0);
+    stroke-dashoffset: 1000;
   }
   100% {
-    transform: scale(0.85);
-    box-shadow: 0 0 0 0 rgba(19, 91, 236, 0);
+    stroke-dashoffset: 0;
   }
 }

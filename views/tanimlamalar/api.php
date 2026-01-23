@@ -9,6 +9,14 @@ use App\Helper\Security;
 use App\Model\TanimlamalarModel;
 
 $Tanimlamalar = new TanimlamalarModel();
+$firma_id = $_SESSION["firma_id"];
+
+/**firma id boş ise işlem yapma */
+if($firma_id == 0 || $firma_id == null){
+    echo json_encode(["status" => "error", "message" => "Firma bilgileri bulunamadı."]);
+    exit;
+}
+
 
 //Gelir gider türü kaydet
 if (isset($_POST["action"]) && $_POST["action"] == "gelir-gider-turu-kaydet") {
@@ -50,13 +58,30 @@ if (isset($_POST["action"]) && $_POST["action"] == "gelir-gider-turu-kaydet") {
 // Ekip Kodu Kaydet
 if (isset($_POST["action"]) && $_POST["action"] == "ekip-kodu-kaydet") {
     $id = Security::decrypt($_POST["ekip_id"]);
+    $tur_adi = $_POST["ekip_kodu"];
     $son_kayit = null;
     $plainId = 0;
+
+
+    /**Ekip kodu tanımlıysa kayıt yapma */
+    $isExistingTur = $Tanimlamalar->getEkipKoduVarmi($tur_adi);
+    if ($isExistingTur) {
+        $status = "error";
+        $message = "Bu ekip kodu zaten tanımlı. Başka bir kod giriniz!";
+        echo json_encode(["status" => $status, "message" => $message]);
+        exit;
+    }
+
+
+
+
     try {
         $data = [
             "id" => $id,
+            "firma_id" => $firma_id,
             "type" => 0, // Ekip kodu için type 0
             "grup" => "ekip_kodu",
+            "ekip_bolge" => $_POST["ekip_bolge"],
             "tur_adi" => $_POST["ekip_kodu"],
             "aciklama" => $_POST["aciklama"],
         ];

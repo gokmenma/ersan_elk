@@ -9,6 +9,7 @@ use App\Model\BordroDonemModel;
 use App\Model\BordroPersonelModel;
 use App\Model\PersonelModel;
 use App\Model\BordroParametreModel;
+use App\Helper\Helper;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -938,8 +939,292 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 ]);
                 break;
 
+            // Excel'den Gelir Yükle
+            case 'gelir-ekle':
+                try {
+                    $vendorAutoload = dirname(__DIR__, 2) . '/vendor/autoload.php';
+                    if (file_exists($vendorAutoload)) {
+                        require_once $vendorAutoload;
+                    } else {
+                        throw new Exception("Excel kütüphanesi (vendor/autoload.php) bulunamadı.");
+                    }
+
+                    $donem_id = intval($_POST['donem_id'] ?? 0);
+                    if ($donem_id <= 0) {
+                        throw new Exception("Dönem seçilmelidir.");
+                    }
+
+                    if (!isset($_FILES['excel_file']) || $_FILES['excel_file']['error'] != 0) {
+                        throw new Exception("Dosya yüklenemedi veya dosya seçilmedi.");
+                    }
+
+                    $inputFileName = $_FILES['excel_file']['tmp_name'];
+                    $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($inputFileName);
+                    $sheet = $spreadsheet->getActiveSheet();
+                    $rows = $sheet->toArray();
+
+                    if (count($rows) < 3) {
+                        throw new Exception("Excel dosyası boş veya veri içermiyor.");
+                    }
+
+                    // Parametreleri getir (etiket -> kod eşleştirmesi için)
+                    $BordroParametre = new BordroParametreModel();
+                    $parametreler = $BordroParametre->getGelirTurleri();
+                    $paramMap = [];
+                    foreach ($parametreler as $p) {
+                        $paramMap[trim($p->etiket)] = $p->kod;
+                    }
+
+                    // Başlık satırından (Satır 2) kolonları eşleştir
+                    $headers = $rows[1];
+                    $colIndices = [];
+                    foreach ($headers as $index => $header) {
+                        $header = trim($header ?? '');
+                        if (isset($paramMap[$header])) {
+                            $colIndices[$paramMap[$header]] = $index;
+                        }
+                    }
+
+                    $tcIndex = 1; // B kolonu (0-indexed: 1)
+                    $Personel = new PersonelModel();
+                    $eklenenSayisi = 0;
+
+                    // Verileri işle (Satır 3'ten başla)
+                    for ($i = 2; $i < count($rows); $i++) {
+                        $row = $rows[$i];
+                        $tcNo = trim($row[$tcIndex] ?? '');
+                        if (empty($tcNo))
+                            continue;
+
+                        // Personeli bul
+                        $personelData = $Personel->where('tc_kimlik_no', $tcNo);
+                        if (empty($personelData))
+                            continue;
+                        $personel_id = $personelData[0]->id;
+
+                        $rowHasData = false;
+                        foreach ($colIndices as $kod => $index) {
+                            $tutar = Helper::formattedMoneyToNumber($row[$index] ?? 0);
+                            if ($tutar > 0) {
+                                // Mevcut kaydı sil (aynı dönem ve aynı tür için mükerrer olmasın)
+                                $BordroPersonel->getDb()->prepare("
+                                    UPDATE personel_ek_odemeler 
+                                    SET silinme_tarihi = NOW() 
+                                    WHERE personel_id = ? AND donem_id = ? AND tur = ? AND silinme_tarihi IS NULL
+                                ")->execute([$personel_id, $donem_id, $kod]);
+
+                                // Yeni kaydı ekle
+                                if ($BordroPersonel->addEkOdeme($personel_id, $donem_id, "Excel'den yüklendi", $tutar, $kod)) {
+                                    $rowHasData = true;
+                                }
+                            }
+                        }
+
+                        if ($rowHasData) {
+                            // Maaşı tekrar hesapla
+                            $BordroPersonel->hesaplaMaasByPersonelDonem($personel_id, $donem_id);
+                            $eklenenSayisi++;
+                        }
+                    }
+
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => "$eklenenSayisi personelin gelir kayıtları yüklendi ve maaşları hesaplandı."
+                    ]);
+
+                } catch (Exception $e) {
+                    throw $e;
+                }
+                break;
+
+            // Excel'den Kesinti Yükle
+            case 'kesinti-ekle':
+                try {
+                    $vendorAutoload = dirname(__DIR__, 2) . '/vendor/autoload.php';
+                    if (file_exists($vendorAutoload)) {
+                        require_once $vendorAutoload;
+                    } else {
+                        throw new Exception("Excel kütüphanesi (vendor/autoload.php) bulunamadı.");
+                    }
+
+                    $donem_id = intval($_POST['donem_id'] ?? 0);
+                    if ($donem_id <= 0) {
+                        throw new Exception("Dönem seçilmelidir.");
+                    }
+
+                    if (!isset($_FILES['excel_file']) || $_FILES['excel_file']['error'] != 0) {
+                        throw new Exception("Dosya yüklenemedi veya dosya seçilmedi.");
+                    }
+
+                    $inputFileName = $_FILES['excel_file']['tmp_name'];
+                    $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($inputFileName);
+                    $sheet = $spreadsheet->getActiveSheet();
+                    $rows = $sheet->toArray();
+
+                    if (count($rows) < 3) {
+                        throw new Exception("Excel dosyası boş veya veri içermiyor.");
+                    }
+
+                    // Parametreleri getir (etiket -> kod eşleştirmesi için)
+                    $BordroParametre = new BordroParametreModel();
+                    $parametreler = $BordroParametre->getKesintiTurleri();
+                    $paramMap = [];
+                    foreach ($parametreler as $p) {
+                        $paramMap[trim($p->etiket)] = $p->kod;
+                    }
+
+                    // Başlık satırından (Satır 2) kolonları eşleştir
+                    $headers = $rows[1];
+                    $colIndices = [];
+                    foreach ($headers as $index => $header) {
+                        $header = trim($header ?? '');
+                        if (isset($paramMap[$header])) {
+                            $colIndices[$paramMap[$header]] = $index;
+                        }
+                    }
+
+                    $tcIndex = 1; // B kolonu
+                    $Personel = new PersonelModel();
+                    $eklenenSayisi = 0;
+
+                    // Verileri işle (Satır 3'ten başla)
+                    for ($i = 2; $i < count($rows); $i++) {
+                        $row = $rows[$i];
+                        $tcNo = trim($row[$tcIndex] ?? '');
+                        if (empty($tcNo))
+                            continue;
+
+                        // Personeli bul
+                        $personelData = $Personel->where('tc_kimlik_no', $tcNo);
+                        if (empty($personelData))
+                            continue;
+                        $personel_id = $personelData[0]->id;
+
+                        $rowHasData = false;
+                        foreach ($colIndices as $kod => $index) {
+                            $tutar = Helper::formattedMoneyToNumber($row[$index] ?? 0);
+                            if ($tutar > 0) {
+                                // Mevcut kaydı sil
+                                $BordroPersonel->getDb()->prepare("
+                                    UPDATE personel_kesintileri 
+                                    SET silinme_tarihi = NOW() 
+                                    WHERE personel_id = ? AND donem_id = ? AND tur = ? AND silinme_tarihi IS NULL
+                                ")->execute([$personel_id, $donem_id, $kod]);
+
+                                // Yeni kaydı ekle
+                                if ($BordroPersonel->addKesinti($personel_id, $donem_id, "Excel'den yüklendi", $tutar, $kod)) {
+                                    $rowHasData = true;
+                                }
+                            }
+                        }
+
+                        if ($rowHasData) {
+                            // Maaşı tekrar hesapla
+                            $BordroPersonel->hesaplaMaasByPersonelDonem($personel_id, $donem_id);
+                            $eklenenSayisi++;
+                        }
+                    }
+
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => "$eklenenSayisi personelin kesinti kayıtları yüklendi ve maaşları hesaplandı."
+                    ]);
+
+                } catch (Exception $e) {
+                    throw $e;
+                }
+                break;
+
+            // Excel'den Ödeme Dağıtımı Yükle
+            case 'odeme-dagit-excel':
+                try {
+                    $vendorAutoload = dirname(__DIR__, 2) . '/vendor/autoload.php';
+                    if (file_exists($vendorAutoload)) {
+                        require_once $vendorAutoload;
+                    } else {
+                        throw new Exception("Excel kütüphanesi (vendor/autoload.php) bulunamadı.");
+                    }
+
+                    $donem_id = intval($_POST['donem_id'] ?? 0);
+                    if ($donem_id <= 0) {
+                        throw new Exception("Dönem seçilmelidir.");
+                    }
+
+                    if (!isset($_FILES['excel_file']) || $_FILES['excel_file']['error'] != 0) {
+                        throw new Exception("Dosya yüklenemedi veya dosya seçilmedi.");
+                    }
+
+                    $inputFileName = $_FILES['excel_file']['tmp_name'];
+                    $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($inputFileName);
+                    $sheet = $spreadsheet->getActiveSheet();
+                    $rows = $sheet->toArray();
+
+                    if (count($rows) < 3) {
+                        throw new Exception("Excel dosyası boş veya veri içermiyor.");
+                    }
+
+                    // Kolon eşleştirmeleri (Sabit kolonlar)
+                    // A: Sıra, B: TC, C: Ad Soyad, D: Net Maaş, E: Banka, F: Sodexo, G: Diğer, H: Elden
+                    $tcIndex = 1;
+                    $bankaIndex = 4;
+                    $sodexoIndex = 5;
+                    $digerIndex = 6;
+
+                    $Personel = new PersonelModel();
+                    $guncellenenSayisi = 0;
+
+                    // Verileri işle (Satır 3'ten başla)
+                    for ($i = 2; $i < count($rows); $i++) {
+                        $row = $rows[$i];
+                        $tcNo = trim($row[$tcIndex] ?? '');
+                        if (empty($tcNo))
+                            continue;
+
+                        // Personeli bul
+                        $personelData = $Personel->where('tc_kimlik_no', $tcNo);
+                        if (empty($personelData))
+                            continue;
+                        $personel_id = $personelData[0]->id;
+
+                        // Bordro kaydını bul
+                        $stmt = $BordroPersonel->getDb()->prepare("SELECT * FROM bordro_personel WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL");
+                        $stmt->execute([$personel_id, $donem_id]);
+                        $bp = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+                        if (empty($bp))
+                            continue;
+                        $bp_id = $bp[0]->id;
+
+                        $banka = Helper::formattedMoneyToNumber($row[$bankaIndex] ?? 0);
+                        $sodexo = Helper::formattedMoneyToNumber($row[$sodexoIndex] ?? 0);
+                        $diger = Helper::formattedMoneyToNumber($row[$digerIndex] ?? 0);
+
+                        // Güncelle
+                        $updateData = [
+                            'banka_odemesi' => $banka,
+                            'sodexo_odemesi' => $sodexo,
+                            'diger_odeme' => $diger
+                        ];
+
+                        if ($BordroPersonel->updateBordro($bp_id, $updateData)) {
+                            $guncellenenSayisi++;
+                        }
+                    }
+
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => "$guncellenenSayisi personelin ödeme dağıtımları güncellendi."
+                    ]);
+
+                } catch (Exception $e) {
+                    throw $e;
+                }
+                break;
+
             default:
                 throw new Exception('Geçersiz işlem.');
+
+
         }
 
     } catch (Exception $e) {

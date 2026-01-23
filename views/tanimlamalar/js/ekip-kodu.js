@@ -41,21 +41,15 @@ $(document).on("click", "#actionKaydet", function () {
     .then((data) => {
       title = data.status == "success" ? "Başarılı" : "Hata";
 
-      if (data.status == "success") {
-          var table = $("#actionTable").DataTable();
-          // If update, remove old row first
-          if(data.is_update){
-             table.row($("#row_" + data.id)).remove().draw(false);
-          }
-          location.reload();
-    
-      }
-
-      swal.fire({
+          swal.fire({
         title: title,
         text: data.message,
         icon: data.status,
         confirmButtonText: "Tamam"
+      }).then(result => {
+        if (result.isConfirmed) {
+          location.reload();
+        }
       });
     });
 });

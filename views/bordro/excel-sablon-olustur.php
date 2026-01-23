@@ -14,12 +14,12 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 
-// Tip kontrolü: gelir veya kesinti
+// Tip kontrolü: gelir, kesinti veya odeme
 $tip = $_GET['tip'] ?? 'gelir';
 $donemId = $_GET['donem'] ?? null;
 
-if (!in_array($tip, ['gelir', 'kesinti'])) {
-    die('Geçersiz tip. Sadece "gelir" veya "kesinti" olabilir.');
+if (!in_array($tip, ['gelir', 'kesinti', 'odeme'])) {
+    die('Geçersiz tip. Sadece "gelir", "kesinti" veya "odeme" olabilir.');
 }
 
 if (!$donemId) {
@@ -45,10 +45,21 @@ try {
     }
 
     // Kategoriye göre parametreleri getir
-    $parametreler = $BordroParametre->getParametrelerByKategori($tip);
-
-    if (empty($parametreler)) {
-        die("Henüz tanımlanmış $tip parametresi bulunmamaktadır.");
+    $parametreler = [];
+    if ($tip !== 'odeme') {
+        $parametreler = $BordroParametre->getParametrelerByKategori($tip);
+        if (empty($parametreler)) {
+            die("Henüz tanımlanmış $tip parametresi bulunmamaktadır.");
+        }
+    } else {
+        // Ödeme dağıtımı için sabit kolonlar
+        $parametreler = [
+            (object) ['etiket' => 'Net Maaş', 'kod' => 'net_maas'],
+            (object) ['etiket' => 'Banka Ödemesi', 'kod' => 'banka_odemesi'],
+            (object) ['etiket' => 'Sodexo/Yemek', 'kod' => 'sodexo_odemesi'],
+            (object) ['etiket' => 'Diğer Ödemeler', 'kod' => 'diger_odeme'],
+            (object) ['etiket' => 'Elden', 'kod' => 'elden_odeme']
+        ];
     }
 
     // Yeni Excel dosyası oluştur
@@ -56,8 +67,20 @@ try {
     $sheet = $spreadsheet->getActiveSheet();
 
     // Başlık satırını ayarla
-    $baslikRengi = $tip === 'gelir' ? '4CAF50' : 'F44336';
-    $baslikMetni = $tip === 'gelir' ? 'GELİR EKLEME ŞABLONU' : 'KESİNTİ EKLEME ŞABLONU';
+    $baslikRengi = '607D8B';
+    if ($tip === 'gelir')
+        $baslikRengi = '4CAF50';
+    if ($tip === 'kesinti')
+        $baslikRengi = 'F44336';
+    if ($tip === 'odeme')
+        $baslikRengi = '2196F3';
+
+    $baslikMetni = 'GELİR EKLEME ŞABLONU';
+    if ($tip === 'kesinti')
+        $baslikMetni = 'KESİNTİ EKLEME ŞABLONU';
+    if ($tip === 'odeme')
+        $baslikMetni = 'ÖDEME DAĞITIM ŞABLONU';
+
     $donemMetni = $donem->donem_adi . ' (' . date('d.m.Y', strtotime($donem->baslangic_tarihi)) . ' - ' . date('d.m.Y', strtotime($donem->bitis_tarihi)) . ')';
 
     // Son kolon harfini hesapla
@@ -93,7 +116,7 @@ try {
     foreach ($parametreler as $index => $param) {
         $kolon = chr(68 + $index); // D'den başlayarak
         $sheet->setCellValue($kolon . '2', $param->etiket);
-        $sheet->getColumnDimension($kolon)->setWidth(15);
+        $sheet->getColumnDimension($kolon)->setWidth(18);
     }
 
     // Kolon genişlikleri
@@ -146,10 +169,20 @@ try {
         $sheet->setCellValueExplicit('B' . $satir, $personel->tc_kimlik_no ?? '', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
         $sheet->setCellValue('C' . $satir, $personel->adi_soyadi ?? '');
 
-        // Parametre kolonlarına boş (0,00) değer
+        // Parametre kolonlarına değerler (Ödeme ise mevcut değerleri getir)
         foreach ($parametreler as $paramIndex => $param) {
             $kolon = chr(68 + $paramIndex);
-            $sheet->setCellValue($kolon . $satir, '');
+            $val = '';
+            if ($tip === 'odeme') {
+                $kod = $param->kod;
+                if ($kod === 'elden_odeme') {
+                    // Elden ödeme için formül: Net Maaş - Banka - Sodexo - Diğer
+                    $val = "=D{$satir}-E{$satir}-F{$satir}-G{$satir}";
+                } else {
+                    $val = $personel->$kod ?? '';
+                }
+            }
+            $sheet->setCellValue($kolon . $satir, $val);
         }
 
         // Stili uygula
@@ -189,7 +222,13 @@ try {
 
     // Dosya adı
     $donemAdiSlug = preg_replace('/[^a-zA-Z0-9]/', '_', $donem->donem_adi);
-    $dosyaAdi = ($tip === 'gelir' ? 'bordro_gelir_' : 'bordro_kesinti_') . $donemAdiSlug . '_' . date('Y-m-d') . '.xlsx';
+    $prefix = 'bordro_gelir_';
+    if ($tip === 'kesinti')
+        $prefix = 'bordro_kesinti_';
+    if ($tip === 'odeme')
+        $prefix = 'bordro_odeme_';
+
+    $dosyaAdi = $prefix . $donemAdiSlug . '_' . date('Y-m-d') . '.xlsx';
 
     // HTTP başlıkları
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

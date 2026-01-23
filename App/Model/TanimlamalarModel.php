@@ -112,14 +112,14 @@ class TanimlamalarModel extends Model
     {
         // Aktif personeli olan ekip kodlarını bul
         $aktifEkipKodlari = [];
-        $personelSql = $this->db->prepare("SELECT DISTINCT ekip_no FROM personel WHERE ekip_no IS NOT NULL AND ekip_no != '' AND aktif_mi = 1 AND firma_id = ?");
+        $personelSql = $this->db->prepare("SELECT DISTINCT ekip_no FROM personel WHERE ekip_no IS NOT NULL AND ekip_no != '' AND ekip_no != 0 AND aktif_mi = 1 AND firma_id = ?");
         $personelSql->execute([$_SESSION['firma_id']]);
         $aktifEkipKodlariResult = $personelSql->fetchAll(PDO::FETCH_COLUMN);
 
         // Dahil edilecek ekip kodu varsa, onu aktif listesinden çıkar
         if ($includeEkipNo) {
             $aktifEkipKodlariResult = array_filter($aktifEkipKodlariResult, function ($kod) use ($includeEkipNo) {
-                return $kod !== $includeEkipNo;
+                return $kod != $includeEkipNo;
             });
         }
 
@@ -130,12 +130,22 @@ class TanimlamalarModel extends Model
 
         // Aktif personeli olmayan ekip kodlarını filtrele
         $musaitEkipKodlari = array_filter($tumEkipKodlari, function ($item) use ($aktifEkipKodlariResult) {
-            return !in_array($item->tur_adi, $aktifEkipKodlariResult);
+            return !in_array($item->id, $aktifEkipKodlariResult);
         });
 
         return array_values($musaitEkipKodlari); // Reindex array
     }
 
+
+    /**
+     * Ekip kodu varsa true döner
+     */
+    public function getEkipKoduVarmi($tur_adi)
+    {
+        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE tur_adi = ? and firma_id = ? and silinme_tarihi IS NULL ORDER BY id DESC");
+        $sql->execute([$tur_adi, $_SESSION['firma_id']]);
+        return $sql->fetch(PDO::FETCH_OBJ) ?: null;
+    }
     public function getIsTurleri()
     {
         $sql = $this->db->prepare("SELECT * FROM $this->table WHERE grup = ? and silinme_tarihi IS NULL ORDER BY id DESC");
@@ -173,5 +183,61 @@ class TanimlamalarModel extends Model
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$value]);
         return $stmt->fetch(PDO::FETCH_OBJ) ?: null;
+    }
+
+    /**Ekip Kodundan id bulur */
+    public function getEkipKodId($ekip_no)
+    {
+
+        $firma_id = $_SESSION['firma_id'];
+        $sql = "SELECT id FROM $this->table WHERE tur_adi = ? AND firma_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$ekip_no, $firma_id]);
+        return $stmt->fetch(PDO::FETCH_OBJ);
+    }
+    /**
+     * Ekip bölgelerini getirir
+     * @return array Bölgeler listesi
+     */
+    public function getEkipBolgeleri()
+    {
+        $sql = "SELECT DISTINCT ekip_bolge FROM $this->table WHERE grup = 'ekip_kodu' AND ekip_bolge IS NOT NULL AND ekip_bolge != '' AND ekip_bolge != '0' AND firma_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$_SESSION['firma_id']]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * Belirli bir bölgedeki müsait ekip kodlarını getirir
+     * @param string $bolge Bölge adı
+     * @param int|null $includeEkipNo Dahil edilecek ekip kodu ID'si
+     * @return array Müsait ekip kodları listesi
+     */
+    public function getMusaitEkipKodlariByBolge($bolge, $includeEkipNo = null)
+    {
+        // Aktif personeli olan ekip kodlarını bul
+        $personelSql = $this->db->prepare("SELECT DISTINCT ekip_no FROM personel WHERE ekip_no IS NOT NULL AND ekip_no != 0 AND aktif_mi = 1 AND firma_id = ?");
+        $personelSql->execute([$_SESSION['firma_id']]);
+        $aktifEkipKodlariResult = $personelSql->fetchAll(PDO::FETCH_COLUMN);
+
+        // Dahil edilecek ekip kodu varsa, onu aktif listesinden çıkar
+        if ($includeEkipNo) {
+            $aktifEkipKodlariResult = array_filter($aktifEkipKodlariResult, function ($kod) use ($includeEkipNo) {
+                return (int) $kod != (int) $includeEkipNo;
+            });
+        }
+
+        // Belirli bölgedeki ekip kodlarını al
+        $sql = "SELECT * FROM $this->table WHERE grup = 'ekip_kodu' AND ekip_bolge = ? AND firma_id = ? ORDER BY tur_adi ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$bolge, $_SESSION['firma_id']]);
+        $bolgeEkipKodlari = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        // Aktif personeli olmayanları filtrele
+        $musaitEkipKodlari = array_filter($bolgeEkipKodlari, function ($item) use ($aktifEkipKodlariResult) {
+            return !in_array($item->id, $aktifEkipKodlariResult);
+        });
+
+        return array_values($musaitEkipKodlari);
     }
 }

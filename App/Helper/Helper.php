@@ -92,8 +92,46 @@ class Helper
 
     public static function formattedMoneyToNumber($value)
     {
-        return str_replace(['₺', '.', ','], ['', '', '.'], $value);
+        if (empty($value))
+            return 0;
+        if (is_numeric($value) && !is_string($value))
+            return $value;
+
+        // Para birimi ve boşlukları temizle
+        $value = str_replace(['₺', ' ', '$', '€'], '', $value);
+
+        // Sadece rakam, nokta, virgül ve eksi kalsın
+        $value = preg_replace('/[^\d.,-]/', '', $value);
+
+        $dotPos = strrpos($value, '.');
+        $commaPos = strrpos($value, ',');
+
+        if ($dotPos !== false && $commaPos !== false) {
+            if ($commaPos > $dotPos) {
+                // TR formatı: 1.234,56
+                $value = str_replace('.', '', $value);
+                $value = str_replace(',', '.', $value);
+            } else {
+                // US formatı: 1,234.56
+                $value = str_replace(',', '', $value);
+            }
+        } elseif ($commaPos !== false) {
+            // Sadece virgül var
+            if (preg_match('/,\d{3}$/', $value)) {
+                $value = str_replace(',', '', $value);
+            } else {
+                $value = str_replace(',', '.', $value);
+            }
+        } elseif ($dotPos !== false) {
+            // Sadece nokta var
+            if (preg_match('/\.\d{3}$/', $value)) {
+                $value = str_replace('.', '', $value);
+            }
+        }
+
+        return $value;
     }
+
     public static function formattedMoney($value, $currency = 1)
     {
         $formattedNumber = number_format($value, 2, ',', '.');

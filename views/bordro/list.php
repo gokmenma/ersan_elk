@@ -14,7 +14,7 @@ $selectedYil = $_GET['yil'] ?? date('Y');
 $selectedDonemId = $_GET['donem'] ?? $_SESSION['selectedDonemId'] ?? null;
 
 /**Eğer bir kere dönem seçilmişse onu session'a ata */
-if($selectedDonemId){
+if ($selectedDonemId) {
     $_SESSION['selectedDonemId'] = $selectedDonemId;
 }
 
@@ -90,7 +90,7 @@ $ek_odeme_turleri = [
                             selectedValue: $selectedYil,
                             label: 'Yıl Seçiniz',
                             icon: 'calendar',
-                            style: 'min-width: 150px;width:100%'
+                            style: 'min-width: 200px;'
                         ); ?>
 
                         <div class="d-flex align-items-center gap-2">
@@ -100,7 +100,7 @@ $ek_odeme_turleri = [
                                 selectedValue: $selectedDonemId,
                                 label: 'Dönem Seçiniz',
                                 icon: 'calendar',
-                                style: 'min-width: 150px;width:100%'
+                                style: 'min-width: 200px;'
                             ); ?>
 
                             <?php if ($selectedDonem): ?>
@@ -172,6 +172,13 @@ $ek_odeme_turleri = [
                                                 href="javascript:void(0);" data-bs-toggle="modal"
                                                 data-bs-target="#kesintiEkleModal">
                                                 <i class="bx bx-minus-circle me-2 text-danger"></i> Kesinti Ekle (Excel)
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item <?= $donemKapali ? 'disabled' : '' ?>"
+                                                href="javascript:void(0);" data-bs-toggle="modal"
+                                                data-bs-target="#odemeEkleModal">
+                                                <i class="bx bx-wallet me-2 text-info"></i> Ödeme Dağıt (Excel)
                                             </a>
                                         </li>
                                     </ul>
@@ -254,12 +261,12 @@ $ek_odeme_turleri = [
                                                     <div class="d-flex align-items-center">
                                                         <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
                                                             alt="" class="rounded-circle avatar-sm me-2">
-                                                        <span
-                                                            class="fw-medium">
-                                                            <a href="index?p=personel/manage&id=<?= $personel->personel_id ?>"><?= htmlspecialchars($personel->adi_soyadi) ?></a></span>
+                                                        <span class="fw-medium">
+                                                            <a
+                                                                href="index?p=personel/manage&id=<?= $personel->personel_id ?>"><?= htmlspecialchars($personel->adi_soyadi) ?></a></span>
                                                     </div>
                                                 </td>
-                                            
+
                                                 <td
                                                     class="text-center <?= $ucretsizIzinGunu > 0 ? 'text-warning fw-bold' : 'text-secondary' ?>">
                                                     <?= $calismaGunu ?> gün
@@ -267,7 +274,7 @@ $ek_odeme_turleri = [
                                                         <small class="d-block text-danger">(-<?= $ucretsizIzinGunu ?> izin)</small>
                                                     <?php endif; ?>
                                                 </td>
-                                                    <td class="text-end text-success">
+                                                <td class="text-end text-success">
                                                     <?= $personel->guncel_toplam_ek_odeme > 0 ? number_format($personel->guncel_toplam_ek_odeme, 2, ',', '.') . ' ₺' : '-' ?>
                                                     <i class="bx bx-list-ul ms-1 text-primary cursor-pointer btn-detail-ekodeme"
                                                         data-id="<?= $personel->personel_id ?>"
@@ -463,8 +470,8 @@ $ek_odeme_turleri = [
                             <i class="bx bx-money me-1 text-secondary"></i> Diğer Ödemeler
                         </label>
                         <div class="input-group">
-                            <input type="number" class="form-control" id="diger_odeme" name="diger_odeme"
-                                step="0.01" min="0" value="0">
+                            <input type="number" class="form-control" id="diger_odeme" name="diger_odeme" step="0.01"
+                                min="0" value="0">
                             <span class="input-group-text">₺</span>
                         </div>
                     </div>
@@ -485,165 +492,207 @@ $ek_odeme_turleri = [
         </div>
     </div>
 </div>
-    <!-- Gelir Ekle Modal -->
-    <div class="modal fade" id="gelirEkleModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title"><i class="bx bx-plus-circle me-2"></i>Gelir Ekle (Excel)</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <form id="formGelirEkle" enctype="multipart/form-data">
-                    <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
-                    <div class="modal-body">
-                        <div
-                            class="alert alert-success bg-success bg-opacity-10 border border-success border-opacity-25 mb-3">
-                            <div class="d-flex align-items-start">
-                                <i class="bx bx-download fs-4 me-2 text-success"></i>
-                                <div class="flex-grow-1">
-                                    <h6 class="mb-1"><strong>Şablon Dosyasını İndirin</strong></h6>
-                                    <p class="mb-2 small text-muted">
-                                        Tanımladığınız gelir parametrelerine göre hazırlanan Excel şablonunu indirin.
-                                    </p>
-                                    <a href="views/bordro/excel-sablon-olustur.php?tip=gelir&donem=<?= $selectedDonemId ?>"
-                                        class="btn btn-sm btn-success">
-                                        <i class="bx bx-download me-1"></i>Gelir Şablonunu İndir
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="gelirExcelFile" class="form-label">Excel Dosyası <span
-                                    class="text-danger">*</span></label>
-                            <input type="file" class="form-control" id="gelirExcelFile" name="excel_file"
-                                accept=".xlsx,.xls" required>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                        <button type="submit" class="btn btn-primary"><i class="bx bx-upload me-1"></i>Yükle</button>
-                    </div>
-                </form>
+<!-- Gelir Ekle Modal -->
+<div class="modal fade" id="gelirEkleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bx bx-plus-circle me-2"></i>Gelir Ekle (Excel)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-        </div>
-    </div>
-
-    <!-- Kesinti Ekle Modal -->
-    <div class="modal fade" id="kesintiEkleModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title"><i class="bx bx-minus-circle me-2"></i>Kesinti Ekle (Excel)</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <form id="formKesintiEkle" enctype="multipart/form-data">
-                    <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
-                    <div class="modal-body">
-                        <div
-                            class="alert alert-danger bg-danger bg-opacity-10 border border-danger border-opacity-25 mb-3">
-                            <div class="d-flex align-items-start">
-                                <i class="bx bx-download fs-4 me-2 text-danger"></i>
-                                <div class="flex-grow-1">
-                                    <h6 class="mb-1"><strong>Şablon Dosyasını İndirin</strong></h6>
-                                    <p class="mb-2 small text-muted">
-                                        Tanımladığınız kesinti parametrelerine göre hazırlanan Excel şablonunu indirin.
-                                    </p>
-                                    <a href="views/bordro/excel-sablon-olustur.php?tip=kesinti&donem=<?= $selectedDonemId ?>"
-                                        class="btn btn-sm btn-danger">
-                                        <i class="bx bx-download me-1"></i>Kesinti Şablonunu İndir
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="kesintiExcelFile" class="form-label">Excel Dosyası <span
-                                    class="text-danger">*</span></label>
-                            <input type="file" class="form-control" id="kesintiExcelFile" name="excel_file"
-                                accept=".xlsx,.xls" required>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                        <button type="submit" class="btn btn-danger"><i class="bx bx-upload me-1"></i>Yükle</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Personel Gelir Ekle Modal -->
-    <div class="modal fade" id="modalPersonelGelirEkle" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title"><i class="bx bx-plus-circle me-2"></i>Personel Gelir Yönetimi</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body bg-light">
-                    <div class="alert alert-success mb-3">
-                        <strong id="gelir_personel_ad"></strong> için gelir yönetimi.
-                    </div>
-
-                    <!-- Yeni Gelir Ekle Accordion -->
-                    <div class="accordion mb-3" id="accordionGelirEkle">
-                        <div class="accordion-item border-0 shadow-sm">
-                            <h2 class="accordion-header" id="headingGelir">
-                                <button class="accordion-button collapsed fw-medium" type="button"
-                                    data-bs-toggle="collapse" data-bs-target="#collapseGelir" aria-expanded="false"
-                                    aria-controls="collapseGelir">
-                                    <i class="bx bx-plus me-2 text-success"></i> Yeni Gelir Ekle
-                                </button>
-                            </h2>
-                            <div id="collapseGelir" class="accordion-collapse collapse" aria-labelledby="headingGelir"
-                                data-bs-parent="#accordionGelirEkle">
-                                <div class="accordion-body bg-white">
-                                    <form id="formPersonelGelirEkle">
-                                        <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
-                                        <input type="hidden" name="personel_id" id="gelir_personel_id">
-                                        <input type="hidden" name="id" id="gelir_edit_id" value="0">
-
-                                        <div class="mb-3">
-                                            <?= Form::FormSelect2(
-                                                name: "ek_odeme_tur",
-                                                options: $ek_odeme_turleri,
-                                                selectedValue: '',
-                                                label: "Ek Ödeme Türü",
-                                                icon: "list",
-                                                valueField: '',
-                                                textField: '',
-                                                required: true
-                                            ) ?>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="gelir_tutar"') ?>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama giriniz", "Açıklama", "message-square", "form-control", false, null, "off", false, 'id="gelir_aciklama"') ?>
-                                        </div>
-
-                                        <div class="text-end">
-                                            <button type="submit" class="btn btn-success"><i
-                                                    class="bx bx-save me-1"></i>Kaydet</button>
-                                        </div>
-                                    </form>
-                                </div>
+            <form id="formGelirEkle" enctype="multipart/form-data">
+                <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
+                <div class="modal-body">
+                    <div
+                        class="alert alert-success bg-success bg-opacity-10 border border-success border-opacity-25 mb-3">
+                        <div class="d-flex align-items-start">
+                            <i class="bx bx-download fs-4 me-2 text-success"></i>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1"><strong>Şablon Dosyasını İndirin</strong></h6>
+                                <p class="mb-2 small text-muted">
+                                    Tanımladığınız gelir parametrelerine göre hazırlanan Excel şablonunu indirin.
+                                </p>
+                                <a href="views/bordro/excel-sablon-olustur.php?tip=gelir&donem=<?= $selectedDonemId ?>"
+                                    class="btn btn-sm btn-success">
+                                    <i class="bx bx-download me-1"></i>Gelir Şablonunu İndir
+                                </a>
                             </div>
                         </div>
                     </div>
-
-                    <div id="listPersonelGelirler" class="mt-3">
-                        <!-- Gelir listesi buraya yüklenecek -->
+                    <div class="mb-3">
+                        <label for="gelirExcelFile" class="form-label">Excel Dosyası <span
+                                class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="gelirExcelFile" name="excel_file"
+                            accept=".xlsx,.xls" required>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary"><i class="bx bx-upload me-1"></i>Yükle</button>
                 </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Kesinti Ekle Modal -->
+<div class="modal fade" id="kesintiEkleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bx bx-minus-circle me-2"></i>Kesinti Ekle (Excel)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formKesintiEkle" enctype="multipart/form-data">
+                <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
+                <div class="modal-body">
+                    <div class="alert alert-danger bg-danger bg-opacity-10 border border-danger border-opacity-25 mb-3">
+                        <div class="d-flex align-items-start">
+                            <i class="bx bx-download fs-4 me-2 text-danger"></i>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1"><strong>Şablon Dosyasını İndirin</strong></h6>
+                                <p class="mb-2 small text-muted">
+                                    Tanımladığınız kesinti parametrelerine göre hazırlanan Excel şablonunu indirin.
+                                </p>
+                                <a href="views/bordro/excel-sablon-olustur.php?tip=kesinti&donem=<?= $selectedDonemId ?>"
+                                    class="btn btn-sm btn-danger">
+                                    <i class="bx bx-download me-1"></i>Kesinti Şablonunu İndir
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="kesintiExcelFile" class="form-label">Excel Dosyası <span
+                                class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="kesintiExcelFile" name="excel_file"
+                            accept=".xlsx,.xls" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-danger"><i class="bx bx-upload me-1"></i>Yükle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Ödeme Dağıt (Excel) Modal -->
+<div class="modal fade" id="odemeEkleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bx bx-wallet me-2"></i>Ödeme Dağıt (Excel)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formOdemeEkle" enctype="multipart/form-data">
+                <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
+                <div class="modal-body">
+                    <div class="alert alert-info bg-info bg-opacity-10 border border-info border-opacity-25 mb-3">
+                        <div class="d-flex align-items-start">
+                            <i class="bx bx-download fs-4 me-2 text-info"></i>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1"><strong>Şablon Dosyasını İndirin</strong></h6>
+                                <p class="mb-2 small text-muted">
+                                    Mevcut personeller ve net maaş dağılımları için hazırlanan Excel şablonunu indirin.
+                                </p>
+                                <a href="views/bordro/excel-sablon-olustur.php?tip=odeme&donem=<?= $selectedDonemId ?>"
+                                    class="btn btn-sm btn-info text-white">
+                                    <i class="bx bx-download me-1"></i>Ödeme Şablonunu İndir
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="odemeExcelFile" class="form-label">Excel Dosyası <span
+                                class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="odemeExcelFile" name="excel_file"
+                            accept=".xlsx,.xls" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-info text-white"><i
+                            class="bx bx-upload me-1"></i>Yükle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Personel Gelir Ekle Modal -->
+<div class="modal fade" id="modalPersonelGelirEkle" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bx bx-plus-circle me-2"></i>Personel Gelir Yönetimi</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <div class="alert alert-success mb-3">
+                    <strong id="gelir_personel_ad"></strong> için gelir yönetimi.
+                </div>
+
+                <!-- Yeni Gelir Ekle Accordion -->
+                <div class="accordion mb-3" id="accordionGelirEkle">
+                    <div class="accordion-item border-0 shadow-sm">
+                        <h2 class="accordion-header" id="headingGelir">
+                            <button class="accordion-button collapsed fw-medium" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapseGelir" aria-expanded="false" aria-controls="collapseGelir">
+                                <i class="bx bx-plus me-2 text-success"></i> Yeni Gelir Ekle
+                            </button>
+                        </h2>
+                        <div id="collapseGelir" class="accordion-collapse collapse" aria-labelledby="headingGelir"
+                            data-bs-parent="#accordionGelirEkle">
+                            <div class="accordion-body bg-white">
+                                <form id="formPersonelGelirEkle">
+                                    <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
+                                    <input type="hidden" name="personel_id" id="gelir_personel_id">
+                                    <input type="hidden" name="id" id="gelir_edit_id" value="0">
+
+                                    <div class="mb-3">
+                                        <?= Form::FormSelect2(
+                                            name: "ek_odeme_tur",
+                                            options: $ek_odeme_turleri,
+                                            selectedValue: '',
+                                            label: "Ek Ödeme Türü",
+                                            icon: "list",
+                                            valueField: '',
+                                            textField: '',
+                                            required: true
+                                        ) ?>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="gelir_tutar"') ?>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama giriniz", "Açıklama", "message-square", "form-control", false, null, "off", false, 'id="gelir_aciklama"') ?>
+                                    </div>
+
+                                    <div class="text-end">
+                                        <button type="submit" class="btn btn-success"><i
+                                                class="bx bx-save me-1"></i>Kaydet</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="listPersonelGelirler" class="mt-3">
+                    <!-- Gelir listesi buraya yüklenecek -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
             </div>
         </div>
     </div>
+</div>
 
 <!-- Personel Kesinti Ekle Modal -->
 <div class="modal fade" id="modalPersonelKesintiEkle" tabindex="-1" aria-hidden="true">

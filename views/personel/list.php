@@ -131,9 +131,9 @@ $personeller = $Personel->all();
                                 <th style="width: 20px;" class="align-middle">
                                     #
                                 </th>
-                                <th class="text-center">ID</th>
-                                <th>ADI SOYADI</th>
+                                <th class="text-center">SIRA</th>
                                 <th>TC KİMLİK NO</th>
+                                <th>ADI SOYADI</th>
                                 <th>İŞE BAŞLAMA TARİHİ</th>
                                 <th>CEP TELEFONU</th>
                                 <th>EMAIL</th>
@@ -143,18 +143,24 @@ $personeller = $Personel->all();
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($personeller as $personel) { ?>
+                            <?php 
+                            $i=0;
+                            foreach ($personeller as $personel) { 
+                                $i++;
+                                ?>
 
                                 <tr>
                                     <td>
                                         <div class="form-check font-size-16">
                                             <input class="form-check-input" type="checkbox"
-                                                id="orderidcheck<?= $personel->personel_id ?>">
+                                                id="orderidcheck<?= $i ?>">
                                             <label class="form-check-label"
-                                                for="orderidcheck<?= $personel->personel_id ?>"></label>
+                                                for="orderidcheck<?= $i ?>"></label>
                                         </div>
-                                    </td>
-                                    <td class="text-center"><?= $personel->id ?></td>
+                                    </td>   
+                                    <td class="text-center"><?= $i ?></td>
+                                    <td><?= $personel->tc_kimlik_no ?></td>
+
                                     <td>
                                         <div class="personel-name-container">
                                             <a href="index?p=personel/manage&id=<?= $personel->id ?>"><?= $personel->adi_soyadi ?></a>
@@ -162,7 +168,6 @@ $personeller = $Personel->all();
                                                 alt="<?= $personel->adi_soyadi ?>" class="personel-hover-image">
                                         </div>
                                     </td>
-                                    <td><?= $personel->tc_kimlik_no ?></td>
                                     <td><?= Date::dmy($personel->ise_giris_tarihi) ?></td>
                                     <td><i class="feather feather-smartphone"></i><?= $personel->cep_telefonu ?></td>
                                     <td><?= $personel->email_adresi ?></td>
