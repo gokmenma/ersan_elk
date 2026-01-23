@@ -283,11 +283,14 @@ class PersonelIzinleriModel extends Model
 
         // 3. Kullanılan izinleri hesapla
         // Yıllık izne etkisi 'Dus' olan ve onaylanmış izinler
-        // DÜZELTME: 'sure' kolonu yerine 'toplam_gun' kullanılıyor
-        $sql = "SELECT toplam_gun, yillik_izne_etki FROM personel_izinleri 
-                WHERE personel_id = ? 
-                AND silinme_tarihi IS NULL 
-                AND (LOWER(onay_durumu) = 'onaylandı' OR LOWER(onay_durumu) = 'onaylandi' OR LOWER(onay_durumu) = 'kabuledildi')";
+        // Sadece 'Yıllık İzin' türündeki izinleri dahil et (Babalık izni vb. hariç)
+        $sql = "SELECT pi.toplam_gun, pi.yillik_izne_etki 
+                FROM personel_izinleri as pi
+                LEFT JOIN tanimlamalar as t ON t.id = pi.izin_tipi_id
+                WHERE pi.personel_id = ? 
+                AND pi.silinme_tarihi IS NULL 
+                AND (LOWER(pi.onay_durumu) = 'onaylandı' OR LOWER(pi.onay_durumu) = 'onaylandi' OR LOWER(pi.onay_durumu) = 'kabuledildi')
+                AND (t.tur_adi LIKE '%Yıllık%' OR t.tur_adi LIKE '%Yillik%')";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$personel_id]);

@@ -250,7 +250,7 @@ $kategoriOptions = [
                                                                                 <?php if ($param->hesaplama_tipi === 'kismi_muaf' && $param->gunluk_muaf_limit > 0): ?>
                                                                                     <strong class="text-primary">
                                                                                         <?= number_format($param->gunluk_muaf_limit, 2, ',', '.') ?>
-                                                                                        ₺/gün
+                                                                                        ?/gün
                                                                                     </strong>
                                                                                 <?php else: ?>
                                                                                     <span class="text-muted">-</span>
@@ -513,7 +513,7 @@ $kategoriOptions = [
                                                             <?php else: ?>
                                                                 <span
                                                                     class="badge bg-success fs-6"><?= number_format($ayar->deger, 2, ',', '.') ?>
-                                                                    ₺</span>
+                                                                    ?</span>
                                                             <?php endif; ?>
                                                         </td>
                                                         <td>
@@ -589,9 +589,9 @@ $kategoriOptions = [
                                     <?php foreach ($vergiDilimleri as $dilim): ?>
                                         <tr>
                                             <td class="text-center fw-bold"><?= $dilim->dilim_no ?>. Dilim</td>
-                                            <td class="text-end"><?= number_format($dilim->alt_limit, 2, ',', '.') ?> ₺</td>
+                                            <td class="text-end"><?= number_format($dilim->alt_limit, 2, ',', '.') ?> ?</td>
                                             <td class="text-end">
-                                                <?= $dilim->ust_limit ? number_format($dilim->ust_limit, 2, ',', '.') . ' ₺' : '<span class="text-muted">Sınırsız</span>' ?>
+                                                <?= $dilim->ust_limit ? number_format($dilim->ust_limit, 2, ',', '.') . ' ?' : '<span class="text-muted">Sınırsız</span>' ?>
                                             </td>
                                             <td class="text-center">
                                                 <span
@@ -923,21 +923,42 @@ $kategoriOptions = [
         // Hesaplama tipi değişince muafiyet ve oran alanlarını göster/gizle
         $('select[name="hesaplama_tipi"]').on('change', function () {
             const val = $(this).val();
+            const isGunluk = val.startsWith('gunluk_');
 
             // Kısmi Muaf kontrolü
-            if (val === 'kismi_muaf') {
+            if (val === 'kismi_muaf' || val === 'gunluk_kismi_muaf') {
                 $('#muafiyetAyarlari').slideDown();
             } else {
                 $('#muafiyetAyarlari').slideUp();
             }
 
-            // Oran Bazlı kontrolü
-            if (['oran_bazli_vergi', 'oran_bazli_sgk', 'oran_bazli_net'].includes(val)) {
-                $('#divOran').slideDown();
+            // Günlük bazlı mı?
+            if (isGunluk) {
+                $('#gunlukAyarlar').slideDown();
+                $('#divGunlukTutar').slideDown();
                 $('#divTutar').hide();
+                $('#divOran').hide();
             } else {
-                $('#divOran').slideUp();
-                $('#divTutar').show();
+                $('#gunlukAyarlar').slideUp();
+                $('#divGunlukTutar').hide();
+
+                // Oran Bazlı kontrolü
+                if (['oran_bazli_vergi', 'oran_bazli_sgk', 'oran_bazli_net'].includes(val)) {
+                    $('#divOran').slideDown();
+                    $('#divTutar').hide();
+                } else {
+                    $('#divOran').slideUp();
+                    $('#divTutar').show();
+                }
+            }
+        });
+
+        // Gün sayısı radioları değişikliğinde
+        $('input[name="gun_sayisi_otomatik"]').on('change', function () {
+            if ($(this).val() === '0') {
+                $('#divVarsayilanGun').slideDown();
+            } else {
+                $('#divVarsayilanGun').slideUp();
             }
         });
 
@@ -965,6 +986,10 @@ $kategoriOptions = [
             $('#sgk_matrahi_dahil').prop('checked', param.sgk_matrahi_dahil == 1);
             $('#gelir_vergisi_dahil').prop('checked', param.gelir_vergisi_dahil == 1);
             $('#damga_vergisi_dahil').prop('checked', param.damga_vergisi_dahil == 1);
+
+            $('input[name="gunluk_tutar"]').val(param.gunluk_tutar || 0);
+            $('input[name="varsayilan_gun_sayisi"]').val(param.varsayilan_gun_sayisi || 26);
+            $('input[name="gun_sayisi_otomatik"][value="' + (param.gun_sayisi_otomatik || 0) + '"]').prop('checked', true);
 
             $('#modalParametreEkle .modal-title').html('<i class="bx bx-edit me-2"></i>Parametre Düzenle');
 
@@ -1007,6 +1032,10 @@ $kategoriOptions = [
             $('#sgk_matrahi_dahil').prop('checked', param.sgk_matrahi_dahil == 1);
             $('#gelir_vergisi_dahil').prop('checked', param.gelir_vergisi_dahil == 1);
             $('#damga_vergisi_dahil').prop('checked', param.damga_vergisi_dahil == 1);
+
+            $('input[name="gunluk_tutar"]').val(param.gunluk_tutar || 0);
+            $('input[name="varsayilan_gun_sayisi"]').val(param.varsayilan_gun_sayisi || 26);
+            $('input[name="gun_sayisi_otomatik"][value="' + (param.gun_sayisi_otomatik || 0) + '"]').prop('checked', true);
 
             $('#modalParametreEkle .modal-title').html('<i class="bx bx-copy me-2"></i>Yeni Dönem Ekle (Kopyala)');
             $('#modalParametreEkle').modal('show');
@@ -1178,7 +1207,7 @@ $kategoriOptions = [
 
             genelAyarlar.forEach(function (ayar) {
                 const isOran = ayar.parametre_kodu.includes('orani');
-                const degerStr = isOran ? '%' + parseFloat(ayar.deger).toFixed(2) : parseFloat(ayar.deger).toLocaleString('tr-TR') + ' ₺';
+                const degerStr = isOran ? '%' + parseFloat(ayar.deger).toFixed(2) : parseFloat(ayar.deger).toLocaleString('tr-TR') + ' ?';
 
                 html += '<tr>';
                 html += '<td><input type="checkbox" name="ayar_sec[]" value="' + ayar.id + '" checked class="ayar-checkbox"></td>';

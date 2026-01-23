@@ -415,9 +415,13 @@ try {
                 $durum = mb_strtolower($izin->onay_durumu ?? '', 'UTF-8');
                 $affectsBalance = isset($izin->yillik_izne_etki) && ($izin->yillik_izne_etki == 'Dus' || $izin->yillik_izne_etki == 1);
 
-                file_put_contents($logFile, "Izin ID: {$izin->id}, Durum: {$durum}, yillik_izne_etki: " . ($izin->yillik_izne_etki ?? 'NULL') . ", affectsBalance: " . ($affectsBalance ? 'YES' : 'NO') . "\n", FILE_APPEND);
+                // Only include annual leave types (Yıllık İzin) - exclude other types like maternity/paternity leave
+                $isAnnualLeave = stripos($izin->izin_tipi_adi ?? '', 'Yıllık') !== false ||
+                    stripos($izin->izin_tipi_adi ?? '', 'Yillik') !== false;
 
-                return ($durum == 'onaylandi' || $durum == 'onaylandı' || $durum == 'kabuledildi') && $affectsBalance;
+                file_put_contents($logFile, "Izin ID: {$izin->id}, Tip: {$izin->izin_tipi_adi}, Durum: {$durum}, yillik_izne_etki: " . ($izin->yillik_izne_etki ?? 'NULL') . ", isAnnualLeave: " . ($isAnnualLeave ? 'YES' : 'NO') . "\n", FILE_APPEND);
+
+                return ($durum == 'onaylandi' || $durum == 'onaylandı' || $durum == 'kabuledildi') && $affectsBalance && $isAnnualLeave;
             });
 
             file_put_contents($logFile, "Approved izinler: " . count($approvedIzinler) . "\n", FILE_APPEND);
