@@ -324,8 +324,7 @@ try {
                 'kullanilan_izin' => $entitlement['kullanilan_izin'],
                 'detay' => $entitlement['detay'],
                 'hastalik_izni' => 0,
-                'bekleyen' => $bekleyen,
-                'debug_pid' => $personel_id
+                'bekleyen' => $bekleyen
             ]);
             break;
 

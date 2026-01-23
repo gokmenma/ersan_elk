@@ -287,7 +287,7 @@ class PersonelIzinleriModel extends Model
         $sql = "SELECT toplam_gun, yillik_izne_etki FROM personel_izinleri 
                 WHERE personel_id = ? 
                 AND silinme_tarihi IS NULL 
-                AND (onay_durumu = 'Onaylandı' OR onay_durumu = 'KabulEdildi')";
+                AND (LOWER(onay_durumu) = 'onaylandı' OR LOWER(onay_durumu) = 'onaylandi' OR LOWER(onay_durumu) = 'kabuledildi')";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$personel_id]);
@@ -295,7 +295,7 @@ class PersonelIzinleriModel extends Model
 
         $kullanilan_izin = 0;
         foreach ($izinler as $izin) {
-            if (isset($izin->yillik_izne_etki) && $izin->yillik_izne_etki == 'Dus') {
+            if (isset($izin->yillik_izne_etki) && ($izin->yillik_izne_etki == 'Dus' || $izin->yillik_izne_etki == 1)) {
                 $kullanilan_izin += (float) $izin->toplam_gun;
             }
         }

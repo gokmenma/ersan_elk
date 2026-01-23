@@ -187,7 +187,7 @@
         <div class="modal-handle"></div>
 
         <div class="flex items-center justify-between mb-4 flex-shrink-0">
-            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Hakediş Detayları</h3>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">İzin Hakediş Detayları</h3>
             <button onclick="Modal.close('hakedis-detay-modal')"
                 class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                 <span class="material-symbols-outlined text-slate-600">close</span>

@@ -210,7 +210,7 @@ if (!in_array($page, $allowed_pages)) {
         <div class="px-4 pb-4">
             <div class="flex flex-col gap-1">
                 <a href="javascript:void(0)" onclick="logout()"
-                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'profil' ? 'bg-primary/10' : ''; ?>">
+                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'logout' ? 'bg-primary/10' : ''; ?>">
                     <div class="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                         <span class="material-symbols-outlined text-red-600 text-lg">logout</span>
                     </div>

@@ -112,7 +112,7 @@ use App\Helper\Date;
                 <div class="flex-1">
                     <p class="text-xs text-slate-500">İşe Başlama Tarihi</p>
                     <p class="text-sm font-semibold text-slate-900 dark:text-white">
-                        <?php echo Date::dmY($personel->ise_baslama_tarihi ?? null) ?? '01.01.2021'; ?>
+                        <?php echo Date::dmY($personel->ise_giris_tarihi ?? null) ?? ''; ?>
                     </p>
                 </div>
             </div>
