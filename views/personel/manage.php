@@ -132,7 +132,7 @@ foreach ($ekip_kodlari_raw as $item) {
                             <li class="nav-item" role="presentation">
                                 <a class="nav-link" data-bs-toggle="tab" href="#izinler" role="tab" aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-calendar-event"></i></span>
-                                    <span class="d-none d-sm-block"><i class="bx bx-calendar-event me-1"></i> İzinler</span>
+                                    <span class="d-none d-sm-block"><i class="bx bx-calendar-event me-1"></i> İzin/Rapor</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">

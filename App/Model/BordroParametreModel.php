@@ -125,8 +125,9 @@ class BordroParametreModel extends Model
             INSERT INTO {$this->table} 
             (kod, etiket, kategori, hesaplama_tipi, gunluk_muaf_limit, aylik_muaf_limit, muaf_limit_tipi, 
              sgk_matrahi_dahil, gelir_vergisi_dahil, damga_vergisi_dahil, 
-             gecerlilik_baslangic, gecerlilik_bitis, varsayilan_tutar, aciklama, sira, aktif)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             gecerlilik_baslangic, gecerlilik_bitis, varsayilan_tutar, gunluk_tutar, gun_sayisi_otomatik, 
+             varsayilan_gun_sayisi, aciklama, sira, aktif)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         return $sql->execute([
@@ -143,6 +144,9 @@ class BordroParametreModel extends Model
             $data['gecerlilik_baslangic'] ?? null,
             $data['gecerlilik_bitis'] ?? null,
             $data['varsayilan_tutar'] ?? 0,
+            $data['gunluk_tutar'] ?? 0,
+            $data['gun_sayisi_otomatik'] ?? 0,
+            $data['varsayilan_gun_sayisi'] ?? 26,
             $data['aciklama'] ?? null,
             $data['sira'] ?? 0,
             $data['aktif'] ?? 1
@@ -171,6 +175,9 @@ class BordroParametreModel extends Model
             'gecerlilik_baslangic',
             'gecerlilik_bitis',
             'varsayilan_tutar',
+            'gunluk_tutar',
+            'gun_sayisi_otomatik',
+            'varsayilan_gun_sayisi',
             'oran',
             'aciklama',
             'sira',

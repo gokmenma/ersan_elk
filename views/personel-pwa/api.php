@@ -392,6 +392,87 @@ try {
             response(true, $data);
             break;
 
+        case 'getIzinlerByYear':
+            $IzinModel = new PersonelIzinleriModel();
+            $PersonelModel = new PersonelModel();
+
+            // Get personnel info to calculate year ranges
+            $personel = $PersonelModel->find($personel_id);
+            if (!$personel || empty($personel->ise_giris_tarihi)) {
+                response(true, []);
+                break;
+            }
+
+            // Get approved leave records
+            $izinler = $IzinModel->getPersonelIzinleri($personel_id);
+
+            // Debug log
+            $logFile = dirname(dirname(__DIR__)) . '/debug_izin_year.log';
+            file_put_contents($logFile, "Total izinler: " . count($izinler) . "\n", FILE_APPEND);
+
+            // Filter only approved and leaves that affect annual leave balance
+            $approvedIzinler = array_filter($izinler, function ($izin) use ($logFile) {
+                $durum = mb_strtolower($izin->onay_durumu ?? '', 'UTF-8');
+                $affectsBalance = isset($izin->yillik_izne_etki) && ($izin->yillik_izne_etki == 'Dus' || $izin->yillik_izne_etki == 1);
+
+                file_put_contents($logFile, "Izin ID: {$izin->id}, Durum: {$durum}, yillik_izne_etki: " . ($izin->yillik_izne_etki ?? 'NULL') . ", affectsBalance: " . ($affectsBalance ? 'YES' : 'NO') . "\n", FILE_APPEND);
+
+                return ($durum == 'onaylandi' || $durum == 'onaylandı' || $durum == 'kabuledildi') && $affectsBalance;
+            });
+
+            file_put_contents($logFile, "Approved izinler: " . count($approvedIzinler) . "\n", FILE_APPEND);
+
+            // Group by work anniversary year
+            $giris = new DateTime($personel->ise_giris_tarihi);
+            $bugun = new DateTime();
+            $yearGroups = [];
+
+            foreach ($approvedIzinler as $izin) {
+                if (empty($izin->baslangic_tarihi))
+                    continue;
+
+                $izinDate = new DateTime($izin->baslangic_tarihi);
+
+                // Calculate which work year this leave belongs to
+                $yilFarki = $giris->diff($izinDate)->y;
+                $workYear = $yilFarki + 1; // Year 1-based
+
+                if ($workYear < 1)
+                    continue; // Skip leaves before work start
+
+                if (!isset($yearGroups[$workYear])) {
+                    $yearGroups[$workYear] = [];
+                }
+
+                $yearGroups[$workYear][] = [
+                    'id' => $izin->id,
+                    'izin_tipi_adi' => $izin->izin_tipi_adi ?? 'Yıllık İzin',
+                    'baslangic' => date('d.m.Y', strtotime($izin->baslangic_tarihi)),
+                    'bitis' => date('d.m.Y', strtotime($izin->bitis_tarihi)),
+                    'toplam_gun' => $izin->toplam_gun
+                ];
+            }
+
+            file_put_contents($logFile, "Year groups: " . json_encode($yearGroups) . "\n", FILE_APPEND);
+
+            // Also add all approved leaves under 'all' key for frontend to use
+            $allLeaves = [];
+            foreach ($approvedIzinler as $izin) {
+                if (!empty($izin->baslangic_tarihi)) {
+                    $allLeaves[] = [
+                        'id' => $izin->id,
+                        'izin_tipi_adi' => $izin->izin_tipi_adi ?? 'Yıllık İzin',
+                        'baslangic' => date('d.m.Y', strtotime($izin->baslangic_tarihi)),
+                        'bitis' => date('d.m.Y', strtotime($izin->bitis_tarihi)),
+                        'toplam_gun' => $izin->toplam_gun
+                    ];
+                }
+            }
+            $yearGroups['all'] = $allLeaves;
+
+            response(true, $yearGroups);
+            break;
+
         case 'createIzinTalebi':
             $izin_tipi = $_POST['izin_tipi'] ?? '';
             $baslangic = $_POST['baslangic_tarihi'] ?? '';

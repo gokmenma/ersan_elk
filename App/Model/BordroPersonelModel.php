@@ -700,6 +700,38 @@ class BordroPersonelModel extends Model
     }
 
     /**
+     * Personelin dönem içinde kaç gün çalıştığını hesaplar
+     * Puantaj (yapilan_isler) sisteminden gerçek çalışma gününü alır
+     * 
+     * @param int $personel_id Personel ID
+     * @param string $baslangic_tarihi Dönem başlangıç (Y-m-d)
+     * @param string $bitis_tarihi Dönem bitiş (Y-m-d)
+     * @return int Çalışma günü sayısı
+     */
+    public function getCalismaGunuSayisi($personel_id, $baslangic_tarihi, $bitis_tarihi)
+    {
+        // Personelin ekip kodunu al
+        $PersonelModel = new \App\Model\PersonelModel();
+        $personel = $PersonelModel->find($personel_id);
+
+        if (!$personel || empty($personel->ekip_no)) {
+            return 0;
+        }
+
+        // Dönemdeki çalışma günlerini say (DISTINCT tarih)
+        $sql = $this->db->prepare("
+            SELECT COUNT(DISTINCT DATE(tarih)) as gun_sayisi
+            FROM yapilan_isler 
+            WHERE ekip_kodu = ? 
+            AND DATE(tarih) BETWEEN ? AND ?
+        ");
+        $sql->execute([$personel->ekip_no, $baslangic_tarihi, $bitis_tarihi]);
+        $sonuc = $sql->fetch(PDO::FETCH_OBJ);
+
+        return intval($sonuc->gun_sayisi ?? 0);
+    }
+
+    /**
      * Tek bir personelin maaşını hesaplar ve günceller
      * Parametrelere dayalı gelişmiş hesaplama
      */
@@ -860,6 +892,75 @@ class BordroPersonelModel extends Model
                         $vergiliMatrahEkleri += $tutar;
                     }
                     $detay['net_etki'] = $tutar; // Brütten kesinti yapılacak
+                    break;
+
+                case 'gunluk_brut':
+                case 'gunluk_net':
+                case 'gunluk_kismi_muaf':
+                    // Gün sayısını hesapla
+                    $gunSayisi = 0;
+                    if ($parametre->gun_sayisi_otomatik) {
+                        // Puantajdan otomatik hesapla
+                        $gunSayisi = $this->getCalismaGunuSayisi(
+                            $kayit->personel_id,
+                            $kayit->baslangic_tarihi,
+                            $kayit->bitis_tarihi
+                        );
+                    } else {
+                        // Manuel/Sabit gün sayısı
+                        $gunSayisi = intval($parametre->varsayilan_gun_sayisi ?? 26);
+                    }
+
+                    // Toplam tutar = Günlük tutar × Gün sayısı
+                    $gunlukTutar = floatval($parametre->gunluk_tutar);
+                    $toplamTutar = $gunlukTutar * $gunSayisi;
+
+                    $detay['gunluk_tutar'] = $gunlukTutar;
+                    $detay['gun_sayisi'] = $gunSayisi;
+                    $detay['hesaplanan_tutar'] = $toplamTutar;
+
+                    // Hesaplama tipine göre işle (gunluk_ prefix'ini kaldırarak)
+                    $temelTip = str_replace('gunluk_', '', $parametre->hesaplama_tipi);
+
+                    if ($temelTip === 'brut') {
+                        $brutEkOdemeler += $toplamTutar;
+                        if ($parametre->sgk_matrahi_dahil) {
+                            $sgkMatrahEkleri += $toplamTutar;
+                        }
+                        if ($parametre->gelir_vergisi_dahil) {
+                            $vergiliMatrahEkleri += $toplamTutar;
+                        }
+                        $detay['net_etki'] = $toplamTutar;
+                    } elseif ($temelTip === 'net') {
+                        $netEkOdemeler += $toplamTutar;
+                        $detay['net_etki'] = $toplamTutar;
+                    } elseif ($temelTip === 'kismi_muaf') {
+                        // Kısmi muaf mantığı
+                        $muafLimit = 0;
+                        if ($parametre->muaf_limit_tipi === 'gunluk') {
+                            $muafLimit = floatval($parametre->gunluk_muaf_limit) * $gunSayisi;
+                        } elseif ($parametre->muaf_limit_tipi === 'aylik') {
+                            $muafLimit = floatval($parametre->aylik_muaf_limit);
+                        }
+
+                        $muafKisim = min($toplamTutar, $muafLimit);
+                        $vergiliKisim = max(0, $toplamTutar - $muafLimit);
+
+                        $netEkOdemeler += $muafKisim;
+
+                        if ($vergiliKisim > 0) {
+                            if ($parametre->sgk_matrahi_dahil) {
+                                $sgkMatrahEkleri += $vergiliKisim;
+                            }
+                            if ($parametre->gelir_vergisi_dahil) {
+                                $vergiliMatrahEkleri += $vergiliKisim;
+                            }
+                        }
+
+                        $detay['muaf_kisim'] = round($muafKisim, 2);
+                        $detay['vergili_kisim'] = round($vergiliKisim, 2);
+                        $detay['net_etki'] = round($muafKisim, 2);
+                    }
                     break;
 
                 case 'kismi_muaf':

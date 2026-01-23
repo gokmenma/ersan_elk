@@ -210,18 +210,9 @@
         </div>
 
         <div class="flex-1 overflow-y-auto">
-            <table class="w-full text-sm text-left">
-                <thead class="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800 sticky top-0">
-                    <tr>
-                        <th class="px-3 py-2 rounded-l-lg">Yıl</th>
-                        <th class="px-3 py-2">Tarih</th>
-                        <th class="px-3 py-2 text-right rounded-r-lg">Hak</th>
-                    </tr>
-                </thead>
-                <tbody id="hakedis-list" class="divide-y divide-slate-100 dark:divide-slate-800">
-                    <!-- Dynamic Content -->
-                </tbody>
-            </table>
+            <div id="hakedis-list" class="space-y-2">
+                <!-- Dynamic Content -->
+            </div>
         </div>
     </div>
 </div>
@@ -283,27 +274,136 @@
         }
     }
 
-    function showHakedisDetay() {
+    async function showHakedisDetay() {
         if (!hakedisData) return;
 
         document.getElementById('sheet-toplam').textContent = hakedisData.toplam_hakedis + ' Gün';
         document.getElementById('sheet-kullanilan').textContent = hakedisData.kullanilan_izin + ' Gün';
         document.getElementById('sheet-kalan').textContent = hakedisData.kalan_izin + ' Gün';
 
-        const tbody = document.getElementById('hakedis-list');
-        if (hakedisData.detay && hakedisData.detay.length > 0) {
-            tbody.innerHTML = hakedisData.detay.map(item => `
-                <tr>
-                    <td class="px-3 py-3 font-medium text-slate-900 dark:text-white">${item.yil}. Yıl</td>
-                    <td class="px-3 py-3 text-slate-500">${new Date(item.hakedis_tarihi).toLocaleDateString('tr-TR')}</td>
-                    <td class="px-3 py-3 text-right font-bold text-primary">${item.hakedis_gun}</td>
-                </tr>
-            `).join('');
-        } else {
-            tbody.innerHTML = '<tr><td colspan="3" class="px-3 py-4 text-center text-slate-500">Hakediş detayı bulunamadı.</td></tr>';
+        const container = document.getElementById('hakedis-list');
+
+        // Kullanılan izinleri yıllara göre gruplamak için izinleri çek
+        try {
+            const response = await API.request('getIzinlerByYear');
+            const izinlerByYear = response.success ? response.data : {};
+
+            if (hakedisData.detay && hakedisData.detay.length > 0) {
+                // FIFO Logic: Calculate how much leave was used from each year
+                const allLeaves = izinlerByYear['all'] || [];
+                const totalUsed = allLeaves.reduce((sum, izin) => sum + parseFloat(izin.toplam_gun || 0), 0);
+
+                // Distribute used leaves across years using FIFO
+                let remainingUsed = totalUsed;
+                const yearUsage = [];
+
+                for (let i = 0; i < hakedisData.detay.length; i++) {
+                    const yearDetail = hakedisData.detay[i];
+                    const yearEntitlement = yearDetail.hakedis_gun;
+
+                    if (remainingUsed > 0) {
+                        const usedFromThisYear = Math.min(remainingUsed, yearEntitlement);
+                        const remaining = yearEntitlement - usedFromThisYear;
+                        yearUsage.push({
+                            year: yearDetail.yil,
+                            entitlement: yearEntitlement,
+                            used: usedFromThisYear,
+                            remaining: remaining
+                        });
+                        remainingUsed -= usedFromThisYear;
+                    } else {
+                        yearUsage.push({
+                            year: yearDetail.yil,
+                            entitlement: yearEntitlement,
+                            used: 0,
+                            remaining: yearEntitlement
+                        });
+                    }
+                }
+
+                container.innerHTML = hakedisData.detay.map((item, index) => {
+                    const usage = yearUsage[index];
+
+                    return `
+                        <div class="card overflow-hidden">
+                            <button onclick="toggleYearAccordion(${index})" 
+                                class="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-primary">calendar_today</span>
+                                    </div>
+                                    <div class="text-left">
+                                        <p class="font-bold text-slate-900 dark:text-white">${item.yil}. Yıl</p>
+                                        <p class="text-xs text-slate-500">${new Date(item.hakedis_tarihi).toLocaleDateString('tr-TR')}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-4">
+                                    <div class="text-right">
+                                        <p class="text-xs text-slate-500">Hak: ${usage.entitlement} | Kullanılan: ${usage.used} | Kalan: ${usage.remaining}</p>
+                                    </div>
+                                    <span class="material-symbols-outlined text-slate-400 accordion-icon" id="accordion-icon-${index}">expand_more</span>
+                                </div>
+                            </button>
+                            <div id="accordion-${index}" class="accordion-content hidden">
+                                <div class="px-4 pb-3 border-t border-slate-100 dark:border-slate-800">
+                                    ${usage.used > 0 && allLeaves.length > 0 ? `
+                                        <div class="mt-3 overflow-x-auto">
+                                            <table class="w-full text-sm">
+                                                <thead>
+                                                    <tr class="text-xs text-slate-500 border-b border-slate-200 dark:border-slate-700">
+                                                        <th class="text-left py-2 px-2 font-semibold">İzin Türü</th>
+                                                        <th class="text-left py-2 px-2 font-semibold">Tarih</th>
+                                                        <th class="text-center py-2 px-2 font-semibold">Süre (Gün)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    ${allLeaves.map(izin => `
+                                                        <tr class="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                                                            <td class="py-2.5 px-2 text-slate-900 dark:text-white font-medium">${izin.izin_tipi_adi || 'Yıllık İzin'}</td>
+                                                            <td class="py-2.5 px-2 text-slate-600 dark:text-slate-400">
+                                                                <div class="flex flex-col">
+                                                                    <span class="text-xs">Başlangıç: ${izin.baslangic}</span>
+                                                                    <span class="text-xs">Bitiş: ${izin.bitis}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td class="py-2.5 px-2 text-center font-bold text-primary">${izin.toplam_gun}</td>
+                                                        </tr>
+                                                    `).join('')}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ` : `
+                                        <div class="mt-2 py-3 text-center">
+                                            <p class="text-xs text-slate-500">Bu yıl için kullanılan izin bulunmuyor</p>
+                                        </div>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                container.innerHTML = '<div class="text-center py-8 text-slate-500">Hakediş detayı bulunamadı.</div>';
+            }
+        } catch (error) {
+            console.error('Hakediş detay yükleme hatası:', error);
+            container.innerHTML = '<div class="text-center py-8 text-red-500">Veriler yüklenirken hata oluştu.</div>';
         }
 
         Modal.open('hakedis-detay-modal');
+    }
+
+    function toggleYearAccordion(index) {
+        const content = document.getElementById(`accordion-${index}`);
+        const icon = document.getElementById(`accordion-icon-${index}`);
+
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden');
+            icon.textContent = 'expand_less';
+        } else {
+            content.classList.add('hidden');
+            icon.textContent = 'expand_more';
+        }
     }
 
     async function loadIzinler() {
@@ -487,6 +587,33 @@
 
         if (!Form.validate(form)) {
             Toast.show('Lütfen gerekli alanları doldurun', 'error');
+            return;
+        }
+
+        // Kalan izin kontrolü
+        const baslangic = formData.baslangic_tarihi;
+        const bitis = formData.bitis_tarihi;
+
+        if (!baslangic || !bitis) {
+            Toast.show('Lütfen tarihleri seçiniz', 'error');
+            return;
+        }
+
+        // Gün sayısını hesapla
+        const diff = new Date(bitis) - new Date(baslangic);
+        const toplamGun = Math.round(diff / (1000 * 60 * 60 * 24)) + 1;
+
+        if (toplamGun <= 0) {
+            Toast.show('Bitiş tarihi başlangıç tarihinden önce olamaz', 'error');
+            return;
+        }
+
+        // Kalan izin kontrolü
+        if (hakedisData && toplamGun > hakedisData.kalan_izin) {
+            Toast.show(
+                `Yetersiz izin hakkı! Talebiniz: ${toplamGun} gün, Kalan izniniz: ${hakedisData.kalan_izin} gün`,
+                'error'
+            );
             return;
         }
 

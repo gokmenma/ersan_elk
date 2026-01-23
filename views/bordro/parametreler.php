@@ -48,7 +48,10 @@ $vergiDilimleri = $BordroParametre->getVergiDilimleri(date('Y'));
 $hesaplamaTipleriGelir = [
     'brut' => 'Brüte Ekle (Vergili)',
     'net' => 'Nete Ekle (Vergisiz)',
-    'kismi_muaf' => 'Kısmi Muaf'
+    'kismi_muaf' => 'Kısmi Muaf',
+    'gunluk_brut' => 'Günlük Bazlı - Brüt (Hesaplanan Gün × Tutar)',
+    'gunluk_net' => 'Günlük Bazlı - Net (Hesaplanan Gün × Tutar)',
+    'gunluk_kismi_muaf' => 'Günlük Bazlı - Kısmi Muaf (Hesaplanan Gün × Tutar)'
 ];
 
 $hesaplamaTipleriKesinti = [
@@ -57,7 +60,8 @@ $hesaplamaTipleriKesinti = [
     'sgk_matrahindan' => 'SGK Matrahından Kesinti',
     'oran_bazli_vergi' => 'Oran Bazlı (Brüt Vergi Matrahı üzerinden)',
     'oran_bazli_sgk' => 'Oran Bazlı (Brüt Sgk Matrahı üzerinden)',
-    'oran_bazli_net' => 'Oran Bazlı (Net üzerinden)'
+    'oran_bazli_net' => 'Oran Bazlı (Net üzerinden)',
+    'gunluk_kesinti' => 'Günlük Bazlı Kesinti (Hesaplanan Gün × Tutar)'
 ];
 
 $hesaplamaTipleri = array_merge($hesaplamaTipleriGelir, $hesaplamaTipleriKesinti);
@@ -717,11 +721,47 @@ $kategoriOptions = [
                         <div class="col-md-6 mb-3" id="divTutar">
                             <?= Form::FormFloatInput("text", "varsayilan_tutar", "0", "0.00", "Varsayılan Tutar", "dollar-sign", "form-control money", false, null, "off", false) ?>
                         </div>
+                        <div class="col-md-6 mb-3" id="divGunlukTutar" style="display: none;">
+                            <?= Form::FormFloatInput("text", "gunluk_tutar", "0", "0.00", "Günlük Tutar", "bx bx-calendar-check", "form-control money", false, null, "off", false) ?>
+                        </div>
                         <div class="col-md-6 mb-3" id="divOran" style="display: none;">
                             <?= Form::FormFloatInput("number", "oran", "0", "0", "Oran (%)", "bx bx-percentage", "form-control", false, null, "off", false, 'step="0.01"') ?>
                         </div>
                         <div class="col-md-6 mb-3">
                             <?= Form::FormFloatInput("number", "sira", "0", "0", "Sıralama", "bx bx-sort-amount-up", "form-control") ?>
+                        </div>
+                    </div>
+
+                    <!-- Günlük Hesaplama Ayarları -->
+                    <div id="gunlukAyarlar" class="row" style="display: none;">
+                        <div class="col-12 mb-3">
+                            <div class="alert alert-info mb-0">
+                                <i class="bx bx-info-circle me-1"></i>
+                                <strong>Günlük Bazlı Hesaplama:</strong> Tutar = Günlük Tutar × Hesaplanan Gün Sayısı
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Gün Sayısı Hesaplama</label>
+                            <div class="d-flex gap-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" id="gun_otomatik"
+                                        name="gun_sayisi_otomatik" value="1">
+                                    <label class="form-check-label" for="gun_otomatik">
+                                        <i class="bx bx-git-branch text-success"></i> Otomatik (Puantajdan)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" id="gun_manuel"
+                                        name="gun_sayisi_otomatik" value="0" checked>
+                                    <label class="form-check-label" for="gun_manuel">
+                                        <i class="bx bx-edit text-primary"></i> Manuel/Sabit
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3" id="divVarsayilanGun">
+                            <?= Form::FormFloatInput("number", "varsayilan_gun_sayisi", "26", "26", "Varsayılan Gün Sayısı", "bx bx-calendar", "form-control") ?>
+                            <small class="text-muted">Manuel hesaplama için kullanılır</small>
                         </div>
                     </div>
 
