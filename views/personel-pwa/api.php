@@ -36,6 +36,16 @@ if ($action !== 'login' && !isset($_SESSION['personel_id'])) {
 
 $personel_id = $_SESSION['personel_id'] ?? 0;
 
+if ($personel_id > 0) {
+    $PersonelModel = new PersonelModel();
+    $personel = $PersonelModel->find($personel_id);
+    if (!$personel) {
+        session_destroy();
+        echo json_encode(['success' => false, 'error' => 'Session expired', 'redirect' => 'login.php']);
+        exit;
+    }
+}
+
 // Response helper
 function response($success, $data = null, $message = '')
 {
@@ -49,6 +59,16 @@ function response($success, $data = null, $message = '')
 
 try {
     switch ($action) {
+        case 'debugSession':
+            response(true, $_SESSION);
+            break;
+
+        case 'whoami':
+            $PersonelModel = new PersonelModel();
+            $p = $PersonelModel->find($personel_id);
+            response(true, $p);
+            break;
+
         // ===== Dashboard =====
         case 'getDashboardData':
             $BordroModel = new BordroPersonelModel();
@@ -285,11 +305,27 @@ try {
 
         case 'getIzinStats':
             $IzinModel = new PersonelIzinleriModel();
-            // TODO: İzin istatistiklerini hesapla
+            file_put_contents(dirname(dirname(__DIR__)) . '/debug_pwa.log', "getIzinStats for personel_id: " . $personel_id . "\n", FILE_APPEND);
+            $entitlement = $IzinModel->calculateLeaveEntitlement($personel_id);
+            file_put_contents(dirname(dirname(__DIR__)) . '/debug_pwa.log', "Entitlement: " . json_encode($entitlement) . "\n", FILE_APPEND);
+            $izinler = $IzinModel->getPersonelIzinleri($personel_id);
+
+            $bekleyen = 0;
+            foreach ($izinler as $izin) {
+                $durum = mb_strtolower($izin->onay_durumu ?? '', 'UTF-8');
+                if ($durum == 'beklemede') {
+                    $bekleyen++;
+                }
+            }
+
             response(true, [
-                'kalan_izin' => 14, // Örnek
+                'kalan_izin' => $entitlement['kalan_izin'],
+                'toplam_hakedis' => $entitlement['toplam_hakedis'],
+                'kullanilan_izin' => $entitlement['kullanilan_izin'],
+                'detay' => $entitlement['detay'],
                 'hastalik_izni' => 0,
-                'bekleyen' => 0
+                'bekleyen' => $bekleyen,
+                'debug_pid' => $personel_id
             ]);
             break;
 
@@ -919,6 +955,87 @@ try {
                 response(true, null, 'Şifreniz başarıyla değiştirildi.');
             } else {
                 response(false, null, 'Şifre değiştirilirken bir hata oluştu.');
+            }
+            break;
+
+        case 'updateProfileImage':
+            if (!isset($_FILES['image']) || $_FILES['image']['error'] != 0) {
+                response(false, null, 'Lütfen bir resim seçiniz.');
+            }
+
+            $file = $_FILES['image'];
+            $allowed = ['jpg', 'jpeg', 'png', 'webp'];
+            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+            if (!in_array($ext, $allowed)) {
+                response(false, null, 'Sadece JPG, PNG ve WEBP formatları desteklenir.');
+            }
+
+            // Dosya boyutu kontrolü (örn: 5MB)
+            if ($file['size'] > 5 * 1024 * 1024) {
+                response(false, null, 'Dosya boyutu 5MB\'dan büyük olamaz.');
+            }
+
+            // Hedef klasörler
+            $mainAppDir = dirname(dirname(__DIR__));
+            $pwaDir = __DIR__;
+
+            $uploadDirMain = $mainAppDir . '/assets/images/users/';
+            $uploadDirPwa = $pwaDir . '/assets/images/users/';
+
+            if (!file_exists($uploadDirMain)) {
+                mkdir($uploadDirMain, 0777, true);
+            }
+            if (!file_exists($uploadDirPwa)) {
+                mkdir($uploadDirPwa, 0777, true);
+            }
+
+            $fileName = uniqid('personel_') . '.' . $ext;
+            $targetPathMain = $uploadDirMain . $fileName;
+            $targetPathPwa = $uploadDirPwa . $fileName;
+
+            // DB'ye kaydedilecek yol
+            $dbPath = 'assets/images/users/' . $fileName;
+
+            // Debug Log
+            $logFile = $mainAppDir . '/debug_image_upload.txt';
+            $logContent = date('Y-m-d H:i:s') . " - Uploading for ID: $personel_id\n";
+            $logContent .= "Target Main: $targetPathMain\n";
+            $logContent .= "Target PWA: $targetPathPwa\n";
+            $logContent .= "DB Path: $dbPath\n";
+
+            if (move_uploaded_file($file['tmp_name'], $targetPathMain)) {
+                // PWA dizinine kopyala
+                if (!copy($targetPathMain, $targetPathPwa)) {
+                    $logContent .= "ERROR: Failed to copy to PWA directory: $targetPathPwa\n";
+                } else {
+                    $logContent .= "SUCCESS: Copied to PWA directory.\n";
+                }
+
+                $PersonelModel = new PersonelModel();
+                $db = $PersonelModel->getDb();
+
+                // Eski resmi silmek istersek burada yapabiliriz ama şimdilik kalsın
+
+                $stmt = $db->prepare("UPDATE personel SET resim_yolu = ? WHERE id = ?");
+                $result = $stmt->execute([$dbPath, $personel_id]);
+                $rowCount = $stmt->rowCount();
+
+                $logContent .= "Update Result: " . ($result ? 'True' : 'False') . "\n";
+                $logContent .= "Row Count: $rowCount\n";
+                file_put_contents($logFile, $logContent, FILE_APPEND);
+
+                if ($result) {
+                    response(true, ['image_url' => $dbPath], 'Profil resmi güncellendi.');
+                } else {
+                    @unlink($targetPathMain); // DB güncellenemezse dosyaları sil
+                    @unlink($targetPathPwa);
+                    response(false, null, 'Veritabanı güncellenemedi.');
+                }
+            } else {
+                $logContent .= "Move Uploaded File Failed\n";
+                file_put_contents($logFile, $logContent, FILE_APPEND);
+                response(false, null, 'Dosya yüklenirken bir hata oluştu.');
             }
             break;
 

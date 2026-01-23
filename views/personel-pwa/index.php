@@ -49,20 +49,11 @@ $personel_id = $_SESSION['personel_id'];
 $PersonelModel = new PersonelModel();
 $personel = $PersonelModel->find($personel_id);
 
-// Personel bulunamazsa varsayılan değerler kullan
+// Personel bulunamazsa oturumu kapat ve login'e yönlendir
 if (!$personel) {
-    $personel = (object) [
-        'adi_soyadi' => $_SESSION['personel_adi'] ?? 'Personel',
-        'foto' => '',
-        'pozisyon' => '',
-        'departman' => '',
-        'tc_no' => '',
-        'dogum_tarihi' => '',
-        'ise_baslama_tarihi' => '',
-        'telefon' => '',
-        'email' => '',
-        'adres' => ''
-    ];
+    session_destroy();
+    header("Location: login.php");
+    exit();
 }
 
 // Sayfa yönlendirmesi

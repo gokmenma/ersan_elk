@@ -24,7 +24,7 @@
     <!-- Stats Summary -->
     <section class="px-4 py-4 bg-slate-50 dark:bg-background-dark">
         <div class="grid grid-cols-3 gap-3">
-            <div class="card p-3 text-center relative overflow-hidden">
+            <div class="card p-3 text-center relative overflow-hidden cursor-pointer" onclick="showHakedisDetay()">
                 <div class="absolute top-0 right-0 w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-full -mr-4 -mt-4">
                 </div>
                 <div
@@ -181,10 +181,56 @@
     </div>
 </div>
 
+<!-- Hakediş Detay Bottom Sheet -->
+<div id="hakedis-detay-modal" class="modal-overlay">
+    <div class="modal-content p-6 pt-3 h-[60vh] flex flex-col">
+        <div class="modal-handle"></div>
+
+        <div class="flex items-center justify-between mb-4 flex-shrink-0">
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Hakediş Detayları</h3>
+            <button onclick="Modal.close('hakedis-detay-modal')"
+                class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <span class="material-symbols-outlined text-slate-600">close</span>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 mb-4 flex-shrink-0">
+            <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl text-center">
+                <p class="text-xs text-blue-600 dark:text-blue-400 mb-1">Toplam</p>
+                <p class="text-lg font-bold text-blue-700 dark:text-blue-300" id="sheet-toplam">0</p>
+            </div>
+            <div class="bg-red-50 dark:bg-red-900/20 p-3 rounded-xl text-center">
+                <p class="text-xs text-red-600 dark:text-red-400 mb-1">Kullanılan</p>
+                <p class="text-lg font-bold text-red-700 dark:text-red-300" id="sheet-kullanilan">0</p>
+            </div>
+            <div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl text-center">
+                <p class="text-xs text-green-600 dark:text-green-400 mb-1">Kalan</p>
+                <p class="text-lg font-bold text-green-700 dark:text-green-300" id="sheet-kalan">0</p>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800 sticky top-0">
+                    <tr>
+                        <th class="px-3 py-2 rounded-l-lg">Yıl</th>
+                        <th class="px-3 py-2">Tarih</th>
+                        <th class="px-3 py-2 text-right rounded-r-lg">Hak</th>
+                    </tr>
+                </thead>
+                <tbody id="hakedis-list" class="divide-y divide-slate-100 dark:divide-slate-800">
+                    <!-- Dynamic Content -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <script>
     let currentFilter = 'all';
     let izinlerData = [];
     let izinTurleri = [];
+    let hakedisData = null;
 
     document.addEventListener('DOMContentLoaded', function () {
         loadIzinTurleri();
@@ -227,6 +273,7 @@
         try {
             const response = await API.request('getIzinStats');
             if (response.success) {
+                hakedisData = response.data;
                 document.getElementById('kalan-izin').textContent = response.data.kalan_izin + ' Gün';
                 document.getElementById('hastalik-izni').textContent = response.data.hastalik_izni + ' Gün';
                 document.getElementById('bekleyen-izin').textContent = response.data.bekleyen;
@@ -234,6 +281,29 @@
         } catch (error) {
             console.error('Stats load error:', error);
         }
+    }
+
+    function showHakedisDetay() {
+        if (!hakedisData) return;
+
+        document.getElementById('sheet-toplam').textContent = hakedisData.toplam_hakedis + ' Gün';
+        document.getElementById('sheet-kullanilan').textContent = hakedisData.kullanilan_izin + ' Gün';
+        document.getElementById('sheet-kalan').textContent = hakedisData.kalan_izin + ' Gün';
+
+        const tbody = document.getElementById('hakedis-list');
+        if (hakedisData.detay && hakedisData.detay.length > 0) {
+            tbody.innerHTML = hakedisData.detay.map(item => `
+                <tr>
+                    <td class="px-3 py-3 font-medium text-slate-900 dark:text-white">${item.yil}. Yıl</td>
+                    <td class="px-3 py-3 text-slate-500">${new Date(item.hakedis_tarihi).toLocaleDateString('tr-TR')}</td>
+                    <td class="px-3 py-3 text-right font-bold text-primary">${item.hakedis_gun}</td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="3" class="px-3 py-4 text-center text-slate-500">Hakediş detayı bulunamadı.</td></tr>';
+        }
+
+        Modal.open('hakedis-detay-modal');
     }
 
     async function loadIzinler() {

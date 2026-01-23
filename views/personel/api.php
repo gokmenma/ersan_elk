@@ -244,7 +244,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($inputFileName);
             $sheet = $spreadsheet->getActiveSheet();
-            $rows = $sheet->toArray();
+            // Formatlamayı kapatarak ham verileri al (Tarihler sayısal gelir)
+            $rows = $sheet->toArray(null, true, false);
 
             if (count($rows) < 2) {
                 throw new Exception("Excel dosyası boş veya sadece başlık satırı içeriyor.");

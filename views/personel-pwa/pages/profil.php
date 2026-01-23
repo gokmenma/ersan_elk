@@ -5,6 +5,7 @@
  */
 use App\Helper\Helper;
 use App\Helper\Date;
+
 ?>
 
 <div class="flex flex-col min-h-screen pb-8">
@@ -28,16 +29,25 @@ use App\Helper\Date;
     <!-- Profile Card -->
     <section class="px-4 -mt-12 relative z-20">
         <div class="card p-6 text-center">
-            <div
-                class="w-24 h-24 rounded-full bg-slate-200 dark:bg-slate-700 mx-auto -mt-16 border-4 border-white dark:border-card-dark overflow-hidden shadow-lg">
-                <?php if (!empty($personel->foto)): ?>
-                    <img src="<?php echo Helper::base_url('uploads/personel/' . $personel->foto); ?>" alt="Profil"
-                        class="w-full h-full object-cover">
-                <?php else: ?>
-                    <div class="w-full h-full flex items-center justify-center bg-primary/10">
-                        <span class="material-symbols-outlined text-primary text-4xl">person</span>
-                    </div>
-                <?php endif; ?>
+            <div class="relative w-24 h-24 mx-auto -mt-16">
+                <div
+                    class="w-24 h-24 rounded-full bg-slate-200 dark:bg-slate-700 border-4 border-white dark:border-card-dark overflow-hidden shadow-lg">
+                    <?php if (!empty($personel->resim_yolu)): ?>
+                        <img id="profile-image" src="<?php echo Helper::base_url($personel->resim_yolu); ?>" alt="Profil"
+                            class="w-full h-full object-cover">
+                    <?php else: ?>
+                        <div id="profile-placeholder" class="w-full h-full flex items-center justify-center bg-primary/10">
+                            <span class="material-symbols-outlined text-primary text-4xl">person</span>
+                        </div>
+                        <img id="profile-image" src="" alt="Profil" class="w-full h-full object-cover hidden">
+                    <?php endif; ?>
+                </div>
+                <button onclick="document.getElementById('profile-upload').click()"
+                    class="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center shadow-lg border-2 border-white dark:border-card-dark">
+                    <span class="material-symbols-outlined text-sm">edit</span>
+                </button>
+                <input type="file" id="profile-upload" class="hidden" accept="image/*"
+                    onchange="uploadProfileImage(this)">
             </div>
 
             <h2 class="text-xl font-bold text-slate-900 dark:text-white mt-4">
@@ -173,8 +183,7 @@ use App\Helper\Date;
                     <p class="text-xs text-slate-500" id="notification-status">Durum kontrol ediliyor...</p>
                 </div>
                 <button type="button" id="notification-toggle-btn" onclick="toggleNotifications()"
-                    data-subscribed="false"
-                    class="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold">
+                    data-subscribed="false" class="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold">
                     ...
                 </button>
             </div>
@@ -416,6 +425,48 @@ use App\Helper\Date;
             window.location.href = 'login.php';
         } catch (error) {
             window.location.href = 'login.php';
+        }
+    }
+    async function uploadProfileImage(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append('action', 'updateProfileImage');
+            formData.append('image', file);
+
+            try {
+                Loading.show();
+                // API.request yerine fetch kullanıyoruz çünkü FormData gönderiyoruz
+                const response = await fetch('api.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Update image source
+                    const img = document.getElementById('profile-image');
+                    const placeholder = document.getElementById('profile-placeholder');
+
+                    // Add timestamp to bypass cache
+                    img.src = '<?php echo Helper::base_url(); ?>' + result.data.image_url + '?t=' + new Date().getTime();
+                    img.classList.remove('hidden');
+
+                    if (placeholder) {
+                        placeholder.classList.add('hidden');
+                    }
+
+                    Toast.show('Profil resmi güncellendi', 'success');
+                } else {
+                    Toast.show(result.message || 'Bir hata oluştu', 'error');
+                }
+            } catch (error) {
+                console.error(error);
+                Toast.show('Bir hata oluştu', 'error');
+            } finally {
+                Loading.hide();
+            }
         }
     }
 </script>

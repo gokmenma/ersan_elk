@@ -31,105 +31,10 @@ switch ($tab) {
         $PersonelIzinleriModel = new PersonelIzinleriModel();
         $izinler = $PersonelIzinleriModel->getPersonelIzinleri($id);
 
-        $toplam_hakedis = 0;
-        $kullanilan_izin = 0;
-
-        $parseDate = function ($value) {
-            $value = trim((string) $value);
-            if ($value === '' || $value === '0000-00-00' || $value === '0000-00-00 00:00:00') {
-                return null;
-            }
-
-            $formats = [
-                'Y-m-d',
-                'Y-m-d H:i:s',
-                'd.m.Y',
-                'd.m.Y H:i',
-                'd/m/Y',
-                'd/m/Y H:i',
-                'd-m-Y',
-                'd-m-Y H:i',
-            ];
-
-            foreach ($formats as $format) {
-                $dt = DateTime::createFromFormat($format, $value);
-                if (!$dt) {
-                    continue;
-                }
-                $errors = DateTime::getLastErrors();
-                if (($errors['warning_count'] ?? 0) === 0 && ($errors['error_count'] ?? 0) === 0) {
-                    $year = (int) $dt->format('Y');
-                    $currentYear = (int) (new DateTime())->format('Y');
-                    if ($year >= 1950 && $year <= ($currentYear + 1)) {
-                        return $dt;
-                    }
-                }
-            }
-
-            try {
-                $dt = new DateTime($value);
-                $year = (int) $dt->format('Y');
-                $currentYear = (int) (new DateTime())->format('Y');
-                if ($year >= 1950 && $year <= ($currentYear + 1)) {
-                    return $dt;
-                }
-            } catch (Exception $e) {
-            }
-
-            return null;
-        };
-
-        $toNumber = function ($value) {
-            $value = trim((string) $value);
-            if ($value === '') {
-                return 0.0;
-            }
-            return (float) str_replace(',', '.', $value);
-        };
-
-        if ($personel) {
-            $giris = $parseDate($personel->ise_giris_tarihi ?? '');
-            $dogum = $parseDate($personel->dogum_tarihi ?? '');
-
-            if ($giris) {
-                $bugun = new DateTime();
-                if ($giris <= $bugun) {
-                    $calisma_yili = (int) $giris->diff($bugun)->y;
-                    for ($i = 1; $i <= $calisma_yili; $i++) {
-                        if ($i >= 1 && $i <= 5) {
-                            $hakedis = 14;
-                        } elseif ($i > 5 && $i < 15) {
-                            $hakedis = 20;
-                        } else {
-                            $hakedis = 26;
-                        }
-
-                        if ($dogum) {
-                            $yil_sonu = (clone $giris)->modify("+$i years");
-                            $yas = (int) $dogum->diff($yil_sonu)->y;
-                            if (($yas < 18 || $yas > 50) && $hakedis < 20) {
-                                $hakedis = 20;
-                            }
-                        }
-
-                        $toplam_hakedis += $hakedis;
-                    }
-                }
-            }
-        }
-
-        if (!empty($izinler)) {
-            foreach ($izinler as $izin) {
-                if (isset($izin->yillik_izne_etki) && $izin->yillik_izne_etki == 'Dus') {
-                    $durum = $izin->son_durum ?? '';
-                    if (in_array($durum, ['KabulEdildi', 'Onaylandı'])) {
-                        $kullanilan_izin += $toNumber($izin->sure ?? 0);
-                    }
-                }
-            }
-        }
-
-        $kalan_izin = max(0, $toplam_hakedis - $kullanilan_izin);
+        $entitlement = $PersonelIzinleriModel->calculateLeaveEntitlement($id);
+        $toplam_hakedis = $entitlement['toplam_hakedis'];
+        $kullanilan_izin = $entitlement['kullanilan_izin'];
+        $kalan_izin = $entitlement['kalan_izin'];
 
         include_once __DIR__ . "/icerik/izinler.php";
         break;

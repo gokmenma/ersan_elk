@@ -211,4 +211,111 @@ class PersonelIzinleriModel extends Model
         $end = new \DateTime($bitis);
         return $start->diff($end)->days + 1;
     }
+
+    /**
+     * Personelin izin hakedişlerini hesaplar
+     * @param int $personel_id
+     * @return array
+     */
+    public function calculateLeaveEntitlement($personel_id)
+    {
+        // 1. Personel bilgilerini çek
+        $sql = "SELECT ise_giris_tarihi, dogum_tarihi FROM personel WHERE id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$personel_id]);
+        $personel = $stmt->fetch(PDO::FETCH_OBJ);
+
+        if (!$personel) {
+            return ['toplam_hakedis' => 0, 'kullanilan_izin' => 0, 'kalan_izin' => 0, 'detay' => []];
+        }
+
+        // 2. Tarihleri parse et
+        $giris = $this->parseDate($personel->ise_giris_tarihi);
+        $dogum = $this->parseDate($personel->dogum_tarihi);
+
+        $toplam_hakedis = 0;
+        $detay = [];
+
+        if ($giris) {
+            $bugun = new \DateTime();
+            if ($giris <= $bugun) {
+                $calisma_yili = (int) $giris->diff($bugun)->y;
+                for ($i = 1; $i <= $calisma_yili; $i++) {
+                    // Hizmet süresine göre temel hakediş
+                    // a) Bir yıldan beş yıla kadar (beş yıl dahil) olanlara ondört günden,
+                    if ($i >= 1 && $i <= 5) {
+                        $hakedis = 14;
+                    }
+                    // b) Beş yıldan fazla onbeş yıldan az olanlara yirmi günden,
+                    elseif ($i > 5 && $i < 15) {
+                        $hakedis = 20;
+                    }
+                    // c) Onbeş yıl (dahil) ve daha fazla olanlara yirmialtı günden,
+                    else {
+                        $hakedis = 26;
+                    }
+
+                    // Yaş kontrolü (18 ve altı, 50 ve üstü -> en az 20 gün)
+                    if ($dogum) {
+                        $yil_sonu = (clone $giris)->modify("+$i years");
+                        $yas = (int) $dogum->diff($yil_sonu)->y;
+                        // onsekiz ve daha küçük yaştaki işçilerle elli ve daha yukarı yaştaki işçilere verilecek yıllık ücretli izin süresi yirmi günden az olamaz.
+                        if (($yas <= 18 || $yas >= 50) && $hakedis < 20) {
+                            $hakedis = 20;
+                        }
+                    }
+
+                    // Yer altı işçisi kontrolü (Şimdilik pasif, alan eklenirse burası güncellenebilir)
+                    // if ($yer_alti) $hakedis += 4;
+
+                    $hakedis_tarihi = (clone $giris)->modify("+$i years")->format('Y-m-d');
+
+                    $detay[] = [
+                        'yil' => $i,
+                        'hakedis_tarihi' => $hakedis_tarihi,
+                        'hakedis_gun' => $hakedis
+                    ];
+
+                    $toplam_hakedis += $hakedis;
+                }
+            }
+        }
+
+        // 3. Kullanılan izinleri hesapla
+        // Yıllık izne etkisi 'Dus' olan ve onaylanmış izinler
+        // DÜZELTME: 'sure' kolonu yerine 'toplam_gun' kullanılıyor
+        $sql = "SELECT toplam_gun, yillik_izne_etki FROM personel_izinleri 
+                WHERE personel_id = ? 
+                AND silinme_tarihi IS NULL 
+                AND (onay_durumu = 'Onaylandı' OR onay_durumu = 'KabulEdildi')";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$personel_id]);
+        $izinler = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $kullanilan_izin = 0;
+        foreach ($izinler as $izin) {
+            if (isset($izin->yillik_izne_etki) && $izin->yillik_izne_etki == 'Dus') {
+                $kullanilan_izin += (float) $izin->toplam_gun;
+            }
+        }
+
+        return [
+            'toplam_hakedis' => $toplam_hakedis,
+            'kullanilan_izin' => $kullanilan_izin,
+            'kalan_izin' => max(0, $toplam_hakedis - $kullanilan_izin),
+            'detay' => $detay
+        ];
+    }
+
+    private function parseDate($value)
+    {
+        if (empty($value) || $value == '0000-00-00' || $value == '0000-00-00 00:00:00')
+            return null;
+        try {
+            return new \DateTime($value);
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
 }

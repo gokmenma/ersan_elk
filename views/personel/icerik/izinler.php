@@ -32,6 +32,80 @@ $onay_durumlari = [
 ?>
 
 
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card border border-primary bg-primary bg-opacity-10">
+            <div class="card-body p-3">
+                <div class="row text-center align-items-center">
+                    <div class="col-md-4 border-end border-primary border-opacity-25 cursor-pointer"
+                        data-bs-toggle="modal" data-bs-target="#modalHakedisDetay">
+                        <strong class="d-block small text-primary text-uppercase mb-1">Toplam Hakediş</strong>
+                        <span class="fs-4 fw-bold text-primary"><?= isset($toplam_hakedis) ? $toplam_hakedis : 0 ?>
+                            Gün</span>
+                        <div class="small text-muted mt-1"><i class="bx bx-info-circle"></i> Detay için tıklayın</div>
+                    </div>
+                    <div class="col-md-4 border-end border-primary border-opacity-25">
+                        <strong class="d-block small text-danger text-uppercase mb-1">Kullanılan</strong>
+                        <span class="fs-4 fw-bold text-danger"><?= isset($kullanilan_izin) ? $kullanilan_izin : 0 ?>
+                            Gün</span>
+                    </div>
+                    <div class="col-md-4">
+                        <strong class="d-block small text-success text-uppercase mb-1">Kalan</strong>
+                        <span class="fs-4 fw-bold text-success"><?= isset($kalan_izin) ? $kalan_izin : 0 ?> Gün</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hakediş Detay Modal -->
+<div class="modal fade" id="modalHakedisDetay" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Yıllık İzin Hakediş Detayı</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Hizmet Yılı</th>
+                                <th>Hakediş Tarihi</th>
+                                <th class="text-end">Hakediş (Gün)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (isset($entitlement['detay']) && !empty($entitlement['detay'])): ?>
+                                <?php foreach ($entitlement['detay'] as $detay): ?>
+                                    <tr>
+                                        <td><?= $detay['yil'] ?>. Yıl</td>
+                                        <td><?= date('d.m.Y', strtotime($detay['hakedis_tarihi'])) ?></td>
+                                        <td class="text-end fw-bold"><?= $detay['hakedis_gun'] ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                <tr class="table-active">
+                                    <td colspan="2" class="fw-bold text-end">Toplam:</td>
+                                    <td class="text-end fw-bold text-primary"><?= $toplam_hakedis ?></td>
+                                </tr>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-3">Henüz hakediş bulunmuyor.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-12">
         <div class="card border">
