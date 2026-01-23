@@ -315,9 +315,9 @@ if (!isset($toplam_bakiye))
                                                 $kalan = $bugun->diff($bitis)->days;
 
                                                 $badgeClass = 'badge-primary';
-                                                if ($leave->izin_tipi == 'hastalik')
+                                                if ($leave->izin_tipi_adi == 'hastalik')
                                                     $badgeClass = 'badge-danger';
-                                                if ($leave->izin_tipi == 'mazeret')
+                                                if ($leave->izin_tipi_adi == 'mazeret')
                                                     $badgeClass = 'badge-warning';
                                                 ?>
                                                         <tr>
