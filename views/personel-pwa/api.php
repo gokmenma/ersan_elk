@@ -766,7 +766,7 @@ try {
                 }
 
                 $file_ext = strtolower(pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION));
-                $allowed = ['jpg', 'jpeg', 'png', 'webp'];
+                $allowed = ['jpg', 'jpeg', 'png'];
 
                 if (in_array($file_ext, $allowed)) {
                     $new_name = uniqid('tlp_') . '.' . $file_ext;

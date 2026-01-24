@@ -542,6 +542,45 @@ class BordroPersonelModel extends Model
     }
 
     /**
+     * Personelin onaylanmış avanslarını dönem için kesinti olarak oluşturur
+     */
+    public function olusturAvansKesintileri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
+    {
+        // Önceki avans kesintilerini temizle (duplicate önlemek için)
+        // Açıklamada "[Avans]" etiketi olanları siliyoruz
+        $deleteSql = $this->db->prepare("
+            DELETE FROM personel_kesintileri 
+            WHERE personel_id = ? AND donem_id = ? AND tur = 'avans' AND aciklama LIKE '[Avans]%'
+        ");
+        $deleteSql->execute([$personel_id, $donem_id]);
+
+        // Dönem içindeki onaylanmış avansları getir
+        $sql = $this->db->prepare("
+            SELECT id, tutar, tarih, aciklama
+            FROM personel_avanslari
+            WHERE personel_id = ? 
+            AND durum = 'onaylandi'
+            AND silinme_tarihi IS NULL
+            AND tarih BETWEEN ? AND ?
+        ");
+        $sql->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
+        $avanslar = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        $toplamAvans = 0;
+
+        foreach ($avanslar as $avans) {
+            $tutar = floatval($avans->tutar);
+            $tarih = date('d.m.Y', strtotime($avans->tarih));
+            $aciklama = "[Avans] $tarih - " . ($avans->aciklama ?? 'Avans Talebi');
+
+            $this->addKesinti($personel_id, $donem_id, $aciklama, $tutar, 'avans');
+            $toplamAvans += $tutar;
+        }
+
+        return $toplamAvans;
+    }
+
+    /**
      * Personelin ücretsiz izin kesintilerini dönem için otomatik oluşturur
      * Bordro hesaplaması yapılmadan önce çağrılmalıdır
      * 
@@ -919,6 +958,10 @@ class BordroPersonelModel extends Model
 
         // Puantaj (Yapılan İşler) Hesaplaması
         $this->olusturPuantajOdemeleri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+
+        // ========== AVANS KESİNTİLERİ ==========
+        // Dönem içindeki onaylanmış avansları bulup kesinti olarak ekle
+        $this->olusturAvansKesintileri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
         // ========== ÜCRETSİZ İZİN KESİNTİLERİ ==========
         // Dönem içindeki onaylanmış ücretsiz izinleri bulup kesinti olarak ekle

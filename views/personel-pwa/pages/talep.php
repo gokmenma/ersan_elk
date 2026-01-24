@@ -412,6 +412,201 @@
     }
 
     function selectOncelik(btn, value) {
+            <div id="talep-detay-content">
+                <!-- Content will be loaded dynamically -->
+            </div>
+
+            <button onclick="Modal.close('talep-detay-modal')"
+                class="w-full mt-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
+                Kapat
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .talep-tab-btn.active {
+        background: white;
+        color: #135bec;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .dark .talep-tab-btn.active {
+        background: #1a2130;
+    }
+
+    .kategori-chip.active {
+        background: rgba(19, 91, 236, 0.1);
+        border-color: #135bec;
+        color: #135bec;
+    }
+
+    .oncelik-btn.active {
+        background: rgba(19, 91, 236, 0.1);
+        border-color: #135bec;
+    }
+</style>
+
+<script>
+    let currentTalepTab = 'tum';
+    let taleplerData = [];
+    let editingTalepId = null;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        loadTalepStats();
+        loadTalepler();
+
+        // Talep form submit
+        document.getElementById('talep-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            await submitTalepBildirimi(this);
+        });
+
+        // Default selections
+        selectOncelik(document.querySelector('.oncelik-btn:nth-child(2)'), 'orta');
+    });
+
+    function openNewTalepModal() {
+        setTalepFormMode(null);
+        Modal.open('talep-modal');
+    }
+
+    function closeTalepModal() {
+        setTalepFormMode(null);
+        Modal.close('talep-modal');
+    }
+
+    function setTalepFormMode(talepId) {
+        editingTalepId = talepId ? Number(talepId) : null;
+        const submitBtn = document.getElementById('talebiGonder');
+        if (submitBtn) {
+            submitBtn.textContent = editingTalepId ? 'Güncelle' : 'Talebi Gönder';
+        }
+    }
+
+    async function loadTalepStats() {
+        try {
+            const response = await API.request('getTalepStats');
+            if (response.success) {
+                document.getElementById('acik-talepler').textContent = response.data.acik;
+                document.getElementById('cozulen-talepler').textContent = response.data.cozulen;
+                document.getElementById('ort-sure').textContent = response.data.ort_sure;
+            }
+        } catch (error) {
+            console.error('Stats load error:', error);
+        }
+    }
+
+    async function loadTalepler() {
+        const container = document.getElementById('talep-list');
+
+        try {
+            const response = await API.request('getTalepler');
+
+            if (response.success && response.data.length > 0) {
+                taleplerData = response.data;
+                renderTalepler();
+            } else {
+                container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <span class="material-symbols-outlined">assignment</span>
+                    </div>
+                    <p class="text-slate-600 dark:text-slate-400 font-medium">Talep kaydı yok</p>
+                    <p class="text-sm text-slate-500">Yeni talep oluşturabilirsiniz.</p>
+                </div>
+            `;
+            }
+        } catch (error) {
+            console.error('Talep load error:', error);
+            container.innerHTML = '<p class="text-center text-slate-500 py-8">Veriler yüklenemedi</p>';
+        }
+    }
+
+    function renderTalepler() {
+        const container = document.getElementById('talep-list');
+        let filtered = taleplerData;
+
+        if (currentTalepTab === 'devam') {
+            filtered = taleplerData.filter(a => a.durum !== 'cozuldu');
+        } else if (currentTalepTab === 'cozuldu') {
+            filtered = taleplerData.filter(a => a.durum === 'cozuldu');
+        }
+
+        if (filtered.length === 0) {
+            container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <span class="material-symbols-outlined">filter_list</span>
+                </div>
+                <p class="text-slate-600 dark:text-slate-400 font-medium">Kayıt bulunamadı</p>
+            </div>
+        `;
+            return;
+        }
+
+        container.innerHTML = filtered.map(talep => `
+        <div class="card p-4" onclick="showTalepDetay(${talep.id})">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl ${getKategoriColor(talep.kategori)} flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-xl">${getKategoriIcon(talep.kategori)}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-mono font-bold text-primary">#${talep.ref_no}</span>
+                                <span class="w-2 h-2 rounded-full ${getOncelikColor(talep.oncelik)}"></span>
+                            </div>
+                            <p class="font-bold text-sm text-slate-900 dark:text-white mt-1">${talep.baslik}</p>
+                            <p class="text-xs text-slate-500 mt-0.5">${talep.konum}</p>
+                        </div>
+                        ${talep.durum === 'beklemede' ? `
+                        <div class="flex flex-col items-end gap-2 flex-shrink-0">
+                            <button type="button" onclick="event.stopPropagation(); startEditTalep(${talep.id});"
+                                class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:bg-primary/10 hover:text-primary hover:border-primary transition-all">
+                                <span class="material-symbols-outlined text-[20px]">edit</span>
+                            </button>
+                            <button type="button" onclick="event.stopPropagation(); deleteTalep(${talep.id});"
+                                class="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 flex items-center justify-center border border-red-200 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all">
+                                <span class="material-symbols-outlined text-[20px]">delete</span>
+                            </button>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="flex items-center justify-between mt-3">
+                        <span class="badge ${getStatusBadge(talep.durum)}">${talep.durum_text}</span>
+                        <span class="text-xs text-slate-400">${talep.tarih}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    }
+
+    function changeTalepTab(tab) {
+        currentTalepTab = tab;
+
+        // Update tab buttons
+        document.querySelectorAll('.talep-tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            btn.classList.add('text-slate-500');
+        });
+
+        const activeBtn = document.querySelector(`[data-tab="${tab}"]`);
+        activeBtn.classList.add('active');
+        activeBtn.classList.remove('text-slate-500');
+
+        renderTalepler();
+    }
+
+    function selectKategori(btn, value) {
+        document.querySelectorAll('.kategori-chip').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('kategori-input').value = value;
+    }
+
+    function selectOncelik(btn, value) {
         document.querySelectorAll('.oncelik-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById('oncelik-input').value = value;
@@ -421,6 +616,16 @@
         const preview = document.getElementById('foto-preview');
 
         if (input.files && input.files[0]) {
+            const file = input.files[0];
+            const ext = file.name.split('.').pop().toLowerCase();
+            
+            if (!['jpg', 'jpeg', 'png'].includes(ext)) {
+                Alert.error('Hata', 'Sadece JPG ve PNG formatında resim yükleyebilirsiniz.');
+                input.value = '';
+                preview.classList.add('hidden');
+                return;
+            }
+
             const reader = new FileReader();
             reader.onload = function (e) {
                 preview.innerHTML = `
@@ -433,7 +638,7 @@
             `;
                 preview.classList.remove('hidden');
             };
-            reader.readAsDataURL(input.files[0]);
+            reader.readAsDataURL(file);
         }
     }
 
@@ -532,7 +737,10 @@
             ${talep.foto ? `
             <div>
                 <p class="text-xs text-slate-500 mb-2">Fotoğraf</p>
-                <img src="../../${talep.foto}" class="w-full max-w-[200px] rounded-xl cursor-pointer" onclick="window.open('../../${talep.foto}', '_blank')">
+                <img src="../../${talep.foto}" 
+                     class="w-full max-w-[200px] rounded-xl cursor-pointer bg-slate-100" 
+                     onclick="window.open('../../${talep.foto}', '_blank')"
+                     onerror="this.onerror=null; this.src='assets/img/placeholder.png'; this.parentElement.innerHTML+='<p class=\'text-xs text-red-400 mt-1\'>Resim görüntülenemiyor</p>'">
             </div>
             ` : ''}
 
@@ -713,28 +921,43 @@
 
     async function submitTalepBildirimi(form) {
         const formData = new FormData(form);
+        
+        // Kategori Kontrolü
+        const kategori = formData.get('kategori');
+        if (!kategori) {
+            Alert.warning('Uyarı', 'Lütfen bir talep türü (kategori) seçiniz.');
+            return;
+        }
+
         let $btn = document.getElementById("talebiGonder");
         let $originalHtml = $btn.innerHTML;
 
         try {
-
             $btn.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span>';
             $btn.disabled = true;
 
-            const payload = Object.fromEntries(formData);
-            delete payload.action;
-
             const action = editingTalepId ? 'updateTalepBildirimi' : 'createTalepBildirimi';
-            const openedTalepId = editingTalepId ? Number(editingTalepId) : null;
-            const response = await API.request(action, {
-                ...payload,
-                ...(editingTalepId ? { id: Number(editingTalepId) } : {})
+            formData.append('action', action);
+            
+            if (editingTalepId) {
+                formData.append('id', editingTalepId);
+            }
+
+            // API.request yerine direkt fetch kullanıyoruz (Dosya yükleme için)
+            Loading.show();
+            
+            const response = await fetch('api.php', {
+                method: 'POST',
+                body: formData
             });
-            const createdTalepId = response?.data?.id ? Number(response.data.id) : null;
+            
+            const result = await response.json();
+            Loading.hide();
 
             $btn.innerHTML = $originalHtml;
             $btn.disabled = false;
-            if (response.success) {
+
+            if (result.success) {
                 closeTalepModal();
                 form.reset();
 
@@ -744,20 +967,29 @@
                 document.getElementById('location-btn').classList.remove('border-green-500', 'bg-green-50', 'dark:bg-green-900/20');
                 document.getElementById('foto-preview').classList.add('hidden');
                 selectOncelik(document.querySelector('.oncelik-btn:nth-child(2)'), 'orta');
+                
+                // Kategori seçimlerini temizle
+                document.querySelectorAll('.kategori-chip').forEach(c => c.classList.remove('active'));
 
-                await Alert.success('Başarılı', response.message || 'Talebiniz başarıyla oluşturuldu.');
+                await Alert.success('Başarılı', result.message || 'Talebiniz başarıyla oluşturuldu.');
 
                 loadTalepStats();
                 await loadTalepler();
-                const detailId = createdTalepId || openedTalepId;
+                
+                const createdTalepId = result.data && result.data.id ? result.data.id : null;
+                const detailId = createdTalepId || (editingTalepId ? Number(editingTalepId) : null);
+                
                 if (detailId) {
                     showTalepDetay(detailId);
                 }
             } else {
-                throw new Error(response.error || 'Bir hata oluştu');
+                throw new Error(result.error || result.message || 'Bir hata oluştu');
             }
         } catch (error) {
             console.error('Submit error:', error);
+            Loading.hide();
+            $btn.innerHTML = $originalHtml;
+            $btn.disabled = false;
             Alert.error('Hata', error.message || 'Talep oluşturulurken bir sorun oluştu.');
         }
     }
