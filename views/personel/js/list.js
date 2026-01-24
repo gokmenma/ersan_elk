@@ -4,6 +4,11 @@ $(document).ready(function () {
 
   // Satır seçimi
   table.on("click", "tbody tr", (e) => {
+    // Eğer tıklanan element bir link ise veya bir linkin içindeyse, seçme işlemini yapma
+    if ($(e.target).closest("a").length > 0) {
+      return;
+    }
+
     let classList = e.currentTarget.classList;
 
     if (classList.contains("selected")) {

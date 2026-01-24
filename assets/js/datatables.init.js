@@ -63,7 +63,7 @@ function getDatatableOptions() {
 
           // Türkçe arama için: column.search() yerine data attribute kullanıyoruz
           $(input).attr("data-col-idx", column.index());
-          $(input).on("keyup change", function () {
+          $(input).on("input", function () {
             // Sadece tabloyu yeniden çiz, DataTables'ın kendi aramasını kullanma
             $(this).closest("table").DataTable().draw();
           });

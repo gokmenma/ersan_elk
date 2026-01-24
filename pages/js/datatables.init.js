@@ -24,33 +24,33 @@ function turkishNormalize(str) {
 }
 
 // DataTables için özel Türkçe arama fonksiyonu
-$.fn.dataTable.ext.search.push(
-  function (settings, data, dataIndex, rowData, counter) {
-    var table = $(settings.nTable);
-    var api = table.DataTable();
+// $.fn.dataTable.ext.search.push(
+//   function (settings, data, dataIndex, rowData, counter) {
+//     var table = $(settings.nTable);
+//     var api = table.DataTable();
 
-    // Her sütun için filtreleri kontrol et
-    var allColumnsPass = true;
+//     // Her sütun için filtreleri kontrol et
+//     var allColumnsPass = true;
 
-    api.columns().every(function (colIdx) {
-      var column = this;
-      var searchValue = column.search();
+//     api.columns().every(function (colIdx) {
+//       var column = this;
+//       var searchValue = column.search();
 
-      if (searchValue && searchValue.length > 0) {
-        var cellData = data[colIdx] || "";
-        var normalizedCellData = turkishNormalize(cellData);
-        var normalizedSearchValue = turkishNormalize(searchValue);
+//       if (searchValue && searchValue.length > 0) {
+//         var cellData = data[colIdx] || "";
+//         var normalizedCellData = turkishNormalize(cellData);
+//         var normalizedSearchValue = turkishNormalize(searchValue);
 
-        if (normalizedCellData.indexOf(normalizedSearchValue) === -1) {
-          allColumnsPass = false;
-          return false; // break
-        }
-      }
-    });
+//         if (normalizedCellData.indexOf(normalizedSearchValue) === -1) {
+//           allColumnsPass = false;
+//           return false; // break
+//         }
+//       }
+//     });
 
-    return allColumnsPass;
-  },
-);
+//     return allColumnsPass;
+//   },
+// );
 
 $(document).ready(function () {
   var table = $(".datatable").DataTable({
