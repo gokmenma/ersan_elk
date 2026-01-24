@@ -39,13 +39,13 @@ class UserModel extends Model
      * @param int $owner_id Verinin sahibi ID'si(Session ID'si gibi)
      * @return array
      */
-    public function getUsers($ownerType = null): array
+    public function getUsers(): array
     {
         $ownerID = $_SESSION["owner_id"];
 
 
         $squery = "";
-        if ($ownerType != "superadmin") {
+        if (!$this->isSuperAdmin()) {
             $squery = "AND ur.superadmin = 0";
         }
         $sql = $this->db->prepare("SELECT u.* ,ur.role_name,ur.superadmin

@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Helper\Helper;
+use App\Helper\Alert;
 use App\Controllers\AuthController;
 use App\Model\PermissionsModel;
 use Exception;
@@ -52,15 +53,23 @@ class Gate
 
         // Süper admin her şeye izinli olmalı (örn: rol adı 'Super Admin' ise)
         // Bu, veritabanına sürekli sorgu atmayı engeller.
-        if (isset($user->role_name) && $user->role_name === 'Super Admin') {
-            return true;
-        }
+        // if (isset($user->role_name) && $user->role_name === 'Super Admin') {
+        //     return true;
+        // }
 
         // /@/ Kullanıcının izinlerini alalım.
         $permissionModel = new PermissionsModel();
         // Bu metodu bir sonraki adımda güncelleyeceğiz.
         $userPermissions = $permissionModel->getPermissionsForUser($user->id);
-        return in_array($permissionName, $userPermissions) ? true : false;
+
+        $userPermissions = array_flip(
+            array_filter(
+                $permissionModel->getPermissionsForUser($user->id)
+            )
+        );
+
+
+        return isset($userPermissions[$permissionName]);
     }
 
     /**
@@ -158,13 +167,7 @@ class Gate
 
         } catch (Exception $e) {
 
-            echo "
-                <div class='alert alert-danger alert-dismissible alert-label-icon label-arrow fade show p-4 px-5' role='alert'>
-                    <i class='mdi mdi-block-helper label-icon'></i>
-                    <strong class='ms-3'>Uyarı!</strong> - {$e->getMessage()}
-                    <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button>
-                </div>
-                ";
+            Alert::danger($e->getMessage());
 
             return false;
         }
