@@ -971,6 +971,13 @@ try {
                 if (in_array($file_ext, $allowed)) {
                     $new_name = uniqid('tlp_') . '.' . $file_ext;
                     if (move_uploaded_file($_FILES['foto']['tmp_name'], $upload_dir . $new_name)) {
+                        // Yeni dosya başarıyla yüklendi, eskisi varsa silelim
+                        if (!empty($existing->foto)) {
+                            $old_file = dirname(dirname(__DIR__)) . '/' . $existing->foto;
+                            if (file_exists($old_file)) {
+                                @unlink($old_file);
+                            }
+                        }
                         $foto_path = 'uploads/talepler/' . $new_name;
                         $absolute_foto_path = realpath($upload_dir . $new_name);
                     }
@@ -1004,6 +1011,23 @@ try {
                 throw new Exception('Geçersiz talep.');
             }
 
+            // Önce talebi bulup fotoğraf yolunu alalım
+            $stmt = $TalepModel->getDb()->prepare("SELECT foto FROM personel_talepleri WHERE id = ? AND personel_id = ? AND deleted_at IS NULL LIMIT 1");
+            $stmt->execute([$id, $personel_id]);
+            $talep = $stmt->fetch(PDO::FETCH_OBJ);
+
+            if (!$talep) {
+                response(false, null, 'Talep bulunamadı.');
+            }
+
+            // Eğer fotoğraf varsa dosyayı sil
+            if (!empty($talep->foto)) {
+                $file_path = dirname(dirname(__DIR__)) . '/' . $talep->foto;
+                if (file_exists($file_path)) {
+                    @unlink($file_path);
+                }
+            }
+
             $delete = $TalepModel->getDb()->prepare("
                 UPDATE personel_talepleri 
                 SET deleted_at = NOW()
@@ -1015,7 +1039,7 @@ try {
                 response(false, null, 'Talep silinemedi (sadece beklemede olan talepler silinebilir).');
             }
 
-            response(true, ['id' => $id], 'Talep silindi.');
+            response(true, ['id' => $id], 'Talep ve ilgili dosyalar silindi.');
             break;
 
         // ===== Profil İşlemleri =====
