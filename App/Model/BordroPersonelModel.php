@@ -231,16 +231,46 @@ class BordroPersonelModel extends Model
      */
     public function getPersonelFinansalOzet($personel_id)
     {
-        $sql = $this->db->prepare("
-            SELECT 
-                SUM(bp.net_maas) as toplam_hakedis,
-                SUM(bp.net_maas) as alinan_odeme
+        // 1. Toplam Hakediş: Kapatılmış dönemlerdeki (Net Maaşlar + O dönemde mahsup edilen avanslar)
+        // 2. Alınan Ödeme: Personelin bugüne kadar aldığı tüm onaylanmış avanslar
+        // 3. Kalan Bakiye: Toplam Hakediş - Alınan Ödeme
+
+        // Kapatılmış dönemlerdeki net maaş toplamı (Burası personelin eline geçecek net tutardır)
+        $sqlNet = $this->db->prepare("
+            SELECT SUM(bp.net_maas) as toplam_net
             FROM {$this->table} bp
             INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
-            WHERE bp.personel_id = ? AND bp.silinme_tarihi IS NULL
+            WHERE bp.personel_id = ? AND bp.silinme_tarihi IS NULL AND bd.kapali_mi = 1
         ");
-        $sql->execute([$personel_id]);
-        return $sql->fetch(PDO::FETCH_OBJ);
+        $sqlNet->execute([$personel_id]);
+        $toplam_net = $sqlNet->fetch(PDO::FETCH_OBJ)->toplam_net ?? 0;
+
+        // Kapatılmış dönemlerde maaştan düşülen (mahsup edilen) avanslar
+        $sqlAvansKesinti = $this->db->prepare("
+            SELECT SUM(pk.tutar) as toplam_kesinti_avans
+            FROM personel_kesintileri pk
+            INNER JOIN bordro_donemi bd ON pk.donem_id = bd.id
+            WHERE pk.personel_id = ? AND pk.tur = 'avans' AND bd.kapali_mi = 1 AND pk.silinme_tarihi IS NULL
+        ");
+        $sqlAvansKesinti->execute([$personel_id]);
+        $toplam_avans_kesinti = $sqlAvansKesinti->fetch(PDO::FETCH_OBJ)->toplam_kesinti_avans ?? 0;
+
+        // Toplam Hakediş = Kapatılmış dönemlerin gerçek net kazancı (Kesintiler öncesi net)
+        $toplam_hakedis = $toplam_net + $toplam_avans_kesinti;
+
+        // Onaylanmış tüm avanslar (Personelin cebine giren toplam para)
+        $sqlAvans = $this->db->prepare("
+            SELECT SUM(tutar) as toplam_avans 
+            FROM personel_avanslari 
+            WHERE personel_id = ? AND durum = 'onaylandi' AND silinme_tarihi IS NULL
+        ");
+        $sqlAvans->execute([$personel_id]);
+        $alinan_odeme = $sqlAvans->fetch(PDO::FETCH_OBJ)->toplam_avans ?? 0;
+
+        return (object) [
+            'toplam_hakedis' => $toplam_hakedis,
+            'alinan_odeme' => $alinan_odeme
+        ];
     }
 
     /**

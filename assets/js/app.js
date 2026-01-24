@@ -87,3 +87,28 @@ $.validator.setDefaults({
 // $(".select2").on("change", function () {
 //   $(this).valid(); // Sadece bu alanı tekrar valide eder
 // });
+
+
+/**
+ * Başlangıç tarihine göre aynı ayın son gününü hesaplar (DD.MM.YYYY)
+ * @param {string} baslangicTarihi
+ * @returns {string} DD.MM.YYYY
+ */
+function ayinSonGununuGetir(baslangicTarihi) {
+    if (!baslangicTarihi) return '';
+
+    let parts = baslangicTarihi.split('.');
+    if (parts.length !== 3) return '';
+
+    let gun = parseInt(parts[0], 10);
+    let ay  = parseInt(parts[1], 10) - 1;
+    let yil = parseInt(parts[2], 10);
+
+    let lastDay = new Date(yil, ay + 1, 0);
+
+    let bitisGun = String(lastDay.getDate()).padStart(2, '0');
+    let bitisAy  = String(lastDay.getMonth() + 1).padStart(2, '0');
+    let bitisYil = lastDay.getFullYear();
+
+    return `${bitisGun}.${bitisAy}.${bitisYil}`;
+}

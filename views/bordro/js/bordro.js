@@ -153,6 +153,17 @@ $(document).ready(function () {
     return false;
   });
 
+$(document).on('change', '#baslangic_tarihi', function () {
+    let baslangic = $(this).val();
+    let bitis = ayinSonGununuGetir(baslangic);
+
+    if (bitis) {
+        $('#bitis_tarihi').val(bitis);
+    }
+});
+
+
+
   // Personelleri Güncelle
   $("#btnRefreshPersonel").on("click", function () {
     const donemId = $("#donemSelect").val();

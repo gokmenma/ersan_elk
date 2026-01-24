@@ -106,6 +106,11 @@ try {
             $BordroModel = new BordroPersonelModel();
             $bordrolar = $BordroModel->getPersonelBordrolari($personel_id);
 
+            // Sadece kapatılmış dönemleri filtrele
+            $bordrolar = array_filter($bordrolar, function ($item) {
+                return isset($item->kapali_mi) && $item->kapali_mi == 1;
+            });
+
             $data = array_map(function ($item) {
                 // Dönem adını belirle
                 $donem = $item->donem_adi ?? null;
@@ -125,7 +130,7 @@ try {
                     'net_tutar' => $item->net_maas ?? 0,
                     'durum' => 'odendi'
                 ];
-            }, $bordrolar);
+            }, array_values($bordrolar)); // array_values to reset keys after filter
 
             response(true, $data);
             break;
@@ -133,9 +138,18 @@ try {
         case 'getBordroDetay':
             $id = $_POST['id'] ?? 0;
             $BordroModel = new BordroPersonelModel();
-            $bordro = $BordroModel->find($id);
 
-            if ($bordro && $bordro->personel_id == $personel_id) {
+            // Bordro ve dönem bilgisini birlikte çek
+            $sql = $BordroModel->getDb()->prepare("
+                SELECT bp.*, bd.kapali_mi 
+                FROM bordro_personel bp
+                INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
+                WHERE bp.id = ? AND bp.silinme_tarihi IS NULL
+            ");
+            $sql->execute([$id]);
+            $bordro = $sql->fetch(PDO::FETCH_OBJ);
+
+            if ($bordro && $bordro->personel_id == $personel_id && ($bordro->kapali_mi ?? 0) == 1) {
                 response(true, [
                     'id' => $bordro->id,
                     'donem' => 'Dönem ' . $bordro->donem_id,
@@ -145,7 +159,7 @@ try {
                     'net' => $bordro->net_maas
                 ]);
             } else {
-                response(false, null, 'Bordro bulunamadı');
+                response(false, null, 'Bordro bulunamadı veya henüz onaylanmadı');
             }
             break;
 

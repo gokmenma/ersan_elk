@@ -10,6 +10,7 @@ use App\Model\BordroPersonelModel;
 use App\Model\PersonelModel;
 use App\Model\BordroParametreModel;
 use App\Helper\Helper;
+use App\Helper\Date;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -25,8 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Yeni Dönem Oluştur
             case 'donem-ekle':
                 $donem_adi = trim($_POST['donem_adi'] ?? '');
-                $baslangic_tarihi = $_POST['baslangic_tarihi'] ?? '';
-                $bitis_tarihi = $_POST['bitis_tarihi'] ?? '';
+                $baslangic_tarihi = Date::Ymd($_POST['baslangic_tarihi'] ?? '');
+                $bitis_tarihi = Date::Ymd($_POST['bitis_tarihi'] ?? '');
 
                 // Validasyon
                 if (empty($donem_adi)) {
@@ -39,10 +40,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Başlangıç tarihi bitiş tarihinden sonra olamaz.');
                 }
 
+                /**Dönem aralığı 31 günden fazla olamaz */
+                if (strtotime($bitis_tarihi) >= strtotime($baslangic_tarihi . ' + 31 days')) {
+                    throw new Exception('Dönem aralığı 31 günden fazla olamaz.');
+                }
+
+
+                // echo json_encode([
+                //     "status"=>"success",
+                //     "message"=>"Başlangıç Tarihi: ".$baslangic_tarihi." Bitiş Tarihi: ".$bitis_tarihi,
+                // ]);exit;
+                /** Aynı dönemde başka bir dönem varsa ekleme yapma */
+                $donem = $BordroDonem->getDonemByDateRange($baslangic_tarihi, $bitis_tarihi);
+                if ($donem) {
+                    throw new Exception('Bu dönemde başka bir dönem var.');
+                }
+
+
                 // Dönemi oluştur
                 $donemId = $BordroDonem->createDonem([
                     'donem_adi' => $donem_adi,
-                    'baslangic_tarihi' => $baslangic_tarihi,
+                    'firma_id' => $_SESSION["firma_id"],
+                     'baslangic_tarihi' => $baslangic_tarihi,
                     'bitis_tarihi' => $bitis_tarihi
                 ]);
 

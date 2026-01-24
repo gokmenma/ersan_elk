@@ -31,10 +31,11 @@ class BordroDonemModel extends Model
         $sql = $this->db->prepare("
             SELECT * FROM {$this->table} 
             WHERE silinme_tarihi IS NULL 
+            AND firma_id = ? 
             AND YEAR(baslangic_tarihi) = ? 
             ORDER BY baslangic_tarihi DESC
         ");
-        $sql->execute([$yil]);
+        $sql->execute([$_SESSION["firma_id"], $yil]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -62,6 +63,22 @@ class BordroDonemModel extends Model
             WHERE id = ? AND silinme_tarihi IS NULL
         ");
         $sql->execute([$id]);
+        return $sql->fetch(PDO::FETCH_OBJ);
+    }
+
+
+    /** Aynı Dönemde başka bir dönem var mı kontrol et */
+    public function getDonemByDateRange($baslangic_tarihi, $bitis_tarihi)
+    {
+        $firma_id = $_SESSION["firma_id"];
+        $sql = $this->db->prepare(" 
+            SELECT * FROM {$this->table} 
+            WHERE silinme_tarihi IS NULL 
+            AND firma_id = ? 
+            AND baslangic_tarihi BETWEEN ? AND ? 
+            OR bitis_tarihi BETWEEN ? AND ?
+        ");
+        $sql->execute([$firma_id, $baslangic_tarihi, $bitis_tarihi, $baslangic_tarihi, $bitis_tarihi]);
         return $sql->fetch(PDO::FETCH_OBJ);
     }
 

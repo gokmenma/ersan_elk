@@ -9,10 +9,11 @@ $BordroDonem = new BordroDonemModel();
 $BordroPersonel = new BordroPersonelModel();
 
 
+
+
 // Seçili yıl ve dönem
 $selectedYil = $_GET['yil'] ?? date('Y');
 $selectedDonemId = $_GET['donem'] ?? $_SESSION['selectedDonemId'] ?? null;
-
 /**Eğer bir kere dönem seçilmişse onu session'a ata */
 if ($selectedDonemId) {
     $_SESSION['selectedDonemId'] = $selectedDonemId;
@@ -20,7 +21,6 @@ if ($selectedDonemId) {
 
 // İlgili yıldaki Tüm dönemleri getir
 $donemler = $BordroDonem->getAllDonems($selectedYil);
-
 
 
 // Yılları çıkar
@@ -32,15 +32,26 @@ foreach ($donemler as $donem) {
     $yil = date('Y', strtotime($donem->baslangic_tarihi));
     $donemlerByYil[$yil][] = $donem;
     $donem_option[$donem->id] = $donem->donem_adi;
+
+
+}
+
+/**Eğer seçil dönem veritabanında yoksa seçili dönem id session'a ata */
+$seciliDonemKontrol = $BordroDonem->find($selectedDonemId);
+if(!$seciliDonemKontrol){
+   $selectedDonemId = null;
 }
 
 // Eğer dönem seçilmemişse, seçili yıldaki ilk dönemi seç
-if (!$selectedDonemId && isset($donemlerByYil[$selectedYil]) && !empty($donemlerByYil[$selectedYil])) {
+if ((!$selectedDonemId || $selectedDonemId == "undefined") && isset($donemlerByYil[$selectedYil]) && !empty($donemlerByYil[$selectedYil])) {
     $selectedDonemId = $donemlerByYil[$selectedYil][0]->id;
 }
 
+
 $selectedDonem = null;
 $personeller = [];
+
+
 
 if ($selectedDonemId) {
     $selectedDonem = $BordroDonem->getDonemById($selectedDonemId);
@@ -416,21 +427,58 @@ $ek_odeme_turleri = [
             <form id="formYeniDonem">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="donem_adi" class="form-label">Dönem Adı <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="donem_adi" name="donem_adi"
-                            placeholder="Örn: Ocak 2026" required>
+
+                        <?php 
+                        echo Form::FormFloatInput(
+                            type:'text',
+                            label:"Dönem Adı",
+                            value:'',
+                            name:"donem_adi",
+                            placeholder:"Örn: Ocak 2026",
+                            required:true,
+                            icon:'calendar',
+
+                        )
+                        ?>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="baslangic_tarihi" class="form-label">Başlangıç Tarihi <span
-                                    class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="baslangic_tarihi" name="baslangic_tarihi"
-                                required>
+
+
+                        <?php 
+                        echo Form::FormFloatInput(
+                            type:'tex',
+                            label:"Başlangıç Tarihi",
+                            value:'',
+                            name:"baslangic_tarihi",
+                            placeholder:"Başlangıç Tarihi",
+                            required:true,  
+                            icon:'calendar',
+                            class:'form-control flatpickr',
+                            autocomplete:'off'
+
+                        )
+                        ?>
+                         
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="bitis_tarihi" class="form-label">Bitiş Tarihi <span
-                                    class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="bitis_tarihi" name="bitis_tarihi" required>
+
+                        <?php 
+                        echo Form::FormFloatInput(
+                            type:'text',
+                            label:"Bitiş Tarihi",
+                            value:'',
+                            name:"bitis_tarihi",
+                            placeholder:"Bitiş Tarihi",
+                            required:true,  
+                            icon:'calendar',
+                            class:'form-control flatpickr',
+                            autocomplete:'off'
+
+
+
+                        )
+                        ?>
                         </div>
                     </div>
                     <div class="alert alert-info">
