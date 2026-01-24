@@ -707,6 +707,8 @@ $ek_odeme_turleri = [
                 <!-- Yeni Gelir Ekle Accordion -->
                 <div class="accordion mb-3" id="accordionGelirEkle">
                     <div class="accordion-item border-0 shadow-sm">
+                        <?php if(!$donemKapali) { ?>
+
                         <h2 class="accordion-header" id="headingGelir">
                             <button class="accordion-button collapsed fw-medium" type="button" data-bs-toggle="collapse"
                                 data-bs-target="#collapseGelir" aria-expanded="false" aria-controls="collapseGelir">
@@ -749,6 +751,7 @@ $ek_odeme_turleri = [
                                 </form>
                             </div>
                         </div>
+                        <?php } ?>
                     </div>
                 </div>
 
@@ -780,6 +783,7 @@ $ek_odeme_turleri = [
                 <!-- Yeni Kesinti Ekle Accordion -->
                 <div class="accordion mb-3" id="accordionKesintiEkle">
                     <div class="accordion-item border-0 shadow-sm">
+                        <?php if(!$donemKapali) { ?>
                         <h2 class="accordion-header" id="headingKesinti">
                             <button class="accordion-button collapsed fw-medium" type="button" data-bs-toggle="collapse"
                                 data-bs-target="#collapseKesinti" aria-expanded="false" aria-controls="collapseKesinti">
@@ -822,6 +826,7 @@ $ek_odeme_turleri = [
                                 </form>
                             </div>
                         </div>
+                        <?php } ?>
                     </div>
                 </div>
 

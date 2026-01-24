@@ -153,16 +153,14 @@ $(document).ready(function () {
     return false;
   });
 
-$(document).on('change', '#baslangic_tarihi', function () {
+  $(document).on("change", "#baslangic_tarihi", function () {
     let baslangic = $(this).val();
     let bitis = ayinSonGununuGetir(baslangic);
 
     if (bitis) {
-        $('#bitis_tarihi').val(bitis);
+      $("#bitis_tarihi").val(bitis);
     }
-});
-
-
+  });
 
   // Personelleri Güncelle
   $("#btnRefreshPersonel").on("click", function () {
@@ -1048,6 +1046,7 @@ function loadGelirListesi(personelId, donemId) {
     success: function (response) {
       if (response.status === "success") {
         let html = "";
+        console.log(response.data);
 
         if (response.data.length === 0) {
           html =
@@ -1066,26 +1065,16 @@ function loadGelirListesi(personelId, donemId) {
                                         </div>
                                     </div>
                                     <div class="flex-grow-1">
-                                        <h6 class="mb-1 text-uppercase text-success fw-bold">${item.tur}</h6>
+                                        <h6 class="mb-1 text-uppercase text-success fw-bold">${item.etiket}</h6>
                                         <p class="text-muted mb-0 small">${item.aciklama || "Açıklama yok"}</p>
                                     </div>
                                     <div class="flex-shrink-0 text-end mx-3">
                                         <h5 class="mb-1 text-success fw-bold">+${formatMoney(item.tutar)} ₺</h5>
                                         <small class="text-muted" style="font-size: 11px;">${new Date(item.created_at).toLocaleDateString("tr-TR")}</small>
                                     </div>
+
                                     <div class="flex-shrink-0">
-                                        <div class="d-flex flex-column gap-1">
-                                            <button type="button" class="btn btn-sm btn-soft-primary btn-edit-gelir" 
-                                                data-id="${item.id}" 
-                                                data-tur="${item.tur}" 
-                                                data-tutar="${item.tutar}" 
-                                                data-aciklama="${item.aciklama || ""}">
-                                                <i class="bx bx-edit"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-soft-danger btn-delete-gelir" data-id="${item.id}">
-                                                <i class="bx bx-trash"></i>
-                                            </button>
-                                        </div>
+                                    
                                     </div>
                                 </div>
                             </div>

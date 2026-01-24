@@ -1461,12 +1461,15 @@ class BordroPersonelModel extends Model
     public function getDonemEkOdemeleriListe($personel_id, $donem_id)
     {
         $sql = $this->db->prepare("
-            SELECT *
-            FROM personel_ek_odemeler 
-            WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
-            ORDER BY created_at DESC
+            SELECT peo.*,bd.kapali_mi,
+            (SELECT etiket FROM bordro_parametreleri bp WHERE bp.kod = peo.tur AND firma_id = ? LIMIT 1) as etiket
+            FROM personel_ek_odemeler peo
+            LEFT JOIN bordro_donemi bd ON peo.donem_id = bd.id
+            WHERE peo.personel_id = ? AND peo.donem_id = ? AND peo.silinme_tarihi IS NULL
+            
+            ORDER BY peo.created_at DESC
         ");
-        $sql->execute([$personel_id, $donem_id]);
+        $sql->execute([$_SESSION["firma_id"], $personel_id, $donem_id]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
