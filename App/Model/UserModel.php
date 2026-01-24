@@ -28,8 +28,8 @@ class UserModel extends Model
     //Kullanıcı adı vey emailden kullanıcı kontrolü yapılır,true veya false döner
     public function checkUser($username)
     {
-        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE email_adresi = ? OR user_name = ?");
-        $sql->execute(array($username, $username));
+        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE email_adresi = ? OR user_name = ? OR telefon = ?");
+        $sql->execute(array($username, $username, $username));
         return $sql->fetch(PDO::FETCH_OBJ) ?? null;
     }
 

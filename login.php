@@ -133,7 +133,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                             class="form-control <?php echo (!empty($username_err)) ? 'has-error' : ''; ?>"
                                             id="\username" name="username" value="<?php echo $username; ?>"
                                             placeholder="Kullanıcı Adı Giriniz!">
-                                        <label for="input-username">Kullanıcı Adı</label>
+                                        <label for="input-username">Kullanıcı Adı, Telefon veya Email</label>
                                         <span class="text-danger"><?php echo $username_err; ?></span>
                                         <div class="form-floating-icon">
                                             <i data-feather="users"></i>
