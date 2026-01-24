@@ -5,8 +5,8 @@ use App\Model\SettingsModel;
 
 $Settings = new SettingsModel();
 
- // Tüm ayarları al
- $allSettings = $Settings->getAllSettingsAsKeyValue();
+// Tüm ayarları al
+$allSettings = $Settings->getAllSettingsAsKeyValue();
 // Bu değişkenlerin veritabanından veya güvenli bir yapılandırma dosyasından geldiğini varsayalım
 // Örnek olması için boş veya varsayılan değerlerle başlatıyoruz
 $config_id = $iletisim_servis_ayarlari->id ?? 1; // Genellikle tek bir kayıt olur (örn: ID=1)
@@ -28,13 +28,12 @@ $sms_api_kullanici = $allSettings['sms_api_kullanici'] ?? ''; // API kullanıcı
 $sms_api_sifre = $allSettings['sms_api_sifre'] ?? ''; // API şifresi veya token
 $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
 
-
-
-
 ?>
 
 <form action="" id="iletisimServisAyarlariForm">
     <input type="hidden" name="config_id" value="<?php echo htmlspecialchars($config_id, ENT_QUOTES, 'UTF-8'); ?>">
+    <input type="hidden" name="firma_id" value="<?php echo $_SESSION["firma_id"] ?? ''; ?>">
+    <input type="hidden" name="user_id" value="<?php echo $_SESSION["user_id"] ?? ''; ?>">
 
     <!-- E-POSTA AYARLARI BÖLÜMÜ -->
     <div class="card shadow-sm mb-4">
@@ -45,7 +44,8 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
             <div class="row mb-3">
                 <div class="col-md-12">
                     <div class="form-check form-switch form-switch-lg">
-                        <input class="form-check-input" type="checkbox" id="email_gonderim_aktif" name="email_gonderim_aktif" value="1" <?php echo $email_gonderim_aktif ? 'checked' : ''; ?>>
+                        <input class="form-check-input" type="checkbox" id="email_gonderim_aktif"
+                            name="email_gonderim_aktif" value="1" <?php echo $email_gonderim_aktif ? 'checked' : ''; ?>>
                         <label class="form-check-label" for="email_gonderim_aktif">E-posta Gönderimi Aktif</label>
                     </div>
                     <div class="form-text ps-1">Bu ayar kapalıysa sistem üzerinden e-posta gönderimi yapılmaz.</div>
@@ -114,7 +114,8 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
                         "key",
                         "form-control"
                     ); ?>
-                    <div class="form-text">Mevcut şifre güvenlik nedeniyle gösterilmemektedir. Değiştirmek istemiyorsanız bu alanı boş bırakın.</div>
+                    <div class="form-text">Mevcut şifre güvenlik nedeniyle gösterilmemektedir. Değiştirmek
+                        istemiyorsanız bu alanı boş bırakın.</div>
                 </div>
             </div>
 
@@ -144,7 +145,8 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
             </div>
             <div class="row mt-3">
                 <div class="col-md-12">
-                    <button type="button" id="testEmailButton" class="btn btn-outline-info btn-sm waves-effect waves-light">
+                    <button type="button" id="testEmailButton"
+                        class="btn btn-outline-info btn-sm waves-effect waves-light">
                         <i class="ti ti-send me-1"></i> E-posta Ayarlarını Test Et
                     </button>
                 </div>
@@ -161,7 +163,8 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
             <div class="row mb-3">
                 <div class="col-md-12">
                     <div class="form-check form-switch form-switch-lg">
-                        <input class="form-check-input" type="checkbox" id="sms_gonderim_aktif" name="sms_gonderim_aktif" value="1" <?php echo $sms_gonderim_aktif ? 'checked' : ''; ?>>
+                        <input class="form-check-input" type="checkbox" id="sms_gonderim_aktif"
+                            name="sms_gonderim_aktif" value="1" <?php echo $sms_gonderim_aktif ? 'checked' : ''; ?>>
                         <label class="form-check-label" for="sms_gonderim_aktif">SMS Gönderimi Aktif</label>
                     </div>
                     <div class="form-text ps-1">Bu ayar kapalıysa sistem üzerinden SMS gönderimi yapılmaz.</div>
@@ -174,12 +177,7 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
                     // SMS Servis Sağlayıcıları - Bu listeyi kendi kullandıklarınızla güncelleyin
                     $sms_saglayicilar = [
                         '' => 'Seçiniz...',
-                        'netgsm' => 'NetGSM',
-                        'mutlucell' => 'Mutlucell',
-                        'iletimerkezi' => 'İleti Merkezi',
-                        'twilio' => 'Twilio',
-                        'verimor' => 'Verimor',
-                        'custom_api' => 'Özel API Entegrasyonu'
+                        'netgsm' => 'NetGSM'
                     ];
                     echo Form::FormSelect2(
                         "sms_servis_saglayici",
@@ -213,7 +211,7 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
                         <?php echo Form::FormFloatInput(
                             "text",
                             "sms_api_kullanici",
-                            $sms_api_kullanici ,
+                            $sms_api_kullanici,
                             "",
                             "API Kullanıcı Adı / Numara / SID",
                             "hash",
@@ -253,14 +251,15 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
                     <?php echo Form::FormFloatInput(
                         "tel",
                         "sms_test_numarasi",
-                        "5079432723",
+                        $_SESSION["user"]->telefon,
                         "",
                         "Test SMS Numarası",
                         "smartphone",
                         "form-control mb-2"
                     ); ?>
 
-                    <button type="button" id="testSmsButton" class="btn btn-sm btn-outline-secondary waves-effect waves-light">
+                    <button type="button" id="testSmsButton"
+                        class="btn btn-sm btn-outline-secondary waves-effect waves-light">
                         <i class="ti ti-message-2-send me-1"></i> SMS Ayarlarını Test Et
                     </button>
 
@@ -273,7 +272,8 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
 
     <div class="row mt-4 mb-3">
         <div class="col-md-12 text-end">
-            <button type="button" id="saveIletisimServisAyarlariButton" class="btn btn-success waves-effect btn-label waves-light">
+            <button type="button" id="saveIletisimServisAyarlariButton"
+                class="btn btn-success waves-effect btn-label waves-light">
                 <i class="ti ti-device-floppy label-icon me-1"></i> Tüm Ayarları Kaydet
             </button>
         </div>
@@ -281,7 +281,7 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
 </form>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const form = document.getElementById('iletisimServisAyarlariForm');
         const saveButton = document.getElementById('saveIletisimServisAyarlariButton');
         const testEmailButton = document.getElementById('testEmailButton');
@@ -290,47 +290,51 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
         const customApiUrlRow = document.getElementById('customApiUrlRow');
         const smsApiCredentialsSection = document.getElementById('smsApiCredentialsSection');
 
-        // SMS Servis Sağlayıcı seçimine göre ek alanları göster/gizle
-        function toggleSmsProviderFields() {
-            if (!smsServisSaglayiciSelect || !customApiUrlRow || !smsApiCredentialsSection) return;
+        // // SMS Servis Sağlayıcı seçimine göre ek alanları göster/gizle
+        // function toggleSmsProviderFields() {
+        //     if (!smsServisSaglayiciSelect || !customApiUrlRow || !smsApiCredentialsSection) return;
 
-            const selectedProvider = smsServisSaglayiciSelect.value;
-            if (selectedProvider && selectedProvider !== '') {
-                smsApiCredentialsSection.classList.remove('d-none');
-                if (selectedProvider === 'custom_api') {
-                    customApiUrlRow.classList.remove('d-none');
-                } else {
-                    customApiUrlRow.classList.add('d-none');
-                }
-            } else {
-                smsApiCredentialsSection.classList.add('d-none');
-                customApiUrlRow.classList.add('d-none');
-            }
-        }
+        //     const selectedProvider = smsServisSaglayiciSelect.value;
+        //     if (selectedProvider && selectedProvider !== '') {
+        //         smsApiCredentialsSection.classList.remove('d-none');
+        //         if (selectedProvider === 'custom_api') {
+        //             customApiUrlRow.classList.remove('d-none');
+        //         } else {
+        //             customApiUrlRow.classList.add('d-none');
+        //         }
+        //     } else {
+        //         smsApiCredentialsSection.classList.add('d-none');
+        //         customApiUrlRow.classList.add('d-none');
+        //     }
+        // }
 
-        if (smsServisSaglayiciSelect) {
-            smsServisSaglayiciSelect.addEventListener('change', toggleSmsProviderFields);
-            toggleSmsProviderFields(); // Sayfa yüklendiğinde de çalıştır
-        }
+        // if (smsServisSaglayiciSelect) {
+        //     smsServisSaglayiciSelect.addEventListener('change', toggleSmsProviderFields);
+        //     toggleSmsProviderFields(); // Sayfa yüklendiğinde de çalıştır
+        // }
 
 
         // Kaydetme
         if (saveButton) {
-            saveButton.addEventListener('click', function() {
+            saveButton.addEventListener('click', function () {
                 const btn = this;
                 btn.disabled = true;
                 btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Kaydediliyor...';
                 const formData = new FormData(form);
-                formData.append('action', 'iletisim_servis_ayarlarini_kaydet');
+                formData.append('action', 'save');
 
-                fetch('/api/settings/communication', { // API endpoint'inizi buraya girin
-                        method: 'POST',
-                        body: formData
-                    })
+                // for(let pair of formData.entries()) {
+                //     console.log(pair[0] + ': ' + pair[1]);
+                // }
+
+                fetch('/views/ayarlar/api.php', { // API endpoint'inizi buraya girin
+                    method: 'POST',
+                    body: formData
+                })
                     .then(response => response.json())
                     .then(data => {
-                        if (data.success) {
-                            Swal.fire('Başarılı!', 'İletişim servis ayarları güncellendi.', 'success');
+                        if (data.status === 'success') {
+                            Swal.fire('Başarılı!', data.message, 'success');
                         } else {
                             Swal.fire('Hata!', data.message || 'Ayarlar kaydedilemedi.', 'error');
                         }
@@ -348,7 +352,7 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
 
         // E-posta Test
         if (testEmailButton) {
-            testEmailButton.addEventListener('click', function() {
+            testEmailButton.addEventListener('click', function () {
                 const btn = this;
                 const originalText = btn.innerHTML;
                 btn.disabled = true;
@@ -366,9 +370,9 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
                 formData.append('test_email_adresi', testEmail);
 
                 fetch('/api/test/email', { // Test API endpoint'i
-                        method: 'POST',
-                        body: formData
-                    })
+                    method: 'POST',
+                    body: formData
+                })
                     .then(response => response.json())
                     .then(data => {
                         Swal.fire(data.success ? 'Test Başarılı' : 'Test Başarısız', data.message, data.success ? 'success' : 'error');
@@ -383,7 +387,7 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
 
         // SMS Test
         if (testSmsButton) {
-            testSmsButton.addEventListener('click', function() {
+            testSmsButton.addEventListener('click', function () {
                 const btn = this;
                 const originalText = btn.innerHTML;
                 const testNumarasiInput = form.querySelector('input[name="sms_test_numarasi"]');
@@ -416,12 +420,12 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
                 };
 
                 fetch('views/mail-sms/api/sms.php', { // API endpoint'iniz
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json' // JSON gönderiyoruz
-                        },
-                        body: JSON.stringify(payload) // JavaScript objesini JSON string'ine çevir
-                    })
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json' // JSON gönderiyoruz
+                    },
+                    body: JSON.stringify(payload) // JavaScript objesini JSON string'ine çevir
+                })
                     .then(response => {
                         // Yanıt JSON değilse veya HTTP hatası varsa burada yakala
                         if (!response.ok) {
@@ -429,7 +433,7 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
                                 throw new Error(`Sunucu Hatası: ${response.status} - ${text || response.statusText}`)
                             });
                         }
-                        
+
                         const contentType = response.headers.get("content-type");
                         if (contentType && contentType.indexOf("application/json") !== -1) {
                             return response.json();
@@ -440,7 +444,7 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
                         }
                     })
                     .then(data => {
-                        // PHP API'nizin 'status' ve 'message' döndürdüğünü varsayıyorum,
+                        // PHP API'nizin 'status' ve 'message' döndürdüğünü varsayıyordum,
                         // bir önceki API'nizdeki gibi. Eğer 'success' alanı varsa ona göre ayarlayın.
                         const isSuccess = data.status === 'success' || data.success === true;
                         Swal.fire(isSuccess ? 'Test Başarılı' : 'Test Başarısız', data.message, isSuccess ? 'success' : 'error');
@@ -455,64 +459,6 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
                     });
             });
         }
-
-
-
-
-        // if (testSmsButton) {
-        //     testSmsButton.addEventListener('click', function() {
-        //         const btn = this;
-        //         const originalText = btn.innerHTML;
-        //         const testNumarasiInput = form.querySelector('input[name="sms_test_numarasi"]');
-
-        //         if (!testNumarasiInput || !testNumarasiInput.value.trim()) {
-        //             Swal.fire('Eksik Bilgi', 'Lütfen test SMS\'i göndermek için bir telefon numarası girin.', 'warning');
-        //             testNumarasiInput.focus();
-        //             return;
-        //         }
-        //         // Basit bir numara format kontrolü
-        //         if (!/^5[0-9]{9}$/.test(testNumarasiInput.value.trim())) {
-        //             Swal.fire('Hatalı Numara', 'Lütfen geçerli bir telefon numarası girin (5xxxxxxxxx).', 'warning');
-        //             testNumarasiInput.focus();
-        //             return;
-        //         }
-
-
-        //         btn.disabled = true;
-        //         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Test ediliyor...';
-
-        //         const formData = new FormData(form); // Mevcut form ayarlarını al
-        //         formData.append('action', 'test_sms_ayarlari');
-        //         formData.append('test_telefon_numarasi', testNumarasiInput.value.trim()); // Telefon numarasını ekle
-        //         // test_numarasi zaten formda var: formData.append('test_telefon_numarasi', testNumarasiInput.value);
-        //         const messagesPayload = [{
-        //             "msgheader": "CANSAGLKSEN",
-        //             "messages": [{
-        //                 "gsm": testNumarasiInput.value.trim(),
-        //                 "message": "Bu bir test mesajıdır."
-        //             }],
-        //             "encoding": "TR",
-        //             "iysfilter": "",
-        //             "partnercode": ""
-        //         }];
-
-        //         formData.append('messagesPayload', JSON.stringify(messagesPayload));
-
-        //         fetch('views/mail-sms/api/sms.php', { // Test API endpoint'i
-        //                 method: 'POST',
-        //                 body: formData
-        //             })
-        //             .then(response => response.json())
-        //             .then(data => {
-        //                 Swal.fire(data.success ? 'Test Başarılı' : 'Test Başarısız', data.message, data.success ? 'success' : 'error');
-        //             })
-        //             .catch(error => Swal.fire('Hata!', 'SMS testi sırasında bir sorun oluştu.' + error.message, 'error'))
-        //             .finally(() => {
-        //                 btn.disabled = false;
-        //                 btn.innerHTML = originalText;
-        //             });
-        //         });
-        // }
 
     });
 </script>

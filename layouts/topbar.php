@@ -106,7 +106,7 @@ $firma_option = $FirmaModel->option();
                 </button>
             </div>
 
-            <div class="dropdown d-none d-lg-inline-block ms-1">
+            <!-- <div class="dropdown d-none d-lg-inline-block ms-1">
                 <button type="button" class="btn header-item" data-bs-toggle="dropdown" aria-haspopup="true"
                     aria-expanded="false">
                     <i data-feather="grid" class="icon-lg"></i>
@@ -156,7 +156,7 @@ $firma_option = $FirmaModel->option();
                         </div>
                     </div>
                 </div>
-            </div>
+            </div> -->
 
             <div class="dropdown d-inline-block">
                 <button type="button" class="btn header-item noti-icon position-relative"

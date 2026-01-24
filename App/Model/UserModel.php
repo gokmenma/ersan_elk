@@ -26,10 +26,14 @@ class UserModel extends Model
     }
 
     //Kullanıcı adı vey emailden kullanıcı kontrolü yapılır,true veya false döner
-    public function checkUser($username)
+    public function checkUser($inputValue)
     {
+
+        $telefon = preg_replace('/\D/', '', $inputValue);
+        $telefon = substr($telefon, -10);
+        
         $sql = $this->db->prepare("SELECT * FROM $this->table WHERE email_adresi = ? OR user_name = ? OR telefon = ?");
-        $sql->execute(array($username, $username, $username));
+        $sql->execute(array($inputValue, $inputValue, $telefon));
         return $sql->fetch(PDO::FETCH_OBJ) ?? null;
     }
 

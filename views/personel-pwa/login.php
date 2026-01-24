@@ -29,8 +29,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $response = ['status' => 'error', 'message' => 'Bir hata oluştu.'];
 
     $phone = $_POST['phone'] ?? '';
-    // Telefon numarasını temizle (boşlukları vs sil)
-    $phone = preg_replace('/[^0-9]/', '', $phone);
+
+
+
 
     if (empty($phone)) {
         echo json_encode(['status' => 'error', 'message' => 'Lütfen telefon numaranızı girin.']);
@@ -41,10 +42,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $PersonelModel = new PersonelModel();
         $db = $PersonelModel->getDb();
 
+        function normalizePhone($phone)
+        {
+            $phone = preg_replace('/\D/', '', $phone); // sadece rakamlar
+            return substr($phone, -10);                 // son 10 hane
+        }
+
+
+        // Telefon numarasını temizle (boşlukları vs sil)
+        $phone = normalizePhone($phone);
+
         // Başında 0 varsa veya yoksa diye kontrol et
-        $stmt = $db->prepare("SELECT * FROM personel WHERE Replace(Replace(cep_telefonu, ' ', ''), '-', '') LIKE :phone");
-        $stmt->execute(['phone' => "%" . substr($phone, -10)]); // Son 10 hanesine bak
+        $stmt = $db->prepare("SELECT * FROM personel WHERE cep_telefonu = :phone");
+        $stmt->execute(['phone' => $phone]); // Son 10 hanesine bak
         $personel = $stmt->fetch(PDO::FETCH_OBJ);
+
 
         if ($personel) {
             // Yeni şifre oluştur
@@ -60,8 +72,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $Settings = new SettingsModel();
                 $allSettings = $Settings->getAllSettingsAsKeyValue();
                 $username = $allSettings['sms_api_kullanici'] ?? '';
-                $password = $allSettings['sms_api_sifre'] ?? '';
+                $password = $allSettings['sms_api_sifre_yeni'] ?? '';
                 $msgheader = $allSettings['sms_baslik'] ?? '';
+
+                //Helper::dd($allSettings);
 
                 if ($username && $password && $msgheader) {
                     $messageText = "Sayın {$personel->adi_soyadi}, yeni şifreniz: {$newPass}";
@@ -124,11 +138,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $PersonelModel = new PersonelModel();
 
+
         // TC Kimlik No veya Telefon ile personeli bul
         // Model üzerinden DB bağlantısını alıp özel sorgu atıyoruz
+        $phone = preg_replace('/\D/', '', $login_input); // sadece rakamlar
+
+        $phone = preg_replace('/^0/', '', $phone);
+
+
         $db = $PersonelModel->getDb();
-        $stmt = $db->prepare("SELECT * FROM personel WHERE tc_kimlik_no = :input OR cep_telefonu = :input");
-        $stmt->execute(['input' => $login_input]);
+        $stmt = $db->prepare("SELECT * FROM personel WHERE tc_kimlik_no = :input OR cep_telefonu = :telefon");
+        $stmt->execute(['input' => $login_input, 'telefon' => $phone]);
         $personel = $stmt->fetch(PDO::FETCH_OBJ);
 
         if ($personel) {
@@ -229,6 +249,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .float-animation {
             animation: float 3s ease-in-out infinite;
+        }
+
+        /* Toast Styles */
+        :root {
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        .toast {
+            padding: 1rem;
+            border-radius: 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            animation: slideInDown 0.3s ease-out;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            pointer-events: auto;
+        }
+
+        .toast-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .toast-error {
+            background: var(--danger);
+            color: white;
+        }
+
+        .toast-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideOutUp {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            to {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
         }
     </style>
 </head>
@@ -346,7 +425,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <p class="text-white/40 text-xs">© 2024 Ersan Elektrik. Tüm hakları saklıdır.</p>
     </div>
 
+    <div id="toast-container" class="fixed top-4 left-4 right-4 z-[110] flex flex-col gap-2"></div>
+
     <script>
+        // Toast Notifications
+        const Toast = {
+            container: null,
+
+            init() {
+                this.container = document.getElementById("toast-container");
+            },
+
+            show(message, type = "success", duration = 3000) {
+                if (!this.container) this.init();
+                if (!this.container) return;
+
+                const toast = document.createElement("div");
+                toast.className = `toast toast-${type}`;
+                toast.innerHTML = `
+                    <span class="material-symbols-outlined text-xl">
+                        ${type === "success" ? "check_circle" : type === "error" ? "error" : type === "warning" ? "warning" : "info"}
+                    </span>
+                    <span>${message}</span>
+                `;
+
+                this.container.appendChild(toast);
+
+                setTimeout(() => {
+                    toast.style.animation = "slideOutUp 0.3s ease-out forwards";
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
+            },
+        };
+
         function togglePassword() {
             const input = document.getElementById('password');
             const icon = document.getElementById('password-icon');
@@ -410,13 +521,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    alert(result.message);
+                    Toast.show(result.message, 'success');
                     closeForgotModal();
                 } else {
-                    alert(result.message);
+                    Toast.show(result.message, 'error');
                 }
             } catch (error) {
-                alert('Bir hata oluştu. Lütfen tekrar deneyin.');
+                Toast.show('Bir hata oluştu. Lütfen tekrar deneyin.', 'error');
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
