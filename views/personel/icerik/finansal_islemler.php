@@ -24,6 +24,8 @@ if (!empty($bordrolar)) {
     foreach ($bordrolar as $bordro) {
         if (isset($bordro->kapali_mi) && $bordro->kapali_mi == 1) {
             $transactions[] = [
+                'id' => $bordro->id,
+                'personel_id' => $bordro->personel_id,
                 'tarih' => $bordro->baslangic_tarihi,
                 'islem_turu' => 'Maaş Ödemesi',
                 'aciklama' => ($bordro->donem_adi ?? '') . ' Maaş Ödemesi',
@@ -38,6 +40,10 @@ if (!empty($bordrolar)) {
 // Manuel Ek Ödemeleri ekle (Tek seferlik olanlar)
 if (!empty($ek_odemeler)) {
     foreach ($ek_odemeler as $ek) {
+        // Otomatik oluşturulan (puantaj vb.) ek ödemeleri atla
+        if (strpos($ek->aciklama ?? '', '[') === 0)
+            continue;
+
         if (($ek->tekrar_tipi ?? '') == 'tek_sefer') {
             $status_badge = '';
             switch ($ek->durum ?? 'onaylandi') {
@@ -66,6 +72,10 @@ if (!empty($ek_odemeler)) {
 // Manuel Kesintileri ekle (Tek seferlik olanlar ve avans olmayanlar)
 if (!empty($kesintiler)) {
     foreach ($kesintiler as $ks) {
+        // Otomatik oluşturulan (maaş ile hesaplanan) kesintileri atla
+        if (strpos($ks->aciklama ?? '', '[') === 0)
+            continue;
+
         // Avanslar zaten yukarıda ekleniyor, mükerrer olmasın diye tur != 'avans' kontrolü yapıyoruz
         if (($ks->tekrar_tipi ?? '') == 'tek_sefer' && ($ks->tur ?? '') != 'avans') {
             $status_badge = '';
@@ -138,7 +148,16 @@ usort($transactions, function ($a, $b) {
                                             class="<?php echo $trans['tutar'] >= 0 ? 'text-success' : 'text-danger'; ?> fw-bold">
                                             <?php echo ($trans['tutar'] >= 0 ? '+ ' : '- ') . number_format(abs($trans['tutar']), 2, ',', '.') . ' ₺'; ?>
                                         </td>
-                                        <td><?php echo $trans['durum']; ?></td>
+                                        <td>
+                                            <?php echo $trans['durum']; ?>
+                                            <?php if ($trans['islem_turu'] === 'Maaş Ödemesi'): ?>
+                                                <a href="views/bordro/bordro-yazdir.php?id=<?php echo $trans['id']; ?>&personel_id=<?php echo $trans['personel_id']; ?>"
+                                                    target="_blank" class="btn btn-sm btn-outline-secondary ms-2"
+                                                    title="Bordro Yazdır">
+                                                    <i class="bx bx-printer"></i>
+                                                </a>
+                                            <?php endif; ?>
+                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php endif; ?>

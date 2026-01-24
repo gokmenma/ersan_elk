@@ -3,7 +3,6 @@
 require_once dirname(__DIR__, 1) . '/Autoloader.php';
 
 use App\Helper\Security;
-
 use App\Model\PersonelModel;
 use App\Model\AvansModel;
 use App\Model\PersonelIzinleriModel;
@@ -29,9 +28,7 @@ $avans_count = $stmt->fetch(PDO::FETCH_OBJ)->count;
 
 // İzinler
 try {
-    $stmt = $db->prepare("SELECT count(*) as count FROM personel_izinleri WHERE onay_durumu = 'beklemede'");
-    $stmt->execute();
-    $izin_count = $stmt->fetch(PDO::FETCH_OBJ)->count;
+    $izin_count = $izinModel->getBekleyenIzinSayisi();
 } catch (\Exception $e) {
     $izin_count = 0;
 }
@@ -44,8 +41,6 @@ $talep_count = $stmt->fetch(PDO::FETCH_OBJ)->count;
 $personel_talep_sayisi = $avans_count + $izin_count + $talep_count;
 
 // Son Talepleri Listeleme
-$recent_requests = [];
-
 // Avanslar
 $stmt = $db->prepare("SELECT 'Avans' as tip, id, personel_id, talep_tarihi as tarih, durum, tutar as detay FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL LIMIT 5");
 $stmt->execute();
@@ -96,17 +91,12 @@ try {
     $active_leaves = [];
 }
 
-// Chart değişkenleri
-if (!isset($months))
-    $months = [];
-if (!isset($totals))
-    $totals = [];
-if (!isset($toplam_gelir))
-    $toplam_gelir = 0;
-if (!isset($toplam_gider))
-    $toplam_gider = 0;
-if (!isset($toplam_bakiye))
-    $toplam_bakiye = 0;
+// Chart değişkenleri (Placeholder values for now)
+$months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+$totals = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65];
+$toplam_gelir = 50000;
+$toplam_gider = 30000;
+$toplam_bakiye = 20000;
 
 ?>
 
@@ -262,6 +252,45 @@ if (!isset($toplam_bakiye))
                                                         title="Detay">
                                                         <i class='bx bx-show'></i>
                                                     </button>
+                                                    
+                                                    <?php if ($req->tip == 'Avans'): ?>
+                                                        <button type="button" class="btn btn-success btn-sm btn-avans-onayla"
+                                                            data-id="<?php echo $req->id; ?>"
+                                                            data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                            data-tutar="<?php echo $req->detay; ?>" title="Onayla">
+                                                            <i class="bx bx-check"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-danger btn-sm btn-avans-reddet"
+                                                            data-id="<?php echo $req->id; ?>"
+                                                            data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                            title="Reddet">
+                                                            <i class="bx bx-x"></i>
+                                                        </button>
+                                                    <?php elseif ($req->tip == 'İzin'): ?>
+                                                        <button type="button" class="btn btn-success btn-sm btn-izin-onayla"
+                                                            data-id="<?php echo $req->id; ?>"
+                                                            data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                            data-tur="<?php echo htmlspecialchars($req->detay); ?>" 
+                                                            data-gun="<?php echo $req->toplam_gun ?? 0; ?>"
+                                                            title="Onayla">
+                                                            <i class="bx bx-check"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-danger btn-sm btn-izin-reddet"
+                                                            data-id="<?php echo $req->id; ?>"
+                                                            data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                            title="Reddet">
+                                                            <i class="bx bx-x"></i>
+                                                        </button>
+                                                    <?php elseif ($req->tip == 'Talep'): ?>
+                                                        <button type="button" class="btn btn-success btn-sm btn-talep-cozuldu"
+                                                            data-id="<?php echo $req->id; ?>"
+                                                            data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                            data-baslik="<?php echo htmlspecialchars($req->detay); ?>"
+                                                            title="Çözüldü">
+                                                            <i class="bx bx-check"></i>
+                                                        </button>
+                                                    <?php endif; ?>
+
                                                     <?php
                                                     $tabParam = 'avans';
                                                     if ($req->tip == 'Avans')
@@ -271,14 +300,14 @@ if (!isset($toplam_bakiye))
                                                     else
                                                         $tabParam = 'talep';
                                                     ?>
-                                                                    <a href="index.php?p=talepler/list&tab=<?php echo $tabParam; ?>" 
-                                                                        class="btn btn-primary btn-sm" title="Talepler Sayfasına Git">
-                                                                        <i class='bx bx-right-arrow-alt'></i>
-                                                                    </a>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                            <?php endforeach; ?>
+                                                    <a href="index.php?p=talepler/list&tab=<?php echo $tabParam; ?>" 
+                                                        class="btn btn-primary btn-sm" title="Talepler Sayfasına Git">
+                                                        <i class='bx bx-right-arrow-alt'></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
                                 <?php endif; ?>
                             </tbody>
                         </table>
@@ -305,45 +334,45 @@ if (!isset($toplam_bakiye))
                             </thead>
                             <tbody>
                                 <?php if (empty($active_leaves)): ?>
-                                            <tr>
-                                                <td colspan="4" class="text-center">Şu anda izinde olan personel bulunmamaktadır.</td>
-                                            </tr>
+                                    <tr>
+                                        <td colspan="4" class="text-center">Şu anda izinde olan personel bulunmamaktadır.</td>
+                                    </tr>
                                 <?php else: ?>
-                                            <?php foreach ($active_leaves as $leave):
-                                                $bitis = new DateTime($leave->bitis_tarihi);
-                                                $bugun = new DateTime();
-                                                $kalan = $bugun->diff($bitis)->days;
+                                    <?php foreach ($active_leaves as $leave):
+                                        $bitis = new DateTime($leave->bitis_tarihi);
+                                        $bugun = new DateTime();
+                                        $kalan = $bugun->diff($bitis)->days;
 
-                                                $badgeClass = 'badge-primary';
-                                                if ($leave->izin_tipi_adi == 'hastalik')
-                                                    $badgeClass = 'badge-danger';
-                                                if ($leave->izin_tipi_adi == 'mazeret')
-                                                    $badgeClass = 'badge-warning';
-                                                ?>
-                                                        <tr>
-                                                            <td>
-                                                                <div class="d-flex align-items-center">
-                                                                    <div class="flex-shrink-0 me-3">
-                                                                        <img src="<?php echo !empty($leave->resim_yolu) ? $leave->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
-                                                                            alt="" class="avatar-xs rounded-circle">
-                                                                    </div>
-                                                                    <div class="flex-grow-1">
-                                                                        <h5 class="font-size-14 mb-1"><?php echo $leave->adi_soyadi; ?></h5>
-                                                                        <p class="text-muted mb-0 font-size-12"><?php echo $leave->departman; ?></p>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <span class="badge <?php echo $badgeClass; ?> font-size-12">
-                                                                    <?php echo htmlspecialchars($leave->izin_tipi_adi ?? $leave->izin_tipi ?? 'İzin'); ?>
-                                                                </span>
-                                                            </td>
-                                                            <td><?php echo date('d.m.Y', strtotime($leave->bitis_tarihi)); ?></td>
-                                                            <td>
-                                                                <span class="badge badge-info"><?php echo $kalan; ?> Gün Kaldı</span>
-                                                            </td>
-                                                        </tr>
-                                            <?php endforeach; ?>
+                                        $badgeClass = 'badge-primary';
+                                        if ($leave->izin_tipi_adi == 'hastalik')
+                                            $badgeClass = 'badge-danger';
+                                        if ($leave->izin_tipi_adi == 'mazeret')
+                                            $badgeClass = 'badge-warning';
+                                        ?>
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="flex-shrink-0 me-3">
+                                                        <img src="<?php echo !empty($leave->resim_yolu) ? $leave->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
+                                                            alt="" class="avatar-xs rounded-circle">
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <h5 class="font-size-14 mb-1"><?php echo $leave->adi_soyadi; ?></h5>
+                                                        <p class="text-muted mb-0 font-size-12"><?php echo $leave->departman; ?></p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge <?php echo $badgeClass; ?> font-size-12">
+                                                    <?php echo htmlspecialchars($leave->izin_tipi_adi ?? $leave->izin_tipi ?? 'İzin'); ?>
+                                                </span>
+                                            </td>
+                                            <td><?php echo date('d.m.Y', strtotime($leave->bitis_tarihi)); ?></td>
+                                            <td>
+                                                <span class="badge badge-info"><?php echo $kalan; ?> Gün Kaldı</span>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
                                 <?php endif; ?>
                             </tbody>
                         </table>
@@ -374,7 +403,225 @@ if (!isset($toplam_bakiye))
     </div>
 </div>
 
-<!-- Talep Detay Modal - Premium Tasarım -->
+<!-- Talep Detay Modal -->
+<div class="modal fade" id="modalHomeDetay" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-detay-header" id="modalHeader">
+                <button type="button" class="btn-close-custom" data-bs-dismiss="modal">
+                    <i class="bx bx-x"></i>
+                </button>
+                <div class="icon-wrapper">
+                    <i class="bx bx-file" id="modalHeaderIcon"></i>
+                </div>
+                <span class="badge-tip" id="modalTalepTipi">Avans</span>
+                <h5>Talep Detayı</h5>
+            </div>
+            <div class="modal-body">
+                <div class="modal-detay-card" id="cardPersonel">
+                    <div class="label"><i class="bx bx-user"></i> Personel</div>
+                    <div class="value" id="modalPersonel">-</div>
+                </div>
+                <div class="modal-detay-card" id="cardDetay">
+                    <div class="label"><i class="bx bx-info-circle"></i> Detay Bilgisi</div>
+                    <div class="value" id="modalDetay">-</div>
+                </div>
+                <div class="modal-detay-card">
+                    <div class="label"><i class="bx bx-calendar"></i> Talep Tarihi</div>
+                    <div class="value" id="modalTarih">-</div>
+                </div>
+                <div class="modal-detay-card">
+                    <div class="label"><i class="bx bx-loader-circle"></i> Durum</div>
+                    <div class="value">
+                        <span class="badge bg-warning text-dark px-3 py-2">
+                            <i class="bx bx-time me-1"></i>Beklemede
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">
+                    <i class="bx bx-x me-1"></i>Kapat
+                </button>
+                <a href="#" id="modalGitBtn" class="btn btn-primary px-4">
+                    <i class="bx bx-right-arrow-alt me-1"></i>Talep Sayfasına Git
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Avans Onay Modal -->
+<div class="modal fade" id="modalAvansOnay" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bx bx-check-circle me-2"></i>Avans Onayı</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formAvansOnay">
+                <input type="hidden" name="id" id="avans_onay_id">
+                <input type="hidden" name="action" value="avans-onayla">
+                <div class="modal-body">
+                    <div class="alert alert-success">
+                        <strong id="avans_onay_personel"></strong> personelinin
+                        <strong id="avans_onay_tutar"></strong> tutarındaki avans talebini onaylamak istediğinize emin
+                        misiniz?
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Açıklama (Opsiyonel)</label>
+                        <textarea class="form-control" name="aciklama" rows="2"
+                            placeholder="Onay açıklaması..."></textarea>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="hesaba_isle" id="hesabaIsle" value="1"
+                            checked>
+                        <label class="form-check-label" for="hesabaIsle">
+                            Avansı bordroya kesinti olarak işle
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-success"><i class="bx bx-check me-1"></i>Onayla</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Avans Red Modal -->
+<div class="modal fade" id="modalAvansRed" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bx bx-x-circle me-2"></i>Avans Reddi</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formAvansRed">
+                <input type="hidden" name="id" id="avans_red_id">
+                <input type="hidden" name="action" value="avans-reddet">
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <strong id="avans_red_personel"></strong> personelinin avans talebini reddetmek istediğinize
+                        emin misiniz?
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Red Açıklaması <span class="text-danger">*</span></label>
+                        <textarea class="form-control" name="aciklama" rows="3"
+                            placeholder="Red sebebini açıklayınız..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-danger"><i class="bx bx-x me-1"></i>Reddet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- İzin Onay Modal -->
+<div class="modal fade" id="modalIzinOnay" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bx bx-calendar-check me-2"></i>İzin Onayı</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formIzinOnay">
+                <input type="hidden" name="id" id="izin_onay_id">
+                <input type="hidden" name="action" value="izin-onayla">
+                <div class="modal-body">
+                    <div class="alert alert-success">
+                        <strong id="izin_onay_personel"></strong> personelinin
+                        <strong id="izin_onay_gun"></strong> günlük <strong id="izin_onay_tur"></strong> talebini
+                        onaylamak istediğinize emin misiniz?
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Açıklama (Opsiyonel)</label>
+                        <textarea class="form-control" name="aciklama" rows="2"
+                            placeholder="Onay açıklaması..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-success"><i class="bx bx-check me-1"></i>Onayla</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- İzin Red Modal -->
+<div class="modal fade" id="modalIzinRed" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bx bx-x-circle me-2"></i>İzin Reddi</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formIzinRed">
+                <input type="hidden" name="id" id="izin_red_id">
+                <input type="hidden" name="action" value="izin-reddet">
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <strong id="izin_red_personel"></strong> personelinin izin talebini reddetmek istediğinize emin
+                        misiniz?
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Red Açıklaması <span class="text-danger">*</span></label>
+                        <textarea class="form-control" name="aciklama" rows="3"
+                            placeholder="Red sebebini açıklayınız..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-danger"><i class="bx bx-x me-1"></i>Reddet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Talep Çözüldü Modal -->
+<div class="modal fade" id="modalTalepCozuldu" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bx bx-check-circle me-2"></i>Talep Çözümü</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formTalepCozuldu">
+                <input type="hidden" name="id" id="talep_cozuldu_id">
+                <input type="hidden" name="action" value="talep-cozuldu">
+                <div class="modal-body">
+                    <div class="alert alert-success">
+                        <strong id="talep_cozuldu_baslik"></strong> talebini çözüldü olarak işaretlemek istediğinize
+                        emin misiniz?
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Çözüm Açıklaması</label>
+                        <textarea class="form-control" name="aciklama" rows="3"
+                            placeholder="Çözüm hakkında bilgi veriniz..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-success"><i class="bx bx-check me-1"></i>Çözüldü Olarak
+                        İşaretle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <style>
     .modal-detay-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -495,166 +742,41 @@ if (!isset($toplam_bakiye))
     }
 </style>
 
-<div class="modal fade" id="modalHomeDetay" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-detay-header" id="modalHeader">
-                <button type="button" class="btn-close-custom" data-bs-dismiss="modal">
-                    <i class="bx bx-x"></i>
-                </button>
-                <div class="icon-wrapper">
-                    <i class="bx bx-file" id="modalHeaderIcon"></i>
-                </div>
-                <span class="badge-tip" id="modalTalepTipi">Avans</span>
-                <h5>Talep Detayı</h5>
-            </div>
-            <div class="modal-body">
-                <div class="modal-detay-card" id="cardPersonel">
-                    <div class="label"><i class="bx bx-user"></i> Personel</div>
-                    <div class="value" id="modalPersonel">-</div>
-                </div>
-                <div class="modal-detay-card" id="cardDetay">
-                    <div class="label"><i class="bx bx-info-circle"></i> Detay Bilgisi</div>
-                    <div class="value" id="modalDetay">-</div>
-                </div>
-                <div class="modal-detay-card">
-                    <div class="label"><i class="bx bx-calendar"></i> Talep Tarihi</div>
-                    <div class="value" id="modalTarih">-</div>
-                </div>
-                <div class="modal-detay-card">
-                    <div class="label"><i class="bx bx-loader-circle"></i> Durum</div>
-                    <div class="value">
-                        <span class="badge bg-warning text-dark px-3 py-2">
-                            <i class="bx bx-time me-1"></i>Beklemede
-                        </span>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer d-flex justify-content-between">
-                <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">
-                    <i class="bx bx-x me-1"></i>Kapat
-                </button>
-                <a href="#" id="modalGitBtn" class="btn btn-primary px-4">
-                    <i class="bx bx-right-arrow-alt me-1"></i>Talep Sayfasına Git
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script src="assets/libs/apexcharts/apexcharts.min.js"></script>
 <script>
     var months = <?php echo json_encode($months); ?>;
     var totals = <?php echo json_encode($totals); ?>;
 
     var options = {
-        chart: {
-            type: 'line'
-        },
-        series: [{
-            name: 'Üye Sayısı',
-            data: totals
-        }],
-        xaxis: {
-            categories: months
-        }
+        chart: { type: 'line', height: 350 },
+        series: [{ name: 'Üye Sayısı', data: totals }],
+        xaxis: { categories: months },
+        colors: ['#556ee6']
     }
+    new ApexCharts(document.querySelector("#chart"), options).render();
 
-    var chart = new ApexCharts(document.querySelector("#chart"), options);
-    chart.render();
-</script>
-
-<script>
-    var options = {
-        series: [{
-            name: 'Gelir',
-            data: [44, 55, 57, 56, 61, 58, 63, 60, 66, 85, 96, 85]
-        }, {
-            name: 'Gider',
-            data: [76, 85, 101, 98, 87, 105, 91, 114, 94, 78, 77, 25]
-        }],
-        chart: {
-            type: 'bar',
-            height: 350
-        },
-        plotOptions: {
-            bar: {
-                horizontal: false,
-                columnWidth: '75%',
-                borderRadius: 4,
-                borderRadiusApplication: 'end'
-            },
-        },
-        dataLabels: {
-            enabled: false
-        },
-        stroke: {
-            show: true,
-            width: 2,
-            colors: ['transparent']
-        },
-        xaxis: {
-            categories: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'],
-        },
-        yaxis: {
-            title: {
-                text: '$ (thousands)'
-            }
-        },
-        colors: ['#7AC6D2', '#E16A54', '#9C27B0'],
-        fill: {
-            opacity: 1
-        },
-        tooltip: {
-            y: {
-                formatter: function (val) {
-                    return "$ " + val + " thousands"
-                }
-            }
-        }
+    var options2 = {
+        series: [{ name: 'Gelir', data: [44, 55, 57, 56, 61, 58, 63, 60, 66, 85, 96, 85] }, 
+                 { name: 'Gider', data: [76, 85, 101, 98, 87, 105, 91, 114, 94, 78, 77, 25] }],
+        chart: { type: 'bar', height: 350 },
+        plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 4 } },
+        xaxis: { categories: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'] },
+        colors: ['#34c38f', '#f46a6a']
     };
+    new ApexCharts(document.querySelector("#chart2"), options2).render();
 
-    var chart2 = new ApexCharts(document.querySelector("#chart2"), options);
-    chart2.render();
-</script>
-
-<script>
-    var gelir = <?php echo json_encode($toplam_gelir); ?>;
-    var gider = <?php echo json_encode($toplam_gider); ?>;
-    var bakiye = <?php echo json_encode($toplam_bakiye); ?>;
-
-    var options = {
-        series: [gelir, gider, bakiye],
-        chart: {
-            type: 'polarArea',
-        },
-        labels: ['Gider', 'Gelir', 'Kasa'],
-        stroke: {
-            colors: ['#fff']
-        },
-        fill: {
-            opacity: 0.8
-        },
-        responsive: [{
-            breakpoint: 480,
-            options: {
-                chart: {
-                    width: 200
-                },
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }]
+    var options3 = {
+        series: [<?php echo $toplam_gelir; ?>, <?php echo $toplam_gider; ?>, <?php echo $toplam_bakiye; ?>],
+        chart: { type: 'polarArea', height: 350 },
+        labels: ['Gelir', 'Gider', 'Kasa'],
+        colors: ['#34c38f', '#f46a6a', '#556ee6']
     };
+    new ApexCharts(document.querySelector("#chart3"), options3).render();
 
-    var chart3 = new ApexCharts(document.querySelector("#chart3"), options);
-    chart3.render();
-</script>
-
-<script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Detay butonları için event listener
+    const API_URL = 'views/talepler/api.php';
+
+    // Detay Modal
     document.querySelectorAll('.btn-home-detay').forEach(function(btn) {
         btn.addEventListener('click', function () {
             var tip = this.dataset.tip;
@@ -662,57 +784,106 @@ document.addEventListener('DOMContentLoaded', function () {
             var detay = this.dataset.detay;
             var tarih = this.dataset.tarih;
 
-            // Header class ve ikon belirleme
-            var headerClass = '';
-            var headerIcon = 'bx-file';
-            var cardBorderClass = '';
-            
-            if (tip === 'Avans') {
-                headerClass = 'tip-avans';
-                headerIcon = 'bx-money';
-                cardBorderClass = 'tip-avans';
-            } else if (tip === 'İzin') {
-                headerClass = 'tip-izin';
-                headerIcon = 'bx-calendar-check';
-                cardBorderClass = 'tip-izin';
-            } else if (tip === 'Talep') {
-                headerClass = 'tip-talep';
-                headerIcon = 'bx-message-square-detail';
-                cardBorderClass = 'tip-talep';
-            }
+            var headerClass = tip === 'Avans' ? 'tip-avans' : (tip === 'İzin' ? 'tip-izin' : 'tip-talep');
+            var headerIcon = tip === 'Avans' ? 'bx-money' : (tip === 'İzin' ? 'bx-calendar-check' : 'bx-message-square-detail');
 
-            // Header güncelle
-            var modalHeader = document.getElementById('modalHeader');
-            modalHeader.className = 'modal-detay-header ' + headerClass;
-            
-            // Tip badge güncelle
+            document.getElementById('modalHeader').className = 'modal-detay-header ' + headerClass;
             document.getElementById('modalTalepTipi').textContent = tip;
-            
-            // Header ikonunu güncelle
             document.getElementById('modalHeaderIcon').className = 'bx ' + headerIcon;
-
-            // İçerikleri doldur
             document.getElementById('modalPersonel').textContent = personel;
             document.getElementById('modalDetay').textContent = detay;
             document.getElementById('modalTarih').textContent = tarih;
-            
-            // Kartların border rengini güncelle
-            document.querySelectorAll('.modal-detay-card').forEach(function(card) {
-                card.classList.remove('tip-avans', 'tip-izin', 'tip-talep');
-                if (cardBorderClass) card.classList.add(cardBorderClass);
-            });
 
-            // Git butonunun link'ini ayarla
-            var tabParam = 'avans';
-            if (tip === 'Avans') tabParam = 'avans';
-            else if (tip === 'İzin') tabParam = 'izin';
-            else tabParam = 'talep';
-
+            var tabParam = tip === 'Avans' ? 'avans' : (tip === 'İzin' ? 'izin' : 'talep');
             document.getElementById('modalGitBtn').href = 'index.php?p=talepler/list&tab=' + tabParam;
 
-            // Modal'ı aç
             new bootstrap.Modal(document.getElementById('modalHomeDetay')).show();
         });
     });
+
+    // Avans Onayla
+    document.querySelectorAll('.btn-avans-onayla').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.getElementById('avans_onay_id').value = this.dataset.id;
+            document.getElementById('avans_onay_personel').textContent = this.dataset.personel;
+            document.getElementById('avans_onay_tutar').textContent = parseFloat(this.dataset.tutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+            new bootstrap.Modal(document.getElementById('modalAvansOnay')).show();
+        });
+    });
+
+    // Avans Reddet
+    document.querySelectorAll('.btn-avans-reddet').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.getElementById('avans_red_id').value = this.dataset.id;
+            document.getElementById('avans_red_personel').textContent = this.dataset.personel;
+            new bootstrap.Modal(document.getElementById('modalAvansRed')).show();
+        });
+    });
+
+    // İzin Onayla
+    document.querySelectorAll('.btn-izin-onayla').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.getElementById('izin_onay_id').value = this.dataset.id;
+            document.getElementById('izin_onay_personel').textContent = this.dataset.personel;
+            document.getElementById('izin_onay_tur').textContent = this.dataset.tur;
+            document.getElementById('izin_onay_gun').textContent = this.dataset.gun;
+            new bootstrap.Modal(document.getElementById('modalIzinOnay')).show();
+        });
+    });
+
+    // İzin Reddet
+    document.querySelectorAll('.btn-izin-reddet').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.getElementById('izin_red_id').value = this.dataset.id;
+            document.getElementById('izin_red_personel').textContent = this.dataset.personel;
+            new bootstrap.Modal(document.getElementById('modalIzinRed')).show();
+        });
+    });
+
+    // Talep Çözüldü
+    document.querySelectorAll('.btn-talep-cozuldu').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.getElementById('talep_cozuldu_id').value = this.dataset.id;
+            document.getElementById('talep_cozuldu_baslik').textContent = this.dataset.baslik;
+            new bootstrap.Modal(document.getElementById('modalTalepCozuldu')).show();
+        });
+    });
+
+    const handleFormSubmit = (formId) => {
+        const form = document.getElementById(formId);
+        if (!form) return;
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> İşleniyor...';
+
+            fetch(API_URL, { method: 'POST', body: formData })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    Swal.fire({ icon: 'success', title: 'Başarılı', text: data.message, timer: 1500, showConfirmButton: false })
+                    .then(() => location.reload());
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Hata', text: data.message });
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                Swal.fire({ icon: 'error', title: 'Hata', text: 'Bir sorun oluştu.' });
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            });
+        });
+    };
+
+    handleFormSubmit('formAvansOnay');
+    handleFormSubmit('formAvansRed');
+    handleFormSubmit('formIzinOnay');
+    handleFormSubmit('formIzinRed');
+    handleFormSubmit('formTalepCozuldu');
 });
 </script>

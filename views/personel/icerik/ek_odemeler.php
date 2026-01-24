@@ -60,7 +60,7 @@ foreach ($ek_odemeler as $k) {
                                     <?php $enc_id = Security::encrypt($k->id); ?>
                                     <tr data-id="<?= $enc_id ?>">
                                         <td>
-                                            <span class="badge bg-soft-success text-success">
+                                            <span class="badge bg-soft-danger text-white">
                                                 <?= $k->parametre_adi ?? ucfirst($k->tur ?? 'Diğer') ?>
                                             </span>
                                         </td>

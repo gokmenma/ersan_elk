@@ -238,16 +238,20 @@ $ek_odeme_turleri = [
                                             <?php
                                             $eldenOdeme = ($personel->net_maas ?? 0) - ($personel->banka_odemesi ?? 0) - ($personel->sodexo_odemesi ?? 0) - ($personel->diger_odeme ?? 0);
 
-                                            // Ücretsiz izin gün sayısını hesapla
+                                            // İzin gün sayılarını hesapla
                                             $ucretsizIzinGunu = 0;
+                                            $ucretliIzinGunu = 0;
                                             if (!empty($personel->hesaplama_detay)) {
                                                 $detay = json_decode($personel->hesaplama_detay, true);
                                                 if (isset($detay['matrahlar']['ucretsiz_izin_kesinti']) && isset($detay['matrahlar']['brut_maas']) && $detay['matrahlar']['brut_maas'] > 0) {
                                                     $gunlukUcret = $detay['matrahlar']['brut_maas'] / 30;
                                                     $ucretsizIzinGunu = round($detay['matrahlar']['ucretsiz_izin_kesinti'] / $gunlukUcret);
                                                 }
+                                                if (isset($detay['matrahlar']['ucretli_izin_gunu'])) {
+                                                    $ucretliIzinGunu = intval($detay['matrahlar']['ucretli_izin_gunu']);
+                                                }
                                             }
-                                            $calismaGunu = 30 - $ucretsizIzinGunu;
+                                            $calismaGunu = 30 - $ucretsizIzinGunu - $ucretliIzinGunu;
                                             ?>
                                             <tr data-id="<?= $personel->id ?>">
                                                 <td>
@@ -268,14 +272,31 @@ $ek_odeme_turleri = [
                                                 </td>
 
                                                 <td
-                                                    class="text-center <?= $ucretsizIzinGunu > 0 ? 'text-warning fw-bold' : 'text-secondary' ?>">
+                                                    class="text-center <?= ($ucretsizIzinGunu > 0 || $ucretliIzinGunu > 0) ? 'text-warning fw-bold' : 'text-secondary' ?>">
                                                     <?= $calismaGunu ?> gün
                                                     <?php if ($ucretsizIzinGunu > 0): ?>
-                                                        <small class="d-block text-danger">(-<?= $ucretsizIzinGunu ?> izin)</small>
+                                                        <small class="d-block text-danger">(-<?= $ucretsizIzinGunu ?> ü.siz
+                                                            izin)</small>
+                                                    <?php endif; ?>
+                                                    <?php if ($ucretliIzinGunu > 0): ?>
+                                                        <small class="d-block text-info">(-<?= $ucretliIzinGunu ?> ü.li izin)</small>
                                                     <?php endif; ?>
                                                 </td>
                                                 <td class="text-end text-success">
-                                                    <?= $personel->guncel_toplam_ek_odeme > 0 ? number_format($personel->guncel_toplam_ek_odeme, 2, ',', '.') . ' ₺' : '-' ?>
+                                                    <?php
+                                                    // Hesaplanmış ek ödeme toplamını al (gün bazlı hesaplamalar dahil)
+                                                    $hesaplananEkOdeme = $personel->guncel_toplam_ek_odeme;
+                                                    if (!empty($personel->hesaplama_detay)) {
+                                                        $detayEkOdeme = json_decode($personel->hesaplama_detay, true);
+                                                        if (isset($detayEkOdeme['ek_odemeler']) && is_array($detayEkOdeme['ek_odemeler'])) {
+                                                            $hesaplananEkOdeme = 0;
+                                                            foreach ($detayEkOdeme['ek_odemeler'] as $eo) {
+                                                                $hesaplananEkOdeme += floatval($eo['net_etki'] ?? $eo['tutar'] ?? 0);
+                                                            }
+                                                        }
+                                                    }
+                                                    ?>
+                                                    <?= $hesaplananEkOdeme > 0 ? number_format($hesaplananEkOdeme, 2, ',', '.') . ' ₺' : '-' ?>
                                                     <i class="bx bx-list-ul ms-1 text-primary cursor-pointer btn-detail-ekodeme"
                                                         data-id="<?= $personel->personel_id ?>"
                                                         data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"

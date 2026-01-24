@@ -14,7 +14,7 @@ $(document).ready(function () {
     var resultsDiv = container.find(".onaylayan-autocomplete-results");
     if (resultsDiv.length === 0) {
       resultsDiv = $(
-        "<div class='list-group position-absolute w-100 onaylayan-autocomplete-results' style='z-index: 9999; max-height: 200px; overflow-y: auto; top: 100%; left: 0; right: 0;'></div>"
+        "<div class='list-group position-absolute w-100 onaylayan-autocomplete-results' style='z-index: 9999; max-height: 200px; overflow-y: auto; top: 100%; left: 0; right: 0;'></div>",
       );
       container.append(resultsDiv);
       container.css("position", "relative");
@@ -40,9 +40,9 @@ $(document).ready(function () {
 
       // Loading göster
       resultsDiv
-          .empty()
-          .append($("<div class='list-group-item disabled'>Aranıyor...</div>"))
-          .show();
+        .empty()
+        .append($("<div class='list-group-item disabled'>Aranıyor...</div>"))
+        .show();
 
       $.ajax({
         url: "views/personel/api/APIizinler.php",
@@ -50,8 +50,7 @@ $(document).ready(function () {
         dataType: "json",
         data: { action: "search_user", term: term },
         success: function (data) {
-
-            console.log(data);
+          console.log(data);
           if (searchInput.data("requestToken") !== requestToken) return;
 
           resultsDiv.empty();
@@ -59,14 +58,14 @@ $(document).ready(function () {
           if (Array.isArray(data) && data.length > 0) {
             $.each(data, function (index, user) {
               var item = $(
-                "<a href='javascript:void(0);' class='list-group-item list-group-item-action'></a>"
+                "<a href='javascript:void(0);' class='list-group-item list-group-item-action'></a>",
               )
                 .html(
                   "<strong>" +
                     (user.adi_soyadi || "") +
                     "</strong> <br><small>" +
                     (user.email_adresi || "") +
-                    "</small>"
+                    "</small>",
                 )
                 .data("id", user.id)
                 .data("name", user.adi_soyadi);
@@ -87,9 +86,9 @@ $(document).ready(function () {
           if (data && data.status === "error" && data.message) {
             resultsDiv
               .append(
-                $("<div class='list-group-item disabled text-danger'></div>").text(
-                  data.message
-                )
+                $(
+                  "<div class='list-group-item disabled text-danger'></div>",
+                ).text(data.message),
               )
               .show();
             return;
@@ -98,22 +97,24 @@ $(document).ready(function () {
           // Sonuç yok
           resultsDiv
             .append(
-                $("<div class='list-group-item disabled'>Sonuç bulunamadı</div>")
+              $("<div class='list-group-item disabled'>Sonuç bulunamadı</div>"),
             )
             .show();
         },
         error: function (xhr, status, error) {
           if (searchInput.data("requestToken") !== requestToken) return;
-          
+
           console.error("AJAX Hatası:", status, error, xhr.responseText);
           var msg = "Hata oluştu.";
-          if(xhr.status === 404) msg = "API adresi bulunamadı (404).";
-          else if(xhr.status === 500) msg = "Sunucu hatası (500).";
-          
+          if (xhr.status === 404) msg = "API adresi bulunamadı (404).";
+          else if (xhr.status === 500) msg = "Sunucu hatası (500).";
+
           resultsDiv
             .empty()
             .append(
-              $("<div class='list-group-item disabled text-danger'></div>").text(msg)
+              $(
+                "<div class='list-group-item disabled text-danger'></div>",
+              ).text(msg),
             )
             .show();
         },
@@ -211,34 +212,9 @@ $(document).ready(function () {
           // Modalı kapat ve formu temizle
           $("#modalIzinEkle").modal("hide");
 
-          // Tab içeriğini yenile
-          var $targetPane = $("#izinler");
-          var url = $targetPane.data("url");
-
-          if ($targetPane.length && url) {
-            $targetPane.load(url, function () {
-              // Select2
-              if ($(".select2").length > 0 && $.fn.select2) {
-                $(".modal>.select2").select2({
-                  dropdownParent: $(".modal"),
-                });
-              }
-              // Flatpickr
-
-              $(".flatpickr").flatpickr({
-                enableTime: true,
-                dateFormat: "Y-m-d H:i",
-                time_24hr: true,
-                locale: "tr",
-              });
-
-              // Feather
-              if (typeof feather !== "undefined") {
-                feather.replace();
-              }
-            });
+          if (typeof reloadActiveTab === "function") {
+            reloadActiveTab();
           } else {
-            // Tab yapısı yoksa sayfayı yenile
             location.reload();
           }
         } else {
@@ -311,27 +287,8 @@ $(document).ready(function () {
               alert(response.message);
             }
 
-            // Tab içeriğini yenile
-            var $targetPane = $("#izinler");
-            var url = $targetPane.data("url");
-
-            if ($targetPane.length && url) {
-              $targetPane.load(url, function () {
-                if ($(".select2").length > 0 && $.fn.select2) {
-                  $(".select2").select2({ dropdownParent: $(".modal") });
-                }
-                if (typeof flatpickr !== "undefined") {
-                  $(".flatpickr-date").flatpickr({
-                    enableTime: true,
-                    dateFormat: "Y-m-d H:i",
-                    time_24hr: true,
-                    locale: "tr",
-                  });
-                }
-                if (typeof feather !== "undefined") {
-                  feather.replace();
-                }
-              });
+            if (typeof reloadActiveTab === "function") {
+              reloadActiveTab();
             } else {
               location.reload();
             }
@@ -347,7 +304,7 @@ $(document).ready(function () {
             }
           }
         },
-        "json"
+        "json",
       ).fail(function (xhr) {
         var errorMsg = "Sunucu hatası oluştu.";
         if (xhr.responseJSON && xhr.responseJSON.message) {
@@ -382,4 +339,248 @@ $(document).ready(function () {
       }
     }
   });
+
+  // İzin Onayla/Reddet/Detay İşlemleri - Event Delegation
+  const TALEPLER_API = "views/talepler/api.php";
+
+  // İzin Onayla Butonu
+  $(document).on("click", ".btn-izin-onayla", function () {
+    const btn = $(this);
+    const id = btn.data("id");
+    const personel = btn.data("personel");
+    const tur = btn.data("tur");
+    const gun = btn.data("gun");
+
+    $("#izin_onay_id").val(id);
+    $("#izin_onay_personel").text(personel);
+    $("#izin_onay_tur").text(tur);
+    $("#izin_onay_gun").text(gun);
+
+    $("#modalIzinOnayPersonel").modal("show");
+  });
+
+  // İzin Reddet Butonu
+  $(document).on("click", ".btn-izin-reddet", function () {
+    const btn = $(this);
+    const id = btn.data("id");
+    const personel = btn.data("personel");
+
+    $("#izin_red_id").val(id);
+    $("#izin_red_personel").text(personel);
+
+    $("#modalIzinRedPersonel").modal("show");
+  });
+
+  // İzin Detay Butonu
+  $(document).on("click", ".btn-izin-detay", function () {
+    const id = $(this).data("id");
+    loadIzinDetay(id);
+  });
+
+  // İzin Onay Form Submit
+  $(document).on("submit", "#formIzinOnayPersonel", function (e) {
+    e.preventDefault();
+    const form = $(this);
+    const formData = new FormData(form[0]);
+    formData.append("action", "izin-onayla");
+
+    $.ajax({
+      url: TALEPLER_API,
+      type: "POST",
+      data: formData,
+      processData: false,
+      contentType: false,
+      dataType: "json",
+      success: function (response) {
+        if (response.status === "success") {
+          Swal.fire({
+            icon: "success",
+            title: "Başarılı",
+            text: response.message || "İzin onaylandı.",
+          }).then((result) => {
+            $("#modalIzinOnayPersonel").modal("hide");
+            if (typeof reloadActiveTab === "function") {
+              reloadActiveTab();
+            } else {
+              location.reload();
+            }
+          });
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Hata",
+            text: response.message || "Bir hata oluştu.",
+          });
+        }
+      },
+      error: function () {
+        Swal.fire({
+          icon: "error",
+          title: "Hata",
+          text: "Sunucu hatası oluştu.",
+        });
+      },
+    });
+  });
+
+  // İzin Red Form Submit
+  $(document).on("submit", "#formIzinRedPersonel", function (e) {
+    e.preventDefault();
+    const form = $(this);
+    const formData = new FormData(form[0]);
+    formData.append("action", "izin-reddet");
+
+    $.ajax({
+      url: TALEPLER_API,
+      type: "POST",
+      data: formData,
+      processData: false,
+      contentType: false,
+      dataType: "json",
+      success: function (response) {
+        if (response.status === "success") {
+          Swal.fire({
+            icon: "success",
+            title: "Başarılı",
+            text: response.message || "İzin reddedildi.",
+          }).then(() => {
+            $("#modalIzinRedPersonel").modal("hide");
+            if (typeof reloadActiveTab === "function") {
+              reloadActiveTab();
+            } else {
+              location.reload();
+            }
+          });
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Hata",
+            text: response.message || "Bir hata oluştu.",
+          });
+        }
+      },
+      error: function () {
+        Swal.fire({
+          icon: "error",
+          title: "Hata",
+          text: "Sunucu hatası oluştu.",
+        });
+      },
+    });
+  });
+
+  // İzin Detay Yükle Fonksiyonu
+  function loadIzinDetay(id) {
+    const detayContent = $("#izinDetayContent");
+    detayContent.html(
+      '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></div>',
+    );
+
+    $("#modalIzinDetayPersonel").modal("show");
+
+    $.post(
+      TALEPLER_API,
+      { action: "get-izin-detay", id: id },
+      function (response) {
+        if (response.status === "success") {
+          const izin = response.data;
+          let html = `
+          <div class="row">
+              <div class="col-md-6">
+                  <table class="table table-sm table-borderless">
+                      <tr>
+                          <th class="text-muted" style="width: 40%;">İzin Türü:</th>
+                          <td><span class="badge bg-info">${izin.izin_tipi_adi || izin.izin_tipi || "-"}</span></td>
+                      </tr>
+                      <tr>
+                          <th class="text-muted">Başlangıç Tarihi:</th>
+                          <td>${formatDate(izin.baslangic_tarihi)}</td>
+                      </tr>
+                      <tr>
+                          <th class="text-muted">Bitiş Tarihi:</th>
+                          <td>${formatDate(izin.bitis_tarihi)}</td>
+                      </tr>
+                      <tr>
+                          <th class="text-muted">Süre:</th>
+                          <td><span class="badge bg-secondary">${izin.sure || "-"} Gün</span></td>
+                      </tr>
+                  </table>
+              </div>
+              <div class="col-md-6">
+                  <table class="table table-sm table-borderless">
+                      <tr>
+                          <th class="text-muted" style="width: 40%;">Durum:</th>
+                          <td>${getDurumBadge(izin.son_durum || izin.onay_durumu || "Beklemede")}</td>
+                      </tr>
+                      <tr>
+                          <th class="text-muted">İzin Durumu:</th>
+                          <td>${izin.izin_durumu || "-"}</td>
+                      </tr>
+                      <tr>
+                          <th class="text-muted">Yıllık İzne Etki:</th>
+                          <td>${izin.yillik_izne_etki || "-"}</td>
+                      </tr>
+                      <tr>
+                          <th class="text-muted">Bordroya Aktar:</th>
+                          <td>${izin.bordroya_aktar || "-"}</td>
+                      </tr>
+                  </table>
+              </div>
+          </div>
+          ${
+            izin.aciklama
+              ? `
+          <div class="mt-3">
+              <h6 class="text-muted"><i class="bx bx-message-detail me-1"></i> Açıklama</h6>
+              <p class="mb-0 p-2 bg-light rounded">${izin.aciklama}</p>
+          </div>
+          `
+              : ""
+          }
+          ${
+            izin.onay_aciklama
+              ? `
+          <div class="mt-3">
+              <h6 class="text-muted"><i class="bx bx-check-circle me-1"></i> Onay Açıklaması</h6>
+              <p class="mb-0 p-2 bg-light rounded">${izin.onay_aciklama}</p>
+          </div>
+          `
+              : ""
+          }
+        `;
+          detayContent.html(html);
+        } else {
+          detayContent.html(
+            `<div class="alert alert-danger">${response.message || "Detay yüklenemedi."}</div>`,
+          );
+        }
+      },
+      "json",
+    ).fail(function () {
+      detayContent.html(
+        '<div class="alert alert-danger">Sunucu hatası oluştu.</div>',
+      );
+    });
+  }
+
+  // Yardımcı Fonksiyonlar
+  function formatDate(dateStr) {
+    if (!dateStr) return "-";
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("tr-TR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  }
+
+  function getDurumBadge(durum) {
+    const badges = {
+      Onaylandı: '<span class="badge bg-success">Onaylandı</span>',
+      Reddedildi: '<span class="badge bg-danger">Reddedildi</span>',
+      Beklemede: '<span class="badge bg-warning">Beklemede</span>',
+      Bekliyor: '<span class="badge bg-warning">Bekliyor</span>',
+    };
+    return badges[durum] || `<span class="badge bg-secondary">${durum}</span>`;
+  }
 });

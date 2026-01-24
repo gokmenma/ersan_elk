@@ -20,6 +20,7 @@ use App\Model\AvansModel;
 use App\Helper\Security;
 use App\Helper\Helper;
 use App\Service\MailGonderService;
+use App\Service\PushNotificationService;
 use App\Model\PushSubscriptionModel;
 use App\Model\BildirimModel;
 use App\Model\UserModel;
@@ -212,7 +213,7 @@ try {
                             'Yeni Avans Talebi',
                             ($talep_eden->adi_soyadi ?? 'Personel') . ' ' . number_format($tutar, 2, ',', '.') . ' TL avans talep etti.',
                             'index.php?p=talepler/list&tab=avans&id=' . $newId,
-                            'lira-sign',
+                            'bx-money',
                             'success'
                         );
                         file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Bildirim oluşturuldu. Kullanıcı: {$kullanici->id}, Sonuç: $res\n", FILE_APPEND);

@@ -165,13 +165,34 @@ $onay_durumlari = [
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php if (($izin->son_durum ?? 'Beklemede') == 'Beklemede'): ?>
-                                                <a href="javascript:void()" class="btn btn-sm btn-outline-danger btn-izin-sil"
-                                                    data-id="<?= $izin->id ?>"
-                                                    data-durum="<?= htmlspecialchars($izin->son_durum ?? 'Beklemede') ?>"><i
-                                                        class="bx bx-trash"></i></a>
-                                            <?php else: ?>
-                                            <?php endif; ?>
+                                            <div class="btn-group" role="group">
+                                                <?php if (($izin->son_durum ?? 'Beklemede') == 'Beklemede'): ?>
+                                                    <button type="button" class="btn btn-sm btn-success btn-izin-onayla"
+                                                        data-id="<?= $izin->id ?>"
+                                                        data-personel="<?= htmlspecialchars($personel->adi_soyadi ?? '') ?>"
+                                                        data-tur="<?= htmlspecialchars($izin->izin_tipi_adi ?? $izin->izin_tipi ?? '') ?>"
+                                                        data-gun="<?= htmlspecialchars($izin->sure ?? '-') ?>" title="Onayla">
+                                                        <i class="bx bx-check"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-danger btn-izin-reddet"
+                                                        data-id="<?= $izin->id ?>"
+                                                        data-personel="<?= htmlspecialchars($personel->adi_soyadi ?? '') ?>"
+                                                        title="Reddet">
+                                                        <i class="bx bx-x"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger btn-izin-sil"
+                                                        data-id="<?= $izin->id ?>"
+                                                        data-durum="<?= htmlspecialchars($izin->son_durum ?? 'Beklemede') ?>"
+                                                        title="Sil">
+                                                        <i class="bx bx-trash"></i>
+                                                    </button>
+                                                <?php else: ?>
+                                                    <button type="button" class="btn btn-sm btn-info btn-izin-detay"
+                                                        data-id="<?= $izin->id ?>" title="Detay">
+                                                        <i class="bx bx-show"></i>
+                                                    </button>
+                                                <?php endif; ?>
+                                            </div>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -314,14 +335,91 @@ $onay_durumlari = [
     </div>
 </div>
 
-<script>
-    // Tab içeriği yüklendiğinde flatpickr'ı başlat
-    if (typeof flatpickr !== 'undefined') {
-        $(".flatpickr-date").flatpickr({
-            enableTime: true,
-            dateFormat: "Y-m-d H:i",
-            time_24hr: true,
-            locale: "tr"
-        });
-    }
-</script>
+
+
+<!-- İzin Onay Modal -->
+<div class="modal fade" id="modalIzinOnayPersonel" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bx bx-calendar-check me-2"></i>İzin Onayı</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formIzinOnayPersonel">
+                <input type="hidden" name="id" id="izin_onay_id">
+                <div class="modal-body">
+                    <div class="alert alert-success">
+                        <strong id="izin_onay_personel"></strong> personelinin
+                        <strong id="izin_onay_gun"></strong> günlük <strong id="izin_onay_tur"></strong> talebini
+                        onaylamak istediğinize emin misiniz?
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Açıklama (Opsiyonel)</label>
+                        <textarea class="form-control" name="aciklama" rows="2"
+                            placeholder="Onay açıklaması..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-success"><i class="bx bx-check me-1"></i>Onayla</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- İzin Red Modal -->
+<div class="modal fade" id="modalIzinRedPersonel" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bx bx-x-circle me-2"></i>İzin Reddi</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formIzinRedPersonel">
+                <input type="hidden" name="id" id="izin_red_id">
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <strong id="izin_red_personel"></strong> personelinin izin talebini reddetmek istediğinize emin
+                        misiniz?
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Red Açıklaması <span class="text-danger">*</span></label>
+                        <textarea class="form-control" name="aciklama" rows="3"
+                            placeholder="Red sebebini açıklayınız..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-danger"><i class="bx bx-x me-1"></i>Reddet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- İzin Detay Modal -->
+<div class="modal fade" id="modalIzinDetayPersonel" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bx bx-detail me-2"></i>İzin Detayı</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="izinDetayContent">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Yükleniyor...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>

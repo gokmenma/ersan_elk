@@ -86,4 +86,16 @@ class BildirimModel extends Model
         $result = $stmt->fetch(PDO::FETCH_OBJ);
         return $result ? $result->count : 0;
     }
+
+    /**
+     * Kullanıcının son bildirim ID'sini getir
+     */
+    public function getLastNotificationId($userId)
+    {
+        $sql = "SELECT MAX(id) as last_id FROM {$this->table} WHERE user_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$userId]);
+        $result = $stmt->fetch(PDO::FETCH_OBJ);
+        return $result ? ($result->last_id ?? 0) : 0;
+    }
 }

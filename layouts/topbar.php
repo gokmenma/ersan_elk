@@ -230,83 +230,158 @@ $firma_option = $FirmaModel->option();
     document.addEventListener('DOMContentLoaded', function () {
         let lastNotificationId = 0;
         let isFirstLoad = true;
+        let pollingInterval = null;
+        const POLLING_INTERVAL = 15000; // 15 saniye
 
+        /**
+         * Badge'ı güncelle
+         */
+        function updateBadge(count) {
+            $('#notification-badge').text(count);
+            if (count > 0) {
+                $('#notification-badge').show();
+            } else {
+                $('#notification-badge').hide();
+            }
+        }
+
+        /**
+         * Bildirim listesini güncelle
+         */
+        function updateNotificationList(notifications) {
+            let html = '';
+
+            if (!notifications || notifications.length === 0) {
+                html = '<div class="text-center p-3 text-muted">Bildirim yok</div>';
+            } else {
+                notifications.forEach(function (n) {
+                    let iconClass = n.icon || 'bell';
+                    
+                    // İkon mapping - eski/hatalı ikon adlarını düzelt
+                    const iconMap = {
+                        'lira-sign': 'bx-money',
+                        'calendar': 'bx-calendar',
+                        'message-square': 'bx-message-square-detail',
+                        'bell': 'bx-bell'
+                    };
+                    
+                    if (iconMap[iconClass]) {
+                        iconClass = iconMap[iconClass];
+                    } else if (!iconClass.startsWith('bx-') && !iconClass.startsWith('mdi-')) {
+                        iconClass = 'bx-' + iconClass;
+                    }
+
+                    html += `
+                    <a href="${n.link}" class="text-reset notification-item" onclick="markAsRead(${n.id})">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0 avatar-sm me-3">
+                                <span class="avatar-title bg-${n.color || 'primary'} rounded-circle font-size-16">
+                                    <i class="bx ${iconClass}"></i>
+                                </span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">${n.title}</h6>
+                                <div class="font-size-13 text-muted">
+                                    <p class="mb-1">${n.message}</p>
+                                    <p class="mb-0"><i class="mdi mdi-clock-outline"></i> <span>${n.time_ago}</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    `;
+                });
+            }
+
+            $('#notification-list').html(html);
+        }
+
+        /**
+         * Toast bildirimi göster
+         */
+        function showNotificationToast(n) {
+            if (typeof Toastify !== 'undefined') {
+                Toastify({
+                    text: `<strong>${n.title}</strong><br>${n.message}`,
+                    duration: 5000,
+                    close: true,
+                    gravity: "top",
+                    position: "right",
+                    backgroundColor: n.color === 'danger' ? "#f46a6a" : (n.color === 'warning' ? "#f1b44c" : "#34c38f"),
+                    escapeMarkup: false,
+                    onClick: function () {
+                        window.location.href = n.link;
+                    }
+                }).showToast();
+            }
+        }
+
+        /**
+         * Bildirimleri getir
+         */
         function fetchNotifications() {
             $.post('views/bildirim/api.php', { action: 'get-unread' }, function (response) {
                 if (response.status === 'success') {
-                    $('#notification-badge').text(response.count);
-                    if (response.count > 0) {
-                        $('#notification-badge').show();
-                    } else {
-                        $('#notification-badge').hide();
-                    }
+                    updateBadge(response.count);
 
-                    let html = '';
-                    if (response.notifications.length === 0) {
-                        html = '<div class="text-center p-3 text-muted">Bildirim yok</div>';
-                    } else {
-                        let maxId = 0;
+                    let maxId = 0;
+                    if (response.notifications && response.notifications.length > 0) {
                         response.notifications.forEach(function (n) {
                             if (n.id > maxId) maxId = n.id;
 
-                            // Show toast for new notifications
+                            // İlk yüklemede toast gösterme, sadece yeni bildirimler için
                             if (!isFirstLoad && n.id > lastNotificationId) {
-                                if (typeof Toastify !== 'undefined') {
-                                    Toastify({
-                                        text: `<strong>${n.title}</strong><br>${n.message}`,
-                                        duration: 5000,
-                                        close: true,
-                                        gravity: "top",
-                                        position: "right",
-                                        backgroundColor: n.color === 'danger' ? "#f46a6a" : (n.color === 'warning' ? "#f1b44c" : "#34c38f"),
-                                        escapeMarkup: false,
-                                        onClick: function () {
-                                            window.location.href = n.link;
-                                        }
-                                    }).showToast();
-                                }
+                                showNotificationToast(n);
                             }
-
-                            let iconClass = n.icon;
-                            if (!iconClass.startsWith('bx-') && !iconClass.startsWith('mdi-')) {
-                                iconClass = 'bx-' + iconClass;
-                            }
-
-                            html += `
-                            <a href="${n.link}" class="text-reset notification-item" onclick="markAsRead(${n.id})">
-                                <div class="d-flex">
-                                    <div class="flex-shrink-0 avatar-sm me-3">
-                                        <span class="avatar-title bg-${n.color} rounded-circle font-size-16">
-                                            <i class="bx ${iconClass}"></i>
-                                        </span>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="mb-1">${n.title}</h6>
-                                        <div class="font-size-13 text-muted">
-                                            <p class="mb-1">${n.message}</p>
-                                            <p class="mb-0"><i class="mdi mdi-clock-outline"></i> <span>${n.time_ago}</span></p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </a>
-                        `;
                         });
-
-                        if (maxId > lastNotificationId) {
-                            lastNotificationId = maxId;
-                        }
                     }
-                    $('#notification-list').html(html);
+
+                    updateNotificationList(response.notifications);
+
+                    if (maxId > lastNotificationId) {
+                        lastNotificationId = maxId;
+                    }
                     isFirstLoad = false;
                 }
-            }, 'json');
+            }, 'json').fail(function() {
+                console.log('Bildirim kontrolü başarısız oldu');
+            });
         }
 
-        // Initial fetch
-        fetchNotifications();
+        /**
+         * Polling'i başlat
+         */
+        function startPolling() {
+            if (pollingInterval) return;
+            fetchNotifications();
+            pollingInterval = setInterval(fetchNotifications, POLLING_INTERVAL);
+        }
 
-        // Poll every 10 seconds for instant feel
-        setInterval(fetchNotifications, 10000);
+        /**
+         * Polling'i durdur
+         */
+        function stopPolling() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+        }
+
+        // Sayfa yüklendiğinde polling'i başlat
+        startPolling();
+
+        // Visibility API
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) {
+                stopPolling();
+            } else {
+                isFirstLoad = true;
+                startPolling();
+            }
+        });
+
+        window.addEventListener('beforeunload', function() {
+            stopPolling();
+        });
 
         window.markAsRead = function (id) {
             $.post('views/bildirim/api.php', { action: 'mark-read', id: id });
@@ -314,7 +389,10 @@ $firma_option = $FirmaModel->option();
 
         $('#mark-all-read').click(function () {
             $.post('views/bildirim/api.php', { action: 'mark-all-read' }, function (response) {
-                fetchNotifications();
+                if (response.status === 'success') {
+                    updateBadge(0);
+                    updateNotificationList([]);
+                }
             }, 'json');
         });
     });

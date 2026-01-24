@@ -3,6 +3,7 @@
 use App\Model\PersonelModel;
 use App\Model\TanimlamalarModel;
 use App\Helper\Helper;
+use App\Helper\Form;
 
 $id = $_GET['id'] ?? 0;
 $PersonelModel = new PersonelModel();
@@ -29,6 +30,8 @@ $ekip_kodlari_options = ['' => 'Seçiniz'];
 foreach ($ekip_kodlari_raw as $item) {
     $ekip_kodlari_options[$item->id] = $item->tur_adi;
 }
+
+$allPersonel = $PersonelModel->all();
 ?>
 <div class="container-fluid">
 
@@ -76,7 +79,10 @@ foreach ($ekip_kodlari_raw as $item) {
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="d-flex flex-wrap gap-1 float-end">
+                            <div class="d-flex flex-wrap gap-2 float-end align-items-center">
+                                <div style="min-width: 250px;">
+                                    <?php echo Form::FormSelect2('personel_select', $allPersonel, $id, 'Personel Değiştir', 'users', 'id', 'adi_soyadi', 'form-select select2'); ?>
+                                </div>
                                 <a href="index?p=personel/list" class="btn btn-light waves-effect waves-light"><i
                                         class="bx bx-left-arrow-alt font-size-16 align-middle"></i></a>
 
@@ -132,7 +138,8 @@ foreach ($ekip_kodlari_raw as $item) {
                             <li class="nav-item" role="presentation">
                                 <a class="nav-link" data-bs-toggle="tab" href="#izinler" role="tab" aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-calendar-event"></i></span>
-                                    <span class="d-none d-sm-block"><i class="bx bx-calendar-event me-1"></i> İzin/Rapor</span>
+                                    <span class="d-none d-sm-block"><i class="bx bx-calendar-event me-1"></i>
+                                        İzin/Rapor</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
@@ -299,54 +306,87 @@ foreach ($ekip_kodlari_raw as $item) {
 </div>
 
 <script>
+    window.reloadActiveTab = function () {
+        var activePane = document.querySelector('.tab-pane.active');
+        if (activePane && activePane.hasAttribute('data-url')) {
+            var url = activePane.getAttribute('data-url');
+            activePane.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div></div>';
+
+            fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    activePane.innerHTML = html;
+                    initPlugins(activePane);
+                })
+                .catch(error => {
+                    console.error('Error reloading tab content:', error);
+                    activePane.innerHTML = '<div class="alert alert-danger">İçerik güncellenirken bir hata oluştu.</div>';
+                });
+        }
+    };
+
+    function initPlugins(container) {
+        /**Sayfada Select2 varsa init yap */
+        if ($(container).find(".select2").length > 0) {
+            $(container).find(".select2").each(function () {
+                $(this).select2({
+                    dropdownParent: $(this).closest('.modal').length ? $(this).closest('.modal') : $(document.body)
+                });
+            });
+        }
+
+        /**Flatpickr varsa init yap */
+        if ($(container).find(".flatpickr").length > 0) {
+            $(container).find(".flatpickr").flatpickr({
+                dateFormat: "d.m.Y",
+                altInput: true,
+                altFormat: "d.m.Y",
+            });
+        }
+
+        if ($(container).find(".flatpickr-date").length > 0) {
+            $(container).find(".flatpickr-date").flatpickr({
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                time_24hr: true,
+                locale: "tr"
+            });
+        }
+
+        feather.replace();
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
+        initPlugins(document);
+
+        // Personel seçimi değiştiğinde yönlendir
+        $('#personel_select').on('change', function () {
+            var selectedId = $(this).val();
+            if (selectedId) {
+                window.location.href = 'index?p=personel/manage&id=' + selectedId;
+            }
+        });
+
         var triggerTabList = [].slice.call(document.querySelectorAll('.nav-tabs a[data-bs-toggle="tab"]'))
         triggerTabList.forEach(function (triggerEl) {
             triggerEl.addEventListener('shown.bs.tab', function (event) {
                 var targetId = event.target.getAttribute('href');
                 var targetPane = document.querySelector(targetId);
 
-                // Sadece data-url özelliği olan (dinamik) tablar için işlem yap
-                // data-loaded kontrolünü kaldırdık, her tıklamada güncel veriyi çekecek
                 if (targetPane && targetPane.hasAttribute('data-url')) {
                     var url = targetPane.getAttribute('data-url');
-
-                    // İçerik yüklenirken kullanıcıya bilgi ver (Loading...)
                     targetPane.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div></div>';
 
-                    if (url) {
-                        fetch(url)
-                            .then(response => response.text())
-                            .then(html => {
-                                targetPane.innerHTML = html;
-
-                                /**Sayfada Select2 varsa init yap */
-                                if ($(".select2").length > 0) {
-                                    $(".select2").each(function () {
-                                        $(this).select2({
-                                            dropdownParent: $(this).closest('.modal').length ? $(this).closest('.modal') : $(document.body)
-                                        });
-                                    });
-                                }
-
-                                /**Flatpickr varsa init yap */
-                                if ($(".flatpickr").length > 0) {
-                                    $(".flatpickr").flatpickr({
-                                        dateFormat: "d.m.Y",
-                                        altInput: true,
-                                        altFormat: "d.m.Y",
-                                    });
-                                }
-
-                                feather.replace();
-
-
-                            })
-                            .catch(error => {
-                                console.error('Error loading tab content:', error);
-                                targetPane.innerHTML = '<div class="alert alert-danger">İçerik yüklenirken bir hata oluştu.</div>';
-                            });
-                    }
+                    fetch(url)
+                        .then(response => response.text())
+                        .then(html => {
+                            targetPane.innerHTML = html;
+                            initPlugins(targetPane);
+                        })
+                        .catch(error => {
+                            console.error('Error loading tab content:', error);
+                            targetPane.innerHTML = '<div class="alert alert-danger">İçerik yüklenirken bir hata oluştu.</div>';
+                        });
                 }
             })
         })
@@ -357,3 +397,4 @@ foreach ($ekip_kodlari_raw as $item) {
 <script src="views/personel/js/ek_odeme.js"></script>
 <script src="views/personel/js/icra.js"></script>
 <script src="views/personel/js/evrak.js"></script>
+<script src="views/personel/js/izin.js"></script>

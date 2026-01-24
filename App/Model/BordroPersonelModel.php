@@ -303,8 +303,12 @@ class BordroPersonelModel extends Model
             } elseif ($hesaplamaTipi === 'oran_brut' && $brutMaas > 0) {
                 $oran = floatval($kesinti->oran ?? 0);
                 $tutar = $brutMaas * ($oran / 100);
+            } elseif ($hesaplamaTipi === 'aylik_gun_kesinti') {
+                // Gün bazlı kesintiler için aylık tutarı olduğu gibi kaydet
+                // Gerçek hesaplama hesaplaMaas fonksiyonunda çalışma gününe göre yapılacak
+                $tutar = floatval($kesinti->tutar ?? 0);
             } else {
-                // Oran hesabı için maaş değeri yoksa, parametre varsayılan tutarını kullan
+                // Diğer durumlar için varsayılan tutarı kullan
                 $tutar = floatval($kesinti->tutar ?? 0);
             }
 
@@ -352,8 +356,12 @@ class BordroPersonelModel extends Model
             } elseif ($hesaplamaTipi === 'oran_brut' && $brutMaas > 0) {
                 $oran = floatval($odeme->oran ?? 0);
                 $tutar = $brutMaas * ($oran / 100);
+            } elseif (in_array($hesaplamaTipi, ['aylik_gun_brut', 'aylik_gun_net', 'gunluk_brut', 'gunluk_net', 'gunluk_kismi_muaf'])) {
+                // Gün bazlı hesaplamalar için aylık tutarı olduğu gibi kaydet
+                // Gerçek hesaplama hesaplaMaas fonksiyonunda çalışma gününe göre yapılacak
+                $tutar = floatval($odeme->tutar ?? 0);
             } else {
-                // Oran hesabı için maaş değeri yoksa, varsayılan tutarı kullan
+                // Diğer durumlar için varsayılan tutarı kullan
                 $tutar = floatval($odeme->tutar ?? 0);
             }
 
@@ -670,6 +678,108 @@ class BordroPersonelModel extends Model
     }
 
     /**
+     * Personelin ücretli izin günlerini dönem için hesaplar
+     */
+    public function getUcretliIzinGunu($personel_id, $donem_baslangic, $donem_bitis)
+    {
+        // Ücretli izin türlerini bul (tanimlamalar tablosundan ucretli_mi = 1 olanlar)
+        $izinTurleriSql = $this->db->prepare("
+            SELECT id FROM tanimlamalar 
+            WHERE grup = 'izin_turu' AND ucretli_mi = 1 AND silinme_tarihi IS NULL
+        ");
+        $izinTurleriSql->execute();
+        $ucretliIzinTurIds = $izinTurleriSql->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($ucretliIzinTurIds)) {
+            return 0;
+        }
+
+        $idPlaceholders = implode(',', array_fill(0, count($ucretliIzinTurIds), '?'));
+        $izinSql = $this->db->prepare("
+            SELECT baslangic_tarihi, bitis_tarihi
+            FROM personel_izinleri
+            WHERE personel_id = ?
+            AND onay_durumu = 'Onaylandı'
+            AND izin_tipi_id IN ($idPlaceholders)
+            AND baslangic_tarihi <= ?
+            AND bitis_tarihi >= ?
+        ");
+
+        $params = array_merge([$personel_id], $ucretliIzinTurIds, [$donem_bitis, $donem_baslangic]);
+        $izinSql->execute($params);
+        $izinler = $izinSql->fetchAll(PDO::FETCH_OBJ);
+
+        $toplamGun = 0;
+        $donemBaslangicDate = new \DateTime($donem_baslangic);
+        $donemBitisDate = new \DateTime($donem_bitis);
+
+        foreach ($izinler as $izin) {
+            $izinBaslangic = new \DateTime($izin->baslangic_tarihi);
+            $izinBitis = new \DateTime($izin->bitis_tarihi);
+
+            $kesisimBaslangic = max($izinBaslangic, $donemBaslangicDate);
+            $kesisimBitis = min($izinBitis, $donemBitisDate);
+
+            if ($kesisimBaslangic <= $kesisimBitis) {
+                $toplamGun += $kesisimBaslangic->diff($kesisimBitis)->days + 1;
+            }
+        }
+
+        return $toplamGun;
+    }
+
+    /**
+     * Personelin ücretsiz izin günlerini dönem için doğrudan hesaplar
+     */
+    public function getUcretsizIzinGunuDirekt($personel_id, $donem_baslangic, $donem_bitis)
+    {
+        // Ücretsiz izin türlerini bul (tanimlamalar tablosundan ucretli_mi = 0 olanlar)
+        $izinTurleriSql = $this->db->prepare("
+            SELECT id FROM tanimlamalar 
+            WHERE grup = 'izin_turu' AND ucretli_mi = 0 AND silinme_tarihi IS NULL
+        ");
+        $izinTurleriSql->execute();
+        $ucretsizIzinTurIds = $izinTurleriSql->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($ucretsizIzinTurIds)) {
+            return 0;
+        }
+
+        $idPlaceholders = implode(',', array_fill(0, count($ucretsizIzinTurIds), '?'));
+        $izinSql = $this->db->prepare("
+            SELECT baslangic_tarihi, bitis_tarihi
+            FROM personel_izinleri
+            WHERE personel_id = ?
+            AND onay_durumu = 'Onaylandı'
+            AND izin_tipi_id IN ($idPlaceholders)
+            AND baslangic_tarihi <= ?
+            AND bitis_tarihi >= ?
+        ");
+
+        $params = array_merge([$personel_id], $ucretsizIzinTurIds, [$donem_bitis, $donem_baslangic]);
+        $izinSql->execute($params);
+        $izinler = $izinSql->fetchAll(PDO::FETCH_OBJ);
+
+        $toplamGun = 0;
+        $donemBaslangicDate = new \DateTime($donem_baslangic);
+        $donemBitisDate = new \DateTime($donem_bitis);
+
+        foreach ($izinler as $izin) {
+            $izinBaslangic = new \DateTime($izin->baslangic_tarihi);
+            $izinBitis = new \DateTime($izin->bitis_tarihi);
+
+            $kesisimBaslangic = max($izinBaslangic, $donemBaslangicDate);
+            $kesisimBitis = min($izinBitis, $donemBitisDate);
+
+            if ($kesisimBaslangic <= $kesisimBitis) {
+                $toplamGun += $kesisimBaslangic->diff($kesisimBitis)->days + 1;
+            }
+        }
+
+        return $toplamGun;
+    }
+
+    /**
      * Personelin BES kesintisini oluşturur
      */
     public function olusturBesKesintisi($personel_id, $donem_id, $sgkMatrahi, $donemTarihi)
@@ -785,6 +895,10 @@ class BordroPersonelModel extends Model
         // Günlük ücret = Brüt maaş / 30, Kesinti = Günlük ücret × Ücretsiz izin gün sayısı
         $ucretsizIzinSonuc = $this->olusturUcretsizIzinKesintileri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, $brutMaas);
         $ucretsizIzinKesinti = $ucretsizIzinSonuc['toplam_kesinti'] ?? 0;
+        $ucretsizIzinGunu = $ucretsizIzinSonuc['toplam_gun'] ?? 0;
+
+        // ========== ÜCRETLİ İZİN BİLGİSİ ==========
+        $ucretliIzinGunu = $this->getUcretliIzinGunu($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
         // Çalışma günü sayısı (aylık varsayılan 26 gün) - BES hesabı için gerekli
         $calismaGunuSayisi = $parametreModel->getGenelAyar('calisma_gunu_sayisi', $donemTarihi) ?? 26;
@@ -897,6 +1011,8 @@ class BordroPersonelModel extends Model
                 case 'gunluk_brut':
                 case 'gunluk_net':
                 case 'gunluk_kismi_muaf':
+                case 'aylik_gun_brut':
+                case 'aylik_gun_net':
                     // Gün sayısını hesapla
                     $gunSayisi = 0;
                     if ($parametre->gun_sayisi_otomatik) {
@@ -907,20 +1023,41 @@ class BordroPersonelModel extends Model
                             $kayit->bitis_tarihi
                         );
                     } else {
-                        // Manuel/Sabit gün sayısı
-                        $gunSayisi = intval($parametre->varsayilan_gun_sayisi ?? 26);
+                        // Manuel/Sabit gün sayısı - ama izinleri düş
+                        $varsayilanGun = intval($parametre->varsayilan_gun_sayisi ?? 30);
+                        $ucretliIzinGunu = $this->getUcretliIzinGunu(
+                            $kayit->personel_id,
+                            $kayit->baslangic_tarihi,
+                            $kayit->bitis_tarihi
+                        );
+                        // Ücretsiz izin gün sayısını da al
+                        $ucretsizIzinGunu = $this->getUcretsizIzinGunuDirekt(
+                            $kayit->personel_id,
+                            $kayit->baslangic_tarihi,
+                            $kayit->bitis_tarihi
+                        );
+                        $gunSayisi = max(0, $varsayilanGun - $ucretliIzinGunu - $ucretsizIzinGunu);
                     }
 
-                    // Toplam tutar = Günlük tutar × Gün sayısı
-                    $gunlukTutar = floatval($parametre->gunluk_tutar);
-                    $toplamTutar = $gunlukTutar * $gunSayisi;
+                    // Toplam tutarı hesapla
+                    $toplamTutar = 0;
+                    if (strpos($parametre->hesaplama_tipi, 'gunluk_') === 0) {
+                        // Günlük bazlı: Tutar = Günlük Tutar × Gün Sayısı
+                        $gunlukTutar = floatval($parametre->gunluk_tutar);
+                        $toplamTutar = $gunlukTutar * $gunSayisi;
+                        $detay['gunluk_tutar'] = $gunlukTutar;
+                    } else {
+                        // Aylık (Çalışılan Gün) bazlı: Tutar = (Aylık Tutar / 30) * Gün Sayısı
+                        // Burada $tutar, personelin ek ödemesinde tanımlı olan aylık tutardır
+                        $toplamTutar = ($tutar / 30) * $gunSayisi;
+                        $detay['aylik_tutar'] = $tutar;
+                    }
 
-                    $detay['gunluk_tutar'] = $gunlukTutar;
                     $detay['gun_sayisi'] = $gunSayisi;
-                    $detay['hesaplanan_tutar'] = $toplamTutar;
+                    $detay['hesaplanan_tutar'] = round($toplamTutar, 2);
 
-                    // Hesaplama tipine göre işle (gunluk_ prefix'ini kaldırarak)
-                    $temelTip = str_replace('gunluk_', '', $parametre->hesaplama_tipi);
+                    // Hesaplama tipine göre işle (prefix'leri kaldırarak)
+                    $temelTip = str_replace(['gunluk_', 'aylik_gun_'], '', $parametre->hesaplama_tipi);
 
                     if ($temelTip === 'brut') {
                         $brutEkOdemeler += $toplamTutar;
@@ -1014,6 +1151,30 @@ class BordroPersonelModel extends Model
 
         foreach ($kesintiler as $kesinti) {
             $tutar = floatval($kesinti->tutar);
+            $parametre = $parametreModel->getByKod($kesinti->tur, $donemTarihi);
+
+            $detay = [
+                'kod' => $kesinti->tur,
+                'etiket' => $parametre ? $parametre->etiket : $kesinti->tur,
+                'tutar' => $tutar,
+                'aciklama' => $kesinti->aciklama ?? null
+            ];
+
+            // Eğer aylık gün bazlı kesinti ise tutarı yeniden hesapla
+            if ($parametre && $parametre->hesaplama_tipi === 'aylik_gun_kesinti') {
+                $gunSayisi = 0;
+                if ($parametre->gun_sayisi_otomatik) {
+                    $gunSayisi = $this->getCalismaGunuSayisi($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+                } else {
+                    $gunSayisi = intval($parametre->varsayilan_gun_sayisi ?? 26);
+                }
+                $hesaplananTutar = ($tutar / 30) * $gunSayisi;
+                $tutar = $hesaplananTutar;
+                $detay['tutar'] = round($tutar, 2);
+                $detay['gun_sayisi'] = $gunSayisi;
+                $detay['aylik_tutar'] = floatval($kesinti->tutar);
+            }
+
             $toplamKesinti += $tutar;
 
             // Ücretsiz izin kesintisini ayır
@@ -1023,14 +1184,7 @@ class BordroPersonelModel extends Model
                 $digerKesintiler += $tutar;
             }
 
-            $parametre = $parametreModel->getByKod($kesinti->tur, $donemTarihi);
-
-            $kesintiDetaylari[] = [
-                'kod' => $kesinti->tur,
-                'etiket' => $parametre ? $parametre->etiket : $kesinti->tur,
-                'tutar' => $tutar,
-                'aciklama' => $kesinti->aciklama ?? null
-            ];
+            $kesintiDetaylari[] = $detay;
         }
 
         // ========== HESAPLAMALAR ==========
@@ -1107,6 +1261,8 @@ class BordroPersonelModel extends Model
             'matrahlar' => [
                 'brut_maas' => round($brutMaas, 2),
                 'ucretsiz_izin_kesinti' => round($ucretsizIzinKesinti, 2),
+                'ucretsiz_izin_gunu' => $ucretsizIzinGunu,
+                'ucretli_izin_gunu' => $ucretliIzinGunu,
                 'calisan_brut_maas' => round($calisanBrutMaas, 2),
                 'sgk_matrahi' => round($sgkMatrahi, 2),
                 'gelir_vergisi_matrahi' => round($gelirVergisiMatrahi, 2),

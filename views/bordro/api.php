@@ -891,6 +891,90 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 ]);
                 break;
 
+            // Vergi Dilimi Ekle
+            case 'add-vergi-dilimi':
+                $BordroParametre = new BordroParametreModel();
+
+                $yil = intval($_POST['dilim_yili'] ?? date('Y'));
+                $dilim_no = intval($_POST['dilim_no'] ?? 0);
+                $alt_limit = floatval(str_replace(['.', ','], ['', '.'], $_POST['alt_limit'] ?? '0'));
+                $ust_limit_raw = trim($_POST['ust_limit'] ?? '');
+                $ust_limit = $ust_limit_raw !== '' ? floatval(str_replace(['.', ','], ['', '.'], $ust_limit_raw)) : null;
+                $vergi_orani = floatval($_POST['vergi_orani'] ?? 0);
+                $aciklama = trim($_POST['dilim_aciklama'] ?? '');
+
+                if ($dilim_no <= 0 || $dilim_no > 10) {
+                    throw new Exception('Dilim numarası 1-10 arasında olmalıdır.');
+                }
+
+                if ($vergi_orani < 0 || $vergi_orani > 100) {
+                    throw new Exception('Vergi oranı 0-100 arasında olmalıdır.');
+                }
+
+                if ($BordroParametre->addVergiDilimi($yil, $dilim_no, $alt_limit, $ust_limit, $vergi_orani, $aciklama)) {
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Vergi dilimi başarıyla eklendi.'
+                    ]);
+                } else {
+                    throw new Exception('Vergi dilimi eklenirken bir hata oluştu.');
+                }
+                break;
+
+            // Vergi Dilimi Güncelle
+            case 'update-vergi-dilimi':
+                $BordroParametre = new BordroParametreModel();
+                $id = intval($_POST['id'] ?? 0);
+
+                if ($id <= 0) {
+                    throw new Exception('Geçersiz dilim ID.');
+                }
+
+                $yil = intval($_POST['dilim_yili'] ?? date('Y'));
+                $dilim_no = intval($_POST['dilim_no'] ?? 0);
+                $alt_limit = floatval(str_replace(['.', ','], ['', '.'], $_POST['alt_limit'] ?? '0'));
+                $ust_limit_raw = trim($_POST['ust_limit'] ?? '');
+                $ust_limit = $ust_limit_raw !== '' ? floatval(str_replace(['.', ','], ['', '.'], $ust_limit_raw)) : null;
+                $vergi_orani = floatval($_POST['vergi_orani'] ?? 0);
+                $aciklama = trim($_POST['dilim_aciklama'] ?? '');
+
+                $sql = $BordroParametre->getDb()->prepare("
+                    UPDATE bordro_vergi_dilimleri 
+                    SET yil = ?, dilim_no = ?, alt_limit = ?, ust_limit = ?, vergi_orani = ?, aciklama = ?
+                    WHERE id = ?
+                ");
+
+                if ($sql->execute([$yil, $dilim_no, $alt_limit, $ust_limit, $vergi_orani, $aciklama, $id])) {
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Vergi dilimi başarıyla güncellendi.'
+                    ]);
+                } else {
+                    throw new Exception('Vergi dilimi güncellenirken bir hata oluştu.');
+                }
+                break;
+
+            // Vergi Dilimi Sil
+            case 'delete-vergi-dilimi':
+                $BordroParametre = new BordroParametreModel();
+                $id = intval($_POST['id'] ?? 0);
+
+                if ($id <= 0) {
+                    throw new Exception('Geçersiz dilim ID.');
+                }
+
+                $sql = $BordroParametre->getDb()->prepare("DELETE FROM bordro_vergi_dilimleri WHERE id = ?");
+
+                if ($sql->execute([$id])) {
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Vergi dilimi başarıyla silindi.'
+                    ]);
+                } else {
+                    throw new Exception('Vergi dilimi silinirken bir hata oluştu.');
+                }
+                break;
+
             // Dönem Sil (soft delete)
             case 'donem-sil':
                 $donem_id = intval($_POST['donem_id'] ?? 0);

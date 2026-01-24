@@ -228,6 +228,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Format for frontend
                 $formatted = [];
                 foreach ($notifications as $n) {
+                    // Timezone-aware time_ago hesaplama
+                    $timeAgo = 'şimdi';
+                    if (!empty($n->created_at)) {
+                        try {
+                            $now = new DateTime('now', new DateTimeZone('Europe/Istanbul'));
+                            $created = new DateTime($n->created_at, new DateTimeZone('Europe/Istanbul'));
+                            $diff = $now->diff($created);
+
+                            if ($diff->y > 0) {
+                                $timeAgo = $diff->y . ' yıl önce';
+                            } elseif ($diff->m > 0) {
+                                $timeAgo = $diff->m . ' ay önce';
+                            } elseif ($diff->d > 0) {
+                                $timeAgo = $diff->d . ' gün önce';
+                            } elseif ($diff->h > 0) {
+                                $timeAgo = $diff->h . ' saat önce';
+                            } elseif ($diff->i > 0) {
+                                $timeAgo = $diff->i . ' dakika önce';
+                            } else {
+                                $timeAgo = 'şimdi';
+                            }
+                        } catch (Exception $e) {
+                            $timeAgo = date('H:i', strtotime($n->created_at));
+                        }
+                    }
+
                     $formatted[] = [
                         'id' => $n->id,
                         'title' => $n->title,
@@ -235,15 +261,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'link' => $n->link,
                         'icon' => $n->icon,
                         'color' => $n->color,
-                        'time_ago' => Helper::timeAgo($n->created_at) // Assuming Helper::timeAgo exists, otherwise use date
+                        'time_ago' => $timeAgo
                     ];
-                }
-
-                // If Helper::timeAgo doesn't exist, let's use a simple calculation or just return the date
-                if (!method_exists('App\Helper\Helper', 'timeAgo')) {
-                    foreach ($formatted as &$f) {
-                        $f['time_ago'] = date('H:i', strtotime($notifications[0]->created_at ?? 'now')); // Fallback
-                    }
                 }
 
                 echo json_encode([

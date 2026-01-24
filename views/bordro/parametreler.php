@@ -42,33 +42,66 @@ function bugunGecerliMi($param, $bugun)
     return true;
 }
 
+// Vergi dilimleri için yıl seçimi
+$seciliVergiYili = isset($_GET['vergi_yili']) ? intval($_GET['vergi_yili']) : date('Y');
+
+// Genel ayarları dönemlere göre grupla (yarı-yıllık)
+function getDonemKey($tarih)
+{
+    $ay = intval(date('m', strtotime($tarih)));
+    $yil = date('Y', strtotime($tarih));
+    return $ay <= 6 ? $yil . '_1' : $yil . '_2';
+}
+
+function getDonemLabel($key)
+{
+    list($yil, $yarimYil) = explode('_', $key);
+    return $yarimYil == '1' ? "$yil Ocak - Haziran" : "$yil Temmuz - Aralık";
+}
+
 $genelAyarlar = $BordroParametre->getAllGenelAyarlarListesi();
-$vergiDilimleri = $BordroParametre->getVergiDilimleri(date('Y'));
+
+// Dönemleri topla
+$donemler = [];
+if (!empty($genelAyarlar)) {
+    foreach ($genelAyarlar as $ayar) {
+        if (!empty($ayar->gecerlilik_baslangic)) {
+            $donemKey = getDonemKey($ayar->gecerlilik_baslangic);
+            if (!in_array($donemKey, $donemler)) {
+                $donemler[] = $donemKey;
+            }
+        }
+    }
+    usort($donemler, function ($a, $b) {
+        return strcmp($b, $a);
+    });
+}
+$seciliDonem = isset($_GET['genel_donem']) ? $_GET['genel_donem'] : (!empty($donemler) ? $donemler[0] : null);
+$vergiDilimleri = $BordroParametre->getVergiDilimleri($seciliVergiYili);
 
 $hesaplamaTipleriGelir = [
-    'brut' => 'Brüte Ekle (Vergili)',
-    'net' => 'Nete Ekle (Vergisiz)',
+    'brut' => 'Brüt',
+    'net' => 'Net',
     'kismi_muaf' => 'Kısmi Muaf',
-    'gunluk_brut' => 'Günlük Bazlı - Brüt (Hesaplanan Gün × Tutar)',
-    'gunluk_net' => 'Günlük Bazlı - Net (Hesaplanan Gün × Tutar)',
-    'gunluk_kismi_muaf' => 'Günlük Bazlı - Kısmi Muaf (Hesaplanan Gün × Tutar)'
+    'gunluk_brut' => 'Günlük Brüt',
+    'gunluk_net' => 'Günlük Net',
+    'gunluk_kismi_muaf' => 'Günlük Kısmi Muaf',
+    'aylik_gun_brut' => 'Aylık (Çalışılan Gün) - Brüt',
+    'aylik_gun_net' => 'Aylık (Çalışılan Gün) - Net'
 ];
 
 $hesaplamaTipleriKesinti = [
     'netten' => 'Netten Kesinti',
-    'brutten' => 'Brütten Kesinti (Vergi Matrahından)',
-    'sgk_matrahindan' => 'SGK Matrahından Kesinti',
-    'oran_bazli_vergi' => 'Oran Bazlı (Brüt Vergi Matrahı üzerinden)',
-    'oran_bazli_sgk' => 'Oran Bazlı (Brüt Sgk Matrahı üzerinden)',
-    'oran_bazli_net' => 'Oran Bazlı (Net üzerinden)',
-    'gunluk_kesinti' => 'Günlük Bazlı Kesinti (Hesaplanan Gün × Tutar)'
+    'brutten' => 'Brütten Kesinti',
+    'sgk_matrahindan' => 'SGK Matrahından',
+    'oran_bazli_vergi' => 'Oran (Vergi Matrahı)',
+    'oran_bazli_sgk' => 'Oran (SGK Matrahı)',
+    'oran_bazli_net' => 'Oran (Net)',
+    'gunluk_kesinti' => 'Günlük Kesinti',
+    'aylik_gun_kesinti' => 'Aylık (Çalışılan Gün) Kesinti'
 ];
 
 $hesaplamaTipleri = array_merge($hesaplamaTipleriGelir, $hesaplamaTipleriKesinti);
-
-
-
-
 
 $muafLimitTipleri = [
     'yok' => 'Yok',
@@ -90,7 +123,7 @@ $kategoriOptions = [
     <?php include 'layouts/breadcrumb.php'; ?>
 
     <!-- Nav tabs -->
-    <ul class="nav nav-tabs nav-tabs-custom nav-justified mb-3" role="tablist">
+    <ul class="nav nav-tabs nav-pills mb-3" role="tablist">
         <li class="nav-item">
             <a class="nav-link active" data-bs-toggle="tab" href="#tabParametreler" role="tab">
                 <i class="bx bx-cog me-1"></i> Gelir/Kesinti Parametreleri
@@ -198,14 +231,14 @@ $kategoriOptions = [
                                                                 <div class="d-flex align-items-center gap-2">
                                                                     <?php
                                                                     $badge = match ($ilkParam->hesaplama_tipi) {
-                                                                        'brut' => 'bg-primary',
-                                                                        'net' => 'bg-success',
-                                                                        'kismi_muaf' => 'bg-warning text-dark',
+                                                                        'brut', 'gunluk_brut', 'aylik_gun_brut' => 'bg-primary',
+                                                                        'net', 'gunluk_net', 'aylik_gun_net' => 'bg-success',
+                                                                        'kismi_muaf', 'gunluk_kismi_muaf' => 'bg-warning text-dark',
                                                                         default => 'bg-secondary'
                                                                     };
                                                                     ?>
                                                                     <span class="badge <?= $badge ?>">
-                                                                        <?= $hesaplamaTipleri[$ilkParam->hesaplama_tipi] ?? $ilkParam->hesaplama_tipi ?>
+                                                                        <?= $hesaplamaTipleri[$ilkParam->hesaplama_tipi] ?? ($ilkParam->hesaplama_tipi ?: 'Tanımsız') ?>
                                                                     </span>
                                                                     <?php if ($donemSayisi > 1): ?>
                                                                         <span class="badge bg-info"><?= $donemSayisi ?> dönem</span>
@@ -346,7 +379,7 @@ $kategoriOptions = [
                                                                     <?php
                                                                     $badge = match ($ilkParam->hesaplama_tipi) {
                                                                         'netten' => 'bg-secondary',
-                                                                        'brutten' => 'bg-danger',
+                                                                        'brutten', 'gunluk_kesinti', 'aylik_gun_kesinti' => 'bg-danger',
                                                                         'sgk_matrahindan' => 'bg-warning text-dark',
                                                                         'oran_bazli_vergi' => 'bg-info',
                                                                         'oran_bazli_sgk' => 'bg-primary',
@@ -355,7 +388,7 @@ $kategoriOptions = [
                                                                     };
                                                                     ?>
                                                                     <span class="badge <?= $badge ?>">
-                                                                        <?= $hesaplamaTipleri[$ilkParam->hesaplama_tipi] ?? $ilkParam->hesaplama_tipi ?>
+                                                                        <?= $hesaplamaTipleri[$ilkParam->hesaplama_tipi] ?? ($ilkParam->hesaplama_tipi ?: 'Tanımsız') ?>
                                                                     </span>
                                                                     <?php if ($donemSayisi > 1): ?>
                                                                         <span class="badge bg-info"><?= $donemSayisi ?> dönem</span>
@@ -439,14 +472,17 @@ $kategoriOptions = [
         <!-- Genel Ayarlar Tab -->
         <div class="tab-pane" id="tabGenelAyarlar" role="tabpanel">
             <?php
-            // Yıllara göre grupla
-            $ayarlarByYear = [];
-            if (!empty($genelAyarlar)) {
+            // Seçili döneme göre filtrele
+            $filtreliAyarlar = [];
+            if ($seciliDonem && !empty($genelAyarlar)) {
                 foreach ($genelAyarlar as $ayar) {
-                    $yil = date('Y', strtotime($ayar->gecerlilik_baslangic ?? '2026-01-01'));
-                    $ayarlarByYear[$yil][] = $ayar;
+                    if (!empty($ayar->gecerlilik_baslangic)) {
+                        $donemKey = getDonemKey($ayar->gecerlilik_baslangic);
+                        if ($donemKey === $seciliDonem) {
+                            $filtreliAyarlar[] = $ayar;
+                        }
+                    }
                 }
-                krsort($ayarlarByYear); // Yeni yıllar önce
             }
             ?>
             <div class="card">
@@ -456,10 +492,12 @@ $kategoriOptions = [
                             <i class="bx bx-slider me-1"></i> Genel Bordro Ayarları
                         </h5>
                         <div class="d-flex align-items-center gap-2">
-                            <?php if (!empty($ayarlarByYear)): ?>
-                                <select id="donemSecimi" class="form-select select2" style="width: 120px;">
-                                    <?php foreach (array_keys($ayarlarByYear) as $yil): ?>
-                                        <option value="ayarlar_<?= $yil ?>"><?= $yil ?></option>
+                            <?php if (!empty($donemler)): ?>
+                                <select id="donemSecimi" class="form-select" style="width: 200px;">
+                                    <?php foreach ($donemler as $donem): ?>
+                                        <option value="<?= $donem ?>" <?= $seciliDonem === $donem ? 'selected' : '' ?>>
+                                            <?= getDonemLabel($donem) ?>
+                                        </option>
                                     <?php endforeach; ?>
                                 </select>
                             <?php endif; ?>
@@ -476,77 +514,73 @@ $kategoriOptions = [
                     </div>
                 </div>
                 <div class="card-body">
-                    <?php if (empty($genelAyarlar)): ?>
+                    <?php if (empty($filtreliAyarlar)): ?>
                         <div class="alert alert-warning text-center">
-                            <i class="bx bx-info-circle me-1"></i> Henüz genel ayar tanımlanmamış.
+                            <i class="bx bx-info-circle me-1"></i>
+                            <?php if (empty($donemler)): ?>
+                                Henüz genel ayar tanımlanmamış.
+                            <?php else: ?>
+                                Bu dönem için ayar bulunamadı.
+                            <?php endif; ?>
                         </div>
                     <?php else: ?>
-
-                        <div class="tab-content">
-                            <?php $first = true;
-                            foreach ($ayarlarByYear as $yil => $yilAyarlari): ?>
-                                <div class="tab-pane fade donem-content <?= $first ? 'active show' : '' ?>"
-                                    id="ayarlar_<?= $yil ?>" role="tabpanel">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover table-bordered">
-                                            <thead class="table-primary">
-                                                <tr>
-                                                    <th>Ayar Adı</th>
-                                                    <th>Kod</th>
-                                                    <th class="text-end">Değer</th>
-                                                    <th>Geçerlilik</th>
-                                                    <th class="text-center">Durum</th>
-                                                    <th class="text-center" style="width: 100px;">İşlem</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php foreach ($yilAyarlari as $ayar): ?>
-                                                    <tr class="<?= !$ayar->aktif ? 'table-secondary text-muted' : '' ?>">
-                                                        <td>
-                                                            <strong><?= htmlspecialchars($ayar->parametre_adi) ?></strong>
-                                                        </td>
-                                                        <td><code><?= htmlspecialchars($ayar->parametre_kodu) ?></code></td>
-                                                        <td class="text-end">
-                                                            <?php if (strpos($ayar->parametre_kodu, 'orani') !== false): ?>
-                                                                <span
-                                                                    class="badge bg-info fs-6">%<?= number_format($ayar->deger, 2, ',', '.') ?></span>
-                                                            <?php else: ?>
-                                                                <span
-                                                                    class="badge bg-success fs-6"><?= number_format($ayar->deger, 2, ',', '.') ?>
-                                                                    ?</span>
-                                                            <?php endif; ?>
-                                                        </td>
-                                                        <td>
-                                                            <?= date('d.m.Y', strtotime($ayar->gecerlilik_baslangic)) ?>
-                                                            <br>
-                                                            <small class="text-muted">
-                                                                <?= $ayar->gecerlilik_bitis ? date('d.m.Y', strtotime($ayar->gecerlilik_bitis)) : 'Süresiz' ?>
-                                                            </small>
-                                                        </td>
-                                                        <td class="text-center">
-                                                            <div class="form-check form-switch d-flex justify-content-center">
-                                                                <input class="form-check-input switch-ayar-status" type="checkbox"
-                                                                    data-id="<?= $ayar->id ?>" <?= $ayar->aktif ? 'checked' : '' ?>>
-                                                            </div>
-                                                        </td>
-                                                        <td class="text-center">
-                                                            <button class="btn btn-sm btn-outline-primary btn-edit-ayar"
-                                                                data-id="<?= $ayar->id ?>" data-ayar='<?= json_encode($ayar) ?>'>
-                                                                <i class="bx bx-edit-alt"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-danger btn-delete-ayar"
-                                                                data-id="<?= $ayar->id ?>"
-                                                                data-adi="<?= htmlspecialchars($ayar->parametre_adi) ?>">
-                                                                <i class="bx bx-trash"></i>
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                                <?php $first = false; endforeach; ?>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-bordered">
+                                <thead class="table-primary">
+                                    <tr>
+                                        <th>Ayar Adı</th>
+                                        <th>Kod</th>
+                                        <th class="text-end">Değer</th>
+                                        <th>Geçerlilik</th>
+                                        <th class="text-center">Durum</th>
+                                        <th class="text-center" style="width: 100px;">İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($filtreliAyarlar as $ayar): ?>
+                                        <tr class="<?= !$ayar->aktif ? 'table-secondary text-muted' : '' ?>">
+                                            <td>
+                                                <strong><?= htmlspecialchars($ayar->parametre_adi) ?></strong>
+                                            </td>
+                                            <td><code><?= htmlspecialchars($ayar->parametre_kodu) ?></code></td>
+                                            <td class="text-end">
+                                                <?php if (strpos($ayar->parametre_kodu, 'orani') !== false): ?>
+                                                    <span
+                                                        class="badge bg-info fs-6">%<?= number_format($ayar->deger, 2, ',', '.') ?></span>
+                                                <?php else: ?>
+                                                    <span
+                                                        class="badge bg-success fs-6"><?= number_format($ayar->deger, 2, ',', '.') ?>
+                                                        ₺</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?= date('d.m.Y', strtotime($ayar->gecerlilik_baslangic)) ?>
+                                                <br>
+                                                <small class="text-muted">
+                                                    <?= $ayar->gecerlilik_bitis ? date('d.m.Y', strtotime($ayar->gecerlilik_bitis)) : 'Süresiz' ?>
+                                                </small>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="form-check form-switch d-flex justify-content-center">
+                                                    <input class="form-check-input switch-ayar-status" type="checkbox"
+                                                        data-id="<?= $ayar->id ?>" <?= $ayar->aktif ? 'checked' : '' ?>>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <button class="btn btn-sm btn-outline-primary btn-edit-ayar"
+                                                    data-id="<?= $ayar->id ?>" data-ayar='<?= json_encode($ayar) ?>'>
+                                                    <i class="bx bx-edit-alt"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger btn-delete-ayar"
+                                                    data-id="<?= $ayar->id ?>"
+                                                    data-adi="<?= htmlspecialchars($ayar->parametre_adi) ?>">
+                                                    <i class="bx bx-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -556,19 +590,29 @@ $kategoriOptions = [
         <!-- Gelir Vergisi Dilimleri Tab -->
         <div class="tab-pane" id="tabVergiDilimleri" role="tabpanel">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">
-                        <i class="bx bx-chart me-1"></i>
-                        <?= date('Y') ?> Yılı Gelir Vergisi Dilimleri
-                    </h5>
-                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal"
-                        data-bs-target="#modalVergiDilimiEkle">
-                        <i class="bx bx-plus me-1"></i> Dilim Ekle
-                    </button>
+                <div class="card-header">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h5 class="card-title mb-0">
+                            <i class="bx bx-chart me-1"></i>
+                            <span id="vergiDilimiBaslik"><?= $seciliVergiYili ?></span> Yılı Gelir Vergisi Dilimleri
+                        </h5>
+                        <div class="d-flex align-items-center gap-2">
+                            <select id="vergiYiliSecimi" class="form-select" style="width: 120px;">
+                                <?php for ($y = date('Y') + 1; $y >= 2020; $y--): ?>
+                                    <option value="<?= $y ?>" <?= $seciliVergiYili == $y ? 'selected' : '' ?>><?= $y ?>
+                                    </option>
+                                <?php endfor; ?>
+                            </select>
+                            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal"
+                                data-bs-target="#modalVergiDilimiEkle">
+                                <i class="bx bx-plus me-1"></i> Dilim Ekle
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-hover">
+                        <table class="table table-bordered table-hover" id="tblVergiDilimleri">
                             <thead class="table-primary">
                                 <tr class="text-center">
                                     <th>Dilim</th>
@@ -576,28 +620,39 @@ $kategoriOptions = [
                                     <th>Üst Limit</th>
                                     <th>Vergi Oranı</th>
                                     <th>Açıklama</th>
+                                    <th style="width: 100px;">İşlem</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (empty($vergiDilimleri)): ?>
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted py-4">
-                                            <?= date('Y') ?> yılı için vergi dilimi tanımlanmamış.
+                                    <tr class="vergi-dilim-empty">
+                                        <td colspan="6" class="text-center text-muted py-4">
+                                            <?= $seciliVergiYili ?> yılı için vergi dilimi tanımlanmamış.
                                         </td>
                                     </tr>
                                 <?php else: ?>
                                     <?php foreach ($vergiDilimleri as $dilim): ?>
                                         <tr>
                                             <td class="text-center fw-bold"><?= $dilim->dilim_no ?>. Dilim</td>
-                                            <td class="text-end"><?= number_format($dilim->alt_limit, 2, ',', '.') ?> ?</td>
+                                            <td class="text-end"><?= number_format($dilim->alt_limit, 2, ',', '.') ?> ₺</td>
                                             <td class="text-end">
-                                                <?= $dilim->ust_limit ? number_format($dilim->ust_limit, 2, ',', '.') . ' ?' : '<span class="text-muted">Sınırsız</span>' ?>
+                                                <?= $dilim->ust_limit ? number_format($dilim->ust_limit, 2, ',', '.') . ' ₺' : '<span class="text-muted">Sınırsız</span>' ?>
                                             </td>
                                             <td class="text-center">
                                                 <span
                                                     class="badge bg-primary fs-6">%<?= number_format($dilim->vergi_orani, 0) ?></span>
                                             </td>
                                             <td class="text-muted small"><?= htmlspecialchars($dilim->aciklama ?? '') ?></td>
+                                            <td class="text-center">
+                                                <button class="btn btn-sm btn-outline-primary btn-edit-dilim"
+                                                    data-dilim='<?= json_encode($dilim) ?>'>
+                                                    <i class="bx bx-edit-alt"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger btn-delete-dilim"
+                                                    data-id="<?= $dilim->id ?>" data-dilim="<?= $dilim->dilim_no ?>">
+                                                    <i class="bx bx-trash"></i>
+                                                </button>
+                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
@@ -794,11 +849,21 @@ $kategoriOptions = [
                     </div>
 
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label class="form-label">Kaynak Dönem</label>
+                            <select name="kaynak_donem" id="kaynakDonemSecimi" class="form-select" required>
+                                <?php foreach ($donemler as $donem): ?>
+                                        <option value="<?= $donem ?>" <?= $seciliDonem === $donem ? 'selected' : '' ?>>
+                                            <?= getDonemLabel($donem) ?>
+                                        </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label">Yeni Geçerlilik Başlangıç Tarihi</label>
                             <input type="date" name="yeni_gecerlilik" class="form-control" required>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">Açıklama</label>
                             <input type="text" name="donem_aciklama" class="form-control"
                                 placeholder="Örn: 2026 Temmuz güncellemesi">
@@ -851,16 +916,16 @@ $kategoriOptions = [
                         <?= Form::FormFloatInput("text", "parametre_kodu", "", "Örn: asgari_ucret_brut", "Parametre Kodu", "hash", "form-control", true) ?>
                     </div>
                     <div class="mb-3">
-                        <?= Form::FormFloatInput("text", "parametre_adi", "", "Örn: Asgari Ücret (Brüt)", "Parametre Adı", "label", "form-control", true) ?>
+                        <?= Form::FormFloatInput("text", "parametre_adi", "", "Örn: Asgari Ücret (Brüt)", "Parametre Adı", "tag", "form-control", true) ?>
                     </div>
                     <div class="mb-3">
-                        <?= Form::FormFloatInput("text", "deger", "", "0.00", "Değer", "money", "form-control money", true, null, "off", false) ?>
+                        <?= Form::FormFloatInput("text", "deger", "", "0.00", "Değer", "dollar-sign", "form-control money", true, null, "off", false) ?>
                     </div>
                     <div class="mb-3">
                         <?= Form::FormFloatInput("date", "ayar_gecerlilik_baslangic", date('Y-m-d'), "", "Geçerlilik Başlangıç", "calendar", "form-control", true) ?>
                     </div>
                     <div class="mb-3">
-                        <?= Form::FormFloatInput("text", "ayar_aciklama", "", "Açıklama...", "Açıklama", "bx bx-message-detail", "form-control") ?>
+                        <?= Form::FormFloatInput("text", "ayar_aciklama", "", "Açıklama...", "Açıklama", "file-text", "form-control") ?>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -872,17 +937,77 @@ $kategoriOptions = [
     </div>
 </div>
 
+<!-- Vergi Dilimi Ekle/Düzenle Modal -->
+<div class="modal fade" id="modalVergiDilimiEkle" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bx bx-chart me-2"></i>Vergi Dilimi Ekle</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formVergiDilimi">
+                <input type="hidden" name="id" id="dilim_id">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Yıl</label>
+                            <select name="dilim_yili" id="dilim_yili" class="form-select" required>
+                                <?php for ($y = date('Y') + 1; $y >= 2020; $y--): ?>
+                                        <option value="<?= $y ?>" <?= $seciliVergiYili == $y ? 'selected' : '' ?>><?= $y ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Dilim No</label>
+                            <input type="number" name="dilim_no" class="form-control" required min="1" max="10" placeholder="1-10">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Alt Limit (₺)</label>
+                            <input type="text" name="alt_limit" class="form-control money" required placeholder="0,00">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Üst Limit (₺)</label>
+                            <input type="text" name="ust_limit" class="form-control money" placeholder="Boş = Sınırsız">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Vergi Oranı (%)</label>
+                            <input type="number" name="vergi_orani" class="form-control" required min="0" max="100" step="0.01" placeholder="15">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Açıklama</label>
+                            <input type="text" name="dilim_aciklama" class="form-control" placeholder="Opsiyonel">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-success"><i class="bx bx-save me-1"></i>Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
     $(document).ready(function () {
-        // Dönem seçimi
-        $('#donemSecimi').select2({
-            minimumResultsForSearch: Infinity
+        // Dönem seçimi - sayfa yenile
+        $('#donemSecimi').on('change', function () {
+            const donem = $(this).val();
+            const url = new URL(window.location.href);
+            url.searchParams.set('genel_donem', donem);
+            window.location.href = url.toString();
         });
 
-        $('#donemSecimi').on('change', function () {
-            const target = $(this).val();
-            $('.donem-content').removeClass('active show');
-            $('#' + target).addClass('active show');
+        // Vergi yılı seçimi - sayfa yenile
+        $('#vergiYiliSecimi').on('change', function () {
+            const yil = $(this).val();
+            const url = new URL(window.location.href);
+            url.searchParams.set('vergi_yili', yil);
+            window.location.href = url.toString();
         });
         const hesaplamaTipleriGelir = <?= json_encode($hesaplamaTipleriGelir) ?>;
         const hesaplamaTipleriKesinti = <?= json_encode($hesaplamaTipleriKesinti) ?>;
@@ -923,7 +1048,9 @@ $kategoriOptions = [
         // Hesaplama tipi değişince muafiyet ve oran alanlarını göster/gizle
         $('select[name="hesaplama_tipi"]').on('change', function () {
             const val = $(this).val();
+            if (!val) return;
             const isGunluk = val.startsWith('gunluk_');
+            const isAylikGun = val.startsWith('aylik_gun_');
 
             // Kısmi Muaf kontrolü
             if (val === 'kismi_muaf' || val === 'gunluk_kismi_muaf') {
@@ -932,11 +1059,16 @@ $kategoriOptions = [
                 $('#muafiyetAyarlari').slideUp();
             }
 
-            // Günlük bazlı mı?
-            if (isGunluk) {
+            // Günlük veya Aylık (Çalışılan Güne Göre) mi?
+            if (isGunluk || isAylikGun) {
                 $('#gunlukAyarlar').slideDown();
-                $('#divGunlukTutar').slideDown();
-                $('#divTutar').hide();
+                if (isGunluk) {
+                    $('#divGunlukTutar').slideDown();
+                    $('#divTutar').hide();
+                } else {
+                    $('#divGunlukTutar').hide();
+                    $('#divTutar').slideDown(); // Aylık tutar girilecek
+                }
                 $('#divOran').hide();
             } else {
                 $('#gunlukAyarlar').slideUp();
@@ -1200,14 +1332,27 @@ $kategoriOptions = [
             });
         });
 
-        // Yeni Dönem modalı açıldığında mevcut ayarları listele
-        $('#modalYeniDonem').on('show.bs.modal', function () {
+        // Kaynak döneme göre ayarları listele - helper fonksiyon
+        function getDonemKeyJs(tarih) {
+            const parts = tarih.split('-');
+            const ay = parseInt(parts[1]);
+            const yil = parts[0];
+            return ay <= 6 ? yil + '_1' : yil + '_2';
+        }
+
+        function listeleKaynakDonemAyarlari() {
             const genelAyarlar = <?= json_encode($genelAyarlar, JSON_UNESCAPED_UNICODE) ?>;
+            const kaynakDonem = $('#kaynakDonemSecimi').val();
             let html = '';
 
             genelAyarlar.forEach(function (ayar) {
+                if (!ayar.gecerlilik_baslangic) return;
+                
+                const ayarDonem = getDonemKeyJs(ayar.gecerlilik_baslangic);
+                if (ayarDonem !== kaynakDonem) return;
+                
                 const isOran = ayar.parametre_kodu.includes('orani');
-                const degerStr = isOran ? '%' + parseFloat(ayar.deger).toFixed(2) : parseFloat(ayar.deger).toLocaleString('tr-TR') + ' ?';
+                const degerStr = isOran ? '%' + parseFloat(ayar.deger).toFixed(2) : parseFloat(ayar.deger).toLocaleString('tr-TR') + ' ₺';
 
                 html += '<tr>';
                 html += '<td><input type="checkbox" name="ayar_sec[]" value="' + ayar.id + '" checked class="ayar-checkbox"></td>';
@@ -1218,7 +1363,21 @@ $kategoriOptions = [
                 html += '</tr>';
             });
 
+            if (!html) {
+                html = '<tr><td colspan="4" class="text-center text-muted py-3">Bu dönemde ayar bulunamadı.</td></tr>';
+            }
+
             $('#donemAyarListesi').html(html);
+        }
+
+        // Yeni Dönem modalı açıldığında mevcut ayarları listele
+        $('#modalYeniDonem').on('show.bs.modal', function () {
+            listeleKaynakDonemAyarlari();
+        });
+
+        // Kaynak dönem değişince listeyi güncelle
+        $('#kaynakDonemSecimi').on('change', function () {
+            listeleKaynakDonemAyarlari();
         });
 
         // Tümünü seç/kaldır
@@ -1305,6 +1464,94 @@ $kategoriOptions = [
                     });
                 }
             });
+        });
+        // Vergi Dilimi formu submit
+        $('#formVergiDilimi').on('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            formData.append('action', $('#dilim_id').val() ? 'update-vergi-dilimi' : 'add-vergi-dilimi');
+
+            $.ajax({
+                url: 'views/bordro/api.php',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                dataType: 'json',
+                success: function (response) {
+                    if (response.status === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Başarılı!',
+                            text: response.message,
+                            confirmButtonText: 'Tamam'
+                        }).then(() => location.reload());
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Hata!', text: response.message });
+                    }
+                },
+                error: function () {
+                    Swal.fire({ icon: 'error', title: 'Hata!', text: 'Bir hata oluştu.' });
+                }
+            });
+        });
+
+        // Vergi dilimi düzenleme
+        $(document).on('click', '.btn-edit-dilim', function () {
+            const dilim = $(this).data('dilim');
+            $('#dilim_id').val(dilim.id);
+            $('select[name="dilim_yili"]').val(dilim.yil);
+            $('input[name="dilim_no"]').val(dilim.dilim_no);
+            $('input[name="alt_limit"]').val(dilim.alt_limit);
+            $('input[name="ust_limit"]').val(dilim.ust_limit || '');
+            $('input[name="vergi_orani"]').val(dilim.vergi_orani);
+            $('input[name="dilim_aciklama"]').val(dilim.aciklama || '');
+            $('#modalVergiDilimiEkle .modal-title').html('<i class="bx bx-edit me-2"></i>Vergi Dilimi Düzenle');
+            $('#modalVergiDilimiEkle').modal('show');
+        });
+
+        // Vergi dilimi silme
+        $(document).on('click', '.btn-delete-dilim', function () {
+            const id = $(this).data('id');
+            const dilimNo = $(this).data('dilim');
+            Swal.fire({
+                title: 'Silmek istediğinize emin misiniz?',
+                html: '<strong>' + dilimNo + '. Dilim</strong> silinecek.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Evet, Sil',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: 'views/bordro/api.php',
+                        type: 'POST',
+                        data: { action: 'delete-vergi-dilimi', id: id },
+                        dataType: 'json',
+                        success: function (response) {
+                            if (response.status === 'success') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Silindi!',
+                                    text: response.message,
+                                    confirmButtonText: 'Tamam'
+                                }).then(() => location.reload());
+                            } else {
+                                Swal.fire({ icon: 'error', title: 'Hata!', text: response.message });
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        // Vergi dilimi modal kapanınca sıfırla
+        $('#modalVergiDilimiEkle').on('hidden.bs.modal', function () {
+            $('#formVergiDilimi')[0].reset();
+            $('#dilim_id').val('');
+            $('#modalVergiDilimiEkle .modal-title').html('<i class="bx bx-chart me-2"></i>Vergi Dilimi Ekle');
         });
     });
 </script>

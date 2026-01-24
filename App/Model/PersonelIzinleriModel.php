@@ -87,7 +87,8 @@ class PersonelIzinleriModel extends Model
     {
         $limit = (int) $limit;
         $sql = $this->db->prepare("
-            SELECT 'İzin' as tip, pi.id, pi.personel_id, pi.talep_tarihi as tarih, pi.onay_durumu as durum, t.tur_adi as detay 
+            SELECT 'İzin' as tip, pi.id, pi.personel_id, pi.talep_tarihi as tarih, pi.onay_durumu as durum, t.tur_adi as detay,
+                   pi.baslangic_tarihi, pi.bitis_tarihi, pi.toplam_gun
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
@@ -175,15 +176,21 @@ class PersonelIzinleriModel extends Model
     }
 
     /**
-     * İzin onay kaydı ekler
+     * İzin onay kaydı eklerken seviye_no'yu otomatik artırır
      */
     private function addOnayKaydi($izin_id, $onaylayan_id, $durum, $aciklama)
     {
+        // Mevcut en yüksek seviye_no'yu bul
+        $check = $this->db->prepare("SELECT MAX(seviye_no) as max_seviye FROM izin_onaylari WHERE izin_id = ?");
+        $check->execute([$izin_id]);
+        $row = $check->fetch(PDO::FETCH_OBJ);
+        $next_seviye = ($row->max_seviye ?? 0) + 1;
+
         $sql = $this->db->prepare("
-            INSERT INTO izin_onaylari (izin_id, onaylayan_id, onay_durumu, onay_tarihi, aciklama)
-            VALUES (?, ?, ?, NOW(), ?)
+            INSERT INTO izin_onaylari (izin_id, onaylayan_id, onay_durumu, onay_tarihi, aciklama, seviye_no)
+            VALUES (?, ?, ?, NOW(), ?, ?)
         ");
-        return $sql->execute([$izin_id, $onaylayan_id, $durum, $aciklama]);
+        return $sql->execute([$izin_id, $onaylayan_id, $durum, $aciklama, $next_seviye]);
     }
 
     /**
