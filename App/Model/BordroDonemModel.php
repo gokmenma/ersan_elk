@@ -12,6 +12,13 @@ class BordroDonemModel extends Model
 
     public function __construct()
     {
+
+       /**Session başlatılmamışsa başlat */
+       if(!isset($_SESSION)){
+           session_start();
+       }
+
+       
         parent::__construct($this->table);
     }
 

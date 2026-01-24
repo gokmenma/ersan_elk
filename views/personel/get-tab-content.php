@@ -101,7 +101,7 @@ switch ($tab) {
 
         // Açık dönemleri getir
         $BordroDonemModel = new BordroDonemModel();
-        $donemler_raw = $BordroDonemModel->getAllDonems(date('Y')); // Şimdilik bu yılın dönemlerini çekiyoruz
+        $donemler_raw = $BordroDonemModel->getAllDonems(date('Y'));
         $acik_donemler = [];
 
         // Önceki yıldan kalan açık dönem olabilir mi? Genelde hayır ama kontrol edilebilir.
