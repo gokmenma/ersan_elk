@@ -1,3 +1,56 @@
+// Türkçe karakter normalizasyonu için yardımcı fonksiyon
+function turkishNormalize(str) {
+  if (!str) return "";
+
+  // Türkçe karakterleri dönüştür (büyük -> küçük)
+  var turkishMap = {
+    İ: "i",
+    I: "ı",
+    Ş: "ş",
+    Ğ: "ğ",
+    Ü: "ü",
+    Ö: "ö",
+    Ç: "ç",
+  };
+
+  // Önce Türkçe karakterleri dönüştür
+  str = str.toString();
+  for (var key in turkishMap) {
+    str = str.replace(new RegExp(key, "g"), turkishMap[key]);
+  }
+
+  // Sonra standart toLowerCase uygula
+  return str.toLowerCase();
+}
+
+// DataTables için özel Türkçe arama fonksiyonu
+$.fn.dataTable.ext.search.push(
+  function (settings, data, dataIndex, rowData, counter) {
+    var table = $(settings.nTable);
+    var api = table.DataTable();
+
+    // Her sütun için filtreleri kontrol et
+    var allColumnsPass = true;
+
+    api.columns().every(function (colIdx) {
+      var column = this;
+      var searchValue = column.search();
+
+      if (searchValue && searchValue.length > 0) {
+        var cellData = data[colIdx] || "";
+        var normalizedCellData = turkishNormalize(cellData);
+        var normalizedSearchValue = turkishNormalize(searchValue);
+
+        if (normalizedCellData.indexOf(normalizedSearchValue) === -1) {
+          allColumnsPass = false;
+          return false; // break
+        }
+      }
+    });
+
+    return allColumnsPass;
+  },
+);
 
 $(document).ready(function () {
   var table = $(".datatable").DataTable({
@@ -7,8 +60,8 @@ $(document).ready(function () {
     language: {
       url: "assets/js/tr.json",
     },
-    dom: 'ltp',
-    buttons: ['excel'],
+    dom: "ltp",
+    buttons: ["excel"],
 
     ...getTableSpecificOptions(),
 
@@ -93,7 +146,7 @@ $(document).ready(function () {
   });
 });
 $("#exportExcel").on("click", function () {
-  alert ("Excel'e Aktarılıyor...");
+  alert("Excel'e Aktarılıyor...");
   table.button(".buttons-excel").trigger();
 });
 

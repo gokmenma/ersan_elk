@@ -54,11 +54,18 @@ function getDatatableOptions() {
           const th = $('<th class="search">').append(input);
           $("#" + tableId + " .search-input-row").append(th);
 
-          // Event listener for user input
+          // // Event listener for user input
+          // $(input).on("keyup change", function () {
+          //   if (column.search() !== this.value) {
+          //     column.search(this.value).draw();
+          //   }
+          // });
+
+          // Türkçe arama için: column.search() yerine data attribute kullanıyoruz
+          $(input).attr("data-col-idx", column.index());
           $(input).on("keyup change", function () {
-            if (column.search() !== this.value) {
-              column.search(this.value).draw();
-            }
+            // Sadece tabloyu yeniden çiz, DataTables'ın kendi aramasını kullanma
+            $(this).closest("table").DataTable().draw();
           });
 
           // Sütunun gerçekten görünür olup olmadığını kontrol et
@@ -108,3 +115,70 @@ function getTableSpecificOptions() {
     ordering: document.getElementById("gelirGiderTable") ? false : true,
   };
 }
+
+// DataTables Türkçe karakter arama desteği
+(function () {
+  // Türkçe karakterleri normalize eden fonksiyon
+  // ÖNEMLİ: Önce büyük Türkçe harfler dönüştürülmeli, sonra toLowerCase uygulanmalı
+  function normalizeTR(data) {
+    if (!data) return "";
+
+    return (
+      data
+        .toString()
+        // Önce büyük Türkçe harfleri küçüğe çevir (toLowerCase'dan önce!)
+        .replace(/İ/gi, "i")
+        .replace(/I/g, "ı") // Noktasız büyük I -> ı
+        .replace(/Ş/gi, "s")
+        .replace(/Ğ/gi, "g")
+        .replace(/Ü/gi, "u")
+        .replace(/Ö/gi, "o")
+        .replace(/Ç/gi, "c")
+        // Sonra standart toLowerCase
+        .toLowerCase()
+        // Küçük Türkçe harfleri de ASCII'ye çevir
+        .replace(/ı/g, "i")
+        .replace(/ş/g, "s")
+        .replace(/ğ/g, "g")
+        .replace(/ü/g, "u")
+        .replace(/ö/g, "o")
+        .replace(/ç/g, "c")
+        .replace(/â/g, "a")
+        .replace(/î/g, "i")
+        .replace(/û/g, "u")
+    );
+  }
+
+  // Global search override
+  $.fn.dataTable.ext.type.search.string = function (data) {
+    return normalizeTR(data);
+  };
+
+  // Sütun bazlı arama için özel filter - Input değerlerini direkt DOM'dan oku
+  $.fn.dataTable.ext.search.push(
+    function (settings, searchData, dataIndex, rowData, counter) {
+      var tableId = settings.sTableId;
+      var dominated = false;
+
+      // Bu tablodaki tüm arama inputlarını bul
+      $("#" + tableId + " .search-input-row input").each(function () {
+        var searchValue = $(this).val();
+        if (searchValue && searchValue.length > 0) {
+          var colIdx = parseInt($(this).attr("data-col-idx"));
+          if (!isNaN(colIdx)) {
+            var cellValue = searchData[colIdx] || "";
+            var normalizedCell = normalizeTR(cellValue);
+            var normalizedSearch = normalizeTR(searchValue);
+
+            if (normalizedCell.indexOf(normalizedSearch) === -1) {
+              dominated = true;
+              return false; // break
+            }
+          }
+        }
+      });
+
+      return !dominated;
+    },
+  );
+})();

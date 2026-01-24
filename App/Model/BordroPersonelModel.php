@@ -556,12 +556,12 @@ class BordroPersonelModel extends Model
 
         // Dönem içindeki onaylanmış avansları getir
         $sql = $this->db->prepare("
-            SELECT id, tutar, tarih, aciklama
+            SELECT id, tutar, talep_tarihi, aciklama
             FROM personel_avanslari
             WHERE personel_id = ? 
             AND durum = 'onaylandi'
             AND silinme_tarihi IS NULL
-            AND tarih BETWEEN ? AND ?
+            AND talep_tarihi BETWEEN ? AND ?
         ");
         $sql->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
         $avanslar = $sql->fetchAll(PDO::FETCH_OBJ);
@@ -570,7 +570,7 @@ class BordroPersonelModel extends Model
 
         foreach ($avanslar as $avans) {
             $tutar = floatval($avans->tutar);
-            $tarih = date('d.m.Y', strtotime($avans->tarih));
+            $tarih = date('d.m.Y', strtotime($avans->talep_tarihi));
             $aciklama = "[Avans] $tarih - " . ($avans->aciklama ?? 'Avans Talebi');
 
             $this->addKesinti($personel_id, $donem_id, $aciklama, $tutar, 'avans');

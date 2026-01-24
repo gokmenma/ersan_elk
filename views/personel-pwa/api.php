@@ -766,7 +766,7 @@ try {
                 }
 
                 $file_ext = strtolower(pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION));
-                $allowed = ['jpg', 'jpeg', 'png'];
+                $allowed = ['jpg', 'jpeg', 'png', 'webp'];
 
                 if (in_array($file_ext, $allowed)) {
                     $new_name = uniqid('tlp_') . '.' . $file_ext;
@@ -972,6 +972,7 @@ try {
                     $new_name = uniqid('tlp_') . '.' . $file_ext;
                     if (move_uploaded_file($_FILES['foto']['tmp_name'], $upload_dir . $new_name)) {
                         $foto_path = 'uploads/talepler/' . $new_name;
+                        $absolute_foto_path = realpath($upload_dir . $new_name);
                     }
                 }
             }
