@@ -1018,7 +1018,7 @@ $izinTurleri = [
 
             // Personel Bilgileri
             html += '<div class="col-md-4 text-center mb-4">';
-            html += '<img src="' + (data.resim_yolu || 'assets/images/users/user-dummy-img.jpg') + '" class="rounded-circle mb-3" style="width:100px;height:100px;object-fit:cover;">';
+            html += '<img src="' + (data.resim_yolu || 'assets/images/users/user-dummy-img.jpg') + '" class="rounded-circle mb-3" style="width:100px;height:100px;object-fit:cover;" onerror="this.src=\'assets/images/users/user-dummy-img.jpg\'">';
             html += '<h5>' + data.adi_soyadi + '</h5>';
             html += '<p class="text-muted mb-1">' + (data.departman || '') + '</p>';
             html += '<p class="text-muted mb-0"><small>' + (data.gorev || '') + '</small></p>';
@@ -1044,6 +1044,9 @@ $izinTurleri = [
                 html += '<tr><td class="text-muted">Durum:</td><td><span class="badge bg-' + (data.durum == 'cozuldu' ? 'success' : (data.durum == 'islemde' ? 'info' : 'warning')) + '">' + ucfirst(data.durum) + '</span></td></tr>';
                 if (data.aciklama) {
                     html += '<tr><td class="text-muted">Açıklama:</td><td>' + data.aciklama + '</td></tr>';
+                }
+                if (data.foto) {
+                    html += '<tr><td class="text-muted">Fotoğraf:</td><td><img src="' + data.foto + '" class="img-fluid rounded mt-2" style="max-height:200px;cursor:pointer;" onclick="window.open(\'' + data.foto + '\', \'_blank\')" onerror="this.style.display=\'none\'"></td></tr>';
                 }
             }
 

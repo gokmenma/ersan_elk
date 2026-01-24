@@ -423,7 +423,7 @@
         if (input.files && input.files[0]) {
             const file = input.files[0];
             const ext = file.name.split('.').pop().toLowerCase();
-            
+
             if (!['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
                 Alert.error('Hata', 'Sadece JPG, PNG ve WEBP formatında resim yükleyebilirsiniz.');
                 input.value = '';
@@ -542,15 +542,15 @@
             ${talep.foto ? `
             <div>
                 <p class="text-xs text-slate-500 mb-2">Fotoğraf</p>
-                <img src="../../${talep.foto}" 
-                     class="w-full max-w-[200px] rounded-xl cursor-pointer bg-slate-100" 
-                     onclick="window.open('../../${talep.foto}', '_blank')"
-                     onerror="this.onerror=null; this.src='assets/img/placeholder.png'; this.parentElement.innerHTML+='<p class=\'text-xs text-red-400 mt-1\'>Resim görüntülenemiyor</p>'">
+                <div class="relative">
+                    <img src="../../${talep.foto}" 
+                         class="w-full max-w-[250px] rounded-xl cursor-pointer bg-slate-100 border border-slate-200" 
+                         onclick="window.open('../../${talep.foto}', '_blank')"
+                         onerror="this.onerror=null; this.src='data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22200%22%20height%3D%22150%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23f1f5f9%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22sans-serif%22%20font-size%3D%2212%22%20fill%3D%22%2394a3b8%22%20text-anchor%3D%22middle%22%20dy%3D%22.3em%22%3EResim%20Yüklenemedi%3C%2Ftext%3E%3C%2Fsvg%3E';">
+                </div>
             </div>
             ` : ''}
 
-     
-            
             <!-- Timeline -->
             <div class="mt-2">
                 <p class="text-xs text-slate-500 mb-3">Süreç</p>
