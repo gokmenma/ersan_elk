@@ -277,7 +277,7 @@ $ek_odeme_turleri = [
                                                         <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
                                                             alt="" class="rounded-circle avatar-sm me-2">
                                                         <span class="fw-medium">
-                                                            <a
+                                                            <a target="_blank"
                                                                 href="index?p=personel/manage&id=<?= $personel->personel_id ?>"><?= htmlspecialchars($personel->adi_soyadi) ?></a></span>
                                                     </div>
                                                 </td>

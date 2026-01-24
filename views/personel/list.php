@@ -163,7 +163,7 @@ $personeller = $Personel->all();
 
                                     <td>
                                         <div class="personel-name-container">
-                                            <a href="index?p=personel/manage&id=<?= $personel->id ?>"><?= $personel->adi_soyadi ?></a>
+                                            <a target="_blank" href="index?p=personel/manage&id=<?= $personel->id ?>"><?= $personel->adi_soyadi ?></a>
                                             <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
                                                 alt="<?= $personel->adi_soyadi ?>" class="personel-hover-image">
                                         </div>
