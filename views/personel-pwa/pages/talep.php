@@ -504,7 +504,13 @@
             <div class="grid grid-cols-2 gap-3">
                 <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl">
                     <p class="text-xs text-slate-500 mb-1">Konum</p>
-                    <p class="font-semibold text-sm text-slate-900 dark:text-white">${talep.konum}</p>
+                    ${talep.latitude && talep.longitude ?
+                `<a href="https://www.google.com/maps?q=${talep.latitude},${talep.longitude}" target="_blank" class="font-semibold text-sm text-primary hover:underline flex items-center gap-1">
+                        ${talep.konum}
+                        <span class="material-symbols-outlined text-xs">open_in_new</span>
+                    </a>` :
+                `<p class="font-semibold text-sm text-slate-900 dark:text-white">${talep.konum}</p>`
+            }
                 </div>
                 <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl">
                     <p class="text-xs text-slate-500 mb-1">Kategori</p>
@@ -526,7 +532,7 @@
             ${talep.foto ? `
             <div>
                 <p class="text-xs text-slate-500 mb-2">Fotoğraf</p>
-                <img src="${talep.foto}" class="w-full max-w-[200px] rounded-xl">
+                <img src="../../${talep.foto}" class="w-full max-w-[200px] rounded-xl cursor-pointer" onclick="window.open('../../${talep.foto}', '_blank')">
             </div>
             ` : ''}
 

@@ -734,6 +734,8 @@ try {
                     'tarih' => date('d.m.Y H:i', strtotime($item->olusturma_tarihi)),
                     'aciklama' => $item->aciklama,
                     'foto' => $item->foto,
+                    'latitude' => $item->latitude,
+                    'longitude' => $item->longitude,
                     'cozum_tarihi' => $item->cozum_tarihi ? date('d.m.Y H:i', strtotime($item->cozum_tarihi)) : null
                 ];
             }, $talepler);
@@ -770,6 +772,7 @@ try {
                     $new_name = uniqid('tlp_') . '.' . $file_ext;
                     if (move_uploaded_file($_FILES['foto']['tmp_name'], $upload_dir . $new_name)) {
                         $foto_path = 'uploads/talepler/' . $new_name;
+                        $absolute_foto_path = realpath($upload_dir . $new_name);
                     }
                 }
             }
@@ -902,10 +905,16 @@ try {
                             </div>
                         ";
 
+                        $attachments = [];
+                        if (isset($absolute_foto_path) && file_exists($absolute_foto_path)) {
+                            $attachments[] = $absolute_foto_path;
+                        }
+
                         $MailGonderService->gonder(
                             [$kullanici->email_adresi],
                             "Yeni {$baslik} - Ref: {$ref_no}",
-                            $mail_content
+                            $mail_content,
+                            $attachments
                         );
                     } catch (Exception $e) {
                         error_log('Talep bildirimi mail gönderme hatası: ' . $e->getMessage());
@@ -1554,13 +1563,13 @@ try {
             $bordroSql = "SELECT 
                             'bordro' as type,
                             bp.id,
-                            CONCAT('Bordro Hazırlandı - ', bd.donem_adi) as title,
+                            CONCAT('Bordro Hazırlandı - ', COALESCE(bd.donem_adi, CONCAT('Dönem ', bd.id))) as title,
                             CONCAT(FORMAT(bp.net_maas, 2, 'tr_TR'), ' ₺ net ödeme') as description,
                             'tamamlandi' as status,
-                            bp.olusturma_tarihi as activity_date
+                            COALESCE(bp.hesaplama_tarihi, bp.olusturma_tarihi) as activity_date
                         FROM bordro_personel bp
                         JOIN bordro_donemi bd ON bp.donem_id = bd.id
-                        WHERE bp.personel_id = ? AND bp.silinme_tarihi IS NULL
+                        WHERE bp.personel_id = ? AND bp.silinme_tarihi IS NULL AND bd.kapali_mi = 1
                         ORDER BY activity_date DESC
                         LIMIT $limit";
 
