@@ -43,10 +43,15 @@ class UserModel extends Model
     {
         $ownerID = $_SESSION["owner_id"];
 
-        $sql = $this->db->prepare("SELECT u.* ,ur.role_name   
+
+        $squery = "";
+        if ($ownerType != "superadmin") {
+            $squery = "AND ur.superadmin = 0";
+        }
+        $sql = $this->db->prepare("SELECT u.* ,ur.role_name,ur.superadmin
                                    FROM $this->table u
                                    LEFT JOIN user_roles ur ON ur.id = u.roles
-                                   WHERE u.owner_id = :owner_id 
+                                   WHERE u.owner_id = :owner_id $squery
                                    ORDER BY u.id DESC");
         $sql->execute([
             'owner_id' => $ownerID
@@ -227,7 +232,24 @@ class UserModel extends Model
         $query->execute([$userId]);
         $result = $query->fetch(PDO::FETCH_OBJ);
 
-        return $result && $result->$column === 'Evet';
+        return $result && $result->$column === 1;
     }
+
+    /**Giriş Yapan kullanıcı superadmin mi */
+ public function isSuperAdmin() : bool
+{
+    $query = $this->db->prepare(
+        "SELECT ur.superadmin 
+         FROM $this->table u
+         LEFT JOIN user_roles ur ON ur.id = u.roles 
+         WHERE u.id = ?"
+    );
+
+    $query->execute([$_SESSION["user_id"]]);
+    $result = $query->fetch(PDO::FETCH_OBJ);
+
+    return $result && (int)$result->superadmin === 1;
+}
+
 
 }

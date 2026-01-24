@@ -11,9 +11,13 @@ date_default_timezone_set('Europe/Istanbul');
 // Projenin kök dizinini tanımla
 define('PROJECT_ROOT', __DIR__);
 
+
+
 // Composer Autoloader'ı dahil et
 require_once PROJECT_ROOT . '/vendor/autoload.php';
 
+
+session_start();
 
 use App\InterFaces\LoggerInterface;
 use App\Service\FileLogger;

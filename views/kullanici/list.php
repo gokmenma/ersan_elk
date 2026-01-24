@@ -69,6 +69,9 @@ $users = $User->getUsers();
                             <?php
                             $i = 0;
                             foreach ($users as $user) {
+
+
+                                
                                 $i++;
                                 $enc_id = Security::encrypt($user->id);
                                 $badge_color =[

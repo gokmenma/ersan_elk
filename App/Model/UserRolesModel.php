@@ -46,6 +46,7 @@ class UserRolesModel extends Model
     {
         $groups = $this->getUserGroups();
         $options = [];
+        $UserModel = new UserModel();
 
         // Add empty option first
         $options[0] = (object)[
@@ -54,6 +55,10 @@ class UserRolesModel extends Model
         ];
 
         foreach ($groups as $group) {
+            /**Sessindaki kullanıcı süperadmin ise süperadmin kullanıcısı atla*/
+            if($group->superadmin == 1 && !$UserModel->isSuperAdmin()) {
+                continue;
+            }
             $options[$group->id] = (object)[
                 'id' => $group->id,
                 'role_name' => $group->role_name
