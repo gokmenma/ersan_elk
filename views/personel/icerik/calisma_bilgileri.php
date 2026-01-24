@@ -62,6 +62,12 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                     <div class="col-md-8">
                         <?php echo Form::FormSelect2("ekip_no", $ekip_kodlari_options, $personel->ekip_no ?? "", "Ekip Numarası", "hash"); ?>
                     </div>
+                    <div class="col-md-12">
+                        <div class="alert alert-info mt-2">
+                            <i class="bx bx-info-circle"></i>
+                            Ekip kodu boş geliyorsa eklemek için <a href="index?p=tanimlamalar/ekip-kodu" target="_blank"> tıklayınız</a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

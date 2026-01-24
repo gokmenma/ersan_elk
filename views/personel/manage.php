@@ -4,8 +4,9 @@ use App\Model\PersonelModel;
 use App\Model\TanimlamalarModel;
 use App\Helper\Helper;
 use App\Helper\Form;
+use App\Helper\Security;
 
-$id = $_GET['id'] ?? 0;
+$id = Security::decrypt($_GET['id'] ?? 0);
 $PersonelModel = new PersonelModel();
 $personel = $id > 0 ? $PersonelModel->find($id) : null;
 $TanimlamalarModel = new TanimlamalarModel();

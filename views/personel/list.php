@@ -2,6 +2,7 @@
 use App\Model\PersonelModel;
 use App\Helper\Helper;
 use App\Helper\Date;
+use App\Helper\Security;
 use App\Service\Gate;
 
 $Personel = new PersonelModel();
@@ -147,9 +148,10 @@ $personeller = $Personel->all();
                             $i=0;
                             foreach ($personeller as $personel) { 
                                 $i++;
+                                $enc_id = Security::encrypt($personel->id);
                                 ?>
 
-                                <tr>
+                                <tr data-id="<?= $enc_id ?>">
                                     <td>
                                         <div class="form-check font-size-16">
                                             <input class="form-check-input" type="checkbox"
@@ -163,7 +165,7 @@ $personeller = $Personel->all();
 
                                     <td>
                                         <div class="personel-name-container">
-                                            <a target="_blank" href="index?p=personel/manage&id=<?= $personel->id ?>"><?= $personel->adi_soyadi ?></a>
+                                            <a target="_blank" href="index?p=personel/manage&id=<?= $enc_id ?>"><?= $personel->adi_soyadi ?></a>
                                             <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
                                                 alt="<?= $personel->adi_soyadi ?>" class="personel-hover-image">
                                         </div>

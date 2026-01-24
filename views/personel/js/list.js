@@ -42,20 +42,33 @@ $(document).ready(function () {
     }
   }
 
-  // Seçili ID'yi alma fonksiyonu
+  // // Seçili ID'yi alma fonksiyonu
+  // function getSelectedId() {
+  //   var selectedRow = table.row(".selected");
+  //   if (selectedRow.any()) {
+  //     var data = selectedRow.data();
+  //     // Index 1: ID sütunu (0: Checkbox)
+  //     return data.id;
+  //   }
+  //   return null;
+  // }
+
   function getSelectedId() {
-    var selectedRow = table.row(".selected");
-    if (selectedRow.any()) {
-      var data = selectedRow.data();
-      // Index 1: ID sütunu (0: Checkbox)
-      return data[1];
-    }
-    return null;
+  var selectedRow = table.row(".selected");
+
+  if (selectedRow.any()) {
+    var tr = selectedRow.node(); // <tr>
+    return $(tr).data("id");     // data-id
   }
+
+  return null;
+}
+
 
   // Düzenle Butonu
   $("#btnEditSelected").click(function () {
     var id = getSelectedId();
+    console.log("ID: "+id);
     if (id) {
       window.location.href = "index?p=personel/manage&id=" + id;
     }
