@@ -47,14 +47,18 @@ class BordroPersonelModel extends Model
      */
     public function addPersonellerToDonem($donem_id, $baslangic_tarihi, $bitis_tarihi)
     {
-        // Önce mevcut dönemdeki personelleri al (tekrar eklemesini önlemek için)
-        $existingPersoneller = $this->getPersonellerByDonem($donem_id);
-        $existingIds = array_column(
-            array_map(function ($p) {
-                return (array) $p;
-            }, $existingPersoneller),
-            'personel_id'
-        );
+        // Önce mevcut dönemdeki tüm personelleri al (soft-deleted dahil)
+        $sqlExisting = $this->db->prepare("SELECT personel_id, silinme_tarihi FROM {$this->table} WHERE donem_id = ?");
+        $sqlExisting->execute([$donem_id]);
+        $existingData = $sqlExisting->fetchAll(PDO::FETCH_ASSOC);
+
+        $existingIds = array_column($existingData, 'personel_id');
+        $softDeletedIds = [];
+        foreach ($existingData as $row) {
+            if ($row['silinme_tarihi'] !== null) {
+                $softDeletedIds[] = $row['personel_id'];
+            }
+        }
 
 
         /**Firma id'yi Session'dan al */
@@ -89,8 +93,14 @@ class BordroPersonelModel extends Model
         $eklenenSayisi = 0;
 
         foreach ($uygunPersoneller as $personel) {
-            // Zaten eklenmişse atla
+            // Zaten eklenmişse
             if (in_array($personel->id, $existingIds)) {
+                // Eğer soft-deleted ise geri getir
+                if (in_array($personel->id, $softDeletedIds)) {
+                    $restoreSql = $this->db->prepare("UPDATE {$this->table} SET silinme_tarihi = NULL, olusturma_tarihi = NOW() WHERE donem_id = ? AND personel_id = ?");
+                    $restoreSql->execute([$donem_id, $personel->id]);
+                    $eklenenSayisi++;
+                }
                 continue;
             }
 

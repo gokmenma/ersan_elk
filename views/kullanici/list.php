@@ -58,6 +58,8 @@ $users = $User->getUsers();
                                 <th class="text-center">Görevi</th>
                                 <th class="text-center">E-Posta</th>
                                 <th class="text-center">Telefon</th>
+                                <th class="text-center">İzin Onayı</th>
+                                <th class="text-center">İzin Onay Sırası</th>
                                 <th>Kayıt Tarihi</th>
                                 <th style="width:5%" class="no-sort">İşlem</th>
                             </tr>
@@ -95,6 +97,8 @@ $users = $User->getUsers();
                                     <td class="text-center"><?php echo $user->gorevi ?></td>
                                     <td class="text-center"><?php echo $user->email_adresi ?></td>
                                     <td class="text-center"><?php echo $user->telefon ?></td>
+                                    <td class="text-center"><?php echo $user->izin_onayi_yapacakmi ?></td>
+                                    <td class="text-center"><?php echo $user->izin_onay_sirasi ?></td>
                                     <td><?php echo $user->created_at ?></td>
 
                                     <td class="text-center" style="width:5%">

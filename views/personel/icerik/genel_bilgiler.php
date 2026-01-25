@@ -88,7 +88,7 @@ use App\Helper\Date;
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-12">
-                        <?php echo Form::FormFloatInput("email", "email_adresi", $personel->email_adresi ?? "", "Email", "Email", "mail"); ?>
+                        <?php echo Form::FormFloatInput("email", "email_adresi", $personel->email_adresi ?? "", "Email", "Email", "mail",autocomplete:"off"); ?>
                     </div>
                 </div>
                 <div class="row mb-3">

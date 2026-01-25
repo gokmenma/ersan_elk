@@ -33,6 +33,11 @@ foreach ($ekip_kodlari_raw as $item) {
 }
 
 $allPersonel = $PersonelModel->all();
+/**Personel id'sini şifrele */
+$allPersonel = array_map(function ($item) {
+    $item->id = Security::encrypt($item->id);
+    return $item;
+}, $allPersonel);
 ?>
 <div class="container-fluid">
 
@@ -346,6 +351,7 @@ $allPersonel = $PersonelModel->all();
                 dateFormat: "d.m.Y",
                 altInput: true,
                 altFormat: "d.m.Y",
+                locale: "tr",
             });
         }
 

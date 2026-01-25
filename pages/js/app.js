@@ -78,3 +78,8 @@ $.validator.setDefaults({
   },
 });
 
+$(".flatpickr").flatpickr({
+  enableTime: false,
+  dateFormat: "d.m.Y",
+  locale: "tr",
+});
