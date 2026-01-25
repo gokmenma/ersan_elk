@@ -154,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     } elseif ($action == 'personel-sil') {
         try {
-            $id = $_POST['id'];
+            $id = Security::decrypt($_POST['id']);
             $Personel->delete($id, false); // false: decrypt işlemi yapılmasın (id direkt geliyorsa)
             echo json_encode(['status' => 'success', 'message' => 'Personel başarıyla silindi.']);
         } catch (Exception $e) {
@@ -206,7 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     } elseif ($action == 'get-details') {
         try {
-            $id = $_POST['id'] ?? 0;
+            $id = Security::decrypt($_POST['id']) ?? 0;
             $personel = $Personel->find($id);
 
             if ($personel) {

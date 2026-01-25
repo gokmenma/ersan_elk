@@ -21,7 +21,7 @@ $page = $_GET['p'] ?? 'home';
     $page == "gelir-gider/list" || $page == "temsilcilik/talep" ||
     $page == "tanimlamalar/gelir-gider-turu" ||
     $page == "demirbas/list" || "temsilcilik/duzenle" ||
-    $page == "personel/manage"
+    $page == "personel/manage" || $page == "mail-sms/mail-gonder" || $page == "mail-sms/sms-gonder"
 ) { ?>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.js"></script>
@@ -134,7 +134,7 @@ $page = $_GET['p'] ?? 'home';
 <?php } ?>
 
 <?php
-if ($page == "slider/duzenle" || $page == "evrak-takip/giden-evrak") {
+if ($page == "slider/duzenle" || $page == "evrak-takip/giden-evrak" || $page == "mail-sms/mail-gonder") {
     // echo '<script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-lite.min.js"></script>';
     echo '<script src="assets/libs/summernote/summernote-lite.min.js"></script>';
     echo '<script src="assets/libs//summernote/lang/summernote-tr-TR.min.js"></script>';
@@ -145,6 +145,10 @@ if ($page == "slider/duzenle" || $page == "evrak-takip/giden-evrak") {
 
 if ($page == "slider/list" || $page == "slider/duzenle") {
     echo '<script src="views/slider/js/slider.js"></script>';
+}
+
+if ($page == "mail-sms/mail-gonder") {
+    echo '<script src="views/mail-sms/js/mail.js"></script>';
 }
 
 if ($page == "kasa/duzenle" || $page == "kasa/list") {
@@ -168,7 +172,8 @@ if ($page == "kasa/duzenle" || $page == "kasa/list") {
     $page == "mail-sms/sms-gonder" ||
     $page == "kasa/list" || $page == "gelir-gider/online-hesap-hareketleri" || $page == "tanimlamalar/ekip-kodu" ||
     $page == "bordro/list" || $page == "demirbas/list" || $page == "puantaj/list" ||
-    $page == "tanimlamalar/is-turu" || $page == "mail-sms/list" || $page == "tanimlamalar/izin-turu"
+    $page == "tanimlamalar/is-turu" || $page == "mail-sms/list" || $page == "tanimlamalar/izin-turu" ||
+    $page == "mail-sms/mail-gonder"
 
 ) { ?>
 

@@ -31,13 +31,27 @@ class MailGonderService
             // Sunucu Ayarları
             $mail->isSMTP();
 
-            $mail->Host       = $allSettings['SMTP_HOST'] ?? $_ENV['SMTP_HOST']; // Kendi SMTP sunucunuz (örn: smtp.gmail.com)
-            $mail->SMTPAuth   = true;
-            $mail->Username   = $allSettings['SMTP_USER'] ?? $_ENV['SMTP_USER']; // SMTP kullanıcı adınız
+            $mail->Host = $allSettings['smtp_host'] ?? $_ENV['SMTP_HOST']; // Kendi SMTP sunucunuz (örn: smtp.gmail.com)
+            $mail->SMTPAuth = true;
+            $mail->Username = $allSettings['smtp_kullanici'] ?? $_ENV['SMTP_USER']; // SMTP kullanıcı adınız
 
-            $mail->Password   = $allSettings['SMTP_PASSWORD'] ?? $_ENV['SMTP_PASSWORD'];           // SMTP şifreniz
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // Veya ENCRYPTION_SMTPS
-            $mail->Port       = $allSettings['SMTP_PORT'] ?? $_ENV['SMTP_PORT']; // Veya 465
+            $mail->Password = $allSettings['smtp_sifre_yeni'] ?? $_ENV['SMTP_PASSWORD'];           // SMTP şifreniz
+
+            $secureType = $allSettings['smtp_guvenlik'] ?? 'tls';
+            $port = $allSettings['smtp_port'] ?? $_ENV['SMTP_PORT']; // Veya 465
+
+            // Port 465 genellikle SSL/SMTPS gerektirir. Kullanıcı TLS seçse bile SSL zorlayalım.
+            if ($port == 465) {
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+            } elseif ($secureType == 'ssl') {
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+            } else {
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            }
+
+            $mail->Port = $allSettings['smtp_port'] ?? $_ENV['SMTP_PORT']; // Veya 465
+            $mail->Timeout = 10; // 10 saniye zaman aşımı
+            $mail->SMTPDebug = 0; // Debug kapalı
 
 
 
@@ -55,7 +69,9 @@ class MailGonderService
             $mail->Encoding = 'base64'; // İçeriği base64 ile kodlamak uyumluluğu artırır
 
             // Gönderen ve Alıcı Bilgileri
-            $mail->setFrom($allSettings['SMTP_FROM'] ?? 'noreply@yonapp.com.tr', 'Ersan Elektrik | Personel Yönetim'); // Gönderen e-posta ve isim
+            $fromEmail = $allSettings['gonderen_eposta'] ?? 'noreply@softran.online';
+            $fromName = $allSettings['gonderen_adi'] ?? 'Ersan Elektrik | Personel Yönetim';
+            $mail->setFrom($fromEmail, $fromName); // Gönderen e-posta ve isim
 
             // ÖNEMLİ DEĞİŞİKLİK: BCC kullan (alıcılar birbirini görmez)
             // TO alanına bir dummy adres koy (zorunlu)
@@ -63,8 +79,11 @@ class MailGonderService
 
             // Asıl alıcıları BCC'ye ekle, böylece birbirlerini görmezler
             if (is_array($kime)) {
+                // TO alanına göndericiyi ekleyelim ki boş kalmasın (bazı sunucular reddeder)
+                $mail->addAddress($fromEmail, $fromName);
+
                 foreach ($kime as $email) {
-                    $mail->addAddress(trim($email)); // BCC ile ekle - birbirlerini görmezler
+                    $mail->addBCC(trim($email)); // BCC ile ekle - birbirlerini görmezler
                 }
             } else {
                 $mail->addAddress(trim($kime));
@@ -96,7 +115,7 @@ class MailGonderService
             // İçerik
             $mail->isHTML(true);
             $mail->Subject = $konu;
-            $mail->Body    = $icerik;
+            $mail->Body = $icerik;
             $mail->AltBody = strip_tags($icerik); // HTML desteklemeyen istemciler için
 
             //eğer ekler boş değilse foreach ile ekleri ekle
@@ -109,7 +128,7 @@ class MailGonderService
                     if (is_array($ek) && !empty($ek['path'])) {
                         $mail->addAttachment($ek['path'], $ek['name'] ?? 'attachment');
                     } else {
-                        $mail->addAttachment((string)$ek);
+                        $mail->addAttachment((string) $ek);
                     }
                 }
             }
@@ -122,9 +141,8 @@ class MailGonderService
                 return false;
             }
         } catch (Exception $e) {
-            echo "Mail gönderme hatası: " . $mail->ErrorInfo . "<br>";
-            echo "Exception: " . $e->getMessage() . "<br>";
-            error_log("E-posta gönderilemedi. Hata: {$mail->ErrorInfo}");
+            error_log("Mail gönderme hatası: " . $mail->ErrorInfo);
+            error_log("Exception: " . $e->getMessage());
             return false;
         }
     }

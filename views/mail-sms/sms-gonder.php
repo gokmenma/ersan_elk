@@ -103,19 +103,28 @@ use App\Helper\Form;
     .tag {
         display: inline-flex;
         align-items: center;
-        background-color: #1C84EE;
+        background-color: #111;
+        /* Dark background like the button */
         color: #fff;
-        padding: 4px 8px;
-        border-radius: 16px;
+        padding: 6px 12px;
+        border-radius: 8px;
+        /* Rounded corners like the button */
+        font-size: 0.85rem;
+        font-weight: 500;
         transition: opacity 0.3s ease, transform 0.3s ease;
         animation: slideDownFadeIn 0.4s ease-out;
-
     }
 
     .tag .close-tag {
         cursor: pointer;
-        margin-left: 6px;
+        margin-left: 8px;
         font-weight: bold;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+    }
+
+    .tag .close-tag:hover {
+        opacity: 1;
     }
 
     .form-floating {
@@ -192,19 +201,17 @@ use App\Helper\Form;
 
                     <!-- Alıcılar (Tag Sistemi) -->
                     <div class="mb-4">
-                        <div class="row ">
-
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <div>
-                                    <a href="#" class="text-decoration-none small kisilerden-sec">
-                                        <i class="fas fa-address-book me-1"></i> Kişilerden Seç
-                                    </a>
-                                </div>
-                                <div>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="clear-recipients">
-                                        <i class="fas fa-trash-alt"></i> Temizle
-                                    </button>
-                                </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label mb-0">Alıcılar</label>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-dark btn-sm kisilerden-sec"
+                                    style="border-radius: 6px;">
+                                    <i class="fas fa-address-book me-1"></i> Kişilerden Seç
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm" id="clear-recipients"
+                                    style="border-radius: 6px;">
+                                    <i class="fas fa-trash-alt me-1"></i> Temizle
+                                </button>
                             </div>
                         </div>
                         <!-- JS ile oluşturulan etiketler buraya gelecek -->
@@ -240,7 +247,8 @@ use App\Helper\Form;
                                     </a>
                                 </div>
                                 <div>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="save-as-template">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        id="save-as-template">
                                         <i class="fas fa-save"></i> Şablon Olarak Kaydet
                                     </button>
                                 </div>
@@ -314,52 +322,47 @@ use App\Helper\Form;
                             placeholder: "Saat",
                             label: "Saat",
                             icon: "clock",
-                            class: "form-control me-3"
+                            class: "form-control"
                         );
                         ?>
                     </div>
                 </div>
             </div>
 
-            <!-- Butonlar -->
-            <div class="p-2">
-                <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse"
-                    data-bs-target="#scheduleCollapse" aria-expanded="false" aria-controls="scheduleCollapse">
-                    <i class="fas fa-clock me-1"></i> Zamanla
-                </button>
-                <button type="submit" form="smsForm" class="btn btn-primary px-4 ms-2">
-                    <i class="fas fa-paper-plane me-2"></i> Gönder
-                </button>
-            </div>
+            <button class="btn btn-outline-secondary me-2" type="button" data-bs-toggle="collapse"
+                data-bs-target="#scheduleCollapse" aria-expanded="false" aria-controls="scheduleCollapse">
+                <i class="fas fa-clock me-1"></i> Zamanla
+            </button>
 
+            <button type="submit" form="smsForm" class="btn btn-primary px-5">
+                <i class="fas fa-paper-plane me-2"></i> Gönder
+            </button>
         </div>
     </div>
 </div>
 
 
-
-
-<!-- Kişilerden seç Modal -->
+<!-- Modallar -->
 <div class="modal fade" id="kisilerdenSecModal" tabindex="-1" aria-labelledby="kisilerdenSecModalLabel"
     aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content kisilerdenSecModalContent">
-            <!-- içerik get ile gelecek -->
-        </div>
-    </div>
-</div>
-<!-- Şablondan seç Modal -->
-<div class="modal fade" id="sablondanSecModal" tabindex="-1" aria-labelledby="sablondanSecModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content sablondanSecModalContent">
-            <!-- içerik get ile gelecek -->
+            <!-- İçerik AJAX ile yüklenecek -->
         </div>
     </div>
 </div>
 
-<!-- Şablon Olarak kaydet modali -->
-<div class="modal fade" id="sablonKaydetModal" tabindex="-1" aria-labelledby="sablonKaydetModalLabel" aria-hidden="true">
+<div class="modal fade" id="sablondanSecModal" tabindex="-1" aria-labelledby="sablondanSecModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content sablondanSecModalContent">
+            <!-- İçerik AJAX ile yüklenecek -->
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="sablonKaydetModal" tabindex="-1" aria-labelledby="sablonKaydetModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -369,8 +372,8 @@ use App\Helper\Form;
             <div class="modal-body">
                 <form id="sablonKaydetForm">
                     <div class="mb-3">
-                        <label for="sablonAdi" class="form-label">Şablon Adı</label>
-                         <?php
+
+                        <?php
                         echo Form::FormFloatInput(
                             type: "text",
                             name: "sablonAdi",
@@ -378,21 +381,9 @@ use App\Helper\Form;
                             placeholder: "Şablon adını giriniz",
                             label: "Şablon Adı",
                             icon: "file"
-                                        );
 
-                        ?>
-                    </div>
-                    <div class="mb-3">
-                        <label for="sablonIcerik" class="form-label">Şablon İçeriği</label>
-                           <?php
-                        echo Form::FormFloatTextarea(
-                            name: "sablonIcerik",
-                            value: "",
-                            label: "Mesajınız",
-                            placeholder: "Mesajınız",
-                            icon: "list",
-                            minHeight: "250px"
                         );
+
                         ?>
                     </div>
                 </form>
@@ -408,11 +399,11 @@ use App\Helper\Form;
 
 
 <script>
-    $(document).ready(function() {
+    $(document).ready(function () {
         //kisilerden seç linkine tıklanınca modal açma
-        $(".kisilerden-sec").on("click", function(e) {
+        $(".kisilerden-sec").on("click", function (e) {
             e.preventDefault();
-            $.get('/views/mail-sms/modal/kisi_sec_modal.php', function(data) {
+            $.get('/views/mail-sms/modal/kisi_sec_modal.php?type=sms', function (data) {
 
                 $(".kisilerdenSecModalContent").html(data);
             });
@@ -421,52 +412,14 @@ use App\Helper\Form;
         });
 
         //şablondan seç linkine tıklanınca modal açma
-        $(".sablon-kullan").on("click", function(e) {
+        $(".sablon-kullan").on("click", function (e) {
             e.preventDefault();
-            $.get('/views/mail-sms/modal/sablondan_sec_modal.php', function(data) {
+            $.get('/views/mail-sms/modal/sablondan_sec_modal.php', function (data) {
 
                 $(".sablondanSecModalContent").html(data);
             });
 
             $("#sablondanSecModal").modal("show");
-        });
-    });
-
-    //Şablon olarak kaydet modali aç
-    $(document).on('click', '#save-as-template', function(e) {
-        e.preventDefault();
-        $("#sablonIcerik").val($('#message').val());
-        $("#sablonKaydetModal").modal("show");
-    });
-
-    //Şablon olarak kaydet butonuna tıklanınca
-    $(document).on('click', '#sablonKaydetButton', function(e) {
-        e.preventDefault();
-        var icerik = '';
-        var textarea = $('#sablonIcerik');
-        if (textarea) icerik = textarea.val();
-        if (icerik === '') {
-            swal.fire({
-                icon: 'warning',
-                confirmButtonText: 'Tamam',
-                text: 'Kaydetmek için mesaj alanı boş olamaz.',
-                title: 'Uyarı!'
-            });
-            return;
-        }
-        // Şablon kaydetme işlemi için AJAX isteği gönder
-        $.ajax({
-            url: 'views/mail-sms/api/sms.php',
-            type: 'POST',
-            data: {
-                icerik: icerik
-            },
-            success: function(response) {
-                alert('Şablon başarıyla kaydedildi.');
-            },
-            error: function() {
-                alert('Şablon kaydedilirken bir hata oluştu.');
-            }
         });
     });
 </script>
