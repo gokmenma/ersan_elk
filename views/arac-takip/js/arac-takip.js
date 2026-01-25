@@ -92,7 +92,11 @@ const AracTakip = {
           const input = $('[name="' + key + '"]');
           if (input.length) {
             if (input.is("select")) {
-              input.val(data[key]).trigger("change");
+              input.val(data[key]);
+              // Sadece Select2 ise change tetikle
+              if (input.hasClass("select2")) {
+                //input.trigger("change");
+              }
             } else {
               input.val(data[key]);
             }
@@ -650,7 +654,9 @@ $(document).ready(function () {
   $(document).on("click", ".arac-duzenle", function (e) {
     e.preventDefault();
     const id = $(this).data("id");
-    AracTakip.aracDuzenle(id);
+    if (id) {
+      AracTakip.aracDuzenle(id);
+    }
   });
 
   // Araç Sil
@@ -659,6 +665,23 @@ $(document).ready(function () {
     const id = $(this).data("id");
     const plaka = $(this).data("plaka");
     AracTakip.aracSil(id, plaka);
+  });
+
+  // Hızlı Zimmet
+  $(document).on("click", ".zimmet-hizli", function (e) {
+    e.preventDefault();
+    const id = $(this).data("id");
+    const km = $(this).data("km");
+
+    // Select2'de aracı seç
+    $("#zimmetAracSelect").val(id).trigger("change");
+
+    // KM'yi doldur
+    if (km) {
+      $("#zimmetTeslimKm").val(km);
+    }
+
+    $("#zimmetModal").modal("show");
   });
 
   // Zimmet Kaydet
@@ -731,8 +754,6 @@ $(document).ready(function () {
   // Select2 başlat
   if ($.fn.select2) {
     $(".select2").select2({
-      theme: "bootstrap-5",
-      width: "100%",
       dropdownParent: $(".modal.show").length ? $(".modal.show") : $("body"),
     });
 
@@ -742,11 +763,14 @@ $(document).ready(function () {
         .find(".select2")
         .each(function () {
           $(this).select2({
-            theme: "bootstrap-5",
-            width: "100%",
             dropdownParent: $(this).closest(".modal"),
           });
         });
+
+      // Feather ikonlarını yükle
+      if (typeof feather !== "undefined") {
+        feather.replace();
+      }
     });
   }
 });

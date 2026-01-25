@@ -2,6 +2,7 @@
 
 namespace App\Model;
 
+use App\Helper\Date;
 use App\Helper\Helper;
 use App\Model\Model;
 use App\Helper\Security;
@@ -133,7 +134,7 @@ class DemirbasZimmetModel extends Model
                     aciklama = CONCAT(COALESCE(aciklama, ''), '\n', ?)
                 WHERE id = ?
             ");
-            $sql->execute([$iade_tarihi, $iade_miktar, $aciklama ?? '', $zimmet_id]);
+            $sql->execute([Date::Ymd($iade_tarihi), $iade_miktar, $aciklama ?? '', $zimmet_id]);
 
             // Demirbaş stok miktarını artır
             $sqlDemirbas = $this->db->prepare("

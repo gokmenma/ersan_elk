@@ -11,6 +11,12 @@ while ($row = $izin_turleri_query->fetch(PDO::FETCH_OBJ)) {
     $izin_turleri[$row->id] = $row->tur_adi;
 }
 
+
+
+
+
+
+
 $izin_durumlari = [
     'Gerceklesti' => 'Gerçekleşti',
     'Planlandi' => 'Planlandı'
@@ -34,7 +40,7 @@ $onay_durumlari = [
 
 <div class="row mb-3">
     <div class="col-12">
-        <div class="card border border-primary bg-primary bg-opacity-10">
+        <div class="card border border-primary">
             <div class="card-body p-3">
                 <div class="row text-center align-items-center">
                     <div class="col-md-4 border-end border-primary border-opacity-25 cursor-pointer"
@@ -136,7 +142,7 @@ $onay_durumlari = [
                                         <td><?= htmlspecialchars($izin->izin_tipi_adi ?? $izin->izin_tipi ?? '') ?></td>
                                         <td><?= date('d.m.Y', strtotime($izin->baslangic_tarihi ?? 'now')) ?></td>
                                         <td><?= date('d.m.Y', strtotime($izin->bitis_tarihi ?? 'now')) ?></td>
-                                        <td><?= htmlspecialchars($izin->sure ?? '-') ?></td>
+                                        <td><?= htmlspecialchars($izin->toplam_gun ?? '-') ?></td>
                                         <td>
                                             <?php
                                             // Son durumu belirle
@@ -242,7 +248,8 @@ $onay_durumlari = [
                             </div>
                             <div class="col-4">
                                 <strong class="d-block small text-muted text-uppercase">Kalan</strong>
-                                <span class="fs-5 fw-bold text-success"><?= htmlspecialchars($formatGun($kalan_izin)) ?>
+                                <span class="fs-5 fw-bold text-success"
+                                    id="kalan_izin_gun"><?= htmlspecialchars($formatGun($kalan_izin)) ?>
                                     Gün</span>
                             </div>
                         </div>

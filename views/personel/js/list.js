@@ -54,21 +54,20 @@ $(document).ready(function () {
   // }
 
   function getSelectedId() {
-  var selectedRow = table.row(".selected");
+    var selectedRow = table.row(".selected");
 
-  if (selectedRow.any()) {
-    var tr = selectedRow.node(); // <tr>
-    return $(tr).data("id");     // data-id
+    if (selectedRow.any()) {
+      var tr = selectedRow.node(); // <tr>
+      return $(tr).data("id"); // data-id
+    }
+
+    return null;
   }
-
-  return null;
-}
-
 
   // Düzenle Butonu
   $("#btnEditSelected").click(function () {
     var id = getSelectedId();
-    console.log("ID: "+id);
+    console.log("ID: " + id);
     if (id) {
       window.location.href = "index?p=personel/manage&id=" + id;
     }
@@ -262,7 +261,40 @@ $(document).ready(function () {
     btn.html('<i class="bx bx-loader bx-spin label-icon"></i> Aktarılıyor...');
     btn.prop("disabled", true);
 
-    fetch("views/personel/export-excel.php")
+    // Get DataTables search term
+    var table = $("#membersTable").DataTable();
+    var searchTerm = table.search();
+
+    var colSearches = {};
+
+    // Custom search inputs from datatables.init.js
+    $("#membersTable .search-input-row input").each(function () {
+      var val = $(this).val();
+      var colIdx = $(this).attr("data-col-idx");
+      if (val && colIdx) {
+        colSearches[colIdx] = val;
+      }
+    });
+
+    var url = "views/personel/export-excel.php";
+    var params = new URLSearchParams();
+
+    if (searchTerm) {
+      params.append("search", searchTerm);
+    }
+
+    if (Object.keys(colSearches).length > 0) {
+      params.append("col_search", JSON.stringify(colSearches));
+    }
+
+    // Add timestamp to prevent caching
+    params.append("t", Date.now());
+
+    if (params.toString()) {
+      url += "?" + params.toString();
+    }
+
+    fetch(url)
       .then((resp) => {
         if (resp.status !== 200) {
           return resp.text().then((text) => {

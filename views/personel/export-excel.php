@@ -34,7 +34,18 @@ try {
 
     // Model
     $PersonelModel = new \App\Model\PersonelModel();
-    $personeller = $PersonelModel->all();
+
+    $term = isset($_GET['search']) ? $_GET['search'] : null;
+    $colSearches = [];
+
+    if (isset($_GET['col_search'])) {
+        $colSearches = json_decode($_GET['col_search'], true);
+    }
+
+    $personeller = $PersonelModel->filter($term, $colSearches);
+
+
+
 
     $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();

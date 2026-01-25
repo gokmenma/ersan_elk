@@ -1,10 +1,10 @@
-<?php ?>
+<?php use App\Helper\Form; ?>
 
 <div class="modal fade" id="iadeModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="bx bx-undo me-2"></i>Demirbaş İade Al</h5>
+                <h5 class="modal-title"><i data-feather="corner-down-left" class="me-2"></i>Demirbaş İade Al</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="iadeForm">
@@ -27,31 +27,23 @@
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="iade_miktar" class="form-label">İade Miktarı <span
-                                    class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="iade_miktar" name="iade_miktar" value="1"
-                                min="1" required>
+                            <?php echo Form::FormFloatInput('number', 'iade_miktar', '1', null, 'İade Miktarı *', 'hash', 'form-control', true, null, 'on', false, 'min="1"'); ?>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="iade_tarihi" class="form-label">İade Tarihi <span
-                                    class="text-danger">*</span></label>
-                            <input type="text" class="form-control flatpickr" id="iade_tarihi" name="iade_tarihi"
-                                value="<?php echo date('d.m.Y'); ?>" required>
+                            <?php echo Form::FormFloatInput('text', 'iade_tarihi', date('d.m.Y'), null, 'İade Tarihi *', 'calendar', 'form-control flatpickr', true); ?>
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-12 mb-3">
-                            <label for="iade_aciklama" class="form-label">Açıklama</label>
-                            <textarea class="form-control" id="iade_aciklama" name="iade_aciklama" rows="2"
-                                placeholder="İade ile ilgili notlar..."></textarea>
+                            <?php echo Form::FormFloatTextarea('iade_aciklama', null, 'İade ile ilgili notlar...', 'Açıklama', 'file-text'); ?>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                     <button type="button" id="iadeKaydet" class="btn btn-info">
-                        <i class="bx bx-undo me-1"></i>İade Al
+                        <i data-feather="check-square" class="me-1"></i>İade Al
                     </button>
                 </div>
             </form>

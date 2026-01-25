@@ -3,6 +3,7 @@
 session_start();
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
+use App\Helper\Date;
 use App\Helper\Helper;
 use App\Helper\Security;
 use App\Model\DemirbasModel;
@@ -183,7 +184,7 @@ if ($action == "zimmet-kaydet") {
         $data = [
             "demirbas_id" => intval($_POST["demirbas_id"]),
             "personel_id" => intval($_POST["personel_id"]),
-            "teslim_tarihi" => $_POST["teslim_tarihi"],
+            "teslim_tarihi" => Date::Ymd($_POST["teslim_tarihi"]),
             "teslim_miktar" => intval($_POST["teslim_miktar"] ?? 1),
             "aciklama" => $_POST["aciklama"] ?? null,
             "teslim_eden_id" => $_SESSION["id"] ?? null
@@ -256,7 +257,39 @@ if ($action == "zimmet-detay") {
     try {
         $zimmet = $Zimmet->find($id);
         if ($zimmet) {
-            jsonResponse("success", "Başarılı", ["data" => $zimmet]);
+            // Demirbaşın tüm geçmişini getir
+            $gecmis = $Zimmet->getByDemirbas($zimmet->demirbas_id);
+
+            // Geçmiş verilerini formatla
+            foreach ($gecmis as $g) {
+                $g->teslim_tarihi_format = date('d.m.Y', strtotime($g->teslim_tarihi));
+                $g->iade_tarihi_format = $g->iade_tarihi ? date('d.m.Y', strtotime($g->iade_tarihi)) : '-';
+
+                $durumBadges = [
+                    'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
+                    'iade' => '<span class="badge bg-success">İade Edildi</span>',
+                    'kayip' => '<span class="badge bg-danger">Kayıp</span>',
+                    'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
+                ];
+                $g->durum_badge = $durumBadges[$g->durum] ?? '<span class="badge bg-info">Bilinmiyor</span>';
+            }
+
+            // Şu anki zimmet detaylarını da zenginleştir
+            $zimmet->teslim_tarihi_format = date('d.m.Y', strtotime($zimmet->teslim_tarihi));
+            $zimmet->durum_badge = $durumBadges[$zimmet->durum] ?? '<span class="badge bg-info">Bilinmiyor</span>';
+
+            // Demirbaş bilgilerini al
+            $demirbas = $Demirbas->find($zimmet->demirbas_id);
+            $zimmet->demirbas_detay = $demirbas;
+
+            // Personel bilgisini al
+            $personel = $Zimmet->getDb()->query("SELECT * FROM personel WHERE id = {$zimmet->personel_id}")->fetch(PDO::FETCH_OBJ);
+            $zimmet->personel_detay = $personel;
+
+            jsonResponse("success", "Başarılı", [
+                "data" => $zimmet,
+                "gecmis" => $gecmis
+            ]);
         } else {
             jsonResponse("error", "Zimmet bulunamadı.");
         }

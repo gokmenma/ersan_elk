@@ -5,6 +5,7 @@ use App\Model\BordroDonemModel;
 use App\Model\BordroPersonelModel;
 use App\Helper\Form;
 use App\Helper\Helper;
+use App\Helper\Security;
 
 $BordroDonem = new BordroDonemModel();
 $BordroPersonel = new BordroPersonelModel();
@@ -16,13 +17,10 @@ $BordroPersonel = new BordroPersonelModel();
 $selectedYil = $_GET['yil'] ?? date('Y');
 $selectedDonemId = $_GET['donem'] ?? $_SESSION['selectedDonemId'] ?? null;
 /**Eğer bir kere dönem seçilmişse onu session'a ata */
-if ($selectedDonemId) {
-    $_SESSION['selectedDonemId'] = $selectedDonemId;
-}
+
 
 // İlgili yıldaki Tüm dönemleri getir
 $donemler = $BordroDonem->getAllDonems($selectedYil);
-
 
 // Yılları çıkar
 $yil_option = $BordroDonem->getYearsByDonem();
@@ -34,7 +32,19 @@ foreach ($donemler as $donem) {
     $donemlerByYil[$yil][] = $donem;
     $donem_option[$donem->id] = $donem->donem_adi;
 
+}
+/**Eğer dönem yoksa seçili id'yi boşalt */
+if (!$donemler) {
+    $selectedDonemId = null;
+}
 
+/**Eğer seçili dönem yoksa null ata */
+if (!$selectedDonemId) {
+    $selectedDonemId = null;
+}
+
+if ($selectedDonemId) {
+    $_SESSION['selectedDonemId'] = $selectedDonemId;
 }
 
 /**Eğer seçil dönem veritabanında yoksa seçili dönem id session'a ata */
@@ -44,14 +54,13 @@ if(!$seciliDonemKontrol){
 }
 
 // Eğer dönem seçilmemişse, seçili yıldaki ilk dönemi seç
-if ((!$selectedDonemId || $selectedDonemId == "undefined") && isset($donemlerByYil[$selectedYil]) && !empty($donemlerByYil[$selectedYil])) {
+if ((!$selectedDonemId ) && isset($donemlerByYil[$selectedYil]) && !empty($donemlerByYil[$selectedYil])) {
     $selectedDonemId = $donemlerByYil[$selectedYil][0]->id;
 }
 
 
 $selectedDonem = null;
 $personeller = [];
-
 
 
 if ($selectedDonemId) {
@@ -246,7 +255,9 @@ $ek_odeme_turleri = [
                                             </td>
                                         </tr>
                                     <?php else: ?>
-                                        <?php foreach ($personeller as $personel): ?>
+                                        <?php foreach ($personeller as $personel):
+                                                $enc_id = Security::encrypt($personel->personel_id);
+                                            ?>
                                             <?php
                                             $eldenOdeme = ($personel->net_maas ?? 0) - ($personel->banka_odemesi ?? 0) - ($personel->sodexo_odemesi ?? 0) - ($personel->diger_odeme ?? 0);
 
@@ -279,7 +290,7 @@ $ek_odeme_turleri = [
                                                             alt="" class="rounded-circle avatar-sm me-2">
                                                         <span class="fw-medium">
                                                             <a target="_blank"
-                                                                href="index?p=personel/manage&id=<?= $personel->personel_id ?>"><?= htmlspecialchars($personel->adi_soyadi) ?></a></span>
+                                                                href="index?p=personel/manage&id=<?= $enc_id ?>"><?= htmlspecialchars($personel->adi_soyadi) ?></a></span>
                                                     </div>
                                                 </td>
 

@@ -185,7 +185,7 @@ $yakitStats = $Yakit->getStats(date('Y'), date('m'));
                                                         <?php echo $i; ?>
                                                     </td>
                                                     <td>
-                                                        <a href="#" class="fw-bold text-primary arac-duzenle"
+                                                        <a href="javascript:void(0)" class="fw-bold text-primary arac-duzenle"
                                                             data-id="<?php echo $arac->id; ?>">
                                                             <?php echo $arac->plaka; ?>
                                                         </a>

@@ -24,42 +24,42 @@ $(document).ready(function () {
         required: true,
         minlength: 11,
         maxlength: 11,
-        digits: true
+        digits: true,
       },
       adi_soyadi: {
-        required: true
+        required: true,
       },
       ise_giris_tarihi: {
-        required: true
+        required: true,
       },
       dogum_tarihi: {
-        required: true
+        required: true,
       },
       ekip_no: {
-        required: true
-      }
+        required: true,
+      },
     },
     messages: {
       tc_kimlik_no: {
         required: "Lütfen TC Kimlik No giriniz.",
         minlength: "TC Kimlik No 11 haneli olmalıdır.",
         maxlength: "TC Kimlik No 11 haneli olmalıdır.",
-        digits: "Lütfen sadece rakam giriniz."
+        digits: "Lütfen sadece rakam giriniz.",
       },
       adi_soyadi: {
-        required: "Lütfen Ad Soyad giriniz."
+        required: "Lütfen Ad Soyad giriniz.",
       },
       ise_giris_tarihi: {
-        required: "Lütfen İşe Giriş Tarihi giriniz."
+        required: "Lütfen İşe Giriş Tarihi giriniz.",
       },
       dogum_tarihi: {
-        required: "Lütfen Doğum Tarihi giriniz."
+        required: "Lütfen Doğum Tarihi giriniz.",
       },
       ekip_no: {
-        required: "Lütfen Ekip Numarası giriniz."
-      }
+        required: "Lütfen Ekip Numarası giriniz.",
+      },
     },
-    ignore: "hidden"
+    ignore: "hidden",
   });
 
   // Kaydet Butonu Tıklama Olayı
@@ -72,7 +72,7 @@ $(document).ready(function () {
         title: "Hata",
         text: "Lütfen formu doldurunuz.",
         icon: "error",
-        confirmButtonText: "Tamam"
+        confirmButtonText: "Tamam",
       });
       return;
     }
@@ -92,13 +92,16 @@ $(document).ready(function () {
     // Butonu pasif yap ve yükleniyor göster
     var $btn = $(this);
     var originalText = $btn.html();
+    // Ripple (dalga) efektini temizle, aksi takdirde originalText içinde birikerek butonu beyazlatır
+    if ($btn.find(".waves-ripple").length > 0) {
+      $btn.find(".waves-ripple").remove();
+      originalText = $btn.html();
+    }
     $btn
       .prop("disabled", true)
       .html(
-        '<span class="spinner-border spinner-border-sm"></span> kaydediliyor...'
+        '<span class="spinner-border spinner-border-sm"></span> kaydediliyor...',
       );
-
-    
 
     $.ajax({
       url: "views/personel/api.php",
@@ -108,13 +111,13 @@ $(document).ready(function () {
       contentType: false,
       success: function (response) {
         let res = JSON.parse(response);
-        console.log(res)
+        console.log(res);
         if (res.status === "success") {
           Swal.fire({
             title: "Başarılı",
             text: res.message,
             icon: "success",
-            confirmButtonText: "Tamam"
+            confirmButtonText: "Tamam",
           }).then((result) => {
             if (personel_id == 0 || personel_id == "") {
               // Yeni kayıt ise sayfayı oluşturulan ID ile yenile veya yönlendir
@@ -131,7 +134,7 @@ $(document).ready(function () {
             title: "Hata",
             text: res.message,
             icon: "error",
-            confirmButtonText: "Tamam"
+            confirmButtonText: "Tamam",
           });
           /**Butonu eski haline getir */
           $btn.prop("disabled", false).html(originalText);
@@ -142,13 +145,13 @@ $(document).ready(function () {
         Swal.fire({
           title: "Hata",
           text: "Bir sunucu hatası oluştu.",
-          icon: "error"
+          icon: "error",
         });
       },
       complete: function () {
-          $btn.prop("disabled", false).html(originalText);
-    }
-});
+        $btn.prop("disabled", false).html(originalText);
+      },
+    });
   });
 
   $(".select2").on("change", function () {

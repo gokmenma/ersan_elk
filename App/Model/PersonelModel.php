@@ -33,6 +33,100 @@ class PersonelModel extends Model
         return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function search($term)
+    {
+        $term = "%$term%";
+        $sql = "SELECT p.*, 
+                CASE WHEN ps.id IS NOT NULL THEN 1 ELSE 0 END as bildirim_abonesi
+                FROM {$this->table} p 
+                LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
+                WHERE p.firma_id = :firma_id
+                AND (
+                    p.tc_kimlik_no LIKE :term OR
+                    p.adi_soyadi LIKE :term OR
+                    p.cep_telefonu LIKE :term OR
+                    p.email_adresi LIKE :term OR
+                    p.gorev LIKE :term OR
+                    (CASE WHEN p.aktif_mi = 1 THEN 'Aktif' ELSE 'Pasif' END) LIKE :term
+                )
+                GROUP BY p.id";
+
+        $query = $this->db->prepare($sql);
+        $query->execute([
+            'firma_id' => $_SESSION['firma_id'],
+            'term' => $term
+        ]);
+        return $query->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function filter($term = null, $colSearches = [])
+    {
+        $sql = "SELECT p.*, 
+                CASE WHEN ps.id IS NOT NULL THEN 1 ELSE 0 END as bildirim_abonesi
+                FROM {$this->table} p 
+                LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
+                WHERE p.firma_id = :firma_id";
+
+        $params = ['firma_id' => $_SESSION['firma_id']];
+
+        // Global Search
+        if (!empty($term)) {
+            $term = "%$term%";
+            $sql .= " AND (
+                p.tc_kimlik_no LIKE :term OR
+                p.adi_soyadi LIKE :term OR
+                p.cep_telefonu LIKE :term OR
+                p.email_adresi LIKE :term OR
+                p.gorev LIKE :term OR
+                (CASE WHEN p.aktif_mi = 1 THEN 'Aktif' ELSE 'Pasif' END) LIKE :term
+            )";
+            $params['term'] = $term;
+        }
+
+        // Column Searches
+        if (!empty($colSearches)) {
+            $colMap = [
+                2 => 'p.tc_kimlik_no',
+                3 => 'p.adi_soyadi',
+                4 => 'p.ise_giris_tarihi',
+                5 => 'p.cep_telefonu',
+                6 => 'p.email_adresi',
+                7 => 'p.gorev',
+                9 => 'p.aktif_mi'
+            ];
+
+            foreach ($colSearches as $idx => $val) {
+                if (isset($colMap[$idx]) && $val !== '') {
+                    $field = $colMap[$idx];
+                    $paramName = "col_" . $idx;
+
+                    if ($idx == 9) { // Durum (Aktif/Pasif)
+                        if (stripos('Aktif', $val) !== false) {
+                            $sql .= " AND p.aktif_mi = 1";
+                        } elseif (stripos('Pasif', $val) !== false) {
+                            $sql .= " AND p.aktif_mi = 0";
+                        }
+                    } elseif ($idx == 4) { // Tarih
+                        $val = "%$val%";
+                        $sql .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramName";
+                        $params[$paramName] = $val;
+                    } else {
+                        $val = "%$val%";
+                        $sql .= " AND $field LIKE :$paramName";
+                        $params[$paramName] = $val;
+                    }
+                }
+            }
+        }
+
+        $sql .= " GROUP BY p.id";
+
+        $query = $this->db->prepare($sql);
+        $query->execute($params);
+        return $query->fetchAll(PDO::FETCH_OBJ);
+
+    }
+
     public function where($column, $value)
     {
         $sql = $this->db->prepare("SELECT * FROM $this->table WHERE $column = ? AND firma_id = ?");
@@ -71,6 +165,6 @@ class PersonelModel extends Model
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
 
-   
+
 
 }

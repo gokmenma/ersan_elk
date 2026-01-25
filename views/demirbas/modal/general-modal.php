@@ -11,7 +11,7 @@ $kategoriler = $Kategori->getActiveCategories();
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="bx bx-package me-2"></i>Demirbaş Ekle/Düzenle</h5>
+                <h5 class="modal-title"><i data-feather="package" class="me-2"></i>Demirbaş Ekle/Düzenle</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="demirbasForm">
@@ -19,90 +19,66 @@ $kategoriler = $Kategori->getActiveCategories();
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label for="demirbas_no" class="form-label">Demirbaş No</label>
-                            <input type="text" class="form-control" id="demirbas_no" name="demirbas_no"
-                                placeholder="Örn: DB-001">
+                            <?php echo Form::FormFloatInput('text', 'demirbas_no', null, 'Örn: DB-001', 'Demirbaş No', 'hash'); ?>
                         </div>
                         <div class="col-md-8 mb-3">
-                            <label for="kategori_id" class="form-label">Kategori <span
-                                    class="text-danger">*</span></label>
-                            <select class="form-select" id="kategori_id" name="kategori_id" required>
-                                <option value="">Kategori Seçiniz</option>
-                                <?php foreach ($kategoriler as $kat): ?>
-                                    <option value="<?php echo $kat->id; ?>"><?php echo $kat->kategori_adi; ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <?php
+                            echo Form::FormSelect2('kategori_id', $kategoriler, null, 'Kategori *', 'grid', 'id', 'kategori_adi', 'form-select select2', true);
+                            ?>
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-12 mb-3">
-                            <label for="demirbas_adi" class="form-label">Demirbaş Adı <span
-                                    class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="demirbas_adi" name="demirbas_adi"
-                                placeholder="Demirbaş adını giriniz" required>
+                            <?php echo Form::FormFloatInput('text', 'demirbas_adi', null, 'Demirbaş adını giriniz', 'Demirbaş Adı *', 'box', 'form-control', true); ?>
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label for="marka" class="form-label">Marka</label>
-                            <input type="text" class="form-control" id="marka" name="marka" placeholder="Marka">
+                            <?php echo Form::FormFloatInput('text', 'marka', null, 'Marka', 'Marka', 'tag'); ?>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label for="model" class="form-label">Model</label>
-                            <input type="text" class="form-control" id="model" name="model" placeholder="Model">
+                            <?php echo Form::FormFloatInput('text', 'model', null, 'Model', 'Model', 'layers'); ?>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label for="seri_no" class="form-label">Seri No</label>
-                            <input type="text" class="form-control" id="seri_no" name="seri_no"
-                                placeholder="Seri numarası">
+                            <?php echo Form::FormFloatInput('text', 'seri_no', null, 'Seri numarası', 'Seri No', 'cpu'); ?>
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-3 mb-3">
-                            <label for="miktar" class="form-label">Toplam Miktar <span
-                                    class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="miktar" name="miktar" value="1" min="1"
-                                required>
+                            <?php echo Form::FormFloatInput('number', 'miktar', '1', null, 'Toplam Miktar *', 'hash', 'form-control', true, null, 'on', false, 'min="1"'); ?>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <label for="edinme_tarihi" class="form-label">Edinme Tarihi</label>
-                            <input type="text" class="form-control flatpickr" id="edinme_tarihi" name="edinme_tarihi"
-                                value="<?php echo date('d.m.Y'); ?>">
+                            <?php echo Form::FormFloatInput('text', 'edinme_tarihi', date('d.m.Y'), null, 'Edinme Tarihi', 'calendar', 'form-control flatpickr'); ?>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <label for="edinme_tutari" class="form-label">Edinme Tutarı</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control money" id="edinme_tutari" name="edinme_tutari"
-                                    placeholder="0,00">
-                                <span class="input-group-text">₺</span>
-                            </div>
+                            <?php echo Form::FormFloatInput('text', 'edinme_tutari', null, '0,00', 'Edinme Tutarı', 'dollar-sign', 'form-control money'); ?>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <label for="durum" class="form-label">Durum</label>
-                            <select class="form-select" id="durum" name="durum">
-                                <option value="aktif">Aktif</option>
-                                <option value="pasif">Pasif</option>
-                                <option value="arizali">Arızalı</option>
-                                <option value="hurda">Hurda</option>
-                            </select>
+                            <?php
+                            $durumlar = [
+                                'aktif' => 'Aktif',
+                                'pasif' => 'Pasif',
+                                'arizali' => 'Arızalı',
+                                'hurda' => 'Hurda'
+                            ];
+                            echo Form::FormSelect2('durum', $durumlar, 'aktif', 'Durum', 'activity');
+                            ?>
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-12 mb-3">
-                            <label for="aciklama" class="form-label">Açıklama</label>
-                            <textarea class="form-control" id="aciklama" name="aciklama" rows="2"
-                                placeholder="Açıklama giriniz"></textarea>
+                            <?php echo Form::FormFloatTextarea('aciklama', null, 'Açıklama giriniz', 'Açıklama', 'file-text'); ?>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                     <button type="button" id="demirbasKaydet" class="btn btn-success">
-                        <i class="bx bx-save me-1"></i>Kaydet
+                        <i data-feather="save" class="me-1"></i>Kaydet
                     </button>
                 </div>
             </form>

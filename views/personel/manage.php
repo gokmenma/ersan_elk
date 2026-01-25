@@ -89,9 +89,9 @@ $allPersonel = array_map(function ($item) {
                             <div class="d-flex flex-wrap gap-2 float-end align-items-center">
                                 <!-- /**Yeni personel ekleniyorsa gösterme */ -->
                                 <?php if ($id > 0) { ?>
-                                <div style="min-width: 250px;">
-                                    <?php echo Form::FormSelect2('personel_select', $allPersonel, $id, 'Personel Değiştir', 'users', 'id', 'adi_soyadi', 'form-select select2'); ?>
-                                </div>
+                                    <div style="min-width: 250px;">
+                                        <?php echo Form::FormSelect2('personel_select', $allPersonel, $id, 'Personel Değiştir', 'users', 'id', 'adi_soyadi', 'form-select select2'); ?>
+                                    </div>
                                 <?php } ?>
                                 <a href="index?p=personel/list" class="btn btn-light waves-effect waves-light"><i
                                         class="bx bx-left-arrow-alt font-size-16 align-middle"></i></a>
@@ -408,4 +408,3 @@ $allPersonel = array_map(function ($item) {
 <script src="views/personel/js/ek_odeme.js"></script>
 <script src="views/personel/js/icra.js"></script>
 <script src="views/personel/js/evrak.js"></script>
-<script src="views/personel/js/izin.js"></script>

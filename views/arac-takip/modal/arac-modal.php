@@ -1,9 +1,10 @@
+<?php use App\Helper\Form; ?>
 <!-- Araç Ekleme/Düzenleme Modal -->
 <div class="modal fade" id="aracModal" tabindex="-1" aria-labelledby="aracModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-primary bg-gradient text-white">
-                <h5 class="modal-title" id="aracModalLabel"><i class="bx bx-car me-2"></i>Yeni Araç Ekle</h5>
+                <h5 class="modal-title" id="aracModalLabel"><i data-feather="truck" class="me-2"></i>Yeni Araç Ekle</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                     aria-label="Close"></button>
             </div>
@@ -14,113 +15,105 @@
                     <div class="row g-3">
                         <!-- Sol Kolon -->
                         <div class="col-md-6">
-                            <h6 class="text-primary border-bottom pb-2 mb-3"><i class="bx bx-info-circle me-1"></i>
+                            <h6 class="text-primary border-bottom pb-2 mb-3"><i data-feather="info" class="me-1"></i>
                                 Temel Bilgiler</h6>
 
                             <div class="mb-3">
-                                <label class="form-label">Plaka <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" name="plaka" required placeholder="34 ABC 123"
-                                    style="text-transform: uppercase;">
+                                <?php echo Form::FormFloatInput('text', 'plaka', null, '34 ABC 123', 'Plaka *', 'credit-card', 'form-control', true, null, 'on', false, 'style="text-transform: uppercase;"'); ?>
                             </div>
 
                             <div class="row">
                                 <div class="col-6 mb-3">
-                                    <label class="form-label">Marka</label>
-                                    <input type="text" class="form-control" name="marka" placeholder="Ford, Renault...">
+                                    <?php echo Form::FormFloatInput('text', 'marka', null, 'Ford, Renault...', 'Marka', 'truck'); ?>
                                 </div>
                                 <div class="col-6 mb-3">
-                                    <label class="form-label">Model</label>
-                                    <input type="text" class="form-control" name="model" placeholder="Focus, Clio...">
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-6 mb-3">
-                                    <label class="form-label">Model Yılı</label>
-                                    <input type="number" class="form-control" name="model_yili" min="1990" max="2030"
-                                        placeholder="2024">
-                                </div>
-                                <div class="col-6 mb-3">
-                                    <label class="form-label">Renk</label>
-                                    <input type="text" class="form-control" name="renk" placeholder="Beyaz, Siyah...">
+                                    <?php echo Form::FormFloatInput('text', 'model', null, 'Focus, Clio...', 'Model', 'truck'); ?>
                                 </div>
                             </div>
 
                             <div class="row">
                                 <div class="col-6 mb-3">
-                                    <label class="form-label">Araç Tipi</label>
-                                    <select class="form-select" name="arac_tipi">
-                                        <option value="binek">Binek</option>
-                                        <option value="kamyonet">Kamyonet</option>
-                                        <option value="kamyon">Kamyon</option>
-                                        <option value="minibus">Minibüs</option>
-                                        <option value="otobus">Otobüs</option>
-                                        <option value="motosiklet">Motosiklet</option>
-                                        <option value="diger">Diğer</option>
-                                    </select>
+                                    <?php echo Form::FormFloatInput('number', 'model_yili', null, '2024', 'Model Yılı', 'calendar', 'form-control', false, null, 'on', false, 'min="1990" max="2030"'); ?>
                                 </div>
                                 <div class="col-6 mb-3">
-                                    <label class="form-label">Yakıt Tipi</label>
-                                    <select class="form-select" name="yakit_tipi">
-                                        <option value="dizel">Dizel</option>
-                                        <option value="benzin">Benzin</option>
-                                        <option value="lpg">LPG</option>
-                                        <option value="elektrik">Elektrik</option>
-                                        <option value="hibrit">Hibrit</option>
-                                    </select>
+                                    <?php echo Form::FormFloatInput('text', 'renk', null, 'Beyaz, Siyah...', 'Renk', 'aperture'); ?>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <?php
+                                    $aracTipleri = [
+                                        'binek' => 'Binek',
+                                        'kamyonet' => 'Kamyonet',
+                                        'kamyon' => 'Kamyon',
+                                        'minibus' => 'Minibüs',
+                                        'otobus' => 'Otobüs',
+                                        'motosiklet' => 'Motosiklet',
+                                        'diger' => 'Diğer'
+                                    ];
+                                    echo Form::FormSelect2('arac_tipi', $aracTipleri, null, 'Araç Tipi', 'truck');
+                                    ?>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <?php
+                                    $yakitTipleri = [
+                                        'dizel' => 'Dizel',
+                                        'benzin' => 'Benzin',
+                                        'lpg' => 'LPG',
+                                        'elektrik' => 'Elektrik',
+                                        'hibrit' => 'Hibrit'
+                                    ];
+                                    echo Form::FormSelect2('yakit_tipi', $yakitTipleri, null, 'Yakıt Tipi', 'droplet');
+                                    ?>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Sağ Kolon -->
                         <div class="col-md-6">
-                            <h6 class="text-primary border-bottom pb-2 mb-3"><i class="bx bx-file me-1"></i> Evrak & KM
+                            <h6 class="text-primary border-bottom pb-2 mb-3"><i data-feather="file-text"
+                                    class="me-1"></i> Evrak & KM
                                 Bilgileri</h6>
 
                             <div class="row">
                                 <div class="col-6 mb-3">
-                                    <label class="form-label">Şase No</label>
-                                    <input type="text" class="form-control" name="sase_no" placeholder="VIN Numarası">
+                                    <?php echo Form::FormFloatInput('text', 'sase_no', null, 'VIN Numarası', 'Şase No', 'hash'); ?>
                                 </div>
                                 <div class="col-6 mb-3">
-                                    <label class="form-label">Motor No</label>
-                                    <input type="text" class="form-control" name="motor_no">
+                                    <?php echo Form::FormFloatInput('text', 'motor_no', null, '', 'Motor No', 'settings'); ?>
                                 </div>
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Ruhsat Sahibi</label>
-                                <input type="text" class="form-control" name="ruhsat_sahibi"
-                                    placeholder="Ad Soyad veya Firma Adı">
+                                <?php echo Form::FormFloatInput('text', 'ruhsat_sahibi', null, 'Ad Soyad veya Firma Adı', 'Ruhsat Sahibi', 'user'); ?>
                             </div>
 
                             <div class="row">
                                 <div class="col-6 mb-3">
-                                    <label class="form-label">Başlangıç KM</label>
-                                    <input type="number" class="form-control" name="baslangic_km" min="0"
-                                        placeholder="0">
+                                    <?php echo Form::FormFloatInput('number', 'baslangic_km', null, '0', 'Başlangıç KM', 'activity', 'form-control', false, null, 'on', false, 'min="0"'); ?>
                                 </div>
                                 <div class="col-6 mb-3">
-                                    <label class="form-label">Güncel KM</label>
-                                    <input type="number" class="form-control" name="guncel_km" min="0" placeholder="0">
+                                    <?php echo Form::FormFloatInput('number', 'guncel_km', null, '0', 'Güncel KM', 'activity', 'form-control', false, null, 'on', false, 'min="0"'); ?>
                                 </div>
                             </div>
 
-                            <h6 class="text-warning border-bottom pb-2 mb-3 mt-3"><i
-                                    class="bx bx-calendar-exclamation me-1"></i> Tarihler</h6>
+                            
 
-                            <div class="row">
+                           
+                        </div>
+                        <div class="col-12">
+                             <div class="row">
+                                <h6 class="text-warning border-bottom pb-2 mb-3 mt-3"><i data-feather="calendar"
+                                    class="me-1"></i> Tarihler</h6>
                                 <div class="col-4 mb-3">
-                                    <label class="form-label">Muayene Tarihi</label>
-                                    <input type="date" class="form-control" name="muayene_tarihi">
+                                    <?php echo Form::FormFloatInput('text', 'muayene_tarihi', null, '', 'Muayene Tarihi', 'calendar', 'form-control flatpickr', false, null, 'on', false, 'min="0"'); ?>
                                 </div>
                                 <div class="col-4 mb-3">
-                                    <label class="form-label">Sigorta Bitiş</label>
-                                    <input type="date" class="form-control" name="sigorta_bitis_tarihi">
+                                    <?php echo Form::FormFloatInput('text', 'sigorta_bitis_tarihi', null, '', 'Sigorta Bitiş', 'calendar', 'form-control flatpickr', false, null, 'on', false, 'min="0"'); ?>
                                 </div>
                                 <div class="col-4 mb-3">
-                                    <label class="form-label">Kasko Bitiş</label>
-                                    <input type="date" class="form-control" name="kasko_bitis_tarihi">
+                                    <?php echo Form::FormFloatInput('text', 'kasko_bitis_tarihi', null, '', 'Kasko Bitiş', 'calendar', 'form-control flatpickr', false, null, 'on', false, 'min="0"'); ?>
                                 </div>
                             </div>
                         </div>
@@ -129,16 +122,13 @@
                         <div class="col-12">
                             <div class="row">
                                 <div class="col-md-9 mb-3">
-                                    <label class="form-label">Notlar</label>
-                                    <textarea class="form-control" name="notlar" rows="2"
-                                        placeholder="Araç hakkında notlar..."></textarea>
+                                    <?php echo Form::FormFloatTextarea('notlar', null, 'Araç hakkında notlar...', 'Notlar', 'file-text'); ?>
                                 </div>
                                 <div class="col-md-3 mb-3">
-                                    <label class="form-label">Durum</label>
-                                    <select class="form-select" name="aktif_mi">
-                                        <option value="1">Aktif</option>
-                                        <option value="0">Pasif</option>
-                                    </select>
+                                    <?php
+                                    $durumlar = ['1' => 'Aktif', '0' => 'Pasif'];
+                                    echo Form::FormSelect2('aktif_mi', $durumlar, '1', 'Durum', 'check-circle');
+                                    ?>
                                 </div>
                             </div>
                         </div>
@@ -148,7 +138,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                 <button type="button" class="btn btn-primary" id="btnAracKaydet">
-                    <i class="bx bx-save me-1"></i> Kaydet
+                    <i data-feather="save" class="me-1"></i> Kaydet
                 </button>
             </div>
         </div>
