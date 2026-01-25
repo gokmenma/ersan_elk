@@ -208,7 +208,7 @@ if ($page == "kasa/duzenle" || $page == "kasa/list") {
 <script src="assets/js/page.init.js"></script>
 
 <!-- App -General js -->
-<script src="assets/js/app_module.js"></script>
+<script src="assets/js/app_module.js?v=<?php echo filemtime('assets/js/app_module.js'); ?>"></script>
 
 <!-- Functions and declarations-->
 <script src="assets/js/app.js?v=<?php echo filemtime('assets/js/app.js'); ?>"></script>

@@ -56,8 +56,9 @@ $allPersonel = $PersonelModel->all();
                                     <?php
                                     $resimYolu = $personel->resim_yolu ?? '';
                                     ?>
-                                    <img id="personelImage" src="<?php echo $resimYolu ?? ''; ?>" alt=""
-                                        class="img-thumbnail"
+                                    <img id="personelImage"
+                                        src="<?php echo !empty($resimYolu) ? $resimYolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
+                                        alt="" class="img-thumbnail"
                                         style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px !important;">
                                     <button type="button" class="btn btn-sm btn-light position-absolute bottom-0 end-0"
                                         id="changePhotoButton" style="padding: 2px 6px;">
@@ -81,9 +82,12 @@ $allPersonel = $PersonelModel->all();
                         </div>
                         <div class="col-md-4">
                             <div class="d-flex flex-wrap gap-2 float-end align-items-center">
+                                <!-- /**Yeni personel ekleniyorsa gösterme */ -->
+                                <?php if ($id > 0) { ?>
                                 <div style="min-width: 250px;">
                                     <?php echo Form::FormSelect2('personel_select', $allPersonel, $id, 'Personel Değiştir', 'users', 'id', 'adi_soyadi', 'form-select select2'); ?>
                                 </div>
+                                <?php } ?>
                                 <a href="index?p=personel/list" class="btn btn-light waves-effect waves-light"><i
                                         class="bx bx-left-arrow-alt font-size-16 align-middle"></i></a>
 

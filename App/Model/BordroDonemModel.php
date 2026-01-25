@@ -14,7 +14,7 @@ class BordroDonemModel extends Model
     {
 
        /**Session başlatılmamışsa başlat */
-       if(!isset($_SESSION)){
+       if(session_status() === PHP_SESSION_NONE){
            session_start();
        }
 
