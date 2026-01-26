@@ -21,6 +21,7 @@ class SystemLogModel extends Model
     {
         return $this->saveWithAttr([
             'user_id' => $userId,
+            'firma_id' => $_SESSION['firma_id'] ?? 0,
             'action_type' => $actionType,
             'description' => $description
         ]);
@@ -34,11 +35,14 @@ class SystemLogModel extends Model
         $sql = "SELECT l.*, u.adi_soyadi 
                 FROM {$this->table} l
                 LEFT JOIN users u ON l.user_id = u.id
+                WHERE l.firma_id = ?
                 ORDER BY l.created_at DESC 
                 LIMIT ?";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(1, $limit, PDO::PARAM_INT);
+        $stmt->bindValue(1, $_SESSION["firma_id"], PDO::PARAM_INT);
+        $stmt->bindValue(2, $limit, PDO::PARAM_INT);
+
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }

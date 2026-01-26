@@ -11,6 +11,7 @@ use App\Helper\Security;
 use App\Helper\Helper;
 use App\Helper\Date;
 use App\Model\TanimlamalarModel;
+use App\Model\SystemLogModel;
 
 
 
@@ -21,6 +22,8 @@ $Tanimlamalar = new TanimlamalarModel();
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $action = $_POST['action'] ?? '';
     $Personel = new PersonelModel();
+    $SystemLog = new SystemLogModel();
+    $userId = $_SESSION['user_id'] ?? 0;
 
     if ($action == 'personel-kaydet') {
         try {
@@ -137,13 +140,77 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             }
 
+            // Güncelleme ise eski verileri al (Log için)
+            $oldData = null;
+            if ($personel_id > 0) {
+                $oldData = $Personel->find($personel_id);
+            }
+
             $Personel->saveWithAttr($data);
 
             if ($personel_id > 0) {
-                // Güncelleme
+                // Güncelleme Logu
+                $changes = [];
+                if ($oldData) {
+                    foreach ($data as $key => $value) {
+                        // Bazı alanları loglamaya gerek yok veya özel karşılaştırma lazım
+                        if (in_array($key, ['id', 'firma_id', 'guncelleme_tarihi']))
+                            continue;
+
+                        $oldValue = $oldData->$key ?? null;
+                        $newValue = $value;
+
+                        // Normalizasyon
+                        $normOld = $oldValue;
+                        $normNew = $newValue;
+
+                        // Tarih normalizasyonu (tireleri kaldır ve 0000-00-00 kontrolü yap)
+                        if (strpos($key, 'tarih') !== false) {
+                            $normOld = str_replace('-', '', strval($oldValue));
+                            $normNew = str_replace('-', '', strval($newValue));
+                            if ($normOld === '00000000' || empty($normOld))
+                                $normOld = '';
+                            if ($normNew === '00000000' || empty($normNew))
+                                $normNew = '';
+                        }
+
+                        // Sayısal normalizasyon (float karşılaştırması)
+                        if (is_numeric($normOld) && is_numeric($normNew)) {
+                            if (abs(floatval($normOld) - floatval($normNew)) < 0.00001) {
+                                $normOld = $normNew; // Eşit kabul et
+                            }
+                        }
+
+                        if (strval($normOld) !== strval($normNew)) {
+                            $displayOld = $oldValue;
+                            $displayNew = $newValue;
+
+                            if (strpos($key, 'tarih') !== false) {
+                                $displayOld = ($normOld !== '') ? Date::dmY($oldValue) : 'Boş';
+                                $displayNew = ($normNew !== '') ? Date::dmY($newValue) : 'Boş';
+                            } elseif (is_numeric($normOld) && is_numeric($normNew)) {
+                                // Tutar veya ücret ise formatla, değilse (id vb) olduğu gibi bırak
+                                if (strpos($key, 'tutar') !== false || strpos($key, 'ucret') !== false || strpos($key, 'maas') !== false) {
+                                    $displayOld = number_format(floatval($oldValue), 2, ',', '.') . ' ₺';
+                                    $displayNew = number_format(floatval($newValue), 2, ',', '.') . ' ₺';
+                                }
+                            }
+
+                            $changes[] = "$key: $displayOld -> $displayNew";
+                        }
+                    }
+                }
+                $changesStr = !empty($changes) ? implode(', ', $changes) : 'Değişiklik yok';
+                $tcNo = $data['tc_kimlik_no'] ?? ($oldData->tc_kimlik_no ?? 'Bilinmeyen');
+                $SystemLog->logAction($userId, 'Personel Güncelleme', "$tcNo kimlik numaralı personelin verileri güncellendi (Güncellenen veriler: { $changesStr })");
+
                 $message = "Personel başarıyla güncellendi.";
             } else {
-                // Yeni Kayıt
+                // Yeni Kayıt Logu
+                $tcNo = $data['tc_kimlik_no'] ?? 'Bilinmeyen';
+                $adiSoyadi = $data['adi_soyadi'] ?? '';
+                $SystemLog->logAction($userId, 'Personel Kayıt', "Yeni personel eklendi: $tcNo - $adiSoyadi");
+
                 $message = "Personel başarıyla kaydedildi.";
             }
 

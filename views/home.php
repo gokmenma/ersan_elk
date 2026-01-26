@@ -181,7 +181,66 @@ $toplam_bakiye = 20000;
         </div>
     </div>
 
- 
+    <!-- BİLDİRİMLER -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Görev ve Bildirimler</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-centered table-nowrap mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Bildirim Tipi</th>
+                                    <th>Başlık</th>
+                                    <th>İçerik</th>
+                                    <th>Tarih</th>
+                                    <th class="text-center">İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($recent_logs)): ?>
+                                    <tr>
+                                        <td colspan="5" class="text-center">Kayıt bulunmamaktadır.</td>
+                                    </tr>
+                                <?php else: ?>
+                                    <?php foreach ($recent_logs as $log): ?>
+                                        <tr>
+                                            <td>
+                                                <i class="bx bx-info-circle me-1"></i>
+                                                <?php echo htmlspecialchars($log->action_type); ?>
+                                            </td>
+                                            <td><?php echo htmlspecialchars($log->action_type); ?></td>
+                                            <td>
+                                                <?php
+                                                $user_name = $log->adi_soyadi ?? 'Sistem';
+                                                $full_desc = htmlspecialchars($log->description);
+                                                $short_desc = mb_strimwidth($full_desc, 0, 80, "...");
+                                                echo $short_desc . " <small class='text-muted'>($user_name tarafından)</small>";
+                                                ?>
+                                            </td>
+                                            <td><?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?></td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-sm btn-soft-primary btn-log-detay"
+                                                    data-title="<?php echo htmlspecialchars($log->action_type); ?>"
+                                                    data-user="<?php echo htmlspecialchars($user_name); ?>"
+                                                    data-date="<?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?>"
+                                                    data-content="<?php echo htmlspecialchars($log->description); ?>">
+                                                    <i class="bx bx-show me-1"></i> Detay
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="row">
         <div class="col-md-6">
@@ -390,54 +449,6 @@ $toplam_bakiye = 20000;
             </div>
         </div>
     </div>
-       <!-- BİLDİRİMLER -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5>Görev ve Bildirimler</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-centered table-nowrap mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Bildirim Tipi</th>
-                                    <th>Başlık</th>
-                                    <th>İçerik</th>
-                                    <th>Tarih</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (empty($recent_logs)): ?>
-                                    <tr>
-                                        <td colspan="4" class="text-center">Kayıt bulunmamaktadır.</td>
-                                    </tr>
-                                <?php else: ?>
-                                    <?php foreach ($recent_logs as $log): ?>
-                                        <tr>
-                                            <td>
-                                                <i class="bx bx-info-circle me-1"></i>
-                                                <?php echo htmlspecialchars($log->action_type); ?>
-                                            </td>
-                                            <td><?php echo htmlspecialchars($log->action_type); ?></td>
-                                            <td>
-                                                <?php
-                                                $user_name = $log->adi_soyadi ?? 'Sistem';
-                                                echo htmlspecialchars($log->description) . " <small class='text-muted'>($user_name tarafından)</small>";
-                                                ?>
-                                            </td>
-                                            <td><?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <div class="card">
         <div class="card-header">
@@ -503,6 +514,45 @@ $toplam_bakiye = 20000;
                 <a href="#" id="modalGitBtn" class="btn btn-primary px-4">
                     <i class="bx bx-right-arrow-alt me-1"></i>Talep Sayfasına Git
                 </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log Detay Modal -->
+<div class="modal fade" id="modalLogDetay" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bx bx-info-circle me-2"></i>Bildirim Detayı</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="text-muted small mb-1">Bildirim Tipi</label>
+                        <h6 id="logDetayTitle" class="fw-bold">-</h6>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <label class="text-muted small mb-1">Tarih</label>
+                        <h6 id="logDetayDate" class="fw-bold">-</h6>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="text-muted small mb-1">İşlemi Yapan</label>
+                    <h6 id="logDetayUser" class="fw-bold">-</h6>
+                </div>
+                <hr>
+                <div class="mb-0">
+                    <label class="text-muted small mb-1">İçerik Detayı</label>
+                    <div id="logDetayContent" class="p-3 bg-light rounded border"
+                        style="white-space: pre-wrap; line-height: 1.6;">
+                        -
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
             </div>
         </div>
     </div>
@@ -858,6 +908,57 @@ $toplam_bakiye = 20000;
 
     document.addEventListener('DOMContentLoaded', function () {
         const API_URL = 'views/talepler/api.php';
+
+        // Log Detay Modal
+        document.querySelectorAll('.btn-log-detay').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var title = this.dataset.title;
+                var user = this.dataset.user;
+                var date = this.dataset.date;
+                var content = this.dataset.content;
+
+                document.getElementById('logDetayTitle').textContent = title;
+                document.getElementById('logDetayUser').textContent = user;
+                document.getElementById('logDetayDate').textContent = date;
+
+                // İçeriği güzelleştir (Eğer { ... } formatındaysa)
+                if (content.includes('{') && content.includes('}')) {
+                    try {
+                        let parts = content.split(' (Güncellenen veriler: { ');
+                        let mainText = parts[0];
+                        let changesPart = parts[1].replace(' })', '');
+                        let changes = changesPart.split(', ');
+
+                        let formattedContent = `<div class="mb-2 fw-bold text-primary">${mainText}</div>`;
+                        formattedContent += `<table class="table table-sm table-bordered mt-2 mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Alan</th>
+                                    <th>Değişim</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+
+                        changes.forEach(change => {
+                            let [key, val] = change.split(': ');
+                            formattedContent += `<tr>
+                                <td class="fw-bold" style="width: 30%;">${key}</td>
+                                <td>${val}</td>
+                            </tr>`;
+                        });
+
+                        formattedContent += `</tbody></table>`;
+                        document.getElementById('logDetayContent').innerHTML = formattedContent;
+                    } catch (e) {
+                        document.getElementById('logDetayContent').textContent = content;
+                    }
+                } else {
+                    document.getElementById('logDetayContent').textContent = content;
+                }
+
+                new bootstrap.Modal(document.getElementById('modalLogDetay')).show();
+            });
+        });
 
         // Detay Modal
         document.querySelectorAll('.btn-home-detay').forEach(function (btn) {
