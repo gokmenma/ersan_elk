@@ -1,6 +1,6 @@
 <!-- KM Kaydı Modal -->
 <div class="modal fade" id="kmModal" tabindex="-1" aria-labelledby="kmModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-info bg-gradient text-white">
                 <h5 class="modal-title" id="kmModalLabel"><i data-feather="activity" class="me-2"></i>KM Kaydı Ekle</h5>
@@ -51,7 +51,7 @@
                         <div class="col-6 mb-3">
                             <?php echo \App\Helper\Form::FormFloatInput(
                                 'number',
-                                'baslangic_km',
+                                'km_baslangic_km',
                                 '',
                                 'Gün başı KM',
                                 'Başlangıç KM *',
@@ -67,7 +67,7 @@
                         <div class="col-6 mb-3">
                             <?php echo \App\Helper\Form::FormFloatInput(
                                 'number',
-                                'bitis_km',
+                                'km_bitis_km',
                                 '',
                                 'Gün sonu KM',
                                 'Bitiş KM *',
@@ -131,15 +131,16 @@
     $(document).on('change', '#kmModal #arac_id', function () {
         const aracId = $(this).val();
         if (aracId && kmAracMap[aracId]) {
-            $('#kmModal #baslangic_km').val(kmAracMap[aracId]);
+            $('#kmModal #km_baslangic_km').val(kmAracMap[aracId]);
         }
     });
 
     // Yapılan KM otomatik hesaplama
-    $(document).on('input', '#baslangic_km, #bitis_km', function () {
-        const baslangic = parseInt($('#baslangic_km').val()) || 0;
-        const bitis = parseInt($('#bitis_km').val()) || 0;
+    $(document).on('input', '#kmModal #km_baslangic_km, #kmModal #km_bitis_km', function () {
+        const baslangic = parseInt($('#kmModal #km_baslangic_km').val()) || 0;
+        const bitis = parseInt($('#kmModal #km_bitis_km').val()) || 0;
         const yapilan = bitis - baslangic;
+        console.log(baslangic);
         $('#yapilan_km').val(yapilan > 0 ? yapilan + ' km' : '0 km');
     });
 </script>

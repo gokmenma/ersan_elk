@@ -1,6 +1,6 @@
 <!-- Yakıt Kaydı Modal -->
 <div class="modal fade" id="yakitModal" tabindex="-1" aria-labelledby="yakitModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-success bg-gradient text-white">
                 <h5 class="modal-title" id="yakitModalLabel"><i data-feather="droplet" class="me-2"></i>Yakıt Kaydı Ekle
