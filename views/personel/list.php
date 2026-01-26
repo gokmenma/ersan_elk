@@ -85,6 +85,10 @@ if (Gate::canWithMessage("personel_listesi")) {
                         .personel-name-container:hover .personel-hover-image {
                             display: block;
                         }
+                        
+                        .fw-bold{
+                            font-weight: 600 !important;
+                        }
                     </style>
 
                     <div class="card-body overflow-auto">

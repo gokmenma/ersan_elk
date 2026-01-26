@@ -36,7 +36,7 @@ $(document).ready(function () {
         render: function (data, type, row) {
           return `
             <div class="personel-name-container">
-                <a target="_blank" href="index?p=personel/manage&id=${row.id}">${data}</a>
+                <a class="fw-bold" target="_blank" href="index?p=personel/manage&id=${row.id}">${data}</a>
                 <img src="${row.resim_yolu ? row.resim_yolu : "assets/images/users/user-dummy-img.jpg"}"
                     alt="${data}" class="personel-hover-image">
             </div>`;

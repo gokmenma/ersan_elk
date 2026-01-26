@@ -115,68 +115,70 @@ $toplam_bakiye = 20000;
     ?>
     <!-- end page title -->
 
-    <div class="row">
+    <div class="row mb-3">
         <div class="col-md-3">
-            <div class="card widget-flat">
-                <div class="card-body">
-                    <div class="float-end ">
-                        <span class="badge badge-success mr-1 font-size-36 opacity-75 border-radius-12 float-end">
-                            <i class='bx bx-user'></i> </span>
+            <div class="summary-card animate-card" style="--delay: 0.1s">
+                <div class="card-header-flex">
+                    <h5 class="card-title">Aktif Personel</h5>
+                    <div class="trend-badge up">
+                        <i class='bx bx-trending-up'></i> +2.5%
                     </div>
-                    <h5 class="text-muted mt-0">Aktif Personel Sayısı</h5>
-                    <h3 class="mt-3 mb-3"><?php echo $personel_sayisi ?? 0; ?></h3>
-                    <p class="mb-0 text-muted">
-                        <span class="text-nowrap">Tümünü Gör</span>
-                    </p>
                 </div>
+                <div class="main-value"><?php echo $personel_sayisi ?? 0; ?></div>
+                <div class="trend-description">
+                    Sistemde aktif çalışıyor <i class='bx bx-trending-up'></i>
+                </div>
+                <div class="sub-text">Son 30 gün verilerine göre</div>
             </div>
         </div>
 
         <div class="col-md-3">
-            <div class="card widget-flat">
-                <div class="card-body">
-                    <div class="float-end ">
-                        <span class="badge badge-danger mr-1 font-size-36 opacity-75 border-radius-12 float-end">
-                            <i class='bx bx-user'></i> </span>
+            <div class="summary-card animate-card" style="--delay: 0.2s">
+                <div class="card-header-flex">
+                    <h5 class="card-title">Pasif Personel</h5>
+                    <div class="trend-badge down">
+                        <i class='bx bx-trending-down'></i> -1.2%
                     </div>
-                    <h5 class="text-muted mt-0">Pasif Personel Sayısı</h5>
-                    <h3 class="mt-3 mb-3"><?php echo $pasif_personel_sayisi ?? 0; ?></h3>
-                    <p class="mb-0 text-muted">
-                        <span class="text-nowrap">Tümünü Gör</span>
-                    </p>
                 </div>
+                <div class="main-value"><?php echo $pasif_personel_sayisi ?? 0; ?></div>
+                <div class="trend-description">
+                    İşten ayrılan/pasif <i class='bx bx-trending-down'></i>
+                </div>
+                <div class="sub-text">Toplam pasif kayıt sayısı</div>
             </div>
         </div>
 
         <div class="col-md-3">
-            <div class="card widget-flat">
-                <div class="card-body">
-                    <div class="float-end ">
-                        <span class="badge badge-primary mr-1 font-size-36 opacity-75 border-radius-12 float-end">
-                            <i class='bx bxs-user-account'></i> </span>
+            <div class="summary-card animate-card" style="--delay: 0.3s">
+                <div class="card-header-flex">
+                    <h5 class="card-title">Toplam Personel</h5>
+                    <div class="trend-badge up">
+                        <i class='bx bx-trending-up'></i> +5.4%
                     </div>
-                    <h5 class="text-muted mt-0">Toplam Personel Sayısı</h5>
-                    <h3 class="mt-3 mb-3"><?php echo $toplam_personel_sayisi ?? 0; ?></h3>
-                    <p class="mb-0 text-muted">
-                        <span class="text-nowrap">Tümünü Gör</span>
-                    </p>
                 </div>
+                <div class="main-value"><?php echo $toplam_personel_sayisi ?? 0; ?></div>
+                <div class="trend-description">
+                    Genel personel havuzu <i class='bx bx-trending-up'></i>
+                </div>
+                <div class="sub-text">Tüm zamanların toplamı</div>
             </div>
         </div>
 
         <div class="col-md-3">
-            <div class="card widget-flat">
-                <div class="card-body">
-                    <div class="float-end ">
-                        <span class="badge badge-warning mr-1 font-size-36 opacity-75 border-radius-12 float-end">
-                            <i class='bx bx-user'></i> </span>
+            <div class="summary-card animate-card" style="--delay: 0.4s">
+                <div class="card-header-flex">
+                    <h5 class="card-title">Bekleyen Talepler</h5>
+                    <div class="trend-badge <?php echo $personel_talep_sayisi > 10 ? 'down' : 'up'; ?>">
+                        <i
+                            class='bx <?php echo $personel_talep_sayisi > 10 ? 'bx-trending-up' : 'bx-trending-down'; ?>'></i>
+                        <?php echo $personel_talep_sayisi > 0 ? 'Dikkat' : 'Stabil'; ?>
                     </div>
-                    <h5 class="text-muted mt-0">Bekleyen Personel Talep Sayısı</h5>
-                    <h3 class="mt-3 mb-3"><?php echo $personel_talep_sayisi ?? 0; ?></h3>
-                    <p class="mb-0 text-muted">
-                        <span class="text-nowrap">Tümünü Gör</span>
-                    </p>
                 </div>
+                <div class="main-value"><?php echo $personel_talep_sayisi ?? 0; ?></div>
+                <div class="trend-description">
+                    Onay bekleyen işlemler <i class='bx bx-time-five'></i>
+                </div>
+                <div class="sub-text">İzin, avans ve diğer talepler</div>
             </div>
         </div>
     </div>
@@ -798,7 +800,6 @@ $toplam_bakiye = 20000;
     }
 
     .modal-detay-card .label {
-        color: #6c757d;
         font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 1px;
@@ -807,6 +808,7 @@ $toplam_bakiye = 20000;
         align-items: center;
         gap: 0.5rem;
         font-weight: 600;
+        color: #6c757d;
     }
 
     .modal-detay-card .label i {
@@ -873,10 +875,119 @@ $toplam_bakiye = 20000;
         background: rgba(255, 255, 255, 0.3);
         transform: rotate(90deg);
     }
+
+    /* Summary Cards Shadcn Style */
+    .summary-card {
+        background: linear-gradient(to top, #F3F3F3, #FFFFFF);
+        border-radius: 12px;
+        padding: 24px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+
+    .animate-card {
+        opacity: 0;
+        animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        animation-delay: var(--delay);
+    }
+
+    @keyframes slideUpFade {
+        0% {
+            opacity: 0;
+            transform: translateY(12px) scale(0.99);
+        }
+
+        100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .summary-card:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transform: translateY(-2px);
+    }
+
+    .summary-card .card-header-flex {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+
+    .summary-card .card-title {
+        color: #0f172a;
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin: 0;
+        letter-spacing: -0.01em;
+    }
+
+    .summary-card .trend-badge {
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: #f8fafc;
+        border: 1px solid #f1f5f9;
+    }
+
+    .summary-card .trend-badge.up {
+        color: #10b981;
+    }
+
+    .summary-card .trend-badge.down {
+        color: #ef4444;
+    }
+
+    .summary-card .main-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 4px;
+        letter-spacing: -0.05em;
+    }
+
+    .summary-card .trend-description {
+        font-size: 0.875rem;
+        color: #64748b;
+        margin-bottom: 2px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .summary-card .sub-text {
+        font-size: 0.75rem;
+        color: #94a3b8;
+    }
 </style>
 
 <script src="assets/libs/apexcharts/apexcharts.min.js"></script>
 <script>
+    // Number Counter Function
+    function animateValue(obj, start, end, duration) {
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            obj.innerHTML = Math.floor(progress * (end - start) + start);
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            }
+        };
+        window.requestAnimationFrame(step);
+    }
+
     var months = <?php echo json_encode($months); ?>;
     var totals = <?php echo json_encode($totals); ?>;
 
@@ -908,6 +1019,15 @@ $toplam_bakiye = 20000;
 
     document.addEventListener('DOMContentLoaded', function () {
         const API_URL = 'views/talepler/api.php';
+
+        // Start counters
+        document.querySelectorAll('.main-value').forEach(el => {
+            const finalValue = parseInt(el.innerText);
+            el.innerText = '0';
+            setTimeout(() => {
+                animateValue(el, 0, finalValue, 1500);
+            }, 300);
+        });
 
         // Log Detay Modal
         document.querySelectorAll('.btn-log-detay').forEach(function (btn) {

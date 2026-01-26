@@ -80,6 +80,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $SystemLog->logAction($userId, 'Maaş Dönem Açma', "$donem_adi dönemi oluşturuldu.");
                 break;
 
+            // Dönem Güncelle
+            case 'donem-guncelle':
+                $donem_id = intval($_POST['donem_id'] ?? 0);
+                $donem_adi = trim($_POST['donem_adi'] ?? '');
+
+                if ($donem_id <= 0 || empty($donem_adi)) {
+                    throw new Exception('Geçersiz dönem bilgileri.');
+                }
+
+                $donem = $BordroDonem->getDonemById($donem_id);
+                if (!$donem) {
+                    throw new Exception('Dönem bulunamadı.');
+                }
+
+                if ($donem->kapali_mi) {
+                    throw new Exception('Kapalı dönemler güncellenemez.');
+                }
+
+                $sql = $BordroDonem->getDb()->prepare("UPDATE bordro_donemi SET donem_adi = ? WHERE id = ?");
+                if ($sql->execute([$donem_adi, $donem_id])) {
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Dönem adı başarıyla güncellendi.',
+                        'donem_adi' => $donem_adi
+                    ]);
+                    $SystemLog->logAction($userId, 'Maaş Dönem Güncelleme', "Dönem adı güncellendi: $donem_adi (ID: $donem_id)");
+                } else {
+                    throw new Exception('Güncelleme işlemi başarısız.');
+                }
+                break;
+
             // Personel Kesinti Listesi Getir
             case 'get-personel-kesinti-listesi':
                 $personel_id = intval($_POST['personel_id'] ?? 0);

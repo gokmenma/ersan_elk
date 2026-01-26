@@ -153,6 +153,70 @@ $(document).ready(function () {
     return false;
   });
 
+  // Dönem Adı Düzenle Butonu
+  $(document).on("click", "#btnEditDonemAdi, #btnHeaderEditDonem", function () {
+    const currentName = $("#displayDonemAdi").text().trim();
+    $("#edit_donem_adi").val(currentName);
+    showModal("modalDonemGuncelle");
+  });
+
+  // Dönem Güncelle Formu
+  $("#formDonemGuncelle").on("submit", function (e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    formData.append("action", "donem-guncelle");
+
+    $.ajax({
+      url: "views/bordro/api.php",
+      type: "POST",
+      data: formData,
+      processData: false,
+      contentType: false,
+      dataType: "json",
+      beforeSend: function () {
+        $('#formDonemGuncelle button[type="submit"]')
+          .prop("disabled", true)
+          .html('<i class="bx bx-loader bx-spin me-1"></i>Güncelleniyor...');
+      },
+      success: function (response) {
+        if (response.status === "success") {
+          hideModal("modalDonemGuncelle");
+          $("#displayDonemAdi").text(response.donem_adi);
+          // Dönem selectbox'ındaki metni de güncelle
+          const donemId = formData.get("donem_id");
+          $(`#donemSelect option[value="${donemId}"]`).text(response.donem_adi);
+          $("#donemSelect").trigger("change.select2");
+
+          Swal.fire({
+            icon: "success",
+            title: "Başarılı!",
+            text: response.message,
+            timer: 1500,
+            showConfirmButton: false,
+          });
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Hata!",
+            text: response.message,
+          });
+        }
+      },
+      error: function () {
+        Swal.fire({
+          icon: "error",
+          title: "Hata!",
+          text: "Bir hata oluştu.",
+        });
+      },
+      complete: function () {
+        $('#formDonemGuncelle button[type="submit"]')
+          .prop("disabled", false)
+          .html('<i class="bx bx-save me-1"></i>Güncelle');
+      },
+    });
+  });
+
   $(document).on("change", "#baslangic_tarihi", function () {
     let baslangic = $(this).val();
     let bitis = ayinSonGununuGetir(baslangic);

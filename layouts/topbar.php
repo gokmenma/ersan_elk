@@ -48,7 +48,7 @@ $firma_option = $FirmaModel->option();
                 </a>
             </div>
 
-            <button type="button" class="btn btn-sm px-3 font-size-24 header-item" id="vertical-menu-btn">
+            <button type="button" class="btn btn-sm header-item" id="vertical-menu-btn">
                 <i data-feather="menu"></i>
             </button>
 
