@@ -3,7 +3,7 @@
 namespace App\Model;
 
 use App\Helper\Helper;
-use App\Model\Model; 
+use App\Model\Model;
 use App\Model\UserModel;
 use PDO;
 
@@ -30,7 +30,7 @@ class MenuModel extends Model
         // __DIR__ şu anki dosyanın (MenuModel.php) dizinidir: C:\xampp\htdocs\cansen\admin\App\Model
         $this->baseCacheDir = dirname(__DIR__, 2) . '/cache';
 
-        $this->ownerId = isset($_SESSION['owner_id']) ? (int)$_SESSION['owner_id'] : 0; // Kiracı ID'si, oturumdan alınır. Eğer oturumda yoksa 0 olarak ayarlanır.
+        $this->ownerId = isset($_SESSION['owner_id']) ? (int) $_SESSION['owner_id'] : 0; // Kiracı ID'si, oturumdan alınır. Eğer oturumda yoksa 0 olarak ayarlanır.
 
         if ($this->ownerId !== 0) {
             // $this->baseCacheDir şimdi doğru yolu (C:\xampp\htdocs\cansen\admin/cache) göstermeli
@@ -81,7 +81,7 @@ class MenuModel extends Model
 
         $menuData = $this->fetchAndBuildMenuFromDb($user_id, $roleId); // roleId parametresini ekledim
 
-       
+
         // Sadece geçerli bir kiracı varsa ve dizin oluşturulmuşsa cache'e yaz
         // (Bu kontrol yukarıda yapıldığı için burada sadece file_put_contents yeterli olabilir,
         // ama iki kez kontrol etmek zarar vermez)
@@ -126,7 +126,7 @@ class MenuModel extends Model
                 WHERE m.is_active = 1 AND m.id IN ({$placeholders})
                 ORDER BY m.group_name, m.menu_order";
         //sql çıktısını göster 
-      
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute(array_values($allRequiredIds)); // array_values burada da önemli
         $accessibleMenus = $stmt->fetchAll(PDO::FETCH_OBJ);
@@ -225,5 +225,39 @@ class MenuModel extends Model
 
         //echo Helper::dd($structuredMenu);
         return $structuredMenu;
+    }
+
+    public function getMenuByLink(string $link): ?object
+    {
+        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE menu_link = ? LIMIT 1");
+        $stmt->execute([$link]);
+        $result = $stmt->fetch(PDO::FETCH_OBJ);
+        return $result ?: null;
+    }
+
+    public function getActiveMenuIds(?object $currentMenu): array
+    {
+        $activeIds = [];
+        if (!$currentMenu) {
+            return $activeIds;
+        }
+
+        $activeIds[] = (int) $currentMenu->id;
+        $parentId = (int) $currentMenu->parent_id;
+
+        while ($parentId != 0) {
+            $stmt = $this->db->prepare("SELECT id, parent_id FROM {$this->table} WHERE id = ?");
+            $stmt->execute([$parentId]);
+            $parent = $stmt->fetch(PDO::FETCH_OBJ);
+
+            if ($parent) {
+                $activeIds[] = (int) $parent->id;
+                $parentId = (int) $parent->parent_id;
+            } else {
+                break;
+            }
+        }
+
+        return $activeIds;
     }
 }

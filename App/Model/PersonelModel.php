@@ -5,7 +5,6 @@ namespace App\Model;
 use App\Model\Model;
 use PDO;
 
-use App\Helper\Security;
 
 class PersonelModel extends Model
 {

@@ -5,6 +5,10 @@ namespace App\Model;
 use App\Model\Model;
 use PDO;
 
+/**
+ * SystemLogModel Class
+ * Handles system logging operations
+ */
 class SystemLogModel extends Model
 {
     protected $table = 'system_logs';
