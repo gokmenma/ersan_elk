@@ -29,7 +29,7 @@ class Form
                 ' . ($readonly ? 'readonly' : '') . '
                 ' . $attributes . '
                 >
-            <label for="input-' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
+            <label for="' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
             <div class="form-floating-icon">
                 ' . ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') . '
             </div>
@@ -47,7 +47,8 @@ class Form
         $class = "form-control",
         $required = false,
         $minHeight = "100px",
-        $rows = 5
+        $rows = 5,
+        $attributes = ''
     ) {
         return '
         <div class="form-floating form-floating-custom">
@@ -56,10 +57,10 @@ class Form
             '" name="' . htmlspecialchars($name) .
             '" placeholder="' . htmlspecialchars($placeholder ?? '') .
             '" style="min-height: ' . htmlspecialchars($minHeight) .
-            ';min-width:100%" ' . ($required ? 'required' : '') . '  rows="' . htmlspecialchars($rows) . '">' .
+            ';min-width:100%" ' . ($required ? 'required' : '') . '  rows="' . htmlspecialchars($rows) . '" ' . $attributes . '>' .
             htmlspecialchars($value ?? '') .
             '</textarea>
-            <label for="input-' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
+            <label for="' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
             <div class="form-floating-icon">
                 ' . ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') . '
             </div>
@@ -111,7 +112,8 @@ class Form
         $textField = '',
         $class = "form-select select2",
         $required = false,
-        $style = 'width:100%'
+        $style = 'width:100%',
+        $attributes = ''
     ) {
         // Eğer valueField boşsa, key kullan
         if ($valueField === '') {
@@ -124,7 +126,8 @@ class Form
                 class="' . htmlspecialchars($class) . '" 
                 id="' . htmlspecialchars($name) . '" 
                 name="' . htmlspecialchars($name) . '" 
-                ' . ($required ? 'required' : '') . '>';
+                ' . ($required ? 'required' : '') . '
+                ' . $attributes . '>';
 
         foreach ($options as $key => $option) {
             // Normalize value/text to safe strings.
@@ -164,7 +167,7 @@ class Form
         }
 
         $html .= '</select>
-        <label for="input-' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
+        <label for="' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
         <div class="form-floating-icon">
             ' . ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') . '
         </div>
@@ -211,7 +214,7 @@ class Form
         }
 
         $html .= '</select>
-        <label for="input-' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
+        <label for="' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
         <div class="form-floating-icon">
             ' . ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') . '
         </div>
@@ -228,7 +231,7 @@ class Form
         return '
     <div class="form-floating form-floating-custom">
         <input type="file" class="' . htmlspecialchars($class) . '" id="' . htmlspecialchars($name) . '" name="' . htmlspecialchars($name) . '" ' . ($required ? 'required' : '') . '>
-        <label for="input-' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
+        <label for="' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
         <div class="form-floating-icon">
             ' . ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') . '
         </div>

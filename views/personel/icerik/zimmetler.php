@@ -30,17 +30,18 @@ foreach ($zimmetler as $z) {
         <div class="card border">
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-3">
-                    <h5 class="card-title mb-0 text-primary"><i class="bx bx-devices me-2"></i>Zimmet İşlemleri</h5>
+                    <h5 class="card-title mb-0 text-primary"><i data-feather="package" class="me-2 icon-sm"></i>Zimmet
+                        İşlemleri</h5>
                     <span class="badge bg-warning"><?= $aktifZimmet ?> Aktif</span>
                     <span class="badge bg-success"><?= $iadeEdilen ?> İade</span>
                 </div>
                 <button type="button" class="btn btn-sm btn-primary" id="btnOpenZimmetModal">
-                    <i class="bx bx-plus"></i> Yeni Zimmet Ver
+                    <i data-feather="plus" class="icon-xs"></i> Yeni Zimmet Ver
                 </button>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table datatable table-hover mb-0">
+                    <table id="zimmetlerTable" class="table datatable table-hover mb-0 w-100">
                         <thead class="table-light">
                             <tr>
                                 <th>Kategori</th>
@@ -89,23 +90,16 @@ foreach ($zimmetler as $z) {
                                                     data-id="<?= $enc_id ?>"
                                                     data-demirbas="<?= htmlspecialchars($zimmet->demirbas_adi ?? '') ?>"
                                                     data-miktar="<?= $zimmet->teslim_miktar ?? 1 ?>" title="İade Al">
-                                                    <i class="bx bx-undo"></i>
+                                                    <i data-feather="rotate-ccw" class="icon-xs"></i>
                                                 </button>
                                             <?php endif; ?>
                                             <button type="button" class="btn btn-sm btn-danger btn-personel-zimmet-sil"
                                                 data-id="<?= $enc_id ?>" title="Sil">
-                                                <i class="bx bx-trash"></i>
+                                                <i data-feather="trash-2" class="icon-xs"></i>
                                             </button>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td colspan="8" class="text-center py-4">
-                                        <i class="bx bx-package display-6 text-muted d-block mb-2"></i>
-                                        <span class="text-muted">Bu personele henüz zimmet verilmemiş.</span>
-                                    </td>
-                                </tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -120,7 +114,7 @@ foreach ($zimmetler as $z) {
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title"><i class="bx bx-transfer me-2"></i>Personele Zimmet Ver</h5>
+                <h5 class="modal-title"><i data-feather="repeat" class="me-2"></i>Personele Zimmet Ver</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="formPersonelZimmetEkle">
@@ -131,48 +125,86 @@ foreach ($zimmetler as $z) {
                     </div>
 
                     <div class="mb-3">
-                        <label for="personel_demirbas_id" class="form-label">Demirbaş Seçin <span
-                                class="text-danger">*</span></label>
-                        <select class="form-select" id="personel_demirbas_id" name="demirbas_id" required>
-                            <option value="">Demirbaş seçiniz...</option>
-                            <?php foreach ($demirbaslar as $d): ?>
-                                <option value="<?= $d->id ?>" data-kalan="<?= $d->kalan_miktar ?? 1 ?>">
-                                    <?= ($d->demirbas_no ?? '-') . ' - ' . $d->demirbas_adi . ' (' . ($d->kategori_adi ?? '-') . ') - Kalan: ' . ($d->kalan_miktar ?? 1) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <?php
+                        $demirbasOptions = [];
+                        $demirbasMap = [];
+                        foreach ($demirbaslar as $d) {
+                            $text = ($d->demirbas_no ?? '-') . ' - ' . $d->demirbas_adi . ' (' . ($d->kategori_adi ?? '-') . ') - Kalan: ' . ($d->kalan_miktar ?? 1);
+                            $demirbasOptions[$d->id] = $text;
+                            $demirbasMap[$d->id] = $d->kalan_miktar ?? 1;
+                        }
+                        echo Form::FormSelect2(
+                            'demirbas_id',
+                            $demirbasOptions,
+                            '',
+                            'Demirbaş Seçin *',
+                            'package',
+                            'key',
+                            '',
+                            'form-select select2',
+                            true,
+                            'width:100%',
+                            'data-stok=\'' . json_encode($demirbasMap, JSON_FORCE_OBJECT) . '\''
+                        );
+                        ?>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="personel_teslim_miktar" class="form-label">Teslim Miktarı <span
-                                    class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <input type="number" class="form-control" id="personel_teslim_miktar"
-                                    name="teslim_miktar" value="1" min="1" required>
-                                <span class="input-group-text">
-                                    Kalan: <span id="personelKalanMiktar" class="ms-1 fw-bold">-</span>
-                                </span>
+                            <?= Form::FormFloatInput(
+                                'number',
+                                'teslim_miktar',
+                                '1',
+                                'Miktar',
+                                'Teslim Miktarı *',
+                                'hash',
+                                'form-control',
+                                true,
+                                null,
+                                'on',
+                                false,
+                                'min="1"'
+                            ) ?>
+                            <div class="mt-1">
+                                <small class="text-muted">Stoktaki Kalan: <span id="personelKalanMiktar"
+                                        class="fw-bold">-</span></small>
                             </div>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="personel_teslim_tarihi" class="form-label">Teslim Tarihi <span
-                                    class="text-danger">*</span></label>
-                            <input type="text" class="form-control flatpickr" id="personel_teslim_tarihi"
-                                name="teslim_tarihi" value="<?= date('d.m.Y') ?>" required>
+                            <?= Form::FormFloatInput(
+                                'text',
+                                'teslim_tarihi',
+                                date('d.m.Y'),
+                                'Tarih',
+                                'Teslim Tarihi *',
+                                'calendar',
+                                'form-control flatpickr',
+                                true,
+                                null,
+                                'on',
+                                false
+                            ) ?>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="personel_zimmet_aciklama" class="form-label">Açıklama</label>
-                        <textarea class="form-control" id="personel_zimmet_aciklama" name="aciklama" rows="2"
-                            placeholder="Notlar..."></textarea>
+                        <?= Form::FormFloatTextarea(
+                            'aciklama',
+                            '',
+                            'Notlar...',
+                            'Açıklama',
+                            'file-text',
+                            'form-control',
+                            false,
+                            '80px',
+                            2
+                        ) ?>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                     <button type="button" class="btn btn-warning" id="btnPersonelZimmetKaydet">
-                        <i class="bx bx-transfer me-1"></i>Zimmet Ver
+                        <i data-feather="check" class="me-1 icon-xs"></i>Zimmet Ver
                     </button>
                 </div>
             </form>
@@ -185,7 +217,7 @@ foreach ($zimmetler as $z) {
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="bx bx-undo me-2"></i>Zimmet İade Al</h5>
+                <h5 class="modal-title"><i data-feather="rotate-ccw" class="me-2"></i>Zimmet İade Al</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="formPersonelIade">
@@ -198,29 +230,56 @@ foreach ($zimmetler as $z) {
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="personel_iade_miktar" class="form-label">İade Miktarı <span
-                                    class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="personel_iade_miktar" name="iade_miktar"
-                                value="1" min="1" required>
+                            <?= Form::FormFloatInput(
+                                'number',
+                                'iade_miktar',
+                                '1',
+                                'Miktar',
+                                'İade Miktarı *',
+                                'hash',
+                                'form-control',
+                                true,
+                                null,
+                                'on',
+                                false,
+                                'min="1"'
+                            ) ?>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="personel_iade_tarihi" class="form-label">İade Tarihi <span
-                                    class="text-danger">*</span></label>
-                            <input type="text" class="form-control flatpickr" id="personel_iade_tarihi"
-                                name="iade_tarihi" value="<?= date('d.m.Y') ?>" required>
+                            <?= Form::FormFloatInput(
+                                'text',
+                                'iade_tarihi',
+                                date('d.m.Y'),
+                                'Tarih',
+                                'İade Tarihi *',
+                                'calendar',
+                                'form-control flatpickr',
+                                true,
+                                null,
+                                'on',
+                                false
+                            ) ?>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="personel_iade_aciklama" class="form-label">Açıklama</label>
-                        <textarea class="form-control" id="personel_iade_aciklama" name="iade_aciklama" rows="2"
-                            placeholder="İade notu..."></textarea>
+                        <?= Form::FormFloatTextarea(
+                            'iade_aciklama',
+                            '',
+                            'İade notu...',
+                            'Açıklama',
+                            'file-text',
+                            'form-control',
+                            false,
+                            '80px',
+                            2
+                        ) ?>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                     <button type="button" class="btn btn-info" id="btnPersonelIadeKaydet">
-                        <i class="bx bx-undo me-1"></i>İade Al
+                        <i data-feather="rotate-ccw" class="me-1 icon-xs"></i>İade Al
                     </button>
                 </div>
             </form>

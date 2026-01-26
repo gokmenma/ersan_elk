@@ -123,7 +123,7 @@ usort($transactions, function ($a, $b) {
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
+                    <table class="table table-hover mb-0 datatable w-100">
                         <thead class="table-light">
                             <tr>
                                 <th>Tarih</th>
@@ -134,33 +134,27 @@ usort($transactions, function ($a, $b) {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (empty($transactions)): ?>
+                            <?php foreach ($transactions as $trans): ?>
                                 <tr>
-                                    <td colspan="5" class="text-center p-3 text-muted">Henüz finansal işlem bulunmuyor.</td>
+                                    <td><?php echo date('d.m.Y', strtotime($trans['tarih'])); ?></td>
+                                    <td><?php echo $trans['islem_turu']; ?></td>
+                                    <td><?php echo $trans['aciklama']; ?></td>
+                                    <td
+                                        class="<?php echo $trans['tutar'] >= 0 ? 'text-success' : 'text-danger'; ?> fw-bold">
+                                        <?php echo ($trans['tutar'] >= 0 ? '+ ' : '- ') . number_format(abs($trans['tutar']), 2, ',', '.') . ' ₺'; ?>
+                                    </td>
+                                    <td>
+                                        <?php echo $trans['durum']; ?>
+                                        <?php if ($trans['islem_turu'] === 'Maaş Ödemesi'): ?>
+                                            <a href="views/bordro/bordro-yazdir.php?id=<?php echo $trans['id']; ?>&personel_id=<?php echo $trans['personel_id']; ?>"
+                                                target="_blank" class="btn btn-sm btn-outline-secondary ms-2"
+                                                title="Bordro Yazdır">
+                                                <i class="bx bx-printer"></i>
+                                            </a>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
-                            <?php else: ?>
-                                <?php foreach ($transactions as $trans): ?>
-                                    <tr>
-                                        <td><?php echo date('d.m.Y', strtotime($trans['tarih'])); ?></td>
-                                        <td><?php echo $trans['islem_turu']; ?></td>
-                                        <td><?php echo $trans['aciklama']; ?></td>
-                                        <td
-                                            class="<?php echo $trans['tutar'] >= 0 ? 'text-success' : 'text-danger'; ?> fw-bold">
-                                            <?php echo ($trans['tutar'] >= 0 ? '+ ' : '- ') . number_format(abs($trans['tutar']), 2, ',', '.') . ' ₺'; ?>
-                                        </td>
-                                        <td>
-                                            <?php echo $trans['durum']; ?>
-                                            <?php if ($trans['islem_turu'] === 'Maaş Ödemesi'): ?>
-                                                <a href="views/bordro/bordro-yazdir.php?id=<?php echo $trans['id']; ?>&personel_id=<?php echo $trans['personel_id']; ?>"
-                                                    target="_blank" class="btn btn-sm btn-outline-secondary ms-2"
-                                                    title="Bordro Yazdır">
-                                                    <i class="bx bx-printer"></i>
-                                                </a>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>

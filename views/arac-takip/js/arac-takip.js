@@ -870,12 +870,15 @@ $(document).ready(function () {
   });
 
   // Sayfa yüklendiğinde aktif sekmenin verisini yükle
-  const activeTab = $(".nav-link.active").data("bs-target");
-  if (activeTab === "#zimmetContent") {
-    AracTakip.zimmetListesiYukle();
-  } else if (activeTab === "#yakitContent") {
-    AracTakip.yakitListesiYukle();
-  } else if (activeTab === "#raporContent") {
-    AracTakip.aylikRaporYukle();
+  const activeTabBtn = $("#aracTab .nav-link.active");
+  if (activeTabBtn.length > 0) {
+    const activeTarget = activeTabBtn.data("bs-target");
+    if (activeTarget === "#zimmetContent") {
+      AracTakip.zimmetListesiYukle();
+    } else if (activeTarget === "#yakitContent") {
+      AracTakip.yakitListesiYukle();
+    } else if (activeTarget === "#raporContent") {
+      AracTakip.aylikRaporYukle();
+    }
   }
 });

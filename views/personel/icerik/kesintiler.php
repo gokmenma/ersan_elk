@@ -41,7 +41,7 @@ foreach ($kesintiler as $k) {
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
+                    <table class="table table-hover mb-0 datatable w-100">
                         <thead class="table-light">
                             <tr>
                                 <th>Tür</th>
@@ -55,88 +55,80 @@ foreach ($kesintiler as $k) {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (!empty($kesintiler)): ?>
-                                <?php foreach ($kesintiler as $k): ?>
-                                    <?php $enc_id = Security::encrypt($k->id); ?>
-                                    <tr data-id="<?= $enc_id ?>">
-                                        <td>
-                                            <span class="badge bg-soft-info text-info">
-                                                <?= $k->parametre_adi ?? ucfirst($k->tur) ?>
-                                            </span>
-                                            <?php if ($k->tur == 'icra' && $k->dosya_no): ?>
-                                                <br><small
-                                                    class="text-muted"><?= htmlspecialchars($k->icra_dairesi . ' - ' . $k->dosya_no) ?></small>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <?php if ($k->tekrar_tipi == 'surekli'): ?>
-                                                <span class="badge bg-warning text-dark"><i
-                                                        class="bx bx-refresh me-1"></i>Sürekli</span>
+                            <?php foreach ($kesintiler as $k): ?>
+                                <?php $enc_id = Security::encrypt($k->id); ?>
+                                <tr data-id="<?= $enc_id ?>">
+                                    <td>
+                                        <span class="badge bg-soft-info text-info">
+                                            <?= $k->parametre_adi ?? ucfirst($k->tur) ?>
+                                        </span>
+                                        <?php if ($k->tur == 'icra' && $k->dosya_no): ?>
+                                            <br><small
+                                                class="text-muted"><?= htmlspecialchars($k->icra_dairesi . ' - ' . $k->dosya_no) ?></small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if ($k->tekrar_tipi == 'surekli'): ?>
+                                            <span class="badge bg-warning text-dark"><i
+                                                    class="bx bx-refresh me-1"></i>Sürekli</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-secondary">Tek Seferlik</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php
+                                        $hesaplama_labels = [
+                                            'sabit' => '<i class="bx bx-money"></i> Sabit Tutar',
+                                            'oran_net' => '<i class="bx bx-percent"></i> Net Üzerinden',
+                                            'oran_brut' => '<i class="bx bx-percent"></i> Brüt Üzerinden'
+                                        ];
+                                        echo $hesaplama_labels[$k->hesaplama_tipi ?? 'sabit'] ?? 'Sabit Tutar';
+                                        ?>
+                                    </td>
+                                    <td class="fw-bold">
+                                        <?php if (($k->hesaplama_tipi ?? 'sabit') == 'sabit'): ?>
+                                            <?= number_format($k->tutar ?? 0, 2, ',', '.') ?> TL
+                                        <?php else: ?>
+                                            %<?= number_format($k->oran ?? 0, 2, ',', '.') ?>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if ($k->tekrar_tipi == 'surekli'): ?>
+                                            <small>
+                                                <?= $k->baslangic_donemi ? date('d.m.Y', strtotime($k->baslangic_donemi)) : '-' ?>
+                                                <i class="bx bx-right-arrow-alt"></i>
+                                                <?= $k->bitis_donemi ? date('d.m.Y', strtotime($k->bitis_donemi)) : '<span class="text-success">Süresiz</span>' ?>
+                                            </small>
+                                        <?php else: ?>
+                                            <?= App\Helper\Helper::getDonemAdi($k->donem_id) ?>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?= htmlspecialchars($k->aciklama ?? '-') ?></td>
+                                    <td>
+                                        <?php if ($k->tekrar_tipi == 'surekli'): ?>
+                                            <?php if ($k->aktif == 1): ?>
+                                                <span class="badge bg-success">Aktif</span>
                                             <?php else: ?>
-                                                <span class="badge bg-secondary">Tek Seferlik</span>
+                                                <span class="badge bg-secondary">Pasif</span>
                                             <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <?php
-                                            $hesaplama_labels = [
-                                                'sabit' => '<i class="bx bx-money"></i> Sabit Tutar',
-                                                'oran_net' => '<i class="bx bx-percent"></i> Net Üzerinden',
-                                                'oran_brut' => '<i class="bx bx-percent"></i> Brüt Üzerinden'
-                                            ];
-                                            echo $hesaplama_labels[$k->hesaplama_tipi ?? 'sabit'] ?? 'Sabit Tutar';
-                                            ?>
-                                        </td>
-                                        <td class="fw-bold">
-                                            <?php if (($k->hesaplama_tipi ?? 'sabit') == 'sabit'): ?>
-                                                <?= number_format($k->tutar ?? 0, 2, ',', '.') ?> TL
-                                            <?php else: ?>
-                                                %<?= number_format($k->oran ?? 0, 2, ',', '.') ?>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <?php if ($k->tekrar_tipi == 'surekli'): ?>
-                                                <small>
-                                                    <?= $k->baslangic_donemi ? date('d.m.Y', strtotime($k->baslangic_donemi)) : '-' ?>
-                                                    <i class="bx bx-right-arrow-alt"></i>
-                                                    <?= $k->bitis_donemi ? date('d.m.Y', strtotime($k->bitis_donemi)) : '<span class="text-success">Süresiz</span>' ?>
-                                                </small>
-                                            <?php else: ?>
-                                                <?= App\Helper\Helper::getDonemAdi($k->donem_id) ?>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td><?= htmlspecialchars($k->aciklama ?? '-') ?></td>
-                                        <td>
-                                            <?php if ($k->tekrar_tipi == 'surekli'): ?>
-                                                <?php if ($k->aktif == 1): ?>
-                                                    <span class="badge bg-success">Aktif</span>
-                                                <?php else: ?>
-                                                    <span class="badge bg-secondary">Pasif</span>
-                                                <?php endif; ?>
-                                            <?php else: ?>
-                                                <span class="badge bg-light text-muted">-</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td class="text-center">
-                                            <?php if ($k->tekrar_tipi == 'surekli' && $k->aktif == 1): ?>
-                                                <button type="button" class="btn btn-sm btn-warning btn-personel-kesinti-sonlandir"
-                                                    data-id="<?= $k->id ?>" title="Sonlandır">
-                                                    <i class="bx bx-stop"></i>
-                                                </button>
-                                            <?php endif; ?>
-                                            <button type="button" class="btn btn-sm btn-danger btn-personel-kesinti-sil"
-                                                data-id="<?= $k->id ?>" title="Sil">
-                                                <i class="bx bx-trash"></i>
+                                        <?php else: ?>
+                                            <span class="badge bg-light text-muted">-</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-center">
+                                        <?php if ($k->tekrar_tipi == 'surekli' && $k->aktif == 1): ?>
+                                            <button type="button" class="btn btn-sm btn-warning btn-personel-kesinti-sonlandir"
+                                                data-id="<?= $k->id ?>" title="Sonlandır">
+                                                <i class="bx bx-stop"></i>
                                             </button>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td colspan="8" class="text-center py-4">
-                                        <span class="text-muted">Kayıtlı kesinti bulunamadı.</span>
+                                        <?php endif; ?>
+                                        <button type="button" class="btn btn-sm btn-danger btn-personel-kesinti-sil"
+                                            data-id="<?= $k->id ?>" title="Sil">
+                                            <i class="bx bx-trash"></i>
+                                        </button>
                                     </td>
                                 </tr>
-                            <?php endif; ?>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>

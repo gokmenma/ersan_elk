@@ -31,6 +31,12 @@
         if (modalEl) {
           var modal = new bootstrap.Modal(modalEl);
           modal.show();
+
+          // Select2'yi modal içinde başlat
+          $("#evrak_turu").select2({
+            dropdownParent: $("#modalEvrakYukle"),
+            width: "100%",
+          });
         } else {
           console.error("Modal element bulunamadı: modalEvrakYukle");
           Swal.fire("Hata", "Modal açılamadı.", "error");
@@ -102,7 +108,7 @@
                     .text(percent + "%");
                 }
               },
-              false
+              false,
             );
             return xhr;
           },
@@ -126,7 +132,7 @@
                 function () {
                   // Evraklar tabını yenile
                   $('a[href="#evraklar"]').trigger("click");
-                }
+                },
               );
             } else {
               Swal.fire("Hata", response.message, "error");
@@ -164,7 +170,7 @@
           icerik.html(
             '<embed src="' +
               dosya +
-              '" type="application/pdf" width="100%" height="500px">'
+              '" type="application/pdf" width="100%" height="500px">',
           );
         } else if (tip && tip.indexOf("image") !== -1) {
           icerik.html(
@@ -172,11 +178,11 @@
               dosya +
               '" class="img-fluid" alt="' +
               ad +
-              '" style="max-height: 500px;">'
+              '" style="max-height: 500px;">',
           );
         } else {
           icerik.html(
-            '<div class="p-5"><i class="bx bx-file display-1 text-muted"></i><p class="mt-3">Bu dosya türü önizlenemez.<br>Lütfen dosyayı indirin.</p></div>'
+            '<div class="p-5"><i class="bx bx-file display-1 text-muted"></i><p class="mt-3">Bu dosya türü önizlenemez.<br>Lütfen dosyayı indirin.</p></div>',
           );
         }
 
@@ -227,7 +233,7 @@
                           '<td colspan="6" class="text-center py-4">' +
                           '<i class="bx bx-folder-open display-6 text-muted d-block mb-2"></i>' +
                           '<span class="text-muted">Bu personele henüz evrak yüklenmemiş.</span>' +
-                          "</td></tr>"
+                          "</td></tr>",
                       );
                     }
                   });
@@ -246,7 +252,7 @@
 
     // Tooltip'leri etkinleştir
     var tooltipTriggerList = [].slice.call(
-      document.querySelectorAll('[data-bs-toggle="tooltip"]')
+      document.querySelectorAll('[data-bs-toggle="tooltip"]'),
     );
     tooltipTriggerList.forEach(function (el) {
       new bootstrap.Tooltip(el);

@@ -13,15 +13,15 @@ $stats = $EvrakModel->getStats($id);
 function getFileIcon($mimeType)
 {
     if (strpos($mimeType, 'pdf') !== false) {
-        return ['bxs-file-pdf', 'text-danger'];
+        return ['file-text', 'text-danger'];
     } elseif (strpos($mimeType, 'image') !== false) {
-        return ['bxs-image', 'text-info'];
+        return ['image', 'text-info'];
     } elseif (strpos($mimeType, 'word') !== false || strpos($mimeType, 'document') !== false) {
-        return ['bxs-file-doc', 'text-primary'];
+        return ['file-text', 'text-primary'];
     } elseif (strpos($mimeType, 'excel') !== false || strpos($mimeType, 'sheet') !== false) {
-        return ['bxs-file', 'text-success'];
+        return ['file', 'text-success'];
     } else {
-        return ['bxs-file', 'text-secondary'];
+        return ['file', 'text-secondary'];
     }
 }
 
@@ -53,18 +53,19 @@ $evrakTurleri = [
         <div class="card border">
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-3">
-                    <h5 class="card-title mb-0 text-primary"><i class="bx bx-file me-2"></i>Personel Evrakları</h5>
+                    <h5 class="card-title mb-0 text-primary"><i data-feather="file" class="me-2 icon-sm"></i>Personel
+                        Evrakları</h5>
                     <span class="badge bg-primary">
                         <?= $stats->toplam_evrak ?? 0 ?> Evrak
                     </span>
                 </div>
                 <button type="button" class="btn btn-sm btn-primary" id="btnOpenEvrakModal">
-                    <i class="bx bx-upload"></i> Yeni Evrak Yükle
+                    <i data-feather="upload" class="icon-xs"></i> Yeni Evrak Yükle
                 </button>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0" id="tblEvraklar">
+                    <table class="table table-hover mb-0 datatable w-100" id="tblEvraklar">
                         <thead class="table-light">
                             <tr>
                                 <th>Evrak Adı</th>
@@ -76,69 +77,60 @@ $evrakTurleri = [
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (!empty($evraklar)): ?>
-                                <?php foreach ($evraklar as $evrak): ?>
-                                    <?php
-                                    $enc_id = Security::encrypt($evrak->id);
-                                    $yuklemeTarihi = date('d.m.Y H:i', strtotime($evrak->yukleme_tarihi));
-                                    $icon = getFileIcon($evrak->dosya_tipi);
-                                    $dosyaYolu = 'uploads/personel_evraklar/' . $id . '/' . $evrak->dosya_adi;
-                                    ?>
-                                    <tr data-id="<?= $enc_id ?>">
-                                        <td>
-                                            <i class="bx <?= $icon[0] ?> <?= $icon[1] ?> me-2 fs-5"></i>
-                                            <span class="fw-medium">
-                                                <?= htmlspecialchars($evrak->evrak_adi) ?>
-                                            </span>
-                                            <?php if (!empty($evrak->aciklama)): ?>
-                                                <i class="bx bx-info-circle text-muted ms-1" data-bs-toggle="tooltip"
-                                                    title="<?= htmlspecialchars($evrak->aciklama) ?>"></i>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-soft-secondary text-secondary">
-                                                <?= $evrakTurleri[$evrak->evrak_turu] ?? ucfirst($evrak->evrak_turu) ?>
-                                            </span>
-                                        </td>
-                                        <td class="text-muted">
-                                            <?= formatFileSize($evrak->dosya_boyutu) ?>
-                                        </td>
-                                        <td>
-                                            <?= $yuklemeTarihi ?>
-                                        </td>
-                                        <td>
-                                            <?= htmlspecialchars($evrak->yukleyen_adi ?? '-') ?>
-                                        </td>
-                                        <td class="text-center text-nowrap">
-                                            <!-- Görüntüle -->
-                                            <button type="button" class="btn btn-sm btn-info btn-evrak-goruntule"
-                                                data-id="<?= $enc_id ?>" data-dosya="<?= $dosyaYolu ?>"
-                                                data-tip="<?= $evrak->dosya_tipi ?>"
-                                                data-ad="<?= htmlspecialchars($evrak->evrak_adi) ?>" title="Görüntüle">
-                                                <i class="bx bx-show"></i>
-                                            </button>
-                                            <!-- İndir -->
-                                            <a href="<?= $dosyaYolu ?>" class="btn btn-sm btn-success"
-                                                download="<?= htmlspecialchars($evrak->orijinal_dosya_adi) ?>" title="İndir">
-                                                <i class="bx bx-download"></i>
-                                            </a>
-                                            <!-- Sil -->
-                                            <button type="button" class="btn btn-sm btn-danger btn-evrak-sil"
-                                                data-id="<?= $enc_id ?>" data-ad="<?= htmlspecialchars($evrak->evrak_adi) ?>"
-                                                title="Sil">
-                                                <i class="bx bx-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr id="noEvrakRow">
-                                    <td colspan="6" class="text-center py-4">
-                                        <i class="bx bx-folder-open display-6 text-muted d-block mb-2"></i>
-                                        <span class="text-muted">Bu personele henüz evrak yüklenmemiş.</span>
+                            <?php foreach ($evraklar as $evrak): ?>
+                                <?php
+                                $enc_id = Security::encrypt($evrak->id);
+                                $yuklemeTarihi = date('d.m.Y H:i', strtotime($evrak->yukleme_tarihi));
+                                $icon = getFileIcon($evrak->dosya_tipi);
+                                $dosyaYolu = 'uploads/personel_evraklar/' . $id . '/' . $evrak->dosya_adi;
+                                ?>
+                                <tr data-id="<?= $enc_id ?>">
+                                    <td>
+                                        <i data-feather="<?= $icon[0] ?>" class="<?= $icon[1] ?> me-2 icon-sm"></i>
+                                        <span class="fw-medium">
+                                            <?= htmlspecialchars($evrak->evrak_adi) ?>
+                                        </span>
+                                        <?php if (!empty($evrak->aciklama)): ?>
+                                            <i data-feather="info" class="text-muted ms-1 icon-xs" data-bs-toggle="tooltip"
+                                                title="<?= htmlspecialchars($evrak->aciklama) ?>"></i>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-soft-secondary text-secondary">
+                                            <?= $evrakTurleri[$evrak->evrak_turu] ?? ucfirst($evrak->evrak_turu) ?>
+                                        </span>
+                                    </td>
+                                    <td class="text-muted">
+                                        <?= formatFileSize($evrak->dosya_boyutu) ?>
+                                    </td>
+                                    <td>
+                                        <?= $yuklemeTarihi ?>
+                                    </td>
+                                    <td>
+                                        <?= htmlspecialchars($evrak->yukleyen_adi ?? '-') ?>
+                                    </td>
+                                    <td class="text-center text-nowrap">
+                                        <!-- Görüntüle -->
+                                        <button type="button" class="btn btn-sm btn-info btn-evrak-goruntule"
+                                            data-id="<?= $enc_id ?>" data-dosya="<?= $dosyaYolu ?>"
+                                            data-tip="<?= $evrak->dosya_tipi ?>"
+                                            data-ad="<?= htmlspecialchars($evrak->evrak_adi) ?>" title="Görüntüle">
+                                            <i data-feather="eye" class="icon-xs"></i>
+                                        </button>
+                                        <!-- İndir -->
+                                        <a href="<?= $dosyaYolu ?>" class="btn btn-sm btn-success"
+                                            download="<?= htmlspecialchars($evrak->orijinal_dosya_adi) ?>" title="İndir">
+                                            <i data-feather="download" class="icon-xs"></i>
+                                        </a>
+                                        <!-- Sil -->
+                                        <button type="button" class="btn btn-sm btn-danger btn-evrak-sil"
+                                            data-id="<?= $enc_id ?>" data-ad="<?= htmlspecialchars($evrak->evrak_adi) ?>"
+                                            title="Sil">
+                                            <i data-feather="trash-2" class="icon-xs"></i>
+                                        </button>
                                     </td>
                                 </tr>
-                            <?php endif; ?>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
@@ -152,7 +144,7 @@ $evrakTurleri = [
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="bx bx-upload me-2"></i>Yeni Evrak Yükle</h5>
+                <h5 class="modal-title"><i data-feather="upload" class="me-2"></i>Yeni Evrak Yükle</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="formEvrakYukle" enctype="multipart/form-data">
@@ -160,37 +152,57 @@ $evrakTurleri = [
                 <input type="hidden" name="action" value="evrak_yukle">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="evrak_adi" class="form-label">Evrak Adı <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="evrak_adi" name="evrak_adi"
-                            placeholder="Örn: İş Sözleşmesi" required>
+                        <?= \App\Helper\Form::FormFloatInput(
+                            'text',
+                            'evrak_adi',
+                            '',
+                            'Örn: İş Sözleşmesi',
+                            'Evrak Adı *',
+                            'file-text',
+                            'form-control',
+                            true
+                        ) ?>
                     </div>
 
                     <div class="mb-3">
-                        <label for="evrak_turu" class="form-label">Evrak Türü <span class="text-danger">*</span></label>
-                        <select class="form-select" id="evrak_turu" name="evrak_turu" required>
-                            <option value="">Seçiniz...</option>
-                            <?php foreach ($evrakTurleri as $key => $value): ?>
-                                <option value="<?= $key ?>">
-                                    <?= $value ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <?= \App\Helper\Form::FormSelect2(
+                            'evrak_turu',
+                            $evrakTurleri,
+                            '',
+                            'Evrak Türü *',
+                            'layers',
+                            'key',
+                            '',
+                            'form-select select2',
+                            true
+                        ) ?>
                     </div>
 
                     <div class="mb-3">
-                        <label for="evrak_dosyasi" class="form-label">Dosya Seç <span
-                                class="text-danger">*</span></label>
-                        <input type="file" class="form-control" id="evrak_dosyasi" name="evrak_dosyasi"
-                            accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xls,.xlsx" required>
+                        <?= \App\Helper\Form::FormFileInput(
+                            'evrak_dosyasi',
+                            'Dosya Seç *',
+                            'upload',
+                            'form-control',
+                            true
+                        ) ?>
                         <small class="text-muted">
                             Desteklenen formatlar: PDF, JPG, PNG, DOC, DOCX, XLS, XLSX (Max: 10MB)
                         </small>
                     </div>
 
                     <div class="mb-3">
-                        <label for="evrak_aciklama" class="form-label">Açıklama</label>
-                        <textarea class="form-control" id="evrak_aciklama" name="aciklama" rows="2"
-                            placeholder="Evrak hakkında notlar..."></textarea>
+                        <?= \App\Helper\Form::FormFloatTextarea(
+                            'aciklama',
+                            '',
+                            'Evrak hakkında notlar...',
+                            'Açıklama',
+                            'edit-3',
+                            'form-control',
+                            false,
+                            '80px',
+                            2
+                        ) ?>
                     </div>
 
                     <!-- Yükleme Progress -->
@@ -202,7 +214,7 @@ $evrakTurleri = [
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                     <button type="submit" class="btn btn-primary" id="btnEvrakKaydet">
-                        <i class="bx bx-upload me-1"></i>Yükle
+                        <i data-feather="upload" class="me-1"></i>Yükle
                     </button>
                 </div>
             </form>
@@ -333,7 +345,8 @@ $evrakTurleri = [
                     Swal.fire('Hata', 'Dosya yüklenirken bir hata oluştu.', 'error');
                 },
                 complete: function () {
-                    submitBtn.prop('disabled', false).html('<i class="bx bx-upload me-1"></i>Yükle');
+                    submitBtn.prop('disabled', false).html('<i data-feather="upload" class="me-1 icon-xs"></i>Yükle');
+                    feather.replace();
                     progressBar.addClass('d-none');
                     progressBarInner.css('width', '0%').text('0%');
                 }
@@ -360,7 +373,8 @@ $evrakTurleri = [
                 icerik.html('<img src="' + dosya + '" class="img-fluid" alt="' + ad + '" style="max-height: 500px;">');
             } else {
                 // Diğer dosyalar için indirme linki
-                icerik.html('<div class="p-5"><i class="bx bx-file display-1 text-muted"></i><p class="mt-3">Bu dosya türü önizlenemez.<br>Lütfen dosyayı indirin.</p></div>');
+                icerik.html('<div class="p-5"><i data-feather="file" class="display-1 text-muted mx-auto" style="width: 64px; height: 64px;"></i><p class="mt-3">Bu dosya türü önizlenemez.<br>Lütfen dosyayı indirin.</p></div>');
+                feather.replace();
             }
 
             var modal = new bootstrap.Modal(document.getElementById('modalEvrakGoruntule'));
@@ -401,10 +415,11 @@ $evrakTurleri = [
                                         $('#tblEvraklar tbody').html(
                                             '<tr id="noEvrakRow">' +
                                             '<td colspan="6" class="text-center py-4">' +
-                                            '<i class="bx bx-folder-open display-6 text-muted d-block mb-2"></i>' +
+                                            '<i data-feather="folder" class="display-6 text-muted d-block mb-2 mx-auto" style="width: 48px; height: 48px;"></i>' +
                                             '<span class="text-muted">Bu personele henüz evrak yüklenmemiş.</span>' +
                                             '</td></tr>'
                                         );
+                                        feather.replace();
                                     }
                                 });
                                 Swal.fire('Silindi!', response.message, 'success');

@@ -26,7 +26,7 @@ foreach ($icralar as $i) {
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
+                    <table class="table table-hover mb-0 datatable w-100">
                         <thead class="table-light">
                             <tr>
                                 <th>İcra Dairesi</th>
@@ -39,38 +39,30 @@ foreach ($icralar as $i) {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (!empty($icralar)): ?>
-                                <?php foreach ($icralar as $i): ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($i->icra_dairesi) ?></td>
-                                        <td class="fw-medium"><?= htmlspecialchars($i->dosya_no) ?></td>
-                                        <td><?= number_format($i->toplam_borc, 2, ',', '.') ?> TL</td>
-                                        <td><?= number_format($i->aylik_kesinti_tutari, 2, ',', '.') ?> TL</td>
-                                        <td><?= date('d.m.Y', strtotime($i->baslangic_tarihi)) ?></td>
-                                        <td>
-                                            <?php if ($i->durum == 'devam_ediyor'): ?>
-                                                <span class="badge bg-success">Devam Ediyor</span>
-                                            <?php elseif ($i->durum == 'bitti'): ?>
-                                                <span class="badge bg-secondary">Bitti</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-warning">Durduruldu</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td class="text-center">
-                                            <button type="button" class="btn btn-sm btn-danger btn-personel-icra-sil"
-                                                data-id="<?= $i->id ?>" title="Sil">
-                                                <i class="bx bx-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
+                            <?php foreach ($icralar as $i): ?>
                                 <tr>
-                                    <td colspan="7" class="text-center py-4">
-                                        <span class="text-muted">İcra dosyası bulunamadı.</span>
+                                    <td><?= htmlspecialchars($i->icra_dairesi) ?></td>
+                                    <td class="fw-medium"><?= htmlspecialchars($i->dosya_no) ?></td>
+                                    <td><?= number_format($i->toplam_borc, 2, ',', '.') ?> TL</td>
+                                    <td><?= number_format($i->aylik_kesinti_tutari, 2, ',', '.') ?> TL</td>
+                                    <td><?= date('d.m.Y', strtotime($i->baslangic_tarihi)) ?></td>
+                                    <td>
+                                        <?php if ($i->durum == 'devam_ediyor'): ?>
+                                            <span class="badge bg-success">Devam Ediyor</span>
+                                        <?php elseif ($i->durum == 'bitti'): ?>
+                                            <span class="badge bg-secondary">Bitti</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-warning">Durduruldu</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-danger btn-personel-icra-sil"
+                                            data-id="<?= $i->id ?>" title="Sil">
+                                            <i class="bx bx-trash"></i>
+                                        </button>
                                     </td>
                                 </tr>
-                            <?php endif; ?>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>

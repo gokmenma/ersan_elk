@@ -30,7 +30,7 @@ if ($ekip_no) {
 </div>
 
 <div class="table-responsive">
-    <table class="table table-bordered table-hover mb-0" id="puantajTable">
+    <table class="table table-bordered table-hover mb-0 datatable w-100" id="puantajTable">
         <thead class="table-light">
             <tr>
                 <th>Tarih</th>
@@ -42,28 +42,22 @@ if ($ekip_no) {
             </tr>
         </thead>
         <tbody>
-            <?php if (empty($isler)): ?>
+            <?php foreach ($isler as $is): ?>
                 <tr>
-                    <td colspan="6" class="text-center">Kayıt bulunamadı.</td>
+                    <td><?php echo Date::dmY($is->tarih); ?></td>
+                    <td><?php echo htmlspecialchars($is->is_emri_no ?? '-'); ?></td>
+                    <td><?php echo htmlspecialchars($is->is_emri_tipi ?? '-'); ?></td>
+                    <td><?php echo htmlspecialchars($is->aciklama ?? '-'); ?></td>
+                    <td><?php echo htmlspecialchars($is->miktar ?? '-'); ?></td>
+                    <td>
+                        <?php if (($is->onay_durumu ?? '') == 'Onaylandı'): ?>
+                            <span class="badge bg-success">Onaylandı</span>
+                        <?php else: ?>
+                            <span class="badge bg-warning">Beklemede</span>
+                        <?php endif; ?>
+                    </td>
                 </tr>
-            <?php else: ?>
-                <?php foreach ($isler as $is): ?>
-                    <tr>
-                        <td><?php echo Date::dmY($is->tarih); ?></td>
-                        <td><?php echo htmlspecialchars($is->is_emri_no ?? '-'); ?></td>
-                        <td><?php echo htmlspecialchars($is->is_emri_tipi ?? '-'); ?></td>
-                        <td><?php echo htmlspecialchars($is->aciklama ?? '-'); ?></td>
-                        <td><?php echo htmlspecialchars($is->miktar ?? '-'); ?></td>
-                        <td>
-                            <?php if (($is->onay_durumu ?? '') == 'Onaylandı'): ?>
-                                <span class="badge bg-success">Onaylandı</span>
-                            <?php else: ?>
-                                <span class="badge bg-warning">Beklemede</span>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            <?php endif; ?>
+            <?php endforeach; ?>
         </tbody>
     </table>
 </div>

@@ -7,14 +7,22 @@ $(document).ready(function () {
   $(document).on("click", "#btnOpenZimmetModal", function () {
     console.log("Zimmet modal açılıyor...");
     $("#modalPersonelZimmetEkle").modal("show");
+
+    // Select2'yi modal içinde başlat
+    $("#demirbas_id").select2({
+      dropdownParent: $("#modalPersonelZimmetEkle"),
+      width: "100%",
+    });
   });
 
   // Demirbaş seçildiğinde kalan miktarı göster
-  $(document).on("change", "#personel_demirbas_id", function () {
-    var kalan = $(this).find(":selected").data("kalan") || 0;
+  $(document).on("change", "#demirbas_id", function () {
+    var id = $(this).val();
+    var stokMap = $(this).data("stok") || {};
+    var kalan = stokMap[id] || 0;
     console.log("Seçilen demirbaş kalan:", kalan);
     $("#personelKalanMiktar").text(kalan);
-    $("#personel_teslim_miktar").attr("max", kalan).val(1);
+    $("#teslim_miktar").attr("max", kalan).val(1);
   });
 
   // Yeni Zimmet Kaydet
@@ -30,10 +38,10 @@ $(document).ready(function () {
       return;
     }
 
-    var demirbasId = $("#personel_demirbas_id").val();
-    var teslimMiktar = parseInt($("#personel_teslim_miktar").val()) || 1;
-    var kalan =
-      parseInt($("#personel_demirbas_id").find(":selected").data("kalan")) || 0;
+    var demirbasId = $("#demirbas_id").val();
+    var teslimMiktar = parseInt($("#teslim_miktar").val()) || 1;
+    var stokMap = $("#demirbas_id").data("stok") || {};
+    var kalan = stokMap[demirbasId] || 0;
 
     console.log(
       "Demirbaş ID:",
@@ -41,7 +49,7 @@ $(document).ready(function () {
       "Miktar:",
       teslimMiktar,
       "Kalan:",
-      kalan
+      kalan,
     );
 
     if (!demirbasId) {
@@ -53,7 +61,7 @@ $(document).ready(function () {
       Swal.fire(
         "Uyarı",
         "Stokta sadece " + kalan + " adet bulunmaktadır.",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -122,7 +130,7 @@ $(document).ready(function () {
     $("#personel_iade_zimmet_id").val(id);
     $("#personel_iade_demirbas_adi").text(demirbas);
     $("#personel_iade_miktar_goster").text(miktar);
-    $("#personel_iade_miktar").val(miktar).attr("max", miktar);
+    $("#iade_miktar").val(miktar).attr("max", miktar);
 
     $("#modalPersonelIade").modal("show");
   });

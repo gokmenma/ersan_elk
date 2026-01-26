@@ -185,7 +185,7 @@ if ($action == "zimmet-kaydet") {
         $data = [
             "demirbas_id" => intval($_POST["demirbas_id"]),
             "personel_id" => intval($_POST["personel_id"]),
-            "teslim_tarihi" => Date::Ymd($_POST["teslim_tarihi"]),
+            "teslim_tarihi" => Date::Ymd($_POST["teslim_tarihi"], 'Y-m-d'),
             "teslim_miktar" => intval($_POST["teslim_miktar"] ?? 1),
             "aciklama" => $_POST["aciklama"] ?? null,
             "teslim_eden_id" => $_SESSION["id"] ?? null

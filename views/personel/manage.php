@@ -113,32 +113,34 @@ $allPersonel = array_map(function ($item) {
 
 
                     <!-- Nav tabs -->
+                    <?php $activeTab = $_GET['tab'] ?? 'home'; ?>
                     <ul class="nav nav-tabs overflow-x-auto" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#home" role="tab"
-                                aria-selected="false" tabindex="-1">
+                            <a class="nav-link <?php echo $activeTab === 'home' ? 'active' : ''; ?>"
+                                data-bs-toggle="tab" href="#home" role="tab" aria-selected="false" tabindex="-1">
                                 <span class="d-block d-sm-none"><i class="fas fa-home"></i></span>
                                 <span class="d-none d-sm-block"><i class="fas fa-home me-1"></i> Genel Bilgiler</span>
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <a class="nav-link" data-bs-toggle="tab" href="#calisma" role="tab" aria-selected="false"
-                                tabindex="-1">
+                            <a class="nav-link <?php echo $activeTab === 'calisma' ? 'active' : ''; ?>"
+                                data-bs-toggle="tab" href="#calisma" role="tab" aria-selected="false" tabindex="-1">
                                 <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
                                 <span class="d-none d-sm-block"><i class="far fa-user me-1"></i> Çalışma
                                     Bilgileri</span>
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <a class="nav-link" data-bs-toggle="tab" href="#finansal" role="tab" aria-selected="false"
-                                tabindex="-1">
+                            <a class="nav-link <?php echo $activeTab === 'finansal' ? 'active' : ''; ?>"
+                                data-bs-toggle="tab" href="#finansal" role="tab" aria-selected="false" tabindex="-1">
                                 <span class="d-block d-sm-none"><i class="fas fa-wallet"></i></span>
                                 <span class="d-none d-sm-block"><i class="fas fa-wallet me-1"></i> Finansal
                                     Bilgileri</span>
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <a class="nav-link" data-bs-toggle="tab" href="#diger" role="tab" aria-selected="true">
+                            <a class="nav-link <?php echo $activeTab === 'diger' ? 'active' : ''; ?>"
+                                data-bs-toggle="tab" href="#diger" role="tab" aria-selected="true">
                                 <span class="d-block d-sm-none"><i class="far fa-envelope"></i></span>
                                 <span class="d-none d-sm-block"><i class="far fa-envelope me-1"></i> Diğer
                                     Bilgiler</span>
@@ -146,55 +148,60 @@ $allPersonel = array_map(function ($item) {
                         </li>
                         <?php if ($id > 0): ?>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link" data-bs-toggle="tab" href="#izinler" role="tab" aria-selected="false">
+                                <a class="nav-link <?php echo $activeTab === 'izinler' ? 'active' : ''; ?>"
+                                    data-bs-toggle="tab" href="#izinler" role="tab" aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-calendar-event"></i></span>
                                     <span class="d-none d-sm-block"><i class="bx bx-calendar-event me-1"></i>
                                         İzin/Rapor</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link" data-bs-toggle="tab" href="#zimmetler" role="tab" aria-selected="false">
+                                <a class="nav-link <?php echo $activeTab === 'zimmetler' ? 'active' : ''; ?>"
+                                    data-bs-toggle="tab" href="#zimmetler" role="tab" aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-devices"></i></span>
                                     <span class="d-none d-sm-block"><i class="bx bx-devices me-1"></i> Zimmetler</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link" data-bs-toggle="tab" href="#kesintiler" role="tab"
-                                    aria-selected="false">
+                                <a class="nav-link <?php echo $activeTab === 'kesintiler' ? 'active' : ''; ?>"
+                                    data-bs-toggle="tab" href="#kesintiler" role="tab" aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-minus-circle"></i></span>
                                     <span class="d-none d-sm-block"><i class="bx bx-minus-circle me-1"></i>
                                         Kesintiler</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link" data-bs-toggle="tab" href="#ek_odemeler" role="tab"
-                                    aria-selected="false">
+                                <a class="nav-link <?php echo $activeTab === 'ek_odemeler' ? 'active' : ''; ?>"
+                                    data-bs-toggle="tab" href="#ek_odemeler" role="tab" aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-plus-circle"></i></span>
                                     <span class="d-none d-sm-block"><i class="bx bx-plus-circle me-1"></i> Ek
                                         Ödemeler</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link" data-bs-toggle="tab" href="#icralar" role="tab" aria-selected="false">
+                                <a class="nav-link <?php echo $activeTab === 'icralar' ? 'active' : ''; ?>"
+                                    data-bs-toggle="tab" href="#icralar" role="tab" aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-gavel"></i></span>
                                     <span class="d-none d-sm-block"><i class="bx bx-gavel me-1"></i> İcralar</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link" data-bs-toggle="tab" href="#finansal_islemler" role="tab"
-                                    aria-selected="false">
+                                <a class="nav-link <?php echo $activeTab === 'finansal_islemler' ? 'active' : ''; ?>"
+                                    data-bs-toggle="tab" href="#finansal_islemler" role="tab" aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-lira"></i></span>
                                     <span class="d-none d-sm-block"><i class="bx bx-lira me-1"></i> Hesap Hareketleri</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link" data-bs-toggle="tab" href="#evraklar" role="tab" aria-selected="false">
+                                <a class="nav-link <?php echo $activeTab === 'evraklar' ? 'active' : ''; ?>"
+                                    data-bs-toggle="tab" href="#evraklar" role="tab" aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-file"></i></span>
                                     <span class="d-none d-sm-block"><i class="bx bx-file me-1"></i> Evraklar</span>
                                 </a>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <a class="nav-link" data-bs-toggle="tab" href="#puantaj" role="tab" aria-selected="false">
+                                <a class="nav-link <?php echo $activeTab === 'puantaj' ? 'active' : ''; ?>"
+                                    data-bs-toggle="tab" href="#puantaj" role="tab" aria-selected="false">
                                     <span class="d-block d-sm-none"><i class="bx bx-time-five"></i></span>
                                     <span class="d-none d-sm-block"><i class="bx bx-time-five me-1"></i> Puantaj/İş
                                         Takip</span>
@@ -221,24 +228,29 @@ $allPersonel = array_map(function ($item) {
                         <input type="hidden" name="personel_id" id="personel_id"
                             value="<?php echo $personel->id ?? ''; ?>">
                         <!-- Tab panes -->
-                        <div class="tab-pane active show" id="home" role="tabpanel">
+                        <div class="tab-pane <?php echo $activeTab === 'home' ? 'active show' : ''; ?>" id="home"
+                            role="tabpanel">
                             <?php include_once "icerik/genel_bilgiler.php"; ?>
                         </div>
-                        <div class="tab-pane" id="calisma" role="tabpanel">
+                        <div class="tab-pane <?php echo $activeTab === 'calisma' ? 'active show' : ''; ?>" id="calisma"
+                            role="tabpanel">
                             <?php include_once "icerik/calisma_bilgileri.php"; ?>
 
                         </div>
-                        <div class="tab-pane" id="finansal" role="tabpanel">
+                        <div class="tab-pane <?php echo $activeTab === 'finansal' ? 'active show' : ''; ?>"
+                            id="finansal" role="tabpanel">
                             <?php include_once "icerik/finansal_bilgiler.php"; ?>
 
                         </div>
-                        <div class="tab-pane" id="diger" role="tabpanel">
+                        <div class="tab-pane <?php echo $activeTab === 'diger' ? 'active show' : ''; ?>" id="diger"
+                            role="tabpanel">
                             <?php include_once "icerik/diger_bilgiler.php"; ?>
                         </div>
                     </form>
                     <!-- Dinamik yüklenen tab'lar (izinler, zimmetler vb.) form dışında kalmalı, iç içe form sorunu yaşanmaması için -->
                     <?php if ($id > 0): ?>
-                        <div class="tab-pane" id="izinler" role="tabpanel" data-loaded="false"
+                        <div class="tab-pane <?php echo $activeTab === 'izinler' ? 'active show' : ''; ?>" id="izinler"
+                            role="tabpanel" data-loaded="false"
                             data-url="views/personel/get-tab-content.php?tab=izinler&id=<?php echo $id; ?>">
                             <div class="text-center p-5">
                                 <div class="spinner-border text-primary" role="status">
@@ -246,7 +258,8 @@ $allPersonel = array_map(function ($item) {
                                 </div>
                             </div>
                         </div>
-                        <div class="tab-pane" id="zimmetler" role="tabpanel" data-loaded="false"
+                        <div class="tab-pane <?php echo $activeTab === 'zimmetler' ? 'active show' : ''; ?>" id="zimmetler"
+                            role="tabpanel" data-loaded="false"
                             data-url="views/personel/get-tab-content.php?tab=zimmetler&id=<?php echo $id; ?>">
                             <div class="text-center p-5">
                                 <div class="spinner-border text-primary" role="status">
@@ -254,7 +267,8 @@ $allPersonel = array_map(function ($item) {
                                 </div>
                             </div>
                         </div>
-                        <div class="tab-pane" id="kesintiler" role="tabpanel" data-loaded="false"
+                        <div class="tab-pane <?php echo $activeTab === 'kesintiler' ? 'active show' : ''; ?>"
+                            id="kesintiler" role="tabpanel" data-loaded="false"
                             data-url="views/personel/get-tab-content.php?tab=kesintiler&id=<?php echo $id; ?>">
                             <div class="text-center p-5">
                                 <div class="spinner-border text-primary" role="status">
@@ -262,7 +276,8 @@ $allPersonel = array_map(function ($item) {
                                 </div>
                             </div>
                         </div>
-                        <div class="tab-pane" id="ek_odemeler" role="tabpanel" data-loaded="false"
+                        <div class="tab-pane <?php echo $activeTab === 'ek_odemeler' ? 'active show' : ''; ?>"
+                            id="ek_odemeler" role="tabpanel" data-loaded="false"
                             data-url="views/personel/get-tab-content.php?tab=ek_odemeler&id=<?php echo $id; ?>">
                             <div class="text-center p-5">
                                 <div class="spinner-border text-primary" role="status">
@@ -270,7 +285,8 @@ $allPersonel = array_map(function ($item) {
                                 </div>
                             </div>
                         </div>
-                        <div class="tab-pane" id="icralar" role="tabpanel" data-loaded="false"
+                        <div class="tab-pane <?php echo $activeTab === 'icralar' ? 'active show' : ''; ?>" id="icralar"
+                            role="tabpanel" data-loaded="false"
                             data-url="views/personel/get-tab-content.php?tab=icralar&id=<?php echo $id; ?>">
                             <div class="text-center p-5">
                                 <div class="spinner-border text-primary" role="status">
@@ -278,7 +294,8 @@ $allPersonel = array_map(function ($item) {
                                 </div>
                             </div>
                         </div>
-                        <div class="tab-pane" id="finansal_islemler" role="tabpanel" data-loaded="false"
+                        <div class="tab-pane <?php echo $activeTab === 'finansal_islemler' ? 'active show' : ''; ?>"
+                            id="finansal_islemler" role="tabpanel" data-loaded="false"
                             data-url="views/personel/get-tab-content.php?tab=finansal_islemler&id=<?php echo $id; ?>">
                             <div class="text-center p-5">
                                 <div class="spinner-border text-primary" role="status">
@@ -286,7 +303,8 @@ $allPersonel = array_map(function ($item) {
                                 </div>
                             </div>
                         </div>
-                        <div class="tab-pane" id="evraklar" role="tabpanel" data-loaded="false"
+                        <div class="tab-pane <?php echo $activeTab === 'evraklar' ? 'active show' : ''; ?>" id="evraklar"
+                            role="tabpanel" data-loaded="false"
                             data-url="views/personel/get-tab-content.php?tab=evraklar&id=<?php echo $id; ?>">
                             <div class="text-center p-5">
                                 <div class="spinner-border text-primary" role="status">
@@ -294,7 +312,8 @@ $allPersonel = array_map(function ($item) {
                                 </div>
                             </div>
                         </div>
-                        <div class="tab-pane" id="puantaj" role="tabpanel" data-loaded="false"
+                        <div class="tab-pane <?php echo $activeTab === 'puantaj' ? 'active show' : ''; ?>" id="puantaj"
+                            role="tabpanel" data-loaded="false"
                             data-url="views/personel/get-tab-content.php?tab=puantaj&id=<?php echo $id; ?>">
                             <div class="text-center p-5">
                                 <div class="spinner-border text-primary" role="status">
@@ -313,25 +332,28 @@ $allPersonel = array_map(function ($item) {
         </div>
     </div>
 </div>
-</div>
 
 <script>
+    function loadTabContent(targetPane) {
+        if (targetPane && targetPane.hasAttribute('data-url') && targetPane.getAttribute('data-loaded') === 'false') {
+            var url = targetPane.getAttribute('data-url');
+            $(targetPane).html('<div class="text-center p-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div></div>');
+
+            $.get(url, function (html) {
+                $(targetPane).html(html);
+                targetPane.setAttribute('data-loaded', 'true');
+                initPlugins(targetPane);
+            }).fail(function () {
+                $(targetPane).html('<div class="alert alert-danger">İçerik yüklenirken bir hata oluştu.</div>');
+            });
+        }
+    }
+
     window.reloadActiveTab = function () {
         var activePane = document.querySelector('.tab-pane.active');
         if (activePane && activePane.hasAttribute('data-url')) {
-            var url = activePane.getAttribute('data-url');
-            activePane.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div></div>';
-
-            fetch(url)
-                .then(response => response.text())
-                .then(html => {
-                    activePane.innerHTML = html;
-                    initPlugins(activePane);
-                })
-                .catch(error => {
-                    console.error('Error reloading tab content:', error);
-                    activePane.innerHTML = '<div class="alert alert-danger">İçerik güncellenirken bir hata oluştu.</div>';
-                });
+            activePane.setAttribute('data-loaded', 'false');
+            loadTabContent(activePane);
         }
     };
 
@@ -364,6 +386,15 @@ $allPersonel = array_map(function ($item) {
             });
         }
 
+        /**DataTable varsa init yap */
+        if ($(container).find(".datatable").length > 0) {
+            $(container).find(".datatable").each(function () {
+                if (!$.fn.DataTable.isDataTable(this)) {
+                    $(this).DataTable(getDatatableOptions());
+                }
+            });
+        }
+
         feather.replace();
     }
 
@@ -378,29 +409,23 @@ $allPersonel = array_map(function ($item) {
             }
         });
 
+        // Tab değişikliklerini dinle
         var triggerTabList = [].slice.call(document.querySelectorAll('.nav-tabs a[data-bs-toggle="tab"]'))
         triggerTabList.forEach(function (triggerEl) {
             triggerEl.addEventListener('shown.bs.tab', function (event) {
                 var targetId = event.target.getAttribute('href');
                 var targetPane = document.querySelector(targetId);
-
-                if (targetPane && targetPane.hasAttribute('data-url')) {
-                    var url = targetPane.getAttribute('data-url');
-                    targetPane.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div></div>';
-
-                    fetch(url)
-                        .then(response => response.text())
-                        .then(html => {
-                            targetPane.innerHTML = html;
-                            initPlugins(targetPane);
-                        })
-                        .catch(error => {
-                            console.error('Error loading tab content:', error);
-                            targetPane.innerHTML = '<div class="alert alert-danger">İçerik yüklenirken bir hata oluştu.</div>';
-                        });
-                }
+                loadTabContent(targetPane);
             })
         })
+
+        // Sayfa yüklendiğinde aktif tab eğer dinamik içerikliyse yükle
+        var activeTabLink = document.querySelector('.nav-tabs a.active');
+        if (activeTabLink) {
+            var targetId = activeTabLink.getAttribute('href');
+            var targetPane = document.querySelector(targetId);
+            loadTabContent(targetPane);
+        }
     });
 </script>
 <script src="views/personel/js/zimmet.js"></script>

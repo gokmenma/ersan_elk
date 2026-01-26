@@ -23,7 +23,14 @@ function getDatatableOptions() {
     initComplete: function (settings, json) {
       var api = this.api();
       var tableId = settings.sTableId;
-      $("#" + tableId + " thead").append('<tr class="search-input-row"></tr>');
+      var $thead = $("#" + tableId + " thead");
+
+      if ($thead.find(".search-input-row").length > 0) {
+        return;
+      }
+
+      var $searchRow = $('<tr class="search-input-row"></tr>');
+      $thead.append($searchRow);
 
       // PageLength select kutusunun düzgün görünmesi için
       $(settings.nTableWrapper)
@@ -52,14 +59,7 @@ function getDatatableOptions() {
 
           // Append input element to the new row
           const th = $('<th class="search">').append(input);
-          $("#" + tableId + " .search-input-row").append(th);
-
-          // // Event listener for user input
-          // $(input).on("keyup change", function () {
-          //   if (column.search() !== this.value) {
-          //     column.search(this.value).draw();
-          //   }
-          // });
+          $searchRow.append(th);
 
           // Türkçe arama için: column.search() yerine data attribute kullanıyoruz
           $(input).attr("data-col-idx", column.index());
@@ -77,14 +77,14 @@ function getDatatableOptions() {
           }
         } else {
           // Eğer "İşlem" sütunuysa, boş bir th ekleyin
-          $("#" + tableId + " .search-input-row").append("<th></th>");
+          $searchRow.append("<th></th>");
         }
       });
 
       // Responsive olayını dinle
-      table.on("responsive-resize", function (e, datatable, columns) {
+      api.on("responsive-resize", function (e, datatable, columns) {
         // Sütun görünürlüğünü kontrol et ve inputları gizle/göster
-        $("#" + tableId + " .search-input-row th").each(function (index) {
+        $searchRow.find("th").each(function (index) {
           if (columns[index]) {
             $(this).show(); // Sütun görünüyorsa inputu göster
           } else {
@@ -93,12 +93,15 @@ function getDatatableOptions() {
         });
       });
 
-      var state = table.state.loaded();
+      var state = api.state.loaded();
       if (state) {
-        $("input", table.table().header()).each(function (index) {
-          var searchValue = state.columns[index].search.search;
-          if (searchValue) {
-            $(this).val(searchValue);
+        $searchRow.find("input").each(function (index) {
+          var colIdx = $(this).attr("data-col-idx");
+          if (colIdx && state.columns[colIdx]) {
+            var searchValue = state.columns[colIdx].search.search;
+            if (searchValue) {
+              $(this).val(searchValue);
+            }
           }
         });
       }

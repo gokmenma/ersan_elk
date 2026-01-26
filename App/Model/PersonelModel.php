@@ -165,6 +165,129 @@ class PersonelModel extends Model
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
 
+    /**
+     * DataTables için sunucu taraflı veri çekme
+     */
+    public function getDataTable($request)
+    {
+        $params = ['firma_id' => $_SESSION['firma_id']];
 
+        // Temel sorgu
+        $sql = "SELECT p.*, 
+                CASE WHEN ps.id IS NOT NULL THEN 1 ELSE 0 END as bildirim_abonesi
+                FROM {$this->table} p 
+                LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
+                WHERE p.firma_id = :firma_id";
 
+        // Toplam kayıt sayısı (filtresiz)
+        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} WHERE firma_id = :firma_id");
+        $totalQuery->execute(['firma_id' => $_SESSION['firma_id']]);
+        $recordsTotal = $totalQuery->fetchColumn();
+
+        // Filtreleme
+        $filterSql = "";
+
+        // Global Arama
+        if (!empty($request['search']['value'])) {
+            $searchValue = "%" . $request['search']['value'] . "%";
+            $filterSql .= " AND (
+                p.tc_kimlik_no LIKE :search OR
+                p.adi_soyadi LIKE :search OR
+                p.cep_telefonu LIKE :search OR
+                p.email_adresi LIKE :search OR
+                p.gorev LIKE :search
+            )";
+            $params['search'] = $searchValue;
+        }
+
+        // Sütun Bazlı Arama
+        $colMap = [
+            2 => 'p.tc_kimlik_no',
+            3 => 'p.adi_soyadi',
+            4 => 'p.ise_giris_tarihi',
+            5 => 'p.cep_telefonu',
+            6 => 'p.email_adresi',
+            7 => 'p.gorev',
+            9 => 'p.aktif_mi'
+        ];
+
+        if (isset($request['columns'])) {
+            foreach ($request['columns'] as $i => $column) {
+                if (!empty($column['search']['value']) && isset($colMap[$i])) {
+                    $field = $colMap[$i];
+                    $val = "%" . $column['search']['value'] . "%";
+                    $paramName = "col_" . $i;
+
+                    if ($i == 9) { // Durum
+                        if (stripos('Aktif', $column['search']['value']) !== false) {
+                            $filterSql .= " AND p.aktif_mi = 1";
+                        } elseif (stripos('Pasif', $column['search']['value']) !== false) {
+                            $filterSql .= " AND p.aktif_mi = 0";
+                        }
+                    } else {
+                        $filterSql .= " AND $field LIKE :$paramName";
+                        $params[$paramName] = $val;
+                    }
+                }
+            }
+        }
+
+        $sql .= $filterSql;
+        $sql .= " GROUP BY p.id";
+
+        // Filtrelenmiş kayıt sayısı
+        $filteredQuerySql = "SELECT COUNT(*) FROM (SELECT p.id FROM {$this->table} p WHERE p.firma_id = :firma_id $filterSql GROUP BY p.id) as temp";
+        $filteredQuery = $this->db->prepare($filteredQuerySql);
+        // Filtrelenmiş sayı için parametreleri temizle (sadece gerekli olanları bırak)
+        $filteredParams = ['firma_id' => $_SESSION['firma_id']];
+        if (isset($params['search']))
+            $filteredParams['search'] = $params['search'];
+        foreach ($params as $key => $val) {
+            if (strpos($key, 'col_') === 0)
+                $filteredParams[$key] = $val;
+        }
+        $filteredQuery->execute($filteredParams);
+        $recordsFiltered = $filteredQuery->fetchColumn();
+
+        // Sıralama
+        if (isset($request['order'][0])) {
+            $orderColIdx = $request['order'][0]['column'];
+            $orderDir = $request['order'][0]['dir'];
+            if (isset($colMap[$orderColIdx])) {
+                $sql .= " ORDER BY " . $colMap[$orderColIdx] . " " . $orderDir;
+            } else {
+                $sql .= " ORDER BY p.adi_soyadi ASC";
+            }
+        } else {
+            $sql .= " ORDER BY p.adi_soyadi ASC";
+        }
+
+        // Sayfalama
+        if (isset($request['start']) && $request['length'] != -1) {
+            $sql .= " LIMIT :start, :length";
+            $params['start'] = (int) $request['start'];
+            $params['length'] = (int) $request['length'];
+        }
+
+        $query = $this->db->prepare($sql);
+
+        // Bind values for LIMIT
+        foreach ($params as $key => $val) {
+            if ($key === 'start' || $key === 'length') {
+                $query->bindValue(":$key", $val, PDO::PARAM_INT);
+            } else {
+                $query->bindValue(":$key", $val);
+            }
+        }
+
+        $query->execute();
+        $data = $query->fetchAll(PDO::FETCH_OBJ);
+
+        return [
+            "draw" => isset($request['draw']) ? intval($request['draw']) : 0,
+            "recordsTotal" => intval($recordsTotal),
+            "recordsFiltered" => intval($recordsFiltered),
+            "data" => $data
+        ];
+    }
 }

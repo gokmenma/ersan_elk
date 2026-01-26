@@ -1,6 +1,78 @@
 $(document).ready(function () {
   // Mevcut DataTable instance'ına eriş
-  var table = $("#membersTable").DataTable(getDatatableOptions());
+  var table = $("#membersTable").DataTable({
+    ...getDatatableOptions(),
+    serverSide: true,
+    order: [[3, "asc"]],
+    ajax: {
+      url: "views/personel/api.php",
+      type: "POST",
+      data: function (d) {
+        d.action = "personel-list";
+      },
+    },
+    columns: [
+      {
+        data: null,
+        orderable: false,
+        render: function (data, type, row, meta) {
+          return `
+            <div class="form-check font-size-16">
+                <input class="form-check-input" type="checkbox" id="orderidcheck${meta.row}">
+                <label class="form-check-label" for="orderidcheck${meta.row}"></label>
+            </div>`;
+        },
+      },
+      {
+        data: null,
+        className: "text-center",
+        render: function (data, type, row, meta) {
+          return meta.row + meta.settings._iDisplayStart + 1;
+        },
+      },
+      { data: "tc_kimlik_no" },
+      {
+        data: "adi_soyadi",
+        render: function (data, type, row) {
+          return `
+            <div class="personel-name-container">
+                <a target="_blank" href="index?p=personel/manage&id=${row.id}">${data}</a>
+                <img src="${row.resim_yolu ? row.resim_yolu : "assets/images/users/user-dummy-img.jpg"}"
+                    alt="${data}" class="personel-hover-image">
+            </div>`;
+        },
+      },
+      { data: "ise_giris_tarihi" },
+      {
+        data: "cep_telefonu",
+        render: function (data) {
+          return `<i class="feather feather-smartphone"></i>${data}`;
+        },
+      },
+      { data: "email_adresi" },
+      { data: "gorev" },
+      {
+        data: "bildirim_abonesi",
+        className: "text-center",
+        render: function (data) {
+          if (data == 1) {
+            return '<span class="badge bg-success"><i class="bx bx-check-double font-size-13 align-middle me-1"></i>Açık</span>';
+          } else {
+            return '<span class="badge bg-danger"><i class="bx bx-x font-size-13 align-middle me-1"></i>Kapalı</span>';
+          }
+        },
+      },
+      {
+        data: "aktif_mi",
+        render: function (data) {
+          return data == 1 ? "Aktif" : "Pasif";
+        },
+      },
+    ],
+    createdRow: function (row, data, dataIndex) {
+      $(row).attr("data-id", data.id);
+    },
+  });
 
   // Satır seçimi
   table.on("click", "tbody tr", (e) => {

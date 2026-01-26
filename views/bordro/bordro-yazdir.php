@@ -12,12 +12,8 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\BordroPersonelModel;
 use App\Model\PersonelModel;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Pdf\Mpdf;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Color;
+use App\Model\FirmaModel;
+use Mpdf\Mpdf;
 
 $bordro_id = intval($_GET['id'] ?? 0);
 $personel_id = intval($_GET['personel_id'] ?? 0);
@@ -46,267 +42,256 @@ if ($personel->firma_id != $_SESSION['firma_id']) {
     die('Yetkisiz firma erişimi.');
 }
 
+$FirmaModel = new FirmaModel();
+$firma = $FirmaModel->find($_SESSION['firma_id']);
+
 $kesintilerDetay = $BordroModel->getDonemKesintileriDetay($personel_id, $bordro->donem_id);
 $ekOdemelerDetay = $BordroModel->getDonemEkOdemeleriDetay($personel_id, $bordro->donem_id);
 $guncelKesinti = $BordroModel->getDonemKesintileri($personel_id, $bordro->donem_id);
 $guncelEkOdeme = $BordroModel->getDonemEkOdemeleri($personel_id, $bordro->donem_id);
 
-$spreadsheet = new Spreadsheet();
-$sheet = $spreadsheet->getActiveSheet();
+$toplamYasalKesinti = floatval($bordro->sgk_isci) + floatval($bordro->issizlik_isci) + floatval($bordro->gelir_vergisi) + floatval($bordro->damga_vergisi);
+$toplamKesinti = $guncelKesinti + $toplamYasalKesinti;
+$toplamEkOdeme = $guncelEkOdeme;
 
-// Varsayılan Font Ayarı (UTF-8 desteği için)
-$spreadsheet->getDefaultStyle()->getFont()->setName('DejaVu Sans');
-$spreadsheet->getDefaultStyle()->getFont()->setSize(10);
-
-// Sayfa Ayarları
-$sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_PORTRAIT);
-$sheet->getPageSetup()->setPaperSize(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::PAPERSIZE_A4);
-$sheet->getPageMargins()->setTop(0.5)->setBottom(0.5)->setLeft(0.5)->setRight(0.5);
-
-// Renkler
-$colorBlue = '135bec';
-$colorRed = 'ef5350';
-$colorGreen = '4caf50';
-$colorOrange = 'ffb74d';
-$colorLightBlue = 'e3f2fd';
-$colorLightGreen = 'e8f5e9';
-$colorLightOrange = 'fff3e0';
-
-// 1. ÜST BAŞLIK
-$sheet->mergeCells('A1:F2');
-$sheet->setCellValue('A1', 'MAAŞ BORDROSU');
-$sheet->getStyle('A1:F2')->applyFromArray([
-    'font' => ['bold' => true, 'size' => 16, 'color' => ['argb' => Color::COLOR_WHITE]],
-    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $colorBlue]],
-    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER]
-]);
-
-$row = 4;
-
-// 2. PERSONEL BİLGİLERİ & MAAŞ ÖZETİ BAŞLIKLARI
-$sheet->mergeCells("A{$row}:C{$row}");
-$sheet->setCellValue("A{$row}", '  Personel Bilgileri');
-$sheet->mergeCells("D{$row}:F{$row}");
-$sheet->setCellValue("D{$row}", '  Maaş Özeti');
-$sheet->getStyle("A{$row}:F{$row}")->getFont()->setBold(true)->setSize(11);
-$sheet->getStyle("A{$row}:F{$row}")->getBorders()->getBottom()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('dddddd');
-$row++;
-
-// İçerik Satırları
-$infoRows = [
-    ['Ad Soyad:', $personel->adi_soyadi ?? '-', ($personel->maas_durumu ?? 'Brüt') . ' Maaş:', number_format($bordro->brut_maas ?? 0, 2, ',', '.') . ' ₺'],
-    ['TC Kimlik:', $personel->tc_kimlik_no ?? '-', 'Toplam Ek Ödeme:', '+' . number_format($guncelEkOdeme, 2, ',', '.') . ' ₺'],
-    ['Departman:', $personel->departman ?? '-', 'Toplam Kesinti:', '-' . number_format($guncelKesinti + floatval($bordro->sgk_isci) + floatval($bordro->issizlik_isci) + floatval($bordro->gelir_vergisi) + floatval($bordro->damga_vergisi), 2, ',', '.') . ' ₺'],
-    ['Görev:', $personel->gorev ?? '-', 'Net Maaş:', number_format($bordro->net_maas ?? 0, 2, ',', '.') . ' ₺'],
-    ['İşe Giriş:', $personel->ise_giris_tarihi ? date('d.m.Y', strtotime($personel->ise_giris_tarihi)) : '-', '', '']
+$donemAdi = date('F Y', strtotime($bordro->baslangic_tarihi));
+$aylar = [
+    'January' => 'Ocak',
+    'February' => 'Şubat',
+    'March' => 'Mart',
+    'April' => 'Nisan',
+    'May' => 'Mayıs',
+    'June' => 'Haziran',
+    'July' => 'Temmuz',
+    'August' => 'Ağustos',
+    'September' => 'Eylül',
+    'October' => 'Ekim',
+    'November' => 'Kasım',
+    'December' => 'Aralık'
 ];
+$donemAdiTr = strtr($donemAdi, $aylar);
 
-foreach ($infoRows as $idx => $info) {
-    $sheet->setCellValue("A{$row}", $info[0]);
-    $sheet->setCellValue("B{$row}", $info[1]);
-    $sheet->setCellValue("D{$row}", $info[2]);
-    $sheet->setCellValue("E{$row}", $info[3]);
+// HTML İçeriği
+$html = '
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: "DejaVu Sans", sans-serif; color: #333; font-size: 10pt; line-height: 1.4; }
+        .header { border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px; }
+        .logo-box { width: 150px; }
+        .company-name { font-size: 16pt; font-weight: bold; color: #1e293b; }
+        .document-title { font-size: 14pt; color: #2563eb; text-align: right; font-weight: bold; }
+        
+        .section-title { background: #f1f5f9; padding: 5px 10px; font-weight: bold; color: #475569; margin-bottom: 10px; border-left: 4px solid #2563eb; }
+        
+        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .info-table td { padding: 4px 0; vertical-align: top; }
+        .label { color: #64748b; width: 120px; }
+        .value { font-weight: bold; color: #1e293b; }
+        
+        .main-grid { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .main-grid td { width: 50%; vertical-align: top; padding: 0 10px; }
+        .main-grid td:first-child { padding-left: 0; border-right: 1px solid #e2e8f0; }
+        .main-grid td:last-child { padding-right: 0; }
+        
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th { text-align: left; border-bottom: 1px solid #e2e8f0; padding: 8px 0; color: #64748b; font-size: 9pt; }
+        .data-table td { padding: 8px 0; border-bottom: 1px dotted #f1f5f9; }
+        .amount { text-align: right; font-weight: bold; }
+        .negative { color: #dc2626; }
+        .positive { color: #16a34a; }
+        
+        .summary-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-top: 20px; }
+        .net-salary-row { border-top: 2px solid #2563eb; padding-top: 10px; margin-top: 10px; }
+        .net-salary-label { font-size: 12pt; font-weight: bold; }
+        .net-salary-value { font-size: 16pt; font-weight: bold; color: #16a34a; text-align: right; }
+        
+        .footer { margin-top: 30px; font-size: 8pt; color: #94a3b8; text-align: center; border-top: 1px solid #f1f5f9; padding-top: 10px; }
+        
+        .cost-grid { width: 100%; margin-top: 20px; border-collapse: collapse; }
+        .cost-grid td { background: #f1f5f9; padding: 10px; border: 1px solid #fff; text-align: center; border-radius: 4px; }
+        .cost-label { font-size: 8pt; color: #64748b; display: block; margin-bottom: 4px; }
+        .cost-value { font-weight: bold; color: #1e293b; }
+    </style>
+</head>
+<body>
+    <table width="100%" class="header">
+        <tr>
+            <td class="logo-box">
+                <img src="' . dirname(__DIR__, 2) . '/assets/images/logo.png" height="40">
+            </td>
+            <td>
+                <div class="company-name">' . ($firma->firma_adi ?? 'ERSAN ELEKTRİK') . '</div>
+                <div style="font-size: 9pt; color: #64748b;">Maaş Ödeme Bordrosu</div>
+            </td>
+            <td class="document-title">
+                ' . $donemAdiTr . '
+            </td>
+        </tr>
+    </table>
 
-    $sheet->getStyle("A{$row}")->getFont()->getColor()->setARGB('777777');
-    $sheet->getStyle("B{$row}")->getFont()->setBold(true);
-    $sheet->getStyle("D{$row}")->getFont()->getColor()->setARGB('777777');
-    $sheet->getStyle("E{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+    <div class="section-title">Personel Bilgileri</div>
+    <table class="info-table">
+        <tr>
+            <td class="label">Ad Soyad:</td>
+            <td class="value">' . ($personel->adi_soyadi ?? '-') . '</td>
+            <td class="label">TC Kimlik:</td>
+            <td class="value">' . ($personel->tc_kimlik_no ?? '-') . '</td>
+        </tr>
+        <tr>
+            <td class="label">Departman:</td>
+            <td class="value">' . ($personel->departman ?? '-') . '</td>
+            <td class="label">Görev:</td>
+            <td class="value">' . ($personel->gorev ?? '-') . '</td>
+        </tr>
+        <tr>
+            <td class="label">İşe Giriş:</td>
+            <td class="value">' . ($personel->ise_giris_tarihi ? date('d.m.Y', strtotime($personel->ise_giris_tarihi)) : '-') . '</td>
+            <td class="label">Maaş Tipi:</td>
+            <td class="value">' . ($personel->maas_durumu ?? 'Brüt') . '</td>
+        </tr>
+    </table>
 
-    if ($idx == 0)
-        $sheet->getStyle("E{$row}")->getFont()->setBold(true)->getColor()->setARGB($colorBlue);
-    if ($idx == 1)
-        $sheet->getStyle("E{$row}")->getFont()->setBold(true)->getColor()->setARGB($colorGreen);
-    if ($idx == 2)
-        $sheet->getStyle("E{$row}")->getFont()->setBold(true)->getColor()->setARGB($colorRed);
-    if ($idx == 3) {
-        $sheet->mergeCells("E{$row}:F{$row}");
-        $sheet->getStyle("E{$row}")->getFont()->setBold(true)->setSize(12)->getColor()->setARGB($colorGreen);
-        $sheet->getStyle("D{$row}:F{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($colorLightGreen);
+    <table class="main-grid">
+        <tr>
+            <td>
+                <div style="font-weight: bold; color: #2563eb; margin-bottom: 10px;">Kazançlar</div>
+                <table class="data-table">
+                    <tr>
+                        <th>Açıklama</th>
+                        <th class="amount">Tutar</th>
+                    </tr>
+                    <tr>
+                        <td>Brüt Maaş</td>
+                        <td class="amount">' . number_format($bordro->brut_maas ?? 0, 2, ',', '.') . ' ₺</td>
+                    </tr>';
+
+if (!empty($ekOdemelerDetay)) {
+    foreach ($ekOdemelerDetay as $ek) {
+        $html .= '
+                            <tr>
+                                <td>' . ucfirst($ek->tur) . '</td>
+                                <td class="amount positive">+' . number_format($ek->toplam_tutar, 2, ',', '.') . ' ₺</td>
+                            </tr>';
     }
-    $sheet->getRowDimension($row)->setRowHeight(20);
-    $row++;
 }
 
-$row += 1;
+$html .= '
+                    <tr style="border-top: 1px solid #e2e8f0;">
+                        <td style="font-weight: bold;">Toplam Kazanç</td>
+                        <td class="amount">' . number_format(floatval($bordro->brut_maas) + $toplamEkOdeme, 2, ',', '.') . ' ₺</td>
+                    </tr>
+                </table>
+            </td>
+            <td>
+                <div style="font-weight: bold; color: #dc2626; margin-bottom: 10px;">Kesintiler</div>
+                <table class="data-table">
+                    <tr>
+                        <th>Açıklama</th>
+                        <th class="amount">Tutar</th>
+                    </tr>
+                    <tr>
+                        <td>SGK İşçi Payı (%14)</td>
+                        <td class="amount negative">-' . number_format($bordro->sgk_isci ?? 0, 2, ',', '.') . ' ₺</td>
+                    </tr>
+                    <tr>
+                        <td>İşsizlik Sigortası (%1)</td>
+                        <td class="amount negative">-' . number_format($bordro->issizlik_isci ?? 0, 2, ',', '.') . ' ₺</td>
+                    </tr>
+                    <tr>
+                        <td>Gelir Vergisi</td>
+                        <td class="amount negative">-' . number_format($bordro->gelir_vergisi ?? 0, 2, ',', '.') . ' ₺</td>
+                    </tr>
+                    <tr>
+                        <td>Damga Vergisi</td>
+                        <td class="amount negative">-' . number_format($bordro->damga_vergisi ?? 0, 2, ',', '.') . ' ₺</td>
+                    </tr>';
 
-// 3. KARTLAR (KESİNTİLER & EK ÖDEMELER)
-$cardHeaderRow = $row;
-$sheet->mergeCells("A{$row}:B{$row}");
-$sheet->setCellValue("A{$row}", ' Yasal Kesintiler');
-$sheet->getStyle("A{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($colorRed);
-$sheet->getStyle("A{$row}")->getFont()->setBold(true)->getColor()->setARGB(Color::COLOR_WHITE);
-
-$sheet->mergeCells("C{$row}:D{$row}");
-$sheet->setCellValue("C{$row}", ' Diğer Kesintiler');
-$sheet->getStyle("C{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('f39c12'); // Turuncu
-$sheet->getStyle("C{$row}")->getFont()->setBold(true)->getColor()->setARGB(Color::COLOR_WHITE);
-
-$sheet->mergeCells("E{$row}:F{$row}");
-$sheet->setCellValue("E{$row}", ' Ek Ödemeler');
-$sheet->getStyle("E{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($colorGreen);
-$sheet->getStyle("E{$row}")->getFont()->setBold(true)->getColor()->setARGB(Color::COLOR_WHITE);
-
-$row++;
-$cardStartRow = $row;
-
-$yasalKesintiler = [
-    ['SGK İşçi (%14)', $bordro->sgk_isci],
-    ['İşsizlik İşçi (%1)', $bordro->issizlik_isci],
-    ['Gelir Vergisi', $bordro->gelir_vergisi],
-    ['Damga Vergisi', $bordro->damga_vergisi]
-];
-
-$maxItems = max(count($yasalKesintiler), count($kesintilerDetay), count($ekOdemelerDetay), 4);
-
-for ($i = 0; $i < $maxItems; $i++) {
-    // Yasal
-    if (isset($yasalKesintiler[$i])) {
-        $sheet->setCellValue("A" . ($row + $i), $yasalKesintiler[$i][0]);
-        $sheet->setCellValue("B" . ($row + $i), '-' . number_format($yasalKesintiler[$i][1], 2, ',', '.') . ' ₺');
-        $sheet->getStyle("B" . ($row + $i))->getFont()->getColor()->setARGB($colorRed);
+if (!empty($kesintilerDetay)) {
+    foreach ($kesintilerDetay as $k) {
+        $html .= '
+                            <tr>
+                                <td>' . ucfirst($k->tur) . '</td>
+                                <td class="amount negative">-' . number_format($k->toplam_tutar, 2, ',', '.') . ' ₺</td>
+                            </tr>';
     }
-
-    // Diğer
-    if (isset($kesintilerDetay[$i])) {
-        $sheet->setCellValue("C" . ($row + $i), ucfirst($kesintilerDetay[$i]->tur));
-        $sheet->setCellValue("D" . ($row + $i), '-' . number_format($kesintilerDetay[$i]->toplam_tutar, 2, ',', '.') . ' ₺');
-        $sheet->getStyle("D" . ($row + $i))->getFont()->getColor()->setARGB($colorRed);
-    } elseif ($i == 0 && empty($kesintilerDetay)) {
-        $sheet->setCellValue("C" . ($row + $i), 'Kesinti yok');
-        $sheet->getStyle("C" . ($row + $i))->getFont()->setItalic(true)->getColor()->setARGB('999999');
-    }
-
-    // Ek
-    if (isset($ekOdemelerDetay[$i])) {
-        $sheet->setCellValue("E" . ($row + $i), ucfirst($ekOdemelerDetay[$i]->tur));
-        $sheet->setCellValue("F" . ($row + $i), '+' . number_format($ekOdemelerDetay[$i]->toplam_tutar, 2, ',', '.') . ' ₺');
-        $sheet->getStyle("F" . ($row + $i))->getFont()->getColor()->setARGB($colorGreen);
-    } elseif ($i == 0 && empty($ekOdemelerDetay)) {
-        $sheet->setCellValue("E" . ($row + $i), 'Ek ödeme yok');
-        $sheet->getStyle("E" . ($row + $i))->getFont()->setItalic(true)->getColor()->setARGB('999999');
-    }
-    $sheet->getStyle("B" . ($row + $i))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-    $sheet->getStyle("D" . ($row + $i))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-    $sheet->getStyle("F" . ($row + $i))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-    $sheet->getRowDimension($row + $i)->setRowHeight(18);
 }
 
-$row += $maxItems;
+$html .= '
+                    <tr style="border-top: 1px solid #e2e8f0;">
+                        <td style="font-weight: bold;">Toplam Kesinti</td>
+                        <td class="amount negative">-' . number_format($toplamKesinti, 2, ',', '.') . ' ₺</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 
-// Kart Toplamları
-$sheet->setCellValue("A{$row}", 'Toplam');
-$sheet->setCellValue("B{$row}", '-' . number_format(array_sum(array_column($yasalKesintiler, 1)), 2, ',', '.') . ' ₺');
-$sheet->getStyle("A{$row}:B{$row}")->getFont()->setBold(true)->getColor()->setARGB($colorRed);
-
-$sheet->setCellValue("C{$row}", 'Toplam');
-$sheet->setCellValue("D{$row}", '-' . number_format($guncelKesinti, 2, ',', '.') . ' ₺');
-$sheet->getStyle("C{$row}:D{$row}")->getFont()->setBold(true)->getColor()->setARGB($colorRed);
-
-$sheet->setCellValue("E{$row}", 'Toplam');
-$sheet->setCellValue("F{$row}", '+' . number_format($guncelEkOdeme, 2, ',', '.') . ' ₺');
-$sheet->getStyle("E{$row}:F{$row}")->getFont()->setBold(true)->getColor()->setARGB($colorGreen);
-
-$sheet->getStyle("B{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-$sheet->getStyle("D{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-$sheet->getStyle("F{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-
-// Kenarlıklar
-$sheet->getStyle("A{$cardHeaderRow}:B{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('eeeeee');
-$sheet->getStyle("C{$cardHeaderRow}:D{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('eeeeee');
-$sheet->getStyle("E{$cardHeaderRow}:F{$row}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('eeeeee');
-
-$row += 2;
-
-// 4. İŞVEREN MALİYETLERİ
-$sheet->mergeCells("A{$row}:F{$row}");
-$sheet->setCellValue("A{$row}", '  İşveren Maliyetleri');
-$sheet->getStyle("A{$row}")->getFont()->setBold(true);
-$sheet->getStyle("A{$row}")->getBorders()->getBottom()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('dddddd');
-$row++;
-
-$maliyetData = [
-    ['SGK İşveren (%20.5)', $bordro->sgk_isveren ?? 0],
-    ['İşsizlik İşveren (%2)', $bordro->issizlik_isveren ?? 0],
-    ['Toplam Maliyet', $bordro->toplam_maliyet ?? 0]
-];
-
-$col = 'A';
-foreach ($maliyetData as $idx => $m) {
-    $nextCol = chr(ord($col) + 1);
-    $sheet->mergeCells("{$col}{$row}:{$nextCol}" . ($row + 1));
-    $sheet->setCellValue("{$col}{$row}", "{$m[0]}\n" . number_format($m[1], 2, ',', '.') . ' ₺');
-    $sheet->getStyle("{$col}{$row}")->getAlignment()->setWrapText(true)->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-    $sheet->getStyle("{$col}{$row}")->getFont()->setBold(true);
-
-    if ($idx == 2) {
-        $sheet->getStyle("{$col}{$row}")->getFont()->getColor()->setARGB($colorBlue);
-        $sheet->getStyle("{$col}{$row}:{$nextCol}" . ($row + 1))->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($colorLightBlue);
-    } else {
-        $sheet->getStyle("{$col}{$row}")->getFont()->getColor()->setARGB('e67e22'); // Turuncu tonu
-    }
-
-    $sheet->getStyle("{$col}{$row}:{$nextCol}" . ($row + 1))->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('dddddd');
-    $col = chr(ord($nextCol) + 1);
-}
-
-$row += 3;
-
-// 5. ÖDEME DAĞILIMI
-$sheet->mergeCells("A{$row}:F{$row}");
-$sheet->setCellValue("A{$row}", '  Ödeme Dağılımı');
-$sheet->getStyle("A{$row}")->getFont()->setBold(true);
-$sheet->getStyle("A{$row}")->getBorders()->getBottom()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('dddddd');
-$row++;
+    <div class="summary-box">
+        <table width="100%">
+            <tr>
+                <td width="50%">
+                    <div style="font-weight: bold; color: #475569; margin-bottom: 5px;">Ödeme Detayları</div>
+                    <div style="font-size: 9pt;">
+                        Banka: ' . number_format($bordro->banka_odemesi ?? 0, 2, ',', '.') . ' ₺<br>
+                        Sodexo: ' . number_format($bordro->sodexo_odemesi ?? 0, 2, ',', '.') . ' ₺<br>';
 
 $elden = ($bordro->net_maas ?? 0) - ($bordro->banka_odemesi ?? 0) - ($bordro->sodexo_odemesi ?? 0) - ($bordro->diger_odeme ?? 0);
-$odemeData = [
-    ['Banka', $bordro->banka_odemesi ?? 0, $colorBlue],
-    ['Sodexo', $bordro->sodexo_odemesi ?? 0, '00bcd4'],
-    ['Diğer', $bordro->diger_odeme ?? 0, '607d8b'],
-    ['Elden', $elden, $colorOrange]
-];
-
-$col = 'A';
-foreach ($odemeData as $o) {
-    $nextCol = chr(ord($col) + 1);
-    if ($o[0] == 'Elden') {
-        $sheet->mergeCells("{$col}{$row}:{$nextCol}" . ($row + 1));
-        $sheet->getStyle("{$col}{$row}:{$nextCol}" . ($row + 1))->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($colorLightOrange);
-    } else {
-        $sheet->mergeCells("{$col}{$row}:{$nextCol}" . ($row + 1));
-    }
-
-    $sheet->setCellValue("{$col}{$row}", "{$o[0]}\n" . number_format($o[1], 2, ',', '.') . ' ₺');
-    $sheet->getStyle("{$col}{$row}")->getAlignment()->setWrapText(true)->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-    $sheet->getStyle("{$col}{$row}")->getFont()->setBold(true)->getColor()->setARGB($o[2]);
-    $sheet->getStyle("{$col}{$row}:{$nextCol}" . ($row + 1))->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('dddddd');
-
-    if ($o[0] == 'Diğer') {
-        $col = 'E'; // Elden için E kolonuna atla
-    } else {
-        $col = chr(ord($nextCol) + 1);
-    }
+if ($elden > 0) {
+    $html .= 'Elden: ' . number_format($elden, 2, ',', '.') . ' ₺<br>';
 }
 
-$row += 3;
+$html .= '
+                    </div>
+                </td>
+                <td width="50%" style="text-align: right; vertical-align: bottom;">
+                    <div class="net-salary-label">NET ÖDENECEK</div>
+                    <div class="net-salary-value">' . number_format($bordro->net_maas ?? 0, 2, ',', '.') . ' ₺</div>
+                </td>
+            </tr>
+        </table>
+    </div>
 
-// ALT BİLGİ
-$sheet->mergeCells("A{$row}:F{$row}");
-$sheet->setCellValue("A{$row}", 'Son Hesaplama: ' . ($bordro->hesaplama_tarihi ? date('d.m.Y H:i', strtotime($bordro->hesaplama_tarihi)) : '-'));
-$sheet->getStyle("A{$row}")->getFont()->setSize(8)->getColor()->setARGB('999999');
-$sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+    <div style="margin-top: 20px;">
+        <div style="font-weight: bold; color: #475569; margin-bottom: 10px; font-size: 9pt;">İşveren Maliyet Özeti</div>
+        <table class="cost-grid">
+            <tr>
+                <td>
+                    <span class="cost-label">SGK İşveren (%20.5)</span>
+                    <span class="cost-value">' . number_format($bordro->sgk_isveren ?? 0, 2, ',', '.') . ' ₺</span>
+                </td>
+                <td>
+                    <span class="cost-label">İşsizlik İşveren (%2)</span>
+                    <span class="cost-value">' . number_format($bordro->issizlik_isveren ?? 0, 2, ',', '.') . ' ₺</span>
+                </td>
+                <td style="background: #e0f2fe;">
+                    <span class="cost-label" style="color: #0369a1;">Toplam Maliyet</span>
+                    <span class="cost-value" style="color: #0369a1;">' . number_format($bordro->toplam_maliyet ?? 0, 2, ',', '.') . ' ₺</span>
+                </td>
+            </tr>
+        </table>
+    </div>
 
-// Kolon Genişlikleri
-foreach (range('A', 'F') as $c) {
-    $sheet->getColumnDimension($c)->setWidth(18);
-}
+    <div class="footer">
+        Bu belge sistem tarafından otomatik olarak oluşturulmuştur. | Hesaplama Tarihi: ' . ($bordro->hesaplama_tarihi ? date('d.m.Y H:i', strtotime($bordro->hesaplama_tarihi)) : '-') . '
+    </div>
+</body>
+</html>';
 
 $fileName = 'bordro_' . str_replace(' ', '_', $personel->adi_soyadi) . '_' . date('Y_m', strtotime($bordro->baslangic_tarihi)) . '.pdf';
 
-header('Content-Type: application/pdf');
-header('Content-Disposition: attachment;filename="' . $fileName . '"');
-header('Cache-Control: max-age=0');
+$mpdf = new Mpdf([
+    'mode' => 'utf-8',
+    'format' => 'A4',
+    'margin_left' => 15,
+    'margin_right' => 15,
+    'margin_top' => 15,
+    'margin_bottom' => 15,
+]);
 
-$writer = new Mpdf($spreadsheet);
-$writer->save('php://output');
+$mpdf->SetTitle('Maaş Bordrosu - ' . ($personel->adi_soyadi ?? ''));
+$mpdf->WriteHTML($html);
+$mpdf->Output($fileName, 'I');
 exit;

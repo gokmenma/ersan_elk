@@ -122,8 +122,7 @@ $onay_durumlari = [
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table
-                        class="table table-selected datatable table-responsive dt-responsive table-bordered nowrap w-100">
+                    <table id="izinlerTable" class="table table-selected datatable table-bordered nowrap w-100">
                         <thead class="table-light">
                             <tr>
                                 <th>İzin Türü</th>
@@ -202,10 +201,6 @@ $onay_durumlari = [
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td colspan="7" class="text-center">Herhangi bir izin kaydı bulunamadı.</td>
-                                </tr>
                             <?php endif; ?>
                         </tbody>
                     </table>

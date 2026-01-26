@@ -23,8 +23,8 @@ $(document).ready(function () {
 
   zimmetTable = $("#zimmetTable").DataTable(zimmetOptions);
 
-  // // Select2 başlat
-  // initSelect2();
+  // Select2 başlat
+  initSelect2();
 
   // Feather icons
   if (typeof feather !== "undefined") {
@@ -39,19 +39,41 @@ $(document).ready(function () {
 
 // ============== SELECT2 BAŞLAT ==============
 function initSelect2() {
-  $("#demirbas_id_zimmet").select2({
-    dropdownParent: $("#zimmetModal"),
-    placeholder: "Demirbaş arayın...",
-    allowClear: true,
-    width: "100%",
-  });
+  // Zimmet Modalı Select2'leri
+  if ($("#demirbas_id_zimmet").length) {
+    $("#demirbas_id_zimmet").select2({
+      dropdownParent: $("#zimmetModal"),
+      placeholder: "Demirbaş arayın...",
+      allowClear: true,
+      width: "100%",
+    });
+  }
 
-  $("#personel_id").select2({
-    dropdownParent: $("#zimmetModal"),
-    placeholder: "Personel arayın...",
-    allowClear: true,
-    width: "100%",
-  });
+  if ($("#personel_id").length) {
+    $("#personel_id").select2({
+      dropdownParent: $("#zimmetModal"),
+      placeholder: "Personel arayın...",
+      allowClear: true,
+      width: "100%",
+    });
+  }
+
+  // Genel Demirbaş Modalı Select2'leri
+  if ($("#kategori_id").length) {
+    $("#kategori_id").select2({
+      dropdownParent: $("#demirbasModal"),
+      placeholder: "Kategori seçin...",
+      width: "100%",
+    });
+  }
+
+  if ($("#durum").length) {
+    $("#durum").select2({
+      dropdownParent: $("#demirbasModal"),
+      minimumResultsForSearch: Infinity,
+      width: "100%",
+    });
+  }
 }
 
 // ============== TAB DEĞİŞİKLİĞİNDE ==============
@@ -257,6 +279,7 @@ $(".modal").on("shown.bs.modal", function () {
   if (typeof feather !== "undefined") {
     feather.replace();
   }
+  initSelect2();
 });
 
 // ============== ZİMMET İŞLEMLERİ ==============

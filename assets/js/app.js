@@ -34,12 +34,11 @@ function confirmAndDelete(url, formData, buttonElement, tableId) {
 }
 
 /**firma_id'de değişikliği dinle */
-$(document).on('change', '#firma_id', function() {
+$(document).on("change", "#firma_id", function () {
   var firma_id = $(this).val();
- const params = new URLSearchParams(window.location.search);
-const p = params.get('p');
-  window.location.href = '/set-session.php?firma_id=' + firma_id + '&p=' + p;
-
+  const params = new URLSearchParams(window.location.search);
+  const p = params.get("p");
+  window.location.href = "/set-session.php?firma_id=" + firma_id + "&p=" + p;
 });
 
 //number classına sahip inputlara sadece sayısal değer girilmesini sağlar
@@ -88,27 +87,82 @@ $.validator.setDefaults({
 //   $(this).valid(); // Sadece bu alanı tekrar valide eder
 // });
 
-
 /**
  * Başlangıç tarihine göre aynı ayın son gününü hesaplar (DD.MM.YYYY)
  * @param {string} baslangicTarihi
  * @returns {string} DD.MM.YYYY
  */
 function ayinSonGununuGetir(baslangicTarihi) {
-    if (!baslangicTarihi) return '';
+  if (!baslangicTarihi) return "";
 
-    let parts = baslangicTarihi.split('.');
-    if (parts.length !== 3) return '';
+  let parts = baslangicTarihi.split(".");
+  if (parts.length !== 3) return "";
 
-    let gun = parseInt(parts[0], 10);
-    let ay  = parseInt(parts[1], 10) - 1;
-    let yil = parseInt(parts[2], 10);
+  let gun = parseInt(parts[0], 10);
+  let ay = parseInt(parts[1], 10) - 1;
+  let yil = parseInt(parts[2], 10);
 
-    let lastDay = new Date(yil, ay + 1, 0);
+  let lastDay = new Date(yil, ay + 1, 0);
 
-    let bitisGun = String(lastDay.getDate()).padStart(2, '0');
-    let bitisAy  = String(lastDay.getMonth() + 1).padStart(2, '0');
-    let bitisYil = lastDay.getFullYear();
+  let bitisGun = String(lastDay.getDate()).padStart(2, "0");
+  let bitisAy = String(lastDay.getMonth() + 1).padStart(2, "0");
+  let bitisYil = lastDay.getFullYear();
 
-    return `${bitisGun}.${bitisAy}.${bitisYil}`;
+  return `${bitisGun}.${bitisAy}.${bitisYil}`;
 }
+
+/**
+ * Tab persistence via URL query parameter
+ * Sayfa yenilendiğinde seçili sekmenin aktif kalmasını sağlar.
+ */
+$(document).ready(function () {
+  // Tab değiştiğinde URL'yi güncelle
+  $(document).on(
+    "shown.bs.tab",
+    '[data-bs-toggle="tab"], [data-bs-toggle="pill"]',
+    function (e) {
+      var target =
+        $(e.target).attr("href") || $(e.target).attr("data-bs-target");
+      if (target && target.startsWith("#")) {
+        var tabName = target.substring(1).replace("Content", ""); // 'aracContent' -> 'arac'
+
+        var url = new URL(window.location);
+        url.searchParams.set("tab", tabName);
+        // URL'yi güncelle ama geçmişe ekleme (opsiyonel, pushState de olabilir)
+        window.history.replaceState({}, "", url);
+      }
+    },
+  );
+
+  // Sayfa yüklendiğinde URL'de tab varsa ve PHP tarafından aktif edilmemişse JS ile aktif et
+  var urlParams = new URLSearchParams(window.location.search);
+  var tabParam = urlParams.get("tab");
+  if (tabParam) {
+    var tabEl =
+      document.querySelector(
+        '[data-bs-toggle="tab"][href="#' + tabParam + '"]',
+      ) ||
+      document.querySelector(
+        '[data-bs-toggle="tab"][data-bs-target="#' + tabParam + '"]',
+      ) ||
+      document.querySelector(
+        '[data-bs-toggle="tab"][href="#' + tabParam + 'Content"]',
+      ) ||
+      document.querySelector(
+        '[data-bs-toggle="tab"][data-bs-target="#' + tabParam + 'Content"]',
+      ) ||
+      document.querySelector(
+        '[data-bs-toggle="pill"][href="#' + tabParam + '"]',
+      ) ||
+      document.querySelector(
+        '[data-bs-toggle="pill"][data-bs-target="#' + tabParam + '"]',
+      );
+
+    if (tabEl && !tabEl.classList.contains("active")) {
+      setTimeout(function () {
+        var tab = new bootstrap.Tab(tabEl);
+        tab.show();
+      }, 100);
+    }
+  }
+});

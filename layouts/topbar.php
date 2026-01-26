@@ -48,8 +48,8 @@ $firma_option = $FirmaModel->option();
                 </a>
             </div>
 
-            <button type="button" class="btn btn-sm px-3 font-size-16 header-item" id="vertical-menu-btn">
-                <i class="fa fa-fw fa-bars"></i>
+            <button type="button" class="btn btn-sm px-3 font-size-24 header-item" id="vertical-menu-btn">
+                <i data-feather="menu"></i>
             </button>
 
             <!-- App Search-->
@@ -211,7 +211,8 @@ $firma_option = $FirmaModel->option();
                 <div class="dropdown-menu dropdown-menu-end">
                     <!-- item-->
                     <a class="dropdown-item" href="apps-contacts-profile.php"><i
-                            class="mdi mdi-face-profile font-size-16 align-middle me-1"></i> Profil (<?php echo $_SESSION["user"]->adi_soyadi; ?>)</a>
+                            class="mdi mdi-face-profile font-size-16 align-middle me-1"></i> Profil
+                        (<?php echo $_SESSION["user"]->adi_soyadi; ?>)</a>
                     <a class="dropdown-item" href="auth-lock-screen.php"><i
                             class="mdi mdi-lock font-size-16 align-middle me-1"></i> Kilitle</a>
                     <div class="dropdown-divider"></div>
@@ -256,7 +257,7 @@ $firma_option = $FirmaModel->option();
             } else {
                 notifications.forEach(function (n) {
                     let iconClass = n.icon || 'bell';
-                    
+
                     // İkon mapping - eski/hatalı ikon adlarını düzelt
                     const iconMap = {
                         'lira-sign': 'bx-money',
@@ -264,7 +265,7 @@ $firma_option = $FirmaModel->option();
                         'message-square': 'bx-message-square-detail',
                         'bell': 'bx-bell'
                     };
-                    
+
                     if (iconMap[iconClass]) {
                         iconClass = iconMap[iconClass];
                     } else if (!iconClass.startsWith('bx-') && !iconClass.startsWith('mdi-')) {
@@ -342,7 +343,7 @@ $firma_option = $FirmaModel->option();
                     }
                     isFirstLoad = false;
                 }
-            }, 'json').fail(function() {
+            }, 'json').fail(function () {
                 console.log('Bildirim kontrolü başarısız oldu');
             });
         }
@@ -379,7 +380,7 @@ $firma_option = $FirmaModel->option();
             }
         });
 
-        window.addEventListener('beforeunload', function() {
+        window.addEventListener('beforeunload', function () {
             stopPolling();
         });
 

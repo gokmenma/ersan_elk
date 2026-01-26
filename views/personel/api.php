@@ -630,6 +630,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
+    } elseif ($action == 'personel-list') {
+        try {
+            $result = $Personel->getDataTable($_POST);
+
+            // Verileri formatla (ID şifreleme, tarih formatlama vb.)
+            $formattedData = [];
+            foreach ($result['data'] as $row) {
+                $enc_id = Security::encrypt($row->id);
+
+                $formattedData[] = [
+                    'id' => $enc_id,
+                    'tc_kimlik_no' => $row->tc_kimlik_no,
+                    'adi_soyadi' => $row->adi_soyadi,
+                    'ise_giris_tarihi' => Date::dmy($row->ise_giris_tarihi),
+                    'cep_telefonu' => $row->cep_telefonu,
+                    'email_adresi' => $row->email_adresi,
+                    'gorev' => $row->gorev,
+                    'bildirim_abonesi' => $row->bildirim_abonesi,
+                    'aktif_mi' => $row->aktif_mi,
+                    'resim_yolu' => $row->resim_yolu
+                ];
+            }
+
+            $result['data'] = $formattedData;
+            echo json_encode($result);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Geçersiz işlem.']);
     }
