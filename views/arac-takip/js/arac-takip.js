@@ -848,6 +848,12 @@ $(document).ready(function () {
   // Tab değişikliklerinde listeleri yükle
   $('button[data-bs-toggle="tab"]').on("shown.bs.tab", function (e) {
     const target = $(e.target).data("bs-target");
+    const tabName = target.replace("#", "").replace("Content", "");
+
+    // URL'yi güncelle (sayfa yenilenince bu sekmede kalması için)
+    const url = new URL(window.location);
+    url.searchParams.set("tab", tabName);
+    window.history.replaceState({}, "", url);
 
     if (target === "#zimmetContent") {
       AracTakip.zimmetListesiYukle();

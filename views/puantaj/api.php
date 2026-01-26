@@ -7,6 +7,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use App\Helper\Helper;
 use App\Model\PuantajModel;
 use App\Model\PersonelModel;
+use App\Model\SystemLogModel;
 
 // Set header to JSON
 // header('Content-Type: application/json');
@@ -14,7 +15,7 @@ use App\Model\PersonelModel;
 $Puantaj = new PuantajModel();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'puantaj-excel-kaydet') {
-    
+
     $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
 
     try {
@@ -24,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         $uploadDate = $_POST['upload_date'] ?? date('Y-m-d');
         $fileTmpPath = $_FILES['excel_file']['tmp_name'];
-        
+
         // Load Excel
         $spreadsheet = IOFactory::load($fileTmpPath);
         $sheet = $spreadsheet->getActiveSheet();
@@ -38,19 +39,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             // Check for key columns to identify header row
             // Header columns based on user image: "Firma", "İş Emri Tipi", "Ekip", "İş Emri Sonucu"
             $rowStr = implode(' ', array_map('strval', $row));
-            
+
             if (stripos($rowStr, 'Firma') !== false && stripos($rowStr, 'İş Emri Tipi') !== false && stripos($rowStr, 'Ekip') !== false) {
                 $headerRowIndex = $index;
-                
+
                 // Map columns
                 foreach ($row as $colIndex => $cellValue) {
                     $cellValue = trim($cellValue);
-                    if ($cellValue === 'Firma') $colMap['firma'] = $colIndex;
-                    elseif ($cellValue === 'İş Emri Tipi') $colMap['is_emri_tipi'] = $colIndex;
-                    elseif ($cellValue === 'Ekip') $colMap['ekip'] = $colIndex;
-                    elseif ($cellValue === 'İş Emri Sonucu') $colMap['is_emri_sonucu'] = $colIndex;
-                    elseif (stripos($cellValue, 'Sonuçlanmış') !== false) $colMap['sonuclanmis'] = $colIndex;
-                    elseif (stripos($cellValue, 'Açık Olanlar') !== false) $colMap['acik_olanlar'] = $colIndex;
+                    if ($cellValue === 'Firma')
+                        $colMap['firma'] = $colIndex;
+                    elseif ($cellValue === 'İş Emri Tipi')
+                        $colMap['is_emri_tipi'] = $colIndex;
+                    elseif ($cellValue === 'Ekip')
+                        $colMap['ekip'] = $colIndex;
+                    elseif ($cellValue === 'İş Emri Sonucu')
+                        $colMap['is_emri_sonucu'] = $colIndex;
+                    elseif (stripos($cellValue, 'Sonuçlanmış') !== false)
+                        $colMap['sonuclanmis'] = $colIndex;
+                    elseif (stripos($cellValue, 'Açık Olanlar') !== false)
+                        $colMap['acik_olanlar'] = $colIndex;
                 }
                 break;
             }
@@ -77,20 +84,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // Process rows
         for ($i = $headerRowIndex + 1; $i < count($rows); $i++) {
             $row = $rows[$i];
-            
+
             // Extract data using map
             $firma = isset($colMap['firma']) ? trim($row[$colMap['firma']]) : '';
             $isEmriTipi = isset($colMap['is_emri_tipi']) ? trim($row[$colMap['is_emri_tipi']]) : '';
             $ekip = isset($colMap['ekip']) ? trim($row[$colMap['ekip']]) : '';
             $isEmriSonucu = isset($colMap['is_emri_sonucu']) ? trim($row[$colMap['is_emri_sonucu']]) : '';
-            $sonuclanmis = isset($colMap['sonuclanmis']) ? (int)trim($row[$colMap['sonuclanmis']]) : 0;
-            $acikOlanlar = isset($colMap['acik_olanlar']) ? (int)trim($row[$colMap['acik_olanlar']]) : 0;
+            $sonuclanmis = isset($colMap['sonuclanmis']) ? (int) trim($row[$colMap['sonuclanmis']]) : 0;
+            $acikOlanlar = isset($colMap['acik_olanlar']) ? (int) trim($row[$colMap['acik_olanlar']]) : 0;
 
             // Skip empty rows or summary rows (often total rows have empty fields)
             if (empty($firma) && empty($ekip)) {
                 continue;
             }
-            
+
             // Skip rows that look like totals (e.g. Firma is empty but stats are there, or starts with 'Toplam')
             if (empty($firma) || stripos($firma, 'Toplam') !== false) {
                 continue;
@@ -131,6 +138,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         $response['status'] = 'success';
         $response['message'] = "İşlem tamamlandı. $insertedCount kayıt eklendi, $skippedCount kayıt daha önce yüklendiği için atlandı.";
+
+        // Log Action
+        $SystemLog = new SystemLogModel();
+        $userId = $_SESSION['user_id'] ?? 0;
+        $SystemLog->logAction($userId, 'Puantaj Yükleme', "Excel'den $insertedCount adet puantaj kaydı yüklendi.");
 
     } catch (Exception $e) {
         $response['message'] = $e->getMessage();

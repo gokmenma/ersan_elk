@@ -31,16 +31,9 @@ $(document).ready(function () {
     feather.replace();
   }
 
-  // Son aktif sekmeyi yükle
-  let activeTab = localStorage.getItem("demirbasActiveTab");
-  if (activeTab) {
-    let tabTrigger = new bootstrap.Tab(document.querySelector(activeTab));
-    tabTrigger.show();
-
-    // Eğer zimmet tabı ise listeyi yükle
-    if (activeTab === "#zimmet-tab") {
-      loadZimmetList();
-    }
+  // Eğer sayfa yüklendiğinde zimmet tabı aktifse listeyi yükle
+  if ($("#zimmet-tab").hasClass("active")) {
+    loadZimmetList();
   }
 });
 
@@ -63,10 +56,15 @@ function initSelect2() {
 
 // ============== TAB DEĞİŞİKLİĞİNDE ==============
 $('button[data-bs-toggle="tab"]').on("shown.bs.tab", function (e) {
-  // Aktif sekmeyi kaydet
-  localStorage.setItem("demirbasActiveTab", "#" + e.target.id);
+  // Aktif sekmeyi URL'e kaydet
+  let targetId = e.target.id;
+  let tabName = targetId === "zimmet-tab" ? "zimmet" : "demirbas";
 
-  if (e.target.id === "zimmet-tab") {
+  const url = new URL(window.location);
+  url.searchParams.set("tab", tabName);
+  window.history.replaceState({}, "", url);
+
+  if (targetId === "zimmet-tab") {
     loadZimmetList();
   }
 });
@@ -489,7 +487,7 @@ $(document).on("click", ".zimmet-detay", function (e) {
 
   // Loading göster
   Pace.start();
- 
+
   var formData = new FormData();
   formData.append("action", "zimmet-detay");
   formData.append("id", id);
@@ -500,7 +498,6 @@ $(document).on("click", ".zimmet-detay", function (e) {
   })
     .then((response) => response.json())
     .then((data) => {
-
       if (data.status === "success") {
         let d = data.data;
         let gecmis = data.gecmis;

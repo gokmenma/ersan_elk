@@ -9,6 +9,7 @@ use App\Model\BordroDonemModel;
 use App\Model\BordroPersonelModel;
 use App\Model\PersonelModel;
 use App\Model\BordroParametreModel;
+use App\Model\SystemLogModel;
 use App\Helper\Helper;
 use App\Helper\Date;
 
@@ -19,6 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     $BordroDonem = new BordroDonemModel();
     $BordroPersonel = new BordroPersonelModel();
+    $SystemLog = new SystemLogModel();
+    $userId = $_SESSION['user_id'] ?? 0;
 
     try {
         switch ($action) {
@@ -61,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $donemId = $BordroDonem->createDonem([
                     'donem_adi' => $donem_adi,
                     'firma_id' => $_SESSION["firma_id"],
-                     'baslangic_tarihi' => $baslangic_tarihi,
+                    'baslangic_tarihi' => $baslangic_tarihi,
                     'bitis_tarihi' => $bitis_tarihi
                 ]);
 
@@ -73,6 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'message' => "Dönem oluşturuldu ve $eklenenSayisi personel eklendi.",
                     'donem_id' => $donemId
                 ]);
+
+                $SystemLog->logAction($userId, 'Maaş Dönem Açma', "$donem_adi dönemi oluşturuldu.");
                 break;
 
             // Personel Kesinti Listesi Getir
@@ -217,6 +222,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'status' => 'success',
                     'message' => "$hesaplananSayisi personelin maaşı hesaplandı."
                 ]);
+
+                $SystemLog->logAction($userId, 'Maaş Hesaplama', "$hesaplananSayisi personelin maaşı hesaplandı.");
                 break;
 
             // Bordro Detayı Getir
@@ -499,6 +506,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'status' => 'success',
                     'message' => 'Dönem kapatıldı. Artık bu dönemde değişiklik yapılamaz.'
                 ]);
+
+                $SystemLog->logAction($userId, 'Maaş Dönem Kapama', "Dönem kapatıldı (ID: $donem_id).");
                 break;
 
             // Dönemi Aç
@@ -516,6 +525,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'status' => 'success',
                     'message' => 'Dönem açıldı. Artık bu dönemde değişiklik yapılabilir.'
                 ]);
+
+                $SystemLog->logAction($userId, 'Maaş Dönem Açma', "Dönem tekrar açıldı (ID: $donem_id).");
                 break;
 
             // Ödeme Dağıt

@@ -17,7 +17,7 @@ $page = $_GET['p'] ?? 'home';
 <!-- Select2 , Jquery Validate , iMask Scriptler -->
 <!--***************************************-->
 <?php if (
-    $page == 'uye/duzenle' || $page == "sube/duzenle" ||
+    
     $page == "gelir-gider/list" || $page == "temsilcilik/talep" ||
     $page == "tanimlamalar/gelir-gider-turu" ||
     $page == "demirbas/list" || "temsilcilik/duzenle" ||
@@ -42,21 +42,9 @@ $page = $_GET['p'] ?? 'home';
 
 <?php } ?>
 
-<?php if ($page == 'uye/duzenle') { ?>
-    <script type="module" src="views/uye/js/duzenle.js"></script>
-    <script type="module" src="views/uye/js/finansal-islem.js"></script>
-    <script type="module" src="views/uye/js/notes.js"></script>
 
 
-<?php } ?>
 
-<?php if ($page == 'uye/uyelik-talepleri' || $page == "home") { ?>
-    <script src="views/uye/js/talep.js"></script>
-<?php } ?>
-
-<?php if ($page == 'uye/list') { ?>
-    <script src="views/uye/js/list.js"></script>
-<?php } ?>
 
 <?php if ($page == 'personel/list') { ?>
     <script src="views/personel/js/list.js"></script>

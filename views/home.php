@@ -7,11 +7,17 @@ use App\Model\PersonelModel;
 use App\Model\AvansModel;
 use App\Model\PersonelIzinleriModel;
 use App\Model\TalepModel;
+use App\Model\SystemLogModel;
+
 
 $personelModel = new PersonelModel();
 $avansModel = new AvansModel();
 $izinModel = new PersonelIzinleriModel();
 $talepModel = new TalepModel();
+$systemLogModel = new SystemLogModel();
+
+// Sistem Logları
+$recent_logs = $systemLogModel->getRecentLogs(10);
 
 // Personel Sayıları
 $personel_sayisi = count($personelModel->where('aktif_mi', 1));
@@ -175,6 +181,8 @@ $toplam_bakiye = 20000;
         </div>
     </div>
 
+ 
+
     <div class="row">
         <div class="col-md-6">
             <div class="card">
@@ -252,7 +260,7 @@ $toplam_bakiye = 20000;
                                                         title="Detay">
                                                         <i class='bx bx-show'></i>
                                                     </button>
-                                                    
+
                                                     <?php if ($req->tip == 'Avans'): ?>
                                                         <button type="button" class="btn btn-success btn-sm btn-avans-onayla"
                                                             data-id="<?php echo $req->id; ?>"
@@ -270,9 +278,8 @@ $toplam_bakiye = 20000;
                                                         <button type="button" class="btn btn-success btn-sm btn-izin-onayla"
                                                             data-id="<?php echo $req->id; ?>"
                                                             data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
-                                                            data-tur="<?php echo htmlspecialchars($req->detay); ?>" 
-                                                            data-gun="<?php echo $req->toplam_gun ?? 0; ?>"
-                                                            title="Onayla">
+                                                            data-tur="<?php echo htmlspecialchars($req->detay); ?>"
+                                                            data-gun="<?php echo $req->toplam_gun ?? 0; ?>" title="Onayla">
                                                             <i class="bx bx-check"></i>
                                                         </button>
                                                         <button type="button" class="btn btn-danger btn-sm btn-izin-reddet"
@@ -300,7 +307,7 @@ $toplam_bakiye = 20000;
                                                     else
                                                         $tabParam = 'talep';
                                                     ?>
-                                                    <a href="index.php?p=talepler/list&tab=<?php echo $tabParam; ?>" 
+                                                    <a href="index.php?p=talepler/list&tab=<?php echo $tabParam; ?>"
                                                         class="btn btn-primary btn-sm" title="Talepler Sayfasına Git">
                                                         <i class='bx bx-right-arrow-alt'></i>
                                                     </a>
@@ -335,7 +342,8 @@ $toplam_bakiye = 20000;
                             <tbody>
                                 <?php if (empty($active_leaves)): ?>
                                     <tr>
-                                        <td colspan="4" class="text-center">Şu anda izinde olan personel bulunmamaktadır.</td>
+                                        <td colspan="4" class="text-center">Şu anda izinde olan personel bulunmamaktadır.
+                                        </td>
                                     </tr>
                                 <?php else: ?>
                                     <?php foreach ($active_leaves as $leave):
@@ -358,7 +366,8 @@ $toplam_bakiye = 20000;
                                                     </div>
                                                     <div class="flex-grow-1">
                                                         <h5 class="font-size-14 mb-1"><?php echo $leave->adi_soyadi; ?></h5>
-                                                        <p class="text-muted mb-0 font-size-12"><?php echo $leave->departman; ?></p>
+                                                        <p class="text-muted mb-0 font-size-12"><?php echo $leave->departman; ?>
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </td>
@@ -371,6 +380,54 @@ $toplam_bakiye = 20000;
                                             <td>
                                                 <span class="badge badge-info"><?php echo $kalan; ?> Gün Kaldı</span>
                                             </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+       <!-- BİLDİRİMLER -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Görev ve Bildirimler</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-centered table-nowrap mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Bildirim Tipi</th>
+                                    <th>Başlık</th>
+                                    <th>İçerik</th>
+                                    <th>Tarih</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($recent_logs)): ?>
+                                    <tr>
+                                        <td colspan="4" class="text-center">Kayıt bulunmamaktadır.</td>
+                                    </tr>
+                                <?php else: ?>
+                                    <?php foreach ($recent_logs as $log): ?>
+                                        <tr>
+                                            <td>
+                                                <i class="bx bx-info-circle me-1"></i>
+                                                <?php echo htmlspecialchars($log->action_type); ?>
+                                            </td>
+                                            <td><?php echo htmlspecialchars($log->action_type); ?></td>
+                                            <td>
+                                                <?php
+                                                $user_name = $log->adi_soyadi ?? 'Sistem';
+                                                echo htmlspecialchars($log->description) . " <small class='text-muted'>($user_name tarafından)</small>";
+                                                ?>
+                                            </td>
+                                            <td><?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
@@ -628,19 +685,23 @@ $toplam_bakiye = 20000;
         padding: 1em;
         text-align: center;
     }
+
     .modal-detay-header.tip-avans {
         background: linear-gradient(135deg, #34c38f 0%, #1abc9c 100%);
     }
+
     .modal-detay-header.tip-izin {
         background: linear-gradient(135deg, #556ee6 0%, #3b5998 100%);
     }
+
     .modal-detay-header.tip-talep {
         background: linear-gradient(135deg, #50a5f1 0%, #3498db 100%);
     }
+
     .modal-detay-header .icon-wrapper {
         width: 70px;
         height: 70px;
-        background: rgba(255,255,255,0.2);
+        background: rgba(255, 255, 255, 0.2);
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -648,18 +709,21 @@ $toplam_bakiye = 20000;
         margin: 0 auto 1rem;
         backdrop-filter: blur(10px);
     }
+
     .modal-detay-header .icon-wrapper i {
         font-size: 32px;
         color: #fff;
     }
+
     .modal-detay-header h5 {
         color: #fff;
         margin: 0;
         font-weight: 600;
         font-size: 1.25rem;
     }
+
     .modal-detay-header .badge-tip {
-        background: rgba(255,255,255,0.25);
+        background: rgba(255, 255, 255, 0.25);
         color: #fff;
         padding: 0.5rem 1.25rem;
         font-size: 0.9rem;
@@ -668,18 +732,21 @@ $toplam_bakiye = 20000;
         display: inline-block;
         margin-bottom: 0.5rem;
     }
+
     .modal-detay-card {
         background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
         border-radius: 12px;
         padding: 1rem 1.25rem;
         margin-bottom: 0.75rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         transition: all 0.2s ease;
     }
+
     .modal-detay-card:hover {
         transform: translateX(4px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
+
     .modal-detay-card .label {
         color: #6c757d;
         font-size: 0.7rem;
@@ -691,40 +758,55 @@ $toplam_bakiye = 20000;
         gap: 0.5rem;
         font-weight: 600;
     }
+
     .modal-detay-card .label i {
         font-size: 14px;
         opacity: 0.7;
     }
+
     .modal-detay-card .value {
         font-size: 1.1rem;
         font-weight: 600;
         color: #2c3e50;
     }
-    .modal-detay-card.tip-avans { border-left-color: #34c38f; }
-    .modal-detay-card.tip-izin { border-left-color: #556ee6; }
-    .modal-detay-card.tip-talep { border-left-color: #50a5f1; }
+
+    .modal-detay-card.tip-avans {
+        border-left-color: #34c38f;
+    }
+
+    .modal-detay-card.tip-izin {
+        border-left-color: #556ee6;
+    }
+
+    .modal-detay-card.tip-talep {
+        border-left-color: #50a5f1;
+    }
+
     #modalHomeDetay .modal-content {
         border: none;
         border-radius: 1rem;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
         overflow: hidden;
     }
+
     #modalHomeDetay .modal-body {
         padding: 1.5rem;
         background: #fafbfc;
     }
+
     #modalHomeDetay .modal-footer {
         background: #fff;
         border-top: 1px solid #e9ecef;
         padding: 1rem 1.5rem;
     }
+
     #modalHomeDetay .btn-close-custom {
         position: absolute;
         top: 1rem;
         right: 1rem;
         width: 32px;
         height: 32px;
-        background: rgba(255,255,255,0.2);
+        background: rgba(255, 255, 255, 0.2);
         border: none;
         border-radius: 50%;
         color: #fff;
@@ -736,8 +818,9 @@ $toplam_bakiye = 20000;
         transition: all 0.2s;
         z-index: 10;
     }
+
     #modalHomeDetay .btn-close-custom:hover {
-        background: rgba(255,255,255,0.3);
+        background: rgba(255, 255, 255, 0.3);
         transform: rotate(90deg);
     }
 </style>
@@ -756,8 +839,8 @@ $toplam_bakiye = 20000;
     new ApexCharts(document.querySelector("#chart"), options).render();
 
     var options2 = {
-        series: [{ name: 'Gelir', data: [44, 55, 57, 56, 61, 58, 63, 60, 66, 85, 96, 85] }, 
-                 { name: 'Gider', data: [76, 85, 101, 98, 87, 105, 91, 114, 94, 78, 77, 25] }],
+        series: [{ name: 'Gelir', data: [44, 55, 57, 56, 61, 58, 63, 60, 66, 85, 96, 85] },
+        { name: 'Gider', data: [76, 85, 101, 98, 87, 105, 91, 114, 94, 78, 77, 25] }],
         chart: { type: 'bar', height: 350 },
         plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 4 } },
         xaxis: { categories: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'] },
@@ -773,117 +856,117 @@ $toplam_bakiye = 20000;
     };
     new ApexCharts(document.querySelector("#chart3"), options3).render();
 
-document.addEventListener('DOMContentLoaded', function () {
-    const API_URL = 'views/talepler/api.php';
+    document.addEventListener('DOMContentLoaded', function () {
+        const API_URL = 'views/talepler/api.php';
 
-    // Detay Modal
-    document.querySelectorAll('.btn-home-detay').forEach(function(btn) {
-        btn.addEventListener('click', function () {
-            var tip = this.dataset.tip;
-            var personel = this.dataset.personel;
-            var detay = this.dataset.detay;
-            var tarih = this.dataset.tarih;
+        // Detay Modal
+        document.querySelectorAll('.btn-home-detay').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var tip = this.dataset.tip;
+                var personel = this.dataset.personel;
+                var detay = this.dataset.detay;
+                var tarih = this.dataset.tarih;
 
-            var headerClass = tip === 'Avans' ? 'tip-avans' : (tip === 'İzin' ? 'tip-izin' : 'tip-talep');
-            var headerIcon = tip === 'Avans' ? 'bx-money' : (tip === 'İzin' ? 'bx-calendar-check' : 'bx-message-square-detail');
+                var headerClass = tip === 'Avans' ? 'tip-avans' : (tip === 'İzin' ? 'tip-izin' : 'tip-talep');
+                var headerIcon = tip === 'Avans' ? 'bx-money' : (tip === 'İzin' ? 'bx-calendar-check' : 'bx-message-square-detail');
 
-            document.getElementById('modalHeader').className = 'modal-detay-header ' + headerClass;
-            document.getElementById('modalTalepTipi').textContent = tip;
-            document.getElementById('modalHeaderIcon').className = 'bx ' + headerIcon;
-            document.getElementById('modalPersonel').textContent = personel;
-            document.getElementById('modalDetay').textContent = detay;
-            document.getElementById('modalTarih').textContent = tarih;
+                document.getElementById('modalHeader').className = 'modal-detay-header ' + headerClass;
+                document.getElementById('modalTalepTipi').textContent = tip;
+                document.getElementById('modalHeaderIcon').className = 'bx ' + headerIcon;
+                document.getElementById('modalPersonel').textContent = personel;
+                document.getElementById('modalDetay').textContent = detay;
+                document.getElementById('modalTarih').textContent = tarih;
 
-            var tabParam = tip === 'Avans' ? 'avans' : (tip === 'İzin' ? 'izin' : 'talep');
-            document.getElementById('modalGitBtn').href = 'index.php?p=talepler/list&tab=' + tabParam;
+                var tabParam = tip === 'Avans' ? 'avans' : (tip === 'İzin' ? 'izin' : 'talep');
+                document.getElementById('modalGitBtn').href = 'index.php?p=talepler/list&tab=' + tabParam;
 
-            new bootstrap.Modal(document.getElementById('modalHomeDetay')).show();
-        });
-    });
-
-    // Avans Onayla
-    document.querySelectorAll('.btn-avans-onayla').forEach(btn => {
-        btn.addEventListener('click', function () {
-            document.getElementById('avans_onay_id').value = this.dataset.id;
-            document.getElementById('avans_onay_personel').textContent = this.dataset.personel;
-            document.getElementById('avans_onay_tutar').textContent = parseFloat(this.dataset.tutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
-            new bootstrap.Modal(document.getElementById('modalAvansOnay')).show();
-        });
-    });
-
-    // Avans Reddet
-    document.querySelectorAll('.btn-avans-reddet').forEach(btn => {
-        btn.addEventListener('click', function () {
-            document.getElementById('avans_red_id').value = this.dataset.id;
-            document.getElementById('avans_red_personel').textContent = this.dataset.personel;
-            new bootstrap.Modal(document.getElementById('modalAvansRed')).show();
-        });
-    });
-
-    // İzin Onayla
-    document.querySelectorAll('.btn-izin-onayla').forEach(btn => {
-        btn.addEventListener('click', function () {
-            document.getElementById('izin_onay_id').value = this.dataset.id;
-            document.getElementById('izin_onay_personel').textContent = this.dataset.personel;
-            document.getElementById('izin_onay_tur').textContent = this.dataset.tur;
-            document.getElementById('izin_onay_gun').textContent = this.dataset.gun;
-            new bootstrap.Modal(document.getElementById('modalIzinOnay')).show();
-        });
-    });
-
-    // İzin Reddet
-    document.querySelectorAll('.btn-izin-reddet').forEach(btn => {
-        btn.addEventListener('click', function () {
-            document.getElementById('izin_red_id').value = this.dataset.id;
-            document.getElementById('izin_red_personel').textContent = this.dataset.personel;
-            new bootstrap.Modal(document.getElementById('modalIzinRed')).show();
-        });
-    });
-
-    // Talep Çözüldü
-    document.querySelectorAll('.btn-talep-cozuldu').forEach(btn => {
-        btn.addEventListener('click', function () {
-            document.getElementById('talep_cozuldu_id').value = this.dataset.id;
-            document.getElementById('talep_cozuldu_baslik').textContent = this.dataset.baslik;
-            new bootstrap.Modal(document.getElementById('modalTalepCozuldu')).show();
-        });
-    });
-
-    const handleFormSubmit = (formId) => {
-        const form = document.getElementById(formId);
-        if (!form) return;
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            const submitBtn = this.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> İşleniyor...';
-
-            fetch(API_URL, { method: 'POST', body: formData })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    Swal.fire({ icon: 'success', title: 'Başarılı', text: data.message, timer: 1500, showConfirmButton: false })
-                    .then(() => location.reload());
-                } else {
-                    Swal.fire({ icon: 'error', title: 'Hata', text: data.message });
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalText;
-                }
-            })
-            .catch(error => {
-                Swal.fire({ icon: 'error', title: 'Hata', text: 'Bir sorun oluştu.' });
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalText;
+                new bootstrap.Modal(document.getElementById('modalHomeDetay')).show();
             });
         });
-    };
 
-    handleFormSubmit('formAvansOnay');
-    handleFormSubmit('formAvansRed');
-    handleFormSubmit('formIzinOnay');
-    handleFormSubmit('formIzinRed');
-    handleFormSubmit('formTalepCozuldu');
-});
+        // Avans Onayla
+        document.querySelectorAll('.btn-avans-onayla').forEach(btn => {
+            btn.addEventListener('click', function () {
+                document.getElementById('avans_onay_id').value = this.dataset.id;
+                document.getElementById('avans_onay_personel').textContent = this.dataset.personel;
+                document.getElementById('avans_onay_tutar').textContent = parseFloat(this.dataset.tutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+                new bootstrap.Modal(document.getElementById('modalAvansOnay')).show();
+            });
+        });
+
+        // Avans Reddet
+        document.querySelectorAll('.btn-avans-reddet').forEach(btn => {
+            btn.addEventListener('click', function () {
+                document.getElementById('avans_red_id').value = this.dataset.id;
+                document.getElementById('avans_red_personel').textContent = this.dataset.personel;
+                new bootstrap.Modal(document.getElementById('modalAvansRed')).show();
+            });
+        });
+
+        // İzin Onayla
+        document.querySelectorAll('.btn-izin-onayla').forEach(btn => {
+            btn.addEventListener('click', function () {
+                document.getElementById('izin_onay_id').value = this.dataset.id;
+                document.getElementById('izin_onay_personel').textContent = this.dataset.personel;
+                document.getElementById('izin_onay_tur').textContent = this.dataset.tur;
+                document.getElementById('izin_onay_gun').textContent = this.dataset.gun;
+                new bootstrap.Modal(document.getElementById('modalIzinOnay')).show();
+            });
+        });
+
+        // İzin Reddet
+        document.querySelectorAll('.btn-izin-reddet').forEach(btn => {
+            btn.addEventListener('click', function () {
+                document.getElementById('izin_red_id').value = this.dataset.id;
+                document.getElementById('izin_red_personel').textContent = this.dataset.personel;
+                new bootstrap.Modal(document.getElementById('modalIzinRed')).show();
+            });
+        });
+
+        // Talep Çözüldü
+        document.querySelectorAll('.btn-talep-cozuldu').forEach(btn => {
+            btn.addEventListener('click', function () {
+                document.getElementById('talep_cozuldu_id').value = this.dataset.id;
+                document.getElementById('talep_cozuldu_baslik').textContent = this.dataset.baslik;
+                new bootstrap.Modal(document.getElementById('modalTalepCozuldu')).show();
+            });
+        });
+
+        const handleFormSubmit = (formId) => {
+            const form = document.getElementById(formId);
+            if (!form) return;
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> İşleniyor...';
+
+                fetch(API_URL, { method: 'POST', body: formData })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            Swal.fire({ icon: 'success', title: 'Başarılı', text: data.message, timer: 1500, showConfirmButton: false })
+                                .then(() => location.reload());
+                        } else {
+                            Swal.fire({ icon: 'error', title: 'Hata', text: data.message });
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalText;
+                        }
+                    })
+                    .catch(error => {
+                        Swal.fire({ icon: 'error', title: 'Hata', text: 'Bir sorun oluştu.' });
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    });
+            });
+        };
+
+        handleFormSubmit('formAvansOnay');
+        handleFormSubmit('formAvansRed');
+        handleFormSubmit('formIzinOnay');
+        handleFormSubmit('formIzinRed');
+        handleFormSubmit('formTalepCozuldu');
+    });
 </script>

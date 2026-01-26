@@ -25,6 +25,7 @@ $zimmetliSayi = $Arac->getZimmetliAracSayisi();
 // Aylık yakıt istatistikleri (mevcut ay)
 $yakitStats = $Yakit->getStats(date('Y'), date('m'));
 
+$activeTab = $_GET['tab'] ?? 'arac';
 ?>
 
 <div class="container-fluid">
@@ -45,25 +46,25 @@ $yakitStats = $Yakit->getStats(date('Y'), date('m'));
                         <!-- Tab Navigation -->
                         <ul class="nav nav-pills" id="aracTab" role="tablist">
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="arac-tab" data-bs-toggle="tab"
+                                <button class="nav-link <?php echo $activeTab === 'arac' ? 'active' : ''; ?>" id="arac-tab" data-bs-toggle="tab"
                                     data-bs-target="#aracContent" type="button" role="tab">
                                     <i class="bx bx-car me-1"></i> Araçlar
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="zimmet-tab" data-bs-toggle="tab"
+                                <button class="nav-link <?php echo $activeTab === 'zimmet' ? 'active' : ''; ?>" id="zimmet-tab" data-bs-toggle="tab"
                                     data-bs-target="#zimmetContent" type="button" role="tab">
                                     <i class="bx bx-transfer me-1"></i> Zimmetler
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="yakit-tab" data-bs-toggle="tab"
+                                <button class="nav-link <?php echo $activeTab === 'yakit' ? 'active' : ''; ?>" id="yakit-tab" data-bs-toggle="tab"
                                     data-bs-target="#yakitContent" type="button" role="tab">
                                     <i class="bx bx-gas-pump me-1"></i> Yakıt Kayıtları
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="rapor-tab" data-bs-toggle="tab"
+                                <button class="nav-link <?php echo $activeTab === 'rapor' ? 'active' : ''; ?>" id="rapor-tab" data-bs-toggle="tab"
                                     data-bs-target="#raporContent" type="button" role="tab">
                                     <i class="bx bx-bar-chart-alt-2 me-1"></i> Raporlar
                                 </button>
@@ -142,7 +143,7 @@ $yakitStats = $Yakit->getStats(date('Y'), date('m'));
                         <!-- =============================================
                              ARAÇLAR TAB
                              ============================================= -->
-                        <div class="tab-pane fade show active" id="aracContent" role="tabpanel">
+                        <div class="tab-pane fade <?php echo $activeTab === 'arac' ? 'show active' : ''; ?>" id="aracContent" role="tabpanel">
                             <div class="table-responsive">
                                 <table id="aracTable" class="table table-hover table-bordered nowrap w-100">
                                     <thead class="table-light">
@@ -159,18 +160,9 @@ $yakitStats = $Yakit->getStats(date('Y'), date('m'));
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php if (empty($araclar)): ?>
-                                            <tr>
-                                                <td colspan="9" class="text-center text-muted py-4">
-                                                    <i class="bx bx-car display-4 d-block mb-2"></i>
-                                                    Henüz araç eklenmemiş.<br>
-                                                    <small>"Yeni Ekle" butonuna tıklayarak araç ekleyebilirsiniz.</small>
-                                                </td>
-                                            </tr>
-                                        <?php else: ?>
-                                            <?php $i = 0;
-                                            foreach ($araclar as $arac):
-                                                $i++; ?>
+                                        <?php $i = 0;
+                                        foreach ($araclar as $arac):
+                                            $i++; ?>
                                                 <?php
                                                 $durumBadge = $arac->aktif_mi ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Pasif</span>';
 
@@ -216,12 +208,12 @@ $yakitStats = $Yakit->getStats(date('Y'), date('m'));
                                                     </td>
                                                     <td>
                                                         <?php if (!empty($arac->zimmetli_personel_adi)): ?>
-                                                            <span class="badge bg-warning-subtle text-warning">
-                                                                <i class="bx bx-user me-1"></i>
-                                                                <?php echo $arac->zimmetli_personel_adi; ?>
-                                                            </span>
+                                                                <span class="badge bg-warning-subtle text-warning">
+                                                                    <i class="bx bx-user me-1"></i>
+                                                                    <?php echo $arac->zimmetli_personel_adi; ?>
+                                                                </span>
                                                         <?php else: ?>
-                                                            <span class="text-muted">-</span>
+                                                                <span class="text-muted">-</span>
                                                         <?php endif; ?>
                                                     </td>
                                                     <td class="text-center">
@@ -230,12 +222,12 @@ $yakitStats = $Yakit->getStats(date('Y'), date('m'));
                                                     <td class="text-center">
                                                         <div class="btn-group btn-group-sm">
                                                             <?php if (empty($arac->zimmetli_personel_id)): ?>
-                                                                <button type="button" class="btn btn-warning zimmet-hizli"
-                                                                    data-id="<?php echo $arac->id; ?>"
-                                                                    data-plaka="<?php echo $arac->plaka; ?>"
-                                                                    data-km="<?php echo $arac->guncel_km; ?>" title="Zimmet Ver">
-                                                                    <i class="bx bx-transfer"></i>
-                                                                </button>
+                                                                    <button type="button" class="btn btn-warning zimmet-hizli"
+                                                                        data-id="<?php echo $arac->id; ?>"
+                                                                        data-plaka="<?php echo $arac->plaka; ?>"
+                                                                        data-km="<?php echo $arac->guncel_km; ?>" title="Zimmet Ver">
+                                                                        <i class="bx bx-transfer"></i>
+                                                                    </button>
                                                             <?php endif; ?>
                                                             <button type="button" class="btn btn-primary arac-duzenle"
                                                                 data-id="<?php echo $arac->id; ?>" title="Düzenle">
@@ -249,8 +241,7 @@ $yakitStats = $Yakit->getStats(date('Y'), date('m'));
                                                         </div>
                                                     </td>
                                                 </tr>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
+                                        <?php endforeach; ?>
                                     </tbody>
                                 </table>
                             </div>
@@ -259,7 +250,7 @@ $yakitStats = $Yakit->getStats(date('Y'), date('m'));
                         <!-- =============================================
                              ZİMMETLER TAB
                              ============================================= -->
-                        <div class="tab-pane fade" id="zimmetContent" role="tabpanel">
+                        <div class="tab-pane fade <?php echo $activeTab === 'zimmet' ? 'show active' : ''; ?>" id="zimmetContent" role="tabpanel">
                             <div class="table-responsive">
                                 <table id="zimmetTable" class="table table-hover table-bordered nowrap w-100">
                                     <thead class="table-light">
@@ -287,7 +278,7 @@ $yakitStats = $Yakit->getStats(date('Y'), date('m'));
                         <!-- =============================================
                              YAKIT KAYITLARI TAB
                              ============================================= -->
-                        <div class="tab-pane fade" id="yakitContent" role="tabpanel">
+                        <div class="tab-pane fade <?php echo $activeTab === 'yakit' ? 'show active' : ''; ?>" id="yakitContent" role="tabpanel">
                             <!-- Aylık Özet Kartları -->
                             <div class="row mb-4">
                                 <div class="col-md-3">
@@ -364,16 +355,16 @@ $yakitStats = $Yakit->getStats(date('Y'), date('m'));
                         <!-- =============================================
                              RAPORLAR TAB
                              ============================================= -->
-                        <div class="tab-pane fade" id="raporContent" role="tabpanel">
+                        <div class="tab-pane fade <?php echo $activeTab === 'rapor' ? 'show active' : ''; ?>" id="raporContent" role="tabpanel">
                             <!-- Filtre -->
                             <div class="row mb-4">
                                 <div class="col-md-3">
                                     <label class="form-label">Yıl</label>
                                     <select class="form-select" id="raporYil">
                                         <?php for ($y = date('Y'); $y >= date('Y') - 5; $y--): ?>
-                                            <option value="<?php echo $y; ?>">
-                                                <?php echo $y; ?>
-                                            </option>
+                                                <option value="<?php echo $y; ?>">
+                                                    <?php echo $y; ?>
+                                                </option>
                                         <?php endfor; ?>
                                     </select>
                                 </div>
@@ -384,9 +375,9 @@ $yakitStats = $Yakit->getStats(date('Y'), date('m'));
                                         $aylar = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
                                         for ($m = 1; $m <= 12; $m++):
                                             ?>
-                                            <option value="<?php echo $m; ?>" <?php echo $m == date('n') ? 'selected' : ''; ?>>
-                                                <?php echo $aylar[$m - 1]; ?>
-                                            </option>
+                                                <option value="<?php echo $m; ?>" <?php echo $m == date('n') ? 'selected' : ''; ?>>
+                                                    <?php echo $aylar[$m - 1]; ?>
+                                                </option>
                                         <?php endfor; ?>
                                     </select>
                                 </div>
@@ -395,9 +386,9 @@ $yakitStats = $Yakit->getStats(date('Y'), date('m'));
                                     <select class="form-select" id="raporArac">
                                         <option value="">Tüm Araçlar</option>
                                         <?php foreach ($araclar as $arac): ?>
-                                            <option value="<?php echo $arac->id; ?>">
-                                                <?php echo $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? ''); ?>
-                                            </option>
+                                                <option value="<?php echo $arac->id; ?>">
+                                                    <?php echo $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? ''); ?>
+                                                </option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>

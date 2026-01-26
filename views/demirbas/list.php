@@ -39,16 +39,21 @@ $zimmetStats = $Zimmet->getStats();
                 <div class="card-header">
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         <!-- Tab Navigation -->
+                        <?php
+                        $activeTab = $_GET['tab'] ?? 'demirbas';
+                        ?>
                         <ul class="nav nav-pills" id="demirbasTab" role="tablist">
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="demirbas-tab" data-bs-toggle="tab"
-                                    data-bs-target="#demirbasContent" type="button" role="tab">
+                                <button class="nav-link <?php echo $activeTab === 'demirbas' ? 'active' : ''; ?>"
+                                    id="demirbas-tab" data-bs-toggle="tab" data-bs-target="#demirbasContent"
+                                    type="button" role="tab">
                                     <i class="bx bx-package me-1"></i> Demirbaş Listesi
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="zimmet-tab" data-bs-toggle="tab"
-                                    data-bs-target="#zimmetContent" type="button" role="tab">
+                                <button class="nav-link <?php echo $activeTab === 'zimmet' ? 'active' : ''; ?>"
+                                    id="zimmet-tab" data-bs-toggle="tab" data-bs-target="#zimmetContent" type="button"
+                                    role="tab">
                                     <i class="bx bx-transfer me-1"></i> Zimmet Kayıtları
                                 </button>
                             </li>
@@ -89,7 +94,8 @@ $zimmetStats = $Zimmet->getStats();
                     <div class="tab-content" id="demirbasTabContent">
 
                         <!-- Demirbaş Listesi Tab -->
-                        <div class="tab-pane fade show active" id="demirbasContent" role="tabpanel">
+                        <div class="tab-pane fade <?php echo $activeTab === 'demirbas' ? 'show active' : ''; ?>"
+                            id="demirbasContent" role="tabpanel">
                             <div class="table-responsive">
                                 <table id="demirbasTable"
                                     class="table datatables table-hover table-bordered nowrap w-100">
@@ -108,65 +114,65 @@ $zimmetStats = $Zimmet->getStats();
                                     </thead>
                                     <tbody>
                                         <?php if (!empty($demirbaslar)): ?>
-                                            <?php
-                                            $i = 0;
-                                            foreach ($demirbaslar as $demirbas) {
-                                                $i++;
-                                                $enc_id = Security::encrypt($demirbas->id);
-                                                $miktar = $demirbas->miktar ?? 1;
-                                                $kalan = $demirbas->kalan_miktar ?? 1;
+                                                <?php
+                                                $i = 0;
+                                                foreach ($demirbaslar as $demirbas) {
+                                                    $i++;
+                                                    $enc_id = Security::encrypt($demirbas->id);
+                                                    $miktar = $demirbas->miktar ?? 1;
+                                                    $kalan = $demirbas->kalan_miktar ?? 1;
 
-                                                // Stok durumu badge
-                                                if ($kalan == 0) {
-                                                    $stokBadge = '<span class="badge bg-danger">Stok Yok</span>';
-                                                } elseif ($kalan < $miktar) {
-                                                    $stokBadge = '<span class="badge bg-warning">' . $kalan . '/' . $miktar . '</span>';
-                                                } else {
-                                                    $stokBadge = '<span class="badge bg-success">' . $kalan . '/' . $miktar . '</span>';
-                                                }
-                                                ?>
-                                                <tr data-id="<?php echo $enc_id ?>">
-                                                    <td class="text-center"><?php echo $i ?></td>
-                                                    <td class="text-center"><?php echo $demirbas->demirbas_no ?? '-' ?></td>
-                                                    <td>
-                                                        <span class="badge bg-soft-primary text-primary">
-                                                            <?php echo $demirbas->kategori_adi ?? 'Kategorisiz' ?>
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <a href="#" data-id="<?php echo $enc_id; ?>"
-                                                            class="text-dark duzenle fw-medium">
-                                                            <?php echo $demirbas->demirbas_adi ?>
-                                                        </a>
-                                                    </td>
-                                                    <td><?php echo ($demirbas->marka ?? '-') . ' ' . ($demirbas->model ?? '') ?>
-                                                    </td>
-                                                    <td class="text-center"><?php echo $stokBadge ?></td>
-                                                    <td class="text-end">
-                                                        <?php echo ($demirbas->edinme_tutari ?? 0) ?>
-                                                    </td>
-                                                    <td><?php echo $demirbas->edinme_tarihi ?? '-' ?></td>
-                                                    <td class="text-left text-nowrap">
-                                                        <?php if ($kalan > 0): ?>
-                                                            <button type="button" class="btn btn-sm btn-warning zimmet-ver"
-                                                                data-id="<?php echo $enc_id; ?>"
-                                                                data-name="<?php echo $demirbas->demirbas_adi; ?>"
-                                                                data-kalan="<?php echo $kalan; ?>" title="Zimmet Ver">
-                                                                <i class="bx bx-transfer"></i>
-                                                            </button>
-                                                        <?php endif; ?>
-                                                        <button type="button" class="btn btn-sm btn-primary duzenle"
-                                                            data-id="<?php echo $enc_id; ?>" title="Düzenle">
-                                                            <i class="bx bx-edit"></i>
-                                                        </button>
-                                                        <button type="button" class="btn btn-sm btn-danger demirbas-sil"
-                                                            data-id="<?php echo $enc_id; ?>"
-                                                            data-name="<?php echo $demirbas->demirbas_adi; ?>" title="Sil">
-                                                            <i class="bx bx-trash"></i>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            <?php } ?>
+                                                    // Stok durumu badge
+                                                    if ($kalan == 0) {
+                                                        $stokBadge = '<span class="badge bg-danger">Stok Yok</span>';
+                                                    } elseif ($kalan < $miktar) {
+                                                        $stokBadge = '<span class="badge bg-warning">' . $kalan . '/' . $miktar . '</span>';
+                                                    } else {
+                                                        $stokBadge = '<span class="badge bg-success">' . $kalan . '/' . $miktar . '</span>';
+                                                    }
+                                                    ?>
+                                                        <tr data-id="<?php echo $enc_id ?>">
+                                                            <td class="text-center"><?php echo $i ?></td>
+                                                            <td class="text-center"><?php echo $demirbas->demirbas_no ?? '-' ?></td>
+                                                            <td>
+                                                                <span class="badge bg-soft-primary text-primary">
+                                                                    <?php echo $demirbas->kategori_adi ?? 'Kategorisiz' ?>
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <a href="#" data-id="<?php echo $enc_id; ?>"
+                                                                    class="text-dark duzenle fw-medium">
+                                                                    <?php echo $demirbas->demirbas_adi ?>
+                                                                </a>
+                                                            </td>
+                                                            <td><?php echo ($demirbas->marka ?? '-') . ' ' . ($demirbas->model ?? '') ?>
+                                                            </td>
+                                                            <td class="text-center"><?php echo $stokBadge ?></td>
+                                                            <td class="text-end">
+                                                                <?php echo ($demirbas->edinme_tutari ?? 0) ?>
+                                                            </td>
+                                                            <td><?php echo $demirbas->edinme_tarihi ?? '-' ?></td>
+                                                            <td class="text-left text-nowrap">
+                                                                <?php if ($kalan > 0): ?>
+                                                                        <button type="button" class="btn btn-sm btn-warning zimmet-ver"
+                                                                            data-id="<?php echo $enc_id; ?>"
+                                                                            data-name="<?php echo $demirbas->demirbas_adi; ?>"
+                                                                            data-kalan="<?php echo $kalan; ?>" title="Zimmet Ver">
+                                                                            <i class="bx bx-transfer"></i>
+                                                                        </button>
+                                                                <?php endif; ?>
+                                                                <button type="button" class="btn btn-sm btn-primary duzenle"
+                                                                    data-id="<?php echo $enc_id; ?>" title="Düzenle">
+                                                                    <i class="bx bx-edit"></i>
+                                                                </button>
+                                                                <button type="button" class="btn btn-sm btn-danger demirbas-sil"
+                                                                    data-id="<?php echo $enc_id; ?>"
+                                                                    data-name="<?php echo $demirbas->demirbas_adi; ?>" title="Sil">
+                                                                    <i class="bx bx-trash"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                <?php } ?>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -174,7 +180,7 @@ $zimmetStats = $Zimmet->getStats();
                         </div>
 
                         <!-- Zimmet Kayıtları Tab -->
-                        <div class="tab-pane fade" id="zimmetContent" role="tabpanel">
+                        <div class="tab-pane fade <?php echo $activeTab === 'zimmet' ? 'show active' : ''; ?>" id="zimmetContent" role="tabpanel">
                             <div class="table-responsive">
                                 <table id="zimmetTable" class="table table-hover table-bordered nowrap w-100">
                                     <thead class="table-light">
