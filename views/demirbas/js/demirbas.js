@@ -142,6 +142,10 @@ $(document).on("click", "#demirbasKaydet", function () {
           title: "Başarılı!",
           text: data.message,
           confirmButtonText: "Tamam",
+        }).then((result) => {
+          if (result.isConfirmed) {
+            window.location.reload();
+          }
         });
       } else {
         Swal.fire({

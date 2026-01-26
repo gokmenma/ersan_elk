@@ -173,7 +173,7 @@ if ($page == "kasa/duzenle" || $page == "kasa/list") {
     $page == "kasa/list" || $page == "gelir-gider/online-hesap-hareketleri" || $page == "tanimlamalar/ekip-kodu" ||
     $page == "bordro/list" || $page == "demirbas/list" || $page == "puantaj/list" ||
     $page == "tanimlamalar/is-turu" || $page == "mail-sms/list" || $page == "tanimlamalar/izin-turu" ||
-    $page == "mail-sms/mail-gonder"
+    $page == "mail-sms/mail-gonder" || $page == "arac-takip/list" || $page == "arac-takip/duzenle"
 
 ) { ?>
 

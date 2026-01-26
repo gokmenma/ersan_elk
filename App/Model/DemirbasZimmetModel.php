@@ -260,6 +260,7 @@ class DemirbasZimmetModel extends Model
             <td class="text-center">' . $data->id . '</td>
             <td>' . $data->kategori_adi . '</td>
             <td>' . $data->demirbas_adi . '</td>
+            <td>' . ($data->marka ?? '-') . ' ' . ($data->model ?? '') . '</td>
             <td>' . $data->personel_adi . '</td>
             <td class="text-center">' . $data->teslim_miktar . '</td>
             <td>' . $teslimTarihi . '</td>

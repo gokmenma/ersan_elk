@@ -28,9 +28,52 @@ const AracTakip = {
   },
 
   showLoading: function (selector) {
+    const colCount = $(selector).closest("table").find("thead th").length || 1;
     $(selector).html(
-      '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Yükleniyor...</p></div>',
+      `<tr><td colspan="${colCount}" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Yükleniyor...</p></td></tr>`,
     );
+  },
+
+  initDataTable: function (selector) {
+    if ($.fn.DataTable) {
+      if ($.fn.DataTable.isDataTable(selector)) {
+        $(selector).DataTable().destroy();
+        $(selector).find("thead .search-input-row").remove();
+      }
+
+      let options = {};
+      if (typeof getDatatableOptions === "function") {
+        options = getDatatableOptions();
+      } else {
+        options = {
+          language: {
+            url: "//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json",
+          },
+          pageLength: 10,
+        };
+      }
+
+      // Excel butonu için DOM düzenlemesi (B ekle)
+      if (options.dom && options.dom.indexOf("B") === -1) {
+        options.dom = "B" + options.dom;
+      } else if (!options.dom) {
+        options.dom = "Bfrtip";
+      }
+
+      // Excel butonu konfigürasyonu
+      options.buttons = [
+        {
+          extend: "excelHtml5",
+          className: "d-none", // Butonu gizle
+          text: "Excel",
+          exportOptions: {
+            columns: ":visible:not(:last-child)", // Son sütun (İşlemler) hariç
+          },
+        },
+      ];
+
+      $(selector).DataTable(options);
+    }
   },
 
   // =============================================
@@ -235,16 +278,20 @@ const AracTakip = {
 
   zimmetListesiYukle: function () {
     const self = this;
+
+    // Mevcut tabloyu temizle
+    if ($.fn.DataTable.isDataTable("#zimmetTable")) {
+      $("#zimmetTable").DataTable().destroy();
+      $("#zimmetTable thead .search-input-row").remove();
+    }
+
     const tbody = $("#zimmetTableBody");
     self.showLoading(tbody);
 
     $.post(this.apiUrl, { action: "zimmet-listesi" }, function (response) {
       if (response.status === "success") {
         let html = "";
-        if (response.data.length === 0) {
-          html =
-            '<tr><td colspan="7" class="text-center text-muted py-4">Zimmet kaydı bulunmamaktadır.</td></tr>';
-        } else {
+        if (response.data && response.data.length > 0) {
           response.data.forEach(function (z, index) {
             const durumBadge =
               z.durum === "aktif"
@@ -265,7 +312,18 @@ const AracTakip = {
           });
         }
         tbody.html(html);
+        self.initDataTable("#zimmetTable");
+      } else {
+        const colCount = $("#zimmetTable").find("thead th").length || 1;
+        tbody.html(
+          `<tr><td colspan="${colCount}" class="text-center text-danger">${response.message || "Veri yüklenirken bir hata oluştu."}</td></tr>`,
+        );
       }
+    }).fail(function (xhr) {
+      const colCount = $("#zimmetTable").find("thead th").length || 1;
+      tbody.html(
+        `<tr><td colspan="${colCount}" class="text-center text-danger">Sunucu hatası: ${xhr.statusText}</td></tr>`,
+      );
     });
   },
 
@@ -348,6 +406,13 @@ const AracTakip = {
 
   yakitListesiYukle: function (aracId = null) {
     const self = this;
+
+    // Mevcut tabloyu temizle
+    if ($.fn.DataTable.isDataTable("#yakitTable")) {
+      $("#yakitTable").DataTable().destroy();
+      $("#yakitTable thead .search-input-row").remove();
+    }
+
     const tbody = $("#yakitTableBody");
     self.showLoading(tbody);
 
@@ -357,10 +422,7 @@ const AracTakip = {
     $.post(this.apiUrl, data, function (response) {
       if (response.status === "success") {
         let html = "";
-        if (response.data.length === 0) {
-          html =
-            '<tr><td colspan="9" class="text-center text-muted py-4">Yakıt kaydı bulunmamaktadır.</td></tr>';
-        } else {
+        if (response.data && response.data.length > 0) {
           response.data.forEach(function (y, index) {
             html += `<tr>
                             <td class="text-center">${index + 1}</td>
@@ -378,7 +440,18 @@ const AracTakip = {
           });
         }
         tbody.html(html);
+        self.initDataTable("#yakitTable");
+      } else {
+        const colCount = $("#yakitTable").find("thead th").length || 1;
+        tbody.html(
+          `<tr><td colspan="${colCount}" class="text-center text-danger">${response.message || "Veri yüklenirken bir hata oluştu."}</td></tr>`,
+        );
       }
+    }).fail(function (xhr) {
+      const colCount = $("#yakitTable").find("thead th").length || 1;
+      tbody.html(
+        `<tr><td colspan="${colCount}" class="text-center text-danger">Sunucu hatası: ${xhr.statusText}</td></tr>`,
+      );
     });
   },
 
@@ -489,7 +562,7 @@ const AracTakip = {
 
           // Araç Bazlı Tablo
           html += `<div class="table-responsive">
-                    <table class="table table-bordered table-hover">
+                    <table id="raporTable" class="table table-bordered table-hover">
                         <thead class="table-light">
                             <tr>
                                 <th>Plaka</th>
@@ -513,13 +586,11 @@ const AracTakip = {
                             <td class="text-end">${item.ortalama_tuketim || 0} L/100km</td>
                         </tr>`;
             });
-          } else {
-            html +=
-              '<tr><td colspan="6" class="text-center text-muted">Bu dönem için veri bulunmamaktadır.</td></tr>';
           }
 
           html += "</tbody></table></div>";
           container.html(html);
+          self.initDataTable("#raporTable");
         }
       },
     );
@@ -589,14 +660,14 @@ const AracTakip = {
 
   resetZimmetModal: function () {
     $("#zimmetForm")[0].reset();
-    $("#zimmetSelect").val(null).trigger("change");
-    $("#personelSelect").val(null).trigger("change");
+    $("#arac_id").val(null).trigger("change");
+    $("#personel_id").val(null).trigger("change");
   },
 
   resetYakitModal: function () {
     $("#yakitForm")[0].reset();
     $('#yakitForm input[name="id"]').val("");
-    $("#yakitAracSelect").val(null).trigger("change");
+    $("#yakitModal #arac_id").val(null).trigger("change");
     $("#yakitModal")
       .find(".modal-title")
       .html('<i class="bx bx-gas-pump me-2"></i>Yakıt Kaydı Ekle');
@@ -605,7 +676,7 @@ const AracTakip = {
   resetKmModal: function () {
     $("#kmForm")[0].reset();
     $('#kmForm input[name="id"]').val("");
-    $("#kmAracSelect").val(null).trigger("change");
+    $("#kmModal #arac_id").val(null).trigger("change");
   },
 };
 
@@ -614,15 +685,31 @@ const AracTakip = {
 // =============================================
 $(document).ready(function () {
   // DataTable başlat
-  if ($("#aracTable").length && $.fn.DataTable) {
-    $("#aracTable").DataTable({
-      language: {
-        url: "//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json",
-      },
-      order: [[1, "asc"]],
-      pageLength: 25,
-    });
-  }
+  // #aracTable datatables.init.js tarafından otomatik başlatılır (.datatable sınıfı ile)
+  // Ancak Excel butonu konfigürasyonu için yeniden başlatıyoruz.
+  AracTakip.initDataTable("#aracTable");
+
+  // Excele Aktar Butonu
+  $(document).on("click", "#btnExceleAktar", function (e) {
+    e.preventDefault();
+
+    // Aktif sekmeyi bul
+    const activeTab = $(".tab-pane.active");
+    // Tabloyu bul
+    const table = activeTab.find("table");
+
+    if (table.length && $.fn.DataTable.isDataTable(table)) {
+      // DataTable instance'ını al ve excel butonunu tetikle
+      table.DataTable().button(".buttons-excel").trigger();
+    } else {
+      Swal.fire({
+        icon: "warning",
+        title: "Uyarı",
+        text: "Aktif sekmede dışa aktarılacak veri bulunamadı.",
+        confirmButtonText: "Tamam",
+      });
+    }
+  });
 
   // Araç Modal sıfırlama
   $("#aracModal").on("hidden.bs.modal", function () {
@@ -674,11 +761,11 @@ $(document).ready(function () {
     const km = $(this).data("km");
 
     // Select2'de aracı seç
-    $("#zimmetAracSelect").val(id).trigger("change");
+    $("#arac_id").val(id).trigger("change");
 
     // KM'yi doldur
     if (km) {
-      $("#zimmetTeslimKm").val(km);
+      $("#teslim_km").val(km);
     }
 
     $("#zimmetModal").modal("show");
@@ -727,27 +814,11 @@ $(document).ready(function () {
   $(document).on("click", "#btnRaporYukle", function (e) {
     e.preventDefault();
     AracTakip.aylikRaporYukle();
-  });
-
-  // Tab değişikliklerinde listeleri yükle
-  $('button[data-bs-toggle="tab"]').on("shown.bs.tab", function (e) {
-    const target = $(e.target).data("bs-target");
-    if (target === "#zimmetContent") {
-      AracTakip.zimmetListesiYukle();
-    } else if (target === "#yakitContent") {
-      AracTakip.yakitListesiYukle();
-    } else if (target === "#raporContent") {
-      AracTakip.aylikRaporYukle();
-    }
-  });
-
-  // Birim fiyat otomatik hesaplama
-  $(document).on("input", "#yakitMiktari, #yakitTutar", function () {
-    const miktar = parseFloat($("#yakitMiktari").val()) || 0;
-    const tutar = parseFloat($("#yakitTutar").val()) || 0;
+    const miktar = parseFloat($("#yakit_miktari").val()) || 0;
+    const tutar = parseFloat($("#toplam_tutar").val()) || 0;
     if (miktar > 0 && tutar > 0) {
       const birimFiyat = (tutar / miktar).toFixed(2);
-      $("#yakitBirimFiyat").val(birimFiyat);
+      $("#birim_fiyat").val(birimFiyat);
     }
   });
 
@@ -772,5 +843,33 @@ $(document).ready(function () {
         feather.replace();
       }
     });
+  }
+
+  // Tab değişikliklerinde listeleri yükle
+  $('button[data-bs-toggle="tab"]').on("shown.bs.tab", function (e) {
+    const target = $(e.target).data("bs-target");
+
+    if (target === "#zimmetContent") {
+      AracTakip.zimmetListesiYukle();
+    } else if (target === "#yakitContent") {
+      AracTakip.yakitListesiYukle();
+    } else if (target === "#raporContent") {
+      AracTakip.aylikRaporYukle();
+    } else if (target === "#aracContent") {
+      // Araç tablosu statik olduğu için sadece init kontrolü yap
+      if (!$.fn.DataTable.isDataTable("#aracTable")) {
+        AracTakip.initDataTable("#aracTable");
+      }
+    }
+  });
+
+  // Sayfa yüklendiğinde aktif sekmenin verisini yükle
+  const activeTab = $(".nav-link.active").data("bs-target");
+  if (activeTab === "#zimmetContent") {
+    AracTakip.zimmetListesiYukle();
+  } else if (activeTab === "#yakitContent") {
+    AracTakip.yakitListesiYukle();
+  } else if (activeTab === "#raporContent") {
+    AracTakip.aylikRaporYukle();
   }
 });

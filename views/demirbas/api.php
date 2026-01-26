@@ -149,6 +149,7 @@ if ($action == "zimmet-listesi") {
                 <td class="text-center">' . $z->id . '</td>
                 <td><span class="badge bg-soft-primary text-primary">' . ($z->kategori_adi ?? '-') . '</span></td>
                 <td>' . ($z->demirbas_adi ?? '-') . '</td>
+                <td>' . ($z->marka ?? '-') . ' ' . ($z->model ?? '') . '</td>
                 <td>' . ($z->personel_adi ?? '-') . '</td>
                 <td class="text-center">' . $z->teslim_miktar . '</td>
                 <td>' . $teslimTarihi . '</td>

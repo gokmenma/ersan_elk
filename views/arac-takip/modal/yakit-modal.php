@@ -3,98 +3,190 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-success bg-gradient text-white">
-                <h5 class="modal-title" id="yakitModalLabel"><i class="bx bx-gas-pump me-2"></i>Yakıt Kaydı Ekle</h5>
+                <h5 class="modal-title" id="yakitModalLabel"><i data-feather="droplet" class="me-2"></i>Yakıt Kaydı Ekle
+                </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                     aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="yakitForm">
                     <input type="hidden" name="id" value="">
+                    <?php
+                    // Araç haritası oluştur (JS için)
+                    $aracMap = [];
+                    foreach ($araclar as $arac) {
+                        $arac->display_name = $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? '');
+                        $aracMap[$arac->id] = [
+                            'km' => $arac->guncel_km,
+                            'yakit_tipi' => $arac->yakit_tipi
+                        ];
+                    }
+                    ?>
 
                     <div class="row">
                         <div class="col-8 mb-3">
-                            <label class="form-label">Araç Seçin <span class="text-danger">*</span></label>
-                            <select class="form-select select2" name="arac_id" id="yakitAracSelect" required>
-                                <option value="">Araç Seçin</option>
-                                <?php foreach ($araclar as $arac): ?>
-                                    <option value="<?php echo $arac->id; ?>" data-km="<?php echo $arac->guncel_km; ?>"
-                                        data-yakit="<?php echo $arac->yakit_tipi; ?>">
-                                        <?php echo $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? ''); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                            <?php echo \App\Helper\Form::FormSelect2(
+                                'arac_id',
+                                $araclar,
+                                '',
+                                'Araç Seçin *',
+                                'truck',
+                                'id',
+                                'display_name',
+                                'form-select select2',
+                                true
+                            ); ?>
                         </div>
                         <div class="col-4 mb-3">
-                            <label class="form-label">Tarih <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" name="tarih" value="<?php echo date('Y-m-d'); ?>"
-                                required>
+                            <?php echo \App\Helper\Form::FormFloatInput(
+                                'date',
+                                'tarih',
+                                date('Y-m-d'),
+                                '',
+                                'Tarih *',
+                                'calendar',
+                                'form-control',
+                                true
+                            ); ?>
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-6 mb-3">
-                            <label class="form-label">Güncel KM <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" name="km" id="yakitKm" min="0" required
-                                placeholder="Güncel kilometre">
+                            <?php echo \App\Helper\Form::FormFloatInput(
+                                'number',
+                                'km',
+                                '',
+                                'Güncel kilometre',
+                                'Güncel KM *',
+                                'activity',
+                                'form-control',
+                                true,
+                                null,
+                                'on',
+                                false,
+                                'min="0"'
+                            ); ?>
                         </div>
                         <div class="col-6 mb-3">
-                            <label class="form-label">Yakıt Tipi</label>
-                            <select class="form-select" name="yakit_tipi" id="yakitTipi">
-                                <option value="dizel">Dizel</option>
-                                <option value="benzin">Benzin</option>
-                                <option value="lpg">LPG</option>
-                                <option value="elektrik">Elektrik</option>
-                            </select>
+                            <?php
+                            $yakitTipleri = [
+                                'dizel' => 'Dizel',
+                                'benzin' => 'Benzin',
+                                'lpg' => 'LPG',
+                                'elektrik' => 'Elektrik'
+                            ];
+                            echo \App\Helper\Form::FormSelect2(
+                                'yakit_tipi',
+                                $yakitTipleri,
+                                '',
+                                'Yakıt Tipi',
+                                'droplet'
+                            );
+                            ?>
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-4 mb-3">
-                            <label class="form-label">Miktar (L) <span class="text-danger">*</span></label>
-                            <input type="number" step="0.01" class="form-control" name="yakit_miktari" id="yakitMiktari"
-                                min="0" required placeholder="0.00">
+                            <?php echo \App\Helper\Form::FormFloatInput(
+                                'number',
+                                'yakit_miktari',
+                                '',
+                                '0.00',
+                                'Miktar (L) *',
+                                'droplet',
+                                'form-control',
+                                true,
+                                null,
+                                'on',
+                                false,
+                                'step="0.01" min="0"'
+                            ); ?>
                         </div>
                         <div class="col-4 mb-3">
-                            <label class="form-label">Birim Fiyat (₺)</label>
-                            <input type="number" step="0.01" class="form-control" name="birim_fiyat"
-                                id="yakitBirimFiyat" min="0" placeholder="0.00">
+                            <?php echo \App\Helper\Form::FormFloatInput(
+                                'number',
+                                'birim_fiyat',
+                                '',
+                                '0.00',
+                                'Birim Fiyat (₺)',
+                                'dollar-sign',
+                                'form-control',
+                                false,
+                                null,
+                                'on',
+                                false,
+                                'step="0.01" min="0"'
+                            ); ?>
                         </div>
                         <div class="col-4 mb-3">
-                            <label class="form-label">Toplam Tutar (₺) <span class="text-danger">*</span></label>
-                            <input type="number" step="0.01" class="form-control" name="toplam_tutar" id="yakitTutar"
-                                min="0" required placeholder="0.00">
+                            <?php echo \App\Helper\Form::FormFloatInput(
+                                'number',
+                                'toplam_tutar',
+                                '',
+                                '0.00',
+                                'Toplam Tutar (₺) *',
+                                'credit-card',
+                                'form-control',
+                                true,
+                                null,
+                                'on',
+                                false,
+                                'step="0.01" min="0"'
+                            ); ?>
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-6 mb-3">
-                            <label class="form-label">İstasyon</label>
-                            <input type="text" class="form-control" name="istasyon"
-                                placeholder="Akaryakıt istasyonu adı">
+                            <?php echo \App\Helper\Form::FormFloatInput(
+                                'text',
+                                'istasyon',
+                                '',
+                                'Akaryakıt istasyonu adı',
+                                'İstasyon',
+                                'map-pin'
+                            ); ?>
                         </div>
                         <div class="col-6 mb-3">
-                            <label class="form-label">Fiş/Fatura No</label>
-                            <input type="text" class="form-control" name="fatura_no" placeholder="Fiş numarası">
+                            <?php echo \App\Helper\Form::FormFloatInput(
+                                'text',
+                                'fatura_no',
+                                '',
+                                'Fiş numarası',
+                                'Fiş/Fatura No',
+                                'file-text'
+                            ); ?>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <div class="form-check">
+                        <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" name="tam_depo_mu" value="1" id="tamDepo">
                             <label class="form-check-label" for="tamDepo">Tam Depo</label>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Notlar</label>
-                        <textarea class="form-control" name="notlar" rows="2" placeholder="Ek notlar..."></textarea>
+                        <?php echo \App\Helper\Form::FormFloatTextarea(
+                            'notlar',
+                            '',
+                            'Ek notlar...',
+                            'Notlar',
+                            'edit-3',
+                            'form-control',
+                            false,
+                            '100px',
+                            2
+                        ); ?>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                 <button type="button" class="btn btn-success" id="btnYakitKaydet">
-                    <i class="bx bx-save me-1"></i> Kaydet
+                    <i data-feather="save" class="me-1"></i> Kaydet
                 </button>
             </div>
         </div>
@@ -102,13 +194,25 @@
 </div>
 
 <script>
-    // Araç seçildiğinde KM ve yakıt tipini otomatik doldur
-    $(document).on('change', '#yakitAracSelect', function () {
-        const selected = $(this).find(':selected');
-        const km = selected.data('km');
-        const yakitTipi = selected.data('yakit');
+    var yakitAracMap = <?php echo json_encode($aracMap); ?>;
 
-        if (km) $('#yakitKm').val(km);
-        if (yakitTipi) $('#yakitTipi').val(yakitTipi);
+    // Araç seçildiğinde KM ve yakıt tipini otomatik doldur
+    $(document).on('change', '#yakitModal #arac_id', function () {
+        const aracId = $(this).val();
+        if (aracId && yakitAracMap[aracId]) {
+            const data = yakitAracMap[aracId];
+            if (data.km) $('#yakitModal #km').val(data.km);
+            if (data.yakit_tipi) $('#yakitModal #yakit_tipi').val(data.yakit_tipi).trigger('change');
+        }
+    });
+
+    // Birim fiyat otomatik hesaplama
+    $(document).on("input", "#yakit_miktari, #toplam_tutar", function () {
+        const miktar = parseFloat($("#yakit_miktari").val()) || 0;
+        const tutar = parseFloat($("#toplam_tutar").val()) || 0;
+        if (miktar > 0 && tutar > 0) {
+            const birimFiyat = (tutar / miktar).toFixed(2);
+            $("#birim_fiyat").val(birimFiyat);
+        }
     });
 </script>

@@ -120,6 +120,18 @@ $yakitStats = $Yakit->getStats(date('Y'), date('m'));
                                         </a></li>
                                 </ul>
                             </div>
+
+                            <div class="dropdown">
+                                <button type="button" class="btn btn-secondary dropdown-toggle waves-effect waves-light"
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bx bx-menu me-1"></i> İşlemler
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" id="btnExceleAktar">
+                                            <i class="bx bx-export me-2"></i> Excele Aktar
+                                        </a></li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -132,7 +144,7 @@ $yakitStats = $Yakit->getStats(date('Y'), date('m'));
                              ============================================= -->
                         <div class="tab-pane fade show active" id="aracContent" role="tabpanel">
                             <div class="table-responsive">
-                                <table id="aracTable" class="table datatable table-hover table-bordered nowrap w-100">
+                                <table id="aracTable" class="table table-hover table-bordered nowrap w-100">
                                     <thead class="table-light">
                                         <tr>
                                             <th class="text-center" style="width:5%">Sıra</th>
