@@ -482,7 +482,7 @@ $(document).ready(function () {
     const donemId = $("#donemSelect").val();
     if (donemId) {
       window.location.href =
-        "views/bordro/api.php?action=export-excel&donem_id=" + donemId;
+        "views/bordro/export-excel.php?donem_id=" + donemId;
     }
   });
 
