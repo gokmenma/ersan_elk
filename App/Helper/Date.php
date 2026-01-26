@@ -54,9 +54,21 @@ class Date
         return date($format, strtotime($date));
     }
 
+    /**Bugün */
+    public static function today($format = 'd.m.Y')
+    {
+        return date($format);
+    }
+
     public static function firstDay($month, $year)
     {
         return sprintf('%d%02d%02d', $year, $month, 1);
+    }
+
+    /**İçinde olduğumuz ayın ilk günü */
+    public static function firstDayOfThisMonth($format = 'd.m.Y')
+    {
+        return date($format, strtotime('first day of this month'));
     }
 
     public static function lastDay($month, $year)
