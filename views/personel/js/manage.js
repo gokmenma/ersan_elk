@@ -34,6 +34,14 @@ $(document).ready(function () {
       },
       dogum_tarihi: {
         required: true,
+        /**15 yaşından küçük olamaz */
+        minAge: 15,
+      },
+      cep_telefonu: {
+        required: true,
+        minlength: 10,
+        maxlength: 15,
+        digits: true,
       },
       ekip_no: {
         required: true,
@@ -54,6 +62,13 @@ $(document).ready(function () {
       },
       dogum_tarihi: {
         required: "Lütfen Doğum Tarihi giriniz.",
+
+      },
+      cep_telefonu: {
+        required: "Lütfen Cep Telefonu giriniz.",
+        minlength: "Cep Telefonu en az 10 haneli olmalıdır.",
+        maxlength: "Cep Telefonu en fazla 15 haneli olmalıdır.",
+        digits: "Lütfen sadece rakam giriniz.",
       },
       ekip_no: {
         required: "Lütfen Ekip Numarası giriniz.",

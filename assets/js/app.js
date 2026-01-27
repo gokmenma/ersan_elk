@@ -83,6 +83,18 @@ $.validator.setDefaults({
   },
 });
 
+$.validator.addMethod("minAge", function(value, element, min) {
+var today = new Date();
+var birthDate = new Date(value);
+var age = today.getFullYear() - birthDate.getFullYear();
+
+if (age < min+1) {
+return false;
+}
+
+return true;
+}, "Personel 15 yaşından büyük olmalıdır!")
+
 // $(".select2").on("change", function () {
 //   $(this).valid(); // Sadece bu alanı tekrar valide eder
 // });

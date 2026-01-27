@@ -296,6 +296,9 @@ $(document).ready(function () {
     if (url) {
       $.get(url, function (html) {
         targetPane.html(html);
+        if (typeof initPlugins === "function") {
+          initPlugins(targetPane[0]);
+        }
       });
     } else {
       // Fallback - sayfayı yenile

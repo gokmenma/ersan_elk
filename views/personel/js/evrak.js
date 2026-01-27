@@ -131,7 +131,11 @@
               Swal.fire("Başarılı", response.message, "success").then(
                 function () {
                   // Evraklar tabını yenile
-                  $('a[href="#evraklar"]').trigger("click");
+                  if (typeof window.reloadActiveTab === "function") {
+                    window.reloadActiveTab();
+                  } else {
+                    $('a[href="#evraklar"]').trigger("click");
+                  }
                 },
               );
             } else {

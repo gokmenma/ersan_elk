@@ -346,9 +346,8 @@ usort($transactions, function ($a, $b) {
                         }).then(() => {
                             modal.hide();
                             // Tab içeriğini yenile
-                            const activeTab = $('.nav-link.active[href="#finansal_islemler"]');
-                            if (activeTab.length > 0) {
-                                activeTab.trigger('shown.bs.tab');
+                            if (typeof window.reloadActiveTab === 'function') {
+                                window.reloadActiveTab();
                             } else {
                                 location.reload();
                             }

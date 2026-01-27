@@ -98,8 +98,8 @@ $(document).ready(function () {
 
           if ($targetPane.length && url) {
             $targetPane.load(url, function () {
-              if (typeof feather !== "undefined") {
-                feather.replace();
+              if (typeof initPlugins === "function") {
+                initPlugins($targetPane[0]);
               }
             });
           } else {
@@ -175,8 +175,8 @@ $(document).ready(function () {
 
           if ($targetPane.length && url) {
             $targetPane.load(url, function () {
-              if (typeof feather !== "undefined") {
-                feather.replace();
+              if (typeof initPlugins === "function") {
+                initPlugins($targetPane[0]);
               }
             });
           } else {

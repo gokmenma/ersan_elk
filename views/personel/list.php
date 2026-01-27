@@ -6,6 +6,7 @@ use App\Helper\Security;
 use App\Service\Gate;
 
 $Personel = new PersonelModel();
+
 if (Gate::canWithMessage("personel_listesi")) {
 
     $personeller = $Personel->all();
