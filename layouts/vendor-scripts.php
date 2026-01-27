@@ -11,7 +11,6 @@ $page = $_GET['p'] ?? 'home';
 
 
 ?>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.js"></script>
 
 
@@ -178,6 +177,8 @@ if ($page == "kasa/duzenle" || $page == "kasa/list") {
 
 
 <!-- Required Vendor Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 
 <!-- Bootstrap Bundle JS -->
 <script src="assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>

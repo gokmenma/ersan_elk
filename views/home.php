@@ -1028,6 +1028,61 @@ $render_order = $saved_order ?: array_keys($widgets);
         border-radius: 12px;
         margin-bottom: 24px;
     }
+
+    /* Dark Mode Adjustments */
+    [data-bs-theme="dark"] .summary-card {
+        background: linear-gradient(to top, #1e293b, #0f172a);
+        border-color: #1e293b;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    [data-bs-theme="dark"] .summary-card .card-title {
+        color: #f8fafc;
+    }
+
+    [data-bs-theme="dark"] .summary-card .main-value {
+        color: #f8fafc;
+    }
+
+    [data-bs-theme="dark"] .summary-card .trend-badge {
+        background: #1e293b;
+        border-color: #334155;
+    }
+
+    [data-bs-theme="dark"] .summary-card .trend-description {
+        color: #94a3b8;
+    }
+
+    [data-bs-theme="dark"] .summary-card .sub-text {
+        color: #64748b;
+    }
+
+    [data-bs-theme="dark"] .modal-detay-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    [data-bs-theme="dark"] .modal-detay-card .label {
+        color: #94a3b8;
+    }
+
+    [data-bs-theme="dark"] .modal-detay-card .value {
+        color: #f8fafc;
+    }
+
+    [data-bs-theme="dark"] #modalHomeDetay .modal-body {
+        background: #020817;
+    }
+
+    [data-bs-theme="dark"] #modalHomeDetay .modal-footer {
+        background: #020817;
+        border-top-color: #1e293b;
+    }
+
+    [data-bs-theme="dark"] .ui-sortable-placeholder {
+        background: rgba(30, 41, 59, 0.5) !important;
+        border-color: #334155 !important;
+    }
 </style>
 
 <script src="https://code.jquery.com/ui/1.14.1/jquery-ui.js"></script>

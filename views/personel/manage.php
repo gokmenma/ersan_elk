@@ -12,13 +12,11 @@ $personel = $id > 0 ? $PersonelModel->find($id) : null;
 $TanimlamalarModel = new TanimlamalarModel();
 
 if ($personel) {
-
     $ekip_adi = $personel->ekip_no ? $TanimlamalarModel->getTurAdi($personel->ekip_no) : "Ekip Yok";
     $adi_soyadi_ekipno = $personel->adi_soyadi . " - " . $ekip_adi;
 } else {
     $adi_soyadi_ekipno = "Yeni Personel";
 }
-
 
 $mevcutEkipNo = $personel->ekip_no ?? null;
 $mevcutBolge = $personel->ekip_bolge ?? null;
@@ -89,125 +87,132 @@ $allPersonel = array_map(function ($item) {
                             <div class="d-flex flex-wrap gap-2 float-end align-items-center">
                                 <!-- /**Yeni personel ekleniyorsa gösterme */ -->
                                 <?php if ($id > 0) { ?>
-                                    <div style="min-width: 250px;">
+                                    <div class="personel-select-container" style="min-width: 250px;">
                                         <?php echo Form::FormSelect2('personel_select', $allPersonel, $id, 'Personel Değiştir', 'users', 'id', 'adi_soyadi', 'form-select select2'); ?>
                                     </div>
                                 <?php } ?>
-                                <a href="index?p=personel/list" class="btn btn-light waves-effect waves-light"><i
-                                        class="bx bx-left-arrow-alt font-size-16 align-middle"></i></a>
 
-                                <a href="index?p=personel/manage" type="button"
-                                    class="btn btn-success waves-effect waves-light" title="Yeni Personel"><i
-                                        class="bx bx-plus font-size-16 align-middle"></i></a>
-                                <button type="button" id="saveButton"
-                                    class="btn btn-primary waves-effect btn-label waves-light">
-                                    <i class="bx bx-save label-icon"></i> Kaydet
-                                </button>
+                                <div class="mobile-action-buttons">
+                                    <a href="index?p=personel/list" class="btn btn-light waves-effect waves-light"
+                                        title="Listeye Dön"><i
+                                            class="bx bx-left-arrow-alt font-size-16 align-middle"></i></a>
 
+                                    <a href="index?p=personel/manage" type="button"
+                                        class="btn btn-success waves-effect waves-light" title="Yeni Personel"><i
+                                            class="bx bx-plus font-size-16 align-middle"></i></a>
 
+                                    <button type="button" id="saveButton"
+                                        class="btn btn-primary waves-effect btn-label waves-light">
+                                        <i class="bx bx-save label-icon"></i> <span>Kaydet</span>
+                                    </button>
+
+                                    <!-- Mobile Tabs Menu -->
+                                    <div class="dropup d-md-none">
+                                        <button class="btn btn-light waves-effect" type="button" id="mobileTabsMenuBtn"
+                                            data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bx bx-dots-horizontal-rounded"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end mobile-tabs-dropdown"
+                                            aria-labelledby="mobileTabsMenuBtn">
+                                            <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'home' ? 'active' : ''; ?>"
+                                                    href="javascript:void(0);" data-target="#home">Genel Bilgiler <i
+                                                        class="fas fa-home ms-2"></i></a></li>
+                                            <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'calisma' ? 'active' : ''; ?>"
+                                                    href="javascript:void(0);" data-target="#calisma">Çalışma Bilgileri <i
+                                                        class="far fa-user ms-2"></i></a></li>
+                                            <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'finansal' ? 'active' : ''; ?>"
+                                                    href="javascript:void(0);" data-target="#finansal">Finansal Bilgiler <i
+                                                        class="fas fa-wallet ms-2"></i></a></li>
+                                            <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'diger' ? 'active' : ''; ?>"
+                                                    href="javascript:void(0);" data-target="#diger">Diğer Bilgiler <i
+                                                        class="far fa-envelope ms-2"></i></a></li>
+                                            <?php if ($id > 0): ?>
+                                                <li>
+                                                    <hr class="dropdown-divider">
+                                                </li>
+                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'izinler' ? 'active' : ''; ?>"
+                                                        href="javascript:void(0);" data-target="#izinler">İzin/Rapor <i
+                                                            class="bx bx-calendar-event ms-2"></i></a></li>
+                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'zimmetler' ? 'active' : ''; ?>"
+                                                        href="javascript:void(0);" data-target="#zimmetler">Zimmetler <i
+                                                            class="bx bx-devices ms-2"></i></a></li>
+                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'kesintiler' ? 'active' : ''; ?>"
+                                                        href="javascript:void(0);" data-target="#kesintiler">Kesintiler <i
+                                                            class="bx bx-minus-circle ms-2"></i></a></li>
+                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'ek_odemeler' ? 'active' : ''; ?>"
+                                                        href="javascript:void(0);" data-target="#ek_odemeler">Ek Ödemeler <i
+                                                            class="bx bx-plus-circle ms-2"></i></a></li>
+                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'icralar' ? 'active' : ''; ?>"
+                                                        href="javascript:void(0);" data-target="#icralar">İcralar <i
+                                                            class="bx bx-gavel ms-2"></i></a></li>
+                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'finansal_islemler' ? 'active' : ''; ?>"
+                                                        href="javascript:void(0);" data-target="#finansal_islemler">Hesap Hareketleri <i
+                                                            class="bx bx-lira ms-2"></i></a></li>
+                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'evraklar' ? 'active' : ''; ?>"
+                                                        href="javascript:void(0);" data-target="#evraklar">Evraklar <i
+                                                            class="bx bx-file ms-2"></i></a></li>
+                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'puantaj' ? 'active' : ''; ?>"
+                                                        href="javascript:void(0);" data-target="#puantaj">Puantaj/İş Takip <i
+                                                            class="bx bx-time-five ms-2"></i></a></li>
+                                            <?php endif; ?>
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="card-body">
 
-
-                    <!-- Nav tabs -->
+                    <!-- Nav tabs (Desktop Only) -->
                     <?php $activeTab = $_GET['tab'] ?? 'home'; ?>
-                    <ul class="nav nav-tabs overflow-x-auto" role="tablist">
-                        <li class="nav-item" role="presentation">
+                    <ul class="nav nav-tabs d-none d-md-flex" role="tablist" id="desktopTabs">
+                        <li class="nav-item">
                             <a class="nav-link <?php echo $activeTab === 'home' ? 'active' : ''; ?>"
-                                data-bs-toggle="tab" href="#home" role="tab" aria-selected="false" tabindex="-1">
-                                <span class="d-block d-sm-none"><i class="fas fa-home"></i></span>
-                                <span class="d-none d-sm-block"><i class="fas fa-home me-1"></i> Genel Bilgiler</span>
+                                data-bs-toggle="tab" href="#home" role="tab">
+                                <i class="fas fa-home me-1"></i> Genel Bilgiler
                             </a>
                         </li>
-                        <li class="nav-item" role="presentation">
+                        <li class="nav-item">
                             <a class="nav-link <?php echo $activeTab === 'calisma' ? 'active' : ''; ?>"
-                                data-bs-toggle="tab" href="#calisma" role="tab" aria-selected="false" tabindex="-1">
-                                <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
-                                <span class="d-none d-sm-block"><i class="far fa-user me-1"></i> Çalışma
-                                    Bilgileri</span>
+                                data-bs-toggle="tab" href="#calisma" role="tab">
+                                <i class="far fa-user me-1"></i> Çalışma Bilgileri
                             </a>
                         </li>
-                        <li class="nav-item" role="presentation">
+                        <li class="nav-item">
                             <a class="nav-link <?php echo $activeTab === 'finansal' ? 'active' : ''; ?>"
-                                data-bs-toggle="tab" href="#finansal" role="tab" aria-selected="false" tabindex="-1">
-                                <span class="d-block d-sm-none"><i class="fas fa-wallet"></i></span>
-                                <span class="d-none d-sm-block"><i class="fas fa-wallet me-1"></i> Finansal
-                                    Bilgileri</span>
+                                data-bs-toggle="tab" href="#finansal" role="tab">
+                                <i class="fas fa-wallet me-1"></i> Finansal Bilgileri
                             </a>
                         </li>
-                        <li class="nav-item" role="presentation">
+                        <li class="nav-item">
                             <a class="nav-link <?php echo $activeTab === 'diger' ? 'active' : ''; ?>"
-                                data-bs-toggle="tab" href="#diger" role="tab" aria-selected="true">
-                                <span class="d-block d-sm-none"><i class="far fa-envelope"></i></span>
-                                <span class="d-none d-sm-block"><i class="far fa-envelope me-1"></i> Diğer
-                                    Bilgiler</span>
+                                data-bs-toggle="tab" href="#diger" role="tab">
+                                <i class="far fa-envelope me-1"></i> Diğer Bilgiler
                             </a>
                         </li>
                         <?php if ($id > 0): ?>
-                            <li class="nav-item" role="presentation">
-                                <a class="nav-link <?php echo $activeTab === 'izinler' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#izinler" role="tab" aria-selected="false">
-                                    <span class="d-block d-sm-none"><i class="bx bx-calendar-event"></i></span>
-                                    <span class="d-none d-sm-block"><i class="bx bx-calendar-event me-1"></i>
-                                        İzin/Rapor</span>
-                                </a>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <a class="nav-link <?php echo $activeTab === 'zimmetler' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#zimmetler" role="tab" aria-selected="false">
-                                    <span class="d-block d-sm-none"><i class="bx bx-devices"></i></span>
-                                    <span class="d-none d-sm-block"><i class="bx bx-devices me-1"></i> Zimmetler</span>
-                                </a>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <a class="nav-link <?php echo $activeTab === 'kesintiler' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#kesintiler" role="tab" aria-selected="false">
-                                    <span class="d-block d-sm-none"><i class="bx bx-minus-circle"></i></span>
-                                    <span class="d-none d-sm-block"><i class="bx bx-minus-circle me-1"></i>
-                                        Kesintiler</span>
-                                </a>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <a class="nav-link <?php echo $activeTab === 'ek_odemeler' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#ek_odemeler" role="tab" aria-selected="false">
-                                    <span class="d-block d-sm-none"><i class="bx bx-plus-circle"></i></span>
-                                    <span class="d-none d-sm-block"><i class="bx bx-plus-circle me-1"></i> Ek
-                                        Ödemeler</span>
-                                </a>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <a class="nav-link <?php echo $activeTab === 'icralar' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#icralar" role="tab" aria-selected="false">
-                                    <span class="d-block d-sm-none"><i class="bx bx-gavel"></i></span>
-                                    <span class="d-none d-sm-block"><i class="bx bx-gavel me-1"></i> İcralar</span>
-                                </a>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <a class="nav-link <?php echo $activeTab === 'finansal_islemler' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#finansal_islemler" role="tab" aria-selected="false">
-                                    <span class="d-block d-sm-none"><i class="bx bx-lira"></i></span>
-                                    <span class="d-none d-sm-block"><i class="bx bx-lira me-1"></i> Hesap Hareketleri</span>
-                                </a>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <a class="nav-link <?php echo $activeTab === 'evraklar' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#evraklar" role="tab" aria-selected="false">
-                                    <span class="d-block d-sm-none"><i class="bx bx-file"></i></span>
-                                    <span class="d-none d-sm-block"><i class="bx bx-file me-1"></i> Evraklar</span>
-                                </a>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <a class="nav-link <?php echo $activeTab === 'puantaj' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#puantaj" role="tab" aria-selected="false">
-                                    <span class="d-block d-sm-none"><i class="bx bx-time-five"></i></span>
-                                    <span class="d-none d-sm-block"><i class="bx bx-time-five me-1"></i> Puantaj/İş
-                                        Takip</span>
-                                </a>
-                            </li>
-
+                            <li class="nav-item"><a class="nav-link <?php echo $activeTab === 'izinler' ? 'active' : ''; ?>"
+                                    data-bs-toggle="tab" href="#izinler" role="tab">İzin/Rapor</a></li>
+                            <li class="nav-item"><a
+                                    class="nav-link <?php echo $activeTab === 'zimmetler' ? 'active' : ''; ?>"
+                                    data-bs-toggle="tab" href="#zimmetler" role="tab">Zimmetler</a></li>
+                            <li class="nav-item"><a
+                                    class="nav-link <?php echo $activeTab === 'kesintiler' ? 'active' : ''; ?>"
+                                    data-bs-toggle="tab" href="#kesintiler" role="tab">Kesintiler</a></li>
+                            <li class="nav-item"><a
+                                    class="nav-link <?php echo $activeTab === 'ek_odemeler' ? 'active' : ''; ?>"
+                                    data-bs-toggle="tab" href="#ek_odemeler" role="tab">Ek Ödemeler</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo $activeTab === 'icralar' ? 'active' : ''; ?>"
+                                    data-bs-toggle="tab" href="#icralar" role="tab">İcralar</a></li>
+                            <li class="nav-item"><a
+                                    class="nav-link <?php echo $activeTab === 'finansal_islemler' ? 'active' : ''; ?>"
+                                    data-bs-toggle="tab" href="#finansal_islemler" role="tab">Hesap Hareketleri</a></li>
+                            <li class="nav-item"><a
+                                    class="nav-link <?php echo $activeTab === 'evraklar' ? 'active' : ''; ?>"
+                                    data-bs-toggle="tab" href="#evraklar" role="tab">Evraklar</a></li>
+                            <li class="nav-item"><a class="nav-link <?php echo $activeTab === 'puantaj' ? 'active' : ''; ?>"
+                                    data-bs-toggle="tab" href="#puantaj" role="tab">Puantaj</a></li>
                         <?php endif; ?>
                     </ul>
 
@@ -222,6 +227,88 @@ $allPersonel = array_map(function ($item) {
                     #personelTabContent>form>.tab-pane.active {
                         display: block;
                     }
+
+                    @media (max-width: 768px) {
+                        .mobile-action-buttons {
+                            position: fixed;
+                            bottom: 20px;
+                            left: 0;
+                            right: 0;
+                            z-index: 9999;
+                            display: flex !important;
+                            flex-direction: row !important;
+                            justify-content: center !important;
+                            align-items: center !important;
+                            gap: 8px !important;
+                            width: 100% !important;
+                            padding: 0 15px;
+                        }
+
+                        .mobile-action-buttons .btn {
+                            width: 40px !important;
+                            height: 40px !important;
+                            border-radius: 12px !important;
+                            display: flex !important;
+                            align-items: center;
+                            justify-content: center;
+                            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+                            padding: 0 !important;
+                        }
+
+                        #saveButton {
+                            width: auto !important;
+                            min-width: 90px !important;
+                            padding: 0 15px !important;
+                        }
+
+                        #saveButton span {
+                            display: inline-block !important;
+                            margin-left: 5px;
+                            font-size: 13px;
+                        }
+
+                        .mobile-tabs-dropdown {
+                            border-radius: 14px !important;
+                            border: none !important;
+                            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+                            padding: 8px !important;
+                            min-width: 200px !important;
+                            margin-bottom: 10px !important;
+                        }
+
+                        .mobile-tabs-dropdown .dropdown-item {
+                            display: flex !important;
+                            align-items: center;
+                            justify-content: flex-end;
+                            /* Right aligned text */
+                            padding: 10px 15px !important;
+                            border-radius: 10px !important;
+                            font-size: 14px;
+                            font-weight: 500;
+                            color: #495057;
+                            transition: all 0.2s ease;
+                        }
+
+                        .mobile-tabs-dropdown .dropdown-item i {
+                            font-size: 16px;
+                            width: 20px;
+                            text-align: center;
+                        }
+
+                        .mobile-tabs-dropdown .dropdown-item.active {
+                            background: #000000 !important;
+                            color: #ffffff !important;
+                        }
+
+                        .personel-select-container {
+                            margin-bottom: 10px;
+                            width: 100%;
+                        }
+                        
+                        .card-header .col-md-5 {
+                            padding-top: 5px;
+                        }
+                    }
                 </style>
                 <div class="tab-content p-3 text-muted" id="personelTabContent">
                     <form id="personelForm" enctype="multipart/form-data">
@@ -235,12 +322,10 @@ $allPersonel = array_map(function ($item) {
                         <div class="tab-pane <?php echo $activeTab === 'calisma' ? 'active show' : ''; ?>" id="calisma"
                             role="tabpanel">
                             <?php include_once "icerik/calisma_bilgileri.php"; ?>
-
                         </div>
                         <div class="tab-pane <?php echo $activeTab === 'finansal' ? 'active show' : ''; ?>"
                             id="finansal" role="tabpanel">
                             <?php include_once "icerik/finansal_bilgiler.php"; ?>
-
                         </div>
                         <div class="tab-pane <?php echo $activeTab === 'diger' ? 'active show' : ''; ?>" id="diger"
                             role="tabpanel">
@@ -410,17 +495,32 @@ $allPersonel = array_map(function ($item) {
         });
 
         // Tab değişikliklerini dinle
-        var triggerTabList = [].slice.call(document.querySelectorAll('.nav-tabs a[data-bs-toggle="tab"]'))
+        var triggerTabList = [].slice.call(document.querySelectorAll('#desktopTabs [data-bs-toggle="tab"]'))
         triggerTabList.forEach(function (triggerEl) {
             triggerEl.addEventListener('shown.bs.tab', function (event) {
                 var targetId = event.target.getAttribute('href');
                 var targetPane = document.querySelector(targetId);
                 loadTabContent(targetPane);
+                
+                // Sync mobile dropdown active state
+                $('.mobile-tab-link').removeClass('active');
+                $('.mobile-tab-link[data-target="' + targetId + '"]').addClass('active');
             })
         })
 
+        // Mobile Tab Click Handler
+        $(document).on('click', '.mobile-tab-link', function(e) {
+            e.preventDefault();
+            var target = $(this).data('target');
+            var tabEl = document.querySelector('#desktopTabs a[href="' + target + '"]');
+            if (tabEl) {
+                var tab = new bootstrap.Tab(tabEl);
+                tab.show();
+            }
+        });
+
         // Sayfa yüklendiğinde aktif tab eğer dinamik içerikliyse yükle
-        var activeTabLink = document.querySelector('.nav-tabs a.active');
+        var activeTabLink = document.querySelector('.nav-link.active');
         if (activeTabLink) {
             var targetId = activeTabLink.getAttribute('href');
             var targetPane = document.querySelector(targetId);

@@ -4,11 +4,71 @@ require_once "vendor/autoload.php";
 use App\Model\FirmaModel;
 use App\Model\UserModel;
 use App\Helper\Helper;
+use App\Helper\Security;
+use App\Helper\Form;
 
 session_start();
 
 $Firma = new FirmaModel();
 $User = new UserModel();
+
+// AJAX İşlemleri
+if (isset($_GET['action'])) {
+    header('Content-Type: application/json');
+    $action = $_GET['action'];
+
+    if ($action == 'save') {
+        $data = $_POST;
+        $id = isset($data['id']) ? (int) $data['id'] : 0;
+
+        $saveData = [
+            'firma_adi' => $data['firma_adi'],
+            'vergi_no' => $data['vergi_no'] ?? '',
+            'vergi_dairesi' => $data['vergi_dairesi'] ?? '',
+            'telefon' => $data['telefon'] ?? '',
+            'adres' => $data['adres'] ?? '',
+        ];
+
+        if ($id > 0) {
+            $saveData['id'] = $id;
+        } else {
+            $saveData['kayit_yapan'] = $_SESSION['user']->id ?? 0;
+        }
+
+        try {
+            $res = $Firma->saveWithAttr($saveData);
+            echo json_encode(['status' => 'success', 'message' => 'Firma başarıyla kaydedildi.']);
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    if ($action == 'delete') {
+        $id = (int) $_POST['id'];
+        try {
+            // İlişki kontrolü
+            $error = $Firma->hasRelations($id);
+            if ($error) {
+                echo json_encode(['status' => 'error', 'message' => $error]);
+                exit;
+            }
+
+            $Firma->softDelete($id);
+            echo json_encode(['status' => 'success', 'message' => 'Firma silindi.']);
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    if ($action == 'get') {
+        $id = (int) $_GET['id'];
+        $data = $Firma->find($id);
+        echo json_encode($data);
+        exit;
+    }
+}
 
 $branchs = $Firma->all();
 
@@ -18,21 +78,26 @@ if (isset($_COOKIE['varsayilan_firma_id']) && !empty($_COOKIE['varsayilan_firma_
     // Firma hala aktif mi kontrol et
     $firma_aktif = false;
     foreach ($branchs as $branch) {
-        if ($branch->id == $varsayilan_firma_id) {
+        if ($branch->id == $varsayilan_firma_id && is_null($branch->silinme_tarihi)) {
             $firma_aktif = true;
             break;
         }
     }
-    if ($firma_aktif) {
+    if ($firma_aktif && !isset($_GET['change'])) {
         $_SESSION['firma_id'] = $varsayilan_firma_id;
         header("Location: /set-session.php?firma_id=" . $varsayilan_firma_id);
         exit;
     }
 }
 
+// Sadece silinmemiş firmaları göster
+$branchs = array_filter($branchs, function ($b) {
+    return is_null($b->silinme_tarihi);
+});
+
 //**Eğer 1 adet sube varsa direkt yönlendir */
-if (count($branchs) == 1) {
-    $only_branch = $branchs[0];
+if (count($branchs) == 1 && !isset($_GET['change'])) {
+    $only_branch = reset($branchs);
     $_SESSION['sube_id'] = $only_branch->id;
     header("Location: /set-session.php?firma_id=" . $only_branch->id);
     exit;
@@ -47,265 +112,312 @@ if (count($branchs) == 1) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Firma Seçimi | Ersan Elektrik</title>
-    
+
+    <script>
+        (function () {
+            const htmlAttributes = [
+                { name: 'data-theme-mode', target: 'html' },
+                { name: 'data-bs-theme', target: 'html' },
+                { name: 'dir', target: 'html' }
+            ];
+
+            const applyAttribute = (attr, value) => {
+                const targetEl = document.documentElement;
+                if (attr.name === 'dir') {
+                    targetEl.setAttribute('dir', value);
+                } else {
+                    targetEl.setAttribute(attr.name, value);
+                }
+            };
+
+            htmlAttributes.forEach(attr => {
+                const value = localStorage.getItem(attr.name);
+                if (value) applyAttribute(attr, value);
+            });
+        })();
+    </script>
+
     <!-- Geist Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" rel="stylesheet">
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
-    
+
+    <!-- Icons Css -->
+    <link href="<?php echo Helper::base_url('assets/css/icons.min.css'); ?>" rel="stylesheet" type="text/css" />
+    <!-- Bootstrap Css -->
+    <link href="<?php echo Helper::base_url('assets/css/bootstrap.min.css'); ?>" id="bootstrap-style" rel="stylesheet"
+        type="text/css" />
+    <!-- App Css-->
+    <link href="<?php echo Helper::base_url('assets/css/app.min.css'); ?>" id="app-style" rel="stylesheet"
+        type="text/css" />
+    <!-- Custom Style -->
+    <link href="<?php echo Helper::base_url('assets/css/style.css'); ?>" rel="stylesheet" type="text/css" />
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+
     <style>
         :root {
-            --slate-50: #f8fafc;
-            --slate-100: #f1f5f9;
-            --slate-200: #e2e8f0;
-            --slate-300: #cbd5e1;
-            --slate-400: #94a3b8;
-            --slate-500: #64748b;
-            --slate-600: #475569;
-            --slate-700: #334155;
-            --slate-800: #1e293b;
-            --slate-900: #0f172a;
-            --slate-950: #020817;
-            
-            --primary: #0f172a;
-            --primary-foreground: #f8fafc;
-            
-            --radius: 0.5rem;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
+            --radius: 0.75rem;
+            --bs-secondary-bg: #f0f0f0;
         }
 
         body {
             font-family: 'Geist', sans-serif;
-            background-color: var(--slate-50);
-            color: var(--slate-900);
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
             min-height: 100vh;
-            padding: 20px;
+            padding: 40px 20px;
+            background-color: var(--bs-body-bg);
+            color: var(--bs-body-color);
         }
 
         .container {
             width: 100%;
-            max-width: 800px;
+            max-width: 700px;
             animation: fadeIn 0.5s ease-out;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        .card {
-            background: #fff;
-            border: 1px solid var(--slate-200);
-            border-radius: var(--radius);
-            padding: 3rem;
-            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 2rem;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 3rem;
+        .header-info h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
         }
 
-        .logo {
-            font-size: 2.5rem;
-            font-weight: 800;
-            letter-spacing: -0.05em;
-            margin-bottom: 0.75rem;
+        .header-info p {
+            color: var(--bs-secondary-color);
+            font-size: 1rem;
+            margin-top: 0.25rem;
+        }
+
+        .btn-add-new {
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 0.75rem;
-        }
-
-        .logo i {
-            font-size: 2rem;
-        }
-
-        .header h1 {
-            font-size: 2rem;
-            font-weight: 600;
-            letter-spacing: -0.025em;
-            color: var(--slate-900);
-        }
-
-        .header p {
-            font-size: 1rem;
-            color: var(--slate-500);
-            margin-top: 0.5rem;
+            gap: 0.5rem;
         }
 
         .branch-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 2rem;
         }
 
         .branch-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            padding: 2.5rem 1.5rem;
-            border: 1px solid var(--slate-200);
+            background: var(--bs-card-bg);
+            border: 1px solid var(--bs-border-color);
             border-radius: var(--radius);
-            cursor: pointer;
-            transition: all 0.2s ease;
+            padding: 1.5rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 1.25rem;
             position: relative;
-            background-color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
         .branch-item:hover {
-            background-color: var(--slate-50);
-            border-color: var(--slate-300);
-            transform: translateY(-2px);
+            border-color: var(--bs-primary);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
         }
 
         .branch-item.selected {
-            border-color: var(--slate-900);
-            background-color: var(--slate-50);
-            box-shadow: 0 0 0 1px var(--slate-900);
+            border-color: var(--bs-primary);
         }
 
-        .branch-icon {
-            width: 3.5rem;
-            height: 3.5rem;
-            background-color: var(--slate-100);
+        .radio-wrapper {
+            padding-top: 0.25rem;
+        }
+
+        .custom-radio {
+            width: 1rem;
+            height: 1rem;
+            border: 1px solid var(--bs-border-color);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 1.25rem;
-            font-size: 1.5rem;
-            color: var(--slate-600);
-            transition: all 0.2s ease;
+            transition: all 0.2s;
         }
 
-        .branch-item.selected .branch-icon {
-            background-color: var(--slate-900);
-            color: #fff;
+        .branch-item.selected .custom-radio {
+            border-color: var(--bs-primary);
         }
 
-        .branch-info {
-            width: 100%;
+        .custom-radio::after {
+            content: '';
+            width: 0.625rem;
+            height: 0.625rem;
+            background-color: var(--bs-primary);
+            border-radius: 50%;
+            transform: scale(0);
         }
 
-        .branch-name {
-            font-weight: 600;
-            font-size: 1.125rem;
-            color: var(--slate-900);
-            margin-bottom: 0.5rem;
-        }
-
-        .branch-address {
-            font-size: 0.8125rem;
-            color: var(--slate-500);
-            line-height: 1.4;
-        }
-
-        .check-icon {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            color: var(--slate-900);
-            font-size: 1.25rem;
-            opacity: 0;
-            transition: all 0.2s ease;
-            transform: scale(0.5);
-        }
-
-        .branch-item.selected .check-icon {
-            opacity: 1;
+        .branch-item.selected .custom-radio::after {
             transform: scale(1);
         }
 
-        .footer-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-            max-width: 400px;
-            margin: 0 auto;
+        .branch-content {
+            flex: 1;
         }
 
-        .checkbox-container {
+        .branch-title-row {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            cursor: pointer;
-            user-select: none;
+            gap: 0.75rem;
         }
 
-        .checkbox-container input {
-            display: none;
+        .branch-name {
+            font-weight: 500;
+            font-size: 1rem;
         }
 
-        .custom-checkbox {
-            width: 1.125rem;
-            height: 1.125rem;
-            border: 1px solid var(--slate-300);
-            border-radius: 0.25rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-        }
-
-        .checkbox-container:hover .custom-checkbox {
-            border-color: var(--slate-400);
-        }
-
-        .checkbox-container input:checked + .custom-checkbox {
-            background-color: var(--slate-900);
-            border-color: var(--slate-900);
-        }
-
-        .custom-checkbox i {
-            color: #fff;
+        .badge-varsayilan {
             font-size: 0.75rem;
-            display: none;
+            font-weight: 500;
+            padding: 0.125rem 0.5rem;
+            border-radius: 2rem;
+            background: var(--bs-secondary-bg);
+            color: var(--bs-secondary-color);
         }
 
-        .checkbox-container input:checked + .custom-checkbox i {
+        .branch-details {
+            color: var(--bs-secondary-color);
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .branch-details p {
+            margin-bottom: 0.25rem;
+        }
+
+        .branch-actions {
+            position: absolute;
+            top: 1.25rem;
+            right: 1.25rem;
+        }
+
+        .action-trigger {
+            background: none;
+            border: none;
+            color: var(--bs-secondary-color);
+            cursor: pointer;
+            font-size: 1.25rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+        }
+
+        .action-trigger:hover {
+            background-color: var(--bs-secondary-bg);
+            color: var(--bs-body-color);
+        }
+
+        .action-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--bs-card-bg);
+            border: 1px solid var(--bs-border-color);
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+            display: none;
+            min-width: 140px;
+            padding: 0.25rem;
+        }
+
+        .action-menu.show {
             display: block;
         }
 
-        .checkbox-label {
+        .action-item {
+            padding: 0.5rem 0.75rem;
             font-size: 0.875rem;
-            color: var(--slate-600);
+            color: var(--bs-body-color);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 0.375rem;
+        }
+
+        .action-item:hover {
+            background-color: var(--bs-secondary-bg);
+        }
+
+        .action-item i,
+        .action-item svg {
+            width: 14px;
+            height: 14px;
+            color: var(--bs-secondary-color);
+        }
+
+        .action-item.delete {
+            color: #ef4444;
+        }
+
+        .action-item.delete i,
+        .action-item.delete svg {
+            color: #ef4444;
+        }
+
+        .action-item.delete:hover {
+            background-color: rgba(239, 68, 68, 0.05);
+        }
+
+        .footer-actions {
+            margin-top: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .varsayilan-check {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            user-select: none;
+            font-size: 0.875rem;
+            color: var(--bs-secondary-color);
         }
 
         .btn-continue {
             width: 100%;
-            background-color: var(--slate-900);
-            color: #fff;
-            border: none;
-            border-radius: var(--radius);
             padding: 1rem;
-            font-family: inherit;
-            font-weight: 500;
+            font-weight: 600;
             font-size: 1rem;
-            cursor: pointer;
-            transition: opacity 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-        }
-
-        .btn-continue:hover:not(:disabled) {
-            opacity: 0.9;
         }
 
         .btn-continue:disabled {
@@ -313,69 +425,108 @@ if (count($branchs) == 1) {
             cursor: not-allowed;
         }
 
-        .spinner {
-            width: 1.25rem;
-            height: 1.25rem;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 0.8s linear infinite;
+        /* Modal Styles Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
             display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        .modal-overlay.show {
+            display: flex;
         }
 
-        /* Dark Mode Support */
-        @media (prefers-color-scheme: dark) {
-            body {
-                background-color: var(--slate-950);
+        .modal-card {
+            background: var(--bs-card-bg);
+            width: 100%;
+            max-width: 600px;
+            border-radius: var(--radius);
+            overflow: hidden;
+            animation: modalIn 0.3s ease-out;
+            border: 1px solid var(--bs-border-color);
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
             }
-            .card {
-                background-color: var(--slate-950);
-                border-color: var(--slate-800);
+
+            to {
+                opacity: 1;
+                transform: scale(1);
             }
-            .header h1, .branch-name, .logo {
-                color: var(--slate-50);
-            }
-            .branch-item {
-                background-color: var(--slate-950);
-                border-color: var(--slate-800);
-            }
-            .branch-item:hover {
-                background-color: var(--slate-900);
-            }
-            .branch-item.selected {
-                border-color: var(--slate-50);
-                background-color: var(--slate-900);
-                box-shadow: 0 0 0 1px var(--slate-50);
-            }
-            .branch-icon {
-                background-color: var(--slate-900);
-                color: var(--slate-400);
-            }
-            .branch-item.selected .branch-icon {
-                background-color: var(--slate-50);
-                color: var(--slate-950);
-            }
-            .check-icon {
-                color: var(--slate-50);
-            }
-            .btn-continue {
-                background-color: var(--slate-50);
-                color: var(--slate-950);
-            }
-            .custom-checkbox {
-                border-color: var(--slate-700);
-            }
-            .checkbox-container input:checked + .custom-checkbox {
-                background-color: var(--slate-50);
-                border-color: var(--slate-50);
-            }
-            .custom-checkbox i {
-                color: var(--slate-950);
-            }
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--bs-border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .btn-close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--bs-secondary-color);
+            cursor: pointer;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group.full {
+            grid-column: span 2;
+        }
+
+        .modal-footer {
+            padding: 1.5rem;
+            border-top: 1px solid var(--bs-border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+
+        .btn-save {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-cancel {
+            font-weight: 600;
+        }
+
+        .mr-2 {
+            margin-right: 0.5rem;
         }
     </style>
 </head>
@@ -383,81 +534,241 @@ if (count($branchs) == 1) {
 <body>
 
     <div class="container">
-        <div class="card">
-            <div class="header">
-                <div class="logo">
-                    <i class="fa-solid fa-bolt"></i>
-                    <span>ER-SAN</span>
-                </div>
-                <h1>Hoş Geldiniz</h1>
-                <p>Devam etmek için bir şube seçin</p>
+        <div class="page-header">
+            <div class="header-info">
+                <h1>Firmalarım</h1>
+                <p>İşlem yapmak istediğiniz firmayı seçin</p>
             </div>
+            <button class="btn btn-primary waves-effect btn-label waves-light btn-add-new mr-2" onclick="openModal()">
+                Yeni Ekle
+            </button>
+        </div>
 
-            <div class="branch-list">
-                <?php foreach ($branchs as $branch) { ?>
-                    <div class="branch-item" data-id="<?php echo $branch->id ?>">
-                        <div class="branch-icon">
-                            <i class="fa-solid fa-building"></i>
-                        </div>
-                        <div class="branch-info">
-                            <div class="branch-name"><?php echo $branch->firma_adi ?></div>
-                            <div class="branch-address"><?php echo $branch->adres ?></div>
-                        </div>
-                        <i class="fa-solid fa-circle-check check-icon"></i>
+        <div class="branch-list">
+            <?php foreach ($branchs as $branch) { ?>
+                <div class="branch-item" data-id="<?php echo $branch->id ?>" onclick="selectBranch(this)">
+                    <div class="radio-wrapper">
+                        <div class="custom-radio"></div>
                     </div>
-                <?php } ?>
+                    <div class="branch-content">
+                        <div class="branch-title-row">
+                            <span class="branch-name"><?php echo $branch->firma_adi ?></span>
+                            <?php if ($branch->varsayilan_mi) { ?>
+                                <span class="badge-varsayilan">Varsayılan</span>
+                            <?php } ?>
+                        </div>
+                        <div class="branch-details">
+                            <?php if ($branch->adres) { ?>
+                                <p><i class="fa fa-location-dot" style="width: 1.25rem;"></i> <?php echo $branch->adres ?>
+                                </p>
+                            <?php } ?>
+                            <?php if ($branch->telefon) { ?>
+                                <p><i class="fa fa-phone" style="width: 1.25rem;"></i> <?php echo $branch->telefon ?></p>
+                            <?php } ?>
+                        </div>
+                    </div>
+                    <div class="branch-actions" onclick="event.stopPropagation()">
+                        <button class="action-trigger" onclick="toggleMenu(this)">
+                            <i class="bx bx-dots-vertical-rounded"></i>
+                        </button>
+                        <div class="action-menu">
+                            <div class="action-item" onclick="editFirma(<?php echo $branch->id ?>)">
+                                <i data-feather="edit-2"></i> Düzenle
+                            </div>
+                            <div class="action-item delete" onclick="deleteFirma(<?php echo $branch->id ?>)">
+                                <i data-feather="trash-2"></i> Sil
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <?php } ?>
+        </div>
+
+        <div class="footer-actions">
+            <label class="varsayilan-check">
+                <input type="checkbox" id="varsayilan-firma" style="width: 1rem; height: 1rem; cursor: pointer;">
+                Varsayılan firma olarak ayarla
+            </label>
+
+            <button id="continue-btn" class="btn btn-primary waves-effect btn-label waves-light btn-continue" disabled
+                onclick="continueAction()">
+                <i class="bx bx-right-arrow-alt label-icon"></i>
+                Devam Et
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="firmaModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="modalTitle">Yeni Firma Ekle</h2>
+                <button class="btn-close-modal" onclick="closeModal()">&times;</button>
             </div>
-
-            <div class="footer-actions">
-                <label class="checkbox-container">
-                    <input type="checkbox" id="varsayilan-firma">
-                    <span class="custom-checkbox"><i class="fa-solid fa-check"></i></span>
-                    <span class="checkbox-label">Varsayılan olarak ayarla</span>
-                </label>
-
-                <button id="continue-btn" class="btn-continue" disabled>
-                    <span>Devam Et</span>
-                    <div class="spinner"></div>
+            <div class="modal-body">
+                <form id="firmaForm">
+                    <input type="hidden" name="id" id="firma_id">
+                    <div class="form-group">
+                        <?php echo Form::FormFloatInput("text", "firma_adi", "", "Firma Adı", "Firma Adı", "briefcase", "form-control", true); ?>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <?php echo Form::FormFloatInput("text", "vergi_no", "", "Vergi No", "Vergi No", "hash"); ?>
+                        </div>
+                        <div class="form-group">
+                            <?php echo Form::FormFloatInput("text", "vergi_dairesi", "", "Vergi Dairesi", "Vergi Dairesi", "hash"); ?>
+                        </div>
+                        <div class="form-group">
+                            <?php echo Form::FormFloatInput("text", "telefon", "", "Telefon", "Telefon", "phone"); ?>
+                        </div>
+                    </div>
+                    <div class="form-group full">
+                        <?php echo Form::FormFloatTextarea("adres", "", "Adres", "Adres", "map-pin"); ?>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary waves-effect btn-label waves-light" onclick="closeModal()">
+                    <i class="bx bx-x label-icon"></i> İptal</button>
+                <button class="btn btn-primary waves-effect btn-label waves-light btn-save" onclick="saveFirma()">
+                    <i class="bx bx-save label-icon"></i>
+                    Kaydet
                 </button>
             </div>
         </div>
     </div>
 
     <script>
+        let selectedId = null;
+
         document.addEventListener('DOMContentLoaded', () => {
-            const branchItems = document.querySelectorAll('.branch-item');
-            const continueBtn = document.getElementById('continue-btn');
-            const btnText = continueBtn.querySelector('span');
-            const spinner = continueBtn.querySelector('.spinner');
-            const defaultCheck = document.getElementById('varsayilan-firma');
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
 
-            let selectedId = null;
-
-            branchItems.forEach(item => {
-                item.addEventListener('click', () => {
-                    branchItems.forEach(i => i.classList.remove('selected'));
-                    item.classList.add('selected');
-                    selectedId = item.dataset.id;
-                    continueBtn.disabled = false;
-                });
+            // MutationObserver to handle dynamically added feather icons
+            const observer = new MutationObserver(() => {
+                feather.replace();
             });
-
-            continueBtn.addEventListener('click', () => {
-                if (!selectedId) return;
-
-                btnText.style.display = 'none';
-                spinner.style.display = 'block';
-                continueBtn.disabled = true;
-
-                const isDefault = defaultCheck.checked;
-                let url = `/set-session.php?firma_id=${selectedId}`;
-                if (isDefault) url += '&varsayilan=1';
-
-                setTimeout(() => {
-                    window.location.href = url;
-                }, 400);
-            });
+            observer.observe(document.body, { childList: true, subtree: true });
         });
+
+        function selectBranch(element) {
+            document.querySelectorAll('.branch-item').forEach(item => item.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedId = element.dataset.id;
+            document.getElementById('continue-btn').disabled = false;
+        }
+
+        function toggleMenu(btn) {
+            const menu = btn.nextElementSibling;
+            document.querySelectorAll('.action-menu').forEach(m => {
+                if (m !== menu) m.classList.remove('show');
+            });
+            menu.classList.toggle('show');
+        }
+
+        window.onclick = function (event) {
+            if (!event.target.matches('.action-trigger') && !event.target.matches('.bx-dots-vertical-rounded')) {
+                document.querySelectorAll('.action-menu').forEach(m => m.classList.remove('show'));
+            }
+            if (event.target.matches('.modal-overlay')) {
+                closeModal();
+            }
+        }
+
+        function openModal() {
+            document.getElementById('modalTitle').innerText = 'Yeni Firma Ekle';
+            document.getElementById('firmaForm').reset();
+            document.getElementById('firma_id').value = '';
+            document.getElementById('firmaModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('firmaModal').classList.remove('show');
+        }
+
+        function editFirma(id) {
+            fetch(`firma-secim.php?action=get&id=${id}`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('modalTitle').innerText = 'Firmayı Düzenle';
+                    document.getElementById('firma_id').value = data.id;
+                    document.getElementById('firma_adi').value = data.firma_adi;
+                    document.getElementById('vergi_no').value = data.vergi_no;
+                    document.getElementById('vergi_dairesi').value = data.vergi_dairesi;
+                    document.getElementById('telefon').value = data.telefon;
+                    document.getElementById('adres').value = data.adres;
+                    document.getElementById('firmaModal').classList.add('show');
+                });
+        }
+
+        function saveFirma() {
+            const form = document.getElementById('firmaForm');
+            const firmaAdi = document.getElementById('firma_adi').value;
+
+            if (!firmaAdi.trim()) {
+                Swal.fire('Hata', 'Firma adı boş bırakılamaz!', 'error');
+                return;
+            }
+
+            const formData = new FormData(form);
+
+            fetch('firma-secim.php?action=save', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire('Başarılı', data.message, 'success').then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Hata', data.message, 'error');
+                    }
+                });
+        }
+
+        function deleteFirma(id) {
+            Swal.fire({
+                title: 'Emin misiniz?',
+                text: "Bu firmayı silmek istediğinize emin misiniz?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#0f172a',
+                cancelButtonColor: '#ef4444',
+                confirmButtonText: 'Evet, sil!',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const formData = new FormData();
+                    formData.append('id', id);
+                    fetch('firma-secim.php?action=delete', {
+                        method: 'POST',
+                        body: formData
+                    })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                Swal.fire('Silindi!', data.message, 'success').then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire('Hata', data.message, 'error');
+                            }
+                        });
+                }
+            });
+        }
+
+        function continueAction() {
+            if (!selectedId) return;
+            const isDefault = document.getElementById('varsayilan-firma').checked;
+            let url = `/set-session.php?firma_id=${selectedId}`;
+            if (isDefault) url += '&varsayilan=1';
+            window.location.href = url;
+        }
     </script>
 
 </body>

@@ -4,18 +4,11 @@ use App\Helper\Route;
 use App\Helper\Form;
 use App\Model\FirmaModel;
 
-if (!empty($_SESSION['lang'])) {
-    $sessionLang = $_SESSION['lang'];
-    require_once('assets/lang/' . $sessionLang . '.php');
-} else {
-    require_once(BASE_PATH . '/assets/lang/en.php');
-}
-
 $FirmaModel = new FirmaModel();
 
 //seçili firma
 
-$firma_option = $FirmaModel->option();
+$firma_option = $FirmaModel->optionByUserPermission();
 
 //Helper::dd($firma_option);
 
@@ -202,7 +195,7 @@ $firma_option = $FirmaModel->option();
                 <button type="button" class="btn header-item bg-light-subtle border-start border-end"
                     id="page-header-user-dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <img class="rounded-circle header-profile-user user-profile-image"
-                        src="<?php echo Helper::base_url('assets/images/users/avatar-1.jpg'); ?>" alt="Header Avatar"
+                        src="<?php echo Helper::base_url('assets/images/users/avatar.png'); ?>" alt="Header Avatar"
                         id="user_image">
                     <span class="d-none d-xl-inline-block ms-1 fw-medium setting_user_name"
                         id="setting_user_name"><?php echo $_SESSION["user_full_name"]; ?></span>
@@ -211,8 +204,7 @@ $firma_option = $FirmaModel->option();
                 <div class="dropdown-menu dropdown-menu-end">
                     <!-- item-->
                     <a class="dropdown-item" href="apps-contacts-profile.php"><i
-                            class="mdi mdi-face-profile font-size-16 align-middle me-1"></i> Profil
-                        (<?php echo $_SESSION["user"]->adi_soyadi; ?>)</a>
+                            class="mdi mdi-face-profile font-size-16 align-middle me-1"></i><?php echo $_SESSION["user"]->adi_soyadi; ?></a>
                     <a class="dropdown-item" href="auth-lock-screen.php"><i
                             class="mdi mdi-lock font-size-16 align-middle me-1"></i> Kilitle</a>
                     <div class="dropdown-divider"></div>
