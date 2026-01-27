@@ -17,7 +17,7 @@ $page = $_GET['p'] ?? 'home';
 <!-- Select2 , Jquery Validate , iMask Scriptler -->
 <!--***************************************-->
 <?php if (
-
+$page === 'home' ||
     $page == "gelir-gider/list" || $page == "temsilcilik/talep" ||
     $page == "tanimlamalar/gelir-gider-turu" ||
     $page == "demirbas/list" || $page == "temsilcilik/duzenle" ||
@@ -203,10 +203,10 @@ if ($page == "kasa/duzenle" || $page == "kasa/list") {
 
 <script src="assets/js/jquery.inputmask.js"></script>
 
-<script src="assets/js/page.init.js"></script>
 
 <!-- App -General js -->
 <script src="assets/js/app_module.js?v=<?php echo filemtime('assets/js/app_module.js'); ?>"></script>
 
+<script src="assets/js/page.init.js"></script>
 <!-- Functions and declarations-->
 <script src="assets/js/app.js?v=<?php echo filemtime('assets/js/app.js'); ?>"></script>
