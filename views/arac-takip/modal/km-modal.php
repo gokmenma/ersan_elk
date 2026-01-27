@@ -51,7 +51,7 @@
                         <div class="col-6 mb-3">
                             <?php echo \App\Helper\Form::FormFloatInput(
                                 'number',
-                                'km_baslangic_km',
+                                'baslangic_km',
                                 '',
                                 'Gün başı KM',
                                 'Başlangıç KM *',
@@ -67,7 +67,7 @@
                         <div class="col-6 mb-3">
                             <?php echo \App\Helper\Form::FormFloatInput(
                                 'number',
-                                'km_bitis_km',
+                                'bitis_km',
                                 '',
                                 'Gün sonu KM',
                                 'Bitiş KM *',
@@ -131,14 +131,14 @@
     $(document).on('change', '#kmModal #arac_id', function () {
         const aracId = $(this).val();
         if (aracId && kmAracMap[aracId]) {
-            $('#kmModal #km_baslangic_km').val(kmAracMap[aracId]);
+            $('#kmForm #baslangic_km').val(kmAracMap[aracId]);
         }
     });
 
     // Yapılan KM otomatik hesaplama
-    $(document).on('input', '#kmModal #km_baslangic_km, #kmModal #km_bitis_km', function () {
-        const baslangic = parseInt($('#kmModal #km_baslangic_km').val()) || 0;
-        const bitis = parseInt($('#kmModal #km_bitis_km').val()) || 0;
+    $(document).on('input', '#kmForm #baslangic_km, #kmForm #bitis_km', function () {
+        const baslangic = parseInt($('#kmModal #baslangic_km').val()) || 0;
+        const bitis = parseInt($('#kmModal #bitis_km').val()) || 0;
         const yapilan = bitis - baslangic;
         console.log(baslangic);
         $('#yapilan_km').val(yapilan > 0 ? yapilan + ' km' : '0 km');

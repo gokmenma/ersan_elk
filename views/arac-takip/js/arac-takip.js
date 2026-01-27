@@ -499,6 +499,84 @@ const AracTakip = {
     });
   },
 
+  kmSil: function (id) {
+    Swal.fire({
+      title: "Emin misiniz?",
+      text: "Bu KM kaydını silmek istediğinize emin misiniz?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Evet, Sil",
+      cancelButtonText: "İptal",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        $.post(this.apiUrl, { action: "km-sil", id: id }, function (response) {
+          if (response.status === "success") {
+            Swal.fire({
+              icon: "success",
+              title: "Silindi",
+              text: response.message,
+              timer: 1500,
+              showConfirmButton: false,
+            }).then(() => location.reload());
+          } else {
+            Swal.fire("Hata", response.message, "error");
+          }
+        });
+      }
+    });
+  },
+
+  kmListesiYukle: function (aracId = null) {
+    const self = this;
+
+    // Mevcut tabloyu temizle
+    if ($.fn.DataTable.isDataTable("#kmTable")) {
+      $("#kmTable").DataTable().destroy();
+      $("#kmTable thead .search-input-row").remove();
+    }
+
+    const tbody = $("#kmTableBody");
+    self.showLoading(tbody);
+
+    const data = { action: "km-listesi" };
+    if (aracId) data.arac_id = aracId;
+
+    $.post(this.apiUrl, data, function (response) {
+      if (response.status === "success") {
+        let html = "";
+        if (response.data && response.data.length > 0) {
+          response.data.forEach(function (k, index) {
+            html += `<tr>
+                            <td class="text-center">${index + 1}</td>
+                            <td><strong>${k.plaka}</strong></td>
+                            <td>${self.formatDate(k.tarih)}</td>
+                            <td class="text-end">${self.formatNumber(k.baslangic_km)} km</td>
+                            <td class="text-end">${self.formatNumber(k.bitis_km)} km</td>
+                            <td class="text-end">${self.formatNumber(k.yapilan_km)} km</td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-danger km-sil" data-id="${k.id}" title="Sil"><i class="bx bx-trash"></i></button>
+                            </td>
+                        </tr>`;
+          });
+        }
+        tbody.html(html);
+        self.initDataTable("#kmTable");
+      } else {
+        const colCount = $("#kmTable").find("thead th").length || 1;
+        tbody.html(
+          `<tr><td colspan="${colCount}" class="text-center text-danger">${response.message || "Veri yüklenirken bir hata oluştu."}</td></tr>`,
+        );
+      }
+    }).fail(function (xhr) {
+      const colCount = $("#kmTable").find("thead th").length || 1;
+      tbody.html(
+        `<tr><td colspan="${colCount}" class="text-center text-danger">Sunucu hatası: ${xhr.statusText}</td></tr>`,
+      );
+    });
+  },
+
   // =============================================
   // RAPORLAR
   // =============================================
@@ -804,6 +882,13 @@ $(document).ready(function () {
     AracTakip.kmKaydet();
   });
 
+  // KM Sil
+  $(document).on("click", ".km-sil", function (e) {
+    e.preventDefault();
+    const id = $(this).data("id");
+    AracTakip.kmSil(id);
+  });
+
   // Excel Yükle
   $(document).on("click", "#btnExcelYukle", function (e) {
     e.preventDefault();
@@ -859,6 +944,8 @@ $(document).ready(function () {
       AracTakip.zimmetListesiYukle();
     } else if (target === "#yakitContent") {
       AracTakip.yakitListesiYukle();
+    } else if (target === "#kmContent") {
+      AracTakip.kmListesiYukle();
     } else if (target === "#raporContent") {
       AracTakip.aylikRaporYukle();
     } else if (target === "#aracContent") {
@@ -877,6 +964,8 @@ $(document).ready(function () {
       AracTakip.zimmetListesiYukle();
     } else if (activeTarget === "#yakitContent") {
       AracTakip.yakitListesiYukle();
+    } else if (activeTarget === "#kmContent") {
+      AracTakip.kmListesiYukle();
     } else if (activeTarget === "#raporContent") {
       AracTakip.aylikRaporYukle();
     }
