@@ -1093,6 +1093,7 @@ $render_order = $saved_order ?: array_keys($widgets);
                 document.getElementById('logDetayTitle').textContent = title;
                 document.getElementById('logDetayUser').textContent = user;
                 document.getElementById('logDetayDate').textContent = date;
+
                 if (content.includes('{') && content.includes('}')) {
                     try {
                         let parts = content.split(' (Güncellenen veriler: { ');
@@ -1106,8 +1107,12 @@ $render_order = $saved_order ?: array_keys($widgets);
                             </thead>
                             <tbody>`;
                         changes.forEach(change => {
-                            let [key, val] = change.split(': ');
-                            formattedContent += `<tr><td class="fw-bold" style="width: 30%;">${key}</td><td>${val}</td></tr>`;
+                            if (change.includes(': ')) {
+                                let [key, val] = change.split(': ');
+                                formattedContent += `<tr><td class="fw-bold" style="width: 30%;">${key}</td><td>${val}</td></tr>`;
+                            } else {
+                                formattedContent += `<tr><td colspan="2" class="text-center text-muted italic">${change}</td></tr>`;
+                            }
                         });
                         formattedContent += `</tbody></table>`;
                         document.getElementById('logDetayContent').innerHTML = formattedContent;
@@ -1130,12 +1135,14 @@ $render_order = $saved_order ?: array_keys($widgets);
                 var tarih = this.dataset.tarih;
                 var headerClass = tip === 'Avans' ? 'tip-avans' : (tip === 'İzin' ? 'tip-izin' : 'tip-talep');
                 var headerIcon = tip === 'Avans' ? 'bx-money' : (tip === 'İzin' ? 'bx-calendar-check' : 'bx-message-square-detail');
+
                 document.getElementById('modalHeader').className = 'modal-detay-header ' + headerClass;
                 document.getElementById('modalTalepTipi').textContent = tip;
                 document.getElementById('modalHeaderIcon').className = 'bx ' + headerIcon;
                 document.getElementById('modalPersonel').textContent = personel;
                 document.getElementById('modalDetay').textContent = detay;
                 document.getElementById('modalTarih').textContent = tarih;
+
                 var tabParam = tip === 'Avans' ? 'avans' : (tip === 'İzin' ? 'izin' : 'talep');
                 document.getElementById('modalGitBtn').href = 'index.php?p=talepler/list&tab=' + tabParam;
                 new bootstrap.Modal(document.getElementById('modalHomeDetay')).show();

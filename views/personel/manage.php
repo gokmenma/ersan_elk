@@ -54,7 +54,7 @@ $allPersonel = array_map(function ($item) {
             <div class="card">
                 <div class="card-header">
                     <div class="row align-items-center">
-                        <div class="col-md-8">
+                        <div class="col-md-7">
                             <div class="d-flex align-items-center gap-3">
 
                                 <div class="avatar-lg position-relative">
@@ -85,7 +85,7 @@ $allPersonel = array_map(function ($item) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-5">
                             <div class="d-flex flex-wrap gap-2 float-end align-items-center">
                                 <!-- /**Yeni personel ekleniyorsa gösterme */ -->
                                 <?php if ($id > 0) { ?>

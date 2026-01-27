@@ -25,7 +25,7 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                         <?php echo Form::FormFloatInput("text", "ise_giris_tarihi", Date::dmY($personel->ise_giris_tarihi ?? Date::today()), "İşe Giriş", "İşe Giriş Tarihi", "calendar", "form-control flatpickr"); ?>
                     </div>
                     <div class="col-md-4">
-                        <?php echo Form::FormFloatInput("text", "isten_cikis_tarihi", Date::dmY($personel->isten_cikis_tarihi ?? ""), "İşten Çıkış", "İşten Çıkış Tarihi", "calendar", "form-control flatpickr"); ?>
+                        <?php echo Form::FormFloatInput("text", "isten_cikis_tarihi", Date::dmY($personel->isten_cikis_tarihi ?? null), "İşten Çıkış", "İşten Çıkış Tarihi", "calendar", "form-control flatpickr"); ?>
                     </div>
                     <div class="col-md-4">
                         <?php echo Form::FormSelect2("aktif_mi", ['1' => 'Aktif', '0' => 'Pasif'], $personel->aktif_mi ?? '1', "Durum", "toggle-right"); ?>

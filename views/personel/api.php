@@ -32,6 +32,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $data = $_POST;
             $personel_id = $data['personel_id'];
 
+            /**Personelin yaşı 15'ten küçük olmamalı */
+            if (!empty($data['dogum_tarihi'])) {
+                $dogumTarihi = DateTime::createFromFormat('d.m.Y', $data['dogum_tarihi']);
+                if ($dogumTarihi) {
+                    $bugun = new DateTime();
+                    $yas = $bugun->diff($dogumTarihi)->y;
+                    if ($yas < 15) {
+                        throw new Exception("Personel yaşı 15'ten küçük olamaz (Mevcut yaş: $yas).");
+                    }
+                }
+            }
 
             // Dosya Yükleme İşlemi
             if (isset($_FILES['resim_yolu'])) {
@@ -154,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($oldData) {
                     foreach ($data as $key => $value) {
                         // Bazı alanları loglamaya gerek yok veya özel karşılaştırma lazım
-                        if (in_array($key, ['id', 'firma_id', 'guncelleme_tarihi']))
+                        if (in_array($key, ['id', 'firma_id', 'guncelleme_tarihi', 'sifre']))
                             continue;
 
                         $oldValue = $oldData->$key ?? null;
@@ -182,8 +193,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
 
                         if (strval($normOld) !== strval($normNew)) {
-                            $displayOld = $oldValue;
-                            $displayNew = $newValue;
+                            $displayOld = ($oldValue === null || $oldValue === '' || $oldValue === '0000-00-00') ? 'Boş' : $oldValue;
+                            $displayNew = ($newValue === null || $newValue === '' || $newValue === '0000-00-00') ? 'Boş' : $newValue;
 
                             if (strpos($key, 'tarih') !== false) {
                                 $displayOld = ($normOld !== '') ? Date::dmY($oldValue) : 'Boş';

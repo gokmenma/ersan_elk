@@ -28,7 +28,7 @@ class Date
     public static function dmY($date = null, $format = 'd.m.Y')
     {
         //date boş ise geri döner
-        if ($date == null) {
+        if ($date == null || $date == "0000-00-00") {
             return;
         }
 

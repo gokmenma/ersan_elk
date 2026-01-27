@@ -115,7 +115,7 @@ $(document).ready(function () {
     $btn
       .prop("disabled", true)
       .html(
-        '<span class="spinner-border spinner-border-sm"></span> kaydediliyor...',
+        '<span class="spinner-border spinner-border-sm"></span> Kaydediliyor...',
       );
 
     $.ajax({
