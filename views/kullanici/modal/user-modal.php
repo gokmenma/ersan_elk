@@ -172,31 +172,26 @@ $user_firmler = explode(',', $user ? ($user->firma_ids ?? '') : '');
         <div class="section-title"><i class="mdi mdi-shield-account me-1"></i>Yetki ve Firma Ayarları</div>
         <div class="row mb-2">
             <div class="col-md-6">
-                <?php echo Form::FormSelect2(
+                <?php echo Form::FormMultipleSelect2(
                     name: "roles",
-                    label: "Yetki Grubu",
                     options: $usergroups,
+                    selectedValues: explode(',', $user->roles ?? ''),
+                    label: "Yetki Grubu",
+                    icon: "shield",
                     valueField: "id",
-                    textField: "role_name",
-                    selectedValue: $user->roles ?? '',
-                    icon: "shield"
+                    textField: "role_name"
                 ); ?>
             </div>
             <div class="col-md-6">
-                <div class="form-floating form-floating-custom">
-                    <select class="form-control select2" multiple style="width:100%" id="user_firms"
-                        name="user_firms[]">
-                        <?php foreach ($firmalar as $value) { ?>
-                            <option value="<?= $value->id ?>" <?= in_array($value->id, $user_firmler) ? 'selected' : '' ?>>
-                                <?= $value->firma_adi ?>
-                            </option>
-                        <?php } ?>
-                    </select>
-                    <div class="form-floating-icon">
-                        <i data-feather="briefcase"></i>
-                    </div>
-                    <span class="text-muted small">Yetkili olduğu Şubeler</span>
-                </div>
+                <?php echo Form::FormMultipleSelect2(
+                    name: "user_firms",
+                    options: $firmalar,
+                    selectedValues: $user_firmler,
+                    label: "Yetkili olduğu Şubeler",
+                    icon: "briefcase",
+                    valueField: "id",
+                    textField: "firma_adi"
+                ); ?>
             </div>
         </div>
 

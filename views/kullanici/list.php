@@ -53,6 +53,7 @@ $users = $User->getUsers();
                         <thead>
                             <tr>
                                 <th class="text-center">Sıra</th>
+                                <th style="width:25%">Roller</th>
                                 <th style="width:25%">Kullanıcı Adı</th>
                                 <th>Adı Soyadi</th>
                                 <th class="text-center">Görevi</th>
@@ -71,28 +72,25 @@ $users = $User->getUsers();
                             <?php
                             $i = 0;
                             foreach ($users as $user) {
-
-
-                                
                                 $i++;
                                 $enc_id = Security::encrypt($user->id);
-                                $badge_color =[
-                                    "Admin"=>"success",
-                                    "Users"=>"primary"
-                                   
-                                ];
-
-
-                            ?>
+                                ?>
                                 <tr data-id="<?php echo $enc_id ?>">
                                     <td class="text-center">
                                         <?php echo $i ?>
                                     </td>
 
                                     <td style="width:10%">
-                                        <span class="badge bg-<?php echo $badge_color[$user->role_name] ?>"><?php echo $user->role_name ?></span>
-                                        <?php echo $user->user_name ?>
+                                        <?php
+                                        $names = !empty($user->role_names) ? explode(',', $user->role_names) : [];
+                                        $colors = !empty($user->role_colors) ? explode(',', $user->role_colors) : [];
+                                        foreach ($names as $key => $name):
+                                            $color = $colors[$key] ?? 'secondary';
+                                            ?>
+                                            <span class="badge bg-<?php echo $color ?>"><?php echo $name ?></span>
+                                        <?php endforeach; ?>
                                     </td>
+                                    <td><?php echo $user->user_name ?></td>
                                     <td><?php echo $user->adi_soyadi ?></td>
                                     <td class="text-center"><?php echo $user->gorevi ?></td>
                                     <td class="text-center"><?php echo $user->email_adresi ?></td>
@@ -149,4 +147,3 @@ $users = $User->getUsers();
         </div>
     </div>
 </div>
-

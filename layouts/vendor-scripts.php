@@ -17,11 +17,12 @@ $page = $_GET['p'] ?? 'home';
 <!-- Select2 , Jquery Validate , iMask Scriptler -->
 <!--***************************************-->
 <?php if (
-    
+
     $page == "gelir-gider/list" || $page == "temsilcilik/talep" ||
     $page == "tanimlamalar/gelir-gider-turu" ||
-    $page == "demirbas/list" || "temsilcilik/duzenle" ||
-    $page == "personel/manage" || $page == "mail-sms/mail-gonder" || $page == "mail-sms/sms-gonder"
+    $page == "demirbas/list" || $page == "temsilcilik/duzenle" ||
+    $page == "personel/manage" || $page == "mail-sms/mail-gonder" || $page == "mail-sms/sms-gonder" ||
+    $page == "kullanici-gruplari/list" || $page == "kullanici/list"
 ) { ?>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.js"></script>
@@ -111,6 +112,10 @@ $page = $_GET['p'] ?? 'home';
 <?php } ?>
 
 <!-- Kullanıcı Grupları Sayfası -->
+<?php if ($page == 'kullanici-gruplari/list') { ?>
+    <script src="views/kullanici-gruplari/js/list.js"></script>
+<?php } ?>
+
 <?php if ($page == 'kullanici-gruplari/duzenle') { ?>
     <script src="views/kullanici-gruplari/js/duzenle.js"></script>
 <?php } ?>

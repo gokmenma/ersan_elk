@@ -98,14 +98,14 @@
                                 </div>
                             </div>
 
-                            
 
-                           
+
+
                         </div>
                         <div class="col-12">
-                             <div class="row">
+                            <div class="row">
                                 <h6 class="text-warning border-bottom pb-2 mb-3 mt-3"><i data-feather="calendar"
-                                    class="me-1"></i> Tarihler</h6>
+                                        class="me-1"></i> Tarihler</h6>
                                 <div class="col-4 mb-3">
                                     <?php echo Form::FormFloatInput('text', 'muayene_tarihi', null, '', 'Muayene Tarihi', 'calendar', 'form-control flatpickr', false, null, 'on', false, 'min="0"'); ?>
                                 </div>
@@ -136,10 +136,12 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                <button type="button" class="btn btn-primary" id="btnAracKaydet">
-                    <i data-feather="save" class="me-1"></i> Kaydet
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bx bx-x label-icon"></i> Vazgeç</button>
+                <button type="button" id="btnAracKaydet" class="btn btn-primary waves-effect btn-label waves-light">
+                    <i class="bx bx-save label-icon"></i> Kaydet
                 </button>
+
             </div>
         </div>
     </div>

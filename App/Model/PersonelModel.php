@@ -126,12 +126,25 @@ class PersonelModel extends Model
 
     }
 
-    public function where($column, $value)
-    {
-        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE $column = ? AND firma_id = ?");
-        $sql->execute(array($value, $_SESSION['firma_id']));
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+   public function where($column, $value = null, $operant = '=')
+{
+    if ($value === null && in_array($operant, ['IS', 'IS NOT'])) {
+        $sql = $this->db->prepare(
+            "SELECT * FROM $this->table 
+             WHERE $column $operant NULL AND firma_id = ?"
+        );
+        $sql->execute([$_SESSION['firma_id']]);
+    } else {
+        $sql = $this->db->prepare(
+            "SELECT * FROM $this->table 
+             WHERE $column $operant ? AND firma_id = ?"
+        );
+        $sql->execute([$value, $_SESSION['firma_id']]);
     }
+
+    return $sql->fetchAll(PDO::FETCH_OBJ);
+}
+
 
     /**
      * Aynı ekip kodunda aktif personel var mı kontrol eder

@@ -21,7 +21,12 @@ $recent_logs = $systemLogModel->getRecentLogs(10);
 
 // Personel Sayıları
 $personel_sayisi = count($personelModel->where('aktif_mi', 1));
-$pasif_personel_sayisi = count($personelModel->where('aktif_mi', 0));
+$pasif_personel_sayisi = count(
+    $personelModel->where('isten_cikis_tarihi', null, 'IS NOT')
+);
+$aktif_personel_sayisi = count(
+    $personelModel->where('isten_cikis_tarihi', null, 'IS')
+);
 $toplam_personel_sayisi = count($personelModel->all());
 
 // Bekleyen Talepler
@@ -116,7 +121,7 @@ ob_start(); ?>
                 <i class='bx bx-trending-up'></i> +2.5%
             </div>
         </div>
-        <div class="main-value"><?php echo $personel_sayisi ?? 0; ?></div>
+        <div class="main-value"><?php echo $aktif_personel_sayisi ?? 0; ?></div>
         <div class="trend-description">
             Sistemde aktif çalışıyor <i class='bx bx-trending-up'></i>
         </div>

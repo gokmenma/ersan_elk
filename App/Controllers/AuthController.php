@@ -32,7 +32,7 @@ class AuthController
     // // İSTEK İŞLEYEN METOTLAR (Request Handlers)
     // //================================================================
 
-  
+
 
 
 
@@ -58,7 +58,7 @@ class AuthController
     // STATİK YARDIMCI METOTLAR (Uygulama Geneli Servisler)
     //================================================================
 
-   /**
+    /**
      * Kullanıcının oturum açıp açmadığını ve yetkili olup olmadığını kontrol eder.
      * Eğer bir sorun varsa (giriş yapılmamış, demo süresi dolmuş vb.),
      * kullanıcıyı uygun şekilde yönlendirir.
@@ -66,16 +66,18 @@ class AuthController
      */
     public static function checkAuthentication(): void
     {
-        
+
         //kayit-ol sayfafında oturum kontrolü yapma
         $currentUrl = $_SERVER['REQUEST_URI'];
         if (strpos($currentUrl, 'kayit-ol') !== false) {
             return;
         }
-        if (session_status() === PHP_SESSION_NONE) { session_start(); }
-        
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
         $logger = \getLogger();
-           
+
         // 1. Adım: Kullanıcı giriş yapmış mı?
         if (!isset($_SESSION['user'])) {
             // Kullanıcı giriş yapmamışsa veya oturum süresi dolmuşsa, logla ve yönlendir.
@@ -86,14 +88,14 @@ class AuthController
 
             session_destroy(); // Oturumu temizle
             session_unset(); // Tüm session değişkenlerini temizle
-           
+
             FlashMessageService::add(
                 'error',
                 'Giriş Gerekli',
                 'Bu sayfayı görüntülemek için lütfen giriş yapın.',
                 'ikaz2.png'
             );
-         
+
 
             $returnUrl = urlencode($_SERVER['REQUEST_URI']);
             header("Location: /sign-in.php?returnUrl={$returnUrl}");
@@ -105,7 +107,7 @@ class AuthController
 
         // 2. Adım: Kullanıcı verisini al
         $user = $_SESSION['user'];
-     
+
 
         // 3. Adım: Demo süresi kontrolünü yap
         // Eğer demo süresi dolmuşsa, bu metot kullanıcıyı yönlendirip programı sonlandıracak.
@@ -128,7 +130,7 @@ class AuthController
 
         // Sadece user_type'ı 1 (demo kullanıcısı) olanları kontrol et
         if (isset($user->user_type) && $user->user_type == 1) {
-          
+
             // Kullanıcının kayıt tarihi verisinin olduğundan emin ol
             if (!isset($user->created_at)) {
                 // Kayıt tarihi yoksa ne yapılacağına karar verin.
@@ -146,7 +148,7 @@ class AuthController
 
                 if ($daysSinceRegistration >= $demoLimitInDays) {
                     // Demo süresi dolmuş!
-                    
+
                     // Önce logla, sonra çıkış yaptır.
                     \getLogger()->info("Demo süresi dolan kullanıcı sisteme erişmeye çalıştı ve çıkışa yönlendirildi.", [
                         'user_id' => $user->id,
@@ -159,7 +161,7 @@ class AuthController
                         'Sistemi kullanmaya devam etmek için lütfen bizimle iletişime geçin.',
                         'ikaz2.png'
                     );
-                  
+
                     self::logout(false); // false -> tekrar loglama yapma demek
 
 
@@ -201,7 +203,7 @@ class AuthController
         $userModel = new UserModel();
         $logger = \getLogger();
 
-      
+
 
 
         $logger->info("Kullanıcı başarıyla giriş yaptı.", [
@@ -210,29 +212,30 @@ class AuthController
             'ip' => $_SERVER['REMOTE_ADDR']
         ]);
 
-     
-        // SÜPER ADMIN KONTROLÜ
-         if ((int)$user->roles === 10) {
-              header("Location: /superadmin");
-              exit();
-         }
-        
-         // TEMSİLCİ KONTROLÜ (Role ID 15 veya rol adında 'Temsilci' geçiyorsa)
-         $roleName = $user->role_name ?? '';
-         if ((int)$user->roles === 15 || stripos($roleName, 'Temsilci') !== false) {
-             header("Location: /temsilci-paneli");
-             exit();
-            }
-            
-            $returnUrl = !empty($_GET['returnUrl']) ? $_GET['returnUrl'] : 'ana-sayfa';
 
-            //Helper::dd($returnUrl);
+        // SÜPER ADMIN KONTROLÜ
+        $rolesArray = explode(',', $user->roles ?? '');
+        if (in_array('10', $rolesArray)) {
+            header("Location: /superadmin");
+            exit();
+        }
+
+        // TEMSİLCİ KONTROLÜ (Role ID 15 veya rol adında 'Temsilci' geçiyorsa)
+        $roleName = $user->role_name ?? '';
+        if (in_array('15', $rolesArray) || stripos($roleName, 'Temsilci') !== false) {
+            header("Location: /temsilci-paneli");
+            exit();
+        }
+
+        $returnUrl = !empty($_GET['returnUrl']) ? $_GET['returnUrl'] : 'ana-sayfa';
+
+        //Helper::dd($returnUrl);
         //eğer site_id oturumda yoksa, siteyi seçmesi için company-list.php sayfasına yönlendir
         if (!isset($_SESSION['site_id'])) {
             // Site seçimi için company-list.php sayfasına yönlendir
             header("Location: company-list.php?returnUrl=" . urlencode($returnUrl));
             exit();
-       
+
         }
 
         header("Location: " . $returnUrl);
@@ -253,8 +256,8 @@ class AuthController
                 'user_id' => $userId,
                 'ip' => $_SERVER['REMOTE_ADDR']
             ]);
-        session_unset();
-        session_destroy();    
+            session_unset();
+            session_destroy();
             // --- DEĞİŞİKLİK BURADA ---
             // Normal çıkış için başarı mesajı ekle
             FlashMessageService::add(
@@ -264,9 +267,9 @@ class AuthController
                 'onay2.png'
             );
         }
-        
-        
-        
+
+
+
         // --- DEĞİŞİKLİK BURADA ---
         // Yönlendirmede artık ?status=... parametresi yok.
         header("Location: sign-in.php");

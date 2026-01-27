@@ -46,7 +46,7 @@ if ($_POST["action"] == "kullanici-kaydet") {
             'gorevi' => $_POST['gorevi'],
             'aciklama' => $_POST['aciklama'],
             'owner_id' => $_SESSION["owner_id"],
-            'roles' => ($_POST['roles']),
+            'roles' => is_array($_POST['roles']) ? implode(',', $_POST['roles']) : $_POST['roles'],
             'firma_ids' => $user_firma_ids,
             'izin_onayi_yapacakmi' => $_POST['izin_onayi_yapacakmi'],
             'izin_onay_sirasi' => $_POST['izin_onay_sirasi'],
@@ -69,7 +69,7 @@ if ($_POST["action"] == "kullanici-kaydet") {
 
 
         $status = "success";
-        $message = "Kullanıcı başarıyla kaydedildi." ;
+        $message = "Kullanıcı başarıyla kaydedildi.";
     } catch (PDOException $ex) {
 
         if ($ex->getCode() == 23000) { // 23000 hata kodu, genellikle benzersiz kısıtlama ihlali anlamına gelir

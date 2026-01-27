@@ -14,6 +14,11 @@ $UserGroups = new UserRolesModel();
 $usergroups = $UserGroups->getUserGroups();
 
 if (Gate::allows("yetki_gruplari")) { ?>
+    <style>
+        .select2-results__option[aria-disabled=true] {
+            display: none !important;
+        }
+    </style>
 
 
     <div class="container-fluid">
@@ -42,7 +47,7 @@ if (Gate::allows("yetki_gruplari")) { ?>
 
                         <div class="col-md-4">
 
-                            <a href="#" type="button" id="groupAddBtn"
+                            <a href="#" type="button" id="groupAddBtn" data-bs-toggle="modal" data-bs-target="#groupModal"
                                 class="btn btn-success waves-effect btn-label waves-light float-end"><i
                                     class="bx bx-plus label-icon"></i> Yeni Ekle</a>
                         </div>
@@ -76,7 +81,9 @@ if (Gate::allows("yetki_gruplari")) { ?>
                                             <?php echo $i ?>
                                         </td>
 
-                                        <td><?php echo $group->role_name; ?></td>
+                                        <td><span
+                                                class="badge bg-<?php echo $group->role_color ?? 'secondary'; ?>"><?php echo $group->role_name; ?></span>
+                                        </td>
                                         <td><?php echo $group->description; ?></td>
                                         <td><?php echo $group->kayit_tarihi; ?></td>
 
@@ -97,6 +104,12 @@ if (Gate::allows("yetki_gruplari")) { ?>
                                                             class="dropdown-item kullanici-duzenle"><span
                                                                 class="mdi mdi-account-edit font-size-18"></span>
                                                             Düzenle</a>
+                                                        <a href="javascript:void(0)" data-id="<?php echo $enc_id; ?>"
+                                                            data-raw-id="<?php echo $group->id; ?>"
+                                                            data-name="<?php echo $group->role_name; ?>"
+                                                            class="dropdown-item yetki-kopyala">
+                                                            <span class="mdi mdi-content-copy font-size-18"></span>
+                                                            Yetkileri Kopyala</a>
                                                         <a href="#" class="dropdown-item kullanici-sil"
                                                             data-id="<?php echo $enc_id; ?>"
                                                             data-name="<?php echo $group->role_name; ?>">
@@ -118,8 +131,8 @@ if (Gate::allows("yetki_gruplari")) { ?>
     </div> <!-- container-fluid -->
     <!-- Modal -->
     <div class="modal fade" id="groupModal" tabindex="-1" aria-labelledby="usreModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content group-modal-content">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content group-modal-content ">
                 <!-- Modern spinner -->
                 <div class="d-flex justify-content-center align-items-center" style="height: 600px;">
                     <div class="modern-spinner">
@@ -128,6 +141,45 @@ if (Gate::allows("yetki_gruplari")) { ?>
                         <div class="spinner-circle"></div>
                         <div class="spinner-circle"></div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Yetki Kopyalama Modalı -->
+    <div class="modal fade" id="copyPermissionsModal" tabindex="-1" aria-labelledby="copyPermissionsModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="copyPermissionsModalLabel">Yetkileri Kopyala</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="copyPermissionsForm">
+                        <input type="hidden" name="target_role_id" id="target_role_id">
+                        <div class="alert alert-info">
+                            <strong id="target_role_name"></strong> grubuna hangi gruptan yetkileri kopyalamak
+                            istiyorsunuz?
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Kaynak Yetki Grubu</label>
+                            <select class="form-select select2" name="source_role_id" id="source_role_id"
+                                style="width: 100%;">
+                                <option value="">Seçiniz...</option>
+                                <?php foreach ($usergroups as $srcGroup) { ?>
+                                    <option value="<?php echo Security::encrypt($srcGroup->id); ?>"
+                                        data-raw-id="<?php echo $srcGroup->id; ?>">
+                                        <?php echo $srcGroup->role_name; ?>
+                                    </option>
+                                <?php } ?>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="button" id="btnCopyPermissions" class="btn btn-primary">Kopyala</button>
                 </div>
             </div>
         </div>

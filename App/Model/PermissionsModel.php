@@ -1,4 +1,4 @@
-<?php 
+<?php
 namespace App\Model;
 
 use App\Model\Model;
@@ -35,19 +35,19 @@ class PermissionsModel extends Model
 
         // Veritabanında olmayan ikonları burada eşleştiriyoruz.
         $iconMap = [
-            'Ana Sayfa'              => 'home',
-            'Personel Yönetim'       => 'users',
-            'Şube Yönetimi'          => 'git-branch',
-            'Temsilcilik Yönetimi'   => 'git-branch',
-            'Finans Yönetimi'        => 'credit-card',
-            'Evrak Yönetimi'         => 'file-text',
-            'Kullanıcı Yönetimi'     => 'users',
-            'Demirbaş Yönetimi'      => 'box',
-            'Tanımlamalar'           => 'book-open',
-            'Mail & Sms Yönetimi'    => 'send',
-            'Rehber Yönetimi'        => 'book',
-            'Ayarlar'                => 'settings',
-            'default'                =>  'layout'
+            'Ana Sayfa' => 'home',
+            'Personel Yönetim' => 'users',
+            'Şube Yönetimi' => 'git-branch',
+            'Temsilcilik Yönetimi' => 'git-branch',
+            'Finans Yönetimi' => 'credit-card',
+            'Evrak Yönetimi' => 'file-text',
+            'Kullanıcı Yönetimi' => 'users',
+            'Demirbaş Yönetimi' => 'box',
+            'Tanımlamalar' => 'book-open',
+            'Mail & Sms Yönetimi' => 'send',
+            'Rehber Yönetimi' => 'book',
+            'Ayarlar' => 'settings',
+            'default' => 'layout'
         ];
 
         foreach ($flatPermissions as $permission) {
@@ -57,10 +57,10 @@ class PermissionsModel extends Model
             if (!isset($groupIndexMap[$groupName])) {
                 $groupIndexMap[$groupName] = count($groupedPermissions); // Yeni grubun index'ini kaydet
                 $groupedPermissions[] = [
-                    'id'      => $nextGroupId++,
-                    'name'    => $groupName,
-                    'icon'    => $iconMap[$groupName] ?? $iconMap['default'],
-                    'group'   => $this->slugify($groupName),
+                    'id' => $nextGroupId++,
+                    'name' => $groupName,
+                    'icon' => $iconMap[$groupName] ?? $iconMap['default'],
+                    'group' => $this->slugify($groupName),
                     'permissions' => []
                 ];
             }
@@ -68,11 +68,11 @@ class PermissionsModel extends Model
             // Mevcut izni, doğru grubun 'permissions' dizisine ekle.
             $index = $groupIndexMap[$groupName];
             $groupedPermissions[$index]['permissions'][] = [
-                'id'          => (int)$permission->id,
-                'name'        => $permission->name,
+                'id' => (int) $permission->id,
+                'name' => $permission->name,
                 'description' => $permission->description ?? '',
-                'level'       => (int)$permission->permission_level,
-                'required'    => (bool)$permission->is_required
+                'level' => (int) $permission->permission_level,
+                'required' => (bool) $permission->is_required
             ];
         }
 
@@ -95,7 +95,7 @@ class PermissionsModel extends Model
 
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
-    
+
     /**
      * Bir metni URL dostu bir "slug" formatına dönüştürür.
      * @param string $text
@@ -127,10 +127,10 @@ class PermissionsModel extends Model
         $sql = $this->db->prepare("SELECT id FROM $this->table WHERE name = ?");
         $sql->execute([$pageName]);
         $result = $sql->fetchColumn();
-        return $result !== false ? (int)$result : null;
+        return $result !== false ? (int) $result : null;
     }
 
-    
+
 
     /**
      * Bir kullanıcının ID'sine göre, rolü üzerinden sahip olduğu tüm izinlerin adlarını
@@ -153,14 +153,16 @@ class PermissionsModel extends Model
         }
 
         // 2. Rol ID'sine göre tüm izin adlarını çek.
-        // Gerekli tablolar: user_role_permissions (ara tablo), permissions (izinlerin adları)
-        $sql = "SELECT p.auth_name
+        $roleIds = explode(',', $roleId);
+        $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
+
+        $sql = "SELECT DISTINCT p.auth_name
             FROM user_role_permissions urp
             JOIN permissions p ON urp.permission_id = p.id
-            WHERE urp.role_id = ?";
+            WHERE urp.role_id IN ($placeholders)";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$roleId]);
+        $stmt->execute($roleIds);
 
         // fetchAll(PDO::FETCH_COLUMN) sadece 'permission_name' sütununu içeren
         // ['izin1', 'izin2', ...] şeklinde düz bir dizi döndürür.

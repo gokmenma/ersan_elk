@@ -27,10 +27,10 @@ function getUserModal(id = 0) {
       $(".select2").select2({
         dropdownParent: $("#userModal .modal-content"),
       });
-    }
+    },
   ).fail(function () {
     $(".user-modal-content").html(
-      "<div class='alert alert-danger'>Modal içeriği yüklenemedi.</div>"
+      "<div class='alert alert-danger'>Modal içeriği yüklenemedi.</div>",
     );
   });
   $("#userModal").modal("show");
@@ -41,9 +41,6 @@ $(document).on("click", "#userSaveBtn", function () {
   var userId = form.find("input[name='user_id']").val();
   var isUpdateMode = userId && userId != 0;
   var passwordField = form.find("input[name='password']");
-  var user_roles = $("#roles option:selected").val();
-
-
 
   form.validate({
     rules: {
@@ -61,15 +58,15 @@ $(document).on("click", "#userSaveBtn", function () {
         required: true,
         email: true,
       },
-      user_firms:{
+      user_firms: {
         required: true,
       },
       telefon: {
         required: true,
       },
-          password: {
+      password: {
         // 'required' kuralını bir fonksiyon olarak tanımla
-        required: function(element) {
+        required: function (element) {
           // Eğer yeni kullanıcı ekleniyorsa (güncelleme modunda değilsek) parola zorunludur.
           if (!isUpdateMode) {
             return true;
@@ -108,7 +105,7 @@ $(document).on("click", "#userSaveBtn", function () {
       telefon: {
         required: "Telefon numarası zorunludur.",
       },
-      user_firms:{
+      user_firms: {
         required: "Firma seçimi zorunludur.",
       },
       password: {
@@ -133,7 +130,6 @@ $(document).on("click", "#userSaveBtn", function () {
 
   var formData = new FormData(form[0]);
   formData.append("action", "kullanici-kaydet");
-  formData.append("roles", user_roles);
 
   fetch(url, {
     method: "POST",
@@ -142,21 +138,23 @@ $(document).on("click", "#userSaveBtn", function () {
     .then((response) => response.json())
     .then((data) => {
       //console.log(data);
-      
+
       var title = data.status == "success" ? "Başarılı" : "Hata";
-      
-      swal.fire({
-        title: title,
-        text: data.message,
-        icon: data.status,
-        confirmButtonText: "Tamam",
-      }).then((result) => {
-        if (result.isConfirmed) {
-          if (data.status == "success") {
-            location.reload();
+
+      swal
+        .fire({
+          title: title,
+          text: data.message,
+          icon: data.status,
+          confirmButtonText: "Tamam",
+        })
+        .then((result) => {
+          if (result.isConfirmed) {
+            if (data.status == "success") {
+              location.reload();
+            }
           }
-        }
-      });
+        });
     });
 });
 
@@ -188,7 +186,7 @@ $(document).on("click", ".kullanici-sil", function () {
               swal.fire("Hata!", data.message, "error");
             }
           },
-          "json"
+          "json",
         );
       }
     });

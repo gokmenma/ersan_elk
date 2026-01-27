@@ -49,10 +49,10 @@ class UserRolesModel extends Model
         $UserModel = new UserModel();
 
         // Add empty option first
-        $options[0] = (object)[
-            'id' => '',
-            'role_name' => 'Seçiniz'
-        ];
+        // $options[0] = (object)[
+        //     'id' => '',
+        //     'role_name' => 'Seçiniz'
+        // ];
 
         foreach ($groups as $group) {
             /**Sessindaki kullanıcı süperadmin ise süperadmin kullanıcısı atla*/

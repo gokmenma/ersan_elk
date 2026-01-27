@@ -31,7 +31,7 @@ class UserModel extends Model
 
         $telefon = preg_replace('/\D/', '', $inputValue);
         $telefon = substr($telefon, -10);
-        
+
         $sql = $this->db->prepare("SELECT * FROM $this->table WHERE email_adresi = ? OR user_name = ? OR telefon = ?");
         $sql->execute(array($inputValue, $inputValue, $telefon));
         return $sql->fetch(PDO::FETCH_OBJ) ?? null;
@@ -50,11 +50,14 @@ class UserModel extends Model
 
         $squery = "";
         if (!$this->isSuperAdmin()) {
-            $squery = "AND ur.superadmin = 0";
+            $squery = "AND (SELECT COUNT(*) FROM user_roles ur2 WHERE FIND_IN_SET(ur2.id, u.roles) AND ur2.superadmin = 1) = 0";
         }
-        $sql = $this->db->prepare("SELECT u.* ,ur.role_name,ur.superadmin
+
+        // Rol isimlerini ve renklerini virgülle birleştirerek getir
+        $sql = $this->db->prepare("SELECT u.*, 
+                                   (SELECT GROUP_CONCAT(role_name SEPARATOR ',') FROM user_roles ur WHERE FIND_IN_SET(ur.id, u.roles)) as role_names,
+                                   (SELECT GROUP_CONCAT(role_color SEPARATOR ',') FROM user_roles ur WHERE FIND_IN_SET(ur.id, u.roles)) as role_colors
                                    FROM $this->table u
-                                   LEFT JOIN user_roles ur ON ur.id = u.roles
                                    WHERE u.owner_id = :owner_id $squery
                                    ORDER BY u.id DESC");
         $sql->execute([
@@ -65,18 +68,19 @@ class UserModel extends Model
     }
     /** 
      * Kullanıcı id'sinden kullanıcının role id'sini döndürür.
+     * Not: Artık birden fazla rol olabileceği için bu metot ilk rolü veya virgüllü stringi döndürebilir.
      * @param int $userId Kullanıcı ID'si
-     * @return int|null Kullanıcı rol ID'si veya null
+     * @return string|null Kullanıcı rol ID'leri veya null
      * @throws \Exception
      */
-    public function getUserRoleID(int $userId): ?int
+    public function getUserRoleID(int $userId): ?string
     {
         $sql = $this->db->prepare("SELECT roles FROM $this->table WHERE id = ?");
         $sql->execute([$userId]);
         $result = $sql->fetch(PDO::FETCH_OBJ);
 
         if ($result) {
-            return (int) $result->roles;
+            return $result->roles;
         }
 
         return null; // Kullanıcı rolü bulunamadıysa null döner
@@ -97,13 +101,26 @@ class UserModel extends Model
             return '';
         }
 
+        // Rol isimlerini ve renklerini al
+        $roles = [];
+        if (!empty($user->roles)) {
+            $roleIds = explode(',', $user->roles);
+            $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
+
+            $stmt = $this->db->prepare("SELECT role_name, role_color FROM user_roles WHERE id IN ($placeholders)");
+            $stmt->execute($roleIds);
+            $roles = $stmt->fetchAll(PDO::FETCH_OBJ);
+        }
+
         // Güvenli veri
         $enc_id = htmlspecialchars(Security::encrypt($user->id), ENT_QUOTES, 'UTF-8');
         $userName = htmlspecialchars($user->user_name, ENT_QUOTES, 'UTF-8');
         $fullName = htmlspecialchars($user->adi_soyadi, ENT_QUOTES, 'UTF-8');
-        $title = htmlspecialchars($user->unvani, ENT_QUOTES, 'UTF-8');
+        $gorevi = htmlspecialchars($user->gorevi ?? '', ENT_QUOTES, 'UTF-8');
         $email = htmlspecialchars($user->email_adresi, ENT_QUOTES, 'UTF-8');
         $phone = htmlspecialchars($user->telefon, ENT_QUOTES, 'UTF-8');
+        $izinOnayi = htmlspecialchars($user->izin_onayi_yapacakmi ?? '', ENT_QUOTES, 'UTF-8');
+        $izinOnaySirasi = htmlspecialchars($user->izin_onay_sirasi ?? '', ENT_QUOTES, 'UTF-8');
         $createdAt = htmlspecialchars($user->created_at, ENT_QUOTES, 'UTF-8');
 
         ob_start(); // 🔁 Output Buffer başlat
@@ -112,11 +129,18 @@ class UserModel extends Model
             <tr data-id="<?= $enc_id ?>">
             <?php endif; ?>
             <td class="text-center">1</td>
-            <td><?= $userName ?></td>
+            <td>
+                <?php foreach ($roles as $role): ?>
+                                <span class="badge bg-<?= htmlspecialchars($role->role_color) ?>"><?= htmlspecialchars($role->role_name) ?></span>
+                        <?php endforeach; ?>
+                <?= $userName ?>
+            </td>
             <td><?= $fullName ?></td>
-            <td class="text-center"><?= $title ?></td>
+            <td class="text-center"><?= $gorevi ?></td>
             <td class="text-center"><?= $email ?></td>
             <td class="text-center"><?= $phone ?></td>
+            <td class="text-center"><?= $izinOnayi ?></td>
+            <td class="text-center"><?= $izinOnaySirasi ?></td>
             <td><?= $createdAt ?></td>
             <td class="text-center" style="width:5%">
                 <div class="flex-shrink-0">
@@ -240,20 +264,20 @@ class UserModel extends Model
     }
 
     /**Giriş Yapan kullanıcı superadmin mi */
- public function isSuperAdmin() : bool
-{
-    $query = $this->db->prepare(
-        "SELECT ur.superadmin 
+    public function isSuperAdmin(): bool
+    {
+        $query = $this->db->prepare(
+            "SELECT COUNT(*) as count
          FROM $this->table u
-         LEFT JOIN user_roles ur ON ur.id = u.roles 
-         WHERE u.id = ?"
-    );
+         JOIN user_roles ur ON FIND_IN_SET(ur.id, u.roles)
+         WHERE u.id = ? AND ur.superadmin = 1"
+        );
 
-    $query->execute([$_SESSION["user_id"]]);
-    $result = $query->fetch(PDO::FETCH_OBJ);
+        $query->execute([$_SESSION["user_id"]]);
+        $result = $query->fetch(PDO::FETCH_OBJ);
 
-    return $result && (int)$result->superadmin === 1;
-}
+        return $result && (int) $result->count > 0;
+    }
 
 
 }
