@@ -21,24 +21,24 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
             </div>
             <div class="card-body">
                 <div class="row mb-3">
-                    <div class="col-md-4">
+                    <div class="col-md-4 mb-2">
                         <?php echo Form::FormFloatInput("text", "ise_giris_tarihi", Date::dmY($personel->ise_giris_tarihi ?? Date::today()), "İşe Giriş", "İşe Giriş Tarihi", "calendar", "form-control flatpickr"); ?>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4 mb-2">
                         <?php echo Form::FormFloatInput("text", "isten_cikis_tarihi", Date::dmY($personel->isten_cikis_tarihi ?? null), "İşten Çıkış", "İşten Çıkış Tarihi", "calendar", "form-control flatpickr"); ?>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4 mb-2">
                         <?php echo Form::FormSelect2("aktif_mi", ['1' => 'Aktif', '0' => 'Pasif'], $personel->aktif_mi ?? '1', "Durum", "toggle-right"); ?>
                     </div>
                 </div>
                 <div class="row mb-3">
-                    <div class="col-md-4">
+                    <div class="col-md-4 mb-2">
                         <?php echo Form::FormSelect2("personel_sinifi", ['Beyaz Yaka' => 'Beyaz Yaka', 'Mavi Yaka' => 'Mavi Yaka'], $personel->personel_sinifi ?? '', "Sınıf", "users"); ?>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4 mb-2">
                         <?php echo Form::FormFloatInput("text", "departman", $personel->departman ?? "", "Departman", "Departman", "grid"); ?>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4 mb-2">
                         <?php echo Form::FormFloatInput("text", "gorev", $personel->gorev ?? "", "Görev", "Görev", "award"); ?>
                     </div>
                 </div>
@@ -56,13 +56,13 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-4 mb-2">
                         <?php echo Form::FormSelect2("ekip_bolge", $ekip_bolge_options, $personel->ekip_bolge ?? "", "Ekip Bölge", "map-pin"); ?>
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-md-8 mb-2">
                         <?php echo Form::FormSelect2("ekip_no", $ekip_kodlari_options, $personel->ekip_no ?? "", "Ekip Numarası", "hash"); ?>
                     </div>
-                    <div class="col-md-12">
+                    <div class="col-md-12 mb-2">
                         <div class="alert alert-info mt-2">
                             <i class="bx bx-info-circle"></i>
                             Ekip kodu boş geliyorsa eklemek için <a href="index?p=tanimlamalar/ekip-kodu" target="_blank"> tıklayınız</a>

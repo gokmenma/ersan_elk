@@ -8,12 +8,12 @@ use App\Helper\Security;
 
 $id = Security::decrypt($_GET['id'] ?? 0);
 $PersonelModel = new PersonelModel();
-$personel = $id > 0 ? $PersonelModel->find($id) : null;
+$personel = $id > 0 ? $PersonelModel->findByEkipNo($id) : null;
 $TanimlamalarModel = new TanimlamalarModel();
 
 if ($personel) {
     $ekip_adi = $personel->ekip_no ? $TanimlamalarModel->getTurAdi($personel->ekip_no) : "Ekip Yok";
-    $adi_soyadi_ekipno = $personel->adi_soyadi . " - " . $ekip_adi;
+    $adi_soyadi_ekipno = $personel->adi_soyadi;
 } else {
     $adi_soyadi_ekipno = "Yeni Personel";
 }
@@ -78,8 +78,11 @@ $allPersonel = array_map(function ($item) {
                                         <?php echo $personel->gorev ?? 'Görev Tanımsız'; ?> -
                                         <?php echo $personel->departman ?? 'Departman Tanımsız'; ?>
                                     </p>
-                                    <small class="text-muted">TC:
-                                        <?php echo $personel->tc_kimlik_no ?? '---'; ?></small>
+                                    <small class="text-muted">Ekip No:
+                                        <b class="fw-bold">
+                                            <?php echo $personel->ekip_adi ?? '---'; ?>
+                                        </b>
+                                    </small>
                                 </div>
                             </div>
                         </div>

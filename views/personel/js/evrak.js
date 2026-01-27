@@ -8,7 +8,7 @@
 
   // Evrak modülünü başlat
   function initEvrakModule() {
-    console.log("Evrak modülü başlatılıyor...");
+    //console.log("Evrak modülü başlatılıyor...");
     bindEvrakEvents();
   }
 
@@ -262,7 +262,7 @@
       new bootstrap.Tooltip(el);
     });
 
-    console.log("Evrak modülü event'leri bağlandı.");
+    //console.log("Evrak modülü event'leri bağlandı.");
   }
 
   // Document ready'de başlat

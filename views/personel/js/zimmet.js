@@ -237,5 +237,5 @@ $(document).ready(function () {
     });
   });
 
-  console.log("Zimmet.js yüklendi.");
+  //console.log("Zimmet.js yüklendi.");
 });

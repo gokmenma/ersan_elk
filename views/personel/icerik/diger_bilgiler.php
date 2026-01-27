@@ -34,15 +34,15 @@ use App\Helper\Form;
             </div>
             <div class="card-body">
                 <div class="row mb-3">
-                    <div class="col-md-6">
+                    <div class="col-md-6 mb-2">
                         <?php echo Form::FormFloatInput("text", "referans_adi_soyadi", $personel->referans_adi_soyadi ?? "", "Referans Adı Soyadı", "Referans Adı Soyadı", "user"); ?>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 mb-2">
                         <?php echo Form::FormFloatInput("text", "referans_telefonu", $personel->referans_telefonu ?? "", "Referans Telefonu", "Referans Telefonu", "phone"); ?>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="col-md-12">
+                    <div class="col-md-12 mb-2">
                         <?php echo Form::FormFloatInput("text", "referans_firma", $personel->referans_firma ?? "", "Referans Firma", "Referans Firma", "briefcase"); ?>
                     </div>
                 </div>
@@ -54,15 +54,15 @@ use App\Helper\Form;
             </div>
             <div class="card-body">
                 <div class="row mb-3">
-                    <div class="col-md-6">
+                    <div class="col-md-6 mb-2">
                         <?php echo Form::FormFloatInput("text", "acil_kisi_adi_soyadi", $personel->acil_kisi_adi_soyadi ?? "", "Adı Soyadı", "Adı Soyadı", "user"); ?>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 mb-2">
                         <?php echo Form::FormFloatInput("text", "acil_kisi_telefonu", $personel->acil_kisi_telefonu ?? "", "Telefonu", "Telefonu", "phone"); ?>
                     </div>
                 </div>
                 <div class="row">
-                     <div class="col-md-12">
+                     <div class="col-md-12 mb-2">
                         <?php echo Form::FormFloatInput("text", "acil_kisi_yakinlik", $personel->acil_kisi_yakinlik ?? "", "Yakınlık Derecesi", "Yakınlık Derecesi", "users"); ?>
                     </div>
                 </div>

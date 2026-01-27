@@ -14,6 +14,17 @@ class PersonelModel extends Model
     {
         parent::__construct($this->table);
     }
+    /**Personeli Ekip Kodu ile beraber getirir */
+    public function findByEkipNo($id){
+        $sql = "SELECT p.*, t.tur_adi as ekip_adi FROM {$this->table} p
+                    LEFT JOIN tanimlamalar t ON p.ekip_no = t.id
+                    WHERE p.id = :id";
+        $query = $this->db->prepare($sql);
+        $query->execute([
+            'id' => $id,
+        ]);
+        return $query->fetch(PDO::FETCH_OBJ);
+    }
 
     /**Tüm aktif personelleri getirir */
     public function all()
