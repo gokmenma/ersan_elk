@@ -5,16 +5,16 @@ namespace App\Model;
 use App\Model\Model;
 use PDO;
 
-class PuantajModel extends Model
+class EndeksOkumaModel extends Model
 {
-    protected $table = 'yapilan_isler';
+    protected $table = 'endeks_okuma';
 
     public function __construct()
     {
         parent::__construct($this->table);
     }
 
-    public function getFiltered($startDate, $endDate, $ekipKodu, $workType)
+    public function getFiltered($startDate, $endDate, $personelId = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $sql = "SELECT t.*, p.adi_soyadi as personel_adi 
@@ -31,16 +31,12 @@ class PuantajModel extends Model
             $sql .= " AND t.tarih <= ?";
             $params[] = \App\Helper\Date::convertExcelDate($endDate, 'Y-m-d') ?: $endDate;
         }
-        if ($ekipKodu) {
+        if ($personelId) {
             $sql .= " AND t.personel_id = ?";
-            $params[] = $ekipKodu;
-        }
-        if ($workType) {
-            $sql .= " AND t.is_emri_tipi = ?";
-            $params[] = $workType;
+            $params[] = $personelId;
         }
 
-        $sql .= " ORDER BY t.tarih DESC";
+        $sql .= " ORDER BY t.tarih DESC, t.id ASC";
 
         // DEBUG
         file_put_contents(dirname(__DIR__, 2) . '/debug_sql.txt', "SQL: $sql\nParams: " . print_r($params, true) . "\n----------------\n", FILE_APPEND);
@@ -48,13 +44,5 @@ class PuantajModel extends Model
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
-    }
-
-    public function getWorkTypes()
-    {
-        $firmaId = $_SESSION['firma_id'] ?? 0;
-        $stmt = $this->db->prepare("SELECT DISTINCT is_emri_tipi FROM $this->table WHERE firma_id = ? AND is_emri_tipi IS NOT NULL AND is_emri_tipi != ''");
-        $stmt->execute([$firmaId]);
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 }

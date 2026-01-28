@@ -119,9 +119,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
 
             // Insert
-            $stmt = $Puantaj->db->prepare("INSERT INTO yapilan_isler (islem_id, firma, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            // Personel mapping logic
+            $personelId = 0;
+            if (!empty($ekip)) {
+                // Normalize ekip name for matching (replace potential messy characters)
+                $normalizedEkip = str_replace(['İ', 'I', 'Ş', 'Ğ', 'Ü', 'Ö', 'Ç'], ['%', '%', '%', '%', '%', '%', '%'], $ekip);
+
+                // 1. Find team definition ID in tanimlamalar
+                $stmtDef = $Puantaj->db->prepare("SELECT id FROM tanimlamalar WHERE (tur_adi = ? OR tur_adi LIKE ?) AND silinme_tarihi IS NULL LIMIT 1");
+                $stmtDef->execute([$ekip, $normalizedEkip]);
+                $defId = $stmtDef->fetchColumn();
+
+                if ($defId) {
+                    // 2. Find person assigned to this team ID
+                    $stmtPersonel = $Puantaj->db->prepare("SELECT id FROM personel WHERE ekip_no = ? AND silinme_tarihi IS NULL LIMIT 1");
+                    $stmtPersonel->execute([$defId]);
+                    $personelId = $stmtPersonel->fetchColumn() ?: 0;
+                }
+            }
+
+            // Skip if personel not found as per user request
+            if ($personelId == 0) {
+                $skippedCount++;
+                continue;
+            }
+
+            // Insert
+            $firmaId = $_SESSION['firma_id'] ?? 0;
+            $stmt = $Puantaj->db->prepare("INSERT INTO yapilan_isler (islem_id, personel_id, firma_id, firma, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $result = $stmt->execute([
                 $islemId,
+                $personelId,
+                $firmaId,
                 $firma,
                 $isEmriTipi,
                 $ekip,
@@ -137,7 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
 
         $response['status'] = 'success';
-        $response['message'] = "İşlem tamamlandı. $insertedCount kayıt eklendi, $skippedCount kayıt daha önce yüklendiği için atlandı.";
+        $response['message'] = "İşlem tamamlandı. $insertedCount kayıt eklendi. $skippedCount kayıt (daha önce yüklendiği veya personel eşleşmediği için) atlandı.";
 
         // Log Action
         $SystemLog = new SystemLogModel();
@@ -149,5 +178,293 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     echo json_encode($response);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'endeks-excel-kaydet') {
+    $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
+    try {
+        if (!isset($_FILES['excel_file']) || $_FILES['excel_file']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception("Dosya yüklenemedi veya dosya seçilmedi.");
+        }
+
+        $uploadDate = $_POST['upload_date'] ?? date('Y-m-d');
+        $fileTmpPath = $_FILES['excel_file']['tmp_name'];
+        $fileName = $_FILES['excel_file']['name'];
+        $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+        $rows = [];
+        if ($extension === 'pdf') {
+            $parser = new \Smalot\PdfParser\Parser();
+            $pdf = $parser->parseFile($fileTmpPath);
+            $text = $pdf->getText();
+
+            // Debug log
+            file_put_contents(dirname(__DIR__, 2) . '/pdf_debug.txt', $text);
+
+            // Fix character encoding issues from PDF
+            $text = str_replace(['Þ', 'Ð', 'Ý', 'ý'], ['Ş', 'Ğ', 'İ', 'i'], $text);
+            $lines = explode("\n", $text);
+
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (empty($line))
+                    continue;
+
+                // Pattern for messy PDF format:
+                // [Tahakkuk][SıraNo] [User][Region] [Sarfiyat] [OrtSarfiyat] [Tahakkuk] [Perf][Abone] [OrtAbone][Gun]
+                // Example: 39,778.771 ER-SAN ELEKTRİK EKİP-AFŞİN 2,290.00 2,290.00 39,778.77 121.18103 103.001
+                $pattern = '/([\d.,]+)(\d+)\s+(ER-SAN\s+ELEKTR[İI]K\s+EK[İI]P-?\s?\d*)([A-ZÇĞİIÖŞÜ\s]+?)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+\.\d{2})(\d+)\s+([\d.,]+\.\d{2})(\d+)/ui';
+
+                if (preg_match($pattern, $line, $matches)) {
+                    $kullaniciAdi = trim($matches[3]);
+
+                    // Extract team number from name
+                    $teamNo = 0;
+                    if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $kullaniciAdi, $m)) {
+                        $teamNo = $m[1];
+                    }
+
+                    // Skip if no team number found (User request: "numarası olmayanları atla")
+                    if ($teamNo == 0)
+                        continue;
+
+                    $rows[] = [
+                        'bolge' => trim($matches[4]),
+                        'kullanici_adi' => $kullaniciAdi,
+                        'team_no' => $teamNo,
+                        'sarfiyat' => $matches[5],
+                        'ort_sarfiyat' => $matches[6],
+                        'tahakkuk' => $matches[7],
+                        'ort_tahakkuk' => $matches[1],
+                        'okunan_gun' => $matches[11],
+                        'okunan_abone' => $matches[9],
+                        'ort_okunan_abone' => $matches[10],
+                        'performans' => $matches[8]
+                    ];
+                }
+            }
+
+            // If still no rows, try global matching with normalized spaces
+            if (empty($rows)) {
+                $cleanText = preg_replace('/\s+/', ' ', $text);
+                $patternGlobal = '/([\d.,]+)(\d+)\s+(ER-SAN\s+ELEKTR[İI]K\s+EK[İI]P-?\s?\d*)([A-ZÇĞİIÖŞÜ\s]+?)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+\.\d{2})(\d+)\s+([\d.,]+\.\d{2})(\d+)/ui';
+                if (preg_match_all($patternGlobal, $cleanText, $allMatches, PREG_SET_ORDER)) {
+                    foreach ($allMatches as $m) {
+                        $kullaniciAdi = trim($m[3]);
+                        $teamNo = 0;
+                        if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $kullaniciAdi, $tm)) {
+                            $teamNo = $tm[1];
+                        }
+
+                        if ($teamNo == 0)
+                            continue;
+
+                        $rows[] = [
+                            'bolge' => trim($m[4]),
+                            'kullanici_adi' => $kullaniciAdi,
+                            'team_no' => $teamNo,
+                            'sarfiyat' => $m[5],
+                            'ort_sarfiyat' => $m[6],
+                            'tahakkuk' => $m[7],
+                            'ort_tahakkuk' => $m[1],
+                            'okunan_gun' => $m[11],
+                            'okunan_abone' => $m[9],
+                            'ort_okunan_abone' => $m[10],
+                            'performans' => $m[8]
+                        ];
+                    }
+                }
+            }
+        } else {
+            $spreadsheet = IOFactory::load($fileTmpPath);
+            $sheet = $spreadsheet->getActiveSheet();
+            $excelRows = $sheet->toArray();
+
+            $headerRowIndex = null;
+            $colMap = [];
+
+            foreach ($excelRows as $index => $row) {
+                $rowStr = implode(' ', array_map('strval', $row));
+                if (stripos($rowStr, 'Bölgesi') !== false && stripos($rowStr, 'Kullanıcı Adı') !== false && stripos($rowStr, 'Sarfiyat') !== false) {
+                    $headerRowIndex = $index;
+                    foreach ($row as $colIndex => $cellValue) {
+                        $cellValue = trim($cellValue);
+                        if (stripos($cellValue, 'Bölgesi') !== false)
+                            $colMap['bolge'] = $colIndex;
+                        elseif (stripos($cellValue, 'Kullanıcı Adı') !== false)
+                            $colMap['kullanici_adi'] = $colIndex;
+                        elseif (stripos($cellValue, 'Sarfiyat') !== false && stripos($cellValue, 'Ortalama') === false)
+                            $colMap['sarfiyat'] = $colIndex;
+                        elseif (stripos($cellValue, 'Ortalama Sarfiyat') !== false)
+                            $colMap['ort_sarfiyat_gunluk'] = $colIndex;
+                        elseif (stripos($cellValue, 'Tahakkuk') !== false && stripos($cellValue, 'Ortalama') === false)
+                            $colMap['tahakkuk'] = $colIndex;
+                        elseif (stripos($cellValue, 'Ortalama Tahakkuk') !== false)
+                            $colMap['ort_tahakkuk_gunluk'] = $colIndex;
+                        elseif (stripos($cellValue, 'Okunan Gün Sayısı') !== false)
+                            $colMap['okunan_gun_sayisi'] = $colIndex;
+                        elseif (stripos($cellValue, 'Okunan Abone Sayısı') !== false)
+                            $colMap['okunan_abone_sayisi'] = $colIndex;
+                        elseif (stripos($cellValue, 'Ortalama Okunan Abone') !== false)
+                            $colMap['ort_okunan_abone_sayisi_gunluk'] = $colIndex;
+                        elseif (stripos($cellValue, 'Okuma Performansı') !== false)
+                            $colMap['okuma_performansi'] = $colIndex;
+                    }
+                    break;
+                }
+            }
+
+            if ($headerRowIndex !== null) {
+                for ($i = $headerRowIndex + 1; $i < count($excelRows); $i++) {
+                    $row = $excelRows[$i];
+                    $bolge = isset($colMap['bolge']) ? trim($row[$colMap['bolge']]) : '';
+                    $kullanici_adi = isset($colMap['kullanici_adi']) ? trim($row[$colMap['kullanici_adi']]) : '';
+
+                    if (empty($bolge) && empty($kullanici_adi))
+                        continue;
+                    if (stripos($bolge, 'Toplam') !== false || stripos($kullanici_adi, 'Toplam') !== false)
+                        continue;
+                    if (!empty($bolge) && empty($kullanici_adi))
+                        continue;
+
+                    $teamNo = 0;
+                    if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $kullanici_adi, $m)) {
+                        $teamNo = $m[1];
+                    }
+
+                    if ($teamNo == 0)
+                        continue;
+
+                    $rows[] = [
+                        'bolge' => $bolge,
+                        'kullanici_adi' => $kullanici_adi,
+                        'team_no' => $teamNo,
+                        'sarfiyat' => $row[$colMap['sarfiyat']] ?? 0,
+                        'ort_sarfiyat' => $row[$colMap['ort_sarfiyat_gunluk']] ?? 0,
+                        'tahakkuk' => $row[$colMap['tahakkuk']] ?? 0,
+                        'ort_tahakkuk' => $row[$colMap['ort_tahakkuk_gunluk']] ?? 0,
+                        'okunan_gun' => $row[$colMap['okunan_gun_sayisi']] ?? 0,
+                        'okunan_abone' => $row[$colMap['okunan_abone_sayisi']] ?? 0,
+                        'ort_okunan_abone' => $row[$colMap['ort_okunan_abone_sayisi_gunluk']] ?? 0,
+                        'performans' => $row[$colMap['okuma_performansi']] ?? 0
+                    ];
+                }
+            }
+        }
+
+        if (empty($rows)) {
+            throw new Exception("Dosyadan veri okunamadı veya format geçersiz.");
+        }
+
+        $insertedCount = 0;
+        $skippedCount = 0;
+        $EndeksOkuma = new \App\Model\EndeksOkumaModel();
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+
+        foreach ($rows as $data) {
+            $bolge = $data['bolge'];
+            $kullanici_adi = $data['kullanici_adi'];
+            $teamNo = $data['team_no'] ?? 0;
+
+            // Robust number parsing: remove thousands separator (comma) and keep decimal (dot)
+            $sarfiyat = (float) str_replace(',', '', $data['sarfiyat']);
+            $ort_sarfiyat = (float) str_replace(',', '', $data['ort_sarfiyat']);
+            $tahakkuk = (float) str_replace(',', '', $data['tahakkuk']);
+            $ort_tahakkuk = (float) str_replace(',', '', $data['ort_tahakkuk']);
+            $okunan_gun = (int) $data['okunan_gun'];
+            $okunan_abone = (int) $data['okunan_abone'];
+            $ort_okunan_abone = (float) str_replace(',', '', $data['ort_okunan_abone']);
+            $performans = (float) str_replace(',', '', $data['performans']);
+
+            // Personel mapping logic
+            $personelId = 0;
+            if ($teamNo > 0) {
+                // 1. Find team definition ID in tanimlamalar
+                $stmtDef = $EndeksOkuma->db->prepare("SELECT id FROM tanimlamalar WHERE (tur_adi LIKE ? OR tur_adi LIKE ?) AND silinme_tarihi IS NULL LIMIT 1");
+                $stmtDef->execute(["%EKİP-$teamNo", "%EKIP-$teamNo"]);
+                $defId = $stmtDef->fetchColumn();
+
+                if ($defId) {
+                    // 2. Find person assigned to this team ID
+                    $stmtPersonel = $EndeksOkuma->db->prepare("SELECT id FROM personel WHERE ekip_no = ? AND silinme_tarihi IS NULL LIMIT 1");
+                    $stmtPersonel->execute([$defId]);
+                    $personelId = $stmtPersonel->fetchColumn() ?: 0;
+                }
+            }
+
+            // Skip if personel not found as per user request
+            if ($personelId == 0) {
+                $skippedCount++;
+                continue;
+            }
+
+            $stmt = $EndeksOkuma->db->prepare("INSERT INTO endeks_okuma (personel_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $result = $stmt->execute([$personelId, $firmaId, $bolge, $kullanici_adi, $sarfiyat, $ort_sarfiyat, $tahakkuk, $ort_tahakkuk, $okunan_gun, $okunan_abone, $ort_okunan_abone, $performans, $uploadDate]);
+            if ($result)
+                $insertedCount++;
+        }
+
+        if ($insertedCount === 0 && $skippedCount > 0) {
+            throw new Exception("Yüklenen dosyadaki hiçbir ekip personel tablosuyla eşleşmedi. Lütfen ekip numaralarını kontrol edin. ($skippedCount kayıt atlandı)");
+        }
+
+        $response['status'] = 'success';
+        $response['message'] = "$insertedCount kayıt başarıyla yüklendi." . ($skippedCount > 0 ? " ($skippedCount kayıt personel eşleşmediği için atlandı)" : "");
+
+        $SystemLog = new SystemLogModel();
+        $userId = $_SESSION['user_id'] ?? 0;
+        $SystemLog->logAction($userId, 'Endeks Okuma Yükleme', "$extension dosyasından $insertedCount adet endeks okuma kaydı yüklendi.");
+
+    } catch (Exception $e) {
+        $response['message'] = $e->getMessage();
+    }
+    echo json_encode($response);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get-tab-content') {
+    $tab = $_GET['tab'] ?? 'okuma';
+    $startDate = $_GET['start_date'] ?? '';
+    $endDate = $_GET['end_date'] ?? '';
+    $ekipKodu = $_GET['ekip_kodu'] ?? '';
+    $workType = $_GET['work_type'] ?? '';
+
+    ob_start();
+    if ($tab === 'okuma') {
+        $EndeksOkuma = new \App\Model\EndeksOkumaModel();
+        $endeksRecords = $EndeksOkuma->getFiltered($startDate, $endDate, $ekipKodu);
+        foreach ($endeksRecords as $record): ?>
+            <tr>
+                <td><?= $record->bolge ?></td>
+                <td><?= $record->personel_adi ?: '<span class="text-muted">' . $record->kullanici_adi . '</span>' ?></td>
+                <td><?= number_format($record->sarfiyat, 2, ',', '.') ?></td>
+                <td><?= number_format($record->ort_sarfiyat_gunluk, 2, ',', '.') ?></td>
+                <td><?= number_format($record->tahakkuk, 2, ',', '.') ?></td>
+                <td><?= number_format($record->ort_tahakkuk_gunluk, 2, ',', '.') ?></td>
+                <td><?= $record->okunan_gun_sayisi ?></td>
+                <td><?= $record->okunan_abone_sayisi ?></td>
+                <td><?= number_format($record->ort_okunan_abone_sayisi_gunluk, 2, ',', '.') ?></td>
+                <td>%<?= number_format($record->okuma_performansi, 2, ',', '.') ?></td>
+                <td><?= $record->tarih ?></td>
+            </tr>
+        <?php endforeach;
+    } else {
+        $Puantaj = new PuantajModel();
+        $records = $Puantaj->getFiltered($startDate, $endDate, $ekipKodu, $workType);
+        foreach ($records as $record): ?>
+            <tr>
+                <td><?= $record->firma ?></td>
+                <td><?= $record->is_emri_tipi ?></td>
+                <td><?= $record->personel_adi ?: '<span class="text-muted">' . $record->ekip_kodu . '</span>' ?></td>
+                <td><?= $record->is_emri_sonucu ?></td>
+                <td><?= $record->sonuclanmis ?></td>
+                <td><?= $record->acik_olanlar ?></td>
+                <td><?= $record->tarih ?></td>
+            </tr>
+        <?php endforeach;
+    }
+    $html = ob_get_clean();
+    echo $html;
     exit;
 }
