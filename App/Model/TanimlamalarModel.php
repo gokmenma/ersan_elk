@@ -140,12 +140,22 @@ class TanimlamalarModel extends Model
     /**
      * Ekip kodu varsa true döner
      */
-    public function getEkipKoduVarmi($tur_adi)
+    public function getEkipKoduVarmi($tur_adi, $id = 0)
     {
-        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE tur_adi = ? and firma_id = ? and silinme_tarihi IS NULL ORDER BY id DESC");
-        $sql->execute([$tur_adi, $_SESSION['firma_id']]);
+        $query = "SELECT * FROM $this->table WHERE tur_adi = ? and firma_id = ? and silinme_tarihi IS NULL";
+        $params = [$tur_adi, $_SESSION['firma_id']];
+
+        if ($id > 0) {
+            $query .= " AND id != ?";
+            $params[] = $id;
+        }
+
+        $query .= " ORDER BY id DESC";
+        $sql = $this->db->prepare($query);
+        $sql->execute($params);
         return $sql->fetch(PDO::FETCH_OBJ) ?: null;
     }
+
     public function getIsTurleri()
     {
         $sql = $this->db->prepare("SELECT * FROM $this->table WHERE grup = ? and silinme_tarihi IS NULL ORDER BY id DESC");

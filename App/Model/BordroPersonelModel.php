@@ -479,11 +479,9 @@ class BordroPersonelModel extends Model
         $PersonelModel = new \App\Model\PersonelModel();
         $personel = $PersonelModel->find($personel_id);
 
-        if (!$personel || empty($personel->ekip_no)) {
+        if (!$personel) {
             return;
         }
-
-        $ekipKodu = $personel->ekip_no;
 
         // 2. Önceki puantaj kaynaklı ek ödemeleri temizle (duplicate önlemek için)
         // Açıklamada "[Puantaj]" etiketi olanları siliyoruz
@@ -495,17 +493,17 @@ class BordroPersonelModel extends Model
 
         // 3. Yapılan işleri getir ve grupla
         // is_emri_tipi'ne göre gruplayıp sayılarını alıyoruz
-        // Not: yapilan_isler tablosunda firma_id yok, firma adı text olarak 'firma' kolonunda tutuluyor
+        // Not: yapilan_isler tablosunda personel_id üzerinden filtreleme yapıyoruz
         $sql = $this->db->prepare("
-            SELECT is_emri_tipi, COUNT(*) as adet
+            SELECT is_emri_tipi, SUM(sonuclanmis) as adet
             FROM yapilan_isler 
-            WHERE ekip_kodu = ? 
+            WHERE personel_id = ? 
             AND tarih BETWEEN ? AND ?
             AND is_emri_tipi IS NOT NULL 
             AND is_emri_tipi != ''
             GROUP BY is_emri_tipi
         ");
-        $sql->execute([$ekipKodu, $baslangic_tarihi, $bitis_tarihi]);
+        $sql->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
         $yapilanIsler = $sql->fetchAll(PDO::FETCH_OBJ);
 
         if (empty($yapilanIsler)) {
@@ -519,7 +517,7 @@ class BordroPersonelModel extends Model
 
         $ucretMap = [];
         foreach ($isTurleri as $tur) {
-            $ucretMap[$tur->tur_adi] = floatval($tur->is_turu_ucret ?? 0);
+            $ucretMap[$tur->tur_adi] = floatval(\App\Helper\Helper::formattedMoneyToNumber($tur->is_turu_ucret ?? 0));
         }
 
         // 5. Ek ödemeleri oluştur

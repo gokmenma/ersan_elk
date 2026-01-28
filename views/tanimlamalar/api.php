@@ -12,7 +12,7 @@ $Tanimlamalar = new TanimlamalarModel();
 $firma_id = $_SESSION["firma_id"];
 
 /**firma id boş ise işlem yapma */
-if($firma_id == 0 || $firma_id == null){
+if ($firma_id == 0 || $firma_id == null) {
     echo json_encode(["status" => "error", "message" => "Firma bilgileri bulunamadı."]);
     exit;
 }
@@ -64,7 +64,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "ekip-kodu-kaydet") {
 
 
     /**Ekip kodu tanımlıysa kayıt yapma */
-    $isExistingTur = $Tanimlamalar->getEkipKoduVarmi($tur_adi);
+    $isExistingTur = $Tanimlamalar->getEkipKoduVarmi($tur_adi, $id);
     if ($isExistingTur) {
         $status = "error";
         $message = "Bu ekip kodu zaten tanımlı. Başka bir kod giriniz!";
