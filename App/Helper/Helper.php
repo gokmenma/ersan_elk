@@ -17,77 +17,10 @@ class Helper
     ];
 
 
-    //Evrakın Giittiği yer Bilgisi. Örn: Kurum Dışı Dağıtım Planı, Kurum İçi, Gerçek Kişi
-    const GIDEN_EVRAK_YERI = [
-        '' => "Seçiniz",
-        '1' => "Kurum Dışı Dağıtım Planı",
-        '2' => "Kurum İçi ve Dışı",
-        '3' => "Gerçek Kişi",
-        '4' => "Kamu Kurumu",
-        '5' => "Firma",
-        '6' => "Diğer",
-    ];
-
-    const GIDEN_EVRAK_TURU = [
-        '' => "Seçiniz",
-        '1' => "Zimmetle Teslim",
-        '2' => "Koli",
-        '3' => "İadeli Taahhütlü Mektup",
-        '4' => "E-Posta",
-        '5' => "Adi Mektup",
-        '6' => "APS",
-        '7' => "Tebligat",
-        '8' => "E-Posta/İadeli Taahhütlü Mektup",
-        '9' => "E-Posta/Adi Mektup",
-        '10' => "Resmi Taahhütlü Mektup",
-        '11' => "Faks",
-        '12' => "Kayıtlı E-Posta (Kep)",
-        '13' => "enVision",
-    ];
-
-    const GIDEN_EVRAK_AMACI = [
-        '1' => "BİLGİSİNE",
-        '2' => "GEREĞİNE",
-    ];
-
-
-    const IMZA_SABLON = [
-        '' => "Seçiniz",
-        '1' => "Kurum Dışı Giden İki İmzalı (Tek Satırlı Makam Hitabı)",
-        '2' => "Kurum Dışı Giden İki İmzalı Yazı (Birden Fazla Satırlı Makam Hitabı)",
-        '3' => "Kurum Dışı Giden Tek İmzalı (Tek Satırlı Makam Hitabı)",
-        '4' => "Kurum Dışı Giden Tek İmzalı Yazı (Birden Fazla Satırlı Makam Hitabı)",
-    ];
-
-    // Genel Başkan a.
-    const KIMIN_ADINA = [
-        '' => "Seçiniz",
-        'Genel Başkan a.' => "Genel Başkan a.",
-        'Genel Başkan Yardımcısı a.' => "Genel Başkan Yardımcısı a.",
-
-    ];
-
-
-    //Gelen evrak türü
-    const GELEN_EVRAK_TURU = [
-        "" => "Seçiniz",
-        "1" => "Kurum Dışı Gelen Evrak",
-        "2" => "Kurum İçi Gelen Evrak",
-    ];
 
 
 
-    // GİDEN EVRAK YERİNİ DÖNDÜR
-    public static function getGidenEvrakTuru($type = 1)
-    {
-        return self::GIDEN_EVRAK_TURU[$type];
-    }
 
-    // GİDEN EVRAK AMACINI DÖNDÜR
-    public static function getGidenEvrakAmaci($type = 1)
-    {
-        return self::GIDEN_EVRAK_AMACI[$type];
-    }
 
 
     public static function formattedMoneyToNumber($value)
@@ -138,11 +71,7 @@ class Helper
         return self::MONEY_UNIT[$currency] . $formattedNumber;
     }
 
-    //Evrak tanımını getir
-    public static function getEvrakTanimi($type = 1)
-    {
-        return self::EVRAK_TANIMI[$type];
-    }
+
 
     public static function base_url($path = '')
     {

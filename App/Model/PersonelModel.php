@@ -15,7 +15,8 @@ class PersonelModel extends Model
         parent::__construct($this->table);
     }
     /**Personeli Ekip Kodu ile beraber getirir */
-    public function findByEkipNo($id){
+    public function findByEkipNo($id)
+    {
         $sql = "SELECT p.*, t.tur_adi as ekip_adi FROM {$this->table} p
                     LEFT JOIN tanimlamalar t ON p.ekip_no = t.id
                     WHERE p.id = :id";
@@ -137,24 +138,24 @@ class PersonelModel extends Model
 
     }
 
-   public function where($column, $value = null, $operant = '=')
-{
-    if ($value === null && in_array($operant, ['IS', 'IS NOT'])) {
-        $sql = $this->db->prepare(
-            "SELECT * FROM $this->table 
+    public function where($column, $value = null, $operant = '=')
+    {
+        if ($value === null && in_array($operant, ['IS', 'IS NOT'])) {
+            $sql = $this->db->prepare(
+                "SELECT * FROM $this->table 
              WHERE $column $operant NULL AND firma_id = ?"
-        );
-        $sql->execute([$_SESSION['firma_id']]);
-    } else {
-        $sql = $this->db->prepare(
-            "SELECT * FROM $this->table 
+            );
+            $sql->execute([$_SESSION['firma_id']]);
+        } else {
+            $sql = $this->db->prepare(
+                "SELECT * FROM $this->table 
              WHERE $column $operant ? AND firma_id = ?"
-        );
-        $sql->execute([$value, $_SESSION['firma_id']]);
-    }
+            );
+            $sql->execute([$value, $_SESSION['firma_id']]);
+        }
 
-    return $sql->fetchAll(PDO::FETCH_OBJ);
-}
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
 
 
     /**
@@ -247,6 +248,9 @@ class PersonelModel extends Model
                         } elseif (stripos('Pasif', $column['search']['value']) !== false) {
                             $filterSql .= " AND p.aktif_mi = 0";
                         }
+                    } elseif ($i == 4) { // Tarih
+                        $filterSql .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramName";
+                        $params[$paramName] = $val;
                     } else {
                         $filterSql .= " AND $field LIKE :$paramName";
                         $params[$paramName] = $val;

@@ -65,8 +65,17 @@ function getDatatableOptions() {
           // Türkçe arama için: column.search() yerine data attribute kullanıyoruz
           $(input).attr("data-col-idx", column.index());
           $(input).on("input", function () {
-            // Sadece tabloyu yeniden çiz, DataTables'ın kendi aramasını kullanma
-            $(this).closest("table").DataTable().draw();
+            let val = $(this).val();
+            let colIdx = $(this).attr("data-col-idx");
+            let table = $(this).closest("table").DataTable();
+
+            // Eğer serverSide ise, DataTables'ın kendi arama mekanizmasını tetikle
+            if (table.settings()[0].oFeatures.bServerSide) {
+              table.column(colIdx).search(val).draw();
+            } else {
+              // Client-side ise sadece draw() yeterli (custom filter çalışır)
+              table.draw();
+            }
           });
 
           // Sütunun gerçekten görünür olup olmadığını kontrol et

@@ -125,15 +125,15 @@ $ek_odeme_turleri = [
                             ); ?>
 
                             <?php if ($selectedDonem): ?>
-                                    <div class="form-check form-switch ms-2">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="switchDonemDurum"
-                                            <?= $donemKapali ? 'checked' : '' ?>>
-                                        <label
-                                            class="form-check-label small <?= $donemKapali ? 'text-danger' : 'text-success' ?>"
-                                            for="switchDonemDurum">
-                                            <?= $donemKapali ? '<i class="bx bx-lock"></i> Kapalı' : '<i class="bx bx-lock-open"></i> Açık' ?>
-                                        </label>
-                                    </div>
+                                <div class="form-check form-switch ms-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="switchDonemDurum"
+                                        <?= $donemKapali ? 'checked' : '' ?>>
+                                    <label
+                                        class="form-check-label small <?= $donemKapali ? 'text-danger' : 'text-success' ?>"
+                                        for="switchDonemDurum">
+                                        <?= $donemKapali ? '<i class="bx bx-lock"></i> Kapalı' : '<i class="bx bx-lock-open"></i> Açık' ?>
+                                    </label>
+                                </div>
                             <?php endif; ?>
                         </div>
 
@@ -143,300 +143,302 @@ $ek_odeme_turleri = [
                             data-bs-toggle="modal" data-bs-target="#yeniDonemModal" title="Yeni Dönem Oluştur">
                             <i class="bx bx-plus"></i>
                         </button>
-                        
+
                         <?php if ($selectedDonem && !$donemKapali): ?>
-                                <button type="button" class="btn btn-outline-primary waves-effect waves-light"
-                                    id="btnHeaderEditDonem" title="Dönem Adını Güncelle">
-                                    <i class="bx bx-edit-alt"></i>
-                                </button>
+                            <button type="button" class="btn btn-outline-primary waves-effect waves-light"
+                                id="btnHeaderEditDonem" title="Dönem Adını Güncelle">
+                                <i class="bx bx-edit-alt"></i>
+                            </button>
                         <?php endif; ?>
 
                         <?php if (!$donemKapali) { ?>
-                                <button type="button" id="donemSil" class="btn btn-outline-danger waves-effect waves-light" title="Dönemi Sil">
-                                    <i class="bx bx-trash"></i>
-                                </button>
+                            <button type="button" id="donemSil" class="btn btn-outline-danger waves-effect waves-light"
+                                title="Dönemi Sil">
+                                <i class="bx bx-trash"></i>
+                            </button>
                         <?php } ?>
 
                         <div class="d-flex flex-wrap gap-2 ms-auto">
                             <?php if ($selectedDonem): ?>
-                                    <button type="button" class="btn btn-info waves-effect waves-light" id="btnRefreshPersonel"
-                                        <?= $donemKapali ? 'disabled' : '' ?>>
-                                        <i class="bx bx-refresh me-1"></i> Personel Güncelle
+                                <button type="button" class="btn btn-info waves-effect waves-light" id="btnRefreshPersonel"
+                                    <?= $donemKapali ? 'disabled' : '' ?>>
+                                    <i class="bx bx-refresh me-1"></i> Personel Güncelle
+                                </button>
+                                <button type="button" class="btn btn-warning waves-effect waves-light" id="btnHesapla"
+                                    <?= $donemKapali ? 'disabled' : '' ?>>
+                                    <i class="bx bx-calculator me-1"></i> Maaş Hesapla
+                                </button>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-secondary dropdown-toggle waves-effect waves-light"
+                                        data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bx bx-menu me-1"></i> İşlemler
                                     </button>
-                                    <button type="button" class="btn btn-warning waves-effect waves-light" id="btnHesapla"
-                                        <?= $donemKapali ? 'disabled' : '' ?>>
-                                        <i class="bx bx-calculator me-1"></i> Maaş Hesapla
-                                    </button>
-                                    <div class="btn-group">
-                                        <button type="button" class="btn btn-secondary dropdown-toggle waves-effect waves-light"
-                                            data-bs-toggle="dropdown" aria-expanded="false">
-                                            <i class="bx bx-menu me-1"></i> İşlemler
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            <li>
-                                                <a class="dropdown-item" href="javascript:void(0);" id="btnExportExcel">
-                                                    <i class="bx bx-download me-2 text-success"></i> Excel'e İndir
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <hr class="dropdown-divider">
-                                            </li>
-                                            <li>
-                                                <a class="dropdown-item" href="javascript:void(0);" id="btnExportExcelBanka">
-                                                    <i class="bx bxs-bank me-2 text-primary"></i> Excel'e İndir (Banka)
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <hr class="dropdown-divider">
-                                            </li>
-                                            <li>
-                                                <a class="dropdown-item <?= $donemKapali ? 'disabled' : '' ?>"
-                                                    href="javascript:void(0);" data-bs-toggle="modal"
-                                                    data-bs-target="#gelirEkleModal">
-                                                    <i class="bx bx-plus-circle me-2 text-primary"></i> Gelir Ekle (Excel)
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a class="dropdown-item <?= $donemKapali ? 'disabled' : '' ?>"
-                                                    href="javascript:void(0);" data-bs-toggle="modal"
-                                                    data-bs-target="#kesintiEkleModal">
-                                                    <i class="bx bx-minus-circle me-2 text-danger"></i> Kesinti Ekle (Excel)
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a class="dropdown-item <?= $donemKapali ? 'disabled' : '' ?>"
-                                                    href="javascript:void(0);" data-bs-toggle="modal"
-                                                    data-bs-target="#odemeEkleModal">
-                                                    <i class="bx bx-wallet me-2 text-info"></i> Ödeme Dağıt (Excel)
-                                                </a>
-                                            </li>
-                                        </ul>
-                                    </div>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li>
+                                            <a class="dropdown-item" href="javascript:void(0);" id="btnExportExcel">
+                                                <i class="bx bx-download me-2 text-success"></i> Excel'e İndir
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <hr class="dropdown-divider">
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="javascript:void(0);" id="btnExportExcelBanka">
+                                                <i class="bx bxs-bank me-2 text-primary"></i> Excel'e İndir (Banka)
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <hr class="dropdown-divider">
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item <?= $donemKapali ? 'disabled' : '' ?>"
+                                                href="javascript:void(0);" data-bs-toggle="modal"
+                                                data-bs-target="#gelirEkleModal">
+                                                <i class="bx bx-plus-circle me-2 text-primary"></i> Gelir Ekle (Excel)
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item <?= $donemKapali ? 'disabled' : '' ?>"
+                                                href="javascript:void(0);" data-bs-toggle="modal"
+                                                data-bs-target="#kesintiEkleModal">
+                                                <i class="bx bx-minus-circle me-2 text-danger"></i> Kesinti Ekle (Excel)
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item <?= $donemKapali ? 'disabled' : '' ?>"
+                                                href="javascript:void(0);" data-bs-toggle="modal"
+                                                data-bs-target="#odemeEkleModal">
+                                                <i class="bx bx-wallet me-2 text-info"></i> Ödeme Dağıt (Excel)
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
                             <?php endif; ?>
                         </div>
                     </div>
                 </div>
                 <div class="card-body">
                     <?php if ($selectedDonem): ?>
-                            <div class="alert alert-primary d-flex align-items-center mb-4" role="alert">
-                                <i class="bx bx-info-circle me-2 fs-4"></i>
-                                <div class="d-flex align-items-center flex-wrap w-100">
-                                    <div class="flex-grow-1">
-                                        <strong id="displayDonemAdi"><?= htmlspecialchars($selectedDonem->donem_adi) ?></strong>
-                                        <?php if (!$donemKapali): ?>
-                                                <button type="button" class="btn btn-sm btn-link p-0 ms-1 text-primary" id="btnEditDonemAdi" title="Dönem Adını Güncelle">
-                                                    <i class="bx bx-edit-alt"></i>
-                                                </button>
-                                        <?php endif; ?>
-                                        dönemine ait
-                                        <strong><?= count($personeller) ?></strong> personel listeleniyor.
-                                        <span class="ms-2 text-muted">
-                                            (<?= date('d.m.Y', strtotime($selectedDonem->baslangic_tarihi)) ?> -
-                                            <?= date('d.m.Y', strtotime($selectedDonem->bitis_tarihi)) ?>)
-                                        </span>
-                                    </div>
+                        <div class="alert alert-primary d-flex align-items-center mb-4" role="alert">
+                            <i class="bx bx-info-circle me-2 fs-4"></i>
+                            <div class="d-flex align-items-center flex-wrap w-100">
+                                <div class="flex-grow-1">
+                                    <strong id="displayDonemAdi"><?= htmlspecialchars($selectedDonem->donem_adi) ?></strong>
+                                    <?php if (!$donemKapali): ?>
+                                        <button type="button" class="btn btn-sm btn-link p-0 ms-1 text-primary"
+                                            id="btnEditDonemAdi" title="Dönem Adını Güncelle">
+                                            <i class="bx bx-edit-alt"></i>
+                                        </button>
+                                    <?php endif; ?>
+                                    dönemine ait
+                                    <strong><?= count($personeller) ?></strong> personel listeleniyor.
+                                    <span class="ms-2 text-muted">
+                                        (<?= date('d.m.Y', strtotime($selectedDonem->baslangic_tarihi)) ?> -
+                                        <?= date('d.m.Y', strtotime($selectedDonem->bitis_tarihi)) ?>)
+                                    </span>
                                 </div>
                             </div>
+                        </div>
 
-                            <div class="table-responsive">
-                                <table id="bordroTable" class="table datatable table-hover table-bordered nowrap w-100">
-                                    <thead class="table-light">
+                        <div class="table-responsive">
+                            <table id="bordroTable" class="table datatable table-hover table-bordered nowrap w-100">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 20px;">
+                                            <div class="form-check">
+                                                <input type="checkbox" class="form-check-input" id="selectAll">
+                                            </div>
+                                        </th>
+                                        <th style="width: 20px;">TC Kimlik No</th>
+                                        <th>Personel</th>
+                                        <th class="text-center">Çalışma Günü</th>
+                                        <th class="text-end">Top. Ek Ödeme</th>
+                                        <th class="text-end">Top. Kesinti</th>
+                                        <th class="text-end">Net Maaş</th>
+                                        <th class="text-end">Banka</th>
+                                        <th class="text-end">Sodexo</th>
+                                        <th class="text-end">Elden</th>
+                                        <th class="text-center">Durum</th>
+                                        <th class="text-center">İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($personeller)): ?>
                                         <tr>
-                                            <th style="width: 20px;">
-                                                <div class="form-check">
-                                                    <input type="checkbox" class="form-check-input" id="selectAll">
-                                                </div>
-                                            </th>
-                                            <th style="width: 20px;">TC Kimlik No</th>
-                                            <th>Personel</th>
-                                            <th class="text-center">Çalışma Günü</th>
-                                            <th class="text-end">Top. Ek Ödeme</th>
-                                            <th class="text-end">Top. Kesinti</th>
-                                            <th class="text-end">Net Maaş</th>
-                                            <th class="text-end">Banka</th>
-                                            <th class="text-end">Sodexo</th>
-                                            <th class="text-end">Elden</th>
-                                            <th class="text-center">Durum</th>
-                                            <th class="text-center">İşlemler</th>
+                                            <td colspan="12" class="text-center text-muted py-4">
+                                                <i class="bx bx-user-x fs-1 d-block mb-2"></i>
+                                                Bu döneme henüz personel eklenmemiş.<br>
+                                                <small>"Personelleri Güncelle" butonuna tıklayarak personelleri
+                                                    ekleyebilirsiniz.</small>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (empty($personeller)): ?>
-                                                <tr>
-                                                    <td colspan="12" class="text-center text-muted py-4">
-                                                        <i class="bx bx-user-x fs-1 d-block mb-2"></i>
-                                                        Bu döneme henüz personel eklenmemiş.<br>
-                                                        <small>"Personelleri Güncelle" butonuna tıklayarak personelleri
-                                                            ekleyebilirsiniz.</small>
-                                                    </td>
-                                                </tr>
-                                        <?php else: ?>
-                                                <?php foreach ($personeller as $personel):
-                                                    $enc_id = Security::encrypt($personel->personel_id);
-                                                    ?>
-                                                        <?php
-                                                        $eldenOdeme = ($personel->net_maas ?? 0) - ($personel->banka_odemesi ?? 0) - ($personel->sodexo_odemesi ?? 0) - ($personel->diger_odeme ?? 0);
+                                    <?php else: ?>
+                                        <?php foreach ($personeller as $personel):
+                                            $enc_id = Security::encrypt($personel->personel_id);
+                                            ?>
+                                            <?php
+                                            $eldenOdeme = ($personel->net_maas ?? 0) - ($personel->banka_odemesi ?? 0) - ($personel->sodexo_odemesi ?? 0) - ($personel->diger_odeme ?? 0);
 
-                                                        // İzin gün sayılarını hesapla
-                                                        $ucretsizIzinGunu = 0;
-                                                        $ucretliIzinGunu = 0;
-                                                        if (!empty($personel->hesaplama_detay)) {
-                                                            $detay = json_decode($personel->hesaplama_detay, true);
-                                                            if (isset($detay['matrahlar']['ucretsiz_izin_kesinti']) && isset($detay['matrahlar']['brut_maas']) && $detay['matrahlar']['brut_maas'] > 0) {
-                                                                $gunlukUcret = $detay['matrahlar']['brut_maas'] / 30;
-                                                                $ucretsizIzinGunu = round($detay['matrahlar']['ucretsiz_izin_kesinti'] / $gunlukUcret);
-                                                            }
-                                                            if (isset($detay['matrahlar']['ucretli_izin_gunu'])) {
-                                                                $ucretliIzinGunu = intval($detay['matrahlar']['ucretli_izin_gunu']);
+                                            // İzin gün sayılarını hesapla
+                                            $ucretsizIzinGunu = 0;
+                                            $ucretliIzinGunu = 0;
+                                            if (!empty($personel->hesaplama_detay)) {
+                                                $detay = json_decode($personel->hesaplama_detay, true);
+                                                if (isset($detay['matrahlar']['ucretsiz_izin_kesinti']) && isset($detay['matrahlar']['brut_maas']) && $detay['matrahlar']['brut_maas'] > 0) {
+                                                    $gunlukUcret = $detay['matrahlar']['brut_maas'] / 30;
+                                                    $ucretsizIzinGunu = round($detay['matrahlar']['ucretsiz_izin_kesinti'] / $gunlukUcret);
+                                                }
+                                                if (isset($detay['matrahlar']['ucretli_izin_gunu'])) {
+                                                    $ucretliIzinGunu = intval($detay['matrahlar']['ucretli_izin_gunu']);
+                                                }
+                                            }
+                                            $calismaGunu = 30 - $ucretsizIzinGunu - $ucretliIzinGunu;
+                                            ?>
+                                            <tr data-id="<?= $personel->id ?>">
+                                                <td>
+                                                    <div class="form-check">
+                                                        <input type="checkbox" class="form-check-input personel-check"
+                                                            value="<?= $personel->id ?>">
+                                                    </div>
+                                                </td>
+                                                <td><?= htmlspecialchars($personel->tc_kimlik_no ?? '-') ?></td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
+                                                            alt="" class="rounded-circle avatar-sm me-2">
+                                                        <span class="fw-medium">
+                                                            <a target="_blank"
+                                                                href="index?p=personel/manage&id=<?= $enc_id ?>"><?= htmlspecialchars($personel->adi_soyadi) ?></a></span>
+                                                    </div>
+                                                </td>
+
+                                                <td
+                                                    class="text-center <?= ($ucretsizIzinGunu > 0 || $ucretliIzinGunu > 0) ? 'text-warning fw-bold' : 'text-secondary' ?>">
+                                                    <?= $calismaGunu ?> gün
+                                                    <?php if ($ucretsizIzinGunu > 0): ?>
+                                                        <small class="d-block text-danger">(-<?= $ucretsizIzinGunu ?> ü.siz
+                                                            izin)</small>
+                                                    <?php endif; ?>
+                                                    <?php if ($ucretliIzinGunu > 0): ?>
+                                                        <small class="d-block text-info">(-<?= $ucretliIzinGunu ?> ü.li izin)</small>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td class="text-end text-success">
+                                                    <?php
+                                                    // Hesaplanmış ek ödeme toplamını al (gün bazlı hesaplamalar dahil)
+                                                    $hesaplananEkOdeme = $personel->guncel_toplam_ek_odeme;
+                                                    if (!empty($personel->hesaplama_detay)) {
+                                                        $detayEkOdeme = json_decode($personel->hesaplama_detay, true);
+                                                        if (isset($detayEkOdeme['ek_odemeler']) && is_array($detayEkOdeme['ek_odemeler'])) {
+                                                            $hesaplananEkOdeme = 0;
+                                                            foreach ($detayEkOdeme['ek_odemeler'] as $eo) {
+                                                                $hesaplananEkOdeme += floatval($eo['net_etki'] ?? $eo['tutar'] ?? 0);
                                                             }
                                                         }
-                                                        $calismaGunu = 30 - $ucretsizIzinGunu - $ucretliIzinGunu;
-                                                        ?>
-                                                        <tr data-id="<?= $personel->id ?>">
-                                                            <td>
-                                                                <div class="form-check">
-                                                                    <input type="checkbox" class="form-check-input personel-check"
-                                                                        value="<?= $personel->id ?>">
-                                                                </div>
-                                                            </td>
-                                                            <td><?= htmlspecialchars($personel->tc_kimlik_no ?? '-') ?></td>
-                                                            <td>
-                                                                <div class="d-flex align-items-center">
-                                                                    <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
-                                                                        alt="" class="rounded-circle avatar-sm me-2">
-                                                                    <span class="fw-medium">
-                                                                        <a target="_blank"
-                                                                            href="index?p=personel/manage&id=<?= $enc_id ?>"><?= htmlspecialchars($personel->adi_soyadi) ?></a></span>
-                                                                </div>
-                                                            </td>
-
-                                                            <td
-                                                                class="text-center <?= ($ucretsizIzinGunu > 0 || $ucretliIzinGunu > 0) ? 'text-warning fw-bold' : 'text-secondary' ?>">
-                                                                <?= $calismaGunu ?> gün
-                                                                <?php if ($ucretsizIzinGunu > 0): ?>
-                                                                        <small class="d-block text-danger">(-<?= $ucretsizIzinGunu ?> ü.siz
-                                                                            izin)</small>
-                                                                <?php endif; ?>
-                                                                <?php if ($ucretliIzinGunu > 0): ?>
-                                                                        <small class="d-block text-info">(-<?= $ucretliIzinGunu ?> ü.li izin)</small>
-                                                                <?php endif; ?>
-                                                            </td>
-                                                            <td class="text-end text-success">
-                                                                <?php
-                                                                // Hesaplanmış ek ödeme toplamını al (gün bazlı hesaplamalar dahil)
-                                                                $hesaplananEkOdeme = $personel->guncel_toplam_ek_odeme;
-                                                                if (!empty($personel->hesaplama_detay)) {
-                                                                    $detayEkOdeme = json_decode($personel->hesaplama_detay, true);
-                                                                    if (isset($detayEkOdeme['ek_odemeler']) && is_array($detayEkOdeme['ek_odemeler'])) {
-                                                                        $hesaplananEkOdeme = 0;
-                                                                        foreach ($detayEkOdeme['ek_odemeler'] as $eo) {
-                                                                            $hesaplananEkOdeme += floatval($eo['net_etki'] ?? $eo['tutar'] ?? 0);
-                                                                        }
-                                                                    }
-                                                                }
-                                                                ?>
-                                                                <?= $hesaplananEkOdeme > 0 ? number_format($hesaplananEkOdeme, 2, ',', '.') . ' ₺' : '-' ?>
-                                                                <i class="bx bx-list-ul ms-1 text-primary cursor-pointer btn-detail-ekodeme"
+                                                    }
+                                                    ?>
+                                                    <?= $hesaplananEkOdeme > 0 ? number_format($hesaplananEkOdeme, 2, ',', '.') . ' ₺' : '-' ?>
+                                                    <i class="bx bx-list-ul ms-1 text-primary cursor-pointer btn-detail-ekodeme"
+                                                        data-id="<?= $personel->personel_id ?>"
+                                                        data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"
+                                                        title="Detayları Gör"></i>
+                                                </td>
+                                                <td class="text-end text-danger">
+                                                    <?= $personel->guncel_toplam_kesinti > 0 ? number_format($personel->guncel_toplam_kesinti, 2, ',', '.') . ' ₺' : '-' ?>
+                                                    <i class="bx bx-list-ul ms-1 text-danger cursor-pointer btn-detail-kesinti"
+                                                        data-id="<?= $personel->personel_id ?>"
+                                                        data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"
+                                                        title="Detayları Gör"></i>
+                                                </td>
+                                                <td class="text-end fw-bold text-success">
+                                                    <?= $personel->net_maas ? number_format($personel->net_maas, 2, ',', '.') . ' ₺' : '-' ?>
+                                                </td>
+                                                <td class="text-end text-primary">
+                                                    <?= $personel->banka_odemesi ? number_format($personel->banka_odemesi, 2, ',', '.') . ' ₺' : '-' ?>
+                                                </td>
+                                                <td class="text-end text-info">
+                                                    <?= $personel->sodexo_odemesi ? number_format($personel->sodexo_odemesi, 2, ',', '.') . ' ₺' : '-' ?>
+                                                </td>
+                                                <td class="text-end text-warning fw-bold">
+                                                    <?= $eldenOdeme > 0 ? number_format($eldenOdeme, 2, ',', '.') . ' ₺' : '-' ?>
+                                                </td>
+                                                <td style="width: 60px;" class="text-center text-wrap">
+                                                    <?php if ($personel->hesaplama_tarihi): ?>
+                                                        <span class="badge bg-success">Hesaplandı</span>
+                                                        <small><?= $personel->hesaplama_tarihi ?></small>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-warning">Bekliyor</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-secondary dropdown-toggle" type="button"
+                                                            data-bs-toggle="dropdown" aria-expanded="false">
+                                                            <i class="bx bx-dots-vertical-rounded"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-end">
+                                                            <li>
+                                                                <a class="dropdown-item btn-odeme<?= $donemKapali ? ' disabled' : '' ?>"
+                                                                    href="javascript:void(0);" data-id="<?= $personel->id ?>"
+                                                                    data-net="<?= $personel->net_maas ?? 0 ?>"
+                                                                    data-banka="<?= $personel->banka_odemesi ?? 0 ?>"
+                                                                    data-sodexo="<?= $personel->sodexo_odemesi ?? 0 ?>"
+                                                                    data-diger="<?= $personel->diger_odeme ?? 0 ?>"
+                                                                    data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>">
+                                                                    <i class="bx bx-wallet me-2"></i> Ödeme Dağıt
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item btn-detail" href="javascript:void(0);"
+                                                                    data-id="<?= $personel->id ?>">
+                                                                    <i class="bx bx-show me-2"></i> Detay
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item btn-gelir-ekle<?= $donemKapali ? ' disabled' : '' ?>"
+                                                                    href="javascript:void(0);"
                                                                     data-id="<?= $personel->personel_id ?>"
-                                                                    data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"
-                                                                    title="Detayları Gör"></i>
-                                                            </td>
-                                                            <td class="text-end text-danger">
-                                                                <?= $personel->guncel_toplam_kesinti > 0 ? number_format($personel->guncel_toplam_kesinti, 2, ',', '.') . ' ₺' : '-' ?>
-                                                                <i class="bx bx-list-ul ms-1 text-danger cursor-pointer btn-detail-kesinti"
+                                                                    data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>">
+                                                                    <i class="bx bx-plus-circle me-2 text-success"></i> Gelir Ekle
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item btn-kesinti-ekle<?= $donemKapali ? ' disabled' : '' ?>"
+                                                                    href="javascript:void(0);"
                                                                     data-id="<?= $personel->personel_id ?>"
-                                                                    data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"
-                                                                    title="Detayları Gör"></i>
-                                                            </td>
-                                                            <td class="text-end fw-bold text-success">
-                                                                <?= $personel->net_maas ? number_format($personel->net_maas, 2, ',', '.') . ' ₺' : '-' ?>
-                                                            </td>
-                                                            <td class="text-end text-primary">
-                                                                <?= $personel->banka_odemesi ? number_format($personel->banka_odemesi, 2, ',', '.') . ' ₺' : '-' ?>
-                                                            </td>
-                                                            <td class="text-end text-info">
-                                                                <?= $personel->sodexo_odemesi ? number_format($personel->sodexo_odemesi, 2, ',', '.') . ' ₺' : '-' ?>
-                                                            </td>
-                                                            <td class="text-end text-warning fw-bold">
-                                                                <?= $eldenOdeme > 0 ? number_format($eldenOdeme, 2, ',', '.') . ' ₺' : '-' ?>
-                                                            </td>
-                                                            <td style="width: 60px;" class="text-center text-wrap">
-                                                                <?php if ($personel->hesaplama_tarihi): ?>
-                                                                        <span class="badge bg-success">Hesaplandı</span>
-                                                                        <small><?= $personel->hesaplama_tarihi ?></small>
-                                                                <?php else: ?>
-                                                                        <span class="badge bg-warning">Bekliyor</span>
-                                                                <?php endif; ?>
-                                                            </td>
-                                                            <td class="text-center">
-                                                                <div class="dropdown">
-                                                                    <button class="btn btn-sm btn-secondary dropdown-toggle" type="button"
-                                                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                                                        <i class="bx bx-dots-vertical-rounded"></i>
-                                                                    </button>
-                                                                    <ul class="dropdown-menu dropdown-menu-end">
-                                                                        <li>
-                                                                            <a class="dropdown-item btn-odeme<?= $donemKapali ? ' disabled' : '' ?>"
-                                                                                href="javascript:void(0);" data-id="<?= $personel->id ?>"
-                                                                                data-net="<?= $personel->net_maas ?? 0 ?>"
-                                                                                data-banka="<?= $personel->banka_odemesi ?? 0 ?>"
-                                                                                data-sodexo="<?= $personel->sodexo_odemesi ?? 0 ?>"
-                                                                                data-diger="<?= $personel->diger_odeme ?? 0 ?>"
-                                                                                data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>">
-                                                                                <i class="bx bx-wallet me-2"></i> Ödeme Dağıt
-                                                                            </a>
-                                                                        </li>
-                                                                        <li>
-                                                                            <a class="dropdown-item btn-detail" href="javascript:void(0);"
-                                                                                data-id="<?= $personel->id ?>">
-                                                                                <i class="bx bx-show me-2"></i> Detay
-                                                                            </a>
-                                                                        </li>
-                                                                        <li>
-                                                                        </li>
-                                                                        <li>
-                                                                            <a class="dropdown-item btn-gelir-ekle<?= $donemKapali ? ' disabled' : '' ?>"
-                                                                                href="javascript:void(0);"
-                                                                                data-id="<?= $personel->personel_id ?>"
-                                                                                data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>">
-                                                                                <i class="bx bx-plus-circle me-2 text-success"></i> Gelir Ekle
-                                                                            </a>
-                                                                        </li>
-                                                                        <li>
-                                                                            <a class="dropdown-item btn-kesinti-ekle<?= $donemKapali ? ' disabled' : '' ?>"
-                                                                                href="javascript:void(0);"
-                                                                                data-id="<?= $personel->personel_id ?>"
-                                                                                data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>">
-                                                                                <i class="bx bx-minus-circle me-2 text-danger"></i> Kesinti Ekle
-                                                                            </a>
-                                                                        </li>
-                                                                        <li>
-                                                                        </li>
-                                                                        <li>
-                                                                            <a class="dropdown-item btn-remove text-danger<?= $donemKapali ? ' disabled' : '' ?>"
-                                                                                href="javascript:void(0);" data-id="<?= $personel->id ?>">
-                                                                                <i class="bx bx-trash me-2"></i> Dönemden Çıkar
-                                                                            </a>
-                                                                        </li>
-                                                                    </ul>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
+                                                                    data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>">
+                                                                    <i class="bx bx-minus-circle me-2 text-danger"></i> Kesinti Ekle
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item btn-remove text-danger<?= $donemKapali ? ' disabled' : '' ?>"
+                                                                    href="javascript:void(0);" data-id="<?= $personel->id ?>">
+                                                                    <i class="bx bx-trash me-2"></i> Dönemden Çıkar
+                                                                </a>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     <?php else: ?>
-                            <div class="text-center py-5">
-                                <i class="bx bx-calendar-x display-1 text-muted"></i>
-                                <h5 class="mt-3">Henüz Dönem Oluşturulmamış</h5>
-                                <p class="text-muted">Bordro işlemlerine başlamak için yeni bir dönem oluşturun.</p>
-                                <button type="button" class="btn btn-primary" data-bs-toggle="modal"
-                                    data-bs-target="#yeniDonemModal">
-                                    <i class="bx bx-plus me-1"></i> İlk Dönemi Oluştur
-                                </button>
-                            </div>
+                        <div class="text-center py-5">
+                            <i class="bx bx-calendar-x display-1 text-muted"></i>
+                            <h5 class="mt-3">Henüz Dönem Oluşturulmamış</h5>
+                            <p class="text-muted">Bordro işlemlerine başlamak için yeni bir dönem oluşturun.</p>
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                                data-bs-target="#yeniDonemModal">
+                                <i class="bx bx-plus me-1"></i> İlk Dönemi Oluştur
+                            </button>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -735,49 +737,49 @@ $ek_odeme_turleri = [
                         <div class="accordion-item border-0 shadow-sm">
                             <?php if (!$donemKapali) { ?>
 
-                                    <h2 class="accordion-header" id="headingGelir">
-                                        <button class="accordion-button collapsed fw-medium" type="button"
-                                            data-bs-toggle="collapse" data-bs-target="#collapseGelir" aria-expanded="false"
-                                            aria-controls="collapseGelir">
-                                            <i class="bx bx-plus me-2 text-success"></i> Yeni Gelir Ekle
-                                        </button>
-                                    </h2>
-                                    <div id="collapseGelir" class="accordion-collapse collapse" aria-labelledby="headingGelir"
-                                        data-bs-parent="#accordionGelirEkle">
-                                        <div class="accordion-body bg-white">
-                                            <form id="formPersonelGelirEkle">
-                                                <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
-                                                <input type="hidden" name="personel_id" id="gelir_personel_id">
-                                                <input type="hidden" name="id" id="gelir_edit_id" value="0">
+                                <h2 class="accordion-header" id="headingGelir">
+                                    <button class="accordion-button collapsed fw-medium" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#collapseGelir" aria-expanded="false"
+                                        aria-controls="collapseGelir">
+                                        <i class="bx bx-plus me-2 text-success"></i> Yeni Gelir Ekle
+                                    </button>
+                                </h2>
+                                <div id="collapseGelir" class="accordion-collapse collapse" aria-labelledby="headingGelir"
+                                    data-bs-parent="#accordionGelirEkle">
+                                    <div class="accordion-body bg-white">
+                                        <form id="formPersonelGelirEkle">
+                                            <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
+                                            <input type="hidden" name="personel_id" id="gelir_personel_id">
+                                            <input type="hidden" name="id" id="gelir_edit_id" value="0">
 
-                                                <div class="mb-3">
-                                                    <?= Form::FormSelect2(
-                                                        name: "ek_odeme_tur",
-                                                        options: $ek_odeme_turleri,
-                                                        selectedValue: '',
-                                                        label: "Ek Ödeme Türü",
-                                                        icon: "list",
-                                                        valueField: '',
-                                                        textField: '',
-                                                        required: true
-                                                    ) ?>
-                                                </div>
+                                            <div class="mb-3">
+                                                <?= Form::FormSelect2(
+                                                    name: "ek_odeme_tur",
+                                                    options: $ek_odeme_turleri,
+                                                    selectedValue: '',
+                                                    label: "Ek Ödeme Türü",
+                                                    icon: "list",
+                                                    valueField: '',
+                                                    textField: '',
+                                                    required: true
+                                                ) ?>
+                                            </div>
 
-                                                <div class="mb-3">
-                                                    <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="gelir_tutar"') ?>
-                                                </div>
+                                            <div class="mb-3">
+                                                <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="gelir_tutar"') ?>
+                                            </div>
 
-                                                <div class="mb-3">
-                                                    <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama giriniz", "Açıklama", "message-square", "form-control", false, null, "off", false, 'id="gelir_aciklama"') ?>
-                                                </div>
+                                            <div class="mb-3">
+                                                <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama giriniz", "Açıklama", "message-square", "form-control", false, null, "off", false, 'id="gelir_aciklama"') ?>
+                                            </div>
 
-                                                <div class="text-end">
-                                                    <button type="submit" class="btn btn-success"><i
-                                                            class="bx bx-save me-1"></i>Kaydet</button>
-                                                </div>
-                                            </form>
-                                        </div>
+                                            <div class="text-end">
+                                                <button type="submit" class="btn btn-success"><i
+                                                        class="bx bx-save me-1"></i>Kaydet</button>
+                                            </div>
+                                        </form>
                                     </div>
+                                </div>
                             <?php } ?>
                         </div>
                     </div>
@@ -811,49 +813,49 @@ $ek_odeme_turleri = [
                     <div class="accordion mb-3" id="accordionKesintiEkle">
                         <div class="accordion-item border-0 shadow-sm">
                             <?php if (!$donemKapali) { ?>
-                                    <h2 class="accordion-header" id="headingKesinti">
-                                        <button class="accordion-button collapsed fw-medium" type="button"
-                                            data-bs-toggle="collapse" data-bs-target="#collapseKesinti" aria-expanded="false"
-                                            aria-controls="collapseKesinti">
-                                            <i class="bx bx-minus me-2 text-danger"></i> Yeni Kesinti Ekle
-                                        </button>
-                                    </h2>
-                                    <div id="collapseKesinti" class="accordion-collapse collapse"
-                                        aria-labelledby="headingKesinti" data-bs-parent="#accordionKesintiEkle">
-                                        <div class="accordion-body bg-white">
-                                            <form id="formPersonelKesintiEkle">
-                                                <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
-                                                <input type="hidden" name="personel_id" id="kesinti_personel_id">
-                                                <input type="hidden" name="id" id="kesinti_edit_id" value="0">
+                                <h2 class="accordion-header" id="headingKesinti">
+                                    <button class="accordion-button collapsed fw-medium" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#collapseKesinti" aria-expanded="false"
+                                        aria-controls="collapseKesinti">
+                                        <i class="bx bx-minus me-2 text-danger"></i> Yeni Kesinti Ekle
+                                    </button>
+                                </h2>
+                                <div id="collapseKesinti" class="accordion-collapse collapse"
+                                    aria-labelledby="headingKesinti" data-bs-parent="#accordionKesintiEkle">
+                                    <div class="accordion-body bg-white">
+                                        <form id="formPersonelKesintiEkle">
+                                            <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
+                                            <input type="hidden" name="personel_id" id="kesinti_personel_id">
+                                            <input type="hidden" name="id" id="kesinti_edit_id" value="0">
 
-                                                <div class="mb-3">
-                                                    <?= Form::FormSelect2(
-                                                        name: "kesinti_tur",
-                                                        options: $kesinti_turleri,
-                                                        selectedValue: '',
-                                                        label: "Kesinti Türü",
-                                                        icon: "list",
-                                                        valueField: '',
-                                                        textField: '',
-                                                        required: true
-                                                    ) ?>
-                                                </div>
+                                            <div class="mb-3">
+                                                <?= Form::FormSelect2(
+                                                    name: "kesinti_tur",
+                                                    options: $kesinti_turleri,
+                                                    selectedValue: '',
+                                                    label: "Kesinti Türü",
+                                                    icon: "list",
+                                                    valueField: '',
+                                                    textField: '',
+                                                    required: true
+                                                ) ?>
+                                            </div>
 
-                                                <div class="mb-3">
-                                                    <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="kesinti_tutar"') ?>
-                                                </div>
+                                            <div class="mb-3">
+                                                <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="kesinti_tutar"') ?>
+                                            </div>
 
-                                                <div class="mb-3">
-                                                    <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama giriniz", "Açıklama", "message-square", "form-control", false, null, "off", false, 'id="kesinti_aciklama"') ?>
-                                                </div>
+                                            <div class="mb-3">
+                                                <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama giriniz", "Açıklama", "message-square", "form-control", false, null, "off", false, 'id="kesinti_aciklama"') ?>
+                                            </div>
 
-                                                <div class="text-end">
-                                                    <button type="submit" class="btn btn-danger"><i
-                                                            class="bx bx-save me-1"></i>Kaydet</button>
-                                                </div>
-                                            </form>
-                                        </div>
+                                            <div class="text-end">
+                                                <button type="submit" class="btn btn-danger"><i
+                                                        class="bx bx-save me-1"></i>Kaydet</button>
+                                            </div>
+                                        </form>
                                     </div>
+                                </div>
                             <?php } ?>
                         </div>
                     </div>
@@ -870,14 +872,14 @@ $ek_odeme_turleri = [
     </div>
 
     <!-- Bordro Detay Modal -->
-    <div class="modal fade" id="modalBordroDetay" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="bordroDetailModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
                     <h5 class="modal-title"><i class="bx bx-show me-2"></i>Bordro Detayı</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body" id="bordroDetayContent">
+                <div class="modal-body" id="bordroDetailContent">
                     <!-- İçerik AJAX ile yüklenecek -->
                 </div>
                 <div class="modal-footer">
