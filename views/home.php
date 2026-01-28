@@ -10,6 +10,7 @@ use App\Model\TalepModel;
 use App\Model\SystemLogModel;
 use App\Service\Gate;
 use App\Helper\Alert;
+use App\Helper\Helper;
 use App\Model\PermissionsModel;
 
 $personelModel = new PersonelModel();
@@ -23,15 +24,20 @@ if(Gate::allows("ana_sayfa")) {
 // Sistem Logları
 $recent_logs = $systemLogModel->getRecentLogs(10);
 
+
+$istatistik = $personelModel->personelSayilari();
+
+//Helper::dd($istatistik);
+
 // Personel Sayıları
-$personel_sayisi = count($personelModel->where('aktif_mi', 1));
-$pasif_personel_sayisi = count(
-    $personelModel->where('isten_cikis_tarihi', null, 'IS NOT')
-);
-$aktif_personel_sayisi = count(
-    $personelModel->where('isten_cikis_tarihi', null, 'IS')
-);
-$toplam_personel_sayisi = count($personelModel->all());
+// $personel_sayisi = count($personelModel->where('aktif_mi', 1));
+// $pasif_personel_sayisi = count(
+//     $personelModel->where('isten_cikis_tarihi', null, 'IS NOT')
+// );
+// $aktif_personel_sayisi = count(
+//     $personelModel->where('isten_cikis_tarihi', null, 'IS')
+// );
+// $toplam_personel_sayisi = count($personelModel->all());
 
 // Bekleyen Talepler
 $db = $personelModel->getDb();
@@ -125,7 +131,7 @@ ob_start(); ?>
                 <i class='bx bx-trending-up'></i> +2.5%
             </div>
         </div>
-        <div class="main-value"><?php echo $aktif_personel_sayisi ?? 0; ?></div>
+        <div class="main-value"><?php echo $istatistik->aktif_personel ?? 0; ?></div>
         <div class="trend-description">
             Sistemde aktif çalışıyor <i class='bx bx-trending-up'></i>
         </div>
@@ -143,7 +149,7 @@ ob_start(); ?>
                 <i class='bx bx-trending-down'></i> -1.2%
             </div>
         </div>
-        <div class="main-value"><?php echo $pasif_personel_sayisi ?? 0; ?></div>
+        <div class="main-value"><?php echo $istatistik->pasif_personel ?? 0; ?></div>
         <div class="trend-description">
             İşten ayrılan/pasif <i class='bx bx-trending-down'></i>
         </div>
@@ -161,7 +167,7 @@ ob_start(); ?>
                 <i class='bx bx-trending-up'></i> +5.4%
             </div>
         </div>
-        <div class="main-value"><?php echo $toplam_personel_sayisi ?? 0; ?></div>
+        <div class="main-value"><?php echo $istatistik->toplam_personel ?? 0; ?></div>
         <div class="trend-description">
             Genel personel havuzu <i class='bx bx-trending-up'></i>
         </div>

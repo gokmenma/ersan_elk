@@ -159,6 +159,35 @@ class PersonelModel extends Model
     }
 
 
+    public function personelSayilari()
+    {
+        $sql = $this->db->prepare("
+        SELECT
+            COUNT(*) AS toplam_personel,
+            SUM(
+                CASE 
+                    WHEN isten_cikis_tarihi IS NULL 
+                         OR isten_cikis_tarihi = '0000-00-00'
+                    THEN 1 ELSE 0 
+                END
+            ) AS aktif_personel,
+            SUM(
+                CASE 
+                    WHEN isten_cikis_tarihi IS NOT NULL 
+                         AND isten_cikis_tarihi <> '0000-00-00'
+                    THEN 1 ELSE 0 
+                END
+            ) AS pasif_personel
+        FROM $this->table
+        WHERE firma_id = ?
+    ");
+
+        $sql->execute([$_SESSION['firma_id']]);
+        return $sql->fetch(PDO::FETCH_OBJ);
+    }
+
+
+
     /**
      * Aynı ekip kodunda aktif personel var mı kontrol eder
      * @param string $ekip_no Ekip kodu

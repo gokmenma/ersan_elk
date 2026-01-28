@@ -61,11 +61,11 @@ class MenuModel extends Model
 
 
         $Users = new UserModel(); // Bağımlılık enjeksiyonu düşünülebilir
-        $roleId = $Users->getUserRoleID($user_id);
+        $roleIds = $Users->getUserRoleID($user_id);
 
-        //Helper::dd("Fetching menu for user_id: {$user_id} with role_id: {$roleId}");
+        //Helper::dd("Fetching menu for user_id: {$user_id} with role_ids: {$roleIds}");
 
-        $cacheFile = $this->ownerSpecificCacheDir . "/menu_role_{$roleId}.cache";
+        $cacheFile = $this->ownerSpecificCacheDir . "/menu_role_{$roleIds}.cache";
 
         if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < $this->cacheLifetime)) {
             $cachedData = @file_get_contents($cacheFile); // @ ile hata bastırma yerine try-catch veya is_readable kontrolü daha iyi
@@ -79,7 +79,7 @@ class MenuModel extends Model
             }
         }
 
-        $menuData = $this->fetchAndBuildMenuFromDb($user_id, $roleId); // roleId parametresini ekledim
+        $menuData = $this->fetchAndBuildMenuFromDb($user_id, $roleIds); // roleIds parametresini ekledim
 
 
         // Sadece geçerli bir kiracı varsa ve dizin oluşturulmuşsa cache'e yaz
@@ -96,19 +96,27 @@ class MenuModel extends Model
     }
 
     // Veritabanından menüyü çekip oluşturan yardımcı fonksiyon
-    private function fetchAndBuildMenuFromDb(int $user_id, ?int $roleId = null): array
+    private function fetchAndBuildMenuFromDb(int $user_id, $roleIds = null): array
     {
-        if ($roleId === null) {
+        if ($roleIds === null) {
             $Users = new UserModel();
-            $roleId = $Users->getUserRoleID($user_id);
+            $roleIds = $Users->getUserRoleID($user_id);
         }
 
-        if ($roleId === 0 || $roleId === null) { // getUserRoleID 0 veya null dönebilir mi? Kontrol et
+        if (empty($roleIds)) {
             return []; // Geçerli rol yoksa boş menü
         }
 
-        $stmt = $this->db->prepare("SELECT permission_id FROM user_role_permissions WHERE role_id = ?");
-        $stmt->execute([$roleId]);
+        // $roleIds string (örn: "11,2") veya int olabilir.
+        if (is_string($roleIds)) {
+            $roleIdArray = explode(',', $roleIds);
+        } else {
+            $roleIdArray = [$roleIds];
+        }
+
+        $rolePlaceholders = implode(',', array_fill(0, count($roleIdArray), '?'));
+        $stmt = $this->db->prepare("SELECT DISTINCT permission_id FROM user_role_permissions WHERE role_id IN ({$rolePlaceholders})");
+        $stmt->execute($roleIdArray);
         $permittedMenuIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
         if (empty($permittedMenuIds)) {
@@ -184,21 +192,11 @@ class MenuModel extends Model
     }
 
     // Mevcut kiracının belirli bir rolünün menü önbelleğini temizler
+    // Not: Birden fazla rol desteği geldiği için, bir rol değiştiğinde 
+    // o rolü içeren tüm kombinasyonları temizlemek yerine tüm kiracı önbelleğini temizlemek daha güvenlidir.
     public function clearMenuCacheForRole(int $roleId): void
     {
-        if ($this->ownerId === 0 || empty($this->ownerSpecificCacheDir) || !is_dir($this->ownerSpecificCacheDir)) {
-
-            return;
-        }
-
-        $cacheFile = $this->ownerSpecificCacheDir . '/menu_role_' . $roleId . '.cache';
-        if (is_file($cacheFile)) {
-            @unlink($cacheFile);
-
-            if (!@unlink($cacheFile)) {
-                error_log("Failed to delete cache file: {$cacheFile}");
-            }
-        }
+        $this->clearAllMenuCachesForCurrentTenant();
     }
 
     private function buildMenuTree(array $items): array
