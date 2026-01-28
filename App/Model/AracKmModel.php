@@ -60,6 +60,79 @@ class AracKmModel extends Model
         ]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
+    /**
+     * Tarih aralığına göre KM kayıtları
+     */
+    public function getByDateRange($baslangic, $bitis, $aracId = null)
+    {
+        $sql = "
+            SELECT k.*, 
+                   a.plaka, a.marka, a.model
+            FROM {$this->table} k
+            INNER JOIN araclar a ON k.arac_id = a.id
+            WHERE k.firma_id = :firma_id
+            AND k.tarih BETWEEN :baslangic AND :bitis
+            AND k.silinme_tarihi IS NULL
+        ";
+
+        $params = [
+            'firma_id' => $_SESSION['firma_id'],
+            'baslangic' => $baslangic,
+            'bitis' => $bitis
+        ];
+
+        if ($aracId) {
+            $sql .= " AND k.arac_id = :arac_id";
+            $params['arac_id'] = $aracId;
+        }
+
+        $sql .= " ORDER BY k.tarih DESC, k.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Tarih aralığına göre özet (araç bazlı)
+     */
+    public function getRangeOzet($baslangic, $bitis, $aracId = null)
+    {
+        $sql = "
+            SELECT 
+                a.id as arac_id,
+                a.plaka,
+                a.marka,
+                a.model,
+                COUNT(k.id) as kayit_sayisi,
+                COALESCE(SUM(k.yapilan_km), 0) as toplam_km,
+                COALESCE(MIN(k.baslangic_km), 0) as range_baslangic_km,
+                COALESCE(MAX(k.bitis_km), 0) as range_bitis_km
+            FROM araclar a
+            LEFT JOIN {$this->table} k ON a.id = k.arac_id 
+                AND k.tarih BETWEEN :baslangic AND :bitis
+                AND k.silinme_tarihi IS NULL
+            WHERE a.firma_id = :firma_id
+            AND a.silinme_tarihi IS NULL
+        ";
+
+        $params = [
+            'firma_id' => $_SESSION['firma_id'],
+            'baslangic' => $baslangic,
+            'bitis' => $bitis
+        ];
+
+        if ($aracId) {
+            $sql .= " AND a.id = :arac_id";
+            $params['arac_id'] = $aracId;
+        }
+
+        $sql .= " GROUP BY a.id, a.plaka, a.marka, a.model HAVING kayit_sayisi > 0 ORDER BY a.plaka";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
 
     /**
      * Aylık KM özeti (araç bazlı)
@@ -145,7 +218,7 @@ class AracKmModel extends Model
     /**
      * Genel istatistikler
      */
-    public function getStats($yil = null, $ay = null)
+    public function getStats($yil = null, $ay = null, $baslangic = null, $bitis = null, $aracId = null)
     {
         $sql = "
             SELECT 
@@ -167,6 +240,17 @@ class AracKmModel extends Model
         if ($ay) {
             $sql .= " AND MONTH(tarih) = :ay";
             $params['ay'] = $ay;
+        }
+
+        if ($baslangic && $bitis) {
+            $sql .= " AND tarih BETWEEN :baslangic AND :bitis";
+            $params['baslangic'] = $baslangic;
+            $params['bitis'] = $bitis;
+        }
+
+        if ($aracId) {
+            $sql .= " AND arac_id = :arac_id";
+            $params['arac_id'] = $aracId;
         }
 
         $stmt = $this->db->prepare($sql);

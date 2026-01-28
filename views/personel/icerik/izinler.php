@@ -5,10 +5,14 @@ use App\Helper\Helper;
 
 
 $db = (new \App\Core\Db())->getConnection();
-$izin_turleri_query = $db->query("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'izin_turu' AND silinme_tarihi IS NULL ORDER BY tur_adi ASC");
+$izin_turleri_query = $db->query("SELECT id, tur_adi, ucretli_mi FROM tanimlamalar WHERE grup = 'izin_turu' AND silinme_tarihi IS NULL ORDER BY tur_adi ASC");
 $izin_turleri = [];
+$izin_turleri_all = [];
 while ($row = $izin_turleri_query->fetch(PDO::FETCH_OBJ)) {
-    $izin_turleri[$row->id] = $row->tur_adi;
+    $izin_turleri_all[] = $row;
+    if ($row->ucretli_mi == 1) {
+        $izin_turleri[$row->id] = $row->tur_adi;
+    }
 }
 
 
@@ -32,6 +36,7 @@ $bordroya_aktar = [
 $onay_durumlari = [
     'Beklemede' => 'Beklemede',
     'KabulEdildi' => 'Kabul Edildi',
+    'Onaylandı' => 'Onaylandı',
     'Reddedildi' => 'Reddedildi'
 ];
 //Helper::dd($izin_turleri);
@@ -256,6 +261,21 @@ $onay_durumlari = [
                     <h6 class="mb-3 text-primary border-bottom pb-2">İzin Bilgileri</h6>
 
                     <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="izin_ucret_durumu" id="ucretli_izin"
+                                    value="1" checked>
+                                <label class="form-check-label" for="ucretli_izin">Ücretli İzin</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="izin_ucret_durumu" id="ucretsiz_izin"
+                                    value="0">
+                                <label class="form-check-label" for="ucretsiz_izin">Ücretsiz İzin</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
                         <div class="col-md-6">
                             <?= Form::FormSelect2("izin_tipi", $izin_turleri, 'Yıllık İzin', "İzin Türü", "archive") ?>
                         </div>
@@ -297,10 +317,12 @@ $onay_durumlari = [
                         </div>
                     </div>
 
+                    <!-- Burayı şimdilik kapatıyoruz, tekrar açma -->
+
                     <h6 class="mb-3 text-primary border-bottom pb-2">Onaylayan</h6>
 
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <!-- <div class="col-md-6">
                             <div class="input-group" style="height: 58px;">
                                 <span class="input-group-text"><i class="bx bx-search"></i></span>
                                 <div class="form-floating form-floating-custom flex-grow-1">
@@ -311,13 +333,14 @@ $onay_durumlari = [
                                 </div>
                                 <input type="hidden" id="onaylayan_id" name="onaylayan_id">
                             </div>
-                        </div>
+                        </div> -->
+                        <input type="hidden" id="onaylayan_id" name="onaylayan_id">
                         <div class="col-md-6">
                             <?= Form::FormSelect2("onay_durumu", $onay_durumlari, 'Beklemede', "Onay Durumu", "info") ?>
                         </div>
                     </div>
 
-                    <div class="row mb-3">
+                    <div class="row mb-3" id="onay_detaylari_row" style="display: none;">
                         <div class="col-md-8">
                             <?= Form::FormFloatInput("text", "onay_aciklama", "", "Onay açıklaması", "Onay Açıklama", "message-square") ?>
                         </div>
@@ -425,3 +448,49 @@ $onay_durumlari = [
         </div>
     </div>
 </div>
+
+<script>
+    var allIzinTurleri = <?= json_encode($izin_turleri_all) ?>;
+    var currentUserId = <?= json_encode($_SESSION['user_id'] ?? 0) ?>;
+
+    $(document).ready(function () {
+        $(document).off('change select2:select', '#onay_durumu').on('change select2:select', '#onay_durumu', function () {
+            var durum = $(this).val();
+            var form = $(this).closest('form');
+            var row = form.find('#onay_detaylari_row');
+            var aciklamaInput = form.find('[name="onay_aciklama"]');
+            var tarihInput = form.find('[name="onay_tarihi"]');
+            var onaylayanIdInput = form.find('#onaylayan_id');
+
+            if (durum === 'Onaylandı') {
+                row.attr('style', 'display: flex !important');
+                aciklamaInput.val('Otomatik onaylandı');
+
+                var now = new Date();
+                var year = now.getFullYear();
+                var month = String(now.getMonth() + 1).padStart(2, '0');
+                var day = String(now.getDate()).padStart(2, '0');
+                var hours = String(now.getHours()).padStart(2, '0');
+                var minutes = String(now.getMinutes()).padStart(2, '0');
+                var formattedDate = year + '-' + month + '-' + day + ' ' + hours + ':' + minutes;
+
+                tarihInput.val(formattedDate);
+                if (tarihInput[0] && tarihInput[0]._flatpickr) {
+                    tarihInput[0]._flatpickr.setDate(formattedDate);
+                }
+
+                if (typeof currentUserId !== 'undefined') {
+                    onaylayanIdInput.val(currentUserId);
+                }
+            } else {
+                row.attr('style', 'display: none !important');
+                aciklamaInput.val('');
+                tarihInput.val('');
+                if (tarihInput[0] && tarihInput[0]._flatpickr) {
+                    tarihInput[0]._flatpickr.clear();
+                }
+                onaylayanIdInput.val('');
+            }
+        });
+    });
+</script>

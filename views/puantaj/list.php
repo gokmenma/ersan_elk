@@ -30,6 +30,12 @@ foreach ($workTypes as $wt) {
     $workTypeOptions[$wt] = $wt;
 }
 
+$workResults = $Puantaj->getWorkResults();
+$workResultOptions = ['' => 'Tüm Sonuçlar'];
+foreach ($workResults as $wr) {
+    $workResultOptions[$wr] = $wr;
+}
+
 
 
 //Helper::dd($personelOptions);
@@ -49,9 +55,8 @@ foreach ($workTypes as $wt) {
                     <h4 class="card-title">Filtreleme</h4>
                     <form method="GET" action="">
                         <input type="hidden" name="p" value="puantaj/list">
-                        <div class="row">
-                            <div class="col-md-3">
-
+                        <div class="row g-3">
+                            <div class="col-md-2">
                                 <?php echo Form::FormFloatInput(
                                     type: 'text',
                                     name: 'start_date',
@@ -61,7 +66,7 @@ foreach ($workTypes as $wt) {
                                     icon: "calendar"
                                 ); ?>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <?php echo Form::FormFloatInput(
                                     type: 'text',
                                     name: 'end_date',
@@ -74,7 +79,7 @@ foreach ($workTypes as $wt) {
                             <div class="col-md-3">
                                 <?php echo Form::FormSelect2('ekip_kodu', $personelOptions, $ekipKodu, 'Personel Adı Soyadı', 'grid', 'key', '', 'form-select select2'); ?>
                             </div>
-                            <div class="col-md-3" id="workTypeFilterContainer" style="display: none;">
+                            <div class="col-md-2" id="workTypeFilterContainer" style="display: none;">
                                 <?php echo Form::FormSelect2(
                                     name: 'work_type',
                                     options: $workTypeOptions,
@@ -82,6 +87,17 @@ foreach ($workTypes as $wt) {
                                     textField: "",
                                     label: "Yapılan İş",
                                     icon: "users",
+                                    valueField: "key"
+                                ); ?>
+                            </div>
+                            <div class="col-md-3" id="workResultFilterContainer" style="display: none;">
+                                <?php echo Form::FormSelect2(
+                                    name: 'work_result',
+                                    options: $workResultOptions,
+                                    selectedValue: $_GET['work_result'] ?? '',
+                                    textField: "",
+                                    label: "İş Sonucu",
+                                    icon: "check-circle",
                                     valueField: "key"
                                 ); ?>
                             </div>
@@ -351,7 +367,8 @@ foreach ($workTypes as $wt) {
                 start_date: $('input[name="start_date"]').val(),
                 end_date: $('input[name="end_date"]').val(),
                 ekip_kodu: $('select[name="ekip_kodu"]').val(),
-                work_type: $('select[name="work_type"]').val()
+                work_type: $('select[name="work_type"]').val(),
+                work_result: $('select[name="work_result"]').val()
             };
 
             var targetBody = tabName === 'okuma' ? '#okumaBody' : '#yapilanIslerBody';
@@ -383,8 +400,10 @@ foreach ($workTypes as $wt) {
             var tabName = $(e.target).data('tab-name');
             if (tabName === 'yapilan_isler') {
                 $('#workTypeFilterContainer').show();
+                $('#workResultFilterContainer').show();
             } else {
                 $('#workTypeFilterContainer').hide();
+                $('#workResultFilterContainer').hide();
             }
             loadTabContent(tabName);
         });
@@ -440,7 +459,8 @@ foreach ($workTypes as $wt) {
                 start_date: startDate,
                 end_date: endDate,
                 personel_id: personelId,
-                work_type: workType
+                work_type: workType,
+                work_result: $('select[name="work_result"]').val()
             }, function (html) {
                 $('#statsModalBody').html(html);
             });

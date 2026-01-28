@@ -86,24 +86,7 @@ $page === 'home' ||
 <?php if ($page == 'rehber/list') { ?>
     <script type="module" src="views/rehber/js/rehber.js"></script>
 <?php } ?>
-<!-- Rehber Listesi -->
-<?php if ($page == 'evrak-takip/giden-evrak') { ?>
-    <script src="views/evrak-takip/js/giden-evrak-ekler.js"></script>
-    <script src="views/evrak-takip/js/giden-evrak.js"></script>
-    <script src="views/evrak-takip/js/ilgi.js"></script>
 
-
-<?php } ?>
-
-<!-- Gelen Evrak -->
-<?php if ($page == 'evrak-takip/gelen-evrak') { ?>
-    <script src="views/evrak-takip/js/gelen-evrak.js"></script>
-<?php } ?>
-
-<?php if ($page == 'evrak-takip/list') { ?>
-    <script src="views/evrak-takip/js/list.js"></script>
-
-<?php } ?>
 
 <!-- Kullacı Sayfası -->
 <?php if ($page == 'kullanici/list') { ?>

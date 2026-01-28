@@ -30,10 +30,18 @@ foreach ($ekip_kodlari_raw as $item) {
     $ekip_kodlari_options[$item->id] = $item->tur_adi;
 }
 
+
+
+
 $allPersonel = $PersonelModel->all();
 /**Personel id'sini şifrele */
-$allPersonel = array_map(function ($item) {
+$selectedOption = '';
+$allPersonel = array_map(function ($item) use ($id, &$selectedOption) {
+    $rawId = $item->id;
     $item->id = Security::encrypt($item->id);
+    if ($rawId == $id) {
+        $selectedOption = $item->id;
+    }
     return $item;
 }, $allPersonel);
 ?>
@@ -91,7 +99,7 @@ $allPersonel = array_map(function ($item) {
                                 <!-- /**Yeni personel ekleniyorsa gösterme */ -->
                                 <?php if ($id > 0) { ?>
                                     <div class="personel-select-container" style="min-width: 250px;">
-                                        <?php echo Form::FormSelect2('personel_select', $allPersonel, $id, 'Personel Değiştir', 'users', 'id', 'adi_soyadi', 'form-select select2'); ?>
+                                        <?php echo Form::FormSelect2('personel_select', $allPersonel, $selectedOption, 'Personel Değiştir', 'users', 'id', 'adi_soyadi', 'form-select select2'); ?>
                                     </div>
                                 <?php } ?>
 
@@ -121,11 +129,11 @@ $allPersonel = array_map(function ($item) {
                                                     href="javascript:void(0);" data-target="#home">Genel Bilgiler <i
                                                         class="fas fa-home ms-2"></i></a></li>
                                             <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'calisma' ? 'active' : ''; ?>"
-                                                    href="javascript:void(0);" data-target="#calisma">Çalışma Bilgileri <i
-                                                        class="far fa-user ms-2"></i></a></li>
+                                                    href="javascript:void(0);" data-target="#calisma">Çalışma Bilgileri
+                                                    <i class="far fa-user ms-2"></i></a></li>
                                             <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'finansal' ? 'active' : ''; ?>"
-                                                    href="javascript:void(0);" data-target="#finansal">Finansal Bilgiler <i
-                                                        class="fas fa-wallet ms-2"></i></a></li>
+                                                    href="javascript:void(0);" data-target="#finansal">Finansal Bilgiler
+                                                    <i class="fas fa-wallet ms-2"></i></a></li>
                                             <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'diger' ? 'active' : ''; ?>"
                                                     href="javascript:void(0);" data-target="#diger">Diğer Bilgiler <i
                                                         class="far fa-envelope ms-2"></i></a></li>
@@ -149,14 +157,14 @@ $allPersonel = array_map(function ($item) {
                                                         href="javascript:void(0);" data-target="#icralar">İcralar <i
                                                             class="bx bx-gavel ms-2"></i></a></li>
                                                 <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'finansal_islemler' ? 'active' : ''; ?>"
-                                                        href="javascript:void(0);" data-target="#finansal_islemler">Hesap Hareketleri <i
-                                                            class="bx bx-lira ms-2"></i></a></li>
+                                                        href="javascript:void(0);" data-target="#finansal_islemler">Hesap
+                                                        Hareketleri <i class="bx bx-lira ms-2"></i></a></li>
                                                 <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'evraklar' ? 'active' : ''; ?>"
                                                         href="javascript:void(0);" data-target="#evraklar">Evraklar <i
                                                             class="bx bx-file ms-2"></i></a></li>
                                                 <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'puantaj' ? 'active' : ''; ?>"
-                                                        href="javascript:void(0);" data-target="#puantaj">Puantaj/İş Takip <i
-                                                            class="bx bx-time-five ms-2"></i></a></li>
+                                                        href="javascript:void(0);" data-target="#puantaj">Puantaj/İş Takip
+                                                        <i class="bx bx-time-five ms-2"></i></a></li>
                                             <?php endif; ?>
                                         </ul>
                                     </div>
@@ -215,7 +223,7 @@ $allPersonel = array_map(function ($item) {
                                     class="nav-link <?php echo $activeTab === 'evraklar' ? 'active' : ''; ?>"
                                     data-bs-toggle="tab" href="#evraklar" role="tab">Evraklar</a></li>
                             <li class="nav-item"><a class="nav-link <?php echo $activeTab === 'puantaj' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#puantaj" role="tab">Puantaj</a></li>
+                                    data-bs-toggle="tab" href="#puantaj" role="tab">Puantaj/İş Takip</a></li>
                         <?php endif; ?>
                     </ul>
 
@@ -307,7 +315,7 @@ $allPersonel = array_map(function ($item) {
                             margin-bottom: 10px;
                             width: 100%;
                         }
-                        
+
                         .card-header .col-md-5 {
                             padding-top: 5px;
                         }
@@ -504,7 +512,7 @@ $allPersonel = array_map(function ($item) {
                 var targetId = event.target.getAttribute('href');
                 var targetPane = document.querySelector(targetId);
                 loadTabContent(targetPane);
-                
+
                 // Sync mobile dropdown active state
                 $('.mobile-tab-link').removeClass('active');
                 $('.mobile-tab-link[data-target="' + targetId + '"]').addClass('active');
@@ -512,7 +520,7 @@ $allPersonel = array_map(function ($item) {
         })
 
         // Mobile Tab Click Handler
-        $(document).on('click', '.mobile-tab-link', function(e) {
+        $(document).on('click', '.mobile-tab-link', function (e) {
             e.preventDefault();
             var target = $(this).data('target');
             var tabEl = document.querySelector('#desktopTabs a[href="' + target + '"]');

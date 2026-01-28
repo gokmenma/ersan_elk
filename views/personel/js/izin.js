@@ -162,7 +162,11 @@ $(document).ready(function () {
             izin_tipi: { required: true },
             baslangic_tarihi: { required: true },
             bitis_tarihi: { required: true },
-            onaylayan_id: { required: true },
+            onaylayan_id: {
+              required: function () {
+                return $('[name="onay_durumu"]').val() !== "Beklemede";
+              },
+            },
           },
           messages: {
             personel_id: { required: "Lütfen personel seçin" },
@@ -685,6 +689,31 @@ $(document).ready(function () {
       }
     }
   }
+
+  // İzin Ücret Durumu Değiştiğinde İzin Türlerini Filtrele
+  $(document).on("change", 'input[name="izin_ucret_durumu"]', function () {
+    var ucretliMi = $(this).val();
+    var select = $('select[name="izin_tipi"]');
+    var currentVal = select.val();
+
+    select.empty();
+
+    if (typeof allIzinTurleri !== "undefined") {
+      var filtered = allIzinTurleri.filter(function (item) {
+        return item.ucretli_mi == ucretliMi;
+      });
+
+      $.each(filtered, function (index, item) {
+        var option = new Option(item.tur_adi, item.id, false, false);
+        select.append(option);
+      });
+
+      // Eğer select2 ise tetikle
+      if (select.hasClass("select2-hidden-accessible")) {
+        select.trigger("change");
+      }
+    }
+  });
 
   // Event listener ekle
   $("body").on(

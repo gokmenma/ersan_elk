@@ -14,7 +14,7 @@ class PuantajModel extends Model
         parent::__construct($this->table);
     }
 
-    public function getFiltered($startDate, $endDate, $ekipKodu, $workType)
+    public function getFiltered($startDate, $endDate, $ekipKodu, $workType, $workResult = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $sql = "SELECT t.*, p.adi_soyadi as personel_adi 
@@ -39,6 +39,10 @@ class PuantajModel extends Model
             $sql .= " AND t.is_emri_tipi = ?";
             $params[] = $workType;
         }
+        if ($workResult) {
+            $sql .= " AND t.is_emri_sonucu = ?";
+            $params[] = $workResult;
+        }
 
         $sql .= " ORDER BY t.tarih DESC";
 
@@ -55,6 +59,24 @@ class PuantajModel extends Model
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $stmt = $this->db->prepare("SELECT DISTINCT is_emri_tipi FROM $this->table WHERE firma_id = ? AND is_emri_tipi IS NOT NULL AND is_emri_tipi != ''");
         $stmt->execute([$firmaId]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    public function getWorkResults($personelId = null)
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $sql = "SELECT DISTINCT is_emri_sonucu FROM $this->table WHERE firma_id = ? AND is_emri_sonucu IS NOT NULL AND is_emri_sonucu != ''";
+        $params = [$firmaId];
+
+        if ($personelId) {
+            $sql .= " AND personel_id = ?";
+            $params[] = $personelId;
+        }
+
+        $sql .= " ORDER BY is_emri_sonucu ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 }

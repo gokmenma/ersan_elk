@@ -3,6 +3,7 @@ namespace App\Model;
 
 use App\Model\Model;
 use PDO;
+use App\Helper\Helper;
 
 class PermissionsModel extends Model
 {
@@ -168,4 +169,53 @@ class PermissionsModel extends Model
         // ['izin1', 'izin2', ...] şeklinde düz bir dizi döndürür.
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
+
+
+
+    /**Personelin yetkili olduğu ilk sayfaya yönlendir */
+    public function redirectFirstPersmissionPage(): void
+    {
+        $userId = $_SESSION["user_id"] ?? null;
+        if (!$userId) {
+            return;
+        }
+
+        // Kullanıcının rolünü al
+        $stmt = $this->db->prepare("SELECT roles FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $roleIdStr = $stmt->fetchColumn();
+
+        if (empty($roleIdStr)) {
+            return;
+        }
+
+        $roleIds = explode(',', $roleIdStr);
+        $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
+
+        // Kullanıcının yetkili olduğu ve menüde karşılığı olan ilk sayfayı bul
+        $sql = "SELECT m.menu_link 
+                FROM user_role_permissions urp
+                JOIN permissions p ON urp.permission_id = p.id
+                JOIN menus m ON m.menu_name = p.name
+                WHERE urp.role_id IN ($placeholders) 
+                AND m.menu_link IS NOT NULL 
+                AND m.menu_link != ''
+                LIMIT 1";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($roleIds);
+        $link = $stmt->fetchColumn();
+
+        if ($link) {
+            $url = "index?p=" . $link;
+            if (!headers_sent()) {
+                header("Location: " . $url);
+                exit;
+            } else {
+                echo '<script>window.location.href = "' . $url . '";</script>';
+                exit;
+            }
+        }
+    }
+
 }

@@ -229,19 +229,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             case 'yakit-listesi':
-                $arac_id = isset($_POST['arac_id']) ? intval($_POST['arac_id']) : null;
-                $baslangic = $_POST['baslangic'] ?? null;
-                $bitis = $_POST['bitis'] ?? null;
 
-                if ($baslangic && $bitis) {
-                    $kayitlar = $Yakit->getByDateRange($baslangic, $bitis, $arac_id);
-                } elseif ($arac_id) {
-                    $kayitlar = $Yakit->getByArac($arac_id);
-                } else {
-                    $kayitlar = $Yakit->all();
+                $arac_id = isset($_POST['arac_id']) && $_POST['arac_id'] !== '' ? intval($_POST['arac_id']) : null;
+                $baslangic = null;
+                if (!empty($_POST['baslangic'])) {
+                    $d = DateTime::createFromFormat('d.m.Y', $_POST['baslangic']);
+                    if ($d)
+                        $baslangic = $d->format('Y-m-d');
+                }
+                $bitis = null;
+                if (!empty($_POST['bitis'])) {
+                    $d = DateTime::createFromFormat('d.m.Y', $_POST['bitis']);
+                    if ($d)
+                        $bitis = $d->format('Y-m-d');
                 }
 
-                echo json_encode(['status' => 'success', 'data' => $kayitlar]);
+                if ($baslangic || $bitis) {
+                    // Eğer sadece biri seçildiyse diğerini varsayılan yap
+                    if (!$baslangic)
+                        $baslangic = date('Y-m-01');
+                    if (!$bitis)
+                        $bitis = date('Y-m-t');
+
+                    $kayitlar = $Yakit->getByDateRange($baslangic, $bitis, $arac_id);
+                    $stats = $Yakit->getStats(null, null, $baslangic, $bitis, $arac_id);
+                } elseif ($arac_id) {
+                    $kayitlar = $Yakit->getByArac($arac_id);
+                    $stats = $Yakit->getStats(null, null, null, null, $arac_id);
+                } else {
+                    $kayitlar = $Yakit->all();
+                    $stats = $Yakit->getStats(date('Y'), date('m')); // Varsayılan aylık
+                }
+
+
+
+
+
+
+
+
+                echo json_encode(['status' => 'success', 'data' => $kayitlar, 'stats' => $stats]);
                 break;
 
             case 'yakit-detay':
@@ -309,15 +336,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             case 'km-listesi':
-                $arac_id = isset($_POST['arac_id']) ? intval($_POST['arac_id']) : null;
-
-                if ($arac_id) {
-                    $kayitlar = $Km->getByArac($arac_id);
-                } else {
-                    $kayitlar = $Km->all();
+                $arac_id = isset($_POST['arac_id']) && $_POST['arac_id'] !== '' ? intval($_POST['arac_id']) : null;
+                $baslangic = null;
+                if (!empty($_POST['baslangic'])) {
+                    $d = DateTime::createFromFormat('d.m.Y', $_POST['baslangic']);
+                    if ($d)
+                        $baslangic = $d->format('Y-m-d');
+                }
+                $bitis = null;
+                if (!empty($_POST['bitis'])) {
+                    $d = DateTime::createFromFormat('d.m.Y', $_POST['bitis']);
+                    if ($d)
+                        $bitis = $d->format('Y-m-d');
                 }
 
-                echo json_encode(['status' => 'success', 'data' => $kayitlar]);
+                if ($baslangic || $bitis) {
+                    // Eğer sadece biri seçildiyse diğerini varsayılan yap
+                    if (!$baslangic)
+                        $baslangic = date('Y-m-01');
+                    if (!$bitis)
+                        $bitis = date('Y-m-t');
+
+                    $kayitlar = $Km->getByDateRange($baslangic, $bitis, $arac_id);
+                    $stats = $Km->getStats(null, null, $baslangic, $bitis, $arac_id);
+                } elseif ($arac_id) {
+                    $kayitlar = $Km->getByArac($arac_id);
+                    $stats = $Km->getStats(null, null, null, null, $arac_id);
+                } else {
+                    $kayitlar = $Km->all();
+                    $stats = $Km->getStats(date('Y'), date('m')); // Varsayılan aylık
+                }
+
+
+
+
+
+
+                echo json_encode(['status' => 'success', 'data' => $kayitlar, 'stats' => $stats]);
                 break;
 
             // =============================================

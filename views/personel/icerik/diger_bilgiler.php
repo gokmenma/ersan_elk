@@ -6,21 +6,29 @@ use App\Helper\Form;
     <!-- Sol Kolon: Referans -->
     <div class="col-md-6">
 
-    <div class="card border mt-3">
+        <div class="card border mt-3">
             <div class="card-header bg-transparent border-bottom">
                 <h5 class="card-title mb-0 text-primary"><i class="bx bx-key me-2"></i>Giriş Bilgileri</h5>
             </div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-12">
-                        <?php echo Form::FormFloatInput("password", "sifre", "", "Şifre (Değiştirmek için doldurun)", "Şifre", "lock"); ?>
-                   
-                   <span class="text-muted gap-2">Personelin programa giriş için kullandığı şifreyi sıfırlayabilirsiniz</span>
+                        <div class="position-relative">
+                            <?php echo Form::FormFloatInput("password", "sifre", "", "Şifre (Değiştirmek için doldurun)", "Şifre", "lock"); ?>
+                            <button type="button"
+                                class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted password-toggle"
+                                style="z-index: 10; margin-right: 10px;">
+                                <i class="bx bx-show fs-5"></i>
+                            </button>
+                        </div>
+
+                        <span class="text-muted gap-2">Personelin programa giriş için kullandığı şifreyi
+                            sıfırlayabilirsiniz</span>
                     </div>
                 </div>
             </div>
         </div>
-        
+
     </div>
 
     <!-- Sağ Kolon: Acil Durum -->
@@ -29,7 +37,7 @@ use App\Helper\Form;
 
 
 
-             <div class="card-header bg-transparent border-bottom">
+            <div class="card-header bg-transparent border-bottom">
                 <h5 class="card-title mb-0 text-primary"><i class="bx bx-group me-2"></i>Referans Bilgileri</h5>
             </div>
             <div class="card-body">
@@ -62,13 +70,31 @@ use App\Helper\Form;
                     </div>
                 </div>
                 <div class="row">
-                     <div class="col-md-12 mb-2">
+                    <div class="col-md-12 mb-2">
                         <?php echo Form::FormFloatInput("text", "acil_kisi_yakinlik", $personel->acil_kisi_yakinlik ?? "", "Yakınlık Derecesi", "Yakınlık Derecesi", "users"); ?>
                     </div>
                 </div>
             </div>
         </div>
 
-        
+
     </div>
 </div>
+
+<script>
+    $(document).ready(function () {
+        $(document).on('click', '.password-toggle', function () {
+            const btn = $(this);
+            const input = btn.siblings('.form-floating-custom').find('input');
+            const icon = btn.find('i');
+
+            if (input.attr('type') === 'password') {
+                input.attr('type', 'text');
+                icon.removeClass('bx-show').addClass('bx-hide');
+            } else {
+                input.attr('type', 'password');
+                icon.removeClass('bx-hide').addClass('bx-show');
+            }
+        });
+    });
+</script>

@@ -404,7 +404,7 @@ const AracTakip = {
     });
   },
 
-  yakitListesiYukle: function (aracId = null) {
+  yakitListesiYukle: function (aracId = null, baslangic = null, bitis = null) {
     const self = this;
 
     // Mevcut tabloyu temizle
@@ -418,6 +418,8 @@ const AracTakip = {
 
     const data = { action: "yakit-listesi" };
     if (aracId) data.arac_id = aracId;
+    if (baslangic) data.baslangic = baslangic;
+    if (bitis) data.bitis = bitis;
 
     $.post(this.apiUrl, data, function (response) {
       if (response.status === "success") {
@@ -441,6 +443,20 @@ const AracTakip = {
         }
         tbody.html(html);
         self.initDataTable("#yakitTable");
+
+        // İstatistikleri güncelle
+        if (response.stats) {
+          $("#yakit-toplam-litre").text(
+            self.formatNumber(response.stats.toplam_litre) + " L",
+          );
+          $("#yakit-toplam-maliyet").text(
+            self.formatMoney(response.stats.toplam_tutar),
+          );
+          $("#yakit-ortalama-fiyat").text(
+            self.formatMoney(response.stats.ortalama_birim_fiyat),
+          );
+          $("#yakit-kayit-sayisi").text(response.stats.toplam_kayit);
+        }
       } else {
         const colCount = $("#yakitTable").find("thead th").length || 1;
         tbody.html(
@@ -528,7 +544,7 @@ const AracTakip = {
     });
   },
 
-  kmListesiYukle: function (aracId = null) {
+  kmListesiYukle: function (aracId = null, baslangic = null, bitis = null) {
     const self = this;
 
     // Mevcut tabloyu temizle
@@ -542,6 +558,8 @@ const AracTakip = {
 
     const data = { action: "km-listesi" };
     if (aracId) data.arac_id = aracId;
+    if (baslangic) data.baslangic = baslangic;
+    if (bitis) data.bitis = bitis;
 
     $.post(this.apiUrl, data, function (response) {
       if (response.status === "success") {
@@ -563,6 +581,19 @@ const AracTakip = {
         }
         tbody.html(html);
         self.initDataTable("#kmTable");
+
+        // İstatistikleri güncelle
+        if (response.stats) {
+          $("#km-toplam-yol").text(
+            self.formatNumber(response.stats.toplam_km) + " km",
+          );
+          $("#km-ortalama-yol").text(
+            self.formatNumber(
+              parseFloat(response.stats.ortalama_gunluk_km).toFixed(1),
+            ) + " km",
+          );
+          $("#km-kayit-sayisi").text(response.stats.toplam_kayit);
+        }
       } else {
         const colCount = $("#kmTable").find("thead th").length || 1;
         tbody.html(
@@ -899,13 +930,60 @@ $(document).ready(function () {
   $(document).on("click", "#btnRaporYukle", function (e) {
     e.preventDefault();
     AracTakip.aylikRaporYukle();
-    const miktar = parseFloat($("#yakit_miktari").val()) || 0;
-    const tutar = parseFloat($("#toplam_tutar").val()) || 0;
-    if (miktar > 0 && tutar > 0) {
-      const birimFiyat = (tutar / miktar).toFixed(2);
-      $("#birim_fiyat").val(birimFiyat);
-    }
   });
+
+  // Yakıt Filtrele
+  $(document).on("click", "#btnYakitFiltrele", function (e) {
+    e.preventDefault();
+    const baslangic = $("#yakit-filtre-baslangic").val();
+    const bitis = $("#yakit-filtre-bitis").val();
+    const aracId = $("#yakit-filtre-arac").val();
+    AracTakip.yakitListesiYukle(aracId, baslangic, bitis);
+  });
+
+  // KM Filtrele
+  $(document).on("click", "#btnKmFiltrele", function (e) {
+    e.preventDefault();
+    const baslangic = $("#km-filtre-baslangic").val();
+    const bitis = $("#km-filtre-bitis").val();
+    const aracId = $("#km-filtre-arac").val();
+    AracTakip.kmListesiYukle(aracId, baslangic, bitis);
+  });
+
+  // İstatistik Modal Yükle
+  $(document).on(
+    "click",
+    "#btnYakitIstatistik, #btnKmIstatistik",
+    function (e) {
+      const type = $(this).data("type");
+      const baslangic = $(`#${type}-filtre-baslangic`).val();
+      const bitis = $(`#${type}-filtre-bitis`).val();
+      const aracId = $(`#${type}-filtre-arac`).val();
+
+      $("#istatistikModalBody").html(`
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2">Yükleniyor...</p>
+            </div>
+        `);
+
+      $.get(
+        `views/arac-takip/modal_arac_${type}_istatistik.php`,
+        {
+          baslangic: baslangic,
+          bitis: bitis,
+          arac_id: aracId,
+        },
+        function (html) {
+          $("#istatistikModalBody").html(html);
+        },
+      ).fail(function () {
+        $("#istatistikModalBody").html(
+          '<div class="alert alert-danger">İstatistikler yüklenirken bir hata oluştu.</div>',
+        );
+      });
+    },
+  );
 
   // Select2 başlat
   if ($.fn.select2) {
@@ -943,9 +1021,15 @@ $(document).ready(function () {
     if (target === "#zimmetContent") {
       AracTakip.zimmetListesiYukle();
     } else if (target === "#yakitContent") {
-      AracTakip.yakitListesiYukle();
+      const baslangic = $("#yakit-filtre-baslangic").val();
+      const bitis = $("#yakit-filtre-bitis").val();
+      const aracId = $("#yakit-filtre-arac").val();
+      AracTakip.yakitListesiYukle(aracId, baslangic, bitis);
     } else if (target === "#kmContent") {
-      AracTakip.kmListesiYukle();
+      const baslangic = $("#km-filtre-baslangic").val();
+      const bitis = $("#km-filtre-bitis").val();
+      const aracId = $("#km-filtre-arac").val();
+      AracTakip.kmListesiYukle(aracId, baslangic, bitis);
     } else if (target === "#raporContent") {
       AracTakip.aylikRaporYukle();
     } else if (target === "#aracContent") {
@@ -963,9 +1047,15 @@ $(document).ready(function () {
     if (activeTarget === "#zimmetContent") {
       AracTakip.zimmetListesiYukle();
     } else if (activeTarget === "#yakitContent") {
-      AracTakip.yakitListesiYukle();
+      const baslangic = $("#yakit-filtre-baslangic").val();
+      const bitis = $("#yakit-filtre-bitis").val();
+      const aracId = $("#yakit-filtre-arac").val();
+      AracTakip.yakitListesiYukle(aracId, baslangic, bitis);
     } else if (activeTarget === "#kmContent") {
-      AracTakip.kmListesiYukle();
+      const baslangic = $("#km-filtre-baslangic").val();
+      const bitis = $("#km-filtre-bitis").val();
+      const aracId = $("#km-filtre-arac").val();
+      AracTakip.kmListesiYukle(aracId, baslangic, bitis);
     } else if (activeTarget === "#raporContent") {
       AracTakip.aylikRaporYukle();
     }

@@ -95,6 +95,52 @@ class AracYakitModel extends Model
     }
 
     /**
+     * Tarih aralığına göre özet (araç bazlı)
+     */
+    public function getRangeOzet($baslangic, $bitis, $aracId = null)
+    {
+        $sql = "
+            SELECT 
+                a.id as arac_id,
+                a.plaka,
+                a.marka,
+                a.model,
+                COUNT(y.id) as kayit_sayisi,
+                COALESCE(SUM(y.yakit_miktari), 0) as toplam_litre,
+                COALESCE(SUM(y.toplam_tutar), 0) as toplam_tutar,
+                COALESCE(MAX(y.km) - MIN(y.onceki_km), 0) as toplam_km,
+                CASE 
+                    WHEN SUM(y.yakit_miktari) > 0 AND (MAX(y.km) - MIN(y.onceki_km)) > 0
+                    THEN ROUND((SUM(y.yakit_miktari) / (MAX(y.km) - MIN(y.onceki_km))) * 100, 2)
+                    ELSE 0
+                END as ortalama_tuketim
+            FROM araclar a
+            LEFT JOIN {$this->table} y ON a.id = y.arac_id 
+                AND y.tarih BETWEEN :baslangic AND :bitis
+                AND y.silinme_tarihi IS NULL
+            WHERE a.firma_id = :firma_id
+            AND a.silinme_tarihi IS NULL
+        ";
+
+        $params = [
+            'firma_id' => $_SESSION['firma_id'],
+            'baslangic' => $baslangic,
+            'bitis' => $bitis
+        ];
+
+        if ($aracId) {
+            $sql .= " AND a.id = :arac_id";
+            $params['arac_id'] = $aracId;
+        }
+
+        $sql .= " GROUP BY a.id, a.plaka, a.marka, a.model HAVING kayit_sayisi > 0 ORDER BY a.plaka";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
      * Aylık özet (araç bazlı)
      */
     public function getAylikOzet($yil, $ay, $aracId = null)
@@ -183,7 +229,7 @@ class AracYakitModel extends Model
     /**
      * Genel istatistikler
      */
-    public function getStats($yil = null, $ay = null)
+    public function getStats($yil = null, $ay = null, $baslangic = null, $bitis = null, $aracId = null)
     {
         $sql = "
             SELECT 
@@ -206,6 +252,17 @@ class AracYakitModel extends Model
         if ($ay) {
             $sql .= " AND MONTH(tarih) = :ay";
             $params['ay'] = $ay;
+        }
+
+        if ($baslangic && $bitis) {
+            $sql .= " AND tarih BETWEEN :baslangic AND :bitis";
+            $params['baslangic'] = $baslangic;
+            $params['bitis'] = $bitis;
+        }
+
+        if ($aracId) {
+            $sql .= " AND arac_id = :arac_id";
+            $params['arac_id'] = $aracId;
         }
 
         $stmt = $this->db->prepare($sql);

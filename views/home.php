@@ -8,7 +8,9 @@ use App\Model\AvansModel;
 use App\Model\PersonelIzinleriModel;
 use App\Model\TalepModel;
 use App\Model\SystemLogModel;
-
+use App\Service\Gate;
+use App\Helper\Alert;
+use App\Model\PermissionsModel;
 
 $personelModel = new PersonelModel();
 $avansModel = new AvansModel();
@@ -16,6 +18,8 @@ $izinModel = new PersonelIzinleriModel();
 $talepModel = new TalepModel();
 $systemLogModel = new SystemLogModel();
 
+if(Gate::allows("ana_sayfa")) {
+    
 // Sistem Logları
 $recent_logs = $systemLogModel->getRecentLogs(10);
 
@@ -1302,3 +1306,10 @@ $render_order = $saved_order ?: array_keys($widgets);
         });
     });
 </script>
+<?php
+}else{
+    //Alert::danger("Bu sayfaya erişim yetkiniz yok!");
+    /**Personelin yetkili olduğu ilk sayfaya yönlendir */
+    $permissionModel = new PermissionsModel();
+    $permissionModel->redirectFirstPersmissionPage();
+}

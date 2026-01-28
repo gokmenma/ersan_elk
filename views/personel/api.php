@@ -669,6 +669,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
+    } elseif ($action == 'puantaj-manuel-kaydet') {
+        try {
+            $data = $_POST;
+            $PuantajModel = new \App\Model\PuantajModel();
+
+            $saveData = [
+                'firma_id' => $_SESSION['firma_id'],
+                'personel_id' => $data['personel_id'],
+                'ekip_kodu' => $data['ekip_kodu'],
+                'tarih' => Date::Ymd($data['tarih']),
+                'is_emri_tipi' => $data['is_emri_tipi'],
+                'is_emri_sonucu' => $data['is_emri_sonucu'],
+                'sonuclanmis' => $data['sonuclanmis'],
+                'acik_olanlar' => $data['acik_olanlar'],
+                'aciklama' => ($data['aciklama'] ? $data['aciklama'] . ' (manuel giriş yapıldı)' : 'manuel giriş yapıldı'),
+                'islem_id' => md5(date('Y-m-d H:i:s') . '|' . $data['personel_id'] . '|' . uniqid())
+            ];
+
+            $PuantajModel->saveWithAttr($saveData);
+            echo json_encode(['status' => 'success', 'message' => 'İş kaydı başarıyla eklendi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Geçersiz işlem.']);
     }
@@ -681,21 +704,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
     if ($action == 'export-puantaj') {
         try {
             $id = $_GET['id'] ?? 0;
+            $type = $_GET['type'] ?? 'puantaj';
+            $startDate = $_GET['start_date'] ?? '';
+            $endDate = $_GET['end_date'] ?? '';
+
             $personel = $Personel->find($id);
             if (!$personel) {
                 throw new Exception("Personel bulunamadı.");
             }
 
-            $ekip_no = $personel->ekip_no ?? '';
-            $ise_giris = $personel->ise_giris_tarihi ?? '';
-            $isten_cikis = $personel->isten_cikis_tarihi ?? date('Y-m-d');
-
-            $sql = "SELECT * FROM yapilan_isler WHERE ekip_kodu = ? AND tarih >= ? AND tarih <= ? ORDER BY tarih DESC";
-            $stmt = $Personel->getDb()->prepare($sql);
-            $stmt->execute([$ekip_no, $ise_giris, $isten_cikis]);
-            $isler = $stmt->fetchAll(PDO::FETCH_OBJ);
-
-            // Excel oluşturma
             $vendorAutoload = dirname(__DIR__, 2) . '/vendor/autoload.php';
             if (file_exists($vendorAutoload)) {
                 require_once $vendorAutoload;
@@ -706,24 +723,53 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
             $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
 
-            // Başlıklar
-            $headers = ['Tarih', 'İş Emri No', 'İş Tipi', 'Açıklama', 'Süre/Miktar', 'Durum'];
-            $col = 'A';
-            foreach ($headers as $header) {
-                $sheet->setCellValue($col . '1', $header);
-                $col++;
-            }
+            if ($type === 'okuma') {
+                $EndeksOkuma = new \App\Model\EndeksOkumaModel();
+                $records = $EndeksOkuma->getFiltered($startDate, $endDate, $id);
+                
+                $headers = ['Bölgesi', 'Personel Adı', 'Sarfiyat', 'Ort. Sarfiyat', 'Tahakkuk', 'Ort. Tahakkuk', 'Okunan Gün', 'Okunan Abone', 'Ort. Abone', 'Perf. (%)', 'Tarih'];
+                $col = 'A';
+                foreach ($headers as $header) {
+                    $sheet->setCellValue($col . '1', $header);
+                    $col++;
+                }
 
-            // Veriler
-            $row = 2;
-            foreach ($isler as $is) {
-                $sheet->setCellValue('A' . $row, $is->tarih);
-                $sheet->setCellValue('B' . $row, $is->is_emri_no ?? '-');
-                $sheet->setCellValue('C' . $row, $is->is_emri_tipi ?? '-');
-                $sheet->setCellValue('D' . $row, $is->aciklama ?? '-');
-                $sheet->setCellValue('E' . $row, $is->miktar ?? '-');
-                $sheet->setCellValue('F' . $row, $is->onay_durumu ?? 'Beklemede');
-                $row++;
+                $row = 2;
+                foreach ($records as $r) {
+                    $sheet->setCellValue('A' . $row, $r->bolge);
+                    $sheet->setCellValue('B' . $row, $r->personel_adi ?: $r->kullanici_adi);
+                    $sheet->setCellValue('C' . $row, $r->sarfiyat);
+                    $sheet->setCellValue('D' . $row, $r->ort_sarfiyat_gunluk);
+                    $sheet->setCellValue('E' . $row, $r->tahakkuk);
+                    $sheet->setCellValue('F' . $row, $r->ort_tahakkuk_gunluk);
+                    $sheet->setCellValue('G' . $row, $r->okunan_gun_sayisi);
+                    $sheet->setCellValue('H' . $row, $r->okunan_abone_sayisi);
+                    $sheet->setCellValue('I' . $row, $r->ort_okunan_abone_sayisi_gunluk);
+                    $sheet->setCellValue('J' . $row, $r->okuma_performansi);
+                    $sheet->setCellValue('K' . $row, $r->tarih);
+                    $row++;
+                }
+            } else {
+                $Puantaj = new \App\Model\PuantajModel();
+                $records = $Puantaj->getFiltered($startDate, $endDate, $id, '', '');
+                
+                $headers = ['Tarih', 'İş Tipi', 'İş Emri Sonucu', 'Sonuçlanan', 'Açık Olanlar', 'Açıklama'];
+                $col = 'A';
+                foreach ($headers as $header) {
+                    $sheet->setCellValue($col . '1', $header);
+                    $col++;
+                }
+
+                $row = 2;
+                foreach ($records as $r) {
+                    $sheet->setCellValue('A' . $row, $r->tarih);
+                    $sheet->setCellValue('B' . $row, $r->is_emri_tipi ?? '-');
+                    $sheet->setCellValue('C' . $row, $r->is_emri_sonucu ?? '-');
+                    $sheet->setCellValue('D' . $row, $r->sonuclanmis ?? '0');
+                    $sheet->setCellValue('E' . $row, $r->acik_olanlar ?? '0');
+                    $sheet->setCellValue('F' . $row, $r->aciklama ?? '-');
+                    $row++;
+                }
             }
 
             // Basit slugify (Helper::slugify yoksa)

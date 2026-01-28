@@ -83,17 +83,21 @@ $.validator.setDefaults({
   },
 });
 
-$.validator.addMethod("minAge", function(value, element, min) {
-var today = new Date();
-var birthDate = new Date(value);
-var age = today.getFullYear() - birthDate.getFullYear();
+$.validator.addMethod(
+  "minAge",
+  function (value, element, min) {
+    var today = new Date();
+    var birthDate = new Date(value);
+    var age = today.getFullYear() - birthDate.getFullYear();
 
-if (age < min+1) {
-return false;
-}
+    if (age < min + 1) {
+      return false;
+    }
 
-return true;
-}, "Personel 15 yaşından büyük olmalıdır!")
+    return true;
+  },
+  "Personel 15 yaşından büyük olmalıdır!",
+);
 
 // $(".select2").on("change", function () {
 //   $(this).valid(); // Sadece bu alanı tekrar valide eder
@@ -135,6 +139,11 @@ $(document).ready(function () {
     function (e) {
       var target =
         $(e.target).attr("href") || $(e.target).attr("data-bs-target");
+      // Eğer data-no-url-update attribute varsa URL güncelleme
+      if ($(e.target).data("no-url-update")) {
+        return;
+      }
+
       if (target && target.startsWith("#")) {
         var tabName = target.substring(1).replace("Content", ""); // 'aracContent' -> 'arac'
 

@@ -429,6 +429,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $endDate = $_GET['end_date'] ?? '';
     $ekipKodu = $_GET['ekip_kodu'] ?? '';
     $workType = $_GET['work_type'] ?? '';
+    $workResult = $_GET['work_result'] ?? '';
 
     ob_start();
     if ($tab === 'okuma') {
@@ -451,7 +452,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         <?php endforeach;
     } else {
         $Puantaj = new PuantajModel();
-        $records = $Puantaj->getFiltered($startDate, $endDate, $ekipKodu, $workType);
+        $records = $Puantaj->getFiltered($startDate, $endDate, $ekipKodu, $workType, $workResult);
         foreach ($records as $record): ?>
             <tr>
                 <td><?= $record->firma ?></td>

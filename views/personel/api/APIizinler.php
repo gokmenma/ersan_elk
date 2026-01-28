@@ -56,8 +56,8 @@ try {
             'bitis_tarihi' => Date::Ymd($bitis_tarihi),
             'toplam_gun' => $sure,
             'yillik_izne_etki' => $yillik_izne_etki,
-            'aciklama' => $aciklama
-            // 'durum' alanı veritabanında varsa eklenebilir, şimdilik onay tablosundan yönetiliyor varsayıyoruz
+            'aciklama' => $aciklama,
+            'onay_durumu' => $onay_durumu
         ];
 
         // İzin Kaydet
