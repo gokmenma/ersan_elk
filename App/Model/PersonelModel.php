@@ -100,10 +100,11 @@ class PersonelModel extends Model
                 2 => 'p.tc_kimlik_no',
                 3 => 'p.adi_soyadi',
                 4 => 'p.ise_giris_tarihi',
-                5 => 'p.cep_telefonu',
-                6 => 'p.email_adresi',
-                7 => 'p.gorev',
-                9 => 'p.aktif_mi'
+                5 => 'p.isten_cikis_tarihi',
+                6 => 'p.cep_telefonu',
+                7 => 'p.email_adresi',
+                8 => 'p.gorev',
+                10 => 'p.aktif_mi'
             ];
 
             foreach ($colSearches as $idx => $val) {
@@ -111,13 +112,13 @@ class PersonelModel extends Model
                     $field = $colMap[$idx];
                     $paramName = "col_" . $idx;
 
-                    if ($idx == 9) { // Durum (Aktif/Pasif)
+                    if ($idx == 10) { // Durum (Aktif/Pasif)
                         if (stripos('Aktif', $val) !== false) {
                             $sql .= " AND p.aktif_mi = 1";
                         } elseif (stripos('Pasif', $val) !== false) {
                             $sql .= " AND p.aktif_mi = 0";
                         }
-                    } elseif ($idx == 4) { // Tarih
+                    } elseif ($idx == 4 || $idx == 5) { // Tarih
                         $val = "%$val%";
                         $sql .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramName";
                         $params[$paramName] = $val;
@@ -229,10 +230,11 @@ class PersonelModel extends Model
             2 => 'p.tc_kimlik_no',
             3 => 'p.adi_soyadi',
             4 => 'p.ise_giris_tarihi',
-            5 => 'p.cep_telefonu',
-            6 => 'p.email_adresi',
-            7 => 'p.gorev',
-            9 => 'p.aktif_mi'
+            5 => 'p.isten_cikis_tarihi',
+            6 => 'p.cep_telefonu',
+            7 => 'p.email_adresi',
+            8 => 'p.gorev',
+            10 => 'p.aktif_mi'
         ];
 
         if (isset($request['columns'])) {
@@ -242,13 +244,13 @@ class PersonelModel extends Model
                     $val = "%" . $column['search']['value'] . "%";
                     $paramName = "col_" . $i;
 
-                    if ($i == 9) { // Durum
+                    if ($i == 10) { // Durum
                         if (stripos('Aktif', $column['search']['value']) !== false) {
                             $filterSql .= " AND p.aktif_mi = 1";
                         } elseif (stripos('Pasif', $column['search']['value']) !== false) {
                             $filterSql .= " AND p.aktif_mi = 0";
                         }
-                    } elseif ($i == 4) { // Tarih
+                    } elseif ($i == 4 || $i == 5) { // Tarih
                         $filterSql .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramName";
                         $params[$paramName] = $val;
                     } else {

@@ -43,6 +43,7 @@ $(document).ready(function () {
         },
       },
       { data: "ise_giris_tarihi" },
+      { data: "isten_cikis_tarihi" },
       {
         data: "cep_telefonu",
         render: function (data) {

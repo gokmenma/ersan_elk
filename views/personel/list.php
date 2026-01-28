@@ -135,6 +135,7 @@ if (Gate::canWithMessage("personel_listesi")) {
                                     <th>TC KİMLİK NO</th>
                                     <th>ADI SOYADI</th>
                                     <th>İŞE BAŞLAMA TARİHİ</th>
+                                    <th>İŞTEN AYRILMA TARİHİ</th>
                                     <th>CEP TELEFONU</th>
                                     <th>EMAIL</th>
                                     <th>GÖREV</th>
