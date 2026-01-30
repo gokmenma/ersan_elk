@@ -78,14 +78,34 @@ $zimmetStats = $Zimmet->getStats();
 
                         <!-- Butonlar -->
                         <div class="d-flex flex-wrap gap-2 ms-auto">
-                            <button type="button" class="btn btn-success waves-effect waves-light"
-                                data-bs-toggle="modal" data-bs-target="#demirbasModal">
+                            <button type="button" id="btnYeniDemirbas" class="btn btn-success waves-effect waves-light"
+                                data-bs-toggle="modal" data-bs-target="#demirbasModal"
+                                style="<?php echo $activeTab !== 'demirbas' ? 'display: none;' : ''; ?>">
                                 <i class="bx bx-plus me-1"></i> Yeni Demirbaş
                             </button>
-                            <button type="button" class="btn btn-warning waves-effect waves-light"
-                                data-bs-toggle="modal" data-bs-target="#zimmetModal">
+                            <button type="button" id="btnZimmetVer" class="btn btn-warning waves-effect waves-light"
+                                data-bs-toggle="modal" data-bs-target="#zimmetModal"
+                                style="<?php echo $activeTab !== 'zimmet' ? 'display: none;' : ''; ?>">
                                 <i class="bx bx-transfer me-1"></i> Zimmet Ver
                             </button>
+
+                            <div class="dropdown">
+                                <button class="btn btn-secondary dropdown-toggle waves-effect waves-light" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bx bx-cog me-1"></i> İşlemler
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <a class="dropdown-item" href="javascript:void(0);" id="exportExcel">
+                                            <i class="bx bx-export me-2"></i> Excele Aktar
+                                        </a>
+                                    </li>
+                                    <li id="importExcelLi" style="<?php echo $activeTab !== 'demirbas' ? 'display: none;' : ''; ?>">
+                                        <a class="dropdown-item" href="javascript:void(0);" id="importExcel">
+                                            <i class="bx bx-import me-2"></i> Excelden Yükle
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -114,65 +134,65 @@ $zimmetStats = $Zimmet->getStats();
                                     </thead>
                                     <tbody>
                                         <?php if (!empty($demirbaslar)): ?>
-                                                <?php
-                                                $i = 0;
-                                                foreach ($demirbaslar as $demirbas) {
-                                                    $i++;
-                                                    $enc_id = Security::encrypt($demirbas->id);
-                                                    $miktar = $demirbas->miktar ?? 1;
-                                                    $kalan = $demirbas->kalan_miktar ?? 1;
+                                                    <?php
+                                                    $i = 0;
+                                                    foreach ($demirbaslar as $demirbas) {
+                                                        $i++;
+                                                        $enc_id = Security::encrypt($demirbas->id);
+                                                        $miktar = $demirbas->miktar ?? 1;
+                                                        $kalan = $demirbas->kalan_miktar ?? 1;
 
-                                                    // Stok durumu badge
-                                                    if ($kalan == 0) {
-                                                        $stokBadge = '<span class="badge bg-danger">Stok Yok</span>';
-                                                    } elseif ($kalan < $miktar) {
-                                                        $stokBadge = '<span class="badge bg-warning">' . $kalan . '/' . $miktar . '</span>';
-                                                    } else {
-                                                        $stokBadge = '<span class="badge bg-success">' . $kalan . '/' . $miktar . '</span>';
-                                                    }
-                                                    ?>
-                                                        <tr data-id="<?php echo $enc_id ?>">
-                                                            <td class="text-center"><?php echo $i ?></td>
-                                                            <td class="text-center"><?php echo $demirbas->demirbas_no ?? '-' ?></td>
-                                                            <td>
-                                                                <span class="badge bg-soft-primary text-primary">
-                                                                    <?php echo $demirbas->kategori_adi ?? 'Kategorisiz' ?>
-                                                                </span>
-                                                            </td>
-                                                            <td>
-                                                                <a href="#" data-id="<?php echo $enc_id; ?>"
-                                                                    class="text-dark duzenle fw-medium">
-                                                                    <?php echo $demirbas->demirbas_adi ?>
-                                                                </a>
-                                                            </td>
-                                                            <td><?php echo ($demirbas->marka ?? '-') . ' ' . ($demirbas->model ?? '') ?>
-                                                            </td>
-                                                            <td class="text-center"><?php echo $stokBadge ?></td>
-                                                            <td class="text-end">
-                                                                <?php echo ($demirbas->edinme_tutari ?? 0) ?>
-                                                            </td>
-                                                            <td><?php echo $demirbas->edinme_tarihi ?? '-' ?></td>
-                                                            <td class="text-left text-nowrap">
-                                                                <?php if ($kalan > 0): ?>
-                                                                        <button type="button" class="btn btn-sm btn-warning zimmet-ver"
-                                                                            data-id="<?php echo $enc_id; ?>"
-                                                                            data-name="<?php echo $demirbas->demirbas_adi; ?>"
-                                                                            data-kalan="<?php echo $kalan; ?>" title="Zimmet Ver">
-                                                                            <i class="bx bx-transfer"></i>
+                                                        // Stok durumu badge
+                                                        if ($kalan == 0) {
+                                                            $stokBadge = '<span class="badge bg-danger">Stok Yok</span>';
+                                                        } elseif ($kalan < $miktar) {
+                                                            $stokBadge = '<span class="badge bg-warning">' . $kalan . '/' . $miktar . '</span>';
+                                                        } else {
+                                                            $stokBadge = '<span class="badge bg-success">' . $kalan . '/' . $miktar . '</span>';
+                                                        }
+                                                        ?>
+                                                                <tr data-id="<?php echo $enc_id ?>">
+                                                                    <td class="text-center"><?php echo $i ?></td>
+                                                                    <td class="text-center"><?php echo $demirbas->demirbas_no ?? '-' ?></td>
+                                                                    <td>
+                                                                        <span class="badge bg-soft-primary text-primary">
+                                                                            <?php echo $demirbas->kategori_adi ?? 'Kategorisiz' ?>
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>
+                                                                        <a href="#" data-id="<?php echo $enc_id; ?>"
+                                                                            class="text-dark duzenle fw-medium">
+                                                                            <?php echo $demirbas->demirbas_adi ?>
+                                                                        </a>
+                                                                    </td>
+                                                                    <td><?php echo ($demirbas->marka ?? '-') . ' ' . ($demirbas->model ?? '') ?>
+                                                                    </td>
+                                                                    <td class="text-center"><?php echo $stokBadge ?></td>
+                                                                    <td class="text-end">
+                                                                        <?php echo ($demirbas->edinme_tutari ?? 0) ?>
+                                                                    </td>
+                                                                    <td><?php echo $demirbas->edinme_tarihi ?? '-' ?></td>
+                                                                    <td class="text-left text-nowrap">
+                                                                        <?php if ($kalan > 0): ?>
+                                                                                    <button type="button" class="btn btn-sm btn-warning zimmet-ver"
+                                                                                        data-id="<?php echo $enc_id; ?>"
+                                                                                        data-name="<?php echo $demirbas->demirbas_adi; ?>"
+                                                                                        data-kalan="<?php echo $kalan; ?>" title="Zimmet Ver">
+                                                                                        <i class="bx bx-transfer"></i>
+                                                                                    </button>
+                                                                        <?php endif; ?>
+                                                                        <button type="button" class="btn btn-sm btn-primary duzenle"
+                                                                            data-id="<?php echo $enc_id; ?>" title="Düzenle">
+                                                                            <i class="bx bx-edit"></i>
                                                                         </button>
-                                                                <?php endif; ?>
-                                                                <button type="button" class="btn btn-sm btn-primary duzenle"
-                                                                    data-id="<?php echo $enc_id; ?>" title="Düzenle">
-                                                                    <i class="bx bx-edit"></i>
-                                                                </button>
-                                                                <button type="button" class="btn btn-sm btn-danger demirbas-sil"
-                                                                    data-id="<?php echo $enc_id; ?>"
-                                                                    data-name="<?php echo $demirbas->demirbas_adi; ?>" title="Sil">
-                                                                    <i class="bx bx-trash"></i>
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                <?php } ?>
+                                                                        <button type="button" class="btn btn-sm btn-danger demirbas-sil"
+                                                                            data-id="<?php echo $enc_id; ?>"
+                                                                            data-name="<?php echo $demirbas->demirbas_adi; ?>" title="Sil">
+                                                                            <i class="bx bx-trash"></i>
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                    <?php } ?>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -241,5 +261,34 @@ $zimmetStats = $Zimmet->getStats();
 
 <!-- Zimmet Detay Modal -->
 <?php include_once "modal/zimmet-detay-modal.php" ?>
+
+<!-- Excel Import Modal -->
+<div class="modal fade" id="importExcelModal" tabindex="-1" aria-labelledby="importExcelModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importExcelModalLabel">Excel'den Demirbaş Yükle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="importExcelForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="excelFile" class="form-label">Excel Dosyası Seçin (.xlsx, .xls)</label>
+                        <input class="form-control" type="file" id="excelFile" name="excelFile" accept=".xlsx, .xls">
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bx bx-info-circle me-1"></i> Lütfen uygun şablonu kullandığınızdan emin olun.
+                        <br>
+                        <a href="views/demirbas/download-template.php" class="alert-link">Örnek Şablonu İndir</a>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                <button type="button" class="btn btn-primary" id="btnUploadExcel">Yükle</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script src="views/demirbas/js/demirbas.js"></script>

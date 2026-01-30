@@ -154,8 +154,10 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
             "id" => $id,
             "type" => 0, // İş türü için type 0
             "grup" => "is_turu",
-            "is_turu_ucret" => $_POST["is_turu_ucret"],
+            "is_turu_ucret" => Helper::formattedMoneyToNumber($_POST["is_turu_ucret"]),
+            "is_emri_sonucu" => $_POST["is_emri_sonucu"],
             "tur_adi" => $_POST["is_turu"],
+            "rapor_sekmesi" => $_POST["rapor_sekmesi"],
             "aciklama" => $_POST["aciklama"],
         ];
 
@@ -247,7 +249,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-excel-yukle") {
         }
 
         // Beklenen başlıklar
-        $expectedHeaders = ['İş Türü', 'İş Türü Ücreti', 'Açıklama'];
+        $expectedHeaders = ['İş Türü', 'İş Emri Sonucu', 'İş Türü Ücreti', 'Açıklama'];
         $headerMap = [];
 
         foreach ($expectedHeaders as $expected) {
@@ -272,10 +274,12 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-excel-yukle") {
         for ($rowIndex = 2; $rowIndex <= $highestRow; $rowIndex++) {
             // Sütun harflerini belirle
             $colTurAdi = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['İş Türü'] ?? 0) + 1);
-            $colUcret = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['İş Türü Ücreti'] ?? 1) + 1);
-            $colAciklama = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['Açıklama'] ?? 2) + 1);
+            $colIsEmriSonucu = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['İş Emri Sonucu'] ?? 1) + 1);
+            $colUcret = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['İş Türü Ücreti'] ?? 2) + 1);
+            $colAciklama = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['Açıklama'] ?? 3) + 1);
 
             $turAdi = trim($worksheet->getCell($colTurAdi . $rowIndex)->getValue() ?? '');
+            $isEmriSonucu = trim($worksheet->getCell($colIsEmriSonucu . $rowIndex)->getValue() ?? '');
             $isTuruUcret = trim($worksheet->getCell($colUcret . $rowIndex)->getValue() ?? '');
             $aciklama = trim($worksheet->getCell($colAciklama . $rowIndex)->getValue() ?? '');
 
@@ -285,8 +289,11 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-excel-yukle") {
             }
 
             try {
-                // Tür adına göre mevcut kaydı ara
-                $existingRecord = $Tanimlamalar->findByColumn('tur_adi', $turAdi, 'grup = "is_turu" AND silinme_tarihi IS NULL');
+                // Tür adı ve İş Emri Sonucuna göre mevcut kaydı ara
+                $existingRecord = $Tanimlamalar->findByColumns([
+                    'tur_adi' => $turAdi,
+                    'is_emri_sonucu' => $isEmriSonucu
+                ], 'grup = "is_turu" AND silinme_tarihi IS NULL');
 
                 if ($existingRecord) {
                     // Güncelle
@@ -295,6 +302,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-excel-yukle") {
                         "type" => 0,
                         "grup" => "is_turu",
                         "tur_adi" => $turAdi,
+                        "is_emri_sonucu" => $isEmriSonucu,
                         "is_turu_ucret" => $isTuruUcret,
                         "aciklama" => $aciklama,
                     ];
@@ -307,6 +315,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-excel-yukle") {
                         "type" => 0,
                         "grup" => "is_turu",
                         "tur_adi" => $turAdi,
+                        "is_emri_sonucu" => $isEmriSonucu,
                         "is_turu_ucret" => $isTuruUcret,
                         "aciklama" => $aciklama,
                         "kayit_yapan" => $_SESSION["id"] ?? 0,

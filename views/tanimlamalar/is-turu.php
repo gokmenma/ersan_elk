@@ -57,7 +57,9 @@ $isTurleri = $Tanimlamalar->getIsTurleri();
                             <tr>
                                 <th class="text-center">Sıra</th>
                                 <th class="text-center">İş Türü</th>
+                                <th class="text-center">İş Emri Sonucu</th>
                                 <th class="text-center">İş Türü Ücreti</th>
+                                <th class="text-center">Rapor Sekmesi</th>
                                 <th class="text-center">Açıklama</th>
                                 <th style="width:5%">İşlem</th>
                             </tr>
@@ -80,7 +82,13 @@ $isTurleri = $Tanimlamalar->getIsTurleri();
                                         <?php echo $isTuru->tur_adi ?>
                                     </td>
                                     <td class="text-center">
+                                        <?php echo $isTuru->is_emri_sonucu ?>
+                                    </td>
+                                    <td class="text-center">
                                         <?php echo $isTuru->is_turu_ucret ?? "0,00 TL" ?>
+                                    </td>
+                                    <td class="text-center text-capitalize">
+                                        <?php echo $isTuru->rapor_sekmesi ?>
                                     </td>
                                     <td class="text-center">
                                         <?php echo $isTuru->aciklama ?>
@@ -119,7 +127,7 @@ $isTurleri = $Tanimlamalar->getIsTurleri();
 </div> <!-- container-fluid -->
 
 <div class="modal fade" id="actionModal" tabindex="-1" aria-labelledby="actionModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="actionModalLabel">İş Türü İşlemleri</h5>
@@ -128,6 +136,7 @@ $isTurleri = $Tanimlamalar->getIsTurleri();
             <div class="modal-body">
                 <form id="actionForm">
                     <input type="hidden" name="is_turu_id" id="is_turu_id" class="form-control" value="0">
+
 
                     <div class="row mb-3">
 
@@ -146,6 +155,20 @@ $isTurleri = $Tanimlamalar->getIsTurleri();
                         </div>
                     </div>
                     <div class="row mb-3">
+                        <div class="col-md-12">
+                            <?php echo
+                                Form::FormFloatInput(
+                                    "text",
+                                    "is_emri_sonucu",
+                                    "",
+                                    "İş Emri Sonucu giriniz!",
+                                    "İş Emri Sonucu",
+                                    "check-circle",
+                                    "form-control"
+                                ); ?>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
 
                         <div class="col-md-12">
                             <?php echo
@@ -159,6 +182,30 @@ $isTurleri = $Tanimlamalar->getIsTurleri();
                                     "form-control money"
 
                                 ); ?>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <?php
+                            $raporSekmeleri = [
+                                'okuma' => 'Endeks Okuma',
+                                'kesme' => 'Kesme/Açma İşlm.',
+                                'sokme_takma' => 'Sayaç Sökme Takma',
+                                'muhurleme' => 'Mühürleme',
+                                'kacakkontrol' => 'Kaçak Kontrol'
+                            ];
+                            echo Form::FormSelect2(
+                                "rapor_sekmesi",
+                                $raporSekmeleri,
+                                "",
+                                "Rapor Sekmesi",
+                                "layers",
+                                "key",
+                                "",
+                                "form-control select2"
+                            );
+                            ?>
                         </div>
                     </div>
 

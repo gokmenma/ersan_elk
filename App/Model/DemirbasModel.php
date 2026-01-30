@@ -174,4 +174,40 @@ class DemirbasModel extends Model
         </tr>';
     }
 
+    public function filter($term = null, $colSearches = [])
+    {
+        $sql = "SELECT d.*, k.kategori_adi
+                FROM {$this->table} d
+                LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+                WHERE 1=1";
+
+        $params = [];
+
+        if (!empty($term)) {
+            $term = "%$term%";
+            $sql .= " AND (d.demirbas_no LIKE :term OR d.demirbas_adi LIKE :term OR d.marka LIKE :term OR d.model LIKE :term OR k.kategori_adi LIKE :term)";
+            $params['term'] = $term;
+        }
+
+        if (!empty($colSearches)) {
+            $colMap = [1 => 'd.demirbas_no', 2 => 'k.kategori_adi', 3 => 'd.demirbas_adi', 4 => 'd.marka', 6 => 'd.edinme_tutari', 7 => 'd.edinme_tarihi'];
+            foreach ($colSearches as $idx => $val) {
+                if (isset($colMap[$idx]) && $val !== '') {
+                    $field = $colMap[$idx];
+                    $paramName = "col_" . $idx;
+                    if ($idx == 7) {
+                        $sql .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramName";
+                    } else {
+                        $sql .= " AND $field LIKE :$paramName";
+                    }
+                    $params[$paramName] = "%$val%";
+                }
+            }
+        }
+
+        $sql .= " ORDER BY d.kayit_tarihi DESC";
+        $query = $this->db->prepare($sql);
+        $query->execute($params);
+        return $query->fetchAll(PDO::FETCH_OBJ);
+    }
 }

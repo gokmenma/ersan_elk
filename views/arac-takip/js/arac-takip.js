@@ -436,7 +436,10 @@ const AracTakip = {
                             <td class="text-end">${self.formatMoney(y.toplam_tutar)}</td>
                             <td>${y.istasyon || "-"}</td>
                             <td class="text-center">
-                                <button class="btn btn-sm btn-danger yakit-sil" data-id="${y.id}" title="Sil"><i class="bx bx-trash"></i></button>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-primary yakit-duzenle" data-id="${y.id}" title="Düzenle"><i class="bx bx-edit"></i></button>
+                                    <button class="btn btn-danger yakit-sil" data-id="${y.id}" title="Sil"><i class="bx bx-trash"></i></button>
+                                </div>
                             </td>
                         </tr>`;
           });
@@ -574,7 +577,10 @@ const AracTakip = {
                             <td class="text-end">${self.formatNumber(k.bitis_km)} km</td>
                             <td class="text-end">${self.formatNumber(k.yapilan_km)} km</td>
                             <td class="text-center">
-                                <button class="btn btn-sm btn-danger km-sil" data-id="${k.id}" title="Sil"><i class="bx bx-trash"></i></button>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-primary km-duzenle" data-id="${k.id}" title="Düzenle"><i class="bx bx-edit"></i></button>
+                                    <button class="btn btn-danger km-sil" data-id="${k.id}" title="Sil"><i class="bx bx-trash"></i></button>
+                                </div>
                             </td>
                         </tr>`;
           });
@@ -756,6 +762,69 @@ const AracTakip = {
     });
   },
 
+  yakitDuzenle: function (id) {
+    const self = this;
+    $.post(this.apiUrl, { action: "yakit-detay", id: id }, function (response) {
+      if (response.status === "success") {
+        const data = response.data;
+        $("#yakitModal")
+          .find(".modal-title")
+          .html('<i class="bx bx-edit me-2"></i>Yakıt Kaydı Düzenle');
+
+        // Form alanlarını doldur
+        Object.keys(data).forEach(function (key) {
+          const input = $("#yakitModal").find('[name="' + key + '"]');
+          if (input.length) {
+            if (input.hasClass("flatpickr")) {
+              // Flatpickr tarih formatı
+              const date = new Date(data[key]);
+              input[0]._flatpickr.setDate(date);
+            } else if (input.is("select")) {
+              input.val(data[key]).trigger("change");
+            } else {
+              input.val(data[key]);
+            }
+          }
+        });
+
+        $("#yakitModal").modal("show");
+      } else {
+        Swal.fire("Hata", response.message, "error");
+      }
+    });
+  },
+
+  kmDuzenle: function (id) {
+    const self = this;
+    $.post(this.apiUrl, { action: "km-detay", id: id }, function (response) {
+      if (response.status === "success") {
+        const data = response.data;
+        $("#kmModal")
+          .find(".modal-title")
+          .html('<i class="bx bx-edit me-2"></i>KM Kaydı Düzenle');
+
+        // Form alanlarını doldur
+        Object.keys(data).forEach(function (key) {
+          const input = $("#kmModal").find('[name="' + key + '"]');
+          if (input.length) {
+            if (input.hasClass("flatpickr")) {
+              const date = new Date(data[key]);
+              input[0]._flatpickr.setDate(date);
+            } else if (input.is("select")) {
+              input.val(data[key]).trigger("change");
+            } else {
+              input.val(data[key]);
+            }
+          }
+        });
+
+        $("#kmModal").modal("show");
+      } else {
+        Swal.fire("Hata", response.message, "error");
+      }
+    });
+  },
+
   // =============================================
   // MODAL RESETLEME
   // =============================================
@@ -794,21 +863,40 @@ const AracTakip = {
 // =============================================
 $(document).ready(function () {
   // DataTable başlat
-  // #aracTable datatables.init.js tarafından otomatik başlatılır (.datatable sınıfı ile)
-  // Ancak Excel butonu konfigürasyonu için yeniden başlatıyoruz.
   AracTakip.initDataTable("#aracTable");
+
+  // Sekme bazlı UI güncellemeleri
+  function updateAracTakipUI() {
+    const activeTabBtn = $("#aracTab .nav-link.active");
+    if (activeTabBtn.length === 0) return;
+
+    const target =
+      activeTabBtn.attr("data-bs-target") || activeTabBtn.attr("href");
+    if (!target) return;
+
+    const tabName = target.replace("#", "").replace("Content", "");
+
+    // Excel menüsü görünürlüğü (Sadece yakıt sekmesinde)
+    if (tabName === "yakit") {
+      $("#liExcelYakitYukle").attr("style", "display: block !important");
+    } else {
+      $("#liExcelYakitYukle").attr("style", "display: none !important");
+    }
+
+    // Yeni Ekle butonu görünürlüğü (Rapor sekmesinde gizle)
+    if (tabName === "rapor") {
+      $("#btnYeniEkle").attr("style", "display: none !important");
+    } else {
+      $("#btnYeniEkle").attr("style", "display: block !important");
+    }
+  }
 
   // Excele Aktar Butonu
   $(document).on("click", "#btnExceleAktar", function (e) {
     e.preventDefault();
-
-    // Aktif sekmeyi bul
     const activeTab = $(".tab-pane.active");
-    // Tabloyu bul
     const table = activeTab.find("table");
-
     if (table.length && $.fn.DataTable.isDataTable(table)) {
-      // DataTable instance'ını al ve excel butonunu tetikle
       table.DataTable().button(".buttons-excel").trigger();
     } else {
       Swal.fire({
@@ -820,244 +908,198 @@ $(document).ready(function () {
     }
   });
 
-  // Araç Modal sıfırlama
-  $("#aracModal").on("hidden.bs.modal", function () {
-    AracTakip.resetAracModal();
+  // Yeni Ekle Butonu
+  $(document).on("click", "#btnYeniEkle", function (e) {
+    e.preventDefault();
+    const activeTabBtn = $("#aracTab .nav-link.active");
+    const activeTabId = activeTabBtn.attr("id");
+    let modalId = "";
+
+    switch (activeTabId) {
+      case "arac-tab":
+        modalId = "#aracModal";
+        break;
+      case "zimmet-tab":
+        modalId = "#zimmetModal";
+        break;
+      case "yakit-tab":
+        modalId = "#yakitModal";
+        break;
+      case "km-tab":
+        modalId = "#kmModal";
+        break;
+    }
+
+    if (modalId) {
+      $(modalId).modal("show");
+    }
   });
 
-  // Zimmet Modal sıfırlama
-  $("#zimmetModal").on("hidden.bs.modal", function () {
-    AracTakip.resetZimmetModal();
-  });
+  // Modal sıfırlama işlemleri
+  $("#aracModal").on("hidden.bs.modal", () => AracTakip.resetAracModal());
+  $("#zimmetModal").on("hidden.bs.modal", () => AracTakip.resetZimmetModal());
+  $("#yakitModal").on("hidden.bs.modal", () => AracTakip.resetYakitModal());
+  $("#kmModal").on("hidden.bs.modal", () => AracTakip.resetKmModal());
 
-  // Yakıt Modal sıfırlama
-  $("#yakitModal").on("hidden.bs.modal", function () {
-    AracTakip.resetYakitModal();
-  });
-
-  // KM Modal sıfırlama
-  $("#kmModal").on("hidden.bs.modal", function () {
-    AracTakip.resetKmModal();
-  });
-
-  // Araç Kaydet
-  $(document).on("click", "#btnAracKaydet", function (e) {
+  // Kaydetme ve Silme İşlemleri
+  $(document).on("click", "#btnAracKaydet", (e) => {
     e.preventDefault();
     AracTakip.aracKaydet();
   });
-
-  // Araç Düzenle
   $(document).on("click", ".arac-duzenle", function (e) {
     e.preventDefault();
     const id = $(this).data("id");
-    if (id) {
-      AracTakip.aracDuzenle(id);
-    }
+    if (id) AracTakip.aracDuzenle(id);
   });
-
-  // Araç Sil
-  $(document).on("click", ".arac-sil", function (e) {
+  $(document).on("click", ".yakit-duzenle", function (e) {
     e.preventDefault();
     const id = $(this).data("id");
-    const plaka = $(this).data("plaka");
-    AracTakip.aracSil(id, plaka);
+    if (id) AracTakip.yakitDuzenle(id);
   });
-
-  // Hızlı Zimmet
-  $(document).on("click", ".zimmet-hizli", function (e) {
+  $(document).on("click", ".km-duzenle", function (e) {
     e.preventDefault();
     const id = $(this).data("id");
-    const km = $(this).data("km");
-
-    // Select2'de aracı seç
-    $("#arac_id").val(id).trigger("change");
-
-    // KM'yi doldur
-    if (km) {
-      $("#teslim_km").val(km);
-    }
-
-    $("#zimmetModal").modal("show");
+    if (id) AracTakip.kmDuzenle(id);
   });
-
-  // Zimmet Kaydet
-  $(document).on("click", "#btnZimmetKaydet", function (e) {
+  $(document).on("click", "#btnZimmetKaydet", (e) => {
     e.preventDefault();
     AracTakip.zimmetVer();
   });
-
-  // Zimmet İade
   $(document).on("click", ".zimmet-iade", function (e) {
     e.preventDefault();
-    const id = $(this).data("id");
-    const plaka = $(this).data("plaka");
-    AracTakip.zimmetIade(id, plaka);
+    AracTakip.zimmetIade($(this).data("id"), $(this).data("plaka"));
   });
-
-  // Yakıt Kaydet
-  $(document).on("click", "#btnYakitKaydet", function (e) {
+  $(document).on("click", "#btnYakitKaydet", (e) => {
     e.preventDefault();
     AracTakip.yakitKaydet();
   });
-
-  // Yakıt Sil
   $(document).on("click", ".yakit-sil", function (e) {
     e.preventDefault();
-    const id = $(this).data("id");
-    AracTakip.yakitSil(id);
+    AracTakip.yakitSil($(this).data("id"));
   });
-
-  // KM Kaydet
-  $(document).on("click", "#btnKmKaydet", function (e) {
+  $(document).on("click", "#btnKmKaydet", (e) => {
     e.preventDefault();
     AracTakip.kmKaydet();
   });
-
-  // KM Sil
   $(document).on("click", ".km-sil", function (e) {
     e.preventDefault();
-    const id = $(this).data("id");
-    AracTakip.kmSil(id);
+    AracTakip.kmSil($(this).data("id"));
   });
-
-  // Excel Yükle
-  $(document).on("click", "#btnExcelYukle", function (e) {
+  $(document).on("click", "#btnExcelYukle", (e) => {
     e.preventDefault();
     AracTakip.yakitExcelYukle();
   });
-
-  // Rapor Yükle
-  $(document).on("click", "#btnRaporYukle", function (e) {
+  $(document).on("click", "#btnRaporYukle", (e) => {
     e.preventDefault();
     AracTakip.aylikRaporYukle();
   });
-
-  // Yakıt Filtrele
-  $(document).on("click", "#btnYakitFiltrele", function (e) {
+  $(document).on("click", "#btnYakitFiltrele", (e) => {
     e.preventDefault();
-    const baslangic = $("#yakit-filtre-baslangic").val();
-    const bitis = $("#yakit-filtre-bitis").val();
-    const aracId = $("#yakit-filtre-arac").val();
-    AracTakip.yakitListesiYukle(aracId, baslangic, bitis);
+    AracTakip.yakitListesiYukle(
+      $("#yakit-filtre-arac").val(),
+      $("#yakit-filtre-baslangic").val(),
+      $("#yakit-filtre-bitis").val(),
+    );
+  });
+  $(document).on("click", "#btnKmFiltrele", (e) => {
+    e.preventDefault();
+    AracTakip.kmListesiYukle(
+      $("#km-filtre-arac").val(),
+      $("#km-filtre-baslangic").val(),
+      $("#km-filtre-bitis").val(),
+    );
   });
 
-  // KM Filtrele
-  $(document).on("click", "#btnKmFiltrele", function (e) {
-    e.preventDefault();
-    const baslangic = $("#km-filtre-baslangic").val();
-    const bitis = $("#km-filtre-bitis").val();
-    const aracId = $("#km-filtre-arac").val();
-    AracTakip.kmListesiYukle(aracId, baslangic, bitis);
-  });
-
-  // İstatistik Modal Yükle
+  // İstatistik Modal
   $(document).on(
     "click",
     "#btnYakitIstatistik, #btnKmIstatistik",
     function (e) {
       const type = $(this).data("type");
-      const baslangic = $(`#${type}-filtre-baslangic`).val();
-      const bitis = $(`#${type}-filtre-bitis`).val();
-      const aracId = $(`#${type}-filtre-arac`).val();
-
-      $("#istatistikModalBody").html(`
-            <div class="text-center py-5">
-                <div class="spinner-border text-primary" role="status"></div>
-                <p class="mt-2">Yükleniyor...</p>
-            </div>
-        `);
-
+      $("#istatistikModalBody").html(
+        '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">Yükleniyor...</p></div>',
+      );
       $.get(
         `views/arac-takip/modal_arac_${type}_istatistik.php`,
         {
-          baslangic: baslangic,
-          bitis: bitis,
-          arac_id: aracId,
+          baslangic: $(`#${type}-filtre-baslangic`).val(),
+          bitis: $(`#${type}-filtre-bitis`).val(),
+          arac_id: $(`#${type}-filtre-arac`).val(),
         },
-        function (html) {
-          $("#istatistikModalBody").html(html);
-        },
-      ).fail(function () {
+        (html) => $("#istatistikModalBody").html(html),
+      ).fail(() =>
         $("#istatistikModalBody").html(
-          '<div class="alert alert-danger">İstatistikler yüklenirken bir hata oluştu.</div>',
-        );
-      });
+          '<div class="alert alert-danger">Hata oluştu.</div>',
+        ),
+      );
     },
   );
 
-  // Select2 başlat
+  // Select2
   if ($.fn.select2) {
     $(".select2").select2({
       dropdownParent: $(".modal.show").length ? $(".modal.show") : $("body"),
     });
-
-    // Modal açıldığında Select2 yeniden başlat
     $(".modal").on("shown.bs.modal", function () {
       $(this)
         .find(".select2")
         .each(function () {
-          $(this).select2({
-            dropdownParent: $(this).closest(".modal"),
-          });
+          $(this).select2({ dropdownParent: $(this).closest(".modal") });
         });
-
-      // Feather ikonlarını yükle
-      if (typeof feather !== "undefined") {
-        feather.replace();
-      }
+      if (typeof feather !== "undefined") feather.replace();
     });
   }
 
-  // Tab değişikliklerinde listeleri yükle
-  $('button[data-bs-toggle="tab"]').on("shown.bs.tab", function (e) {
-    const target = $(e.target).data("bs-target");
+  // Tab Değişiklikleri
+  $('#aracTab button[data-bs-toggle="tab"]').on("shown.bs.tab", function (e) {
+    const target = $(e.target).attr("data-bs-target");
+    if (!target) return;
     const tabName = target.replace("#", "").replace("Content", "");
-
-    // URL'yi güncelle (sayfa yenilenince bu sekmede kalması için)
     const url = new URL(window.location);
     url.searchParams.set("tab", tabName);
     window.history.replaceState({}, "", url);
 
-    if (target === "#zimmetContent") {
-      AracTakip.zimmetListesiYukle();
-    } else if (target === "#yakitContent") {
-      const baslangic = $("#yakit-filtre-baslangic").val();
-      const bitis = $("#yakit-filtre-bitis").val();
-      const aracId = $("#yakit-filtre-arac").val();
-      AracTakip.yakitListesiYukle(aracId, baslangic, bitis);
-    } else if (target === "#kmContent") {
-      const baslangic = $("#km-filtre-baslangic").val();
-      const bitis = $("#km-filtre-bitis").val();
-      const aracId = $("#km-filtre-arac").val();
-      AracTakip.kmListesiYukle(aracId, baslangic, bitis);
-    } else if (target === "#raporContent") {
-      AracTakip.aylikRaporYukle();
-    } else if (target === "#aracContent") {
-      // Araç tablosu statik olduğu için sadece init kontrolü yap
-      if (!$.fn.DataTable.isDataTable("#aracTable")) {
-        AracTakip.initDataTable("#aracTable");
-      }
-    }
+    if (target === "#zimmetContent") AracTakip.zimmetListesiYukle();
+    else if (target === "#yakitContent")
+      AracTakip.yakitListesiYukle(
+        $("#yakit-filtre-arac").val(),
+        $("#yakit-filtre-baslangic").val(),
+        $("#yakit-filtre-bitis").val(),
+      );
+    else if (target === "#kmContent")
+      AracTakip.kmListesiYukle(
+        $("#km-filtre-arac").val(),
+        $("#km-filtre-baslangic").val(),
+        $("#km-filtre-bitis").val(),
+      );
+    else if (target === "#raporContent") AracTakip.aylikRaporYukle();
+    else if (
+      target === "#aracContent" &&
+      !$.fn.DataTable.isDataTable("#aracTable")
+    )
+      AracTakip.initDataTable("#aracTable");
+
+    updateAracTakipUI();
   });
 
-  // Sayfa yüklendiğinde aktif sekmenin verisini yükle
+  // Başlangıç Yüklemesi
   const activeTabBtn = $("#aracTab .nav-link.active");
   if (activeTabBtn.length > 0) {
-    const activeTarget = activeTabBtn.data("bs-target");
-    if (activeTarget === "#zimmetContent") {
-      AracTakip.zimmetListesiYukle();
-    } else if (activeTarget === "#yakitContent") {
-      const baslangic = $("#yakit-filtre-baslangic").val();
-      const bitis = $("#yakit-filtre-bitis").val();
-      const aracId = $("#yakit-filtre-arac").val();
-      AracTakip.yakitListesiYukle(aracId, baslangic, bitis);
-    } else if (activeTarget === "#kmContent") {
-      const baslangic = $("#km-filtre-baslangic").val();
-      const bitis = $("#km-filtre-bitis").val();
-      const aracId = $("#km-filtre-arac").val();
-      AracTakip.kmListesiYukle(aracId, baslangic, bitis);
-    } else if (activeTarget === "#raporContent") {
-      AracTakip.aylikRaporYukle();
-    }
+    const activeTarget = activeTabBtn.attr("data-bs-target");
+    if (activeTarget === "#zimmetContent") AracTakip.zimmetListesiYukle();
+    else if (activeTarget === "#yakitContent")
+      AracTakip.yakitListesiYukle(
+        $("#yakit-filtre-arac").val(),
+        $("#yakit-filtre-baslangic").val(),
+        $("#yakit-filtre-bitis").val(),
+      );
+    else if (activeTarget === "#kmContent")
+      AracTakip.kmListesiYukle(
+        $("#km-filtre-arac").val(),
+        $("#km-filtre-baslangic").val(),
+        $("#km-filtre-bitis").val(),
+      );
+    else if (activeTarget === "#raporContent") AracTakip.aylikRaporYukle();
+    updateAracTakipUI();
   }
 });

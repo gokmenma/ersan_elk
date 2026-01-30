@@ -3,6 +3,8 @@ let url = "views/tanimlamalar/api.php";
 $(document).on("click", "#actionEkle", function () {
   $("#actionForm")[0].reset();
   $("#is_turu_id").val(0);
+  $("#is_emri_sonucu").val("");
+  $("#rapor_sekmesi").val("").trigger("change");
   $("#actionModalLabel").text("İş Türü Ekle");
 });
 
@@ -85,6 +87,9 @@ $(document).on("click", ".duzenle", function (e) {
         // We need to set the hidden input to the ENCRYPTED id so save works
         $("#is_turu_id").val(id);
         $("#is_turu").val(data.data.is_turu);
+        $("#is_emri_sonucu").val(data.data.is_emri_sonucu);
+        $("#is_turu_ucret").val(data.data.is_turu_ucret);
+        $("#rapor_sekmesi").val(data.data.rapor_sekmesi).trigger("change");
         $("#aciklama").val(data.data.aciklama);
         $("#actionModalLabel").text("İş Türü Düzenle");
         $("#actionModal").modal("show");

@@ -261,13 +261,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $stats = $Yakit->getStats(date('Y'), date('m')); // Varsayılan aylık
                 }
 
-
-
-
-
-
-
-
                 echo json_encode(['status' => 'success', 'data' => $kayitlar, 'stats' => $stats]);
                 break;
 
@@ -367,12 +360,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $stats = $Km->getStats(date('Y'), date('m')); // Varsayılan aylık
                 }
 
-
-
-
-
-
                 echo json_encode(['status' => 'success', 'data' => $kayitlar, 'stats' => $stats]);
+                break;
+
+            case 'km-detay':
+                $id = intval($_POST['id'] ?? 0);
+                $kayit = $Km->find($id);
+
+                if (!$kayit) {
+                    throw new Exception("KM kaydı bulunamadı.");
+                }
+
+                echo json_encode(['status' => 'success', 'data' => $kayit]);
                 break;
 
             // =============================================

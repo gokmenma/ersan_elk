@@ -160,10 +160,7 @@ class Date
 
     public static function monthName($month)
     {
-        //09 şeklinde gelen ayları 9 şekline çevir
-
-        // $month = ltrim($month, '0');
-        return self::MONTHS[$month];
+        return self::MONTHS[(int) $month];
     }
 
     public static function getMonthsSelect(

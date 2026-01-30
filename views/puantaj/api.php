@@ -7,6 +7,8 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use App\Helper\Helper;
 use App\Model\PuantajModel;
 use App\Model\PersonelModel;
+use App\Model\EndeksOkumaModel;
+use App\Model\TanimlamalarModel;
 use App\Model\SystemLogModel;
 
 // Set header to JSON
@@ -423,6 +425,140 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'kacak-excel-kaydet') {
+    $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
+    try {
+        if (!isset($_FILES['excel_file']) || $_FILES['excel_file']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception("Dosya yüklenemedi veya dosya seçilmedi.");
+        }
+
+        $uploadDateRaw = $_POST['upload_date'] ?? date('Y-m-d');
+        // Ensure date is in Y-m-d format
+        $uploadDate = \App\Helper\Date::convertExcelDate($uploadDateRaw, 'Y-m-d') ?: date('Y-m-d');
+
+        $fileTmpPath = $_FILES['excel_file']['tmp_name'];
+        $spreadsheet = IOFactory::load($fileTmpPath);
+        $sheet = $spreadsheet->getActiveSheet();
+        $rows = $sheet->toArray();
+
+        // Find header row
+        $headerRowIndex = null;
+        $colMap = [];
+        foreach ($rows as $index => $row) {
+            $rowStr = implode(' ', array_map('strval', $row));
+            // Expecting: Ekip Adı, Sayı, Açıklama
+            if (stripos($rowStr, 'Ekip') !== false && (stripos($rowStr, 'Sayı') !== false || stripos($rowStr, 'Sayi') !== false)) {
+                $headerRowIndex = $index;
+                foreach ($row as $colIndex => $cellValue) {
+                    $cellValue = trim($cellValue);
+                    if (stripos($cellValue, 'Ekip') !== false)
+                        $colMap['ekip'] = $colIndex;
+                    elseif (stripos($cellValue, 'Sayı') !== false || stripos($cellValue, 'Sayi') !== false)
+                        $colMap['sayi'] = $colIndex;
+                    elseif (stripos($cellValue, 'Açıklama') !== false || stripos($cellValue, 'Aciklama') !== false)
+                        $colMap['aciklama'] = $colIndex;
+                }
+                break;
+            }
+        }
+
+        if ($headerRowIndex === null) {
+            throw new Exception("Excel formatı geçersiz. Başlık satırı (Ekip, Sayı...) bulunamadı.");
+        }
+
+        $insertedCount = 0;
+        $skippedCount = 0;
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+
+        for ($i = $headerRowIndex + 1; $i < count($rows); $i++) {
+            $row = $rows[$i];
+            $ekipStr = isset($colMap['ekip']) ? trim($row[$colMap['ekip']]) : '';
+            $sayi = isset($colMap['sayi']) ? (int) trim($row[$colMap['sayi']]) : 0;
+            $aciklama = isset($colMap['aciklama']) ? trim($row[$colMap['aciklama']]) : '';
+
+            if (empty($ekipStr))
+                continue;
+
+            // Direct upload, no person matching or splitting as requested
+            $personelId = 0;
+
+            // Unique ID for idempotency
+            $islemId = md5($uploadDate . '|' . $ekipStr . '|' . $sayi . '|' . $aciklama);
+
+            $exists = $Puantaj->db->prepare("SELECT COUNT(*) FROM kacak_kontrol WHERE islem_id = ?");
+            $exists->execute([$islemId]);
+            if ($exists->fetchColumn() > 0) {
+                $skippedCount++;
+                continue;
+            }
+
+            $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_id, tarih, ekip_adi, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $result = $stmt->execute([$firmaId, $personelId, $uploadDate, $ekipStr, $sayi, $aciklama, $islemId]);
+            if ($result)
+                $insertedCount++;
+        }
+
+        $response['status'] = 'success';
+        $response['message'] = "$insertedCount kayıt eklendi. $skippedCount kayıt atlandı.";
+
+        $SystemLog = new SystemLogModel();
+        $userId = $_SESSION['user_id'] ?? 0;
+        $SystemLog->logAction($userId, 'Kaçak Kontrol Yükleme', "Excel'den $insertedCount adet kaçak kontrol kaydı yüklendi.");
+
+    } catch (Exception $e) {
+        $response['message'] = $e->getMessage();
+    }
+    echo json_encode($response);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'kacak-sil') {
+    $id = $_POST['id'] ?? 0;
+    $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET silinme_tarihi = NOW() WHERE id = ?");
+    $result = $stmt->execute([$id]);
+    echo json_encode(['status' => $result ? 'success' : 'error']);
+    exit;
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'kacak-kaydet') {
+    $id = $_POST['id'] ?? 0;
+    $tarih = $_POST['tarih'] ?? date('Y-m-d');
+    $ekip_adi = $_POST['kacak_ekip_adi'] ?? '';
+    $sayi = $_POST['sayi'] ?? 0;
+    $aciklama = $_POST['aciklama'] ?? '';
+    $firmaId = $_SESSION['firma_id'] ?? 0;
+
+    $dbTarih = \App\Helper\Date::convertExcelDate($tarih, 'Y-m-d') ?: $tarih;
+
+    if ($id > 0) {
+        $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET tarih = ?, ekip_adi = ?, sayi = ?, aciklama = ? WHERE id = ?");
+        $result = $stmt->execute([$dbTarih, $ekip_adi, $sayi, $aciklama, $id]);
+    } else {
+        $islemId = md5($dbTarih . '|' . $ekip_adi . '|' . $sayi . '|' . $aciklama);
+        $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_id, tarih, ekip_adi, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $result = $stmt->execute([$firmaId, 0, $dbTarih, $ekip_adi, $sayi, $aciklama, $islemId]);
+    }
+    echo json_encode(['status' => $result ? 'success' : 'error']);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get-kacak-record') {
+    $id = $_GET['id'] ?? 0;
+    $stmt = $Puantaj->db->prepare("SELECT * FROM kacak_kontrol WHERE id = ?");
+    $stmt->execute([$id]);
+    $record = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($record) {
+        $record['tarih_formatted'] = \App\Helper\Date::dmY($record['tarih']);
+    }
+    echo json_encode($record);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get-kacak-teams') {
+    $teams = $Puantaj->getKacakTeams();
+    echo json_encode($teams);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get-tab-content') {
     $tab = $_GET['tab'] ?? 'okuma';
     $startDate = $_GET['start_date'] ?? '';
@@ -432,9 +568,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $workResult = $_GET['work_result'] ?? '';
 
     ob_start();
+    // Convert dates for SQL
+    $dbStartDate = \App\Helper\Date::convertExcelDate($startDate, 'Y-m-d') ?: $startDate;
+    $dbEndDate = \App\Helper\Date::convertExcelDate($endDate, 'Y-m-d') ?: $endDate;
+
     if ($tab === 'okuma') {
         $EndeksOkuma = new \App\Model\EndeksOkumaModel();
-        $endeksRecords = $EndeksOkuma->getFiltered($startDate, $endDate, $ekipKodu);
+        $endeksRecords = $EndeksOkuma->getFiltered($dbStartDate, $dbEndDate, $ekipKodu);
         foreach ($endeksRecords as $record): ?>
             <tr>
                 <td><?= $record->bolge ?></td>
@@ -450,9 +590,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                 <td><?= $record->tarih ?></td>
             </tr>
         <?php endforeach;
+    } elseif ($tab === 'kacak_kontrol') {
+        $stmt = $Puantaj->db->prepare("SELECT k.*, p.adi_soyadi as personel_adi FROM kacak_kontrol k LEFT JOIN personel p ON k.personel_id = p.id WHERE k.tarih BETWEEN ? AND ? " . (!empty($ekipKodu) ? " AND k.personel_id = ?" : "") . " AND k.silinme_tarihi IS NULL ORDER BY k.tarih DESC");
+        $params = [$dbStartDate, $dbEndDate];
+        if (!empty($ekipKodu))
+            $params[] = $ekipKodu;
+        $stmt->execute($params);
+        $records = $stmt->fetchAll(PDO::FETCH_OBJ);
+        foreach ($records as $record): ?>
+            <tr>
+                <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
+                <td><?= $record->personel_adi ?: '<span class="text-muted">' . $record->ekip_adi . '</span>' ?></td>
+                <td><?= $record->sayi ?></td>
+                <td><?= $record->aciklama ?></td>
+                <td>
+                    <button class="btn btn-sm btn-soft-primary edit-kacak" data-id="<?= $record->id ?>"><i
+                            class="bx bx-edit"></i></button>
+                    <button class="btn btn-sm btn-soft-danger delete-kacak" data-id="<?= $record->id ?>"><i
+                            class="bx bx-trash"></i></button>
+                </td>
+            </tr>
+        <?php endforeach;
     } else {
         $Puantaj = new PuantajModel();
-        $records = $Puantaj->getFiltered($startDate, $endDate, $ekipKodu, $workType, $workResult);
+        $records = $Puantaj->getFiltered($dbStartDate, $dbEndDate, $ekipKodu, $workType, $workResult);
         foreach ($records as $record): ?>
             <tr>
                 <td><?= $record->firma ?></td>
@@ -469,3 +630,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     echo $html;
     exit;
 }
+
+// Rapor Tablosunu Getir
+if (isset($_GET["action"]) && $_GET["action"] == "get-report-table") {
+    require_once 'rapor-getir.php';
+    exit;
+}
+

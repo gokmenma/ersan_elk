@@ -31,7 +31,7 @@ $title = "Yetki Yönetimi ". ($role ? " - ( " . $role->role_name . " )" : "");
 
 
                 <!-- Kaydetme Alanı -->
-                <div class="d-flex justify-content-between align-items-center bg-white">
+                <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <span id="selectedCount" class="badge bg-primary badge-count">0</span>
                         <span class="text-muted ms-2">yetki seçildi</span>

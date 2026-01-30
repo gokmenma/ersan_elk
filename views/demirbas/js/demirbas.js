@@ -31,11 +31,30 @@ $(document).ready(function () {
     feather.replace();
   }
 
+  // Başlangıçta buton görünürlüğünü ayarla
+  updateButtonVisibility();
+
   // Eğer sayfa yüklendiğinde zimmet tabı aktifse listeyi yükle
   if ($("#zimmet-tab").hasClass("active")) {
     loadZimmetList();
   }
 });
+
+function updateButtonVisibility() {
+  let activeTabBtn = $("#demirbasTab button.active");
+  if (activeTabBtn.length === 0) return;
+
+  let activeTab = activeTabBtn.attr("id");
+  if (activeTab === "demirbas-tab") {
+    $("#btnYeniDemirbas").show();
+    $("#btnZimmetVer").hide();
+    $("#importExcelLi").show();
+  } else {
+    $("#btnYeniDemirbas").hide();
+    $("#btnZimmetVer").show();
+    $("#importExcelLi").hide();
+  }
+}
 
 // ============== SELECT2 BAŞLAT ==============
 function initSelect2() {
@@ -81,6 +100,9 @@ $('button[data-bs-toggle="tab"]').on("shown.bs.tab", function (e) {
   // Aktif sekmeyi URL'e kaydet
   let targetId = e.target.id;
   let tabName = targetId === "zimmet-tab" ? "zimmet" : "demirbas";
+
+  // Buton görünürlüğünü güncelle
+  updateButtonVisibility();
 
   const url = new URL(window.location);
   url.searchParams.set("tab", tabName);
@@ -571,4 +593,94 @@ $(document).on("click", ".zimmet-detay", function (e) {
       Swal.close();
       Swal.fire("Hata!", "Bir hata oluştu.", "error");
     });
+});
+
+// ============== EXCEL İŞLEMLERİ ==============
+
+// Excel Import Modal Aç
+$(document).on("click", "#importExcel", function () {
+  $("#importExcelModal").modal("show");
+});
+
+// Excel Upload
+$(document).on("click", "#btnUploadExcel", function () {
+  var formData = new FormData($("#importExcelForm")[0]);
+  formData.append("action", "excel-upload");
+
+  if ($("#excelFile").val() == "") {
+    Swal.fire("Uyarı", "Lütfen bir dosya seçiniz.", "warning");
+    return;
+  }
+
+  Swal.fire({
+    title: "Yükleniyor...",
+    text: "Demirbaş listesi işleniyor, lütfen bekleyin.",
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading();
+    },
+  });
+
+  $.ajax({
+    url: zimmetUrl,
+    type: "POST",
+    data: formData,
+    contentType: false,
+    processData: false,
+    success: function (response) {
+      try {
+        let res = JSON.parse(response);
+        if (res.status === "success") {
+          Swal.fire({
+            title: "Başarılı",
+            text: res.message,
+            icon: "success",
+          }).then(() => {
+            location.reload();
+          });
+        } else {
+          Swal.fire("Hata", res.message, "error");
+        }
+      } catch (e) {
+        Swal.fire("Hata", "Sunucudan geçersiz yanıt alındı.", "error");
+      }
+    },
+    error: function () {
+      Swal.fire("Hata", "İşlem sırasında bir hata oluştu.", "error");
+    },
+  });
+});
+
+// Excel Export
+$(document).on("click", "#exportExcel", function () {
+  let activeTab = $("#demirbasTab button.active").attr("id");
+  let tabName = activeTab === "zimmet-tab" ? "zimmet" : "demirbas";
+  let currentTable = tabName === "zimmet" ? zimmetTable : table;
+
+  let searchTerm = currentTable.search();
+  let url = "views/demirbas/export-excel.php";
+  let params = new URLSearchParams();
+
+  params.append("tab", tabName);
+  if (searchTerm) {
+    params.append("search", searchTerm);
+  }
+
+  // Sütun bazlı aramaları ekle (eğer varsa)
+  let colSearches = {};
+  $(
+    `#${tabName === "zimmet" ? "zimmetTable" : "demirbasTable"} .search-input-row input`,
+  ).each(function () {
+    let val = $(this).val();
+    let colIdx = $(this).attr("data-col-idx");
+    if (val && colIdx) {
+      colSearches[colIdx] = val;
+    }
+  });
+
+  if (Object.keys(colSearches).length > 0) {
+    params.append("col_search", JSON.stringify(colSearches));
+  }
+
+  window.location.href = url + "?" + params.toString();
 });

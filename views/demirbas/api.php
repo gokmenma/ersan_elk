@@ -214,7 +214,7 @@ if ($action == "zimmet-iade") {
         if ($result) {
             jsonResponse("success", "İade işlemi başarıyla tamamlandı. Stok güncellendi.");
         } else {
-            jsonResponse("error", "İade işlemi başarısız.");
+            jsonResponse("error", "İade işlemi başarıısız.");
         }
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());
@@ -296,6 +296,86 @@ if ($action == "zimmet-detay") {
         }
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());
+    }
+}
+
+// Excel'den Yükle
+if ($action == "excel-upload") {
+    if (!isset($_FILES['excelFile']) || $_FILES['excelFile']['error'] != 0) {
+        jsonResponse("error", "Lütfen geçerli bir Excel dosyası seçin.");
+    }
+
+    try {
+        $vendorAutoload = dirname(__DIR__, 2) . '/vendor/autoload.php';
+        if (file_exists($vendorAutoload)) {
+            require_once $vendorAutoload;
+        } else {
+            throw new Exception("Excel kütüphanesi bulunamadı.");
+        }
+
+        $inputFileName = $_FILES['excelFile']['tmp_name'];
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($inputFileName);
+        $worksheet = $spreadsheet->getActiveSheet();
+        $rows = $worksheet->toArray();
+
+        // İlk satır başlıklar, atla
+        $header = array_shift($rows);
+
+        $successCount = 0;
+        $errorCount = 0;
+        $errors = [];
+
+        foreach ($rows as $index => $row) {
+            if (empty($row[1]))
+                continue; // Demirbaş adı boşsa atla
+
+            try {
+                $data = [
+                    "id" => 0,
+                    "demirbas_no" => $row[0] ?? null,
+                    "demirbas_adi" => $row[1],
+                    "kategori_id" => null,
+                    "marka" => $row[2] ?? null,
+                    "model" => $row[3] ?? null,
+                    "seri_no" => $row[4] ?? null,
+                    "miktar" => intval($row[5] ?? 1),
+                    "kalan_miktar" => intval($row[5] ?? 1),
+                    "edinme_tutari" => floatval($row[6] ?? 0),
+                    "edinme_tarihi" => !empty($row[7]) ? date('Y-m-d', strtotime($row[7])) : null,
+                    "durum" => 'aktif',
+                    "kayit_yapan" => $_SESSION["id"] ?? null
+                ];
+
+                if (!empty($row[8])) {
+                    $katAdi = trim($row[8]);
+                    $kat = $Kategori->getDb()->prepare("SELECT id FROM demirbas_kategorileri WHERE kategori_adi = ?");
+                    $kat->execute([$katAdi]);
+                    $katRes = $kat->fetch(PDO::FETCH_OBJ);
+                    if ($katRes) {
+                        $data["kategori_id"] = $katRes->id;
+                    } else {
+                        $insKat = $Kategori->getDb()->prepare("INSERT INTO demirbas_kategorileri (kategori_adi, durum) VALUES (?, 'aktif')");
+                        $insKat->execute([$katAdi]);
+                        $data["kategori_id"] = $Kategori->getDb()->lastInsertId();
+                    }
+                }
+
+                $Demirbas->saveWithAttr($data);
+                $successCount++;
+            } catch (Exception $e) {
+                $errorCount++;
+                $errors[] = "Satır " . ($index + 2) . ": " . $e->getMessage();
+            }
+        }
+
+        $message = "$successCount adet demirbaş başarıyla yüklendi.";
+        if ($errorCount > 0) {
+            $message .= " $errorCount hata oluştu.";
+        }
+
+        jsonResponse("success", $message, ["errors" => $errors]);
+    } catch (Exception $ex) {
+        jsonResponse("error", "Hata: " . $ex->getMessage());
     }
 }
 

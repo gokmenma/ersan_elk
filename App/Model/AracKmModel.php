@@ -279,4 +279,19 @@ class AracKmModel extends Model
         $stmt->execute($params);
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
+    /**
+     * Tüm araçlar için en yüksek bitiş KM'lerini getirir
+     */
+    public function getAllMaxBitisKm()
+    {
+        $sql = $this->db->prepare("
+            SELECT arac_id, MAX(bitis_km) as max_km 
+            FROM {$this->table} 
+            WHERE firma_id = :firma_id 
+            AND silinme_tarihi IS NULL 
+            GROUP BY arac_id
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_KEY_PAIR);
+    }
 }

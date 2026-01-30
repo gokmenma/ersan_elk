@@ -195,6 +195,31 @@ class TanimlamalarModel extends Model
         return $stmt->fetch(PDO::FETCH_OBJ) ?: null;
     }
 
+    /**
+     * Birden fazla sütun değerine göre kayıt bul
+     * @param array $criteria [sütun => değer] şeklinde dizi
+     * @param string|null $additionalWhere Ek WHERE koşulu
+     * @return object|null Bulunan kayıt veya null
+     */
+    public function findByColumns($criteria, $additionalWhere = null)
+    {
+        $where = [];
+        $params = [];
+        foreach ($criteria as $column => $value) {
+            $where[] = "$column = ?";
+            $params[] = $value;
+        }
+
+        $sql = "SELECT * FROM $this->table WHERE " . implode(" AND ", $where);
+        if ($additionalWhere) {
+            $sql .= " AND " . $additionalWhere;
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch(PDO::FETCH_OBJ) ?: null;
+    }
+
     /**Ekip Kodundan id bulur */
     public function getEkipKodId($ekip_no)
     {
@@ -249,5 +274,29 @@ class TanimlamalarModel extends Model
         });
 
         return array_values($musaitEkipKodlari);
+    }
+
+    public function getEkipKodlariByBolgeAll($bolge)
+    {
+        $sql = "SELECT * FROM $this->table WHERE grup = 'ekip_kodu' AND ekip_bolge = ? AND firma_id = ? AND silinme_tarihi IS NULL ORDER BY tur_adi ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$bolge, $_SESSION['firma_id']]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function getUcretliIsTurleri()
+    {
+        $sql = "SELECT * FROM $this->table WHERE grup = 'is_turu' AND is_turu_ucret > 0 AND silinme_tarihi IS NULL ORDER BY id ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function getIsTurleriByRaporTuru($raporTuru)
+    {
+        $sql = "SELECT * FROM $this->table WHERE grup = 'is_turu' AND rapor_sekmesi = ? AND silinme_tarihi IS NULL ORDER BY id ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$raporTuru]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 }

@@ -55,36 +55,40 @@ $dataStyle = [
 
 // Başlıklar
 $sheet->setCellValue('A1', 'İş Türü');
-$sheet->setCellValue('B1', 'İş Türü Ücreti');
-$sheet->setCellValue('C1', 'Açıklama');
+$sheet->setCellValue('B1', 'İş Emri Sonucu');
+$sheet->setCellValue('C1', 'İş Türü Ücreti');
+$sheet->setCellValue('D1', 'Açıklama');
 
 // Başlık stili uygula
-$sheet->getStyle('A1:C1')->applyFromArray($headerStyle);
+$sheet->getStyle('A1:D1')->applyFromArray($headerStyle);
 $sheet->getRowDimension(1)->setRowHeight(25);
 
 // Sütun genişlikleri
 $sheet->getColumnDimension('A')->setWidth(30);
-$sheet->getColumnDimension('B')->setWidth(20);
-$sheet->getColumnDimension('C')->setWidth(40);
+$sheet->getColumnDimension('B')->setWidth(30);
+$sheet->getColumnDimension('C')->setWidth(20);
+$sheet->getColumnDimension('D')->setWidth(40);
 
 // Verileri ekle
 $row = 2;
 foreach ($isTurleri as $isTuru) {
     $sheet->setCellValue('A' . $row, $isTuru->tur_adi);
-    $sheet->setCellValue('B' . $row, $isTuru->is_turu_ucret ?? '');
-    $sheet->setCellValue('C' . $row, $isTuru->aciklama ?? '');
+    $sheet->setCellValue('B' . $row, $isTuru->is_emri_sonucu ?? '');
+    $sheet->setCellValue('C' . $row, $isTuru->is_turu_ucret ?? '');
+    $sheet->setCellValue('D' . $row, $isTuru->aciklama ?? '');
 
-    $sheet->getStyle('A' . $row . ':C' . $row)->applyFromArray($dataStyle);
+    $sheet->getStyle('A' . $row . ':D' . $row)->applyFromArray($dataStyle);
     $row++;
 }
 
 // Eğer hiç kayıt yoksa örnek satır ekle
 if (count($isTurleri) == 0) {
     $sheet->setCellValue('A2', 'Örnek İş Türü');
-    $sheet->setCellValue('B2', '100.00');
-    $sheet->setCellValue('C2', 'Örnek açıklama');
-    $sheet->getStyle('A2:C2')->applyFromArray($dataStyle);
-    $sheet->getStyle('A2:C2')->getFont()->setItalic(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('999999'));
+    $sheet->setCellValue('B2', 'Örnek İş Emri Sonucu');
+    $sheet->setCellValue('C2', '100.00');
+    $sheet->setCellValue('D2', 'Örnek açıklama');
+    $sheet->getStyle('A2:D2')->applyFromArray($dataStyle);
+    $sheet->getStyle('A2:D2')->getFont()->setItalic(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('999999'));
 }
 
 // Dosyayı indir

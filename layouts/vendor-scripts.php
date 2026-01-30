@@ -12,6 +12,8 @@ $page = $_GET['p'] ?? 'home';
 
 ?>
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.js"></script>
+    <script src="assets/libs/imask/imask.min.js"></script>
+
 
 
 <!-- Select2 , Jquery Validate , iMask Scriptler -->
@@ -25,7 +27,6 @@ $page === 'home' ||
     $page == "kullanici-gruplari/list" || $page == "kullanici/list"
 ) { ?>
     
-    <script src="assets/libs/imask/imask.min.js"></script>
 <?php } ?>
 <!--***************************************-->
 
@@ -146,7 +147,7 @@ if ($page == "kasa/duzenle" || $page == "kasa/list") {
     $page == "kullanici/list" || $page == "kullanici-gruplari/list" ||
     $page == "mail-sms/sms-gonder" ||
     $page == "kasa/list" || $page == "gelir-gider/online-hesap-hareketleri" || $page == "tanimlamalar/ekip-kodu" ||
-    $page == "bordro/list" || $page == "demirbas/list" || $page == "puantaj/list" ||
+    $page == "bordro/list" || $page == "demirbas/list" || $page == "puantaj/veri-yukleme" ||
     $page == "tanimlamalar/is-turu" || $page == "mail-sms/list" || $page == "tanimlamalar/izin-turu" ||
     $page == "mail-sms/mail-gonder" || $page == "arac-takip/list" || $page == "arac-takip/duzenle"
 

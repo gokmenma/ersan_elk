@@ -299,4 +299,52 @@ class DemirbasZimmetModel extends Model
         ];
         return $badges[$durum] ?? '<span class="badge bg-info">Bilinmiyor</span>';
     }
+
+    public function filter($term = null, $colSearches = [])
+    {
+        $sql = "SELECT 
+                    z.*,
+                    d.demirbas_no,
+                    d.demirbas_adi,
+                    d.marka,
+                    d.model,
+                    d.seri_no,
+                    k.kategori_adi,
+                    p.adi_soyadi AS personel_adi,
+                    p.cep_telefonu AS personel_telefon
+                FROM {$this->table} z
+                LEFT JOIN demirbas d ON z.demirbas_id = d.id
+                LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+                LEFT JOIN personel p ON z.personel_id = p.id
+                WHERE 1=1";
+
+        $params = [];
+
+        if (!empty($term)) {
+            $term = "%$term%";
+            $sql .= " AND (d.demirbas_no LIKE :term OR d.demirbas_adi LIKE :term OR p.adi_soyadi LIKE :term OR k.kategori_adi LIKE :term)";
+            $params['term'] = $term;
+        }
+
+        if (!empty($colSearches)) {
+            $colMap = [0 => 'z.id', 1 => 'k.kategori_adi', 2 => 'd.demirbas_adi', 3 => 'd.marka', 4 => 'p.adi_soyadi', 5 => 'z.teslim_miktar', 6 => 'z.teslim_tarihi', 7 => 'z.durum'];
+            foreach ($colSearches as $idx => $val) {
+                if (isset($colMap[$idx]) && $val !== '') {
+                    $field = $colMap[$idx];
+                    $paramName = "col_" . $idx;
+                    if ($idx == 6) {
+                        $sql .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramName";
+                    } else {
+                        $sql .= " AND $field LIKE :$paramName";
+                    }
+                    $params[$paramName] = "%$val%";
+                }
+            }
+        }
+
+        $sql .= " ORDER BY z.kayit_tarihi DESC";
+        $query = $this->db->prepare($sql);
+        $query->execute($params);
+        return $query->fetchAll(PDO::FETCH_OBJ);
+    }
 }

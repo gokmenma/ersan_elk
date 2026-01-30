@@ -79,4 +79,68 @@ class PuantajModel extends Model
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
+    public function getMonthlySummary($year, $month)
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $sql = "SELECT personel_id, DAY(tarih) as gun, SUM(sonuclanmis) as toplam 
+                FROM $this->table 
+                WHERE firma_id = ? AND YEAR(tarih) = ? AND MONTH(tarih) = ?
+                GROUP BY personel_id, DAY(tarih)";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId, $year, $month]);
+        $results = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $summary = [];
+        foreach ($results as $row) {
+            $summary[$row->personel_id][$row->gun] = $row->toplam;
+        }
+        return $summary;
+    }
+
+    public function getMonthlySummaryDetailed($year, $month)
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $sql = "SELECT personel_id, DAY(tarih) as gun, is_emri_sonucu, SUM(sonuclanmis) as toplam 
+                FROM $this->table 
+                WHERE firma_id = ? AND YEAR(tarih) = ? AND MONTH(tarih) = ?
+                GROUP BY personel_id, DAY(tarih), is_emri_sonucu";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId, $year, $month]);
+        $results = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $summary = [];
+        foreach ($results as $row) {
+            $summary[$row->personel_id][$row->gun][$row->is_emri_sonucu] = $row->toplam;
+        }
+        return $summary;
+    }
+
+    public function getKacakSummary($year, $month)
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $sql = "SELECT ekip_adi, DAY(tarih) as gun, SUM(sayi) as toplam 
+                FROM kacak_kontrol 
+                WHERE firma_id = ? AND YEAR(tarih) = ? AND MONTH(tarih) = ? AND silinme_tarihi IS NULL
+                GROUP BY ekip_adi, DAY(tarih)";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId, $year, $month]);
+        $results = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $summary = [];
+        foreach ($results as $row) {
+            $summary[$row->ekip_adi][$row->gun] = $row->toplam;
+        }
+        return $summary;
+    }
+
+    public function getKacakTeams()
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $stmt = $this->db->prepare("SELECT DISTINCT ekip_adi FROM kacak_kontrol WHERE firma_id = ? AND ekip_adi IS NOT NULL AND ekip_adi != '' AND silinme_tarihi IS NULL ORDER BY ekip_adi ASC");
+        $stmt->execute([$firmaId]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
 }

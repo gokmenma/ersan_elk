@@ -98,36 +98,9 @@ $activeTab = $_GET['tab'] ?? 'arac';
 
                         <!-- Butonlar -->
                         <div class="d-flex flex-wrap gap-2 ms-auto">
-                            <div class="dropdown">
-                                <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                    <i class="bx bx-plus me-1"></i> Yeni Ekle
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal"
-                                            data-bs-target="#aracModal">
-                                            <i class="bx bx-car me-2"></i> Yeni Araç
-                                        </a></li>
-                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal"
-                                            data-bs-target="#zimmetModal">
-                                            <i class="bx bx-transfer me-2"></i> Zimmet Ver
-                                        </a></li>
-                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal"
-                                            data-bs-target="#yakitModal">
-                                            <i class="bx bx-gas-pump me-2"></i> Yakıt Kaydı
-                                        </a></li>
-                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal"
-                                            data-bs-target="#kmModal">
-                                            <i class="bx bx-tachometer me-2"></i> KM Kaydı
-                                        </a></li>
-                                    <li>
-                                        <hr class="dropdown-divider">
-                                    </li>
-                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal"
-                                            data-bs-target="#excelModal">
-                                            <i class="bx bx-upload me-2"></i> Excel'den Yakıt Yükle
-                                        </a></li>
-                                </ul>
-                            </div>
+                            <button class="btn btn-primary" type="button" id="btnYeniEkle">
+                                <i class="bx bx-plus me-1"></i> Yeni Ekle
+                            </button>
 
                             <div class="dropdown">
                                 <button type="button" class="btn btn-secondary dropdown-toggle waves-effect waves-light"
@@ -137,6 +110,10 @@ $activeTab = $_GET['tab'] ?? 'arac';
                                 <ul class="dropdown-menu">
                                     <li><a class="dropdown-item" href="#" id="btnExceleAktar">
                                             <i class="bx bx-export me-2"></i> Excele Aktar
+                                        </a></li>
+                                    <li id="liExcelYakitYukle" style="display: none;"><a class="dropdown-item" href="#" data-bs-toggle="modal"
+                                            data-bs-target="#excelModal">
+                                            <i class="bx bx-upload me-2"></i> Excel'den Yakıt Yükle
                                         </a></li>
                                 </ul>
                             </div>
@@ -170,84 +147,84 @@ $activeTab = $_GET['tab'] ?? 'arac';
                                         <?php $i = 0;
                                         foreach ($araclar as $arac):
                                             $i++; ?>
-                                                        <?php
-                                                        $durumBadge = $arac->aktif_mi ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Pasif</span>';
+                                                            <?php
+                                                            $durumBadge = $arac->aktif_mi ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Pasif</span>';
 
-                                                        $tipLabels = [
-                                                            'binek' => 'Binek',
-                                                            'kamyonet' => 'Kamyonet',
-                                                            'kamyon' => 'Kamyon',
-                                                            'minibus' => 'Minibüs',
-                                                            'otobus' => 'Otobüs',
-                                                            'motosiklet' => 'Motosiklet',
-                                                            'diger' => 'Diğer'
-                                                        ];
+                                                            $tipLabels = [
+                                                                'binek' => 'Binek',
+                                                                'kamyonet' => 'Kamyonet',
+                                                                'kamyon' => 'Kamyon',
+                                                                'minibus' => 'Minibüs',
+                                                                'otobus' => 'Otobüs',
+                                                                'motosiklet' => 'Motosiklet',
+                                                                'diger' => 'Diğer'
+                                                            ];
 
-                                                        $yakitLabels = [
-                                                            'benzin' => '<span class="badge bg-danger">Benzin</span>',
-                                                            'dizel' => '<span class="badge bg-dark">Dizel</span>',
-                                                            'lpg' => '<span class="badge bg-info">LPG</span>',
-                                                            'elektrik' => '<span class="badge bg-success">Elektrik</span>',
-                                                            'hibrit' => '<span class="badge bg-warning text-dark">Hibrit</span>'
-                                                        ];
-                                                        ?>
-                                                        <tr>
-                                                            <td class="text-center">
-                                                                <?php echo $i; ?>
-                                                            </td>
-                                                            <td>
-                                                                <a href="javascript:void(0)" class="fw-bold text-primary arac-duzenle"
-                                                                    data-id="<?php echo $arac->id; ?>">
-                                                                    <?php echo $arac->plaka; ?>
-                                                                </a>
-                                                            </td>
-                                                            <td>
-                                                                <?php echo ($arac->marka ?? '-') . ' ' . ($arac->model ?? ''); ?>
-                                                            </td>
-                                                            <td class="text-center">
-                                                                <?php echo $tipLabels[$arac->arac_tipi] ?? '-'; ?>
-                                                            </td>
-                                                            <td class="text-center">
-                                                                <?php echo $yakitLabels[$arac->yakit_tipi] ?? '-'; ?>
-                                                            </td>
-                                                            <td class="text-end">
-                                                                <?php echo number_format($arac->guncel_km ?? 0, 0, ',', '.'); ?> km
-                                                            </td>
-                                                            <td>
-                                                                <?php if (!empty($arac->zimmetli_personel_adi)): ?>
-                                                                                <span class="badge bg-warning-subtle text-warning">
-                                                                                    <i class="bx bx-user me-1"></i>
-                                                                                    <?php echo $arac->zimmetli_personel_adi; ?>
-                                                                                </span>
-                                                                <?php else: ?>
-                                                                                <span class="text-muted">-</span>
-                                                                <?php endif; ?>
-                                                            </td>
-                                                            <td class="text-center">
-                                                                <?php echo $durumBadge; ?>
-                                                            </td>
-                                                            <td class="text-center">
-                                                                <div class="btn-group btn-group-sm">
-                                                                    <?php if (empty($arac->zimmetli_personel_id)): ?>
-                                                                                    <button type="button" class="btn btn-warning zimmet-hizli"
-                                                                                        data-id="<?php echo $arac->id; ?>"
-                                                                                        data-plaka="<?php echo $arac->plaka; ?>"
-                                                                                        data-km="<?php echo $arac->guncel_km; ?>" title="Zimmet Ver">
-                                                                                        <i class="bx bx-transfer"></i>
-                                                                                    </button>
+                                                            $yakitLabels = [
+                                                                'benzin' => '<span class="badge bg-danger">Benzin</span>',
+                                                                'dizel' => '<span class="badge bg-dark">Dizel</span>',
+                                                                'lpg' => '<span class="badge bg-info">LPG</span>',
+                                                                'elektrik' => '<span class="badge bg-success">Elektrik</span>',
+                                                                'hibrit' => '<span class="badge bg-warning text-dark">Hibrit</span>'
+                                                            ];
+                                                            ?>
+                                                            <tr>
+                                                                <td class="text-center">
+                                                                    <?php echo $i; ?>
+                                                                </td>
+                                                                <td>
+                                                                    <a href="javascript:void(0)" class="fw-bold text-primary arac-duzenle"
+                                                                        data-id="<?php echo $arac->id; ?>">
+                                                                        <?php echo $arac->plaka; ?>
+                                                                    </a>
+                                                                </td>
+                                                                <td>
+                                                                    <?php echo ($arac->marka ?? '-') . ' ' . ($arac->model ?? ''); ?>
+                                                                </td>
+                                                                <td class="text-center">
+                                                                    <?php echo $tipLabels[$arac->arac_tipi] ?? '-'; ?>
+                                                                </td>
+                                                                <td class="text-center">
+                                                                    <?php echo $yakitLabels[$arac->yakit_tipi] ?? '-'; ?>
+                                                                </td>
+                                                                <td class="text-end">
+                                                                    <?php echo number_format($arac->guncel_km ?? 0, 0, ',', '.'); ?> km
+                                                                </td>
+                                                                <td>
+                                                                    <?php if (!empty($arac->zimmetli_personel_adi)): ?>
+                                                                                        <span class="badge bg-warning-subtle text-warning">
+                                                                                            <i class="bx bx-user me-1"></i>
+                                                                                            <?php echo $arac->zimmetli_personel_adi; ?>
+                                                                                        </span>
+                                                                    <?php else: ?>
+                                                                                        <span class="text-muted">-</span>
                                                                     <?php endif; ?>
-                                                                    <button type="button" class="btn btn-primary arac-duzenle"
-                                                                        data-id="<?php echo $arac->id; ?>" title="Düzenle">
-                                                                        <i class="bx bx-edit"></i>
-                                                                    </button>
-                                                                    <button type="button" class="btn btn-danger arac-sil"
-                                                                        data-id="<?php echo $arac->id; ?>"
-                                                                        data-plaka="<?php echo $arac->plaka; ?>" title="Sil">
-                                                                        <i class="bx bx-trash"></i>
-                                                                    </button>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
+                                                                </td>
+                                                                <td class="text-center">
+                                                                    <?php echo $durumBadge; ?>
+                                                                </td>
+                                                                <td class="text-center">
+                                                                    <div class="btn-group btn-group-sm">
+                                                                        <?php if (empty($arac->zimmetli_personel_id)): ?>
+                                                                                            <button type="button" class="btn btn-warning zimmet-hizli"
+                                                                                                data-id="<?php echo $arac->id; ?>"
+                                                                                                data-plaka="<?php echo $arac->plaka; ?>"
+                                                                                                data-km="<?php echo $arac->guncel_km; ?>" title="Zimmet Ver">
+                                                                                                <i class="bx bx-transfer"></i>
+                                                                                            </button>
+                                                                        <?php endif; ?>
+                                                                        <button type="button" class="btn btn-primary arac-duzenle"
+                                                                            data-id="<?php echo $arac->id; ?>" title="Düzenle">
+                                                                            <i class="bx bx-edit"></i>
+                                                                        </button>
+                                                                        <button type="button" class="btn btn-danger arac-sil"
+                                                                            data-id="<?php echo $arac->id; ?>"
+                                                                            data-plaka="<?php echo $arac->plaka; ?>" title="Sil">
+                                                                            <i class="bx bx-trash"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
                                         <?php endforeach; ?>
                                     </tbody>
                                 </table>
@@ -339,15 +316,15 @@ $activeTab = $_GET['tab'] ?? 'arac';
                                     <div class="row g-3">
                                         <div class="col-md-3">
 
-                                            <?php echo App\Helper\Form::FormFloatInput('text', 'yakit-filtre-baslangic', date('01.m.Y'), '', 'Başlangıç Tarihi', 'calendar','form-control flatpickr'); ?>
+                                            <?php echo App\Helper\Form::FormFloatInput('text', 'yakit-filtre-baslangic', date('01.m.Y'), '', 'Başlangıç Tarihi', 'calendar', 'form-control flatpickr'); ?>
                                         </div>
                                         <div class="col-md-3">
 
-                                            <?php echo App\Helper\Form::FormFloatInput('text', 'yakit-filtre-bitis', date('t.m.Y'), '', 'Bitiş Tarihi', 'calendar','form-control flatpickr'); ?>
+                                            <?php echo App\Helper\Form::FormFloatInput('text', 'yakit-filtre-bitis', date('t.m.Y'), '', 'Bitiş Tarihi', 'calendar', 'form-control flatpickr'); ?>
                                         </div>
                                         <div class="col-md-3">
 
-                                            <?php 
+                                            <?php
                                             $aracOptions = ['' => 'Tüm Araçlar'];
                                             foreach ($araclar as $arac) {
                                                 $aracOptions[$arac->id] = $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? '');
@@ -444,15 +421,15 @@ $activeTab = $_GET['tab'] ?? 'arac';
                                     <div class="row g-3">
                                         <div class="col-md-3">
 
-                                            <?php echo App\Helper\Form::FormFloatInput('text', 'km-filtre-baslangic', date('01.m.Y'), '', 'Başlangıç Tarihi', 'calendar','form-control flatpickr'); ?>
+                                            <?php echo App\Helper\Form::FormFloatInput('text', 'km-filtre-baslangic', date('01.m.Y'), '', 'Başlangıç Tarihi', 'calendar', 'form-control flatpickr'); ?>
                                         </div>
                                         <div class="col-md-3">
 
-                                            <?php echo App\Helper\Form::FormFloatInput('text', 'km-filtre-bitis', date('t.m.Y'), '', 'Bitiş Tarihi', 'calendar','form-control flatpickr'); ?>
+                                            <?php echo App\Helper\Form::FormFloatInput('text', 'km-filtre-bitis', date('t.m.Y'), '', 'Bitiş Tarihi', 'calendar', 'form-control flatpickr'); ?>
                                         </div>
                                         <div class="col-md-3">
 
-                                            <?php 
+                                            <?php
                                             echo App\Helper\Form::FormSelect2('km-filtre-arac', $aracOptions, '', 'Plaka', 'truck', 'key', '', 'form-select select2');
                                             ?>
 
@@ -509,9 +486,9 @@ $activeTab = $_GET['tab'] ?? 'arac';
                                     <label class="form-label">Yıl</label>
                                     <select class="form-select" id="raporYil">
                                         <?php for ($y = date('Y'); $y >= date('Y') - 5; $y--): ?>
-                                                        <option value="<?php echo $y; ?>">
-                                                            <?php echo $y; ?>
-                                                        </option>
+                                                            <option value="<?php echo $y; ?>">
+                                                                <?php echo $y; ?>
+                                                            </option>
                                         <?php endfor; ?>
                                     </select>
                                 </div>
@@ -522,9 +499,9 @@ $activeTab = $_GET['tab'] ?? 'arac';
                                         $aylar = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
                                         for ($m = 1; $m <= 12; $m++):
                                             ?>
-                                                        <option value="<?php echo $m; ?>" <?php echo $m == date('n') ? 'selected' : ''; ?>>
-                                                            <?php echo $aylar[$m - 1]; ?>
-                                                        </option>
+                                                            <option value="<?php echo $m; ?>" <?php echo $m == date('n') ? 'selected' : ''; ?>>
+                                                                <?php echo $aylar[$m - 1]; ?>
+                                                            </option>
                                         <?php endfor; ?>
                                     </select>
                                 </div>
@@ -533,9 +510,9 @@ $activeTab = $_GET['tab'] ?? 'arac';
                                     <select class="form-select" id="raporArac">
                                         <option value="">Tüm Araçlar</option>
                                         <?php foreach ($araclar as $arac): ?>
-                                                        <option value="<?php echo $arac->id; ?>">
-                                                            <?php echo $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? ''); ?>
-                                                        </option>
+                                                            <option value="<?php echo $arac->id; ?>">
+                                                                <?php echo $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? ''); ?>
+                                                            </option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>

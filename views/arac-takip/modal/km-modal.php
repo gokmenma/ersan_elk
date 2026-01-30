@@ -12,10 +12,12 @@
                     <input type="hidden" name="id" value="">
                     <?php
                     // Araç haritası oluştur (JS için)
+                    $maxKmList = $Km->getAllMaxBitisKm();
                     $kmAracMap = [];
                     foreach ($araclar as $arac) {
                         $arac->display_name = $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? '');
-                        $kmAracMap[$arac->id] = $arac->guncel_km;
+                        // Eğer KM kaydı varsa en yüksek bitiş KM'sini, yoksa araç başlangıç KM'sini al
+                        $kmAracMap[$arac->id] = isset($maxKmList[$arac->id]) ? $maxKmList[$arac->id] : ($arac->baslangic_km ?? 0);
                     }
                     ?>
 
@@ -127,20 +129,35 @@
 <script>
     var kmAracMap = <?php echo json_encode($kmAracMap); ?>;
 
+    function updateBaslangicKm() {
+        // Eğer düzenleme modundaysak (id varsa) otomatik doldurma
+        if ($('#kmForm input[name="id"]').val() !== "") return;
+
+        const aracId = $('#kmModal #arac_id').val();
+        if (aracId && kmAracMap.hasOwnProperty(aracId)) {
+            $('#kmForm #baslangic_km').val(kmAracMap[aracId]);
+            // Yapılan KM hesaplamasını tetikle
+            $('#kmForm #baslangic_km').trigger('input');
+        }
+    }
+
     // Araç seçildiğinde KM'yi otomatik doldur
     $(document).on('change', '#kmModal #arac_id', function () {
-        const aracId = $(this).val();
-        if (aracId && kmAracMap[aracId]) {
-            $('#kmForm #baslangic_km').val(kmAracMap[aracId]);
+        updateBaslangicKm();
+    });
+
+    // Modal açıldığında (tek araç varsa veya seçim yapılmışsa) KM'yi doldur
+    $('#kmModal').on('shown.bs.modal', function () {
+        if ($('#kmForm input[name="id"]').val() === "") {
+            updateBaslangicKm();
         }
     });
 
     // Yapılan KM otomatik hesaplama
     $(document).on('input', '#kmForm #baslangic_km, #kmForm #bitis_km', function () {
-        const baslangic = parseInt($('#kmModal #baslangic_km').val()) || 0;
-        const bitis = parseInt($('#kmModal #bitis_km').val()) || 0;
+        const baslangic = parseInt($('#kmForm #baslangic_km').val()) || 0;
+        const bitis = parseInt($('#kmForm #bitis_km').val()) || 0;
         const yapilan = bitis - baslangic;
-        console.log(baslangic);
         $('#yapilan_km').val(yapilan > 0 ? yapilan + ' km' : '0 km');
     });
 </script>

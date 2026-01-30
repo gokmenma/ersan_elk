@@ -14,6 +14,25 @@ class EndeksOkumaModel extends Model
         parent::__construct($this->table);
     }
 
+    public function getMonthlySummary($year, $month)
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $sql = "SELECT personel_id, DAY(tarih) as gun, SUM(okunan_abone_sayisi) as toplam 
+                FROM $this->table 
+                WHERE firma_id = ? AND YEAR(tarih) = ? AND MONTH(tarih) = ?
+                GROUP BY personel_id, DAY(tarih)";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId, $year, $month]);
+        $results = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $summary = [];
+        foreach ($results as $row) {
+            $summary[$row->personel_id][$row->gun] = $row->toplam;
+        }
+        return $summary;
+    }
+
     public function getFiltered($startDate, $endDate, $personelId = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
