@@ -143,4 +143,56 @@ class PuantajModel extends Model
         $stmt->execute([$firmaId]);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
+
+    public function getUnmatchedWorkResults($year, $month, $raporTuru)
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+
+        if ($raporTuru === 'all') {
+            // Get results that are NOT in ANY report tab
+            $sqlT = "SELECT is_emri_sonucu FROM tanimlamalar WHERE grup = 'is_turu' AND rapor_sekmesi IS NOT NULL AND rapor_sekmesi != '' AND silinme_tarihi IS NULL";
+            $stmtT = $this->db->prepare($sqlT);
+            $stmtT->execute();
+            $matchedResults = $stmtT->fetchAll(PDO::FETCH_COLUMN);
+        } else {
+            $sqlT = "SELECT is_emri_sonucu FROM tanimlamalar WHERE grup = 'is_turu' AND rapor_sekmesi = ? AND silinme_tarihi IS NULL";
+            $stmtT = $this->db->prepare($sqlT);
+            $stmtT->execute([$raporTuru]);
+            $matchedResults = $stmtT->fetchAll(PDO::FETCH_COLUMN);
+
+            if (empty($matchedResults) && $raporTuru === 'sokme_takma') {
+                $stmtT->execute(['sokme']);
+                $matchedResults = $stmtT->fetchAll(PDO::FETCH_COLUMN);
+            }
+
+            // If sökme fails, try kesme as fallback if it's the only one with ucret
+            if (empty($matchedResults) && $raporTuru === 'kesme') {
+                $sqlT = "SELECT is_emri_sonucu FROM tanimlamalar WHERE grup = 'is_turu' AND is_turu_ucret > 0 AND silinme_tarihi IS NULL";
+                $stmtT = $this->db->prepare($sqlT);
+                $stmtT->execute();
+                $matchedResults = $stmtT->fetchAll(PDO::FETCH_COLUMN);
+            }
+        }
+
+        $params = [$firmaId, $year, $month];
+        $notInClause = "";
+        if (!empty($matchedResults)) {
+            $placeholders = implode(',', array_fill(0, count($matchedResults), '?'));
+            $notInClause = " AND t.is_emri_sonucu NOT IN ($placeholders)";
+            $params = array_merge($params, $matchedResults);
+        }
+
+        $sql = "SELECT t.*, p.adi_soyadi as personel_adi, ek.tur_adi as ekip_kodu
+                FROM yapilan_isler t
+                LEFT JOIN personel p ON t.personel_id = p.id
+                LEFT JOIN tanimlamalar ek ON p.ekip_no = ek.id
+                WHERE t.firma_id = ? AND YEAR(t.tarih) = ? AND MONTH(t.tarih) = ? 
+                $notInClause
+                AND t.is_emri_sonucu IS NOT NULL AND t.is_emri_sonucu != ''
+                ORDER BY t.tarih ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
 }

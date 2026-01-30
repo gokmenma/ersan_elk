@@ -90,6 +90,53 @@ foreach ($allPersonel as $p) {
     }
 }
 
+$isUnmatchedReport = isset($_GET['unmatched']) && $_GET['unmatched'] == 1;
+
+if ($isUnmatchedReport) {
+    $unmatchedRecords = $Puantaj->getUnmatchedWorkResults($year, $month, $activeTab);
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setTitle('Eşleşmeyen Kayıtlar');
+
+    $headerStyle = [
+        'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F46A6A']],
+        'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+    ];
+
+    $headers = ['SIRA', 'TARİH', 'EKİP KODU', 'İSİM SOYİSİM', 'İŞ EMİR SONUCU (EŞLEŞMEYEN)'];
+    $col = 'A';
+    foreach ($headers as $h) {
+        $sheet->setCellValue($col . '1', $h);
+        $sheet->getColumnDimension($col)->setAutoSize(true);
+        $col++;
+    }
+    $sheet->getStyle('A1:E1')->applyFromArray($headerStyle);
+
+    $row = 2;
+    foreach ($unmatchedRecords as $idx => $rec) {
+        $sheet->setCellValue('A' . $row, $idx + 1);
+        $sheet->setCellValue('B' . $row, date('d.m.Y', strtotime($rec->tarih)));
+        $sheet->setCellValue('C' . $row, $rec->ekip_kodu ?: '-');
+        $sheet->setCellValue('D' . $row, $rec->personel_adi ?: '-');
+        $sheet->setCellValue('E' . $row, $rec->is_emri_sonucu);
+        $row++;
+    }
+
+    $sheet->getStyle('A2:E' . ($row - 1))->applyFromArray([
+        'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+    ]);
+
+    $filename = 'Eslesmeyen_Kayitlar_' . $activeTab . '_' . $year . '_' . $month . '.xlsx';
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment;filename="' . $filename . '"');
+    header('Cache-Control: max-age=0');
+    $writer = new Xlsx($spreadsheet);
+    $writer->save('php://output');
+    exit;
+}
+
 $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
 $sheet->setTitle('Rapor');
