@@ -470,10 +470,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         $insertedCount = 0;
         $skippedCount = 0;
+        $unmatchedPersonnel = []; // Eşleşmeyen personeller
         $firmaId = $_SESSION['firma_id'] ?? 0;
+        $Personel = new PersonelModel();
+        $unmatchedRows = []; // Eşleşmeyen satırlar (satır no, ekip adı, eşleşmeyen isimler)
 
         for ($i = $headerRowIndex + 1; $i < count($rows); $i++) {
             $row = $rows[$i];
+            $excelRowNum = $i + 1; // Excel satır numarası (1-indexed, header dahil)
             $ekipStr = isset($colMap['ekip']) ? trim($row[$colMap['ekip']]) : '';
             $sayi = isset($colMap['sayi']) ? (int) trim($row[$colMap['sayi']]) : 0;
             $aciklama = isset($colMap['aciklama']) ? trim($row[$colMap['aciklama']]) : '';
@@ -481,8 +485,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if (empty($ekipStr))
                 continue;
 
-            // Direct upload, no person matching or splitting as requested
-            $personelId = 0;
+            // Ekip adındaki virgülle ayrılmış isimleri personel tablosunda ara
+            $personelIds = [];
+            $unmatchedInRow = []; // Bu satırdaki eşleşmeyen isimler
+            $isimler = array_map('trim', explode(',', $ekipStr));
+
+            foreach ($isimler as $isim) {
+                if (empty($isim))
+                    continue;
+                // Personel tablosunda isimle birebir eşleşme ara
+                $stmtPers = $Puantaj->db->prepare("SELECT id FROM personel WHERE adi_soyadi = ? AND silinme_tarihi IS NULL LIMIT 1");
+                $stmtPers->execute([$isim]);
+                $persId = $stmtPers->fetchColumn();
+                if ($persId) {
+                    $personelIds[] = $persId;
+                } else {
+                    $unmatchedInRow[] = $isim;
+                }
+            }
+
+            // Eğer herhangi bir personel eşleşmediyse bu satırı atla
+            if (!empty($unmatchedInRow)) {
+                $unmatchedRows[] = [
+                    'satir' => $excelRowNum,
+                    'ekip' => $ekipStr,
+                    'eslesmeyen' => $unmatchedInRow
+                ];
+                $skippedCount++;
+                continue;
+            }
+
+            $personelIdsStr = implode(',', $personelIds);
 
             // Unique ID for idempotency
             $islemId = md5($uploadDate . '|' . $ekipStr . '|' . $sayi . '|' . $aciklama);
@@ -494,14 +527,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 continue;
             }
 
-            $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_id, tarih, ekip_adi, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $result = $stmt->execute([$firmaId, $personelId, $uploadDate, $ekipStr, $sayi, $aciklama, $islemId]);
+            $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $result = $stmt->execute([$firmaId, $personelIdsStr, $uploadDate, $ekipStr, $sayi, $aciklama, $islemId]);
             if ($result)
                 $insertedCount++;
         }
 
         $response['status'] = 'success';
-        $response['message'] = "$insertedCount kayıt eklendi. $skippedCount kayıt atlandı.";
+        $message = "$insertedCount kayıt eklendi. $skippedCount kayıt atlandı.";
+
+        // Eşleşmeyen satırlar varsa detaylı bildir
+        if (!empty($unmatchedRows)) {
+            $message .= "\n\n⚠️ Eşleşmeyen Kayıtlar (" . count($unmatchedRows) . " satır):";
+            foreach ($unmatchedRows as $ur) {
+                $message .= "\n• Satır " . $ur['satir'] . ": " . $ur['ekip'] . " → Eşleşmeyen: " . implode(', ', $ur['eslesmeyen']);
+            }
+        }
+        $response['message'] = $message;
 
         $SystemLog = new SystemLogModel();
         $userId = $_SESSION['user_id'] ?? 0;
@@ -524,20 +566,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'kacak-kaydet') {
     $id = $_POST['id'] ?? 0;
     $tarih = $_POST['tarih'] ?? date('Y-m-d');
-    $ekip_adi = $_POST['kacak_ekip_adi'] ?? '';
+    $personelIdsArr = $_POST['kacak_personel_ids'] ?? [];
     $sayi = $_POST['sayi'] ?? 0;
     $aciklama = $_POST['aciklama'] ?? '';
     $firmaId = $_SESSION['firma_id'] ?? 0;
 
     $dbTarih = \App\Helper\Date::convertExcelDate($tarih, 'Y-m-d') ?: $tarih;
 
+    // personel_ids'i virgülle ayrılmış string yap
+    $personelIdsStr = is_array($personelIdsArr) ? implode(',', $personelIdsArr) : $personelIdsArr;
+
+    // Seçilen personellerin isimlerini ekip_adi olarak oluştur
+    $ekipAdi = '';
+    if (!empty($personelIdsArr) && is_array($personelIdsArr)) {
+        $Personel = new PersonelModel();
+        $isimler = [];
+        foreach ($personelIdsArr as $pId) {
+            $p = $Personel->find($pId);
+            if ($p) {
+                $isimler[] = $p->adi_soyadi;
+            }
+        }
+        $ekipAdi = implode(', ', $isimler);
+    }
+
     if ($id > 0) {
-        $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET tarih = ?, ekip_adi = ?, sayi = ?, aciklama = ? WHERE id = ?");
-        $result = $stmt->execute([$dbTarih, $ekip_adi, $sayi, $aciklama, $id]);
+        $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET tarih = ?, personel_ids = ?, ekip_adi = ?, sayi = ?, aciklama = ? WHERE id = ?");
+        $result = $stmt->execute([$dbTarih, $personelIdsStr, $ekipAdi, $sayi, $aciklama, $id]);
     } else {
-        $islemId = md5($dbTarih . '|' . $ekip_adi . '|' . $sayi . '|' . $aciklama);
-        $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_id, tarih, ekip_adi, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $result = $stmt->execute([$firmaId, 0, $dbTarih, $ekip_adi, $sayi, $aciklama, $islemId]);
+        $islemId = md5($dbTarih . '|' . $personelIdsStr . '|' . $sayi . '|' . $aciklama);
+        $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $result = $stmt->execute([$firmaId, $personelIdsStr, $dbTarih, $ekipAdi, $sayi, $aciklama, $islemId]);
     }
     echo json_encode(['status' => $result ? 'success' : 'error']);
     exit;
@@ -550,6 +609,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $record = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($record) {
         $record['tarih_formatted'] = \App\Helper\Date::dmY($record['tarih']);
+        // personel_ids'i array olarak döndür
+        $record['personel_ids_array'] = !empty($record['personel_ids'])
+            ? array_map('intval', explode(',', $record['personel_ids']))
+            : [];
     }
     echo json_encode($record);
     exit;
@@ -593,16 +656,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             </tr>
         <?php endforeach;
     } elseif ($tab === 'kacak_kontrol') {
-        $stmt = $Puantaj->db->prepare("SELECT k.*, p.adi_soyadi as personel_adi FROM kacak_kontrol k LEFT JOIN personel p ON k.personel_id = p.id WHERE k.tarih BETWEEN ? AND ? " . (!empty($ekipKodu) ? " AND k.personel_id = ?" : "") . " AND k.silinme_tarihi IS NULL ORDER BY k.tarih DESC");
+        // personel_ids artık virgülle ayrılmış ID'ler içerdiği için doğrudan ekip_adi gösteriliyor
+        $sql = "SELECT k.* FROM kacak_kontrol k WHERE k.tarih BETWEEN ? AND ? AND k.silinme_tarihi IS NULL";
         $params = [$dbStartDate, $dbEndDate];
-        if (!empty($ekipKodu))
+
+        // Personel filtresi - personel_ids içinde aranan ID var mı kontrol et
+        if (!empty($ekipKodu)) {
+            $sql .= " AND FIND_IN_SET(?, k.personel_ids)";
             $params[] = $ekipKodu;
+        }
+
+        $sql .= " ORDER BY k.tarih DESC";
+        $stmt = $Puantaj->db->prepare($sql);
         $stmt->execute($params);
         $records = $stmt->fetchAll(PDO::FETCH_OBJ);
         foreach ($records as $record): ?>
             <tr>
                 <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
-                <td><?= $record->personel_adi ?: '<span class="text-muted">' . $record->ekip_adi . '</span>' ?></td>
+                <td><?= $record->ekip_adi ?: '<span class="text-muted">-</span>' ?></td>
                 <td><?= $record->sayi ?></td>
                 <td><?= $record->aciklama ?></td>
                 <td>

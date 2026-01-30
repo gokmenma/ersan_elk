@@ -86,8 +86,8 @@ if (Gate::canWithMessage("personel_listesi")) {
                         .personel-name-container:hover .personel-hover-image {
                             display: block;
                         }
-                        
-                        .fw-bold{
+
+                        .fw-bold {
                             font-weight: 600 !important;
                         }
                     </style>
@@ -132,13 +132,15 @@ if (Gate::canWithMessage("personel_listesi")) {
                                         #
                                     </th>
                                     <th class="text-center">SIRA</th>
-                                    <th>TC KİMLİK NO</th>
+                                    <th style="min-width: 160px; width: 160px;">EKİP / BÖLGE</th>
+                                    <th style="width: 100px;">TC KİMLİK NO</th>
                                     <th>ADI SOYADI</th>
-                                    <th>İŞE BAŞLAMA TARİHİ</th>
-                                    <th>İŞTEN AYRILMA TARİHİ</th>
-                                    <th>CEP TELEFONU</th>
+                                    <th style="width: 110px;">İŞE BAŞLAMA TARİHİ</th>
+                                    <th style="width: 110px;">İŞTEN AYRILMA TARİHİ</th>
+                                    <th style="width: 110px;">CEP TELEFONU</th>
                                     <th>EMAIL</th>
                                     <th>GÖREV</th>
+                                    <th>DEPARTMAN</th>
                                     <th class="text-center">BİLDİRİM</th>
                                     <th>DURUM</th>
                                 </tr>

@@ -223,8 +223,6 @@ class Form
         return $html;
     }
 
-
-
     //Type File
     public static function FormFileInput($name, $label = null, $icon = 'file', $class = "form-control", $required = false)
     {

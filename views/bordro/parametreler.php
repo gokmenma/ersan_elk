@@ -299,12 +299,12 @@ $kategoriOptions = [
                                                                                 <button
                                                                                     class="btn btn-sm btn-outline-primary btn-edit-param"
                                                                                     data-id="<?= $param->id ?>"
-                                                                                    data-param='<?= json_encode($param) ?>'>
+                                                                                    data-param='<?= htmlspecialchars(json_encode($param), ENT_QUOTES, 'UTF-8') ?>'>
                                                                                     <i class="bx bx-edit-alt"></i>
                                                                                 </button>
                                                                                 <button
                                                                                     class="btn btn-sm btn-outline-success btn-copy-param"
-                                                                                    data-param='<?= json_encode($param) ?>'
+                                                                                    data-param='<?= htmlspecialchars(json_encode($param), ENT_QUOTES, 'UTF-8') ?>'
                                                                                     title="Yeni dönem olarak kopyala">
                                                                                     <i class="bx bx-copy"></i>
                                                                                 </button>
@@ -434,12 +434,12 @@ $kategoriOptions = [
                                                                                 <button
                                                                                     class="btn btn-sm btn-outline-primary btn-edit-param"
                                                                                     data-id="<?= $param->id ?>"
-                                                                                    data-param='<?= json_encode($param) ?>'>
+                                                                                    data-param='<?= htmlspecialchars(json_encode($param), ENT_QUOTES, 'UTF-8') ?>'>
                                                                                     <i class="bx bx-edit-alt"></i>
                                                                                 </button>
                                                                                 <button
                                                                                     class="btn btn-sm btn-outline-success btn-copy-param"
-                                                                                    data-param='<?= json_encode($param) ?>'
+                                                                                    data-param='<?= htmlspecialchars(json_encode($param), ENT_QUOTES, 'UTF-8') ?>'
                                                                                     title="Yeni dönem olarak kopyala">
                                                                                     <i class="bx bx-copy"></i>
                                                                                 </button>
@@ -853,9 +853,9 @@ $kategoriOptions = [
                             <label class="form-label">Kaynak Dönem</label>
                             <select name="kaynak_donem" id="kaynakDonemSecimi" class="form-select" required>
                                 <?php foreach ($donemler as $donem): ?>
-                                        <option value="<?= $donem ?>" <?= $seciliDonem === $donem ? 'selected' : '' ?>>
-                                            <?= getDonemLabel($donem) ?>
-                                        </option>
+                                    <option value="<?= $donem ?>" <?= $seciliDonem === $donem ? 'selected' : '' ?>>
+                                        <?= getDonemLabel($donem) ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -953,13 +953,15 @@ $kategoriOptions = [
                             <label class="form-label">Yıl</label>
                             <select name="dilim_yili" id="dilim_yili" class="form-select" required>
                                 <?php for ($y = date('Y') + 1; $y >= 2020; $y--): ?>
-                                        <option value="<?= $y ?>" <?= $seciliVergiYili == $y ? 'selected' : '' ?>><?= $y ?></option>
+                                    <option value="<?= $y ?>" <?= $seciliVergiYili == $y ? 'selected' : '' ?>><?= $y ?>
+                                    </option>
                                 <?php endfor; ?>
                             </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Dilim No</label>
-                            <input type="number" name="dilim_no" class="form-control" required min="1" max="10" placeholder="1-10">
+                            <input type="number" name="dilim_no" class="form-control" required min="1" max="10"
+                                placeholder="1-10">
                         </div>
                     </div>
                     <div class="row mb-3">
@@ -975,7 +977,8 @@ $kategoriOptions = [
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label">Vergi Oranı (%)</label>
-                            <input type="number" name="vergi_orani" class="form-control" required min="0" max="100" step="0.01" placeholder="15">
+                            <input type="number" name="vergi_orani" class="form-control" required min="0" max="100"
+                                step="0.01" placeholder="15">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Açıklama</label>
@@ -1173,11 +1176,22 @@ $kategoriOptions = [
             $('#modalParametreEkle').modal('show');
         });
 
+        // Para formatını sayısal değere çeviren yardımcı fonksiyon
+        function parseMoney(value) {
+            if (!value) return 0;
+            // ₺ sembolünü kaldır, binlik ayracı (.) kaldır, ondalık ayracı (,) noktaya çevir
+            return parseFloat(value.toString().replace(/[₺\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+        }
+
         // Parametre formu submit
         $('#formParametre').on('submit', function (e) {
             e.preventDefault();
             const formData = new FormData(this);
             formData.append('action', $('#param_id').val() ? 'update-parametre' : 'add-parametre');
+
+            // Money alanlarını temizle ve sayısal değere çevir
+            formData.set('varsayilan_tutar', parseMoney($('input[name="varsayilan_tutar"]').val()));
+            formData.set('gunluk_tutar', parseMoney($('input[name="gunluk_tutar"]').val()));
 
             // Checkbox değerlerini düzelt
             formData.set('sgk_matrahi_dahil', $('#sgk_matrahi_dahil').is(':checked') ? 1 : 0);
@@ -1347,10 +1361,10 @@ $kategoriOptions = [
 
             genelAyarlar.forEach(function (ayar) {
                 if (!ayar.gecerlilik_baslangic) return;
-                
+
                 const ayarDonem = getDonemKeyJs(ayar.gecerlilik_baslangic);
                 if (ayarDonem !== kaynakDonem) return;
-                
+
                 const isOran = ayar.parametre_kodu.includes('orani');
                 const degerStr = isOran ? '%' + parseFloat(ayar.deger).toFixed(2) : parseFloat(ayar.deger).toLocaleString('tr-TR') + ' ₺';
 

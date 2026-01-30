@@ -20,8 +20,10 @@ $workType = $_GET['work_type'] ?? '';
 // $records = $Puantaj->getFiltered($startDate, $endDate, $ekipKodu, $workType);
 $personeller = $Personel->all();
 $personelOptions = ['' => 'Seçiniz'];
+$personelOptionsMultiple = []; // Kaçak kontrol multiple select için boş değer olmadan
 foreach ($personeller as $p) {
     $personelOptions[$p->id] = $p->adi_soyadi;
+    $personelOptionsMultiple[$p->id] = $p->adi_soyadi;
 }
 
 $workTypes = $Puantaj->getWorkTypes();
@@ -456,17 +458,18 @@ foreach ($workResults as $wr) {
                         ); ?>
                     </div>
                     <div class="mb-3">
-                        <?php echo Form::FormSelect2(
-                            name: 'kacak_ekip_adi',
-                            options: [],
-                            selectedValue: '',
-                            label: 'Ekip Adı',
+                        <label for="kacak_personel_ids">Personel Seçimi(En Fazla 2 Personel)</label>
+                        <?php echo Form::FormMultipleSelect2(
+                            name: 'kacak_personel_ids',
+                            options: $personelOptionsMultiple,
+                            selectedValues: [],
+                            label: '',
                             icon: 'users',
-                            class: 'form-select select2-tags',
+                            valueField: 'key',
+                            textField: '',
+                            class: 'form-select select2',
                             required: true
                         ); ?>
-                        <small class="text-muted">Listeden seçebilir veya yeni bir isim yazarak Enter'a
-                            basabilirsiniz.</small>
                     </div>
                     <div class="mb-3">
                         <?php echo Form::FormFloatInput(
@@ -520,6 +523,8 @@ foreach ($workResults as $wr) {
         </div>
     </div>
 </div>
+
+
 
 <script>
     $(document).ready(function () {
@@ -742,7 +747,13 @@ foreach ($workResults as $wr) {
                     try {
                         var res = JSON.parse(response);
                         if (res.status === 'success') {
-                            Swal.fire('Başarılı', res.message, 'success').then(() => {
+                            // Mesajdaki newline'ları <br> ile değiştir
+                            var htmlMessage = res.message.replace(/\n/g, '<br>');
+                            Swal.fire({
+                                title: 'Başarılı',
+                                html: htmlMessage,
+                                icon: 'success'
+                            }).then(() => {
                                 $('#importKacakModal').modal('hide');
                                 loadTabContent('kacak_kontrol');
                             });
@@ -764,36 +775,24 @@ foreach ($workResults as $wr) {
         $('#btnNewKacak').on('click', function () {
             $('#kacakManualForm input[name="id"]').val(0);
             $('#kacakManualForm')[0].reset();
-            $('#kacak_ekip_adi').val('').trigger('change');
+            // Multiple select'i sıfırla
+            $('#kacak_personel_ids').val([]).trigger('change');
             $('#kacakModalTitle').text('Yeni Kaçak Kontrol Kaydı');
-            loadKacakTeams();
+            initPersonelSelect2();
             $('#kacakModal').modal('show');
         });
 
-        function loadKacakTeams(selectedTeam = '') {
-            $.get('views/puantaj/api.php', { action: 'get-kacak-teams' }, function (response) {
-                var teams = JSON.parse(response);
-                var options = '<option value="">Seçiniz</option>';
-                teams.forEach(function (team) {
-                    options += '<option value="' + team + '">' + team + '</option>';
-                });
-                $('#kacak_ekip_adi').html(options);
-
-                if (!$('#kacak_ekip_adi').hasClass('select2-hidden-accessible')) {
-                    $('#kacak_ekip_adi').select2({
-                        dropdownParent: $('#kacakModal'),
-                        tags: true
-                    });
-                }
-
-                if (selectedTeam) {
-                    if ($('#kacak_ekip_adi').find("option[value='" + selectedTeam + "']").length) {
-                        $('#kacak_ekip_adi').val(selectedTeam).trigger('change');
-                    } else {
-                        var newOption = new Option(selectedTeam, selectedTeam, true, true);
-                        $('#kacak_ekip_adi').append(newOption).trigger('change');
-                    }
-                }
+        function initPersonelSelect2() {
+            var $el = $('#kacak_personel_ids');
+            if ($el.hasClass('select2-hidden-accessible')) {
+                $el.select2('destroy');
+            }
+            $el.select2({
+                dropdownParent: $('#kacakModal'),
+                placeholder: '',
+                allowClear: true,
+                maximumSelectionLength: 2,
+                width: '100%'
             });
         }
 
@@ -823,7 +822,15 @@ foreach ($workResults as $wr) {
                 $('#kacakManualForm input[name="sayi"]').val(record.sayi);
                 $('#kacakManualForm input[name="aciklama"]').val(record.aciklama);
                 $('#kacakModalTitle').text('Kaydı Düzenle');
-                loadKacakTeams(record.ekip_adi);
+
+                // Multiple select'i başlat ve seçili personelleri ayarla
+                initPersonelSelect2();
+                if (record.personel_ids_array && record.personel_ids_array.length > 0) {
+                    $('#kacak_personel_ids').val(record.personel_ids_array).trigger('change');
+                } else {
+                    $('#kacak_personel_ids').val([]).trigger('change');
+                }
+
                 $('#kacakModal').modal('show');
             });
         });

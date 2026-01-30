@@ -435,6 +435,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Puantaj dışı ek ödemeleri grupla
                 $ekOdemelerNonPuantaj = [];
                 $puantajOdemeler = [];
+                $kacakKontrolOdemeler = [];
 
                 // Tüm ek ödemeleri (listeli) al
                 $tumEkOdemeler = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
@@ -443,6 +444,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if (strpos($odeme->aciklama ?? '', '[Puantaj]') === 0) {
                         // Puantaj ödemesi - ayrı göster
                         $puantajOdemeler[] = $odeme;
+                    } elseif (strpos($odeme->aciklama ?? '', '[Kaçak Kontrol]') === 0) {
+                        // Kaçak Kontrol ödemesi - ayrı göster
+                        $kacakKontrolOdemeler[] = $odeme;
                     } else {
                         // Diğer ödemeler - grupla
                         $tur = $odeme->tur;
@@ -454,7 +458,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
-                if (empty($ekOdemelerNonPuantaj) && empty($puantajOdemeler)) {
+                if (empty($ekOdemelerNonPuantaj) && empty($puantajOdemeler) && empty($kacakKontrolOdemeler)) {
                     $html .= '<tr><td class="text-center text-muted py-3" colspan="2"><i class="bx bx-info-circle me-1"></i>Ek ödeme yok</td></tr>';
                 } else {
                     // Önce normal ek ödemeleri göster
@@ -462,6 +466,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $turEtiket = $ekOdemeTurEtiketleri[$tur] ?? ucfirst($tur);
                         $adetStr = $data['adet'] > 1 ? ' <small class="text-muted">(' . $data['adet'] . ' adet)</small>' : '';
                         $html .= '<tr><td class="ps-3">' . htmlspecialchars($turEtiket) . $adetStr . '</td><td class="text-end pe-3 text-success">+' . number_format($data['toplam'], 2, ',', '.') . ' ₺</td></tr>';
+                    }
+
+                    // Kaçak Kontrol ödemelerini ayrı göster
+                    if (!empty($kacakKontrolOdemeler)) {
+                        $html .= '<tr><td colspan="2" class="ps-3 pt-2 pb-1"><small class="text-muted fw-medium"><i class="bx bx-search-alt me-1"></i>Kaçak Kontrol Primi</small></td></tr>';
+                        foreach ($kacakKontrolOdemeler as $kacak) {
+                            // [Kaçak Kontrol] 300 işlem × 200,00 ₺ = 60.000,00 ₺ - 52.000,00 ₺ (muaf) = 8.000,00 ₺
+                            $aciklama = str_replace('[Kaçak Kontrol] ', '', $kacak->aciklama ?? '');
+                            $html .= '<tr><td class="ps-4 small">' . htmlspecialchars($aciklama) . '</td><td class="text-end pe-3 text-success">+' . number_format($kacak->tutar, 2, ',', '.') . ' ₺</td></tr>';
+                        }
                     }
 
                     // Puantaj ödemelerini ayrı ayrı göster

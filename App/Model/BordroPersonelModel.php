@@ -550,6 +550,119 @@ class BordroPersonelModel extends Model
     }
 
     /**
+     * Personelin kaçak kontrol primlerini hesaplar ve ek ödeme olarak oluşturur
+     * 
+     * İş Kuralı:
+     * - Personel ay içinde 260'tan fazla kaçak kontrol işlemi yaparsa
+     * - 260'ı aşan her işlem için bordro_genel_ayarlar'dan alınan kacak_kontrol_primi tutarı kadar prim hak eder
+     * - Prim personel_ek_odemeler tablosuna kaydedilir
+     * 
+     * @param int $personel_id Personel ID
+     * @param int $donem_id Bordro dönem ID
+     * @param string $baslangic_tarihi Dönem başlangıç tarihi (Y-m-d)
+     * @param string $bitis_tarihi Dönem bitiş tarihi (Y-m-d)
+     * @return array ['adet' => int, 'prim' => float] Hesaplanan prim bilgisi
+     */
+    public function olusturKacakKontrolPrimleri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
+    {
+        $sonuc = ['toplam_islem' => 0, 'brut_prim' => 0, 'muaf_limit' => 0, 'net_prim' => 0];
+
+        // 1. Önceki kaçak kontrol primlerini temizle (duplicate önlemek için)
+        $deleteSql = $this->db->prepare("
+            DELETE FROM personel_ek_odemeler 
+            WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[Kaçak Kontrol]%'
+        ");
+        $deleteSql->execute([$personel_id, $donem_id]);
+
+        // 2. Dönem tarihini al (parametre çekimi için)
+        $donemTarihi = $baslangic_tarihi;
+
+        // 3. Bordro parametrelerinden kacak_kontrol_primi ayarlarını al
+        $parametreModel = new BordroParametreModel();
+        $kacakParam = $parametreModel->getByKod('kacak_kontrol_primi', $donemTarihi);
+
+        if (!$kacakParam) {
+            return $sonuc; // Parametre tanımlı değilse çık
+        }
+
+        // Birim tutar (varsayılan_tutar) ve aylık muaf limit
+        $birimTutar = floatval($kacakParam->varsayilan_tutar ?? 0);
+        $aylikMuafLimit = floatval($kacakParam->aylik_muaf_limit ?? 0);
+
+        if ($birimTutar <= 0) {
+            return $sonuc; // Birim tutar tanımlı değilse çık
+        }
+
+        $sonuc['muaf_limit'] = $aylikMuafLimit;
+
+        // 4. Personelin dönem içindeki kaçak kontrol işlemlerini hesapla
+        $sql = $this->db->prepare("
+            SELECT id, personel_ids, sayi 
+            FROM kacak_kontrol 
+            WHERE tarih BETWEEN ? AND ? 
+            AND silinme_tarihi IS NULL
+            AND personel_ids IS NOT NULL
+        ");
+        $sql->execute([$baslangic_tarihi, $bitis_tarihi]);
+        $kayitlar = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        $toplamIslem = 0;
+
+        foreach ($kayitlar as $kayit) {
+            // Bu kayıtta personel var mı kontrol et
+            $personelIds = array_filter(array_map('trim', explode(',', $kayit->personel_ids)));
+
+            if (empty($personelIds)) {
+                continue;
+            }
+
+            // Bu personel kayıtta var mı?
+            if (in_array($personel_id, $personelIds)) {
+                // Kayıttaki sayının tamamını bu personele ekle
+                $toplamIslem += floatval($kayit->sayi);
+            }
+        }
+
+        $sonuc['toplam_islem'] = round($toplamIslem, 2);
+
+        // 5. Brüt prim hesapla (toplam işlem × birim tutar)
+        $brutPrim = $toplamIslem * $birimTutar;
+        $sonuc['brut_prim'] = round($brutPrim, 2);
+
+        // 6. Net prim hesapla (brüt prim - aylık muaf limit)
+        $netPrim = $brutPrim - $aylikMuafLimit;
+
+        // Negatif olamaz
+        if ($netPrim <= 0) {
+            return $sonuc; // Muaf limitin altında, prim yok
+        }
+
+        $netPrim = round($netPrim, 2);
+        $sonuc['net_prim'] = $netPrim;
+
+        // 7. Ek ödeme oluştur
+        $PersonelEkOdemelerModel = new \App\Model\PersonelEkOdemelerModel();
+
+        // Muaf işlem sayısını hesapla: Muaf tutar / varsayılan tutar
+        $muafIslem = ($birimTutar > 0) ? round($aylikMuafLimit / $birimTutar) : 0;
+
+        $aciklama = "[Kaçak Kontrol] (" . round($toplamIslem) . " işlem Toplam)(" . $muafIslem . " işlem Muaf)";
+
+        $PersonelEkOdemelerModel->saveWithAttr([
+            'personel_id' => $personel_id,
+            'donem_id' => $donem_id,
+            'tur' => 'prim',
+            'aciklama' => $aciklama,
+            'tutar' => $netPrim,
+            'tekrar_tipi' => 'tek_sefer',
+            'aktif' => 1,
+            'created_at' => date('Y-m-d H:i:s')
+        ]);
+
+        return $sonuc;
+    }
+
+    /**
      * Personelin onaylanmış avanslarını dönem için kesinti olarak oluşturur
      */
     public function olusturAvansKesintileri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
@@ -966,6 +1079,10 @@ class BordroPersonelModel extends Model
 
         // Puantaj (Yapılan İşler) Hesaplaması
         $this->olusturPuantajOdemeleri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+
+        // ========== KAÇAK KONTROL PRİMLERİ ==========
+        // Personelin dönem içinde 260'ı aşan kaçak kontrol işlemleri için prim hesapla
+        $this->olusturKacakKontrolPrimleri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
         // ========== AVANS KESİNTİLERİ ==========
         // Dönem içindeki onaylanmış avansları bulup kesinti olarak ekle

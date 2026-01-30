@@ -30,6 +30,15 @@ $(document).ready(function () {
           return meta.row + meta.settings._iDisplayStart + 1;
         },
       },
+      {
+        data: null,
+        render: function (data, type, row) {
+          return `
+            <div class="fw-bold">${row.ekip_adi}</div>
+            <div class="text-muted small">${row.ekip_bolge}</div>
+          `;
+        },
+      },
       { data: "tc_kimlik_no" },
       {
         data: "adi_soyadi",
@@ -47,11 +56,12 @@ $(document).ready(function () {
       {
         data: "cep_telefonu",
         render: function (data) {
-          return `<i class="feather feather-smartphone"></i>${data}`;
+          return `<i class="feather feather-smartphone"></i> ${data}`;
         },
       },
       { data: "email_adresi" },
       { data: "gorev" },
+      { data: "departman" },
       {
         data: "bildirim_abonesi",
         className: "text-center",

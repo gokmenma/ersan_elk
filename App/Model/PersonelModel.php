@@ -30,10 +30,11 @@ class PersonelModel extends Model
     /**Tüm aktif personelleri getirir */
     public function all()
     {
-        $sql = "SELECT p.*, 
+        $sql = "SELECT p.*, t.tur_adi as ekip_adi,
                 CASE WHEN ps.id IS NOT NULL THEN 1 ELSE 0 END as bildirim_abonesi
                 FROM {$this->table} p 
                 LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
+                LEFT JOIN tanimlamalar t ON p.ekip_no = t.id
                 WHERE p.firma_id = :firma_id
                 GROUP BY p.id";
 
@@ -72,10 +73,11 @@ class PersonelModel extends Model
 
     public function filter($term = null, $colSearches = [])
     {
-        $sql = "SELECT p.*, 
+        $sql = "SELECT p.*, t.tur_adi as ekip_adi,
                 CASE WHEN ps.id IS NOT NULL THEN 1 ELSE 0 END as bildirim_abonesi
                 FROM {$this->table} p 
                 LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
+                LEFT JOIN tanimlamalar t ON p.ekip_no = t.id
                 WHERE p.firma_id = :firma_id";
 
         $params = ['firma_id' => $_SESSION['firma_id']];
@@ -89,6 +91,8 @@ class PersonelModel extends Model
                 p.cep_telefonu LIKE :term OR
                 p.email_adresi LIKE :term OR
                 p.gorev LIKE :term OR
+                t.tur_adi LIKE :term OR
+                p.ekip_bolge LIKE :term OR
                 (CASE WHEN p.aktif_mi = 1 THEN 'Aktif' ELSE 'Pasif' END) LIKE :term
             )";
             $params['term'] = $term;
@@ -97,14 +101,16 @@ class PersonelModel extends Model
         // Column Searches
         if (!empty($colSearches)) {
             $colMap = [
-                2 => 'p.tc_kimlik_no',
-                3 => 'p.adi_soyadi',
-                4 => 'p.ise_giris_tarihi',
-                5 => 'p.isten_cikis_tarihi',
-                6 => 'p.cep_telefonu',
-                7 => 'p.email_adresi',
-                8 => 'p.gorev',
-                10 => 'p.aktif_mi'
+                2 => 't.tur_adi',
+                3 => 'p.tc_kimlik_no',
+                4 => 'p.adi_soyadi',
+                5 => 'p.ise_giris_tarihi',
+                6 => 'p.isten_cikis_tarihi',
+                7 => 'p.cep_telefonu',
+                8 => 'p.email_adresi',
+                9 => 'p.gorev',
+                10 => 'p.departman',
+                12 => 'p.aktif_mi'
             ];
 
             foreach ($colSearches as $idx => $val) {
@@ -112,13 +118,17 @@ class PersonelModel extends Model
                     $field = $colMap[$idx];
                     $paramName = "col_" . $idx;
 
-                    if ($idx == 10) { // Durum (Aktif/Pasif)
+                    if ($idx == 12) { // Durum (Aktif/Pasif)
                         if (stripos('Aktif', $val) !== false) {
                             $sql .= " AND p.aktif_mi = 1";
                         } elseif (stripos('Pasif', $val) !== false) {
                             $sql .= " AND p.aktif_mi = 0";
                         }
-                    } elseif ($idx == 4 || $idx == 5) { // Tarih
+                    } elseif ($idx == 2) { // Ekip / Bölge
+                        $val = "%$val%";
+                        $sql .= " AND (t.tur_adi LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
+                        $params[$paramName] = $val;
+                    } elseif ($idx == 5 || $idx == 6) { // Tarih
                         $val = "%$val%";
                         $sql .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramName";
                         $params[$paramName] = $val;
@@ -227,10 +237,11 @@ class PersonelModel extends Model
         $params = ['firma_id' => $_SESSION['firma_id']];
 
         // Temel sorgu
-        $sql = "SELECT p.*, 
+        $sql = "SELECT p.*, t.tur_adi as ekip_adi,
                 CASE WHEN ps.id IS NOT NULL THEN 1 ELSE 0 END as bildirim_abonesi
                 FROM {$this->table} p 
                 LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
+                LEFT JOIN tanimlamalar t ON p.ekip_no = t.id
                 WHERE p.firma_id = :firma_id";
 
         // Toplam kayıt sayısı (filtresiz)
@@ -249,21 +260,25 @@ class PersonelModel extends Model
                 p.adi_soyadi LIKE :search OR
                 p.cep_telefonu LIKE :search OR
                 p.email_adresi LIKE :search OR
-                p.gorev LIKE :search
+                p.gorev LIKE :search OR
+                p.ekip_bolge LIKE :search OR
+                t.tur_adi LIKE :search
             )";
             $params['search'] = $searchValue;
         }
 
         // Sütun Bazlı Arama
         $colMap = [
-            2 => 'p.tc_kimlik_no',
-            3 => 'p.adi_soyadi',
-            4 => 'p.ise_giris_tarihi',
-            5 => 'p.isten_cikis_tarihi',
-            6 => 'p.cep_telefonu',
-            7 => 'p.email_adresi',
-            8 => 'p.gorev',
-            10 => 'p.aktif_mi'
+            2 => 't.tur_adi',
+            3 => 'p.tc_kimlik_no',
+            4 => 'p.adi_soyadi',
+            5 => 'p.ise_giris_tarihi',
+            6 => 'p.isten_cikis_tarihi',
+            7 => 'p.cep_telefonu',
+            8 => 'p.email_adresi',
+            9 => 'p.gorev',
+            10 => 'p.departman',
+            12 => 'p.aktif_mi'
         ];
 
         if (isset($request['columns'])) {
@@ -273,16 +288,21 @@ class PersonelModel extends Model
                     $val = "%" . $column['search']['value'] . "%";
                     $paramName = "col_" . $i;
 
-                    if ($i == 10) { // Durum
+                    if ($i == 12) { // Durum
                         if (stripos('Aktif', $column['search']['value']) !== false) {
                             $filterSql .= " AND p.aktif_mi = 1";
                         } elseif (stripos('Pasif', $column['search']['value']) !== false) {
                             $filterSql .= " AND p.aktif_mi = 0";
                         }
-                    } elseif ($i == 4 || $i == 5) { // Tarih
+                    } elseif ($i == 2) { // Ekip / Bölge
+                        $val = "%" . $column['search']['value'] . "%";
+                        $filterSql .= " AND (t.tur_adi LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
+                        $params[$paramName] = $val;
+                    } elseif ($i == 5 || $i == 6) { // Tarih
                         $filterSql .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramName";
                         $params[$paramName] = $val;
                     } else {
+                        $val = "%" . $column['search']['value'] . "%";
                         $filterSql .= " AND $field LIKE :$paramName";
                         $params[$paramName] = $val;
                     }
@@ -294,7 +314,7 @@ class PersonelModel extends Model
         $sql .= " GROUP BY p.id";
 
         // Filtrelenmiş kayıt sayısı
-        $filteredQuerySql = "SELECT COUNT(*) FROM (SELECT p.id FROM {$this->table} p WHERE p.firma_id = :firma_id $filterSql GROUP BY p.id) as temp";
+        $filteredQuerySql = "SELECT COUNT(*) FROM (SELECT p.id FROM {$this->table} p LEFT JOIN tanimlamalar t ON p.ekip_no = t.id WHERE p.firma_id = :firma_id $filterSql GROUP BY p.id) as temp";
         $filteredQuery = $this->db->prepare($filteredQuerySql);
         // Filtrelenmiş sayı için parametreleri temizle (sadece gerekli olanları bırak)
         $filteredParams = ['firma_id' => $_SESSION['firma_id']];

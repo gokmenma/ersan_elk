@@ -325,16 +325,29 @@ foreach ($regionList as $r) {
         display: flex;
         align-items: center;
         gap: 5px;
+        cursor: pointer;
     }
 
     .legend-code {
         font-weight: bold;
-        color: #556ee6;
-        background: #e2e7fb;
+        color: var(--bs-primary, #556ee6);
+        background: rgba(var(--bs-primary-rgb, 85, 110, 230), 0.15);
         padding: 2px 5px;
         border-radius: 3px;
         min-width: 25px;
         text-align: center;
+    }
+
+    .legend-item {
+        border: 1px solid rgba(var(--bs-primary-rgb, 85, 110, 230), 0.3);
+        padding: 4px 8px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .legend-item:hover {
+        background: rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1);
+        border-color: var(--bs-primary, #556ee6);
     }
 
     #raporTabs.nav-tabs-custom {
