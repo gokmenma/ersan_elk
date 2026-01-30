@@ -25,7 +25,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             throw new Exception("Dosya yüklenemedi veya dosya seçilmedi.");
         }
 
-        $uploadDate = $_POST['upload_date'] ?? date('Y-m-d');
+        $uploadDateRaw = $_POST['upload_date'] ?? date('Y-m-d');
+        $uploadDate = \App\Helper\Date::convertExcelDate($uploadDateRaw, 'Y-m-d') ?: date('Y-m-d');
         $fileTmpPath = $_FILES['excel_file']['tmp_name'];
 
         // Load Excel
@@ -190,7 +191,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             throw new Exception("Dosya yüklenemedi veya dosya seçilmedi.");
         }
 
-        $uploadDate = $_POST['upload_date'] ?? date('Y-m-d');
+        $uploadDateRaw = $_POST['upload_date'] ?? date('Y-m-d');
+        $uploadDate = \App\Helper\Date::convertExcelDate($uploadDateRaw, 'Y-m-d') ?: date('Y-m-d');
         $fileTmpPath = $_FILES['excel_file']['tmp_name'];
         $fileName = $_FILES['excel_file']['name'];
         $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
@@ -587,7 +589,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                 <td><?= $record->okunan_abone_sayisi ?></td>
                 <td><?= number_format($record->ort_okunan_abone_sayisi_gunluk, 2, ',', '.') ?></td>
                 <td>%<?= number_format($record->okuma_performansi, 2, ',', '.') ?></td>
-                <td><?= $record->tarih ?></td>
+                <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
             </tr>
         <?php endforeach;
     } elseif ($tab === 'kacak_kontrol') {
@@ -622,7 +624,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                 <td><?= $record->is_emri_sonucu ?></td>
                 <td><?= $record->sonuclanmis ?></td>
                 <td><?= $record->acik_olanlar ?></td>
-                <td><?= $record->tarih ?></td>
+                <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
             </tr>
         <?php endforeach;
     }
