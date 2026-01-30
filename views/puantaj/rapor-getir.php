@@ -120,17 +120,17 @@ foreach ($allPersonel as $p) {
         writing-mode: vertical-rl;
         transform: rotate(180deg);
         white-space: nowrap;
-        font-size: 9px;
+        font-size: 10px;
         padding: 0;
         margin: 0;
         display: inline-block;
         line-height: normal;
-        height: 40px;
+        height: 50px;
     }
 
     #raporTable {
         border-collapse: collapse !important;
-        font-size: 11px;
+        font-size: 12px;
         width: 100%;
         table-layout: auto;
         background-color: #fff;
@@ -141,7 +141,7 @@ foreach ($allPersonel as $p) {
         vertical-align: middle !important;
         text-align: center !important;
         border: 1px solid #dee2e6 !important;
-        padding: 4px 6px !important;
+        padding: 6px 8px !important;
         line-height: normal !important;
         white-space: nowrap;
     }
@@ -149,7 +149,7 @@ foreach ($allPersonel as $p) {
     #raporTable thead th {
         background-color: #f8f9fa !important;
         font-weight: 600;
-        font-size: 10px;
+        font-size: 11px;
         color: #333;
     }
 
@@ -176,19 +176,19 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
     <table class="table table-bordered table-sm mb-0" id="raporTable" style="min-width: <?= $tableMinWidth ?>;">
         <thead>
             <tr><?php /* Row 1 */ ?>
-                <th rowspan="<?= $headerRowspan ?>" style="width: 40px;">SIRA</th>
-                <th rowspan="<?= $headerRowspan ?>" style="width: 100px;">EKİP KODU</th>
+                <th rowspan="<?= $headerRowspan ?>" style="width: 50px;">SIRA</th>
+                <th rowspan="<?= $headerRowspan ?>" style="width: 120px;">EKİP KODU</th>
                 <?php if ($activeTab !== 'kacakkontrol'): ?>
-                    <th rowspan="<?= $headerRowspan ?>" style="width: 180px;">İSİM SOYİSİM</th>
+                    <th rowspan="<?= $headerRowspan ?>" style="width: 220px;">İSİM SOYİSİM</th>
                 <?php endif; ?>
                 <th colspan="<?= $daysInMonth * $subColCount ?>">GÜNLER</th>
-                <th rowspan="<?= $headerRowspan ?>" style="width: 70px;">TOPLAM</th>
+                <th rowspan="<?= $headerRowspan ?>" style="width: 80px;">TOPLAM</th>
                 <?php if ($activeTab !== 'kacakkontrol'): ?>
-                    <th rowspan="<?= $headerRowspan ?>" style="width: 80px;">BÖLGE TOP.</th>
-                    <th rowspan="<?= $headerRowspan ?>" style="width: 120px;">BÖLGE ADI</th><?php endif; ?>
+                    <th rowspan="<?= $headerRowspan ?>" style="width: 90px;">BÖLGE TOP.</th>
+                    <th rowspan="<?= $headerRowspan ?>" style="width: 140px;">BÖLGE ADI</th><?php endif; ?>
             </tr>
             <tr><?php /* Row 2 */ ?><?php for ($d = 1; $d <= $daysInMonth; $d++): ?>
-                    <th colspan="<?= $subColCount ?>" style="padding: 1px !important;"><?= $d ?></th><?php endfor; ?>
+                    <th colspan="<?= $subColCount ?>" style="padding: 6px !important;"><?= $d ?></th><?php endfor; ?>
             </tr>
             <?php if ($hasSubCols && $headerRowspan === 3): ?>
                 <tr><?php /* Row 3 */ ?><?php for ($d = 1; $d <= $daysInMonth; $d++): ?><?php foreach ($workTypeCols as $wt): ?>
@@ -289,23 +289,23 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                         <td><?= $sira++ ?></td>
                         <td><?= $team->tur_adi ?></td><?php if ($activeTab !== 'kacakkontrol'): ?>
                             <td class="text-start"><?= $personel ? $personel->adi_soyadi : '-' ?></td>
-                        <?php endif; ?>        <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>            <?php if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol'):
-                                                           $val = ($lookupKey && isset($summary[$lookupKey][$d])) ? $summary[$lookupKey][$d] : 0;
-                                                           $dailyTotals[$d] += $val; ?>
+                        <?php endif; ?>         <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>             <?php if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol'):
+                                                             $val = ($lookupKey && isset($summary[$lookupKey][$d])) ? $summary[$lookupKey][$d] : 0;
+                                                             $dailyTotals[$d] += $val; ?>
                                 <td class="<?= $val ? 'fw-bold' : 'text-muted' ?>"><?= $val ?: '' ?></td>
-                            <?php else: ?>                <?php foreach ($workTypeCols as $wt):
-                                                  $val = ($personel && isset($summary[$personel->id][$d][$wt['name']])) ? $summary[$personel->id][$d][$wt['name']] : 0;
-                                                  if (!isset($dailyDetailedTotals[$d][$wt['name']]))
-                                                      $dailyDetailedTotals[$d][$wt['name']] = 0;
-                                                  $dailyDetailedTotals[$d][$wt['name']] += $val; ?>
+                            <?php else: ?>                 <?php foreach ($workTypeCols as $wt):
+                                                   $val = ($personel && isset($summary[$personel->id][$d][$wt['name']])) ? $summary[$personel->id][$d][$wt['name']] : 0;
+                                                   if (!isset($dailyDetailedTotals[$d][$wt['name']]))
+                                                       $dailyDetailedTotals[$d][$wt['name']] = 0;
+                                                   $dailyDetailedTotals[$d][$wt['name']] += $val; ?>
                                     <td class="<?= $val ? 'fw-bold' : 'text-muted' ?>" style="font-size: 10px;"><?= $val ?: '' ?></td>
-                                <?php endforeach; ?>            <?php endif; ?>        <?php endfor; ?>
+                                <?php endforeach; ?>             <?php endif; ?>         <?php endfor; ?>
                         <td class="table-light fw-bold"><?= $personelTotal ?: '' ?></td>
                         <?php if ($activeTab !== 'kacakkontrol' && $firstRow): ?>
                             <td rowspan="<?= count($visibleTeams) ?>" class="fw-bold"><?= $regionTotal ?: '' ?></td>
                             <td rowspan="<?= count($visibleTeams) ?>" class="fw-bold text-uppercase"
                                 style="font-size: 9px; line-height: 1;"><?= $regionName ?></td>
-                            <?php $firstRow = false; ?>        <?php endif; ?>
+                            <?php $firstRow = false; ?>         <?php endif; ?>
                     </tr>
                 <?php endforeach; ?>
             <?php endforeach; ?>
