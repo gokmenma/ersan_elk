@@ -118,9 +118,9 @@ foreach ($allPersonel as $p) {
 
 <style>
     .legend-item.active-filter {
-        background-color: #0c1226 !important;
+        background-color: #2b8af3 !important;
         color: #fff !important;
-        border-color: #0c1226 !important;
+        border-color: #2b8af3 !important;
         border-radius: 6px !important;
     }
 
@@ -131,7 +131,7 @@ foreach ($allPersonel as $p) {
 
     .legend-item.active-filter .badge {
         background-color: #fff !important;
-        color: #0c1226 !important;
+        color: #2b8af3 !important;
     }
 
     .vertical-text {
@@ -159,10 +159,15 @@ foreach ($allPersonel as $p) {
     #raporTable td {
         vertical-align: middle !important;
         text-align: center !important;
-        border: 1px solid #dee2e6 !important;
+        border: 1px solid #eee !important;
+        border-bottom: 1px solid #e0e0e0 !important;
         padding: 6px 8px !important;
         line-height: normal !important;
         white-space: nowrap;
+    }
+
+    .day-separator {
+        border-right: 2px solid #888 !important;
     }
 
     #raporTable thead th {
@@ -192,12 +197,31 @@ foreach ($allPersonel as $p) {
         height: 65px;
     }
 
+    #raporTable tfoot td {
+        position: sticky;
+        z-index: 20;
+        background-color: #f8f9fa !important;
+        height: 40px;
+        padding: 0 8px !important;
+        border-top: 1px solid #dee2e6 !important;
+    }
+
+    #raporTable tfoot tr.tfoot-general td {
+        bottom: 0;
+        z-index: 22;
+    }
+
+    #raporTable tfoot tr.tfoot-action td {
+        bottom: 40px;
+        z-index: 21;
+    }
+
     .sticky-col-1 {
         position: sticky;
         left: 0;
         z-index: 10;
         background-color: #fff !important;
-        border-left: 1px solid #dee2e6 !important;
+        border-left: 1px solid #ccc !important;
     }
 
     .sticky-col-2 {
@@ -249,19 +273,20 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                 <?php if ($activeTab !== 'kacakkontrol'): ?>
                     <th rowspan="<?= $headerRowspan ?>" class="sticky-col-3">İSİM SOYİSİM</th><?php endif; ?>
                 <th colspan="<?= $daysInMonth * $subColCount ?>" id="mainGunlerHeader">GÜNLER</th>
+                <?php if ($hasSubCols): ?>
+                    <th colspan="<?= $subColCount ?>" id="actionTotalsHeader">İŞLEM TOPLAMLARI</th><?php endif; ?>
                 <th rowspan="<?= $headerRowspan ?>">TOPLAM</th><?php if ($activeTab !== 'kacakkontrol'): ?>
                     <th rowspan="<?= $headerRowspan ?>">BÖLGE TOP.</th>
                     <th rowspan="<?= $headerRowspan ?>">BÖLGE ADI</th><?php endif; ?>
             </tr>
             <tr>
-                <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>
-                    <th colspan="<?= $subColCount ?>" class="day-num-header"><?= $d ?></th><?php endfor; ?>
+                <?php for ($d = 1; $d <= $daysInMonth; $d++): ?><th colspan="<?= $subColCount ?>" class="day-num-header day-separator" data-day="<?= $d ?>"><?= $d ?></th><?php endfor; ?>
+                <?php if ($hasSubCols): ?><th colspan="<?= $subColCount ?>" class="action-totals-day-header day-separator" data-day="genel-total">GENEL</th><?php endif; ?>
             </tr>
             <?php if ($hasSubCols && $headerRowspan === 3): ?>
                 <tr>
-                    <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>        <?php foreach ($workTypeCols as $wt): ?>
-                            <th class="wt-cell-sub wt-code-<?= $wt['code'] ?>" data-wt-code="<?= $wt['code'] ?>"><span
-                                    class="vertical-text"><?= $wt['code'] ?></span></th><?php endforeach; ?><?php endfor; ?>
+                    <?php for ($d = 1; $d <= $daysInMonth; $d++): ?><?php $idx = 0; foreach ($workTypeCols as $wt): $idx++; ?><th class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?>" data-day="<?= $d ?>" data-wt-code="<?= $wt['code'] ?>"><span class="vertical-text"><?= $wt['code'] ?></span></th><?php endforeach; ?><?php endfor; ?>
+                    <?php $idx = 0; foreach ($workTypeCols as $wt): $idx++; ?><th class="wt-cell-sub wt-code-<?= $wt['code'] ?> table-info <?= ($idx === $subColCount) ? 'day-separator' : '' ?>" data-day="genel-total" data-wt-code="<?= $wt['code'] ?>"><span class="vertical-text"><?= $wt['code'] ?></span></th><?php endforeach; ?>
                 </tr>
             <?php endif; ?>
         </thead>
@@ -360,15 +385,32 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                         <?php endif; ?>         <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>             <?php if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol'):
                                                              $val = ($lookupKey && isset($summary[$lookupKey][$d])) ? $summary[$lookupKey][$d] : 0;
                                                              $dailyTotals[$d] += $val; ?>
-                                <td class="<?= $val ? 'fw-bold' : 'text-muted' ?>"><?= $val ?: '' ?></td>
-                            <?php else: ?>                 <?php foreach ($workTypeCols as $wt):
+                                <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?>">
+                                    <?= $val ?: '' ?>
+                                </td>
+                            <?php else: ?>                 <?php $idx = 0; foreach ($workTypeCols as $wt): $idx++;
                                                    $val = ($personel && isset($summary[$personel->id][$d][$wt['name']])) ? $summary[$personel->id][$d][$wt['name']] : 0;
                                                    if (!isset($dailyDetailedTotals[$d][$wt['name']]))
                                                        $dailyDetailedTotals[$d][$wt['name']] = 0;
-                                                   $dailyDetailedTotals[$d][$wt['name']] += $val; ?>
-                                    <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= $val ? 'fw-bold' : 'text-muted' ?>"
-                                        data-wt-code="<?= $wt['code'] ?>" style="font-size: 10px;"><?= $val ?: '' ?></td>
-                                <?php endforeach; ?>             <?php endif; ?>         <?php endfor; ?>
+                                                   $dailyDetailedTotals[$d][$wt['name']] += $val;
+                                                   $dailyTotals[$d] += $val; ?>
+                                    <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?>"
+                                        data-day="<?= $d ?>" data-wt-code="<?= $wt['code'] ?>" style="font-size: 10px;"><?= $val ?: '' ?></td>
+                                <?php endforeach; ?>            <?php endif; ?>         <?php endfor; ?>
+                        
+                        <?php if ($hasSubCols): ?>
+                            <?php $idx = 0; foreach ($workTypeCols as $wt): $idx++;
+                                $actTotal = 0;
+                                if ($personel && isset($summary[$personel->id])) {
+                                    foreach ($summary[$personel->id] as $dayData) {
+                                        $actTotal += $dayData[$wt['name']] ?? 0;
+                                    }
+                                }
+                            ?>
+                                <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> table-info fw-bold <?= ($idx === $subColCount) ? 'day-separator' : '' ?>" data-day="genel-total" data-wt-code="<?= $wt['code'] ?>"><?= $actTotal ?: '' ?></td>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+
                         <td class="table-light fw-bold"><?= $personelTotal ?: '' ?></td>
                         <?php if ($activeTab !== 'kacakkontrol' && $firstRow): ?>
                             <td rowspan="<?= count($visibleTeams) ?>" class="fw-bold"><?= $regionTotal ?: '' ?></td>
@@ -402,7 +444,9 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                             $val = $summary[$teamName][$d] ?? 0;
                             $dailyTotals[$d] += $val;
                             ?>
-                            <td class="<?= $val ? 'fw-bold' : 'text-muted' ?>"><?= $val ?: '' ?></td>
+                            <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?>">
+                                <?= $val ?: '' ?>
+                            </td>
                         <?php endfor; ?>
                         <td class="table-light fw-bold"><?= $personelTotal ?: '' ?></td>
                         <?php if ($activeTab !== 'kacakkontrol' && $firstRow): ?>
@@ -416,20 +460,48 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             <?php endif; ?>
         </tbody>
         <tfoot class="table-light fw-bold">
-            <tr>
-                <td colspan="<?= ($activeTab === 'kacakkontrol') ? '2' : '3' ?>" class="text-end">GÜNLÜK TOPLAMLAR</td>
-                <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>
-                    <?php if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol'): ?>
-                        <td><?= $dailyTotals[$d] ?: '' ?></td>
-                    <?php else: ?>
-                        <?php foreach ($workTypeCols as $wt): ?>
-                            <td class="wt-cell-sub wt-code-<?= $wt['code'] ?>" data-wt-code="<?= $wt['code'] ?>">
+            <?php if ($hasSubCols): ?>
+                <tr class="tfoot-action">
+                    <td colspan="3" class="text-end text-muted sticky-col-1" style="font-size: 10px; left: 0; z-index: 25;">
+                        İŞLEM BAZINDA GÜNLÜK TOPLAMLAR</td>
+                    <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>
+                        <?php $idx = 0;
+                        foreach ($workTypeCols as $wt):
+                            $idx++; ?>
+                            <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?>"
+                                data-day="<?= $d ?>" data-wt-code="<?= $wt['code'] ?>">
                                 <?= $dailyDetailedTotals[$d][$wt['name']] ?? '' ?>
                             </td>
                         <?php endforeach; ?>
-                    <?php endif; ?>
+                    <?php endfor; ?>
+                    <?php $idx = 0;
+                    foreach ($workTypeCols as $wt):
+                        $idx++;
+                        $footActTotal = 0;
+                        for ($d = 1; $d <= $daysInMonth; $d++) {
+                            $footActTotal += $dailyDetailedTotals[$d][$wt['name']] ?? 0;
+                        }
+                        ?>
+                        <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> table-info action-grand-total-cell <?= ($idx === $subColCount) ? 'day-separator' : '' ?>"
+                            data-wt-code="<?= $wt['code'] ?>" data-day="genel-total"><?= $footActTotal ?: '' ?></td>
+                    <?php endforeach; ?>
+                    <td></td>
+                    <td colspan="2"></td>
+                </tr>
+            <?php endif; ?>
+            <tr class="tfoot-general">
+                <td colspan="<?= ($activeTab === 'kacakkontrol') ? '2' : '3' ?>" class="text-end sticky-col-1"
+                    style="left: 0; z-index: 26;">GÜNLÜK TOPLAMLAR</td>
+                <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>
+                    <td colspan="<?= $subColCount ?>" class="day-num-header-footer day-separator daily-total-cell"
+                        data-day="<?= $d ?>"><?= $dailyTotals[$d] ?: '' ?></td>
                 <?php endfor; ?>
-                <td><?= $grandTotal ?: '' ?></td>
+                <?php if ($hasSubCols): ?>
+                    <td colspan="<?= $subColCount ?>"
+                        class="action-totals-day-header-footer day-separator action-grand-total-consolidated" data-day="genel-total">
+                        <?= $grandTotal ?: '' ?></td>
+                <?php endif; ?>
+                <td class="grand-total-cell"><?= $grandTotal ?: '' ?></td>
                 <?php if ($activeTab !== 'kacakkontrol'): ?>
                     <td colspan="2"></td>
                 <?php endif; ?>
@@ -441,30 +513,100 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
 <script>
     $(document).off('click', '#workTypeLegend .legend-item').on('click', '#workTypeLegend .legend-item', function () {
         $(this).toggleClass('active-filter');
-
+        
         const activeFilters = $('#workTypeLegend .legend-item.active-filter');
         const totalDays = <?= $daysInMonth ?>;
         const defaultSubColCount = <?= $subColCount ?>;
 
         if (activeFilters.length === 0) {
-            // Show everything if no filter is active
+            // Show everything
             $('#raporTable .wt-cell-sub').show();
+            $('#raporTable .day-num-header').show();
+            $('#raporTable .daily-total-cell').show();
             $('#mainGunlerHeader').attr('colspan', totalDays * defaultSubColCount);
             $('#raporTable .day-num-header').attr('colspan', defaultSubColCount);
+            $('#actionTotalsHeader').attr('colspan', defaultSubColCount);
+            $('#raporTable .action-totals-day-header').attr('colspan', defaultSubColCount);
+            $('#raporTable .daily-total-cell').attr('colspan', defaultSubColCount);
+            $('#raporTable .action-grand-total-consolidated').attr('colspan', defaultSubColCount);
         } else {
             // Hide all sub-cells first
             $('#raporTable .wt-cell-sub').hide();
-
+            
             // Show only columns matching selected codes
-            activeFilters.each(function () {
+            activeFilters.each(function() {
                 const code = $(this).data('wt-code');
                 $(`#raporTable .wt-code-${code}`).show();
             });
 
-            // Adjust colspans based on the number of active filters
-            const activeCount = activeFilters.length;
-            $('#mainGunlerHeader').attr('colspan', totalDays * activeCount);
-            $('#raporTable .day-num-header').attr('colspan', activeCount);
+            // Dynamically calculate colspans based on visible columns per day
+            for (let d = 1; d <= totalDays; d++) {
+                const visibleInDay = $(`#raporTable thead tr:nth-child(3) th[data-day="${d}"]`).filter(':visible').length;
+                if(visibleInDay > 0) {
+                    $(`#raporTable .day-num-header[data-day="${d}"]`).show().attr('colspan', visibleInDay);
+                    $(`#raporTable .daily-total-cell[data-day="${d}"]`).show().attr('colspan', visibleInDay);
+                } else {
+                    $(`#raporTable .day-num-header[data-day="${d}"]`).hide();
+                    $(`#raporTable .daily-total-cell[data-day="${d}"]`).hide();
+                }
+            }
+            
+            // Calculate for GENERAL total column
+            const visibleInGenel = $(`#raporTable thead tr:nth-child(3) th[data-day="genel-total"]`).filter(':visible').length;
+            if(visibleInGenel > 0) {
+                $('#actionTotalsHeader').show().attr('colspan', visibleInGenel);
+                $('.action-totals-day-header').show().attr('colspan', visibleInGenel);
+                $('.action-grand-total-consolidated').show().attr('colspan', visibleInGenel);
+            } else {
+                $('#actionTotalsHeader').hide();
+                $('.action-totals-day-header').hide();
+                $('.action-grand-total-consolidated').hide();
+            }
+
+            // Calculate main GÜNLER header colspan
+            const totalVisible = $('#raporTable thead tr:nth-child(3) th').filter(':visible').length - visibleInGenel;
+            $('#mainGunlerHeader').attr('colspan', totalVisible || 1);
         }
+
+        // Update separators based on visibility
+        $('#raporTable td, #raporTable th').css('border-right', ''); // Clear inline border-right
+        $('#raporTable .day-separator').removeClass('day-separator');
+        
+        for (let d = 1; d <= totalDays; d++) {
+            const lastVis = $(`#raporTable [data-day="${d}"]`).filter(':visible').last();
+            if(lastVis.length) lastVis.addClass('day-separator');
+            
+            const dayHead = $(`#raporTable .day-num-header[data-day="${d}"]`);
+            if(dayHead.is(':visible')) dayHead.addClass('day-separator');
+        }
+        
+        const lastGenel = $(`#raporTable [data-day="genel-total"]`).filter(':visible').last();
+        if(lastGenel.length) lastGenel.addClass('day-separator');
+        
+        const actionHead = $('.action-totals-day-header');
+        if(actionHead.is(':visible')) actionHead.addClass('day-separator');
+
+        // Recalculate totals
+        updateDynamicTotals();
     });
+
+    function updateDynamicTotals() {
+        const totalDays = <?= $daysInMonth ?>;
+        let overallGrandSum = 0;
+
+        for (let d = 1; d <= totalDays; d++) {
+            let daySum = 0;
+            $(`#raporTable tfoot .tfoot-action td.wt-cell-sub[data-day="${d}"]`).filter(':visible').each(function() {
+                const val = parseInt($(this).text()) || 0;
+                daySum += val;
+            });
+            const generalCell = $(`#raporTable tfoot .tfoot-general .daily-total-cell[data-day="${d}"]`);
+            generalCell.text(daySum || '');
+            overallGrandSum += daySum;
+        }
+
+        // Update consolidatd action total and grand total
+        $('.action-grand-total-consolidated').text(overallGrandSum || '');
+        $('.grand-total-cell').text(overallGrandSum || '');
+    }
 </script>
