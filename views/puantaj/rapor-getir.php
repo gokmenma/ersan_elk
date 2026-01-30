@@ -104,18 +104,36 @@ foreach ($allPersonel as $p) {
         $monthlyTotals[$wt['name']] = $total;
     }
     ?>
-    <div class="report-legend">
+    <div class="report-legend" id="workTypeLegend">
         <?php foreach ($workTypeCols as $wt): ?>
-            <div class="legend-item">
+            <div class="legend-item" data-wt-code="<?= $wt['code'] ?>" style="cursor: pointer; transition: all 0.2s;">
                 <span class="legend-code"><?= $wt['code'] ?></span>
                 <span class="legend-name"><?= $wt['name'] ?></span>
                 <span class="badge bg-primary-subtle text-primary ms-1"><?= $monthlyTotals[$wt['name']] ?></span>
             </div>
         <?php endforeach; ?>
+        <small class="text-muted ms-2 align-self-center">* Kodlara tıklayarak tabloyu filtreleyebilirsiniz.</small>
     </div>
 <?php endif; ?>
 
 <style>
+    .legend-item.active-filter {
+        background-color: #0c1226 !important;
+        color: #fff !important;
+        border-color: #0c1226 !important;
+        border-radius: 6px !important;
+    }
+
+    .legend-item.active-filter .legend-code {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        color: #fff !important;
+    }
+
+    .legend-item.active-filter .badge {
+        background-color: #fff !important;
+        color: #0c1226 !important;
+    }
+
     .vertical-text {
         writing-mode: vertical-rl;
         transform: rotate(180deg);
@@ -124,12 +142,13 @@ foreach ($allPersonel as $p) {
         padding: 0;
         margin: 0;
         display: inline-block;
-        line-height: normal;
-        height: 50px;
+        line-height: 1;
+        height: 45px;
     }
 
     #raporTable {
-        border-collapse: collapse !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
         font-size: 12px;
         width: 100%;
         table-layout: auto;
@@ -151,6 +170,54 @@ foreach ($allPersonel as $p) {
         font-weight: 600;
         font-size: 11px;
         color: #333;
+        position: sticky;
+        z-index: 20;
+    }
+
+    #raporTable thead tr:nth-child(1) th {
+        top: 0;
+        z-index: 25;
+        height: 40px;
+    }
+
+    #raporTable thead tr:nth-child(2) th {
+        top: 40px;
+        z-index: 24;
+        height: 40px;
+    }
+
+    #raporTable thead tr:nth-child(3) th {
+        top: 80px;
+        z-index: 23;
+        height: 65px;
+    }
+
+    .sticky-col-1 {
+        position: sticky;
+        left: 0;
+        z-index: 10;
+        background-color: #fff !important;
+        border-left: 1px solid #dee2e6 !important;
+    }
+
+    .sticky-col-2 {
+        position: sticky;
+        left: 51px;
+        z-index: 10;
+        background-color: #fff !important;
+    }
+
+    .sticky-col-3 {
+        position: sticky;
+        left: 172px;
+        z-index: 10;
+        background-color: #fff !important;
+    }
+
+    #raporTable thead .sticky-col-1,
+    #raporTable thead .sticky-col-2,
+    #raporTable thead .sticky-col-3 {
+        z-index: 30;
     }
 
     .table-responsive {
@@ -159,6 +226,7 @@ foreach ($allPersonel as $p) {
         overflow: auto;
         max-width: 100%;
         background: #fff;
+        max-height: calc(100vh - 350px);
     }
 </style>
 
@@ -175,24 +243,24 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
 <div class="table-responsive">
     <table class="table table-bordered table-sm mb-0" id="raporTable" style="min-width: <?= $tableMinWidth ?>;">
         <thead>
-            <tr><?php /* Row 1 */ ?>
-                <th rowspan="<?= $headerRowspan ?>" style="width: 50px;">SIRA</th>
-                <th rowspan="<?= $headerRowspan ?>" style="width: 120px;">EKİP KODU</th>
+            <tr>
+                <th rowspan="<?= $headerRowspan ?>" class="sticky-col-1">SIRA</th>
+                <th rowspan="<?= $headerRowspan ?>" class="sticky-col-2">EKİP KODU</th>
                 <?php if ($activeTab !== 'kacakkontrol'): ?>
-                    <th rowspan="<?= $headerRowspan ?>" style="width: 220px;">İSİM SOYİSİM</th>
-                <?php endif; ?>
-                <th colspan="<?= $daysInMonth * $subColCount ?>">GÜNLER</th>
-                <th rowspan="<?= $headerRowspan ?>" style="width: 80px;">TOPLAM</th>
-                <?php if ($activeTab !== 'kacakkontrol'): ?>
-                    <th rowspan="<?= $headerRowspan ?>" style="width: 90px;">BÖLGE TOP.</th>
-                    <th rowspan="<?= $headerRowspan ?>" style="width: 140px;">BÖLGE ADI</th><?php endif; ?>
+                    <th rowspan="<?= $headerRowspan ?>" class="sticky-col-3">İSİM SOYİSİM</th><?php endif; ?>
+                <th colspan="<?= $daysInMonth * $subColCount ?>" id="mainGunlerHeader">GÜNLER</th>
+                <th rowspan="<?= $headerRowspan ?>">TOPLAM</th><?php if ($activeTab !== 'kacakkontrol'): ?>
+                    <th rowspan="<?= $headerRowspan ?>">BÖLGE TOP.</th>
+                    <th rowspan="<?= $headerRowspan ?>">BÖLGE ADI</th><?php endif; ?>
             </tr>
-            <tr><?php /* Row 2 */ ?><?php for ($d = 1; $d <= $daysInMonth; $d++): ?>
-                    <th colspan="<?= $subColCount ?>" style="padding: 6px !important;"><?= $d ?></th><?php endfor; ?>
+            <tr>
+                <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>
+                    <th colspan="<?= $subColCount ?>" class="day-num-header"><?= $d ?></th><?php endfor; ?>
             </tr>
             <?php if ($hasSubCols && $headerRowspan === 3): ?>
-                <tr><?php /* Row 3 */ ?><?php for ($d = 1; $d <= $daysInMonth; $d++): ?><?php foreach ($workTypeCols as $wt): ?>
-                            <th style="padding: 0 !important;" title="<?= $wt['name'] ?>"><span
+                <tr>
+                    <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>        <?php foreach ($workTypeCols as $wt): ?>
+                            <th class="wt-cell-sub wt-code-<?= $wt['code'] ?>" data-wt-code="<?= $wt['code'] ?>"><span
                                     class="vertical-text"><?= $wt['code'] ?></span></th><?php endforeach; ?><?php endfor; ?>
                 </tr>
             <?php endif; ?>
@@ -286,9 +354,9 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     $grandTotal += $personelTotal;
                     ?>
                     <tr>
-                        <td><?= $sira++ ?></td>
-                        <td><?= $team->tur_adi ?></td><?php if ($activeTab !== 'kacakkontrol'): ?>
-                            <td class="text-start"><?= $personel ? $personel->adi_soyadi : '-' ?></td>
+                        <td class="sticky-col-1"><?= $sira++ ?></td>
+                        <td class="sticky-col-2"><?= $team->tur_adi ?></td><?php if ($activeTab !== 'kacakkontrol'): ?>
+                            <td class="sticky-col-3 text-start"><?= $personel ? $personel->adi_soyadi : '-' ?></td>
                         <?php endif; ?>         <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>             <?php if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol'):
                                                              $val = ($lookupKey && isset($summary[$lookupKey][$d])) ? $summary[$lookupKey][$d] : 0;
                                                              $dailyTotals[$d] += $val; ?>
@@ -298,7 +366,8 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                                    if (!isset($dailyDetailedTotals[$d][$wt['name']]))
                                                        $dailyDetailedTotals[$d][$wt['name']] = 0;
                                                    $dailyDetailedTotals[$d][$wt['name']] += $val; ?>
-                                    <td class="<?= $val ? 'fw-bold' : 'text-muted' ?>" style="font-size: 10px;"><?= $val ?: '' ?></td>
+                                    <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= $val ? 'fw-bold' : 'text-muted' ?>"
+                                        data-wt-code="<?= $wt['code'] ?>" style="font-size: 10px;"><?= $val ?: '' ?></td>
                                 <?php endforeach; ?>             <?php endif; ?>         <?php endfor; ?>
                         <td class="table-light fw-bold"><?= $personelTotal ?: '' ?></td>
                         <?php if ($activeTab !== 'kacakkontrol' && $firstRow): ?>
@@ -354,7 +423,9 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                         <td><?= $dailyTotals[$d] ?: '' ?></td>
                     <?php else: ?>
                         <?php foreach ($workTypeCols as $wt): ?>
-                            <td><?= $dailyDetailedTotals[$d][$wt['name']] ?? '' ?></td>
+                            <td class="wt-cell-sub wt-code-<?= $wt['code'] ?>" data-wt-code="<?= $wt['code'] ?>">
+                                <?= $dailyDetailedTotals[$d][$wt['name']] ?? '' ?>
+                            </td>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 <?php endfor; ?>
@@ -366,3 +437,34 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
         </tfoot>
     </table>
 </div>
+
+<script>
+    $(document).off('click', '#workTypeLegend .legend-item').on('click', '#workTypeLegend .legend-item', function () {
+        $(this).toggleClass('active-filter');
+
+        const activeFilters = $('#workTypeLegend .legend-item.active-filter');
+        const totalDays = <?= $daysInMonth ?>;
+        const defaultSubColCount = <?= $subColCount ?>;
+
+        if (activeFilters.length === 0) {
+            // Show everything if no filter is active
+            $('#raporTable .wt-cell-sub').show();
+            $('#mainGunlerHeader').attr('colspan', totalDays * defaultSubColCount);
+            $('#raporTable .day-num-header').attr('colspan', defaultSubColCount);
+        } else {
+            // Hide all sub-cells first
+            $('#raporTable .wt-cell-sub').hide();
+
+            // Show only columns matching selected codes
+            activeFilters.each(function () {
+                const code = $(this).data('wt-code');
+                $(`#raporTable .wt-code-${code}`).show();
+            });
+
+            // Adjust colspans based on the number of active filters
+            const activeCount = activeFilters.length;
+            $('#mainGunlerHeader').attr('colspan', totalDays * activeCount);
+            $('#raporTable .day-num-header').attr('colspan', activeCount);
+        }
+    });
+</script>

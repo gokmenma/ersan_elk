@@ -402,4 +402,19 @@ foreach ($regionList as $r) {
         min-width: 25px;
         text-align: center;
     }
+
+    #raporTabs.nav-tabs-custom {
+        border-bottom: none !important;
+    }
+
+    #raporTabs.nav-tabs-custom .nav-link {
+        border: none !important;
+        text-decoration: none !important;
+        box-shadow: none !important;
+    }
+
+    #raporTabs.nav-tabs-custom .nav-link::after,
+    #raporTabs.nav-tabs-custom .nav-link::before {
+        display: none !important;
+    }
 </style>
