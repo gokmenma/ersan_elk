@@ -99,6 +99,23 @@
   border-radius: 4px;
 }
 
+/* Slate Specific Gradient Adjustments */
+[data-theme-mode="slate"] table thead tr:first-child th {
+  background-image: linear-gradient(
+    to top,
+    rgba(var(--bs-primary-rgb), 0.02) 0%,
+    rgba(var(--bs-primary-rgb), 0.06) 100%
+  ) !important;
+}
+
+[data-theme-mode="slate"] .summary-card {
+  background: linear-gradient(
+    to top,
+    rgba(var(--bs-primary-rgb), 0.02) 0%,
+    rgba(var(--bs-primary-rgb), 0.06) 100%
+  ) !important;
+}
+
 [data-theme-mode="emerald"] {
   --bs-primary: #10b981;
   --bs-primary-rgb: 16, 185, 129;
@@ -458,8 +475,8 @@ body {
 .select2-container--default
   .select2-selection--multiple
   .select2-selection__choice {
-  background-color: #1a1d21 !important;
-  border: 1px solid #1a1d21 !important;
+  background-color: var(--bs-primary) !important;
+  border: 1px solid var(--bs-primary) !important;
   color: #fff !important;
   border-radius: 4px !important;
   padding: 2px 8px !important;
@@ -479,10 +496,6 @@ body {
   color: #ff4d4d !important;
 }
 
-.select2-container--default
-  .select2-results__option--highlighted[aria-selected] {
-  background-color: #1a1d21 !important;
-}
 .error {
   color: #dc3545 !important;
 }
@@ -769,19 +782,27 @@ table th:not(.no-sort) {
   cursor: pointer;
 }
 table thead tr:first-child th {
-  background-color: #f8f9fa !important;
-  background-image: linear-gradient(to bottom, #f8f9fa, #e9ecef) !important;
-  color: black !important;
+  background-color: rgba(var(--bs-primary-rgb), 0.04) !important;
+  background-image: linear-gradient(
+    to top,
+    rgba(var(--bs-primary-rgb), 0.04) 0%,
+    rgba(var(--bs-primary-rgb), 0.1) 100%
+  ) !important;
+  color: #30373f !important;
   font-weight: 600 !important;
-  border-bottom: 2px solid #dee2e6 !important;
+  border-bottom: 2px solid rgba(var(--bs-primary-rgb), 0.2) !important;
   vertical-align: bottom !important;
 }
 
 [data-bs-theme="dark"] table thead tr:first-child th {
   background-color: #1e293b !important;
-  background-image: linear-gradient(to bottom, #1e293b, #0f172a) !important;
+  background-image: linear-gradient(
+    to top,
+    rgba(var(--bs-primary-rgb), 0.05) 0%,
+    rgba(var(--bs-primary-rgb), 0.15) 100%
+  ) !important;
   color: #f8fafc !important;
-  border-bottom-color: #334155 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Global Table Dark Mode Adjustments */
@@ -1107,9 +1128,13 @@ table thead tr:first-child th {
 /* KOYU MOD DÜZELTMELERİ */
 [data-bs-theme="dark"] table thead tr:first-child th {
   background-color: #2a3042 !important;
-  background-image: none !important;
+  background-image: linear-gradient(
+    to top,
+    rgba(var(--bs-primary-rgb), 0.05) 0%,
+    rgba(var(--bs-primary-rgb), 0.15) 100%
+  ) !important;
   color: #ced4da !important;
-  border-bottom: 2px solid #32394e !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
 }
 
 [data-bs-theme="dark"] .search-input-row input,
