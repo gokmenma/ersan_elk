@@ -182,24 +182,28 @@ $lastDayColIdx = ($daysColStartIdx - 1) + ($daysInMonth * $subColCount);
 $lastDayCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($lastDayColIdx);
 $sheet->mergeCells(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($daysColStartIdx) . '1:' . $lastDayCol . '1');
 
-$toplamColIdx = $lastDayColIdx + 1;
-$toplamCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($toplamColIdx);
-$sheet->setCellValue($toplamCol . '1', 'TOPLAM');
-$sheet->mergeCells($toplamCol . '1:' . $toplamCol . $headerRows);
+// Sadece okuma ve kacakkontrol için TOPLAM, BÖLGE TOPLAMI, BÖLGE ADI sütunlarını buradan tanımla
+// Diğer detaylı raporlar için İŞLEM TOPLAMLARI bölümünde tanımlanacak
+if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol' || empty($workTypeCols)) {
+    $toplamColIdx = $lastDayColIdx + 1;
+    $toplamCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($toplamColIdx);
+    $sheet->setCellValue($toplamCol . '1', 'TOPLAM');
+    $sheet->mergeCells($toplamCol . '1:' . $toplamCol . $headerRows);
 
-if ($activeTab !== 'kacakkontrol') {
-    $bolgeToplamColIdx = $toplamColIdx + 1;
-    $bolgeToplamCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($bolgeToplamColIdx);
-    $sheet->setCellValue($bolgeToplamCol . '1', 'BÖLGE TOPLAMI');
-    $sheet->mergeCells($bolgeToplamCol . '1:' . $bolgeToplamCol . $headerRows);
+    if ($activeTab !== 'kacakkontrol') {
+        $bolgeToplamColIdx = $toplamColIdx + 1;
+        $bolgeToplamCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($bolgeToplamColIdx);
+        $sheet->setCellValue($bolgeToplamCol . '1', 'BÖLGE TOPLAMI');
+        $sheet->mergeCells($bolgeToplamCol . '1:' . $bolgeToplamCol . $headerRows);
 
-    $bolgeAdiColIdx = $bolgeToplamColIdx + 1;
-    $bolgeAdiCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($bolgeAdiColIdx);
-    $sheet->setCellValue($bolgeAdiCol . '1', 'BÖLGE ADI');
-    $sheet->mergeCells($bolgeAdiCol . '1:' . $bolgeAdiCol . $headerRows);
-    $lastCol = $bolgeAdiCol;
-} else {
-    $lastCol = $toplamCol;
+        $bolgeAdiColIdx = $bolgeToplamColIdx + 1;
+        $bolgeAdiCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($bolgeAdiColIdx);
+        $sheet->setCellValue($bolgeAdiCol . '1', 'BÖLGE ADI');
+        $sheet->mergeCells($bolgeAdiCol . '1:' . $bolgeAdiCol . $headerRows);
+        $lastCol = $bolgeAdiCol;
+    } else {
+        $lastCol = $toplamCol;
+    }
 }
 
 // Headers - Row 2 (Days)
@@ -216,11 +220,70 @@ for ($d = 1; $d <= $daysInMonth; $d++) {
         foreach ($workTypeCols as $wt) {
             $wtColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
             $sheet->setCellValue($wtColLetter . '3', $wt['code']);
+            // Dikey metin - yukarı doğru
+            $sheet->getStyle($wtColLetter . '3')->getAlignment()->setTextRotation(90);
+            $sheet->getColumnDimension($wtColLetter)->setWidth(4);
             $colIndex++;
         }
     } else {
         $colIndex++;
     }
+}
+
+// İŞLEM TOPLAMLARI için GENEL header'ı (Row 2 ve Row 3)
+if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeCols)) {
+    // İŞLEM TOPLAMLARI header'ı satır 1'de - colIndex şu an son gün kolonlarından sonra
+    $islemToplamStartIdx = $colIndex;
+    $islemToplamEndIdx = $colIndex + $subColCount - 1;
+    
+    $islemToplamStartCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($islemToplamStartIdx);
+    $islemToplamEndCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($islemToplamEndIdx);
+    
+    // Row 1: İŞLEM TOPLAMLARI başlığı zaten toplamCol ile yönetiliyor, ancak bu bölüm ekstra
+    $sheet->setCellValue($islemToplamStartCol . '1', 'İŞLEM TOPLAMLARI');
+    if ($subColCount > 1) {
+        $sheet->mergeCells($islemToplamStartCol . '1:' . $islemToplamEndCol . '1');
+    }
+    
+    // Row 2: GENEL
+    $sheet->setCellValue($islemToplamStartCol . '2', 'GENEL');
+    if ($subColCount > 1) {
+        $sheet->mergeCells($islemToplamStartCol . '2:' . $islemToplamEndCol . '2');
+    }
+    
+    // Row 3: İş türü kodları
+    $tempColIdx = $islemToplamStartIdx;
+    foreach ($workTypeCols as $wt) {
+        $wtColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($tempColIdx);
+        $sheet->setCellValue($wtColLetter . '3', $wt['code']);
+        // Dikey metin - yukarı doğru
+        $sheet->getStyle($wtColLetter . '3')->getAlignment()->setTextRotation(90);
+        $sheet->getColumnDimension($wtColLetter)->setWidth(4);
+        $tempColIdx++;
+    }
+    
+    // TOPLAM sütunu indexini güncelle
+    $toplamColIdx = $islemToplamEndIdx + 1;
+    $toplamCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($toplamColIdx);
+    $sheet->setCellValue($toplamCol . '1', 'TOPLAM');
+    $sheet->mergeCells($toplamCol . '1:' . $toplamCol . $headerRows);
+    
+    // BÖLGE TOPLAMI ve BÖLGE ADI sütunlarını güncelle
+    $bolgeToplamColIdx = $toplamColIdx + 1;
+    $bolgeToplamCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($bolgeToplamColIdx);
+    $sheet->setCellValue($bolgeToplamCol . '1', 'BÖLGE TOPLAMI');
+    $sheet->mergeCells($bolgeToplamCol . '1:' . $bolgeToplamCol . $headerRows);
+
+    $bolgeAdiColIdx = $bolgeToplamColIdx + 1;
+    $bolgeAdiCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($bolgeAdiColIdx);
+    $sheet->setCellValue($bolgeAdiCol . '1', 'BÖLGE ADI');
+    $sheet->mergeCells($bolgeAdiCol . '1:' . $bolgeAdiCol . $headerRows);
+    $lastCol = $bolgeAdiCol;
+}
+
+// Row 3 için satır yüksekliği (dikey text için)
+if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeCols)) {
+    $sheet->getRowDimension(3)->setRowHeight(60);
 }
 
 $sheet->getStyle('A1:' . $lastCol . $headerRows)->applyFromArray($headerStyle);
@@ -288,6 +351,11 @@ foreach ($regions as $regionName) {
         }
 
         $colIndex = $daysColStartIdx;
+        $personelWorkTypeTotals = []; // Her iş türü için personel toplamı
+        foreach ($workTypeCols as $wt) {
+            $personelWorkTypeTotals[$wt['name']] = 0;
+        }
+        
         for ($d = 1; $d <= $daysInMonth; $d++) {
             if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol') {
                 $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
@@ -307,10 +375,23 @@ foreach ($regions as $regionName) {
                         if (!isset($dailyDetailedTotals[$d][$wt['name']]))
                             $dailyDetailedTotals[$d][$wt['name']] = 0;
                         $dailyDetailedTotals[$d][$wt['name']] += $val;
+                        $dailyTotals[$d] += $val; // Günlük toplamları da güncelle
                         $personelTotal += $val;
+                        $personelWorkTypeTotals[$wt['name']] += $val;
                     }
                     $colIndex++;
                 }
+            }
+        }
+
+        // İŞLEM TOPLAMLARI - GENEL sütunları (sadece detaylı raporlar için)
+        if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeCols)) {
+            foreach ($workTypeCols as $wt) {
+                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
+                if ($personelWorkTypeTotals[$wt['name']] > 0) {
+                    $sheet->setCellValue($colLetter . $row, $personelWorkTypeTotals[$wt['name']]);
+                }
+                $colIndex++;
             }
         }
 
@@ -372,7 +453,56 @@ if (!empty($unseenKacakTeams)) {
     }
 }
 
-// Footer (Daily Totals)
+// Footer - İŞLEM BAZINDA GÜNLÜK TOPLAMLAR (only for detailed reports with workTypeCols)
+if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeCols)) {
+    $sheet->setCellValue('A' . $row, 'İŞLEM BAZINDA GÜNLÜK TOPLAMLAR');
+    $sheet->mergeCells('A' . $row . ':C' . $row);
+    $sheet->getStyle('A' . $row . ':C' . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+    
+    $colIndex = $daysColStartIdx;
+    $actionGrandTotals = []; // Track grand totals per work type
+    foreach ($workTypeCols as $wt) {
+        $actionGrandTotals[$wt['name']] = 0;
+    }
+    
+    for ($d = 1; $d <= $daysInMonth; $d++) {
+        foreach ($workTypeCols as $wt) {
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
+            $val = $dailyDetailedTotals[$d][$wt['name']] ?? 0;
+            if ($val > 0) {
+                $sheet->setCellValue($colLetter . $row, $val);
+            }
+            $actionGrandTotals[$wt['name']] += $val;
+            $colIndex++;
+        }
+    }
+    
+    // İŞLEM TOPLAMLARI - GENEL sütunları
+    $actionTypesGrandTotal = 0;
+    foreach ($workTypeCols as $wt) {
+        $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
+        if ($actionGrandTotals[$wt['name']] > 0) {
+            $sheet->setCellValue($colLetter . $row, $actionGrandTotals[$wt['name']]);
+        }
+        $actionTypesGrandTotal += $actionGrandTotals[$wt['name']];
+        $colIndex++;
+    }
+    
+    // Action types grand total cell
+    $sheet->setCellValue($toplamCol . $row, $actionTypesGrandTotal ?: '');
+    
+    // İşlem bazında satır için stil
+    $actionFooterStyle = [
+        'font' => ['bold' => true],
+        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E3F2FD']],
+        'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+    ];
+    $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->applyFromArray($actionFooterStyle);
+    $row++;
+}
+
+// Footer (Daily Totals - GÜNLÜK TOPLAMLAR)
 $sheet->setCellValue('A' . $row, 'GÜNLÜK TOPLAMLAR');
 $footerMergeEnd = ($activeTab === 'kacakkontrol') ? 'B' : 'C';
 $sheet->mergeCells('A' . $row . ':' . $footerMergeEnd . $row);
@@ -387,16 +517,29 @@ for ($d = 1; $d <= $daysInMonth; $d++) {
         }
         $colIndex++;
     } else {
-        foreach ($workTypeCols as $wt) {
-            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
-            $val = $dailyDetailedTotals[$d][$wt['name']] ?? 0;
-            if ($val > 0) {
-                $sheet->setCellValue($colLetter . $row, $val);
-            }
-            $colIndex++;
+        // Detaylı raporlarda tüm sub-colonları kapsayan tek hücre
+        $startColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
+        $endColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + $subColCount - 1);
+        if ($dailyTotals[$d] > 0) {
+            $sheet->setCellValue($startColLetter . $row, $dailyTotals[$d]);
         }
+        if ($subColCount > 1) {
+            $sheet->mergeCells($startColLetter . $row . ':' . $endColLetter . $row);
+        }
+        $colIndex += $subColCount;
     }
 }
+
+// İŞLEM TOPLAMLARI - GENEL sütunları için GÜNLÜK TOPLAMLAR satırında merge
+if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeCols)) {
+    $startColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
+    $endColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + $subColCount - 1);
+    $sheet->setCellValue($startColLetter . $row, $grandTotal ?: '');
+    if ($subColCount > 1) {
+        $sheet->mergeCells($startColLetter . $row . ':' . $endColLetter . $row);
+    }
+}
+
 $sheet->setCellValue($toplamCol . $row, $grandTotal ?: '');
 $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->applyFromArray($footerStyle);
 
@@ -412,16 +555,30 @@ if ($activeTab !== 'kacakkontrol') {
     $sheet->getStyle($bolgeToplamCol . ($headerRows + 1) . ':' . $bolgeAdiCol . ($row - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 }
 
-// Auto size columns
-foreach (range('A', 'B') as $columnID) {
-    $sheet->getColumnDimension($columnID)->setAutoSize(true);
-}
+// Sütun genişlikleri - tablodaki gibi sabit değerler
+$sheet->getColumnDimension('A')->setWidth(6); // SIRA - dar
+$sheet->getColumnDimension('B')->setWidth(22); // EKİP KODU - orta
+
 if ($activeTab !== 'kacakkontrol') {
-    $sheet->getColumnDimension('C')->setAutoSize(true);
-    $sheet->getColumnDimension($bolgeAdiCol)->setAutoSize(true);
-    $sheet->getColumnDimension($bolgeToplamCol)->setAutoSize(true);
+    $sheet->getColumnDimension('C')->setWidth(28); // İSİM SOYİSİM - geniş
 }
-$sheet->getColumnDimension($toplamCol)->setAutoSize(true);
+
+// Günlük sütunlar - zaten header kısmında ayarlandı (4 genişlik)
+// Okuma ve Kaçak Kontrol için günlük sütunlar daha geniş olabilir
+if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol') {
+    for ($i = $daysColStartIdx; $i <= $lastDayColIdx; $i++) {
+        $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i);
+        $sheet->getColumnDimension($colLetter)->setWidth(5);
+    }
+}
+
+// TOPLAM sütunu
+$sheet->getColumnDimension($toplamCol)->setWidth(9);
+
+if ($activeTab !== 'kacakkontrol') {
+    $sheet->getColumnDimension($bolgeToplamCol)->setWidth(11); // BÖLGE TOP.
+    $sheet->getColumnDimension($bolgeAdiCol)->setWidth(15); // BÖLGE ADI
+}
 
 // Download
 $filename = str_replace(' ', '_', $title) . '_' . $year . '_' . $month . '.xlsx';

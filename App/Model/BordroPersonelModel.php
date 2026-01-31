@@ -168,6 +168,8 @@ class BordroPersonelModel extends Model
                 issizlik_isveren = :issizlik_isveren,
                 toplam_maliyet = :toplam_maliyet,
                 kumulatif_matrah = :kumulatif_matrah,
+                sodexo_odemesi = :sodexo_odemesi,
+                banka_odemesi = :banka_odemesi,
                 hesaplama_detay = :hesaplama_detay,
                 hesaplama_tarihi = NOW()
             WHERE id = :id
@@ -185,6 +187,10 @@ class BordroPersonelModel extends Model
         $sql->bindParam(':toplam_maliyet', $hesaplamaData['toplam_maliyet']);
         $kumulatif = $hesaplamaData['kumulatif_matrah'] ?? 0;
         $sql->bindParam(':kumulatif_matrah', $kumulatif);
+        $sodexoOdemesi = $hesaplamaData['sodexo_odemesi'] ?? 0;
+        $sql->bindParam(':sodexo_odemesi', $sodexoOdemesi);
+        $bankaOdemesi = $hesaplamaData['banka_odemesi'] ?? 0;
+        $sql->bindParam(':banka_odemesi', $bankaOdemesi);
         $hesaplamaDetay = $hesaplamaData['hesaplama_detay'] ?? null;
         $sql->bindParam(':hesaplama_detay', $hesaplamaDetay);
 
@@ -676,13 +682,15 @@ class BordroPersonelModel extends Model
         $deleteSql->execute([$personel_id, $donem_id]);
 
         // Dönem içindeki onaylanmış avansları getir
+        // NOT: talep_tarihi datetime formatında olduğu için DATE() fonksiyonu ile karşılaştırıyoruz
+        // Aksi halde 2026-01-31 14:30:00 gibi bir değer, 2026-01-31 bitiş tarihinden büyük sayılır
         $sql = $this->db->prepare("
             SELECT id, tutar, talep_tarihi, aciklama
             FROM personel_avanslari
             WHERE personel_id = ? 
             AND durum = 'onaylandi'
             AND silinme_tarihi IS NULL
-            AND talep_tarihi BETWEEN ? AND ?
+            AND DATE(talep_tarihi) BETWEEN ? AND ?
         ");
         $sql->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
         $avanslar = $sql->fetchAll(PDO::FETCH_OBJ);
@@ -1042,7 +1050,7 @@ class BordroPersonelModel extends Model
 
         // Bordro kaydını ve personel detaylarını çek
         $sql = $this->db->prepare("
-            SELECT bp.*, p.maas_tutari, p.maas_durumu, p.bes_kesintisi_varmi, bd.baslangic_tarihi, bd.bitis_tarihi
+            SELECT bp.*, p.maas_tutari, p.maas_durumu, p.bes_kesintisi_varmi, p.sodexo, bd.baslangic_tarihi, bd.bitis_tarihi
             FROM {$this->table} bp
             INNER JOIN personel p ON bp.personel_id = p.id
             INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
@@ -1439,6 +1447,12 @@ class BordroPersonelModel extends Model
         $issizlikIsveren = $sgkMatrahi * $issizlikIsverenOrani;
         $toplamMaliyet = $calisanBrutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler;
 
+        // ========== SODEXO VE BANKA ÖDEMESİ HESAPLAMA ==========
+        // Personel tablosundaki sodexo tutarını al
+        $sodexoOdemesi = floatval($kayit->sodexo ?? 0);
+        // Banka ödemesi = Net maaş - Sodexo ödemesi (negatif olamaz)
+        $bankaOdemesi = max(0, $netMaas - $sodexoOdemesi);
+
         // Hesaplama Snapshot (JSON)
         $hesaplamaDetay = [
             'hesaplama_tarihi' => date('Y-m-d H:i:s'),
@@ -1491,6 +1505,8 @@ class BordroPersonelModel extends Model
             'toplam_maliyet' => round($toplamMaliyet, 2),
             'toplam_kesinti' => round($toplamKesinti, 2),
             'toplam_ek_odeme' => round($toplamEkOdeme, 2),
+            'sodexo_odemesi' => round($sodexoOdemesi, 2),
+            'banka_odemesi' => round($bankaOdemesi, 2),
             'kumulatif_matrah' => round($yeniKumulatifMatrah, 2),
             'hesaplama_detay' => json_encode($hesaplamaDetay, JSON_UNESCAPED_UNICODE)
         ]);

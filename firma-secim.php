@@ -19,24 +19,10 @@ if (isset($_GET['action'])) {
 
     if ($action == 'save') {
         $data = $_POST;
-        $id = isset($data['id']) ? (int) $data['id'] : 0;
-
-        $saveData = [
-            'firma_adi' => $data['firma_adi'],
-            'vergi_no' => $data['vergi_no'] ?? '',
-            'vergi_dairesi' => $data['vergi_dairesi'] ?? '',
-            'telefon' => $data['telefon'] ?? '',
-            'adres' => $data['adres'] ?? '',
-        ];
-
-        if ($id > 0) {
-            $saveData['id'] = $id;
-        } else {
-            $saveData['kayit_yapan'] = $_SESSION['user']->id ?? 0;
-        }
+        $data['kayit_yapan'] = $_SESSION['user']->id ?? 0;
 
         try {
-            $res = $Firma->saveWithAttr($saveData);
+            $res = $Firma->saveFirma($data);
             echo json_encode(['status' => 'success', 'message' => 'Firma başarıyla kaydedildi.']);
         } catch (\Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -47,14 +33,7 @@ if (isset($_GET['action'])) {
     if ($action == 'delete') {
         $id = (int) $_POST['id'];
         try {
-            // İlişki kontrolü
-            $error = $Firma->hasRelations($id);
-            if ($error) {
-                echo json_encode(['status' => 'error', 'message' => $error]);
-                exit;
-            }
-
-            $Firma->softDelete($id);
+            $Firma->deleteFirma($id);
             echo json_encode(['status' => 'success', 'message' => 'Firma silindi.']);
         } catch (\Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -64,7 +43,7 @@ if (isset($_GET['action'])) {
 
     if ($action == 'get') {
         $id = (int) $_GET['id'];
-        $data = $Firma->find($id);
+        $data = $Firma->getFirma($id);
         echo json_encode($data);
         exit;
     }
@@ -73,21 +52,15 @@ if (isset($_GET['action'])) {
 $branchs = $Firma->all();
 
 // Varsayılan firma cookie kontrolü - otomatik yönlendirme
-if (isset($_COOKIE['varsayilan_firma_id']) && !empty($_COOKIE['varsayilan_firma_id'])) {
-    $varsayilan_firma_id = (int) $_COOKIE['varsayilan_firma_id'];
-    // Firma hala aktif mi kontrol et
-    $firma_aktif = false;
-    foreach ($branchs as $branch) {
-        if ($branch->id == $varsayilan_firma_id && is_null($branch->silinme_tarihi)) {
-            $firma_aktif = true;
-            break;
-        }
+$defaultFirma = $Firma->resolveDefaultFirmaFromCookies($_COOKIE, $branchs);
+if ($defaultFirma && !isset($_GET['change'])) {
+    $_SESSION['firma_id'] = (int) $defaultFirma->id;
+    $redirect = "/set-session.php?firma_id=" . (int) $defaultFirma->id;
+    if (isset($defaultFirma->firma_kodu) && !empty($defaultFirma->firma_kodu)) {
+        $redirect .= "&firma_kodu=" . urlencode($defaultFirma->firma_kodu);
     }
-    if ($firma_aktif && !isset($_GET['change'])) {
-        $_SESSION['firma_id'] = $varsayilan_firma_id;
-        header("Location: /set-session.php?firma_id=" . $varsayilan_firma_id);
-        exit;
-    }
+    header("Location: " . $redirect);
+    exit;
 }
 
 // Sadece silinmemiş firmaları göster
@@ -99,7 +72,11 @@ $branchs = array_filter($branchs, function ($b) {
 if (count($branchs) == 1 && !isset($_GET['change'])) {
     $only_branch = reset($branchs);
     $_SESSION['sube_id'] = $only_branch->id;
-    header("Location: /set-session.php?firma_id=" . $only_branch->id);
+    $redirect = "/set-session.php?firma_id=" . $only_branch->id;
+    if (isset($only_branch->firma_kodu) && !empty($only_branch->firma_kodu)) {
+        $redirect .= "&firma_kodu=" . urlencode($only_branch->firma_kodu);
+    }
+    header("Location: " . $redirect);
     exit;
 }
 
@@ -546,7 +523,7 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
 
         <div class="branch-list">
             <?php foreach ($branchs as $branch) { ?>
-                <div class="branch-item" data-id="<?php echo $branch->id ?>" onclick="selectBranch(this)">
+                <div class="branch-item" data-id="<?php echo $branch->id ?>" data-kodu="<?php echo htmlspecialchars($branch->firma_kodu ?? '', ENT_QUOTES, 'UTF-8'); ?>" onclick="selectBranch(this)">
                     <div class="radio-wrapper">
                         <div class="custom-radio"></div>
                     </div>
@@ -558,6 +535,9 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                             <?php } ?>
                         </div>
                         <div class="branch-details">
+                            <?php if (!empty($branch->firma_kodu)) { ?>
+                                <p><i class="fa fa-hashtag" style="width: 1.25rem;"></i> <?php echo htmlspecialchars($branch->firma_kodu, ENT_QUOTES, 'UTF-8'); ?></p>
+                            <?php } ?>
                             <?php if ($branch->adres) { ?>
                                 <p><i class="fa fa-location-dot" style="width: 1.25rem;"></i> <?php echo $branch->adres ?>
                                 </p>
@@ -610,6 +590,10 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                     <input type="hidden" name="id" id="firma_id">
                     <div class="form-group">
                         <?php echo Form::FormFloatInput("text", "firma_adi", "", "Firma Adı", "Firma Adı", "briefcase", "form-control", true); ?>
+                    </div>
+                    <div class="form-group">
+                        <?php echo Form::FormFloatInput("text", "firma_kodu", "", "Firma Kodu", "Firma Kodu", "hash"); ?>
+                    <span class="text-muted">Online İcmal Sorgulama raporunda kullanılacaktır.</span>
                     </div>
                     <div class="form-grid">
                         <div class="form-group">
@@ -695,6 +679,9 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                     document.getElementById('modalTitle').innerText = 'Firmayı Düzenle';
                     document.getElementById('firma_id').value = data.id;
                     document.getElementById('firma_adi').value = data.firma_adi;
+                    if (document.getElementById('firma_kodu')) {
+                        document.getElementById('firma_kodu').value = data.firma_kodu ?? '';
+                    }
                     document.getElementById('vergi_no').value = data.vergi_no;
                     document.getElementById('vergi_dairesi').value = data.vergi_dairesi;
                     document.getElementById('telefon').value = data.telefon;
@@ -706,10 +693,21 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
         function saveFirma() {
             const form = document.getElementById('firmaForm');
             const firmaAdi = document.getElementById('firma_adi').value;
+            const firmaKoduEl = document.getElementById('firma_kodu');
+            const firmaKodu = firmaKoduEl ? firmaKoduEl.value : '';
 
             if (!firmaAdi.trim()) {
                 Swal.fire('Hata', 'Firma adı boş bırakılamaz!', 'error');
                 return;
+            }
+
+            // firma_kodu opsiyonel; doluysa temel format kontrolü
+            if (firmaKodu && firmaKodu.trim().length > 0) {
+                const normalized = firmaKodu.trim();
+                if (normalized.length < 2) {
+                    Swal.fire('Hata', 'Firma kodu en az 2 karakter olmalıdır!', 'error');
+                    return;
+                }
             }
 
             const formData = new FormData(form);
@@ -765,7 +763,10 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
         function continueAction() {
             if (!selectedId) return;
             const isDefault = document.getElementById('varsayilan-firma').checked;
+            const selectedEl = document.querySelector(`.branch-item.selected`);
+            const selectedCode = selectedEl ? selectedEl.dataset.kodu : null;
             let url = `/set-session.php?firma_id=${selectedId}`;
+            if (selectedCode) url += `&firma_kodu=${encodeURIComponent(selectedCode)}`;
             if (isDefault) url += '&varsayilan=1';
             window.location.href = url;
         }

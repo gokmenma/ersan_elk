@@ -168,7 +168,7 @@ $logs = $mesajLogModel->getLogs(['type' => 'push']);
                     <h6 class="card-title mb-0"><i class="bx bx-send me-2"></i>Bildirim Gönder</h6>
                 </div>
                 <div class="card-body">
-                    <form id="formBildirimGonder">
+                    <form id="formBildirimGonder" enctype="multipart/form-data">
                         <div class="row g-2">
                             <!-- Alıcı Tipi -->
                             <div class="col-12">

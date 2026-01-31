@@ -49,15 +49,16 @@ try {
 
     $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setTitle('Personel Listesi');
 
-    // Başlıklar ve Veri Tipleri (Template ile uyumlu)
+    // Başlıklar ve Veri Tipleri (Template ile birebir uyumlu - yükleme için)
     $columns = [
-        'Firma' => 'firma_id', // Firma adı yazılacak
+        'Firma' => 'firma_id',
         'TC Kimlik No' => 'tc_kimlik_no',
         'Adı Soyadı' => 'adi_soyadi',
         'Anne Adı' => 'anne_adi',
         'Baba Adı' => 'baba_adi',
-        'Doğum Tarihi' => 'dogum_tarihi',
+        'Doğum Tarihi (GG.AA.YYYY)' => 'dogum_tarihi',
         'Doğum Yeri (İl)' => 'dogum_yeri_il',
         'Doğum Yeri (İlçe)' => 'dogum_yeri_ilce',
         'Adres' => 'adres',
@@ -68,6 +69,7 @@ try {
         'Ehliyet Sınıfı' => 'ehliyet_sinifi',
         'Kan Grubu' => 'kan_grubu',
         'Cep Telefonu' => 'cep_telefonu',
+        'Program Şifre' => 'sifre',
         '2. Cep Telefonu' => 'cep_telefonu_2',
         'E-posta Adresi' => 'email_adresi',
         'Ayakkabı No' => 'ayakkabi_numarasi',
@@ -87,22 +89,20 @@ try {
         'Personel Sınıfı' => 'personel_sinifi',
         'Departman' => 'departman',
         'Görev' => 'gorev',
+        'Ekip Bölge' => 'ekip_bolge',
         'Takım' => 'ekip_no',
         'DSS Sınıfı Üst' => 'dss_sinifi_ust',
         'DSS Sınıfı Alt' => 'dss_sinifi_alt',
+        'Banka' => 'banka',
         'IBAN Numarası' => 'iban_numarasi',
         'Maaş Durumu' => 'maas_durumu',
         'Maaş Tutarı' => 'maas_tutari',
-        'Saatlik Ücret' => 'maas_birim_saat'
+        'Sodexo Ödemesi Tutarı' => 'sodexo',
+        'Günlük Ücret' => 'gunluk_ucret',
+        'Bes Kesintisi Var mı?' => 'bes_kesintisi_varmi',
     ];
 
-    // Firma isimlerini almak için
-    $FirmaModel = new \App\Model\FirmaModel();
-    $firmalar = $FirmaModel->option();
-    $firmaMap = [];
-    foreach ($firmalar as $f) {
-        $firmaMap[$f->id] = $f->firma_adi;
-    }
+    // Personeller filter() metodu ile çekildi - firma_adi ve ekip_adi JOIN ile geliyor
 
     // Başlıkları yaz
     $colIndex = 1;
@@ -110,15 +110,29 @@ try {
         $columnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
         $sheet->setCellValue($columnLetter . '1', $header);
 
+        // Sütun genişliğini otomatik ayarla
+        $sheet->getColumnDimension($columnLetter)->setAutoSize(true);
+
         // Stil
         $style = $sheet->getStyle($columnLetter . '1');
         $style->getFont()->setBold(true);
-        $style->getFill()
-            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
-            ->getStartColor()->setARGB('FFCCCCCC');
+        
+        // TC Kimlik No sütunu için sarı arka plan (güncelleme anahtarı)
+        if ($dbField === 'tc_kimlik_no') {
+            $style->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                ->getStartColor()->setARGB('FFFFFF99');
+        } else {
+            $style->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                ->getStartColor()->setARGB('FFCCCCCC');
+        }
 
         $colIndex++;
     }
+
+    // Başlık satırını dondur
+    $sheet->freezePane('A2');
 
     // Verileri yaz
     $rowIndex = 2;
@@ -128,27 +142,68 @@ try {
             $columnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
             $val = $personel->$dbField ?? '';
 
-            // Özel formatlamalar
+            // Özel formatlamalar (Template ile uyumlu)
             if ($dbField == 'firma_id') {
-                $val = $firmaMap[$val] ?? $val;
-            } elseif ($dbField == 'aktif_mi') {
-                $val = $val == 1 ? '1' : '0';
+                // Firma adı JOIN ile geldi
+                $val = $personel->firma_adi ?? $val;
+            } elseif ($dbField == 'ekip_no') {
+                // Ekip adı JOIN ile geldi
+                $val = $personel->ekip_adi ?? $val;
             } elseif (in_array($dbField, ['dogum_tarihi', 'ise_giris_tarihi', 'isten_cikis_tarihi'])) {
+                // Tarih formatı: DD.MM.YYYY
                 if (!empty($val) && $val != '0000-00-00') {
                     $val = date('d.m.Y', strtotime($val));
                 } else {
                     $val = '';
                 }
+            } elseif ($dbField == 'cinsiyet') {
+                // Cinsiyet dönüşümü
+                if ($val === 'E' || $val === 'e') {
+                    $val = 'Erkek';
+                } elseif ($val === 'K' || $val === 'k') {
+                    $val = 'Kadın';
+                }
+            } elseif ($dbField == 'medeni_durum') {
+                // Medeni durum dönüşümü
+                if ($val === 'E' || $val === 'e') {
+                    $val = 'Evli';
+                } elseif ($val === 'B' || $val === 'b') {
+                    $val = 'Bekar';
+                }
+            } elseif (in_array($dbField, ['esi_calisiyor_mu', 'bes_kesintisi_varmi'])) {
+                // Evet/Hayır dönüşümü
+                if ($val === '1' || $val === 1) {
+                    $val = 'Evet';
+                } elseif ($val === '0' || $val === 0) {
+                    $val = 'Hayır';
+                }
+            } elseif ($dbField == 'seyahat_engeli') {
+                // Var/Yok dönüşümü
+                if ($val === '1' || $val === 1) {
+                    $val = 'Var';
+                } elseif ($val === '0' || $val === 0) {
+                    $val = 'Yok';
+                }
+            } elseif ($dbField == 'sifre') {
+                // Şifre alanını boş bırak (güvenlik için)
+                $val = '';
             }
 
             $sheet->setCellValueExplicit($columnLetter . $rowIndex, $val, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
             $colIndex++;
         }
+        
+        // TC Kimlik No hücresini vurgula
+        $tcColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(2); // TC Kimlik No 2. sütun
+        $sheet->getStyle($tcColLetter . $rowIndex)->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FFFFFDE7');
+        
         $rowIndex++;
     }
 
-    // Sütun genişliklerini ayarla
-    for ($i = 1; $i < count($columns) + 1; $i++) {
+    // Sütun genişliklerini ayarla (tekrar)
+    for ($i = 1; $i <= count($columns); $i++) {
         $columnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i);
         $sheet->getColumnDimension($columnLetter)->setAutoSize(true);
     }

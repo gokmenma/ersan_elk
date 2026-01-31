@@ -34,6 +34,16 @@ try {
             $tekrarTipi = $_POST['tekrar_tipi'] ?? 'tek_sefer';
             $hesaplamaTipi = $_POST['hesaplama_tipi'] ?? 'sabit';
 
+            // Tek seferlik kesintilerde dönem kontrolü yap
+            if ($tekrarTipi === 'tek_sefer' && !empty($_POST['donem_id'])) {
+                $BordroDonem = new BordroDonemModel();
+                $donem = $BordroDonem->getDonemById(intval($_POST['donem_id']));
+                if ($donem && $donem->kapali_mi == 1) {
+                    echo json_encode(['error' => 'Bu dönem kapatılmış. Kapalı dönemlere kesinti eklenemez.']);
+                    break;
+                }
+            }
+
             $data = [
                 'personel_id' => $personel_id,
                 'tur' => $_POST['tur'] ?? 'diger',
@@ -151,7 +161,23 @@ try {
             break;
 
         case 'delete_kesinti':
-            $id = $_POST['id'];
+            $id = intval($_POST['id'] ?? 0);
+            if (!$id) {
+                echo json_encode(['error' => 'Kesinti ID gerekli']);
+                break;
+            }
+
+            // Kesintinin bağlı olduğu dönemi kontrol et
+            $kesinti = $kesintiModel->getKesinti($id);
+            if ($kesinti && $kesinti->donem_id) {
+                $BordroDonem = new BordroDonemModel();
+                $donem = $BordroDonem->getDonemById($kesinti->donem_id);
+                if ($donem && $donem->kapali_mi == 1) {
+                    echo json_encode(['error' => 'Bu dönem kapatılmış. Kapalı dönemlerdeki kesintiler silinemez.']);
+                    break;
+                }
+            }
+
             $kesintiModel->softDelete($id);
             echo json_encode(['success' => true]);
             break;

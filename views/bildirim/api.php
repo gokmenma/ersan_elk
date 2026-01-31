@@ -42,17 +42,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Resim Yükleme İşlemi
                 $imageUrl = null;
                 if (isset($_FILES['resim']) && $_FILES['resim']['error'] === UPLOAD_ERR_OK) {
-                    $uploadDir = dirname(__DIR__, 2) . '/uploads/notifications/';
-                    if (!file_exists($uploadDir)) {
-                        mkdir($uploadDir, 0777, true);
+                    $uploadDir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'notifications' . DIRECTORY_SEPARATOR;
+                    
+                    // Klasör yoksa oluştur
+                    if (!is_dir($uploadDir)) {
+                        if (!@mkdir($uploadDir, 0755, true)) {
+                            throw new Exception('Yükleme klasörü oluşturulamadı: ' . $uploadDir);
+                        }
+                    }
+                    
+                    // Klasör yazılabilir mi kontrol et
+                    if (!is_writable($uploadDir)) {
+                        throw new Exception('Yükleme klasörü yazılabilir değil.');
                     }
 
                     $fileInfo = pathinfo($_FILES['resim']['name']);
-                    $extension = strtolower($fileInfo['extension']);
+                    $extension = strtolower($fileInfo['extension'] ?? '');
                     $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
-                    if (!in_array($extension, $allowedExtensions)) {
-                        throw new Exception('Geçersiz dosya formatı. Sadece resim dosyaları yüklenebilir.');
+                    if (empty($extension) || !in_array($extension, $allowedExtensions)) {
+                        throw new Exception('Geçersiz dosya formatı. Sadece resim dosyaları (jpg, jpeg, png, gif, webp) yüklenebilir.');
+                    }
+
+                    // MIME type kontrolü
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    $mimeType = finfo_file($finfo, $_FILES['resim']['tmp_name']);
+                    finfo_close($finfo);
+                    
+                    $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                    if (!in_array($mimeType, $allowedMimes)) {
+                        throw new Exception('Geçersiz dosya tipi: ' . $mimeType);
                     }
 
                     if ($_FILES['resim']['size'] > 2 * 1024 * 1024) { // 2MB
@@ -63,19 +82,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $uploadFile = $uploadDir . $fileName;
 
                     if (move_uploaded_file($_FILES['resim']['tmp_name'], $uploadFile)) {
-                        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+                        // URL oluştur - mutlak URL gerekli
+                        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
                         $host = $_SERVER['HTTP_HOST'];
-                        $scriptPath = dirname($_SERVER['SCRIPT_NAME']); // /ersan_elk/views/bildirim
-                        $basePath = dirname($scriptPath, 2); // /ersan_elk
-                        // Windows path düzeltmesi
-                        $basePath = str_replace('\\', '/', $basePath);
-                        if ($basePath === '/' || $basePath === '.')
-                            $basePath = '';
+                        
+                        // Base path'i DOCUMENT_ROOT'tan hesapla
+                        $docRoot = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
+                        $uploadPath = str_replace('\\', '/', dirname(__DIR__, 2) . '/uploads/notifications/');
+                        $relativePath = str_replace($docRoot, '', $uploadPath);
+                        $relativePath = '/' . ltrim($relativePath, '/');
 
-                        $imageUrl = "$protocol://$host$basePath/uploads/notifications/$fileName";
+                        $imageUrl = "{$protocol}://{$host}{$relativePath}{$fileName}";
                     } else {
-                        throw new Exception('Dosya yüklenirken bir hata oluştu.');
+                        throw new Exception('Dosya yüklenirken bir hata oluştu. Hata kodu: ' . $_FILES['resim']['error']);
                     }
+                } elseif (isset($_FILES['resim']) && $_FILES['resim']['error'] !== UPLOAD_ERR_NO_FILE) {
+                    // Dosya seçilmiş ama hata var
+                    $uploadErrors = [
+                        UPLOAD_ERR_INI_SIZE => 'Dosya boyutu PHP ini limitini aşıyor.',
+                        UPLOAD_ERR_FORM_SIZE => 'Dosya boyutu form limitini aşıyor.',
+                        UPLOAD_ERR_PARTIAL => 'Dosya kısmen yüklendi.',
+                        UPLOAD_ERR_NO_TMP_DIR => 'Geçici klasör bulunamadı.',
+                        UPLOAD_ERR_CANT_WRITE => 'Dosya diske yazılamadı.',
+                        UPLOAD_ERR_EXTENSION => 'PHP eklentisi dosya yüklemesini durdurdu.',
+                    ];
+                    $errorMsg = $uploadErrors[$_FILES['resim']['error']] ?? 'Bilinmeyen hata.';
+                    throw new Exception('Resim yükleme hatası: ' . $errorMsg);
                 }
 
                 $payload = [

@@ -42,7 +42,13 @@ $settings = (object) $Settings->getAllSettingsAsKeyValue();
                                 <span class="d-none d-sm-block">Mail & Sms Ayarları</span>
                             </a>
                         </li>
-
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" data-bs-toggle="tab" href="#cron_ayarlari" role="tab"
+                                aria-selected="false">
+                                <span class="d-block d-sm-none"><i class="far fa-clock"></i></span>
+                                <span class="d-none d-sm-block">Online Sorgulama Ayarları</span>
+                            </a>
+                        </li>
                     </ul>
 
 
@@ -50,6 +56,9 @@ $settings = (object) $Settings->getAllSettingsAsKeyValue();
                     <div class="tab-content p-3 text-muted">
                         <div class="tab-pane active show" id="messages" role="tabpanel">
                             <?php include_once "icerik/mail-sms-ayarlari.php"; ?>
+                        </div>
+                        <div class="tab-pane" id="cron_ayarlari" role="tabpanel">
+                            <?php include_once "icerik/online-sorgulama-ayarlari.php"; ?>
                         </div>
                     </div>
 

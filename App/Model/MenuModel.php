@@ -57,7 +57,7 @@ class MenuModel extends Model
             return $this->fetchAndBuildMenuFromDb($user_id);
         }
 
-        $this->clearMenuCacheForRole(0); // Genel önbelleği temizle
+        //$this->clearMenuCacheForRole(0); // Genel önbelleği temizle
 
 
         $Users = new UserModel(); // Bağımlılık enjeksiyonu düşünülebilir

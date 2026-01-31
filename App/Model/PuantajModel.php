@@ -167,6 +167,136 @@ class PuantajModel extends Model
         return $mapping;
     }
 
+    /**
+     * Server-side DataTable için veri çekme
+     */
+    public function getDataTable($request, $startDate, $endDate, $ekipKodu = '', $workType = '', $workResult = '')
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $params = ['firma_id' => $firmaId];
+
+        // Temel sorgu
+        $baseWhere = "t.firma_id = :firma_id";
+        
+        // Tarih filtreleri
+        if ($startDate) {
+            $baseWhere .= " AND t.tarih >= :start_date";
+            $params['start_date'] = \App\Helper\Date::convertExcelDate($startDate, 'Y-m-d') ?: $startDate;
+        }
+        if ($endDate) {
+            $baseWhere .= " AND t.tarih <= :end_date";
+            $params['end_date'] = \App\Helper\Date::convertExcelDate($endDate, 'Y-m-d') ?: $endDate;
+        }
+        if ($ekipKodu) {
+            $baseWhere .= " AND t.personel_id = :ekip_kodu";
+            $params['ekip_kodu'] = $ekipKodu;
+        }
+        if ($workType) {
+            $baseWhere .= " AND t.is_emri_tipi = :work_type";
+            $params['work_type'] = $workType;
+        }
+        if ($workResult) {
+            $baseWhere .= " AND t.is_emri_sonucu = :work_result";
+            $params['work_result'] = $workResult;
+        }
+
+        // Toplam kayıt sayısı (filtresiz)
+        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t WHERE $baseWhere");
+        foreach ($params as $key => $val) {
+            $totalQuery->bindValue(":$key", $val);
+        }
+        $totalQuery->execute();
+        $recordsTotal = $totalQuery->fetchColumn();
+
+        // Arama filtresi
+        $searchWhere = "";
+        if (!empty($request['search']['value'])) {
+            $searchValue = "%" . $request['search']['value'] . "%";
+            $searchWhere = " AND (
+                t.firma LIKE :search OR
+                t.is_emri_tipi LIKE :search OR
+                t.ekip_kodu LIKE :search OR
+                t.is_emri_sonucu LIKE :search OR
+                p.adi_soyadi LIKE :search
+            )";
+            $params['search'] = $searchValue;
+        }
+
+        // Sütun bazlı arama
+        $colSearchMap = [
+            0 => 't.firma',
+            1 => 't.is_emri_tipi',
+            2 => 'p.adi_soyadi',
+            3 => 't.is_emri_sonucu',
+            4 => 't.sonuclanmis',
+            5 => 't.acik_olanlar',
+            6 => 't.tarih'
+        ];
+        
+        if (isset($request['columns']) && is_array($request['columns'])) {
+            foreach ($request['columns'] as $colIdx => $col) {
+                if (!empty($col['search']['value']) && isset($colSearchMap[$colIdx])) {
+                    $searchVal = "%" . $col['search']['value'] . "%";
+                    $paramKey = "col_search_" . $colIdx;
+                    $searchWhere .= " AND {$colSearchMap[$colIdx]} LIKE :$paramKey";
+                    $params[$paramKey] = $searchVal;
+                }
+            }
+        }
+
+        // Filtrelenmiş kayıt sayısı
+        $filteredQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t LEFT JOIN personel p ON t.personel_id = p.id WHERE $baseWhere $searchWhere");
+        foreach ($params as $key => $val) {
+            $filteredQuery->bindValue(":$key", $val);
+        }
+        $filteredQuery->execute();
+        $recordsFiltered = $filteredQuery->fetchColumn();
+
+        // Sıralama
+        $orderColumn = 't.tarih';
+        $orderDir = 'DESC';
+        $colMap = [
+            0 => 't.firma',
+            1 => 't.is_emri_tipi',
+            2 => 'p.adi_soyadi',
+            3 => 't.is_emri_sonucu',
+            4 => 't.sonuclanmis',
+            5 => 't.acik_olanlar',
+            6 => 't.tarih'
+        ];
+        if (isset($request['order'][0])) {
+            $orderColIdx = $request['order'][0]['column'];
+            $orderDir = strtoupper($request['order'][0]['dir']) === 'ASC' ? 'ASC' : 'DESC';
+            if (isset($colMap[$orderColIdx])) {
+                $orderColumn = $colMap[$orderColIdx];
+            }
+        }
+
+        // Veri çekme
+        $sql = "SELECT t.*, p.adi_soyadi as personel_adi 
+                FROM {$this->table} t 
+                LEFT JOIN personel p ON t.personel_id = p.id 
+                WHERE $baseWhere $searchWhere 
+                ORDER BY $orderColumn $orderDir 
+                LIMIT :start, :length";
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue(":$key", $val);
+        }
+        $stmt->bindValue(':start', (int)($request['start'] ?? 0), PDO::PARAM_INT);
+        $stmt->bindValue(':length', (int)($request['length'] ?? 10), PDO::PARAM_INT);
+        $stmt->execute();
+        $data = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        return [
+            "draw" => isset($request['draw']) ? intval($request['draw']) : 0,
+            "recordsTotal" => intval($recordsTotal),
+            "recordsFiltered" => intval($recordsFiltered),
+            "data" => $data
+        ];
+    }
+
     public function getUnmatchedWorkResults($year, $month, $raporTuru)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;

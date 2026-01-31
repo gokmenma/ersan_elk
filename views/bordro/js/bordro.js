@@ -469,50 +469,92 @@ $(document).ready(function () {
       cancelButtonText: "İptal",
     }).then((result) => {
       if (result.isConfirmed) {
-        $.ajax({
-          url: "views/bordro/api.php",
-          type: "POST",
-          data: {
-            action: action,
-            donem_id: $("#donemSelect").val(),
-          },
-          dataType: "json",
-          success: function (response) {
-            if (response.status === "success") {
-              Swal.fire({
-                icon: "success",
-                title: "Başarılı!",
-                text: response.message,
-                confirmButtonText: "Tamam",
-              }).then(() => {
-                location.reload();
-              });
-            } else {
-              Swal.fire({
-                icon: "error",
-                title: "Hata!",
-                text: response.message,
-              });
-              // Hata durumunda switch'i önceki haline döndür
-              $("#switchDonemDurum").prop("checked", !isChecked);
-            }
-          },
-          error: function () {
-            Swal.fire({
-              icon: "error",
-              title: "Hata!",
-              text: "Bir hata oluştu.",
-            });
-            // Hata durumunda switch'i önceki haline döndür
-            $("#switchDonemDurum").prop("checked", !isChecked);
-          },
-        });
+        donemDurumGuncelle(action, isChecked, false);
       } else {
         // İptal edilirse switch'i önceki haline döndür
         $(this).prop("checked", !isChecked);
       }
     });
   });
+
+  // Dönem durumu güncelleme fonksiyonu
+  function donemDurumGuncelle(action, isChecked, forceClose) {
+    $.ajax({
+      url: "views/bordro/api.php",
+      type: "POST",
+      data: {
+        action: action,
+        donem_id: $("#donemSelect").val(),
+        force_close: forceClose ? "1" : "0",
+      },
+      dataType: "json",
+      success: function (response) {
+        if (response.status === "success") {
+          Swal.fire({
+            icon: "success",
+            title: "Başarılı!",
+            text: response.message,
+            confirmButtonText: "Tamam",
+          }).then(() => {
+            location.reload();
+          });
+        } else if (response.status === "warning") {
+          // Bekleyen avans/izin uyarısı
+          let warningHtml =
+            '<div class="text-start"><p class="mb-2">' +
+            response.message +
+            "</p><ul class='mb-0 ps-3'>";
+          response.warnings.forEach(function (w) {
+            warningHtml +=
+              '<li class="text-warning"><i class="bx bx-error me-1"></i>' +
+              w +
+              "</li>";
+          });
+          warningHtml += "</ul></div>";
+
+          Swal.fire({
+            icon: "warning",
+            title: "Bekleyen Talepler Var!",
+            html: warningHtml,
+            showCancelButton: true,
+            showDenyButton: true,
+            confirmButtonColor: "#d33",
+            denyButtonColor: "#6c757d",
+            cancelButtonColor: "#28a745",
+            confirmButtonText: '<i class="bx bx-lock me-1"></i>Yine de Kapat',
+            denyButtonText: '<i class="bx bx-x me-1"></i>İptal',
+            cancelButtonText:
+              '<i class="bx bx-check-circle me-1"></i>Talepleri İncele',
+          }).then((result) => {
+            if (result.isConfirmed) {
+              // Zorla kapat
+              donemDurumGuncelle(action, isChecked, true);
+            } else {
+              // İptal veya Talepleri incele - switch'i geri al
+              $("#switchDonemDurum").prop("checked", false);
+            }
+          });
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Hata!",
+            text: response.message,
+          });
+          // Hata durumunda switch'i önceki haline döndür
+          $("#switchDonemDurum").prop("checked", !isChecked);
+        }
+      },
+      error: function () {
+        Swal.fire({
+          icon: "error",
+          title: "Hata!",
+          text: "Bir hata oluştu.",
+        });
+        // Hata durumunda switch'i önceki haline döndür
+        $("#switchDonemDurum").prop("checked", !isChecked);
+      },
+    });
+  }
 
   // Gelir Ekle Form
   $("#formGelirEkle").on("submit", function (e) {

@@ -13,6 +13,8 @@ $Personel = new PersonelModel();
 
 $year = $_GET['year'] ?? date('Y');
 $month = $_GET['month'] ?? date('m');
+$personel_id = $_GET['personel_id'] ?? '';
+$region = $_GET['region'] ?? '';
 $activeTab = $_GET['tab'] ?? 'okuma';
 
 $yearOptions = [];
@@ -55,7 +57,14 @@ foreach ($regionList as $r) {
                             <h2 class="accordion-header" id="headingOne">
                                 <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse"
                                     data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-                                    <i class="bx bx-filter-alt me-2"></i> Filtreleme Seçenekleri
+                                    <div class="d-flex align-items-center justify-content-between w-100 me-3">
+                                        <div>
+                                            <i class="bx bx-filter-alt me-2"></i> Filtreleme Seçenekleri
+                                        </div>
+                                        <div id="filterSummary" class="d-none d-md-flex gap-2">
+                                            <!-- JS ile doldurulacak -->
+                                        </div>
+                                    </div>
                                 </button>
                             </h2>
                         </div>
@@ -73,10 +82,10 @@ foreach ($regionList as $r) {
                                         <?php echo Form::FormSelect2("month", $monthOptions, $month, "Ay Seçiniz", "grid", "key", "", "form-select select2"); ?>
                                     </div>
                                     <div class="col-md-3">
-                                        <?php echo Form::FormSelect2("personel_id", $personelOptions, "", "Personel Seçiniz", "grid", "key", "", "form-select select2"); ?>
+                                        <?php echo Form::FormSelect2("personel_id", $personelOptions, $personel_id, "Personel Seçiniz", "grid", "key", "", "form-select select2"); ?>
                                     </div>
                                     <div class="col-md-3">
-                                        <?php echo Form::FormSelect2("region", $regionOptions, "", "Bölge Seçiniz", "grid", "key", "", "form-select select2"); ?>
+                                        <?php echo Form::FormSelect2("region", $regionOptions, $region, "Bölge Seçiniz", "grid", "key", "", "form-select select2"); ?>
                                     </div>
                                     <div class="col-md-2 d-flex align-items-end">
                                         <button type="submit" class="btn btn-primary w-100">Sorgula</button>
@@ -168,11 +177,12 @@ foreach ($regionList as $r) {
         let currentTab = '<?= $activeTab ?>';
         let currentYear = '<?= $year ?>';
         let currentMonth = '<?= $month ?>';
-        let currentPersonelId = '';
-        let currentRegion = '';
+        let currentPersonelId = '<?= $personel_id ?>';
+        let currentRegion = '<?= $region ?>';
 
         function loadReport() {
             $('#reportContent').html('<div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Rapor hazırlanıyor...</p></div>');
+            updateFilterSummary();
 
             $.ajax({
                 url: 'views/puantaj/api.php',
@@ -202,6 +212,40 @@ foreach ($regionList as $r) {
             });
         }
 
+        function updateFilterSummary() {
+            let summary = '';
+            const yearText = $('select[name="year"] option:selected').text();
+            const monthText = $('select[name="month"] option:selected').text();
+            const personelText = $('select[name="personel_id"] option:selected').text();
+            const regionText = $('select[name="region"] option:selected').text();
+
+            if (yearText) summary += `<div class="filter-summary-badge"><span class="badge-label">Yıl:</span><span class="badge-value">${yearText}</span></div>`;
+            if (monthText) summary += `<div class="filter-summary-badge"><span class="badge-label">Ay:</span><span class="badge-value">${monthText}</span></div>`;
+
+            if (currentPersonelId && currentPersonelId !== '') {
+                summary += `<div class="filter-summary-badge"><span class="badge-label">Pers:</span><span class="badge-value">${personelText}</span><button type="button" class="btn-clear-filter" data-filter="personel_id"><i class="bx bx-x"></i></button></div>`;
+            }
+
+            if (currentRegion && currentRegion !== '') {
+                summary += `<div class="filter-summary-badge"><span class="badge-label">Bölge:</span><span class="badge-value">${regionText}</span><button type="button" class="btn-clear-filter" data-filter="region"><i class="bx bx-x"></i></button></div>`;
+            }
+
+            $('#filterSummary').html(summary);
+        }
+
+        $(document).on('click', '.btn-clear-filter', function (e) {
+            e.stopPropagation();
+            const filterType = $(this).data('filter');
+            if (filterType === 'personel_id') {
+                currentPersonelId = '';
+                $('select[name="personel_id"]').val('').trigger('change');
+            } else if (filterType === 'region') {
+                currentRegion = '';
+                $('select[name="region"]').val('').trigger('change');
+            }
+            loadReport();
+        });
+
         function updateUrl() {
             const url = new URL(window.location);
             url.searchParams.set('tab', currentTab);
@@ -216,6 +260,12 @@ foreach ($regionList as $r) {
             $('#raporTabs .nav-link').removeClass('active');
             $(this).addClass('active');
             currentTab = $(this).data('tab');
+
+            // Reset filters on tab change (except year/month)
+            currentPersonelId = '';
+            currentRegion = '';
+            $('select[name="personel_id"]').val('').trigger('change');
+            $('select[name="region"]').val('').trigger('change');
 
             // Show/Hide Kacak Help Info
             if (currentTab === 'kacakkontrol') {
@@ -589,5 +639,58 @@ foreach ($personelList as $p) {
     #raporTabs.nav-tabs-custom .nav-link::after,
     #raporTabs.nav-tabs-custom .nav-link::before {
         display: none !important;
+    }
+
+    .accordion-button:not(.collapsed) #filterSummary {
+        display: none !important;
+    }
+
+    .filter-summary-badge {
+        display: flex;
+        align-items: center;
+        background: var(--bs-primary);
+        color: #fff;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 500;
+        overflow: hidden;
+        border: 1px solid var(--bs-primary);
+        box-shadow: 0 2px 4px rgba(var(--bs-primary-rgb), 0.15);
+    }
+
+    .filter-summary-badge .badge-label {
+        padding: 6px 8px;
+        background: rgba(0, 0, 0, 0.15);
+        color: rgba(255, 255, 255, 0.85);
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .filter-summary-badge .badge-value {
+        padding: 6px 10px;
+        font-weight: 600;
+    }
+
+    .btn-clear-filter {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: #fff;
+        padding: 4px 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 14px;
+        height: 100%;
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-clear-filter:hover {
+        background: rgba(255, 255, 255, 0.35);
+        color: #fff;
+    }
+
+    .btn-clear-filter i {
+        pointer-events: none;
     }
 </style>

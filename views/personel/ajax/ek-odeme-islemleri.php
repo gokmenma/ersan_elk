@@ -9,6 +9,7 @@ if (!isset($_SESSION['id'])) {
 }
 
 use App\Model\PersonelEkOdemelerModel;
+use App\Model\BordroDonemModel;
 
 $action = $_REQUEST['action'] ?? '';
 $personel_id = $_REQUEST['personel_id'] ?? 0;
@@ -25,6 +26,16 @@ try {
         case 'save_ek_odeme':
             $tekrarTipi = $_POST['tekrar_tipi'] ?? 'tek_sefer';
             $hesaplamaTipi = $_POST['hesaplama_tipi'] ?? 'sabit';
+
+            // Tek seferlik ödemelerde dönem kontrolü yap
+            if ($tekrarTipi === 'tek_sefer' && !empty($_POST['donem_id'])) {
+                $BordroDonem = new BordroDonemModel();
+                $donem = $BordroDonem->getDonemById(intval($_POST['donem_id']));
+                if ($donem && $donem->kapali_mi == 1) {
+                    echo json_encode(['error' => 'Bu dönem kapatılmış. Kapalı dönemlere ek ödeme eklenemez.']);
+                    break;
+                }
+            }
 
             $data = [
                 'personel_id' => $personel_id,
@@ -127,7 +138,23 @@ try {
             break;
 
         case 'delete_ek_odeme':
-            $id = $_POST['id'];
+            $id = intval($_POST['id'] ?? 0);
+            if (!$id) {
+                echo json_encode(['error' => 'Ek ödeme ID gerekli']);
+                break;
+            }
+
+            // Ek ödemenin bağlı olduğu dönemi kontrol et
+            $ekOdeme = $ekOdemeModel->getEkOdeme($id);
+            if ($ekOdeme && $ekOdeme->donem_id) {
+                $BordroDonem = new BordroDonemModel();
+                $donem = $BordroDonem->getDonemById($ekOdeme->donem_id);
+                if ($donem && $donem->kapali_mi == 1) {
+                    echo json_encode(['error' => 'Bu dönem kapatılmış. Kapalı dönemlerdeki ek ödemeler silinemez.']);
+                    break;
+                }
+            }
+
             $ekOdemeModel->softDelete($id);
             echo json_encode(['success' => true]);
             break;

@@ -2,6 +2,9 @@
 session_start();
 if (isset($_SESSION["id"]) && !empty($_SESSION["id"])) {
     $_SESSION["firma_id"] = $_GET["firma_id"];
+    if (isset($_GET["firma_kodu"])) {
+        $_SESSION["firma_kodu"] = $_GET["firma_kodu"];
+    }
     $page = $_GET["p"] ?? "home";
 
 
@@ -21,6 +24,19 @@ if (isset($_SESSION["id"]) && !empty($_SESSION["id"])) {
             false, // Secure - HTTPS için true yapılabilir
             true   // HttpOnly
         );
+
+        // Firma kodunu da cookie'ye yaz (fallback olarak id cookie'si zaten var)
+        if (isset($_GET["firma_kodu"]) && !empty($_GET["firma_kodu"])) {
+            setcookie(
+                'varsayilan_firma_kodu',
+                $_GET["firma_kodu"],
+                time() + (30 * 24 * 60 * 60), // 30 gün
+                '/',
+                '',
+                false,
+                true
+            );
+        }
     }
 
     header("location:index?p=$page");

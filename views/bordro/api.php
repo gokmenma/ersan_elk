@@ -10,6 +10,8 @@ use App\Model\BordroPersonelModel;
 use App\Model\PersonelModel;
 use App\Model\BordroParametreModel;
 use App\Model\SystemLogModel;
+use App\Model\AvansModel;
+use App\Model\PersonelIzinleriModel;
 use App\Helper\Helper;
 use App\Helper\Date;
 
@@ -155,6 +157,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Geçersiz kayıt ID.');
                 }
 
+                // Dönem kapalı mı kontrolü
+                if ($donem_id > 0) {
+                    $donem = $BordroDonem->getDonemById($donem_id);
+                    if ($donem && $donem->kapali_mi == 1) {
+                        throw new Exception('Bu dönem kapatılmış. Kapalı dönemlerdeki kesintiler silinemez.');
+                    }
+                }
+
                 $sql = $BordroPersonel->getDb()->prepare("UPDATE personel_kesintileri SET silinme_tarihi = NOW() WHERE id = ?");
                 if ($sql->execute([$id])) {
                     // Maaş tekrar hesapla
@@ -175,6 +185,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 if ($id <= 0) {
                     throw new Exception('Geçersiz kayıt ID.');
+                }
+
+                // Dönem kapalı mı kontrolü
+                if ($donem_id > 0) {
+                    $donem = $BordroDonem->getDonemById($donem_id);
+                    if ($donem && $donem->kapali_mi == 1) {
+                        throw new Exception('Bu dönem kapatılmış. Kapalı dönemlerdeki ek ödemeler silinemez.');
+                    }
                 }
 
                 $sql = $BordroPersonel->getDb()->prepare("UPDATE personel_ek_odemeler SET silinme_tarihi = NOW() WHERE id = ?");
@@ -544,12 +562,90 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Geçersiz dönem.');
                 }
 
+                // Dönem bilgilerini al
+                $donem = $BordroDonem->getDonemById($donem_id);
+                if (!$donem) {
+                    throw new Exception('Dönem bulunamadı.');
+                }
+
+                // Döneme ait onaylanmamış avans ve izinleri kontrol et
+                $warnings = [];
+
+                // Onaylanmamış avansları kontrol et
+                $avansQuery = $BordroDonem->getDb()->prepare("
+                    SELECT COUNT(*) as count, SUM(tutar) as toplam 
+                    FROM personel_avanslari pa
+                    JOIN personel p ON pa.personel_id = p.id
+                    WHERE pa.durum = 'beklemede' 
+                    AND pa.silinme_tarihi IS NULL
+                    AND p.firma_id = ?
+                    AND pa.talep_tarihi BETWEEN ? AND ?
+                ");
+                $avansQuery->execute([
+                    $_SESSION['firma_id'],
+                    $donem->baslangic_tarihi,
+                    $donem->bitis_tarihi
+                ]);
+                $avansResult = $avansQuery->fetch(PDO::FETCH_OBJ);
+
+                if ($avansResult && $avansResult->count > 0) {
+                    $warnings[] = $avansResult->count . ' adet onaylanmamış avans talebi (' . number_format($avansResult->toplam, 2, ',', '.') . ' ₺)';
+                }
+
+                // Onaylanmamış izinleri kontrol et
+                $izinQuery = $BordroDonem->getDb()->prepare("
+                    SELECT COUNT(*) as count, SUM(DATEDIFF(bitis_tarihi, baslangic_tarihi) + 1) as toplam_gun
+                    FROM personel_izinleri pi
+                    JOIN personel p ON pi.personel_id = p.id
+                    WHERE pi.onay_durumu = 'beklemede' 
+                    AND pi.silinme_tarihi IS NULL
+                    AND p.firma_id = ?
+                    AND (
+                        (pi.baslangic_tarihi BETWEEN ? AND ?)
+                        OR (pi.bitis_tarihi BETWEEN ? AND ?)
+                        OR (pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?)
+                    )
+                ");
+                $izinQuery->execute([
+                    $_SESSION['firma_id'],
+                    $donem->baslangic_tarihi,
+                    $donem->bitis_tarihi,
+                    $donem->baslangic_tarihi,
+                    $donem->bitis_tarihi,
+                    $donem->baslangic_tarihi,
+                    $donem->bitis_tarihi
+                ]);
+                $izinResult = $izinQuery->fetch(PDO::FETCH_OBJ);
+
+                if ($izinResult && $izinResult->count > 0) {
+                    $warnings[] = $izinResult->count . ' adet onaylanmamış izin talebi (' . intval($izinResult->toplam_gun) . ' gün)';
+                }
+
+                // Uyarı var mı kontrol et, force_close parametresi yoksa uyarı döndür
+                $forceClose = isset($_POST['force_close']) && $_POST['force_close'] == '1';
+
+                if (!empty($warnings) && !$forceClose) {
+                    echo json_encode([
+                        'status' => 'warning',
+                        'message' => 'Bu döneme ait bekleyen talepler var:',
+                        'warnings' => $warnings,
+                        'donem_id' => $donem_id
+                    ]);
+                    break;
+                }
+
+                // Dönemi kapat
                 $sql = $BordroDonem->getDb()->prepare("UPDATE bordro_donemi SET kapali_mi = 1 WHERE id = ?");
                 $sql->execute([$donem_id]);
 
+                $message = 'Dönem kapatıldı. Artık bu dönemde değişiklik yapılamaz.';
+                if (!empty($warnings)) {
+                    $message .= ' (Uyarılar göz ardı edildi)';
+                }
+
                 echo json_encode([
                     'status' => 'success',
-                    'message' => 'Dönem kapatıldı. Artık bu dönemde değişiklik yapılamaz.'
+                    'message' => $message
                 ]);
 
                 $SystemLog->logAction($userId, 'Maaş Dönem Kapama', "Dönem kapatıldı (ID: $donem_id).");
@@ -628,6 +724,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Geçersiz personel veya dönem.');
                 }
 
+                // Dönem kapalı mı kontrolü
+                $donem = $BordroDonem->getDonemById($donem_id);
+                if ($donem && $donem->kapali_mi == 1) {
+                    throw new Exception('Bu dönem kapatılmış. Kapalı dönemlere ek ödeme eklenemez.');
+                }
+
                 if ($tutar <= 0) {
                     throw new Exception('Tutar 0\'dan büyük olmalıdır.');
                 }
@@ -677,6 +779,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 if ($personel_id <= 0 || $donem_id <= 0) {
                     throw new Exception('Geçersiz personel veya dönem.');
+                }
+
+                // Dönem kapalı mı kontrolü
+                $donem = $BordroDonem->getDonemById($donem_id);
+                if ($donem && $donem->kapali_mi == 1) {
+                    throw new Exception('Bu dönem kapatılmış. Kapalı dönemlere kesinti eklenemez.');
                 }
 
                 if ($tutar <= 0) {

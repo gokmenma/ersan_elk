@@ -30,11 +30,12 @@ class PersonelModel extends Model
     /**Tüm aktif personelleri getirir */
     public function all()
     {
-        $sql = "SELECT p.*, t.tur_adi as ekip_adi,
+        $sql = "SELECT p.*, t.tur_adi as ekip_adi, f.firma_adi,
                 CASE WHEN ps.id IS NOT NULL THEN 1 ELSE 0 END as bildirim_abonesi
                 FROM {$this->table} p 
                 LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
                 LEFT JOIN tanimlamalar t ON p.ekip_no = t.id
+                LEFT JOIN firmalar f ON p.firma_id = f.id
                 WHERE p.firma_id = :firma_id
                 GROUP BY p.id";
 
@@ -73,11 +74,12 @@ class PersonelModel extends Model
 
     public function filter($term = null, $colSearches = [])
     {
-        $sql = "SELECT p.*, t.tur_adi as ekip_adi,
+        $sql = "SELECT p.*, t.tur_adi as ekip_adi, f.firma_adi,
                 CASE WHEN ps.id IS NOT NULL THEN 1 ELSE 0 END as bildirim_abonesi
                 FROM {$this->table} p 
                 LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
                 LEFT JOIN tanimlamalar t ON p.ekip_no = t.id
+                LEFT JOIN firmalar f ON p.firma_id = f.id
                 WHERE p.firma_id = :firma_id";
 
         $params = ['firma_id' => $_SESSION['firma_id']];

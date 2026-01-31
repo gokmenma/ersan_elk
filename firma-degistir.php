@@ -10,6 +10,10 @@ if (isset($_COOKIE['varsayilan_firma_id'])) {
     setcookie('varsayilan_firma_id', '', time() - 3600, '/');
 }
 
+if (isset($_COOKIE['varsayilan_firma_kodu'])) {
+    setcookie('varsayilan_firma_kodu', '', time() - 3600, '/');
+}
+
 // Mevcut firma session'ını temizle
 if (isset($_SESSION['firma_id'])) {
     unset($_SESSION['firma_id']);

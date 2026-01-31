@@ -83,10 +83,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         $insertedCount = 0;
         $skippedCount = 0;
+        $skippedRows = []; // Atlanan satırların detayları
 
         // Process rows
         for ($i = $headerRowIndex + 1; $i < count($rows); $i++) {
             $row = $rows[$i];
+            $excelRowNum = $i + 1; // Excel satır numarası (1-indexed)
 
             // Extract data using map
             $firma = isset($colMap['firma']) ? trim($row[$colMap['firma']]) : '';
@@ -118,6 +120,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $exists->execute([$islemId]);
             if ($exists->fetchColumn() > 0) {
                 $skippedCount++;
+                $skippedRows[] = [
+                    'satir' => $excelRowNum,
+                    'ekip' => $ekip,
+                    'neden' => 'Bu kayıt daha önce yüklenmiş (duplicate)'
+                ];
                 continue;
             }
 
@@ -134,9 +141,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $defId = $stmtDef->fetchColumn();
 
                 if ($defId) {
-                    // 2. Find person assigned to this team ID
-                    $stmtPersonel = $Puantaj->db->prepare("SELECT id FROM personel WHERE ekip_no = ? AND silinme_tarihi IS NULL LIMIT 1");
-                    $stmtPersonel->execute([$defId]);
+                    // 2. Find person assigned to this team ID who was ACTIVE on the upload date
+                    // - ekip_no matches the definition ID
+                    // - aktif_mi = 1 (active)
+                    // - ise_giris_tarihi <= uploadDate (started before or on the date)
+                    // - isten_cikis_tarihi IS NULL OR isten_cikis_tarihi >= uploadDate (hasn't left yet or left after the date)
+                    $stmtPersonel = $Puantaj->db->prepare("
+                        SELECT id FROM personel 
+                        WHERE ekip_no = ? 
+                        AND silinme_tarihi IS NULL
+                        AND aktif_mi = 1
+                        AND (ise_giris_tarihi IS NULL OR ise_giris_tarihi <= ?)
+                        AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi >= ?)
+                        LIMIT 1
+                    ");
+                    $stmtPersonel->execute([$defId, $uploadDate, $uploadDate]);
                     $personelId = $stmtPersonel->fetchColumn() ?: 0;
                 }
             }
@@ -144,6 +163,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             // Skip if personel not found as per user request
             if ($personelId == 0) {
                 $skippedCount++;
+                $skippedRows[] = [
+                    'satir' => $excelRowNum,
+                    'ekip' => $ekip,
+                    'neden' => 'Bu ekipte o tarihte aktif personel bulunamadı'
+                ];
                 continue;
             }
 
@@ -169,7 +193,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
 
         $response['status'] = 'success';
-        $response['message'] = "İşlem tamamlandı. $insertedCount kayıt eklendi. $skippedCount kayıt (daha önce yüklendiği veya personel eşleşmediği için) atlandı.";
+        $response['inserted_count'] = $insertedCount;
+        $response['skipped_count'] = $skippedCount;
+        $response['skipped_rows'] = $skippedRows;
+        
+        $message = "İşlem tamamlandı. $insertedCount kayıt eklendi.";
+        if ($skippedCount > 0) {
+            $message .= " $skippedCount kayıt atlandı.";
+        }
+        $response['message'] = $message;
 
         // Log Action
         $SystemLog = new SystemLogModel();
@@ -322,6 +354,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if ($headerRowIndex !== null) {
                 for ($i = $headerRowIndex + 1; $i < count($excelRows); $i++) {
                     $row = $excelRows[$i];
+                    $excelRowNum = $i + 1; // Excel satır numarası (1-indexed)
                     $bolge = isset($colMap['bolge']) ? trim($row[$colMap['bolge']]) : '';
                     $kullanici_adi = isset($colMap['kullanici_adi']) ? trim($row[$colMap['kullanici_adi']]) : '';
 
@@ -344,6 +377,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         'bolge' => $bolge,
                         'kullanici_adi' => $kullanici_adi,
                         'team_no' => $teamNo,
+                        'excel_row' => $excelRowNum,
                         'sarfiyat' => $row[$colMap['sarfiyat']] ?? 0,
                         'ort_sarfiyat' => $row[$colMap['ort_sarfiyat_gunluk']] ?? 0,
                         'tahakkuk' => $row[$colMap['tahakkuk']] ?? 0,
@@ -363,13 +397,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         $insertedCount = 0;
         $skippedCount = 0;
+        $skippedRows = []; // Atlanan satırların detayları
         $EndeksOkuma = new \App\Model\EndeksOkumaModel();
         $firmaId = $_SESSION['firma_id'] ?? 0;
 
-        foreach ($rows as $data) {
+        foreach ($rows as $rowIndex => $data) {
             $bolge = $data['bolge'];
             $kullanici_adi = $data['kullanici_adi'];
             $teamNo = $data['team_no'] ?? 0;
+            $excelRowNum = $data['excel_row'] ?? ($rowIndex + 1);
 
             // Robust number parsing: remove thousands separator (comma) and keep decimal (dot)
             $sarfiyat = (float) str_replace(',', '', $data['sarfiyat']);
@@ -390,9 +426,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $defId = $stmtDef->fetchColumn();
 
                 if ($defId) {
-                    // 2. Find person assigned to this team ID
-                    $stmtPersonel = $EndeksOkuma->db->prepare("SELECT id FROM personel WHERE ekip_no = ? AND silinme_tarihi IS NULL LIMIT 1");
-                    $stmtPersonel->execute([$defId]);
+                    // 2. Find person assigned to this team ID who was ACTIVE on the upload date
+                    // - ekip_no matches the definition ID
+                    // - aktif_mi = 1 (active)
+                    // - ise_giris_tarihi <= uploadDate (started before or on the date)
+                    // - isten_cikis_tarihi IS NULL OR isten_cikis_tarihi >= uploadDate (hasn't left yet or left after the date)
+                    $stmtPersonel = $EndeksOkuma->db->prepare("
+                        SELECT id FROM personel 
+                        WHERE ekip_no = ? 
+                        AND silinme_tarihi IS NULL
+                        AND aktif_mi = 1
+                        AND (ise_giris_tarihi IS NULL OR ise_giris_tarihi <= ?)
+                        AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi >= ?)
+                        LIMIT 1
+                    ");
+                    $stmtPersonel->execute([$defId, $uploadDate, $uploadDate]);
                     $personelId = $stmtPersonel->fetchColumn() ?: 0;
                 }
             }
@@ -400,6 +448,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             // Skip if personel not found as per user request
             if ($personelId == 0) {
                 $skippedCount++;
+                $skippedRows[] = [
+                    'satir' => $excelRowNum,
+                    'ekip' => $kullanici_adi,
+                    'neden' => "EKİP-$teamNo: O tarihte aktif personel bulunamadı"
+                ];
                 continue;
             }
 
@@ -414,7 +467,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
 
         $response['status'] = 'success';
-        $response['message'] = "$insertedCount kayıt başarıyla yüklendi." . ($skippedCount > 0 ? " ($skippedCount kayıt personel eşleşmediği için atlandı)" : "");
+        $response['inserted_count'] = $insertedCount;
+        $response['skipped_count'] = $skippedCount;
+        $response['skipped_rows'] = $skippedRows;
+        
+        $message = "$insertedCount kayıt başarıyla yüklendi.";
+        if ($skippedCount > 0) {
+            $message .= " $skippedCount kayıt atlandı.";
+        }
+        $response['message'] = $message;
 
         $SystemLog = new SystemLogModel();
         $userId = $_SESSION['user_id'] ?? 0;
@@ -524,6 +585,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $exists->execute([$islemId]);
             if ($exists->fetchColumn() > 0) {
                 $skippedCount++;
+                $unmatchedRows[] = [
+                    'satir' => $excelRowNum,
+                    'ekip' => $ekipStr,
+                    'neden' => 'Bu kayıt daha önce yüklenmiş (duplicate)'
+                ];
                 continue;
             }
 
@@ -534,14 +600,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
 
         $response['status'] = 'success';
-        $message = "$insertedCount kayıt eklendi. $skippedCount kayıt atlandı.";
-
-        // Eşleşmeyen satırlar varsa detaylı bildir
-        if (!empty($unmatchedRows)) {
-            $message .= "\n\n⚠️ Eşleşmeyen Kayıtlar (" . count($unmatchedRows) . " satır):";
-            foreach ($unmatchedRows as $ur) {
-                $message .= "\n• Satır " . $ur['satir'] . ": " . $ur['ekip'] . " → Eşleşmeyen: " . implode(', ', $ur['eslesmeyen']);
+        $response['inserted_count'] = $insertedCount;
+        $response['skipped_count'] = $skippedCount;
+        
+        // skipped_rows formatını standartlaştır
+        $skippedRows = [];
+        foreach ($unmatchedRows as $ur) {
+            if (isset($ur['eslesmeyen'])) {
+                $skippedRows[] = [
+                    'satir' => $ur['satir'],
+                    'ekip' => $ur['ekip'],
+                    'neden' => 'Personel eşleşmedi: ' . implode(', ', $ur['eslesmeyen'])
+                ];
+            } else {
+                $skippedRows[] = $ur;
             }
+        }
+        $response['skipped_rows'] = $skippedRows;
+        
+        $message = "$insertedCount kayıt eklendi.";
+        if ($skippedCount > 0) {
+            $message .= " $skippedCount kayıt atlandı.";
         }
         $response['message'] = $message;
 
@@ -637,6 +716,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 }
 
+// Server-side DataTable için Endeks Okuma verileri
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'endeks-datatable') {
+    header('Content-Type: application/json');
+    
+    $startDate = $_GET['start_date'] ?? '';
+    $endDate = $_GET['end_date'] ?? '';
+    $ekipKodu = $_GET['ekip_kodu'] ?? '';
+    
+    $EndeksOkuma = new \App\Model\EndeksOkumaModel();
+    $result = $EndeksOkuma->getDataTable($_GET, $startDate, $endDate, $ekipKodu);
+    
+    // Veriyi DataTable formatına dönüştür
+    $formattedData = [];
+    foreach ($result['data'] as $record) {
+        $formattedData[] = [
+            'bolge' => $record->bolge,
+            'personel_adi' => $record->personel_adi ?: '<span class="text-muted">' . htmlspecialchars($record->kullanici_adi) . '</span>',
+            'sarfiyat' => number_format($record->sarfiyat, 2, ',', '.'),
+            'ort_sarfiyat_gunluk' => number_format($record->ort_sarfiyat_gunluk, 2, ',', '.'),
+            'tahakkuk' => number_format($record->tahakkuk, 2, ',', '.'),
+            'ort_tahakkuk_gunluk' => number_format($record->ort_tahakkuk_gunluk, 2, ',', '.'),
+            'okunan_gun_sayisi' => $record->okunan_gun_sayisi,
+            'okunan_abone_sayisi' => $record->okunan_abone_sayisi,
+            'ort_okunan_abone_sayisi_gunluk' => number_format($record->ort_okunan_abone_sayisi_gunluk, 2, ',', '.'),
+            'okuma_performansi' => '%' . number_format($record->okuma_performansi, 2, ',', '.'),
+            'tarih' => \App\Helper\Date::dmY($record->tarih)
+        ];
+    }
+    
+    echo json_encode([
+        'draw' => $result['draw'],
+        'recordsTotal' => $result['recordsTotal'],
+        'recordsFiltered' => $result['recordsFiltered'],
+        'data' => $formattedData
+    ]);
+    exit;
+}
+
+// Server-side DataTable için Puantaj (Kesme/Açma) verileri
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'puantaj-datatable') {
+    header('Content-Type: application/json');
+    
+    $startDate = $_GET['start_date'] ?? '';
+    $endDate = $_GET['end_date'] ?? '';
+    $ekipKodu = $_GET['ekip_kodu'] ?? '';
+    $workType = $_GET['work_type'] ?? '';
+    $workResult = $_GET['work_result'] ?? '';
+    
+    $Puantaj = new PuantajModel();
+    $result = $Puantaj->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $workType, $workResult);
+    
+    // Veriyi DataTable formatına dönüştür
+    $formattedData = [];
+    foreach ($result['data'] as $record) {
+        $formattedData[] = [
+            'firma' => $record->firma,
+            'is_emri_tipi' => $record->is_emri_tipi,
+            'personel_adi' => $record->personel_adi ?: '<span class="text-muted">' . htmlspecialchars($record->ekip_kodu) . '</span>',
+            'is_emri_sonucu' => $record->is_emri_sonucu,
+            'sonuclanmis' => $record->sonuclanmis,
+            'acik_olanlar' => $record->acik_olanlar,
+            'tarih' => \App\Helper\Date::dmY($record->tarih)
+        ];
+    }
+    
+    echo json_encode([
+        'draw' => $result['draw'],
+        'recordsTotal' => $result['recordsTotal'],
+        'recordsFiltered' => $result['recordsFiltered'],
+        'data' => $formattedData
+    ]);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get-tab-content') {
     $tab = $_GET['tab'] ?? 'okuma';
     $startDate = $_GET['start_date'] ?? '';
@@ -720,6 +873,281 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 // Rapor Tablosunu Getir
 if (isset($_GET["action"]) && $_GET["action"] == "get-report-table") {
     require_once 'rapor-getir.php';
+    exit;
+}
+
+// Online Puantaj (Kesme/Açma İşlemleri) Sorgulama
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'online-puantaj-sorgula') {
+    $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
+    
+    try {
+        $ilkFirma = $_POST['ilk_firma'] ?? 17;
+        $sonFirma = $_POST['son_firma'] ?? 17;
+        $baslangicTarihiRaw = $_POST['baslangic_tarihi'] ?? date('Y-m-d');
+        $bitisTarihiRaw = $_POST['bitis_tarihi'] ?? date('Y-m-d');
+        
+        $baslangicTarihi = \App\Helper\Date::convertExcelDate($baslangicTarihiRaw, 'Y-m-d') ?: date('Y-m-d');
+        $bitisTarihi = \App\Helper\Date::convertExcelDate($bitisTarihiRaw, 'Y-m-d') ?: date('Y-m-d');
+        
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        
+        // TODO: API hazır olduğunda burası API çağrısı yapacak
+        // Şimdilik test verileri döndürüyoruz
+        $testVeriler = [
+            [
+                'islem_id' => 'API_' . uniqid() . '_1',
+                'firma' => 'ER-SAN ELEKTRİK',
+                'is_emri_tipi' => 'KESME İŞEMRİ',
+                'ekip_kodu' => 'EKİP-' . rand(1, 20),
+                'is_emri_sonucu' => 'BAŞARILI KESME',
+                'sonuclanmis' => rand(5, 20),
+                'acik_olanlar' => rand(0, 5),
+                'tarih' => $baslangicTarihi
+            ],
+            [
+                'islem_id' => 'API_' . uniqid() . '_2',
+                'firma' => 'ER-SAN ELEKTRİK',
+                'is_emri_tipi' => 'KESME İŞEMRİ',
+                'ekip_kodu' => 'EKİP-' . rand(1, 20),
+                'is_emri_sonucu' => 'AÇMA İŞLEMİ',
+                'sonuclanmis' => rand(3, 15),
+                'acik_olanlar' => rand(0, 3),
+                'tarih' => $baslangicTarihi
+            ],
+            [
+                'islem_id' => 'API_' . uniqid() . '_3',
+                'firma' => 'ER-SAN ELEKTRİK',
+                'is_emri_tipi' => 'KESME İŞEMRİ',
+                'ekip_kodu' => 'EKİP-' . rand(1, 20),
+                'is_emri_sonucu' => 'İPTAL EDİLDİ',
+                'sonuclanmis' => rand(1, 10),
+                'acik_olanlar' => rand(0, 2),
+                'tarih' => $bitisTarihi
+            ]
+        ];
+        
+        $yeniKayit = 0;
+        $guncellenenKayit = 0;
+        $mevcutKayitlar = [];
+        
+        foreach ($testVeriler as $veri) {
+            // Daha önce aynı islem_id ile kayıt var mı kontrol et
+            $checkStmt = $Puantaj->db->prepare("SELECT id, islem_id, ekip_kodu, is_emri_tipi FROM yapilan_isler WHERE islem_id = ?");
+            $checkStmt->execute([$veri['islem_id']]);
+            $mevcutKayit = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($mevcutKayit) {
+                // Mevcut kayıt varsa güncelle
+                $updateStmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET sonuclanmis = ?, acik_olanlar = ?, tarih = ? WHERE islem_id = ?");
+                $updateStmt->execute([$veri['sonuclanmis'], $veri['acik_olanlar'], $veri['tarih'], $veri['islem_id']]);
+                $guncellenenKayit++;
+                $mevcutKayitlar[] = $mevcutKayit;
+            } else {
+                // Personel eşleştirme (ekip kodundan)
+                $personelId = 0;
+                $ekipNo = 0;
+                if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $veri['ekip_kodu'], $m)) {
+                    $ekipNo = $m[1];
+                }
+                
+                if ($ekipNo > 0) {
+                    $stmtDef = $Puantaj->db->prepare("SELECT id FROM tanimlamalar WHERE (tur_adi LIKE ? OR tur_adi LIKE ?) AND silinme_tarihi IS NULL LIMIT 1");
+                    $stmtDef->execute(["%EKİP-$ekipNo", "%EKIP-$ekipNo"]);
+                    $defId = $stmtDef->fetchColumn();
+                    
+                    if ($defId) {
+                        $stmtPersonel = $Puantaj->db->prepare("SELECT id FROM personel WHERE ekip_no = ? AND silinme_tarihi IS NULL LIMIT 1");
+                        $stmtPersonel->execute([$defId]);
+                        $personelId = $stmtPersonel->fetchColumn() ?: 0;
+                    }
+                }
+                
+                // Yeni kayıt ekle
+                $insertStmt = $Puantaj->db->prepare("INSERT INTO yapilan_isler (islem_id, personel_id, firma_id, firma, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $insertStmt->execute([
+                    $veri['islem_id'],
+                    $personelId,
+                    $firmaId,
+                    $veri['firma'],
+                    $veri['is_emri_tipi'],
+                    $veri['ekip_kodu'],
+                    $veri['is_emri_sonucu'],
+                    $veri['sonuclanmis'],
+                    $veri['acik_olanlar'],
+                    $veri['tarih']
+                ]);
+                $yeniKayit++;
+            }
+        }
+        
+        // Log kaydet
+        $SystemLog = new SystemLogModel();
+        $userId = $_SESSION['user_id'] ?? 0;
+        $SystemLog->logAction($userId, 'Online Puantaj Sorgulama', "Firma $ilkFirma-$sonFirma, Tarih: $baslangicTarihi - $bitisTarihi. $yeniKayit yeni, $guncellenenKayit güncellenen kayıt.");
+        
+        $response['status'] = 'success';
+        $response['yeni_kayit'] = $yeniKayit;
+        $response['guncellenen_kayit'] = $guncellenenKayit;
+        $response['mevcut_kayitlar'] = $mevcutKayitlar;
+        $response['message'] = "$yeniKayit adet yeni kayıt eklendi.";
+        
+    } catch (Exception $e) {
+        $response['message'] = $e->getMessage();
+    }
+    
+    echo json_encode($response);
+    exit;
+}
+
+// Online İcmal (Endeks Okuma) Sorgulama
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'online-icmal-sorgula') {
+    $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
+    
+    try {
+        $ilkFirma = $_POST['ilk_firma'] ?? 17;
+        $sonFirma = $_POST['son_firma'] ?? 17;
+        $baslangicTarihiRaw = $_POST['baslangic_tarihi'] ?? date('Y-m-d');
+        $bitisTarihiRaw = $_POST['bitis_tarihi'] ?? date('Y-m-d');
+        
+        $baslangicTarihi = \App\Helper\Date::convertExcelDate($baslangicTarihiRaw, 'Y-m-d') ?: date('Y-m-d');
+        $bitisTarihi = \App\Helper\Date::convertExcelDate($bitisTarihiRaw, 'Y-m-d') ?: date('Y-m-d');
+        
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $EndeksOkuma = new EndeksOkumaModel();
+        
+        // TODO: API hazır olduğunda burası API çağrısı yapacak
+        // Şimdilik test verileri döndürüyoruz
+        $bolgeler = ['AFŞİN', 'ELBİSTAN', 'GÖKSUN', 'TÜRKOĞLU'];
+        $testVeriler = [
+            [
+                'islem_id' => 'ENDEKS_' . uniqid() . '_1',
+                'bolge' => $bolgeler[array_rand($bolgeler)],
+                'kullanici_adi' => 'ER-SAN ELEKTRİK EKİP-' . rand(1, 20),
+                'sarfiyat' => rand(1000, 5000) + (rand(0, 99) / 100),
+                'ort_sarfiyat_gunluk' => rand(100, 500) + (rand(0, 99) / 100),
+                'tahakkuk' => rand(10000, 50000) + (rand(0, 99) / 100),
+                'ort_tahakkuk_gunluk' => rand(1000, 5000) + (rand(0, 99) / 100),
+                'okunan_gun_sayisi' => rand(1, 5),
+                'okunan_abone_sayisi' => rand(50, 200),
+                'ort_okunan_abone_sayisi_gunluk' => rand(30, 100) + (rand(0, 99) / 100),
+                'okuma_performansi' => rand(80, 120) + (rand(0, 99) / 100),
+                'tarih' => $baslangicTarihi
+            ],
+            [
+                'islem_id' => 'ENDEKS_' . uniqid() . '_2',
+                'bolge' => $bolgeler[array_rand($bolgeler)],
+                'kullanici_adi' => 'ER-SAN ELEKTRİK EKİP-' . rand(1, 20),
+                'sarfiyat' => rand(1000, 5000) + (rand(0, 99) / 100),
+                'ort_sarfiyat_gunluk' => rand(100, 500) + (rand(0, 99) / 100),
+                'tahakkuk' => rand(10000, 50000) + (rand(0, 99) / 100),
+                'ort_tahakkuk_gunluk' => rand(1000, 5000) + (rand(0, 99) / 100),
+                'okunan_gun_sayisi' => rand(1, 5),
+                'okunan_abone_sayisi' => rand(50, 200),
+                'ort_okunan_abone_sayisi_gunluk' => rand(30, 100) + (rand(0, 99) / 100),
+                'okuma_performansi' => rand(80, 120) + (rand(0, 99) / 100),
+                'tarih' => $baslangicTarihi
+            ],
+            [
+                'islem_id' => 'ENDEKS_' . uniqid() . '_3',
+                'bolge' => $bolgeler[array_rand($bolgeler)],
+                'kullanici_adi' => 'ER-SAN ELEKTRİK EKİP-' . rand(1, 20),
+                'sarfiyat' => rand(1000, 5000) + (rand(0, 99) / 100),
+                'ort_sarfiyat_gunluk' => rand(100, 500) + (rand(0, 99) / 100),
+                'tahakkuk' => rand(10000, 50000) + (rand(0, 99) / 100),
+                'ort_tahakkuk_gunluk' => rand(1000, 5000) + (rand(0, 99) / 100),
+                'okunan_gun_sayisi' => rand(1, 5),
+                'okunan_abone_sayisi' => rand(50, 200),
+                'ort_okunan_abone_sayisi_gunluk' => rand(30, 100) + (rand(0, 99) / 100),
+                'okuma_performansi' => rand(80, 120) + (rand(0, 99) / 100),
+                'tarih' => $bitisTarihi
+            ]
+        ];
+        
+        $yeniKayit = 0;
+        $guncellenenKayit = 0;
+        $mevcutKayitlar = [];
+        
+        foreach ($testVeriler as $veri) {
+            // Daha önce aynı islem_id ile kayıt var mı kontrol et
+            $checkStmt = $EndeksOkuma->db->prepare("SELECT id, islem_id, kullanici_adi, bolge FROM endeks_okuma WHERE islem_id = ?");
+            $checkStmt->execute([$veri['islem_id']]);
+            $mevcutKayit = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($mevcutKayit) {
+                // Mevcut kayıt varsa güncelle
+                $updateStmt = $EndeksOkuma->db->prepare("UPDATE endeks_okuma SET sarfiyat = ?, ort_sarfiyat_gunluk = ?, tahakkuk = ?, ort_tahakkuk_gunluk = ?, okunan_gun_sayisi = ?, okunan_abone_sayisi = ?, ort_okunan_abone_sayisi_gunluk = ?, okuma_performansi = ?, tarih = ? WHERE islem_id = ?");
+                $updateStmt->execute([
+                    $veri['sarfiyat'],
+                    $veri['ort_sarfiyat_gunluk'],
+                    $veri['tahakkuk'],
+                    $veri['ort_tahakkuk_gunluk'],
+                    $veri['okunan_gun_sayisi'],
+                    $veri['okunan_abone_sayisi'],
+                    $veri['ort_okunan_abone_sayisi_gunluk'],
+                    $veri['okuma_performansi'],
+                    $veri['tarih'],
+                    $veri['islem_id']
+                ]);
+                $guncellenenKayit++;
+                $mevcutKayitlar[] = $mevcutKayit;
+            } else {
+                // Personel eşleştirme (kullanıcı adından ekip numarası çıkar)
+                $personelId = 0;
+                $ekipNo = 0;
+                if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $veri['kullanici_adi'], $m)) {
+                    $ekipNo = $m[1];
+                }
+                
+                if ($ekipNo > 0) {
+                    $stmtDef = $EndeksOkuma->db->prepare("SELECT id FROM tanimlamalar WHERE (tur_adi LIKE ? OR tur_adi LIKE ?) AND silinme_tarihi IS NULL LIMIT 1");
+                    $stmtDef->execute(["%EKİP-$ekipNo", "%EKIP-$ekipNo"]);
+                    $defId = $stmtDef->fetchColumn();
+                    
+                    if ($defId) {
+                        $stmtPersonel = $EndeksOkuma->db->prepare("SELECT id FROM personel WHERE ekip_no = ? AND silinme_tarihi IS NULL LIMIT 1");
+                        $stmtPersonel->execute([$defId]);
+                        $personelId = $stmtPersonel->fetchColumn() ?: 0;
+                    }
+                }
+                
+                // Yeni kayıt ekle
+                $insertStmt = $EndeksOkuma->db->prepare("INSERT INTO endeks_okuma (islem_id, personel_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $insertStmt->execute([
+                    $veri['islem_id'],
+                    $personelId,
+                    $firmaId,
+                    $veri['bolge'],
+                    $veri['kullanici_adi'],
+                    $veri['sarfiyat'],
+                    $veri['ort_sarfiyat_gunluk'],
+                    $veri['tahakkuk'],
+                    $veri['ort_tahakkuk_gunluk'],
+                    $veri['okunan_gun_sayisi'],
+                    $veri['okunan_abone_sayisi'],
+                    $veri['ort_okunan_abone_sayisi_gunluk'],
+                    $veri['okuma_performansi'],
+                    $veri['tarih']
+                ]);
+                $yeniKayit++;
+            }
+        }
+        
+        // Log kaydet
+        $SystemLog = new SystemLogModel();
+        $userId = $_SESSION['user_id'] ?? 0;
+        $SystemLog->logAction($userId, 'Online Endeks Okuma Sorgulama', "Firma $ilkFirma-$sonFirma, Tarih: $baslangicTarihi - $bitisTarihi. $yeniKayit yeni, $guncellenenKayit güncellenen kayıt.");
+        
+        $response['status'] = 'success';
+        $response['yeni_kayit'] = $yeniKayit;
+        $response['guncellenen_kayit'] = $guncellenenKayit;
+        $response['mevcut_kayitlar'] = $mevcutKayitlar;
+        $response['message'] = "$yeniKayit adet yeni kayıt eklendi.";
+        
+    } catch (Exception $e) {
+        $response['message'] = $e->getMessage();
+    }
+    
+    echo json_encode($response);
     exit;
 }
 

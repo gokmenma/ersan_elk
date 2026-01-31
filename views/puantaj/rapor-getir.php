@@ -93,6 +93,15 @@ foreach ($allPersonel as $p) {
 
 // Kacak Kontrol: Get ekip_adi to personel_ids mapping from kacak_kontrol table
 $kacakPersonelMapping = $Puantaj->getKacakPersonelMapping();
+
+// Pazar günlerini belirle (0 = Pazar)
+$sundayDays = [];
+for ($d = 1; $d <= $daysInMonth; $d++) {
+    $timestamp = mktime(0, 0, 0, $month, $d, $year);
+    if (date('w', $timestamp) == 0) {
+        $sundayDays[] = $d;
+    }
+}
 ?>
 <?php
 // --- DATA PRE-PROCESSING ---
@@ -128,6 +137,13 @@ if ($activeTab !== 'kacakkontrol') {
                         $isValid = true;
                 } else {
                     $isValid = true;
+                }
+            }
+
+            if ($isValid) {
+                // Apply personnel filter if set
+                if ($filterPersonelId && $personel->id != $filterPersonelId) {
+                    $isValid = false;
                 }
             }
 
@@ -179,6 +195,13 @@ if ($activeTab !== 'kacakkontrol') {
                 $isValid = true;
         } else {
             $isValid = true;
+        }
+
+        if ($isValid) {
+            // Apply personnel filter if set
+            if ($filterPersonelId && $p->id != $filterPersonelId) {
+                $isValid = false;
+            }
         }
 
         if ($isValid) {
@@ -270,6 +293,14 @@ if (!empty($workTypeCols)) {
     .legend-item.active-filter .badge {
         background-color: #fff !important;
         color: var(--bs-primary, #556ee6) !important;
+    }
+
+    /* Pazar günü (tatil) arka plan rengi - zebra efektinden öncelikli */
+    .sunday-cell,
+    .sunday-cell.day-bg-alt,
+    td.sunday-cell,
+    th.sunday-cell {
+        background-color: #EA7B7B !important;
     }
 
     .vertical-text {
@@ -425,9 +456,11 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     <th rowspan="<?= $headerRowspan ?>">BÖLGE ADI</th><?php endif; ?>
             </tr>
             <tr>
-                <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>
+                <?php for ($d = 1; $d <= $daysInMonth; $d++): 
+                    $isSunday = in_array($d, $sundayDays);
+                ?>
                     <th colspan="<?= $subColCount ?>"
-                        class="day-num-header day-separator <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?>" data-day="<?= $d ?>">
+                        class="day-num-header day-separator <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>" data-day="<?= $d ?>">
                         <?= $d ?>
                     </th><?php endfor; ?>
                 <?php if ($hasSubCols): ?>
@@ -436,10 +469,12 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             </tr>
             <?php if ($hasSubCols && $headerRowspan === 3): ?>
                 <tr>
-                    <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>         <?php $idx = 0;
+                    <?php for ($d = 1; $d <= $daysInMonth; $d++): 
+                        $isSunday = in_array($d, $sundayDays);
+                    ?>         <?php $idx = 0;
                                       foreach ($workTypeCols as $wt):
                                           $idx++; ?>
-                            <th class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?>"
+                            <th class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
                                 data-day="<?= $d ?>" data-wt-code="<?= $wt['code'] ?>"><span
                                     class="vertical-text"><?= $wt['code'] ?></span></th><?php endforeach; ?><?php endfor; ?>
                     <?php $idx = 0;
@@ -495,8 +530,9 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                 $currentDate = str_pad($d, 2, '0', STR_PAD_LEFT) . "." . str_pad($month, 2, '0', STR_PAD_LEFT) . "." . $year;
                                 // Get personel_ids from kacak_kontrol table mapping
                                 $pIdsStr = $kacakPersonelMapping[$team->tur_adi] ?? '';
+                                $isSunday = in_array($d, $sundayDays);
                                 ?>
-                                <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?> kacak-quick-cell"
+                                <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?> kacak-quick-cell <?= $isSunday ? 'sunday-cell' : '' ?>"
                                     data-date="<?= $currentDate ?>" data-personel-ids="<?= $pIdsStr ?>" style="cursor: cell;"
                                     title="Çift tıklayarak yeni kayıt ekle">
                                     <?= $val ?: '' ?>
@@ -536,8 +572,9 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                 $currentDate = str_pad($d, 2, '0', STR_PAD_LEFT) . "." . str_pad($month, 2, '0', STR_PAD_LEFT) . "." . $year;
                                 // Get personel_ids from kacak_kontrol table mapping
                                 $pIdsStr = $kacakPersonelMapping[$teamName] ?? '';
+                                $isSunday = in_array($d, $sundayDays);
                                 ?>
-                                <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?> kacak-quick-cell"
+                                <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?> kacak-quick-cell <?= $isSunday ? 'sunday-cell' : '' ?>"
                                     data-date="<?= $currentDate ?>" data-personel-ids="<?= $pIdsStr ?>" style="cursor: cell;"
                                     title="Çift tıklayarak yeni kayıt ekle">
                                     <?= $val ?: '' ?>
@@ -599,13 +636,15 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                             <?php if ($activeTab === 'okuma'): ?>
                                 <?php for ($d = 1; $d <= $daysInMonth; $d++):
                                     $val = $summary[$personel->id][$d] ?? 0;
-                                    $dailyTotals[$d] += $val; ?>
-                                    <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?>">
+                                    $dailyTotals[$d] += $val;
+                                    $isSunday = in_array($d, $sundayDays); ?>
+                                    <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>">
                                         <?= $val ?: '' ?>
                                     </td>
                                 <?php endfor; ?>
                             <?php else: ?>
-                                <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>
+                                <?php for ($d = 1; $d <= $daysInMonth; $d++): 
+                                    $isSunday = in_array($d, $sundayDays); ?>
                                     <?php $idx = 0;
                                     foreach ($workTypeCols as $wt):
                                         $idx++;
@@ -615,7 +654,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                         $dailyDetailedTotals[$d][$wt['name']] += $val;
                                         $dailyTotals[$d] += $val; ?>
                                         <td
-                                            class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?>">
+                                            class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>">
                                             <?= $val ?: '' ?>
                                         </td>
                                     <?php endforeach; ?>
@@ -660,11 +699,12 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                 <tr class="tfoot-action">
                     <td colspan="3" class="text-end text-muted sticky-col-1" style="font-size: 10px; left: 0; z-index: 25;">
                         İŞLEM BAZINDA GÜNLÜK TOPLAMLAR</td>
-                    <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>
+                    <?php for ($d = 1; $d <= $daysInMonth; $d++): 
+                        $isSunday = in_array($d, $sundayDays); ?>
                         <?php $idx = 0;
                         foreach ($workTypeCols as $wt):
                             $idx++; ?>
-                            <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?>"
+                            <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
                                 data-day="<?= $d ?>" data-wt-code="<?= $wt['code'] ?>">
                                 <?= $dailyDetailedTotals[$d][$wt['name']] ?? '' ?>
                             </td>
@@ -691,9 +731,10 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                 <td colspan="<?= ($activeTab === 'kacakkontrol') ? '2' : '3' ?>" class="text-end sticky-col-1"
                     style="left: 0; z-index: 26; width: <?= ($activeTab === 'kacakkontrol') ? '170px' : '390px' ?>; min-width: <?= ($activeTab === 'kacakkontrol') ? '170px' : '390px' ?>; max-width: <?= ($activeTab === 'kacakkontrol') ? '170px' : '390px' ?>;">
                     GÜNLÜK TOPLAMLAR</td>
-                <?php for ($d = 1; $d <= $daysInMonth; $d++): ?>
+                <?php for ($d = 1; $d <= $daysInMonth; $d++): 
+                    $isSunday = in_array($d, $sundayDays); ?>
                     <td colspan="<?= $subColCount ?>"
-                        class="day-num-header-footer day-separator daily-total-cell <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?>"
+                        class="day-num-header-footer day-separator daily-total-cell <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
                         data-day="<?= $d ?>"><?= $dailyTotals[$d] ?: '' ?></td>
                 <?php endfor; ?>
                 <?php if ($hasSubCols): ?>
