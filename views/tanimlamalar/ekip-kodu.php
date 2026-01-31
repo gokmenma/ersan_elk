@@ -8,6 +8,8 @@ use App\Model\TanimlamalarModel;
 $Tanimlamalar = new TanimlamalarModel();
 
 $ekipler = $Tanimlamalar->getEkipKodlari();
+$bolgeler = $Tanimlamalar->getEkipBolgeleri();
+
 
 ?>
 
@@ -94,8 +96,7 @@ $ekipler = $Tanimlamalar->getEkipKodlari();
                                                         data-id="<?php echo $enc_id; ?>"><span
                                                             class="mdi mdi-account-edit font-size-18"></span>
                                                         Düzenle</a>
-                                                    <a href="#" class="dropdown-item sil"
-                                                        data-id="<?php echo $enc_id; ?>">
+                                                    <a href="#" class="dropdown-item sil" data-id="<?php echo $enc_id; ?>">
                                                         <span class="mdi mdi-delete font-size-18"></span>
                                                         Sil</a>
                                                 </div>
@@ -129,17 +130,21 @@ $ekipler = $Tanimlamalar->getEkipKodlari();
 
                         <div class="col-md-12">
                             <?php echo
-                                Form::FormFloatInput(
-                                    "text",
+                                Form::FormSelect2(
                                     "ekip_bolge",
+                                    $bolgeler,
                                     "",
-                                    "Ekip Bölge giriniz!",
                                     "Ekip Bölge",
                                     "map-pin",
-                                    "form-control"
-
+                                    "id",
+                                    "",
+                                    "form-select select2",
+                                    false,
+                                    'width:100%',
+                                    'data-placeholder="Bölge Seçiniz veya Yazınız"'
                                 ); ?>
                         </div>
+
                     </div>
                     <div class="row mb-3">
 

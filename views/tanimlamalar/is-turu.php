@@ -8,6 +8,8 @@ use App\Model\TanimlamalarModel;
 $Tanimlamalar = new TanimlamalarModel();
 
 $isTurleri = $Tanimlamalar->getIsTurleri();
+$isTuruAdlari = $Tanimlamalar->getIsTurleriAdlari();
+
 
 ?>
 
@@ -142,15 +144,18 @@ $isTurleri = $Tanimlamalar->getIsTurleri();
 
                         <div class="col-md-12">
                             <?php echo
-                                Form::FormFloatInput(
-                                    "text",
+                                Form::FormSelect2(
                                     "is_turu",
+                                    $isTuruAdlari,
                                     "",
-                                    "İş Türü giriniz!",
                                     "İş Türü",
                                     "briefcase",
-                                    "form-control"
-
+                                    "id",
+                                    "",
+                                    "form-select select2",
+                                    false,
+                                    'width:100%',
+                                    'data-placeholder="İş Türü Seçiniz veya Yazınız"'
                                 ); ?>
                         </div>
                     </div>

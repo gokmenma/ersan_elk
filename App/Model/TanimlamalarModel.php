@@ -299,4 +299,11 @@ class TanimlamalarModel extends Model
         $stmt->execute([$raporTuru]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
+    public function getIsTurleriAdlari()
+    {
+        $sql = "SELECT DISTINCT tur_adi FROM $this->table WHERE grup = 'is_turu' AND tur_adi IS NOT NULL AND tur_adi != '' AND firma_id = ? AND silinme_tarihi IS NULL";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$_SESSION['firma_id']]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
 }

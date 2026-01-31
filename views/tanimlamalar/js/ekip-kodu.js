@@ -2,8 +2,17 @@ let url = "views/tanimlamalar/api.php";
 
 $(document).on("click", "#actionEkle", function () {
   $("#actionForm")[0].reset();
+  $("#ekip_bolge").val("").trigger("change");
   $("#ekip_id").val(0);
   $("#actionModalLabel").text("Ekip Kodu Ekle");
+});
+
+$(document).ready(function () {
+  $("#ekip_bolge").select2({
+    dropdownParent: $("#actionModal"),
+    tags: true,
+    width: "100%",
+  });
 });
 
 $(document).on("click", "#actionKaydet", function () {
@@ -73,7 +82,8 @@ $(document).on("click", ".duzenle", function (e) {
       if (data.status == "success") {
         // We need to set the hidden input to the ENCRYPTED id so save works
         $("#ekip_id").val(id);
-        $("#ekip_bolge").val(data.data.ekip_bolge);
+        $("#ekip_bolge").val(data.data.ekip_bolge).trigger("change");
+
         $("#ekip_kodu").val(data.data.ekip_kodu);
         $("#aciklama").val(data.data.aciklama);
         $("#actionModalLabel").text("Ekip Kodu Düzenle");

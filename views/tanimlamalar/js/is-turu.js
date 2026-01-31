@@ -2,10 +2,19 @@ let url = "views/tanimlamalar/api.php";
 
 $(document).on("click", "#actionEkle", function () {
   $("#actionForm")[0].reset();
+  $("#is_turu").val("").trigger("change");
   $("#is_turu_id").val(0);
   $("#is_emri_sonucu").val("");
   $("#rapor_sekmesi").val("").trigger("change");
   $("#actionModalLabel").text("İş Türü Ekle");
+});
+
+$(document).ready(function () {
+  $("#is_turu").select2({
+    dropdownParent: $("#actionModal"),
+    tags: true,
+    width: "100%",
+  });
 });
 
 $(document).on("click", "#actionKaydet", function () {
@@ -86,7 +95,8 @@ $(document).on("click", ".duzenle", function (e) {
       if (data.status == "success") {
         // We need to set the hidden input to the ENCRYPTED id so save works
         $("#is_turu_id").val(id);
-        $("#is_turu").val(data.data.is_turu);
+        $("#is_turu").val(data.data.is_turu).trigger("change");
+
         $("#is_emri_sonucu").val(data.data.is_emri_sonucu);
         $("#is_turu_ucret").val(data.data.is_turu_ucret);
         $("#rapor_sekmesi").val(data.data.rapor_sekmesi).trigger("change");

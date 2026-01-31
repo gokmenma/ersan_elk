@@ -912,7 +912,7 @@ if (Gate::allows("ana_sayfa")) {
             background: linear-gradient(to top, rgba(var(--bs-primary-rgb), 0.04) 0%, rgba(var(--bs-primary-rgb), 0.1) 100%);
             border-radius: 16px;
             padding: 24px;
-            border: 1px solid rgba(var(--bs-primary-rgb), 0.15);
+            border: 1px solid rgba(var(--bs-primary-rgb), 0.09);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             height: 100%;

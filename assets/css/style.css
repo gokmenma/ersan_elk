@@ -101,7 +101,7 @@
 
 /* Slate Specific Gradient Adjustments */
 [data-theme-mode="slate"] table thead tr:first-child th {
-  background-image: linear-gradient(
+  background: linear-gradient(
     to top,
     rgba(var(--bs-primary-rgb), 0.02) 0%,
     rgba(var(--bs-primary-rgb), 0.06) 100%
@@ -782,8 +782,7 @@ table th:not(.no-sort) {
   cursor: pointer;
 }
 table thead tr:first-child th {
-  background-color: rgba(var(--bs-primary-rgb), 0.04) !important;
-  background-image: linear-gradient(
+  background: linear-gradient(
     to top,
     rgba(var(--bs-primary-rgb), 0.04) 0%,
     rgba(var(--bs-primary-rgb), 0.1) 100%
@@ -795,8 +794,7 @@ table thead tr:first-child th {
 }
 
 [data-bs-theme="dark"] table thead tr:first-child th {
-  background-color: #1e293b !important;
-  background-image: linear-gradient(
+  background: linear-gradient(
     to top,
     rgba(var(--bs-primary-rgb), 0.05) 0%,
     rgba(var(--bs-primary-rgb), 0.15) 100%
@@ -1949,14 +1947,26 @@ table.dataTable.dtr-inline.collapsed
   padding-bottom: 8px;
 }
 
-/* Show submenu only when parent is active (mm-active) */
+/* Show submenu only when parent is active (mm-active) - but NOT in collapsed mode */
 #sidebar-menu ul li.mm-active > ul.sub-menu {
   display: block;
 }
 
-/* Also show when MetisMenu adds mm-show class */
+/* Also show when MetisMenu adds mm-show class - but NOT in collapsed mode */
 #sidebar-menu ul li ul.sub-menu.mm-show {
   display: block;
+}
+
+/* Collapsed sidebar (sm mode) - hide all submenus by default */
+body[data-sidebar-size="sm"] #sidebar-menu ul li ul.sub-menu,
+body[data-sidebar-size="sm"] #sidebar-menu ul li.mm-active > ul.sub-menu,
+body[data-sidebar-size="sm"] #sidebar-menu ul li ul.sub-menu.mm-show {
+  display: none !important;
+}
+
+/* Collapsed sidebar (sm mode) - show submenu ONLY on hover */
+body[data-sidebar-size="sm"] #sidebar-menu > ul > li:hover > ul.sub-menu {
+  display: block !important;
 }
 
 #sidebar-menu ul li ul.sub-menu:before {

@@ -44,7 +44,9 @@ $(document).ready(function () {
         digits: true,
       },
       ekip_no: {
-        required: true,
+        required: function () {
+          return $("#departman").val() !== "BÜRO";
+        },
       },
     },
     messages: {
