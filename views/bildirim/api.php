@@ -39,6 +39,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Başlık ve mesaj zorunludur.');
                 }
 
+                // DEBUG: Dosya bilgilerini logla
+                $debugLog = dirname(__DIR__, 2) . '/debug_upload.txt';
+                file_put_contents($debugLog, date('Y-m-d H:i:s') . " - FILES: " . print_r($_FILES, true) . "\n", FILE_APPEND);
+
                 // Resim Yükleme İşlemi
                 $imageUrl = null;
                 if (isset($_FILES['resim']) && $_FILES['resim']['error'] === UPLOAD_ERR_OK) {
@@ -120,6 +124,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $payload['image'] = $imageUrl;
                 }
 
+                // DEBUG: Payload'ı logla
+                $debugLog = dirname(__DIR__, 2) . '/debug_upload.txt';
+                file_put_contents($debugLog, date('Y-m-d H:i:s') . " - PAYLOAD: " . json_encode($payload, JSON_UNESCAPED_SLASHES) . "\n", FILE_APPEND);
+
                 $gonderildi = 0;
                 $hata = 0;
 
@@ -188,12 +196,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $message .= ", Hatalı: $hata";
                 }
 
-                echo json_encode([
+                $response = [
                     'status' => 'success',
                     'message' => $message,
                     'gonderildi' => $gonderildi,
                     'hata' => $hata
-                ]);
+                ];
+                
+                // Debug için image URL'i de ekle
+                if ($imageUrl) {
+                    $response['debug_image_url'] = $imageUrl;
+                }
+                
+                echo json_encode($response);
                 break;
 
             case 'test-notification':

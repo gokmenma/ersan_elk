@@ -331,12 +331,16 @@ $logs = $mesajLogModel->getLogs(['type' => 'push']);
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        Swal.fire('Başarılı', data.message, 'success').then(() => location.reload());
+                        let msg = data.message;
+                        if (data.debug_image_url) {
+                            msg += '\n\nResim URL: ' + data.debug_image_url;
+                        }
+                        Swal.fire('Başarılı', msg, 'success').then(() => location.reload());
                     } else {
                         Swal.fire('Hata', data.message, 'error');
                     }
                 })
-                .catch(() => Swal.fire('Hata', 'Bir hata oluştu.', 'error'));
+                .catch((err) => Swal.fire('Hata', 'Bir hata oluştu: ' + err.message, 'error'));
         });
 
         // Test bildirimi

@@ -128,7 +128,6 @@ self.addEventListener("push", (event) => {
     body: data.body || "Yeni bildiriminiz var",
     icon: data.icon || "./assets/icons/icon-192.png",
     badge: "./assets/icons/badge-72.png",
-    image: data.image,
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -139,6 +138,12 @@ self.addEventListener("push", (event) => {
       { action: "close", title: "Kapat" },
     ],
   };
+
+  // Resim varsa ekle (sadece geçerli URL ise)
+  if (data.image && data.image.startsWith('http')) {
+    options.image = data.image;
+    console.log("Push Notification Image:", data.image);
+  }
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
