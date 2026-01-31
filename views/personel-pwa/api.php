@@ -1301,10 +1301,20 @@ try {
                     $timeAgo = date('d M', strtotime($item->created_at));
                 }
 
+                // Payload'dan image URL'ini al
+                $imageUrl = null;
+                if (!empty($item->attachments)) {
+                    $payload = json_decode($item->attachments, true);
+                    if ($payload && isset($payload['image'])) {
+                        $imageUrl = $payload['image'];
+                    }
+                }
+
                 return [
                     'id' => $item->id,
                     'title' => $item->subject,
                     'body' => $item->message,
+                    'image' => $imageUrl,
                     'time_ago' => $timeAgo,
                     'created_at' => $item->created_at,
                     'status' => $item->status,

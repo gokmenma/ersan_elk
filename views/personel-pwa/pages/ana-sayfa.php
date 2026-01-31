@@ -374,6 +374,11 @@ use App\Helper\Helper;
                     var unreadIndicator = notification.okundu ? '' : '<div class="absolute top-2 left-2 w-2 h-2 bg-primary rounded-full"></div>';
                     var bgClass = notification.okundu ? 'bg-slate-50 dark:bg-slate-800' : 'bg-blue-50 dark:bg-blue-900/20 border border-primary/20';
                     
+                    // Resim varsa küçük thumbnail göster
+                    var thumbnailHtml = notification.image 
+                        ? '<img src="' + escapeHtml(notification.image) + '" class="w-10 h-10 rounded-lg object-cover flex-shrink-0" onerror="this.style.display=\'none\'">'
+                        : '';
+                    
                     return '<div class="relative flex items-start gap-3 p-3 ' + bgClass + ' rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" onclick="showNotificationDetail(' + index + ')">' +
                         unreadIndicator +
                         '<div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">' +
@@ -384,6 +389,7 @@ use App\Helper\Helper;
                             '<p class="text-xs text-slate-500 line-clamp-2">' + escapeHtml(notification.body) + '</p>' +
                             '<p class="text-[10px] text-primary mt-1">' + notification.time_ago + '</p>' +
                         '</div>' +
+                        thumbnailHtml +
                         '<span class="material-symbols-outlined text-slate-400 text-lg self-center">chevron_right</span>' +
                     '</div>';
                 }).join('');
@@ -410,6 +416,15 @@ use App\Helper\Helper;
         }
 
         var container = document.getElementById('notification-detail-content');
+        
+        // Resim HTML'i oluştur
+        var imageHtml = '';
+        if (notification.image) {
+            imageHtml = '<div class="mt-4 rounded-xl overflow-hidden">' +
+                '<img src="' + escapeHtml(notification.image) + '" alt="Bildirim resmi" class="w-full h-auto object-cover" onerror="this.parentElement.style.display=\'none\'">' +
+            '</div>';
+        }
+        
         container.innerHTML = 
             '<div class="flex items-center gap-3 mb-4">' +
                 '<div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">' +
@@ -420,7 +435,8 @@ use App\Helper\Helper;
                 '</div>' +
             '</div>' +
             '<h4 class="text-lg font-bold text-slate-900 dark:text-white mb-3">' + escapeHtml(notification.title) + '</h4>' +
-            '<p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">' + escapeHtml(notification.body) + '</p>';
+            '<p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">' + escapeHtml(notification.body) + '</p>' +
+            imageHtml;
 
         Modal.close('notification-modal');
         setTimeout(function() {
