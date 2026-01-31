@@ -24,7 +24,7 @@ if (Gate::canWithMessage("personel_listesi")) {
         <div class="row">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header d-grid d-md-flex d-block">
+                    <!-- <div class="card-header d-grid d-md-flex d-block">
                         <div class="card-title col-12">
 
                             <h4 class="card-title">Personel Listesi</h4>
@@ -32,7 +32,7 @@ if (Gate::canWithMessage("personel_listesi")) {
                             </p>
                         </div>
 
-                    </div>
+                    </div> -->
 
 
                     <style>
