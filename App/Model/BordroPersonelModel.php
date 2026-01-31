@@ -170,6 +170,7 @@ class BordroPersonelModel extends Model
                 kumulatif_matrah = :kumulatif_matrah,
                 sodexo_odemesi = :sodexo_odemesi,
                 banka_odemesi = :banka_odemesi,
+                elden_odeme = :elden_odeme,
                 hesaplama_detay = :hesaplama_detay,
                 hesaplama_tarihi = NOW()
             WHERE id = :id
@@ -191,6 +192,8 @@ class BordroPersonelModel extends Model
         $sql->bindParam(':sodexo_odemesi', $sodexoOdemesi);
         $bankaOdemesi = $hesaplamaData['banka_odemesi'] ?? 0;
         $sql->bindParam(':banka_odemesi', $bankaOdemesi);
+        $eldenOdeme = $hesaplamaData['elden_odeme'] ?? 0;
+        $sql->bindParam(':elden_odeme', $eldenOdeme);
         $hesaplamaDetay = $hesaplamaData['hesaplama_detay'] ?? null;
         $sql->bindParam(':hesaplama_detay', $hesaplamaDetay);
 
@@ -1431,12 +1434,13 @@ class BordroPersonelModel extends Model
         $damgaVergisi = $damgaVergisiMatrahi * $damgaVergisiOrani;
 
         // Net Maaş Hesabı
-        // Net = Brüt - Ücretsiz İzin - Yasal Kesintiler + Net Ek Ödemeler - Diğer Kesintiler
-        // NOT: Ücretsiz izin kesintisi zaten toplamKesinti içinde, yasal kesintiler çalışılan brüt üzerinden hesaplandı
+        // Net = Brüt - Ücretsiz İzin - Yasal Kesintiler + Net Ek Ödemeler + Brüt Ek Ödemeler - Diğer Kesintiler
+        // NOT: Brüt ek ödemeler de personele ödenir (vergileri ayrıca hesaplanmıştır)
         $netMaas = $brutMaas
             - $ucretsizIzinKesinti
             - $sgkIsci - $issizlikIsci - $gelirVergisi - $damgaVergisi
             + $netEkOdemeler
+            + $brutEkOdemeler
             - $digerKesintiler;
 
         // Toplam ek ödemeler (gösterim için)
@@ -1447,11 +1451,17 @@ class BordroPersonelModel extends Model
         $issizlikIsveren = $sgkMatrahi * $issizlikIsverenOrani;
         $toplamMaliyet = $calisanBrutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler;
 
-        // ========== SODEXO VE BANKA ÖDEMESİ HESAPLAMA ==========
-        // Personel tablosundaki sodexo tutarını al
+        // ========== ÖDEME DAĞILIMI HESAPLAMA ==========
+        // Sodexo = Personel tablosundaki sodexo tutarı
         $sodexoOdemesi = floatval($kayit->sodexo ?? 0);
-        // Banka ödemesi = Net maaş - Sodexo ödemesi (negatif olamaz)
-        $bankaOdemesi = max(0, $netMaas - $sodexoOdemesi);
+        // Banka = Personelin maas_tutari değeri, ancak net maaştan büyük olamaz
+        $bankaOdemesiTalep = floatval($kayit->maas_tutari ?? 0);
+        // Net maaş - sodexo çıktıktan sonra bankaya yatacak maksimum tutar
+        $bankaIcinMaksimum = max(0, $netMaas - $sodexoOdemesi);
+        // Banka ödemesi, talep edilen tutar ile maksimum tutardan küçük olanı
+        $bankaOdemesi = min($bankaOdemesiTalep, $bankaIcinMaksimum);
+        // Elden = Net Maaş - Banka - Sodexo (negatif olamaz)
+        $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi);
 
         // Hesaplama Snapshot (JSON)
         $hesaplamaDetay = [
@@ -1507,6 +1517,7 @@ class BordroPersonelModel extends Model
             'toplam_ek_odeme' => round($toplamEkOdeme, 2),
             'sodexo_odemesi' => round($sodexoOdemesi, 2),
             'banka_odemesi' => round($bankaOdemesi, 2),
+            'elden_odeme' => round($eldenOdeme, 2),
             'kumulatif_matrah' => round($yeniKumulatifMatrah, 2),
             'hesaplama_detay' => json_encode($hesaplamaDetay, JSON_UNESCAPED_UNICODE)
         ]);
