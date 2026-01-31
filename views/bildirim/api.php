@@ -122,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 if ($imageUrl) {
                     $payload['image'] = $imageUrl;  // Android Chrome'da büyük resim olarak görünür
-                    $payload['icon'] = $imageUrl;   // Desktop'ta küçük ikon olarak görünür
+                    // icon'u payload'a eklemeyin - Service Worker varsayılan logoyu kullanacak
                 }
 
                 // DEBUG: Payload'ı logla
