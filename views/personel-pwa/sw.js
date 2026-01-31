@@ -3,7 +3,7 @@
  * Offline desteği ve önbellekleme
  */
 
-const CACHE_NAME = "personel-pwa-v1";
+const CACHE_NAME = "personel-pwa-v3";
 const OFFLINE_URL = "offline.html";
 
 // Önbelleğe alınacak dosyalar
@@ -121,10 +121,12 @@ self.addEventListener("push", (event) => {
     }
   }
 
-  const title = data.title || "Ersan Elektrik";
+  console.log("Push Data Received:", data);
+
+  const title = data.title || "Ersan | Personel Yönetim";
   const options = {
     body: data.body || "Yeni bildiriminiz var",
-    icon: data.icon || "./assets/icons/icon-192.png",
+    icon: "./assets/icons/icon-192.png",  // Her zaman varsayılan logo
     badge: "./assets/icons/badge-72.png",
     vibrate: [100, 50, 100],
     data: {
@@ -136,6 +138,12 @@ self.addEventListener("push", (event) => {
       { action: "close", title: "Kapat" },
     ],
   };
+
+  // Resim varsa ekle - Android Chrome'da büyük resim olarak görünür
+  if (data.image && data.image.startsWith('http')) {
+    options.image = data.image;
+    console.log("Push Notification Image:", data.image);
+  }
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
