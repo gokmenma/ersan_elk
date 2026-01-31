@@ -85,10 +85,14 @@ $personelMap = [];
 $personelById = [];
 foreach ($allPersonel as $p) {
     if ($p->ekip_no) {
-        $personelMap[$p->ekip_no] = $p;
+        $ekipNoInt = intval($p->ekip_no);
+        $personelMap[$ekipNoInt] = $p;
     }
     $personelById[$p->id] = $p;
 }
+
+// Kacak Kontrol: Get ekip_adi to personel_ids mapping from kacak_kontrol table
+$kacakPersonelMapping = $Puantaj->getKacakPersonelMapping();
 ?>
 <?php
 // --- DATA PRE-PROCESSING ---
@@ -487,8 +491,14 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                             </td>
                             <?php for ($d = 1; $d <= $daysInMonth; $d++):
                                 $val = $summary[$team->tur_adi][$d] ?? 0;
-                                $dailyTotals[$d] += $val; ?>
-                                <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?>">
+                                $dailyTotals[$d] += $val;
+                                $currentDate = str_pad($d, 2, '0', STR_PAD_LEFT) . "." . str_pad($month, 2, '0', STR_PAD_LEFT) . "." . $year;
+                                // Get personel_ids from kacak_kontrol table mapping
+                                $pIdsStr = $kacakPersonelMapping[$team->tur_adi] ?? '';
+                                ?>
+                                <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?> kacak-quick-cell"
+                                    data-date="<?= $currentDate ?>" data-personel-ids="<?= $pIdsStr ?>" style="cursor: cell;"
+                                    title="Çift tıklayarak yeni kayıt ekle">
                                     <?= $val ?: '' ?>
                                 </td>
                             <?php endfor; ?>
@@ -522,8 +532,14 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                             </td>
                             <?php for ($d = 1; $d <= $daysInMonth; $d++):
                                 $val = $summary[$teamName][$d] ?? 0;
-                                $dailyTotals[$d] += $val; ?>
-                                <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?>">
+                                $dailyTotals[$d] += $val;
+                                $currentDate = str_pad($d, 2, '0', STR_PAD_LEFT) . "." . str_pad($month, 2, '0', STR_PAD_LEFT) . "." . $year;
+                                // Get personel_ids from kacak_kontrol table mapping
+                                $pIdsStr = $kacakPersonelMapping[$teamName] ?? '';
+                                ?>
+                                <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?> kacak-quick-cell"
+                                    data-date="<?= $currentDate ?>" data-personel-ids="<?= $pIdsStr ?>" style="cursor: cell;"
+                                    title="Çift tıklayarak yeni kayıt ekle">
                                     <?= $val ?: '' ?>
                                 </td>
                             <?php endfor; ?>

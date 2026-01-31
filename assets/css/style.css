@@ -1941,3 +1941,44 @@ table.dataTable.dtr-inline.collapsed
   padding-left: 0;
   padding-right: 0;
 }
+
+/* Submenu - Hide by default to prevent flash on page load */
+#sidebar-menu ul li ul.sub-menu {
+  display: none;
+  position: relative;
+  padding-bottom: 8px;
+}
+
+/* Show submenu only when parent is active (mm-active) */
+#sidebar-menu ul li.mm-active > ul.sub-menu {
+  display: block;
+}
+
+/* Also show when MetisMenu adds mm-show class */
+#sidebar-menu ul li ul.sub-menu.mm-show {
+  display: block;
+}
+
+#sidebar-menu ul li ul.sub-menu:before {
+  content: "";
+  position: absolute;
+  left: 28px;
+  top: 0;
+  bottom: 20px;
+  width: 1px;
+  background-color: var(--bs-border-color);
+  z-index: 1;
+}
+
+#sidebar-menu ul li ul.sub-menu li a {
+  position: relative;
+  transition: all 0.2s ease-in-out;
+}
+
+#sidebar-menu ul li ul.sub-menu li a:hover {
+  padding-left: 3.75rem !important;
+}
+
+#sidebar-menu ul li ul.sub-menu li.mm-active > a {
+  font-weight: 500;
+}

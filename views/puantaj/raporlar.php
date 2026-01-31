@@ -140,6 +140,17 @@ foreach ($regionList as $r) {
 
     <div class="row" id="reportCardRow">
         <div class="col-12">
+            <div id="kacakHelpInfo" class="alert alert-soft-primary alert-dismissible fade show mb-2 p-2" role="alert"
+                style="display: none;">
+                <div class="d-flex align-items-center">
+                    <i class="bx bxs-info-circle fs-5 me-2"></i>
+                    <div>
+                        <strong>İpucu:</strong> Kaçak Kontrol tablosunda gün kutucuklarına <strong>çift
+                            tıklayarak</strong> o tarih ve o ekip için hızlıca yeni kayıt oluşturabilirsiniz.
+                    </div>
+                </div>
+                <button type="button" class="btn-close p-2" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
             <div class="card">
                 <div class="card-body" id="reportContent">
                     <div class="text-center p-5">
@@ -177,6 +188,13 @@ foreach ($regionList as $r) {
                 success: function (html) {
                     $('#reportContent').html(html);
                     updateUrl();
+
+                    // Show help info if it's kacak tab
+                    if (currentTab === 'kacakkontrol') {
+                        $('#kacakHelpInfo').show();
+                    } else {
+                        $('#kacakHelpInfo').hide();
+                    }
                 },
                 error: function () {
                     $('#reportContent').html('<div class="alert alert-danger">Rapor yüklenirken bir hata oluştu.</div>');
@@ -198,7 +216,27 @@ foreach ($regionList as $r) {
             $('#raporTabs .nav-link').removeClass('active');
             $(this).addClass('active');
             currentTab = $(this).data('tab');
+
+            // Show/Hide Kacak Help Info
+            if (currentTab === 'kacakkontrol') {
+                $('#kacakHelpInfo').fadeIn();
+            } else {
+                $('#kacakHelpInfo').fadeOut();
+            }
+
             loadReport();
+        });
+
+        $(document).on('dblclick', '.kacak-quick-cell', function () {
+            // Remove previous selection
+            $('.kacak-quick-cell').removeClass('kacak-cell-selected');
+            // Add selection to current cell
+            $(this).addClass('kacak-cell-selected');
+
+            let tarih = $(this).attr('data-date');
+            let pIds = $(this).attr('data-personel-ids');
+            let sayi = $(this).text().trim() || '';
+            window.openKacakModal(tarih, pIds, sayi);
         });
 
         $('#filterForm').on('submit', function (e) {
@@ -242,8 +280,181 @@ foreach ($regionList as $r) {
 
         // Initial load
         loadReport();
+
+        window.openKacakModal = function (tarih, pIds, sayi) {
+            $('#kacakManualForm input[name="id"]').val(0);
+            $('#kacakManualForm')[0].reset();
+
+            $('#kacakModalTitle').text('Hızlı Kaçak Kontrol Kaydı');
+
+            // Convert to array of strings for Select2 compatibility
+            let pIdsArr = [];
+            if (pIds && typeof pIds === 'string' && pIds.trim() !== '') {
+                pIdsArr = pIds.split(',').map(x => x.trim()).filter(x => x !== '');
+            }
+
+            console.log('Opening Kacak Modal - Date:', tarih, 'Personnel IDs:', pIdsArr, 'Sayi:', sayi);
+
+            // Initialize Select2 with pre-selected values
+            initPersonelSelect2(pIdsArr);
+
+            // Set Date
+            $('#kacakManualForm input[name="tarih"]').val(tarih);
+
+            // Set Sayi (number)
+            $('#kacakManualForm input[name="sayi"]').val(sayi || '');
+
+            // Initialize flatpickr if available
+            if (typeof flatpickr !== 'undefined' && $('#kacakManualForm .flatpickr').length > 0) {
+                $('#kacakManualForm .flatpickr').flatpickr({
+                    dateFormat: "d.m.Y",
+                    locale: "tr",
+                    allowInput: true
+                });
+            }
+
+            $('#kacakModal').modal('show');
+
+            // Focus on sayi input after modal is shown
+            $('#kacakModal').one('shown.bs.modal', function () {
+                $('#kacakManualForm input[name="sayi"]').focus().select();
+            });
+        }
+
+        function initPersonelSelect2(selectedValues) {
+            var $el = $('#kacak_personel_ids');
+            if ($el.hasClass('select2-hidden-accessible')) {
+                $el.select2('destroy');
+            }
+
+            // Set selected values before initializing Select2
+            if (selectedValues && selectedValues.length > 0) {
+                $el.val(selectedValues);
+            }
+
+            $el.select2({
+                dropdownParent: $('#kacakModal'),
+                placeholder: 'Personel Seçiniz',
+                allowClear: true,
+                maximumSelectionLength: 2,
+                width: '100%'
+            });
+
+            // Trigger change to update Select2 display
+            if (selectedValues && selectedValues.length > 0) {
+                $el.trigger('change');
+            }
+        }
+
+        $('#kacakManualForm').on('submit', function (e) {
+            e.preventDefault();
+            var formData = $(this).serialize();
+            formData += '&action=kacak-kaydet';
+
+            $.ajax({
+                url: 'views/puantaj/api.php',
+                type: 'POST',
+                data: formData,
+                success: function (response) {
+                    try {
+                        var res = JSON.parse(response);
+                        if (res.status === 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Başarılı',
+                                text: 'Kayıt başarıyla kaydedildi.',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                            $('#kacakModal').modal('hide');
+                            loadReport();
+                        } else {
+                            Swal.fire('Hata', 'Kayıt sırasında bir hata oluştu.', 'error');
+                        }
+                    } catch (err) {
+                        Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
+                    }
+                }
+            });
+        });
     });
 </script>
+
+<!-- Kaçak Kontrol Manuel Modal -->
+<?php
+$personelOptionsMultiple = [];
+foreach ($personelList as $p) {
+    if ($p->id)
+        $personelOptionsMultiple[$p->id] = $p->adi_soyadi;
+}
+?>
+<div class="modal fade" id="kacakModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="kacakModalTitle">Manuel Kaçak Kontrol Kaydı</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="kacakManualForm">
+                <input type="hidden" name="id" id="kacak_id" value="0">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <?php echo Form::FormFloatInput(
+                            type: 'text',
+                            name: 'tarih',
+                            value: date('d.m.Y'),
+                            placeholder: '',
+                            label: "Tarih",
+                            icon: "calendar",
+                            required: true,
+                            class: "form-control flatpickr"
+                        ); ?>
+                    </div>
+                    <div class="mb-3">
+                        <label for="kacak_personel_ids">Personel Seçimi (En Fazla 2 Personel)</label>
+                        <?php echo Form::FormMultipleSelect2(
+                            name: 'kacak_personel_ids',
+                            options: $personelOptionsMultiple,
+                            selectedValues: [],
+                            label: '',
+                            icon: 'users',
+                            valueField: 'key',
+                            textField: '',
+                            class: 'form-select select2',
+                            required: true
+                        ); ?>
+                    </div>
+                    <div class="mb-3">
+                        <?php echo Form::FormFloatInput(
+                            type: 'number',
+                            name: 'sayi',
+                            value: '',
+                            placeholder: '',
+                            label: "Sayı",
+                            icon: "hash",
+                            required: true
+                        ); ?>
+                    </div>
+                    <div class="mb-3">
+                        <?php echo Form::FormFloatInput(
+                            type: 'text',
+                            name: 'aciklama',
+                            value: '',
+                            placeholder: '',
+                            label: "Açıklama",
+                            icon: "file-text",
+                            required: false
+                        ); ?>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <style>
     body {
@@ -270,6 +481,21 @@ foreach ($regionList as $r) {
 
     .accordion-button {
         box-shadow: none !important;
+    }
+
+    /* Kacak Quick Entry Cell Selection */
+    .kacak-quick-cell {
+        transition: all 0.2s ease;
+    }
+
+    .kacak-quick-cell:hover {
+        background-color: rgba(var(--bs-primary-rgb), 0.15) !important;
+    }
+
+    .kacak-cell-selected {
+        background-color: var(--bs-primary) !important;
+        color: #fff !important;
+        border-radius: 4px;
     }
 
     .fullscreen-mode {

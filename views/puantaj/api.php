@@ -591,12 +591,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     if ($id > 0) {
+        // Explicit update by ID
         $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET tarih = ?, personel_ids = ?, ekip_adi = ?, sayi = ?, aciklama = ? WHERE id = ?");
         $result = $stmt->execute([$dbTarih, $personelIdsStr, $ekipAdi, $sayi, $aciklama, $id]);
     } else {
-        $islemId = md5($dbTarih . '|' . $personelIdsStr . '|' . $sayi . '|' . $aciklama);
-        $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $result = $stmt->execute([$firmaId, $personelIdsStr, $dbTarih, $ekipAdi, $sayi, $aciklama, $islemId]);
+        // Check if a record with the same tarih and personel_ids already exists
+        $checkStmt = $Puantaj->db->prepare("SELECT id FROM kacak_kontrol WHERE firma_id = ? AND tarih = ? AND personel_ids = ? AND silinme_tarihi IS NULL");
+        $checkStmt->execute([$firmaId, $dbTarih, $personelIdsStr]);
+        $existingRecord = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($existingRecord) {
+            // Update existing record
+            $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET sayi = ?, aciklama = ? WHERE id = ?");
+            $result = $stmt->execute([$sayi, $aciklama, $existingRecord['id']]);
+        } else {
+            // Insert new record
+            $islemId = md5($dbTarih . '|' . $personelIdsStr . '|' . $sayi . '|' . $aciklama);
+            $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $result = $stmt->execute([$firmaId, $personelIdsStr, $dbTarih, $ekipAdi, $sayi, $aciklama, $islemId]);
+        }
     }
     echo json_encode(['status' => $result ? 'success' : 'error']);
     exit;

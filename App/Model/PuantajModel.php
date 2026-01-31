@@ -144,6 +144,29 @@ class PuantajModel extends Model
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
+    /**
+     * Get mapping of ekip_adi to personel_ids for quick entry feature
+     */
+    public function getKacakPersonelMapping()
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $sql = "SELECT DISTINCT ekip_adi, personel_ids 
+                FROM kacak_kontrol 
+                WHERE firma_id = ? AND ekip_adi IS NOT NULL AND ekip_adi != '' AND silinme_tarihi IS NULL";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId]);
+        $results = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $mapping = [];
+        foreach ($results as $row) {
+            // Use the first personel_ids found for each ekip_adi
+            if (!isset($mapping[$row->ekip_adi]) && $row->personel_ids) {
+                $mapping[$row->ekip_adi] = $row->personel_ids;
+            }
+        }
+        return $mapping;
+    }
+
     public function getUnmatchedWorkResults($year, $month, $raporTuru)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
