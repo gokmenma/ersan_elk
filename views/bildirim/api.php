@@ -121,7 +121,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 ];
 
                 if ($imageUrl) {
-                    $payload['image'] = $imageUrl;
+                    $payload['image'] = $imageUrl;  // Android Chrome'da büyük resim olarak görünür
+                    $payload['icon'] = $imageUrl;   // Desktop'ta küçük ikon olarak görünür
                 }
 
                 // DEBUG: Payload'ı logla

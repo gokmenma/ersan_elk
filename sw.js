@@ -126,7 +126,7 @@ self.addEventListener("push", (event) => {
   const title = data.title || "Ersan Elektrik";
   const options = {
     body: data.body || "Yeni bildiriminiz var",
-    icon: data.icon || "./assets/icons/icon-192.png",
+    icon: data.icon || "./assets/icons/icon-192.png",  // Özel ikon veya varsayılan
     badge: "./assets/icons/badge-72.png",
     vibrate: [100, 50, 100],
     data: {
@@ -139,7 +139,7 @@ self.addEventListener("push", (event) => {
     ],
   };
 
-  // Resim varsa ekle (sadece geçerli URL ise)
+  // Resim varsa ekle - Sadece Android Chrome'da görünür
   if (data.image && data.image.startsWith('http')) {
     options.image = data.image;
     console.log("Push Notification Image:", data.image);
