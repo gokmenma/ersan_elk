@@ -347,113 +347,105 @@ $sms_baslik = $allSettings['sms_baslik'] ?? '';
             });
         }
 
-        // E-posta Test
         if (testEmailButton) {
             testEmailButton.addEventListener('click', function () {
                 const btn = this;
                 const originalText = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Test ediliyor...';
 
-                const testEmail = prompt("Test e-postasının gönderileceği adresi girin:", "<?php echo htmlspecialchars($gonderen_eposta, ENT_QUOTES, 'UTF-8'); ?>");
-                if (!testEmail) {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                    return;
-                }
+                Swal.fire({
+                    title: 'E-posta Testi',
+                    text: 'Test mailinin gönderileceği adresi girin:',
+                    input: 'email',
+                    inputPlaceholder: 'Örn: adiniz@example.com',
+                    inputValue: '<?php echo htmlspecialchars($gonderen_eposta, ENT_QUOTES, 'UTF-8'); ?>',
+                    showCancelButton: true,
+                    confirmButtonText: 'Test Maili Gönder',
+                    cancelButtonText: 'İptal',
+                    showLoaderOnConfirm: true,
+                    preConfirm: (email) => {
+                        if (!email) {
+                            Swal.showValidationMessage('Lütfen geçerli bir e-posta adresi girin.');
+                            return false;
+                        }
 
-                const formData = new FormData(form); // Mevcut form ayarlarını al
-                formData.append('action', 'test_email_ayarlari');
-                formData.append('test_email_adresi', testEmail);
+                        const formData = new FormData(form);
+                        formData.append('action', 'test_email_ayarlari');
+                        formData.append('test_email_adresi', email);
+                        formData.append('firma_id', '<?php echo $firma_id; ?>');
 
-                fetch('/api/test/email', { // Test API endpoint'i
-                    method: 'POST',
-                    body: formData
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        Swal.fire(data.success ? 'Test Başarılı' : 'Test Başarısız', data.message, data.success ? 'success' : 'error');
-                    })
-                    .catch(error => Swal.fire('Hata!', 'E-posta testi sırasında bir sorun oluştu.', error.message))
-                    .finally(() => {
-                        btn.disabled = false;
-                        btn.innerHTML = originalText;
-                    });
+                        return fetch('views/ayarlar/api.php', {
+                            method: 'POST',
+                            body: formData
+                        })
+                            .then(response => {
+                                if (!response.ok) throw new Error(response.statusText);
+                                return response.json();
+                            })
+                            .catch(error => {
+                                Swal.showValidationMessage(`İstek hatası: ${error}`);
+                            });
+                    },
+                    allowOutsideClick: () => !Swal.isLoading()
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        if (result.value.status === 'success') {
+                            Swal.fire('Başarılı!', result.value.message, 'success');
+                        } else {
+                            Swal.fire('Hata!', result.value.message || 'Test maili gönderilemedi.', 'error');
+                        }
+                    }
+                });
             });
         }
 
-        // SMS Test
         if (testSmsButton) {
             testSmsButton.addEventListener('click', function () {
                 const btn = this;
                 const originalText = btn.innerHTML;
-                const testNumarasiInput = form.querySelector('input[name="sms_test_numarasi"]');
-                const smsApiKullaniciInput = form.querySelector('input[name="sms_api_kullanici"]'); // API kullanıcı adı
-                const smsApiSifreInput = form.querySelector('input[name="sms_api_sifre_yeni"]'); // API şifresi
-                const smsBaslikInput = form.querySelector('input[name="sms_baslik"]'); // SMS Başlığı
 
-                if (!testNumarasiInput || !testNumarasiInput.value.trim()) {
-                    Swal.fire('Eksik Bilgi', 'Lütfen test SMS\'i göndermek için bir telefon numarası girin.', 'warning');
-                    if (testNumarasiInput) testNumarasiInput.focus();
-                    return;
-                }
-                if (!/^5[0-9]{9}$/.test(testNumarasiInput.value.trim())) {
-                    Swal.fire('Hatalı Numara', 'Lütfen geçerli bir telefon numarası girin (5xxxxxxxxx).', 'warning');
-                    if (testNumarasiInput) testNumarasiInput.focus();
-                    return;
-                }
+                Swal.fire({
+                    title: 'SMS Testi',
+                    text: 'Test mesajının gönderileceği numarayı girin (5xxxxxxxxx):',
+                    input: 'tel',
+                    inputPlaceholder: 'Örn: 5051234567',
+                    inputValue: form.querySelector('input[name="sms_test_numarasi"]')?.value || '',
+                    showCancelButton: true,
+                    confirmButtonText: 'Test SMS Gönder',
+                    cancelButtonText: 'İptal',
+                    showLoaderOnConfirm: true,
+                    preConfirm: (numara) => {
+                        if (!numara || !/^5[0-9]{9}$/.test(numara.trim())) {
+                            Swal.showValidationMessage('Lütfen geçerli bir telefon numarası girin (5xxxxxxxxx).');
+                            return false;
+                        }
 
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Test ediliyor...';
+                        const formData = new FormData(form);
+                        formData.append('action', 'test_sms_ayarlari');
+                        formData.append('sms_test_numarasi', numara.trim());
+                        formData.append('firma_id', '<?php echo $firma_id; ?>');
 
-                // Gönderilecek JSON payload'ını oluştur
-                const payload = {
-                    action: 'test_sms_ayarlari', // PHP tarafında bu action'a göre işlem yapabilirsiniz
-                    message: "Bu bir test mesajıdır. Netgsm API ayarlarınız kontrol ediliyor.", // Test mesajı
-                    recipients: [testNumarasiInput.value.trim()], // Alıcı numara (dizi içinde)
-                    senderID: smsBaslikInput ? smsBaslikInput.value.trim() : 'CANSAGLKSEN', // Gönderen başlığı
-                    username: smsApiKullaniciInput ? smsApiKullaniciInput.value.trim() : "",
-                    password: smsApiSifreInput ? smsApiSifreInput.value.trim() : "" // API şifresi/token'ı, boşsa mevcut şifre kullanılacak gibi varsayıyoruz
-                };
-
-                fetch('views/mail-sms/api/sms.php', { // API endpoint'iniz
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json' // JSON gönderiyoruz
+                        return fetch('views/ayarlar/api.php', {
+                            method: 'POST',
+                            body: formData
+                        })
+                            .then(response => {
+                                if (!response.ok) throw new Error(response.statusText);
+                                return response.json();
+                            })
+                            .catch(error => {
+                                Swal.showValidationMessage(`İstek hatası: ${error}`);
+                            });
                     },
-                    body: JSON.stringify(payload) // JavaScript objesini JSON string'ine çevir
-                })
-                    .then(response => {
-                        // Yanıt JSON değilse veya HTTP hatası varsa burada yakala
-                        if (!response.ok) {
-                            return response.text().then(text => {
-                                throw new Error(`Sunucu Hatası: ${response.status} - ${text || response.statusText}`)
-                            });
-                        }
-
-                        const contentType = response.headers.get("content-type");
-                        if (contentType && contentType.indexOf("application/json") !== -1) {
-                            return response.json();
+                    allowOutsideClick: () => !Swal.isLoading()
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        if (result.value.status === 'success') {
+                            Swal.fire('Başarılı!', result.value.message, 'success');
                         } else {
-                            return response.text().then(text => {
-                                throw new Error("Yanıt JSON formatında değil: " + text)
-                            });
+                            Swal.fire('Hata!', result.value.message || 'SMS gönderilemedi.', 'error');
                         }
-                    })
-                    .then(data => {
-                        // PHP API'nizin 'status' ve 'message' döndürdüğünü varsayıyordum,
-                        // bir önceki API'nizdeki gibi. Eğer 'success' alanı varsa ona göre ayarlayın.
-                        const isSuccess = data.status === 'success' || data.success === true;
-                        Swal.fire(isSuccess ? 'Test Başarılı' : 'Test Başarısız', data.message, isSuccess ? 'success' : 'error');
-                    })
-                    .catch(error => {
-                        console.error('SMS Test Fetch Hatası:', error);
-                        Swal.fire('Hata!', 'SMS testi sırasında bir sorun oluştu: ' + error.message, 'error');
-                    })
-                    .finally(() => {
-                        btn.disabled = false;
-                        btn.innerHTML = originalText;
-                    });
+                    }
+                });
             });
         }
 

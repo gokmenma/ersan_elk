@@ -17,9 +17,14 @@ class MailGonderService
         string $icerik,
         array $ekler = [],
         array $cc = [],
-        array $bcc = []
+        array $bcc = [],
+        ?array $customSettings = null
     ): bool {
         $mail = new PHPMailer(true);
+        $debugOutput = '';
+        $mail->Debugoutput = function ($str, $level) use (&$debugOutput) {
+            $debugOutput .= "$str\n";
+        };
 
 
         try {
@@ -36,6 +41,11 @@ class MailGonderService
 
             $allSettings = $Settings->getAllSettingsAsKeyValue($firma_id);
 
+            // Eğer dışarıdan özel ayarlar geldiyse (test amaçlı), mevcut ayarların üzerine yaz
+            if (is_array($customSettings)) {
+                $allSettings = array_merge($allSettings, $customSettings);
+            }
+
             // Sunucu Ayarları
             $mail->isSMTP();
 
@@ -43,7 +53,8 @@ class MailGonderService
             $mail->SMTPAuth = true;
             $mail->Username = $allSettings['smtp_kullanici'] ?? $_ENV['SMTP_USER'];
 
-            $mail->Password = $allSettings['smtp_sifre_yeni'] ?? $_ENV['SMTP_PASSWORD'];
+            // Hem smtp_sifre hem de smtp_sifre_yeni kontrolü
+            $mail->Password = $allSettings['smtp_sifre_yeni'] ?? $allSettings['smtp_sifre'] ?? $_ENV['SMTP_PASSWORD'];
 
             $secureType = $allSettings['smtp_guvenlik'] ?? 'tls';
             $port = $allSettings['smtp_port'] ?? $_ENV['SMTP_PORT'] ?? 587;
@@ -59,8 +70,8 @@ class MailGonderService
             }
 
             $mail->Port = $port;
-            $mail->Timeout = 10; // 10 saniye zaman aşımı
-            $mail->SMTPDebug = 0; // Debug kapalı
+            $mail->Timeout = 10;
+            $mail->SMTPDebug = 2; // Hata durumunda detayları yakalamak için açıyoruz
 
 
 
@@ -142,16 +153,17 @@ class MailGonderService
             }
 
             if ($mail->send()) {
-
                 return true;
             } else {
-                error_log("E-posta gönderilemedi. Hata: {$mail->ErrorInfo}");
-                return false;
+                throw new \Exception("E-posta gönderilemedi. SMTP Log: " . $debugOutput);
             }
         } catch (Exception $e) {
-            error_log("Mail gönderme hatası: " . $mail->ErrorInfo);
-            error_log("Exception: " . $e->getMessage());
-            return false;
+            $msg = "Mail gönderme hatası: " . $e->getMessage();
+            if (!empty($debugOutput)) {
+                $msg .= "\nSMTP Detayları:\n" . $debugOutput;
+            }
+            error_log($msg);
+            throw new \Exception($msg);
         }
     }
 }

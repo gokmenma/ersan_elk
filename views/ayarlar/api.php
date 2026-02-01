@@ -76,6 +76,102 @@ switch ($action) {
         }
         break;
 
+    case 'test_email_ayarlari':
+        try {
+            $to = $_POST['test_email_adresi'] ?? '';
+            if (empty($to)) {
+                throw new \Exception("Test e-posta adresi belirtilmedi.");
+            }
+
+            // Formdan gelen anlık ayarları topla
+            $currentSettings = [
+                'smtp_host' => $_POST['smtp_host'] ?? null,
+                'smtp_port' => $_POST['smtp_port'] ?? null,
+                'smtp_kullanici' => $_POST['smtp_kullanici'] ?? null,
+                'smtp_sifre_yeni' => $_POST['smtp_sifre_yeni'] ?? null,
+                'smtp_guvenlik' => $_POST['smtp_guvenlik'] ?? null,
+                'gonderen_eposta' => $_POST['gonderen_eposta'] ?? null,
+                'gonderen_adi' => $_POST['gonderen_adi'] ?? null,
+            ];
+
+            // Null olanları temizle (eğer formda yoksa DB'dekini kullansın)
+            $currentSettings = array_filter($currentSettings, fn($v) => !is_null($v));
+
+            $subject = "Sistem E-posta Testi (Anlık Ayarlar)";
+            $message = "Bu bir test e-postasıdır. Eğer bu mesajı alıyorsanız e-posta bilgileriniz DOĞRU demektir.<br><br>Tarih: " . date('d.m.Y H:i:s');
+
+            if (\App\Service\MailGonderService::gonder([$to], $subject, $message, [], [], [], $currentSettings)) {
+                $response = [
+                    'status' => 'success',
+                    'message' => 'Test e-postası başarıyla gönderildi. Lütfen gelen kutunuzu kontrol edin.'
+                ];
+            } else {
+                throw new \Exception("E-posta gönderilemedi. Lütfen ayarlarınızı (Host, Port, Şifre vb.) kontrol edin.");
+            }
+        } catch (\Throwable $e) {
+            $response['message'] = $e->getMessage();
+        }
+        break;
+
+    case 'test_sms_ayarlari':
+        try {
+            $recipient = $_POST['sms_test_numarasi'] ?? '';
+            $firma_id = !empty($_POST['firma_id']) ? (int) $_POST['firma_id'] : null;
+
+            if (empty($recipient)) {
+                throw new \Exception("Test numarası belirtilmedi.");
+            }
+
+            $allSettings = $Settings->getAllSettingsAsKeyValue($firma_id);
+
+            // Eğer formdan yeni bilgiler geldiyse onları kullan, yoksa kayıtlı olanları
+            $username = $_POST['sms_api_kullanici'] ?? $allSettings['sms_api_kullanici'] ?? '';
+            $password = $_POST['sms_api_sifre_yeni'] ?? $allSettings['sms_api_sifre'] ?? '';
+            $msgheader = $_POST['sms_baslik'] ?? $allSettings['sms_baslik'] ?? '';
+
+            if (empty($username) || empty($password)) {
+                throw new \Exception("SMS API kullanıcı adı veya şifresi eksik.");
+            }
+
+            $messageText = "Ersan Elektrik SMS Test Mesajıdır. Tarih: " . date('d.m.Y H:i');
+
+            $data = [
+                "msgheader" => $msgheader,
+                "messages" => [["msg" => $messageText, "no" => $recipient]],
+                "encoding" => "TR"
+            ];
+
+            $ch = curl_init("https://api.netgsm.com.tr/sms/rest/v2/send");
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'Authorization: Basic ' . base64_encode($username . ':' . $password)
+            ]);
+
+            $result = curl_exec($ch);
+            if (curl_errno($ch)) {
+                throw new \Exception('Bağlantı Hatası: ' . curl_error($ch));
+            }
+            curl_close($ch);
+
+            $netgsmResult = json_decode($result, true);
+            if (isset($netgsmResult['code']) && $netgsmResult['code'] == '00') {
+                $response = [
+                    'status' => 'success',
+                    'message' => 'Test SMS\'i başarıyla gönderildi.'
+                ];
+            } else {
+                $errMsg = $netgsmResult['description'] ?? "Bilinmeyen API hatası.";
+                throw new \Exception("Netgsm Hatası: " . $errMsg);
+            }
+
+        } catch (\Throwable $e) {
+            $response['message'] = $e->getMessage();
+        }
+        break;
+
     case 'remove_logo':
         try {
             $side = $_POST['side'] ?? '';
