@@ -86,22 +86,25 @@ class MailGonderService
             );
             // KARAKTER SETİ AYARI (ÇOK ÖNEMLİ)
             $mail->CharSet = 'UTF-8';
-            $mail->Encoding = 'base64'; // İçeriği base64 ile kodlamak uyumluluğu artırır
+            $mail->Encoding = 'quoted-printable';
 
             // Gönderen ve Alıcı Bilgileri
-            $fromEmail = $allSettings['gonderen_eposta'] ?? 'noreply@softran.online';
+            $fromEmail = $allSettings['gonderen_eposta'] ?? $allSettings['smtp_kullanici'] ?? 'noreply@softran.online';
             $fromName = $allSettings['gonderen_adi'] ?? 'Ersan Elektrik | Personel Yönetim';
-            $mail->setFrom($fromEmail, $fromName); // Gönderen e-posta ve isim
+
+            $mail->setFrom($fromEmail, $fromName);
+            $mail->Sender = $fromEmail; // Return-Path başlığını ayarlar (Teslimat için kritik)
 
             // Alıcıları ekle
             if (is_array($kime)) {
+                $uniqueRecipients = array_unique(array_filter(array_map('trim', $kime)));
                 $first = true;
-                foreach ($kime as $email) {
+                foreach ($uniqueRecipients as $email) {
                     if ($first) {
-                        $mail->addAddress(trim($email));
+                        $mail->addAddress($email);
                         $first = false;
                     } else {
-                        $mail->addBCC(trim($email));
+                        $mail->addBCC($email);
                     }
                 }
             } else {
@@ -129,21 +132,15 @@ class MailGonderService
                 }
             }
 
-            //$mail->addAddress($kime); // Alıcı e-posta adresi
-
             // İçerik
             $mail->isHTML(true);
             $mail->Subject = $konu;
             $mail->Body = $icerik;
-            $mail->AltBody = strip_tags($icerik); // HTML desteklemeyen istemciler için
+            $mail->AltBody = strip_tags($icerik);
 
             //eğer ekler boş değilse foreach ile ekleri ekle
             if (!empty($ekler)) {
                 foreach ($ekler as $ek) {
-
-                    // Support both:
-                    //  - string file path
-                    //  - ['path' => '...', 'name' => '...']
                     if (is_array($ek) && !empty($ek['path'])) {
                         $mail->addAttachment($ek['path'], $ek['name'] ?? 'attachment');
                     } else {
@@ -153,16 +150,15 @@ class MailGonderService
             }
 
             if ($mail->send()) {
+                // Başarılı olsa bile loglara kaydet (opsiyonel, debug için)
+                // error_log("E-posta başarıyla gönderildi. Log: " . $debugOutput);
                 return true;
             } else {
                 throw new \Exception("E-posta gönderilemedi. SMTP Log: " . $debugOutput);
             }
         } catch (Exception $e) {
-            $msg = "Mail gönderme hatası: " . $e->getMessage();
-            if (!empty($debugOutput)) {
-                $msg .= "\nSMTP Detayları:\n" . $debugOutput;
-            }
-            error_log($msg);
+            $msg = $e->getMessage();
+            error_log("Mail Gönderim Hatası: " . $msg);
             throw new \Exception($msg);
         }
     }

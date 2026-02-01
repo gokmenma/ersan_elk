@@ -518,7 +518,7 @@ if (Gate::allows("ana_sayfa")) {
 
     <!-- Modals (Detaylar, Onaylar vs.) -->
     <div class="modal fade" id="modalHomeDetay" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <div class="modal-detay-header" id="modalHeader">
                     <button type="button" class="btn-close-custom" data-bs-dismiss="modal">
@@ -531,24 +531,41 @@ if (Gate::allows("ana_sayfa")) {
                     <h5>Talep Detayı</h5>
                 </div>
                 <div class="modal-body">
-                    <div class="modal-detay-card" id="cardPersonel">
-                        <div class="label"><i class="bx bx-user"></i> Personel</div>
-                        <div class="value" id="modalPersonel">-</div>
+                    <div id="modalLoading" class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Yükleniyor...</span>
+                        </div>
                     </div>
-                    <div class="modal-detay-card" id="cardDetay">
-                        <div class="label"><i class="bx bx-info-circle"></i> Detay Bilgisi</div>
-                        <div class="value" id="modalDetay">-</div>
-                    </div>
-                    <div class="modal-detay-card">
-                        <div class="label"><i class="bx bx-calendar"></i> Talep Tarihi</div>
-                        <div class="value" id="modalTarih">-</div>
-                    </div>
-                    <div class="modal-detay-card">
-                        <div class="label"><i class="bx bx-loader-circle"></i> Durum</div>
-                        <div class="value">
-                            <span class="badge bg-warning text-dark px-3 py-2">
-                                <i class="bx bx-time me-1"></i>Beklemede
-                            </span>
+                    <div id="modalContent" class="row" style="display:none;">
+                        <!-- Personel Bilgileri (Sol Taraf) -->
+                        <div class="col-md-4 text-center mb-4">
+                            <img id="modalResim" src="assets/images/users/user-dummy-img.jpg" class="rounded-circle mb-3"
+                                style="width:100px;height:100px;object-fit:cover;border:3px solid rgba(255,255,255,0.3);box-shadow:0 4px 15px rgba(0,0,0,0.1);">
+                            <h5 class="mb-1" id="modalPersonelAdi">-</h5>
+                            <p class="text-muted mb-0 small" id="modalDepartman"></p>
+                        </div>
+                        <!-- Talep Detayları (Sağ Taraf) -->
+                        <div class="col-md-8">
+                            <div class="modal-detay-card" id="cardPersonel">
+                                <div class="label"><i class="bx bx-user"></i> Personel</div>
+                                <div class="value" id="modalPersonel">-</div>
+                            </div>
+                            <div class="modal-detay-card" id="cardDetay">
+                                <div class="label"><i class="bx bx-info-circle"></i> Detay Bilgisi</div>
+                                <div class="value" id="modalDetay">-</div>
+                            </div>
+                            <div class="modal-detay-card">
+                                <div class="label"><i class="bx bx-calendar"></i> Talep Tarihi</div>
+                                <div class="value" id="modalTarih">-</div>
+                            </div>
+                            <div class="modal-detay-card">
+                                <div class="label"><i class="bx bx-loader-circle"></i> Durum</div>
+                                <div class="value" id="modalDurum">
+                                    <span class="badge bg-warning text-dark px-3 py-2">
+                                        <i class="bx bx-time me-1"></i>Beklemede
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1213,28 +1230,95 @@ if (Gate::allows("ana_sayfa")) {
                 });
             });
 
-            // Detay Modal
+            // Detay Modal - API'den detay çekiyor
             document.querySelectorAll('.btn-home-detay').forEach(function (btn) {
                 btn.addEventListener('click', function () {
+                    var id = this.dataset.id;
                     var tip = this.dataset.tip;
-                    var personel = this.dataset.personel;
-                    var detay = this.dataset.detay;
-                    var tarih = this.dataset.tarih;
                     var headerClass = tip === 'Avans' ? 'tip-avans' : (tip === 'İzin' ? 'tip-izin' : 'tip-talep');
                     var headerIcon = tip === 'Avans' ? 'bx-money' : (tip === 'İzin' ? 'bx-calendar-check' : 'bx-message-square-detail');
 
+                    // Header'ı ayarla
                     document.getElementById('modalHeader').className = 'modal-detay-header ' + headerClass;
                     document.getElementById('modalTalepTipi').textContent = tip;
                     document.getElementById('modalHeaderIcon').className = 'bx ' + headerIcon;
-                    document.getElementById('modalPersonel').textContent = personel;
-                    document.getElementById('modalDetay').textContent = detay;
-                    document.getElementById('modalTarih').textContent = tarih;
 
+                    // Tab parametresini ayarla
                     var tabParam = tip === 'Avans' ? 'avans' : (tip === 'İzin' ? 'izin' : 'talep');
                     document.getElementById('modalGitBtn').href = 'index.php?p=talepler/list&tab=' + tabParam;
+
+                    // Loading göster, content gizle
+                    document.getElementById('modalLoading').style.display = 'block';
+                    document.getElementById('modalContent').style.display = 'none';
+
+                    // Modalı aç
                     new bootstrap.Modal(document.getElementById('modalHomeDetay')).show();
+
+                    // API'den detay çek
+                    var actionName = tip === 'Avans' ? 'get-avans-detay' : (tip === 'İzin' ? 'get-izin-detay' : 'get-talep-detay');
+                    var formData = new FormData();
+                    formData.append('action', actionName);
+                    formData.append('id', id);
+
+                    fetch(API_URL, { method: 'POST', body: formData })
+                        .then(response => response.json())
+                        .then(data => {
+                            document.getElementById('modalLoading').style.display = 'none';
+                            document.getElementById('modalContent').style.display = 'flex';
+
+                            if (data.status === 'success') {
+                                var d = data.data;
+
+                                // Resim
+                                var resimEl = document.getElementById('modalResim');
+                                resimEl.src = d.resim_yolu || 'assets/images/users/user-dummy-img.jpg';
+                                resimEl.onerror = function () { this.src = 'assets/images/users/user-dummy-img.jpg'; };
+
+                                // Personel bilgileri
+                                document.getElementById('modalPersonelAdi').textContent = d.adi_soyadi || '-';
+                                document.getElementById('modalDepartman').textContent = d.departman || '';
+                                document.getElementById('modalPersonel').textContent = d.adi_soyadi || '-';
+
+                                // Tip'e göre detay ve tarih bilgisi
+                                if (tip === 'Avans') {
+                                    var tutar = parseFloat(d.tutar || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+                                    document.getElementById('modalDetay').textContent = tutar;
+                                    document.getElementById('modalTarih').textContent = formatTarih(d.talep_tarihi);
+                                    document.getElementById('modalDurum').innerHTML = '<span class="badge bg-warning text-dark px-3 py-2"><i class="bx bx-time me-1"></i>' + ucFirst(d.durum) + '</span>';
+                                } else if (tip === 'İzin') {
+                                    var izinDetay = (d.izin_tipi_adi || d.izin_tipi || 'İzin');
+                                    if (d.gun_sayisi) izinDetay += ' (' + d.gun_sayisi + ' gün)';
+                                    document.getElementById('modalDetay').textContent = izinDetay;
+                                    document.getElementById('modalTarih').textContent = formatTarih(d.baslangic_tarihi) + ' - ' + formatTarih(d.bitis_tarihi);
+                                    document.getElementById('modalDurum').innerHTML = '<span class="badge bg-warning text-dark px-3 py-2"><i class="bx bx-time me-1"></i>' + ucFirst(d.onay_durumu) + '</span>';
+                                } else {
+                                    document.getElementById('modalDetay').textContent = d.baslik || d.aciklama || '-';
+                                    document.getElementById('modalTarih').textContent = formatTarih(d.olusturma_tarihi);
+                                    document.getElementById('modalDurum').innerHTML = '<span class="badge bg-warning text-dark px-3 py-2"><i class="bx bx-time me-1"></i>' + ucFirst(d.durum) + '</span>';
+                                }
+                            } else {
+                                document.getElementById('modalContent').innerHTML = '<div class="col-12 text-center"><div class="alert alert-danger">' + (data.message || 'Bir hata oluştu') + '</div></div>';
+                            }
+                        })
+                        .catch(error => {
+                            document.getElementById('modalLoading').style.display = 'none';
+                            document.getElementById('modalContent').style.display = 'flex';
+                            document.getElementById('modalContent').innerHTML = '<div class="col-12 text-center"><div class="alert alert-danger">Detaylar yüklenirken hata oluştu.</div></div>';
+                        });
                 });
             });
+
+            // Yardımcı fonksiyonlar
+            function formatTarih(dateStr) {
+                if (!dateStr) return '-';
+                var date = new Date(dateStr);
+                return date.toLocaleDateString('tr-TR');
+            }
+
+            function ucFirst(str) {
+                if (!str) return '';
+                return str.charAt(0).toUpperCase() + str.slice(1);
+            }
 
             // Avans Onayla/Reddet, İzin Onayla/Reddet, Talep Çözüldü
             document.querySelectorAll('.btn-avans-onayla').forEach(btn => {
