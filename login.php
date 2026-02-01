@@ -4,6 +4,7 @@ require_once __DIR__ . '/Autoloader.php';
 use App\Core\Db;
 use App\Model\UserModel;
 use App\Helper\Helper;
+use App\Helper\Security;
 
 
 $User = new UserModel();
@@ -15,6 +16,26 @@ session_start();
 if (isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true) {
     header("location: index?p=home");
     exit;
+}
+
+// Check for remember me cookie
+if (isset($_COOKIE["remember_me"])) {
+    $decrypted_id = Security::decrypt($_COOKIE["remember_me"]);
+    if ($decrypted_id) {
+        $user = $User->find($decrypted_id);
+        if ($user) {
+            $_SESSION["loggedin"] = true;
+            $_SESSION["user"] = $user;
+            $_SESSION["user_id"] = $user->id;
+            $_SESSION["id"] = $user->id;
+            $_SESSION["owner_id"] = $user->owner_id;
+            $_SESSION["username"] = $user->user_name;
+            $_SESSION["user_full_name"] = $user->UserName;
+            $_SESSION["sube_id"] = $user->sube_id;
+            header("location: firma-secim.php");
+            exit;
+        }
+    }
 }
 // Include config file
 //require_once "layouts/config.php";
@@ -71,8 +92,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $_SESSION["owner_id"] = $user->owner_id;
                 $_SESSION["username"] = $username;
                 $_SESSION["user_full_name"] = $user->UserName;
-                //sube_id
+                // sube_id
                 $_SESSION["sube_id"] = $user->sube_id;
+
+                // Remember Me
+                if (isset($_POST["remember"])) {
+                    $encrypted_user_id = Security::encrypt($user->id);
+                    setcookie("remember_me", $encrypted_user_id, time() + (30 * 24 * 60 * 60), "/"); // 30 days
+                }
 
                 // Redirect user to welcome page
                 header("location: firma-secim.php");
@@ -131,7 +158,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div class="form-floating form-floating-custom mb-4">
                                         <input type="text"
                                             class="form-control <?php echo (!empty($username_err)) ? 'has-error' : ''; ?>"
-                                            id="\username" name="username" value="<?php echo $username; ?>"
+                                            id="username" name="username" value="<?php echo $username; ?>"
                                             placeholder="Kullanıcı Adı Giriniz!">
                                         <label for="input-username">Kullanıcı Adı, Telefon veya Email</label>
                                         <span class="text-danger"><?php echo $username_err; ?></span>
@@ -158,7 +185,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div class="row mb-4">
                                         <div class="col">
                                             <div class="form-check font-size-15">
-                                                <input class="form-check-input" type="checkbox" id="remember-check">
+                                                <input class="form-check-input" type="checkbox" name="remember"
+                                                    id="remember-check">
                                                 <label class="form-check-label font-size-13" for="remember-check">
                                                     Beni Hatırla
                                                 </label>
