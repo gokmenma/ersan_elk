@@ -2281,3 +2281,2142 @@ Result (String Match j.n.Y): 2026-01-01
 Input: 31.01.2026 Type: string
 Result (String Match j.n.Y): 2026-01-31
 ----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 02.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-02
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 03.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-03
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 05.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-05
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 06.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-06
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 07.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-07
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 08.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-08
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 09.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-09
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 10.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-10
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 12.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-12
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 13.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-13
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 14.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-14
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 15.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-15
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 16.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-16
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 17.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-17
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 19.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-19
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 20.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-20
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 21.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-21
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 22.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-22
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 23.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-23
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 24.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-24
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 26.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-26
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 27.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-27
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 28.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-28
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 29.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-29
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 30.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-30
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 01.01.2026
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 31.01.2026
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input:  Type: string
+Result: Empty
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input:  Type: string
+Result: Empty
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01 Type: string
+Result (Numeric Object): 1900-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01. Type: string
+Result (Numeric Object): 1900-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.0 Type: string
+Result (Numeric Object): 1900-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01 Type: string
+Result (Numeric Object): 1900-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01. Type: string
+Result (String DateTime): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2 Type: string
+Result (String Match j.n.Y): 0002-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.20 Type: string
+Result (String Match j.n.Y): 0020-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.202 Type: string
+Result (String Match j.n.Y): 0202-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 2 Type: string
+Result (Numeric Object): 1900-01-02
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 20 Type: string
+Result (Numeric Object): 1900-01-20
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 202 Type: string
+Result (Numeric Object): 1900-07-20
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 2026 Type: string
+Result (Numeric Object): 1905-07-18
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 2026- Type: string
+Result (String Error): Failed to parse time string (2026-) at position 4 (-): Unexpected character
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 2026-0 Type: string
+Result (String DateTime): 2025-12-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 2026-01 Type: string
+Result (String DateTime): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01 Type: string
+Result (Numeric Object): 1900-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01. Type: string
+Result (Numeric Object): 1900-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.0 Type: string
+Result (Numeric Object): 1900-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01 Type: string
+Result (Numeric Object): 1900-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01. Type: string
+Result (String DateTime): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2 Type: string
+Result (String Match j.n.Y): 0002-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.20 Type: string
+Result (String Match j.n.Y): 0020-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.202 Type: string
+Result (String Match j.n.Y): 0202-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.202 Type: string
+Result (String Match j.n.Y): 0202-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.20 Type: string
+Result (String Match j.n.Y): 0020-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2 Type: string
+Result (String Match j.n.Y): 0002-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01. Type: string
+Result (String DateTime): 2026-02-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01 Type: string
+Result (Numeric Object): 1900-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.0 Type: string
+Result (Numeric Object): 1900-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01. Type: string
+Result (Numeric Object): 1900-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01 Type: string
+Result (Numeric Object): 1900-01-01
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 15.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-15
+----------------
+Input: 15.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-15
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 30.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-30
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 31.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-31
+----------------

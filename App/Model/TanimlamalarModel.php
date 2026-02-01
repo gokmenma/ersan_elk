@@ -306,4 +306,24 @@ class TanimlamalarModel extends Model
         $stmt->execute([$_SESSION['firma_id']]);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
+
+
+
+    /** İş Emri Sonucu Tanımlı mı */
+    public function isEmriSonucu($isEmriTipi, $isEmriSonucu)
+    {
+        $sql = "SELECT * FROM $this->table 
+                        WHERE grup = 'is_turu' 
+                        AND tur_adi = :tur_adi 
+                        AND is_emri_sonucu = :is_emri_sonucu 
+                        AND firma_id = :firma_id 
+                        AND silinme_tarihi IS NULL";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            'tur_adi' => $isEmriTipi,
+            'is_emri_sonucu' => $isEmriSonucu,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+        return $stmt->fetch(PDO::FETCH_OBJ);
+    }
 }

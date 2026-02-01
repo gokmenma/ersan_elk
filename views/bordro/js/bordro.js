@@ -337,14 +337,34 @@ $(document).ready(function () {
       dataType: "json",
       success: function (response) {
         if (response.status === "success") {
-          Swal.fire({
-            icon: "success",
-            title: "Başarılı!",
-            text: response.message,
-            confirmButtonText: "Tamam",
-          }).then(() => {
-            location.reload();
-          });
+          // Onay bekleyen kesinti varsa uyarı göster
+          if (response.warning) {
+            var detailsHtml = response.warning_details ? 
+                '<div class="mt-3 mb-2"><strong>Onay Bekleyen Personeller:</strong></div>' + response.warning_details : '';
+            
+            Swal.fire({
+              icon: "warning",
+              title: "Maaş Hesaplandı - Dikkat!",
+              html: '<p class="mb-3">' + response.message + '</p>' +
+                    '<div class="alert alert-warning text-start mb-2">' +
+                    '<i class="bx bx-error-circle me-2"></i>' + response.warning + '</div>' +
+                    detailsHtml +
+                    '<p class="text-muted small mt-3">Kesintileri onaylamak için ilgili personelin "Kesintiler" sekmesine gidin.</p>',
+              confirmButtonText: "Tamam",
+              width: '500px'
+            }).then(() => {
+              location.reload();
+            });
+          } else {
+            Swal.fire({
+              icon: "success",
+              title: "Başarılı!",
+              text: response.message,
+              confirmButtonText: "Tamam",
+            }).then(() => {
+              location.reload();
+            });
+          }
         } else {
           Swal.fire({
             icon: "error",

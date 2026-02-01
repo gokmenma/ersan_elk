@@ -297,14 +297,20 @@ class BordroPersonelModel extends Model
      */
     /**
      * Personele kesinti ekler
+     * @param int $personel_id Personel ID
+     * @param int $donem_id Dönem ID
+     * @param string $aciklama Kesinti açıklaması
+     * @param float $tutar Kesinti tutarı
+     * @param string $tur Kesinti türü
+     * @param string $durum Onay durumu (beklemede, onaylandi, reddedildi) - varsayılan: beklemede
      */
-    public function addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur = 'diger')
+    public function addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur = 'diger', $durum = 'beklemede')
     {
         $sql = $this->db->prepare("
-            INSERT INTO personel_kesintileri (personel_id, donem_id, aciklama, tutar, tur, olusturma_tarihi)
-            VALUES (?, ?, ?, ?, ?, NOW())
+            INSERT INTO personel_kesintileri (personel_id, donem_id, aciklama, tutar, tur, durum, olusturma_tarihi)
+            VALUES (?, ?, ?, ?, ?, ?, NOW())
         ");
-        return $sql->execute([$personel_id, $donem_id, $aciklama, $tutar, $tur]);
+        return $sql->execute([$personel_id, $donem_id, $aciklama, $tutar, $tur, $durum]);
     }
 
     /**
@@ -481,6 +487,11 @@ class BordroPersonelModel extends Model
 
     /**
      * Personelin puantaj (yapılan işler) verilerine göre ek ödemelerini oluşturur
+     * 
+     * Hesaplama mantığı:
+     * - is_emri_sonucu bazında gruplama yapılır
+     * - Sadece birim ücreti > 0 olan iş sonuçları hesaplanır
+     * - Yeni normalizasyon (is_emri_sonucu_id) ve eski string alanları desteklenir
      */
     public function olusturPuantajOdemeleri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
     {
@@ -500,17 +511,40 @@ class BordroPersonelModel extends Model
         ");
         $deleteSql->execute([$personel_id, $donem_id]);
 
-        // 3. Yapılan işleri getir ve grupla
-        // is_emri_tipi'ne göre gruplayıp sayılarını alıyoruz
-        // Not: yapilan_isler tablosunda personel_id üzerinden filtreleme yapıyoruz
+        // 3. Tanımlamalar tablosundan ücretli iş türlerini al
+        // Sadece is_turu_ucret > 0 olan kayıtları çekiyoruz
+        $TanimlamalarModel = new \App\Model\TanimlamalarModel();
+        $isTurleri = $TanimlamalarModel->getIsTurleri(); // grup = 'is_turu'
+
+        // is_emri_sonucu -> (tur_adi, birim_ucret) map'i oluştur
+        $isEmriSonucuMap = [];
+        foreach ($isTurleri as $tur) {
+            $birimUcret = floatval(\App\Helper\Helper::formattedMoneyToNumber($tur->is_turu_ucret ?? 0));
+            if ($birimUcret > 0 && !empty($tur->is_emri_sonucu)) {
+                $isEmriSonucuMap[$tur->is_emri_sonucu] = [
+                    'tur_adi' => $tur->tur_adi,
+                    'birim_ucret' => $birimUcret
+                ];
+            }
+        }
+
+        if (empty($isEmriSonucuMap)) {
+            return; // Ücretli iş türü tanımlı değil
+        }
+
+        // 4. Yapılan işleri is_emri_sonucu bazında grupla
+        // Hem yeni (is_emri_sonucu_id) hem eski (is_emri_sonucu string) alanları destekle
         $sql = $this->db->prepare("
-            SELECT is_emri_tipi, SUM(sonuclanmis) as adet
-            FROM yapilan_isler 
-            WHERE personel_id = ? 
-            AND tarih BETWEEN ? AND ?
-            AND is_emri_tipi IS NOT NULL 
-            AND is_emri_tipi != ''
-            GROUP BY is_emri_tipi
+            SELECT 
+                COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu,
+                COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi,
+                SUM(t.sonuclanmis) as adet
+            FROM yapilan_isler t
+            LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+            WHERE t.personel_id = ? 
+            AND t.tarih BETWEEN ? AND ?
+            AND (t.is_emri_sonucu_id > 0 OR (t.is_emri_sonucu IS NOT NULL AND t.is_emri_sonucu != ''))
+            GROUP BY COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), COALESCE(tn.tur_adi, t.is_emri_tipi)
         ");
         $sql->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
         $yapilanIsler = $sql->fetchAll(PDO::FETCH_OBJ);
@@ -519,28 +553,41 @@ class BordroPersonelModel extends Model
             return;
         }
 
-        // 4. Tanımlamalar tablosundan ücretleri al
-        // Tüm iş türlerini çekip bir map oluşturuyoruz
-        $TanimlamalarModel = new \App\Model\TanimlamalarModel();
-        $isTurleri = $TanimlamalarModel->getIsTurleri(); // grup = 'is_turu'
-
-        $ucretMap = [];
-        foreach ($isTurleri as $tur) {
-            $ucretMap[$tur->tur_adi] = floatval(\App\Helper\Helper::formattedMoneyToNumber($tur->is_turu_ucret ?? 0));
-        }
-
-        // 5. Ek ödemeleri oluştur
-        $PersonelEkOdemelerModel = new \App\Model\PersonelEkOdemelerModel();
+        // 5. is_emri_tipi bazında toplam hesapla (aynı iş tipi altındaki tüm sonuçları birleştir)
+        $isTipiBazliToplam = [];
 
         foreach ($yapilanIsler as $is) {
+            $isEmriSonucu = $is->is_emri_sonucu;
             $isTipi = $is->is_emri_tipi;
-            $adet = $is->adet;
+            $adet = floatval($is->adet);
 
-            // Ücreti bul
-            $birimUcret = $ucretMap[$isTipi] ?? 0;
+            // Bu is_emri_sonucu için ücret tanımlı mı?
+            if (!isset($isEmriSonucuMap[$isEmriSonucu])) {
+                continue; // Ücret tanımlı değil, atla
+            }
 
-            if ($birimUcret > 0) {
-                $toplamTutar = $adet * $birimUcret;
+            $birimUcret = $isEmriSonucuMap[$isEmriSonucu]['birim_ucret'];
+            $turAdi = $isEmriSonucuMap[$isEmriSonucu]['tur_adi'];
+
+            // İş tipi bazında topla
+            if (!isset($isTipiBazliToplam[$turAdi])) {
+                $isTipiBazliToplam[$turAdi] = [
+                    'adet' => 0,
+                    'tutar' => 0
+                ];
+            }
+
+            $isTipiBazliToplam[$turAdi]['adet'] += $adet;
+            $isTipiBazliToplam[$turAdi]['tutar'] += $adet * $birimUcret;
+        }
+
+        // 6. Ek ödemeleri oluştur
+        $PersonelEkOdemelerModel = new \App\Model\PersonelEkOdemelerModel();
+
+        foreach ($isTipiBazliToplam as $isTipi => $data) {
+            if ($data['tutar'] > 0) {
+                $adet = intval($data['adet']);
+                $toplamTutar = round($data['tutar'], 2);
                 $aciklama = "[Puantaj] $isTipi ($adet Adet)";
 
                 // Ek ödeme ekle
@@ -676,14 +723,6 @@ class BordroPersonelModel extends Model
      */
     public function olusturAvansKesintileri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
     {
-        // Önceki avans kesintilerini temizle (duplicate önlemek için)
-        // Açıklamada "[Avans]" etiketi olanları siliyoruz
-        $deleteSql = $this->db->prepare("
-            DELETE FROM personel_kesintileri 
-            WHERE personel_id = ? AND donem_id = ? AND tur = 'avans' AND aciklama LIKE '[Avans]%'
-        ");
-        $deleteSql->execute([$personel_id, $donem_id]);
-
         // Dönem içindeki onaylanmış avansları getir
         // NOT: talep_tarihi datetime formatında olduğu için DATE() fonksiyonu ile karşılaştırıyoruz
         // Aksi halde 2026-01-31 14:30:00 gibi bir değer, 2026-01-31 bitiş tarihinden büyük sayılır
@@ -703,9 +742,26 @@ class BordroPersonelModel extends Model
         foreach ($avanslar as $avans) {
             $tutar = floatval($avans->tutar);
             $tarih = date('d.m.Y', strtotime($avans->talep_tarihi));
-            $aciklama = "[Avans] $tarih - " . ($avans->aciklama ?? 'Avans Talebi');
+            $aciklamaPattern = "[Avans] $tarih - %";
 
-            $this->addKesinti($personel_id, $donem_id, $aciklama, $tutar, 'avans');
+            // Bu avans için zaten kesinti var mı kontrol et
+            $mevcutKontrol = $this->db->prepare("
+                SELECT id FROM personel_kesintileri
+                WHERE personel_id = ? AND donem_id = ? AND tur = 'avans' 
+                AND aciklama LIKE ? AND silinme_tarihi IS NULL
+            ");
+            $mevcutKontrol->execute([$personel_id, $donem_id, $aciklamaPattern]);
+
+            if ($mevcutKontrol->fetch()) {
+                // Mevcut kesinti var, yeniden oluşturma (durumu korumak için)
+                $toplamAvans += $tutar;
+                continue;
+            }
+
+            // Mevcut kesinti yok, yeni oluştur
+            $aciklama = "[Avans] $tarih - " . ($avans->aciklama ?? 'Avans Talebi');
+            // Avans kesintileri "beklemede" olarak oluşturulur, yönetici onayı gerekir
+            $this->addKesinti($personel_id, $donem_id, $aciklama, $tutar, 'avans', 'beklemede');
             $toplamAvans += $tutar;
         }
 
@@ -745,13 +801,8 @@ class BordroPersonelModel extends Model
             return $sonuc;
         }
 
-        // Önceki ücretsiz izin kesintilerini temizle (duplicate önlemek için)
-        // Açıklamada "[Ücretsiz İzin]" etiketi olanları siliyoruz
-        $deleteSql = $this->db->prepare("
-            DELETE FROM personel_kesintileri 
-            WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[Ücretsiz İzin]%'
-        ");
-        $deleteSql->execute([$personel_id, $donem_id]);
+        // NOT: Mevcut kayıtları silmiyoruz, her izin türü için kontrol edip güncelliyoruz
+        // Bu sayede onay durumu korunuyor
 
         // Dönem tarihlerini DateTime objelerine çevir
         $donemBaslangicDate = new \DateTime($donem_baslangic);
@@ -863,12 +914,33 @@ class BordroPersonelModel extends Model
             $izinGruplari[$turAdi] += $detay['donem_icinde_gun'];
         }
 
-        // Her izin türü için ayrı kesinti kaydı oluştur
+        // Her izin türü için ayrı kesinti kaydı oluştur veya güncelle
         foreach ($izinGruplari as $turAdi => $gunSayisi) {
             $kesinti = round($gunlukUcret * $gunSayisi, 2);
             $aciklama = "[Ücretsiz İzin] $turAdi ($gunSayisi gün x " . number_format($gunlukUcret, 2, ',', '.') . " ₺)";
+            $aciklamaPattern = "[Ücretsiz İzin] $turAdi (%";
 
-            $this->addKesinti($personel_id, $donem_id, $aciklama, $kesinti, 'izin_kesinti');
+            // Bu izin türü için mevcut kesinti var mı kontrol et
+            $mevcutKontrol = $this->db->prepare("
+                SELECT id FROM personel_kesintileri
+                WHERE personel_id = ? AND donem_id = ? AND tur = 'izin_kesinti' 
+                AND aciklama LIKE ? AND silinme_tarihi IS NULL
+            ");
+            $mevcutKontrol->execute([$personel_id, $donem_id, $aciklamaPattern]);
+            $mevcut = $mevcutKontrol->fetch(PDO::FETCH_OBJ);
+
+            if ($mevcut) {
+                // Mevcut kayıt var, sadece tutarı ve açıklamayı güncelle (durumu koru)
+                $updateSql = $this->db->prepare("
+                    UPDATE personel_kesintileri 
+                    SET tutar = ?, aciklama = ?, updated_at = NOW()
+                    WHERE id = ?
+                ");
+                $updateSql->execute([$kesinti, $aciklama, $mevcut->id]);
+            } else {
+                // Mevcut kayıt yok, yeni oluştur
+                $this->addKesinti($personel_id, $donem_id, $aciklama, $kesinti, 'izin_kesinti', 'onaylandi');
+            }
         }
 
         $sonuc['toplam_gun'] = $toplamIzinGunu;
@@ -985,13 +1057,6 @@ class BordroPersonelModel extends Model
      */
     public function olusturBesKesintisi($personel_id, $donem_id, $sgkMatrahi, $donemTarihi)
     {
-        // Önceki BES kesintilerini temizle
-        $deleteSql = $this->db->prepare("
-            DELETE FROM personel_kesintileri 
-            WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[BES]%'
-        ");
-        $deleteSql->execute([$personel_id, $donem_id]);
-
         // Parametreyi getir
         $parametreModel = new BordroParametreModel();
         $besParam = $parametreModel->getByKod('bes_kesinti', $donemTarihi);
@@ -1006,7 +1071,27 @@ class BordroPersonelModel extends Model
 
         if ($tutar > 0) {
             $aciklama = "[BES] Bireysel Emeklilik Kesintisi (%$oran)";
-            $this->addKesinti($personel_id, $donem_id, $aciklama, round($tutar, 2), 'bes_kesinti');
+
+            // Mevcut BES kesintisi var mı kontrol et
+            $mevcutKontrol = $this->db->prepare("
+                SELECT id FROM personel_kesintileri
+                WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[BES]%' AND silinme_tarihi IS NULL
+            ");
+            $mevcutKontrol->execute([$personel_id, $donem_id]);
+            $mevcut = $mevcutKontrol->fetch(PDO::FETCH_OBJ);
+
+            if ($mevcut) {
+                // Mevcut kayıt var, sadece tutarı güncelle (durumu koru)
+                $updateSql = $this->db->prepare("
+                    UPDATE personel_kesintileri 
+                    SET tutar = ?, aciklama = ?, updated_at = NOW()
+                    WHERE id = ?
+                ");
+                $updateSql->execute([round($tutar, 2), $aciklama, $mevcut->id]);
+            } else {
+                // Mevcut kayıt yok, yeni oluştur
+                $this->addKesinti($personel_id, $donem_id, $aciklama, round($tutar, 2), 'bes_kesinti', 'onaylandi');
+            }
         }
     }
 
@@ -1593,6 +1678,7 @@ class BordroPersonelModel extends Model
 
     /**
      * Personelin dönemdeki tüm kesinti kayıtlarını getirir (detaylı liste için)
+     * Sadece onaylanmış kesintileri getirir (maaş hesaplaması için)
      */
     public function getDonemKesintileriListe($personel_id, $donem_id)
     {
@@ -1601,10 +1687,26 @@ class BordroPersonelModel extends Model
             FROM personel_kesintileri pk
             LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
             WHERE pk.personel_id = ? AND pk.donem_id = ? AND pk.silinme_tarihi IS NULL
+              AND pk.durum = 'onaylandi'
             ORDER BY pk.olusturma_tarihi DESC
         ");
         $sql->execute([$personel_id, $donem_id]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Personelin dönemdeki onay bekleyen kesinti sayısını ve toplam tutarını getirir
+     */
+    public function getOnayBekleyenKesintiler($personel_id, $donem_id)
+    {
+        $sql = $this->db->prepare("
+            SELECT COUNT(*) as adet, COALESCE(SUM(tutar), 0) as toplam_tutar
+            FROM personel_kesintileri
+            WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
+              AND durum = 'beklemede'
+        ");
+        $sql->execute([$personel_id, $donem_id]);
+        return $sql->fetch(PDO::FETCH_OBJ);
     }
 
     /**

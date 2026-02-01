@@ -75,7 +75,7 @@ class EndeksOkumaModel extends Model
 
         // Temel sorgu
         $baseWhere = "t.firma_id = :firma_id";
-        
+
         // Tarih filtreleri
         if ($startDate) {
             $baseWhere .= " AND t.tarih >= :start_date";
@@ -105,7 +105,8 @@ class EndeksOkumaModel extends Model
             $searchWhere = " AND (
                 t.bolge LIKE :search OR
                 t.kullanici_adi LIKE :search OR
-                p.adi_soyadi LIKE :search
+                p.adi_soyadi LIKE :search OR
+                DATE_FORMAT(t.tarih, '%d.%m.%Y') LIKE :search
             )";
             $params['search'] = $searchValue;
         }
@@ -122,9 +123,9 @@ class EndeksOkumaModel extends Model
             7 => 't.okunan_abone_sayisi',
             8 => 't.ort_okunan_abone_sayisi_gunluk',
             9 => 't.okuma_performansi',
-            10 => 't.tarih'
+            10 => 'DATE_FORMAT(t.tarih, "%d.%m.%Y")'
         ];
-        
+
         if (isset($request['columns']) && is_array($request['columns'])) {
             foreach ($request['columns'] as $colIdx => $col) {
                 if (!empty($col['search']['value']) && isset($colSearchMap[$colIdx])) {
@@ -180,8 +181,8 @@ class EndeksOkumaModel extends Model
         foreach ($params as $key => $val) {
             $stmt->bindValue(":$key", $val);
         }
-        $stmt->bindValue(':start', (int)($request['start'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':length', (int)($request['length'] ?? 10), PDO::PARAM_INT);
+        $stmt->bindValue(':start', (int) ($request['start'] ?? 0), PDO::PARAM_INT);
+        $stmt->bindValue(':length', (int) ($request['length'] ?? 10), PDO::PARAM_INT);
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_OBJ);
 

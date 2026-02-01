@@ -267,6 +267,87 @@ $(document).ready(function () {
     });
   });
 
+  // Kesinti Onayla
+  $(document).on("click", ".btn-personel-kesinti-onayla", function () {
+    var id = $(this).data("id");
+    console.log("Kesinti Onayla - ID:", id); // Debug
+    
+    Swal.fire({
+      title: "Kesintiyi Onayla",
+      text: "Bu kesinti onaylanacak ve maaş hesaplamasına dahil edilecek.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Onayla",
+      cancelButtonText: "İptal",
+      confirmButtonColor: "#28a745",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        console.log("Gönderilen data:", { action: "kesinti-onayla", kesinti_id: id }); // Debug
+        
+        $.ajax({
+          url: "views/personel/api.php",
+          type: "POST",
+          data: {
+            action: "kesinti-onayla",
+            kesinti_id: id,
+          },
+          dataType: "json",
+          success: function (response) {
+            console.log("API Response:", response); // Debug
+            
+            if (response.status === "success") {
+              refreshKesintiTab();
+              Swal.fire("Onaylandı!", "Kesinti onaylandı.", "success");
+            } else {
+              Swal.fire("Hata", response.message || "Bir hata oluştu", "error");
+            }
+          },
+          error: function (xhr, status, error) {
+            console.log("AJAX Error:", xhr.responseText, status, error); // Debug
+            Swal.fire("Hata", "İşlem başarısız.", "error");
+          },
+        });
+      }
+    });
+  });
+
+  // Kesinti Reddet
+  $(document).on("click", ".btn-personel-kesinti-reddet", function () {
+    var id = $(this).data("id");
+    Swal.fire({
+      title: "Kesintiyi Reddet",
+      text: "Bu kesinti reddedilecek ve maaş hesaplamasına dahil edilmeyecek.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Reddet",
+      cancelButtonText: "İptal",
+      confirmButtonColor: "#dc3545",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        $.ajax({
+          url: "views/personel/api.php",
+          type: "POST",
+          data: {
+            action: "kesinti-reddet",
+            kesinti_id: id,
+          },
+          dataType: "json",
+          success: function (response) {
+            if (response.status === "success") {
+              refreshKesintiTab();
+              Swal.fire("Reddedildi!", "Kesinti reddedildi.", "success");
+            } else {
+              Swal.fire("Hata", response.message || "Bir hata oluştu", "error");
+            }
+          },
+          error: function () {
+            Swal.fire("Hata", "İşlem başarısız.", "error");
+          },
+        });
+      }
+    });
+  });
+
   // Sürekli Kesintiyi Sonlandır
   $(document).on("click", ".btn-personel-kesinti-sonlandir", function () {
     var id = $(this).data("id");

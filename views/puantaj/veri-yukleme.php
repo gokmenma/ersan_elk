@@ -55,8 +55,9 @@ foreach ($workResults as $wr) {
             <div class="card">
                 <div class="card-header">
                     <h4 class="card-title">Filtreleme</h4>
-                    <form method="GET" action="">
-                        <input type="hidden" name="p" value="puantaj/list">
+                    <form method="GET" action="" id="filterForm">
+                        <input type="hidden" name="p" value="puantaj/veri-yukleme">
+                        <input type="hidden" name="tab" id="activeTabInput" value="<?= $_GET['tab'] ?? 'okuma' ?>">
                         <div class="row g-3">
                             <div class="col-md-2">
                                 <?php echo Form::FormFloatInput(
@@ -109,7 +110,7 @@ foreach ($workResults as $wr) {
                         <div class="row mt-3">
                             <div class="col-md-12 text-end">
                                 <button type="submit" class="btn btn-primary">Filtrele</button>
-                                <a href="index.php?p=puantaj/list" class="btn btn-secondary">Temizle</a>
+                                <button type="button" class="btn btn-secondary" id="btnClearFilters">Temizle</button>
                             </div>
                         </div>
                     </form>
@@ -170,7 +171,7 @@ foreach ($workResults as $wr) {
                                 </li>
                             </ul>
                         </div>
-                         <button type="button" class="btn btn-secondary" data-bs-toggle="modal"
+                        <button type="button" class="btn btn-secondary" data-bs-toggle="modal"
                             data-bs-target="#importOnlineIcmalRaporuModal">
                             <i class="bx bxs-file"></i> Online Sorgula
                         </button>
@@ -178,7 +179,7 @@ foreach ($workResults as $wr) {
                             data-bs-target="#importEndeksModal">
                             <i class="bx bxs-file-import"></i> Dosya Yükle
                         </button>
-                       
+
                     </div>
                 </div>
                 <div class="card-body">
@@ -242,13 +243,12 @@ foreach ($workResults as $wr) {
                     <table id="puantajTable" class="table table-bordered dt-responsive nowrap w-100">
                         <thead>
                             <tr class="table-light">
-                                <th>Firma</th>
+                                <th>Tarih</th>
                                 <th>İş Emri Tipi</th>
                                 <th>Ekip (Personel)</th>
                                 <th>İş Emri Sonucu</th>
                                 <th>Sonuçlanmış</th>
                                 <th>Açık Olanlar</th>
-                                <th>Tarih</th>
                             </tr>
                         </thead>
                         <tbody id="yapilanIslerBody">
@@ -545,7 +545,8 @@ foreach ($workResults as $wr) {
                 <div class="modal-body">
                     <div class="alert alert-info">
                         <i class="bx bx-info-circle me-2"></i>
-                        Ekip İş Emri Sonuç Raporu (Sonuç Tarihine Göre Sorgular) - KESME İŞEMRİ türünde online sorgulama yapılacaktır.
+                        Ekip İş Emri Sonuç Raporu (Sonuç Tarihine Göre Sorgular) - KESME İŞEMRİ türünde online sorgulama
+                        yapılacaktır.
                     </div>
                     <div class="row">
                         <div class="col-md-6">
@@ -724,6 +725,102 @@ foreach ($workResults as $wr) {
         var puantajDataTable = null;
         var kacakDataTable = null;
 
+        // Filtre değerlerini localStorage'a kaydet
+        function saveFiltersToStorage() {
+            var filters = {
+                start_date: $('input[name="start_date"]').val(),
+                end_date: $('input[name="end_date"]').val(),
+                ekip_kodu: $('select[name="ekip_kodu"]').val(),
+                work_type: $('select[name="work_type"]').val(),
+                work_result: $('select[name="work_result"]').val(),
+                tab: $('#activeTabInput').val()
+            };
+            localStorage.setItem('puantaj_filters', JSON.stringify(filters));
+        }
+
+        // localStorage'dan filtreleri yükle (eğer URL'de yoksa)
+        function loadFiltersFromStorage() {
+            var urlParams = new URLSearchParams(window.location.search);
+            var hasFilters = urlParams.has('ekip_kodu') || urlParams.has('work_type') || urlParams.has('work_result');
+
+            var savedFilters = localStorage.getItem('puantaj_filters');
+            if (savedFilters) {
+                var filters = JSON.parse(savedFilters);
+
+                // Tarihler ve Tab her zaman storage'dan veya URL'den gelmeli
+                if (!urlParams.has('start_date') && filters.start_date) $('input[name="start_date"]').val(filters.start_date);
+                if (!urlParams.has('end_date') && filters.end_date) $('input[name="end_date"]').val(filters.end_date);
+                if (!urlParams.has('tab') && filters.tab) {
+                    $('#activeTabInput').val(filters.tab);
+                    $(`#puantajTabs a[data-tab-name="${filters.tab}"]`).tab('show');
+                }
+
+                // Diğer filtreler sadece URL boşsa storage'dan
+                if (!hasFilters) {
+                    if (filters.ekip_kodu) {
+                        $('select[name="ekip_kodu"]').val(filters.ekip_kodu).trigger('change');
+                    }
+                    if (filters.work_type) {
+                        $('select[name="work_type"]').val(filters.work_type).trigger('change');
+                    }
+                    if (filters.work_result) {
+                        $('select[name="work_result"]').val(filters.work_result).trigger('change');
+                    }
+                }
+            }
+        }
+
+        // Tab değişikliğinde hidden input güncelle ve URL'yi güncelle
+        $('#puantajTabs a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+            var tabName = $(e.target).attr('data-tab-name');
+            $('#activeTabInput').val(tabName);
+
+            // URL'yi güncelle (sayfa yenilemeden) - tüm filtreleri ekle
+            var url = new URL(window.location.href);
+            url.searchParams.set('p', 'puantaj/veri-yukleme');
+            url.searchParams.set('tab', tabName);
+
+            // Mevcut filtre değerlerini URL'ye ekle
+            var startDate = $('input[name="start_date"]').val();
+            var endDate = $('input[name="end_date"]').val();
+            var ekipKodu = $('select[name="ekip_kodu"]').val();
+            var workType = $('select[name="work_type"]').val();
+            var workResult = $('select[name="work_result"]').val();
+
+            if (startDate) url.searchParams.set('start_date', startDate);
+            if (endDate) url.searchParams.set('end_date', endDate);
+            if (ekipKodu) url.searchParams.set('ekip_kodu', ekipKodu);
+            if (workType) url.searchParams.set('work_type', workType);
+            if (workResult) url.searchParams.set('work_result', workResult);
+
+            window.history.replaceState({}, '', url);
+
+            // Filtreleri kaydet
+            saveFiltersToStorage();
+        });
+
+        // Form submit öncesi filtreleri kaydet
+        $('#filterForm').on('submit', function() {
+            saveFiltersToStorage();
+        });
+
+        // Temizle butonu mantığı
+        $('#btnClearFilters').on('click', function() {
+            // Sadece ekip ve iş filtrelerini temizle
+            $('select[name="ekip_kodu"]').val('').trigger('change');
+            $('select[name="work_type"]').val('').trigger('change');
+            $('select[name="work_result"]').val('').trigger('change');
+            
+            // Storage'ı da güncelle (saveFiltersToStorage mevcut UI değerlerini alıp kaydedeceği için ekip_kodu boş gidecek, tarihler/tab kalacak)
+            saveFiltersToStorage();
+            
+            // Formu gönder
+            $('#filterForm').trigger('submit');
+        });
+
+        // Sayfa yüklendiğinde filtreleri storage'dan al
+        loadFiltersFromStorage();
+
         // Server-side DataTable için özelleştirilmiş seçenekleri oluştur
         function getServerSideOptions(customOptions) {
             var baseOptions = getDatatableOptions();
@@ -739,16 +836,17 @@ foreach ($workResults as $wr) {
 
         // Endeks Okuma tablosu için Server-Side DataTable
         function initEndeksDataTable() {
+            // Eğer DataTable zaten varsa, sadece reload yap
             if (endeksDataTable) {
-                endeksDataTable.destroy();
-                $('#endeksTable').find('thead .search-input-row').remove();
+                endeksDataTable.ajax.reload(null, false);
+                return;
             }
-            
+
             endeksDataTable = $('#endeksTable').DataTable(getServerSideOptions({
                 ajax: {
                     url: 'views/puantaj/api.php',
                     type: 'GET',
-                    data: function(d) {
+                    data: function (d) {
                         d.action = 'endeks-datatable';
                         d.start_date = $('input[name="start_date"]').val();
                         d.end_date = $('input[name="end_date"]').val();
@@ -774,16 +872,17 @@ foreach ($workResults as $wr) {
 
         // Puantaj (Kesme/Açma) tablosu için Server-Side DataTable
         function initPuantajDataTable() {
+            // Eğer DataTable zaten varsa, sadece reload yap
             if (puantajDataTable) {
-                puantajDataTable.destroy();
-                $('#puantajTable').find('thead .search-input-row').remove();
+                puantajDataTable.ajax.reload(null, false);
+                return;
             }
-            
+
             puantajDataTable = $('#puantajTable').DataTable(getServerSideOptions({
                 ajax: {
                     url: 'views/puantaj/api.php',
                     type: 'GET',
-                    data: function(d) {
+                    data: function (d) {
                         d.action = 'puantaj-datatable';
                         d.start_date = $('input[name="start_date"]').val();
                         d.end_date = $('input[name="end_date"]').val();
@@ -793,15 +892,14 @@ foreach ($workResults as $wr) {
                     }
                 },
                 columns: [
-                    { data: 'firma' },
+                    { data: 'tarih' },
                     { data: 'is_emri_tipi' },
                     { data: 'personel_adi' },
                     { data: 'is_emri_sonucu' },
                     { data: 'sonuclanmis' },
-                    { data: 'acik_olanlar' },
-                    { data: 'tarih' }
+                    { data: 'acik_olanlar' }
                 ],
-                order: [[6, 'desc']]
+                order: [[0, 'desc']]
             }));
         }
 
@@ -843,13 +941,13 @@ foreach ($workResults as $wr) {
         }
 
         // Tarih değiştiğinde file inputunu temizle
-        $('#endeksUploadForm input[name="upload_date"]').on('change', function() {
+        $('#endeksUploadForm input[name="upload_date"]').on('change', function () {
             $('#endeksUploadForm input[name="excel_file"]').val('');
         });
-        $('#puantajUploadForm input[name="upload_date"]').on('change', function() {
+        $('#puantajUploadForm input[name="upload_date"]').on('change', function () {
             $('#puantajUploadForm input[name="excel_file"]').val('');
         });
-        $('#kacakUploadForm input[name="upload_date"]').on('change', function() {
+        $('#kacakUploadForm input[name="upload_date"]').on('change', function () {
             $('#kacakUploadForm input[name="excel_file"]').val('');
         });
 
@@ -961,7 +1059,7 @@ foreach ($workResults as $wr) {
                             // Atlanan satırlar varsa detaylı göster
                             if (res.skipped_rows && res.skipped_rows.length > 0) {
                                 htmlMessage += '<br><br><div class="alert alert-warning mb-0 mt-2"><strong>⚠️ Atlanan Satırlar (' + res.skipped_rows.length + '):</strong><ul class="mb-0 mt-2" style="max-height: 200px; overflow-y: auto;">';
-                                res.skipped_rows.forEach(function(row) {
+                                res.skipped_rows.forEach(function (row) {
                                     htmlMessage += '<li><strong>Satır ' + row.satir + ':</strong> ' + row.ekip + ' - <em>' + row.neden + '</em></li>';
                                 });
                                 htmlMessage += '</ul></div>';
@@ -1014,7 +1112,7 @@ foreach ($workResults as $wr) {
                             // Atlanan satırlar varsa detaylı göster
                             if (res.skipped_rows && res.skipped_rows.length > 0) {
                                 htmlMessage += '<br><br><div class="alert alert-warning mb-0 mt-2"><strong>⚠️ Atlanan Satırlar (' + res.skipped_rows.length + '):</strong><ul class="mb-0 mt-2" style="max-height: 200px; overflow-y: auto;">';
-                                res.skipped_rows.forEach(function(row) {
+                                res.skipped_rows.forEach(function (row) {
                                     htmlMessage += '<li><strong>Satır ' + row.satir + ':</strong> ' + row.ekip + ' - <em>' + row.neden + '</em></li>';
                                 });
                                 htmlMessage += '</ul></div>';
@@ -1067,7 +1165,7 @@ foreach ($workResults as $wr) {
                             // Atlanan satırlar varsa detaylı göster
                             if (res.skipped_rows && res.skipped_rows.length > 0) {
                                 htmlMessage += '<br><br><div class="alert alert-warning mb-0 mt-2"><strong>⚠️ Atlanan Satırlar (' + res.skipped_rows.length + '):</strong><ul class="mb-0 mt-2" style="max-height: 200px; overflow-y: auto;">';
-                                res.skipped_rows.forEach(function(row) {
+                                res.skipped_rows.forEach(function (row) {
                                     htmlMessage += '<li><strong>Satır ' + row.satir + ':</strong> ' + row.ekip + ' - <em>' + row.neden + '</em></li>';
                                 });
                                 htmlMessage += '</ul></div>';
@@ -1214,7 +1312,7 @@ foreach ($workResults as $wr) {
                             }
                             if (res.mevcut_kayitlar && res.mevcut_kayitlar.length > 0) {
                                 resultHtml += '<hr><strong>Daha önce çekilmiş kayıtlar:</strong><ul class="mb-0">';
-                                res.mevcut_kayitlar.forEach(function(item) {
+                                res.mevcut_kayitlar.forEach(function (item) {
                                     resultHtml += '<li>İşlem ID: ' + item.islem_id + ' - ' + item.ekip_kodu + ' - ' + item.is_emri_tipi + '</li>';
                                 });
                                 resultHtml += '</ul>';
@@ -1270,7 +1368,7 @@ foreach ($workResults as $wr) {
                             }
                             if (res.mevcut_kayitlar && res.mevcut_kayitlar.length > 0) {
                                 resultHtml += '<hr><strong>Daha önce çekilmiş kayıtlar:</strong><ul class="mb-0">';
-                                res.mevcut_kayitlar.forEach(function(item) {
+                                res.mevcut_kayitlar.forEach(function (item) {
                                     resultHtml += '<li>İşlem ID: ' + item.islem_id + ' - ' + item.kullanici_adi + ' - ' + item.bolge + '</li>';
                                 });
                                 resultHtml += '</ul>';

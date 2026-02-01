@@ -10,13 +10,18 @@ $kesinti_turleri_param = $BordroParametreModel->getKesintiTurleri();
 // İstatistikler - Sadece tek seferlik ve aktif sürekli kesintileri say
 $toplamKesinti = 0;
 $aktifSurekliKesinti = 0;
+$bekleyenKesinti = 0;
 foreach ($kesintiler as $k) {
     if ($k->tekrar_tipi == 'surekli' && $k->aktif == 1) {
         $aktifSurekliKesinti++;
     }
-    // Tek seferlik kesintilerin tutarını topla
-    if ($k->tekrar_tipi == 'tek_sefer' || ($k->tekrar_tipi == 'surekli' && $k->hesaplama_tipi == 'sabit')) {
+    // Onaylanmış tek seferlik kesintilerin tutarını topla
+    if (($k->tekrar_tipi == 'tek_sefer' || ($k->tekrar_tipi == 'surekli' && $k->hesaplama_tipi == 'sabit')) && ($k->durum ?? 'beklemede') == 'onaylandi') {
         $toplamKesinti += $k->tutar ?? 0;
+    }
+    // Bekleyen kesintileri say
+    if (($k->durum ?? 'beklemede') == 'beklemede') {
+        $bekleyenKesinti++;
     }
 }
 ?>
@@ -30,6 +35,9 @@ foreach ($kesintiler as $k) {
                     <h5 class="card-title mb-0 text-primary"><i class="bx bx-minus-circle me-2"></i>Personel Kesintileri
                     </h5>
                     <span class="badge bg-danger">Toplam: <?= number_format($toplamKesinti, 2, ',', '.') ?> TL</span>
+                    <?php if ($bekleyenKesinti > 0): ?>
+                        <span class="badge bg-warning text-dark"><i class="bx bx-time me-1"></i><?= $bekleyenKesinti ?> Onay Bekliyor</span>
+                    <?php endif; ?>
                     <?php if ($aktifSurekliKesinti > 0): ?>
                         <span class="badge bg-warning text-dark"><i
                                 class="bx bx-refresh me-1"></i><?= $aktifSurekliKesinti ?> Sürekli Kesinti</span>
@@ -105,17 +113,27 @@ foreach ($kesintiler as $k) {
                                     </td>
                                     <td><?= htmlspecialchars($k->aciklama ?? '-') ?></td>
                                     <td>
-                                        <?php if ($k->tekrar_tipi == 'surekli'): ?>
-                                            <?php if ($k->aktif == 1): ?>
-                                                <span class="badge bg-success">Aktif</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-secondary">Pasif</span>
-                                            <?php endif; ?>
-                                        <?php else: ?>
-                                            <span class="badge bg-light text-muted">-</span>
-                                        <?php endif; ?>
+                                        <?php 
+                                        $durum = $k->durum ?? 'beklemede';
+                                        $durumBadges = [
+                                            'beklemede' => '<span class="badge bg-warning text-dark"><i class="bx bx-time me-1"></i>Beklemede</span>',
+                                            'onaylandi' => '<span class="badge bg-success"><i class="bx bx-check me-1"></i>Onaylandı</span>',
+                                            'reddedildi' => '<span class="badge bg-danger"><i class="bx bx-x me-1"></i>Reddedildi</span>'
+                                        ];
+                                        echo $durumBadges[$durum] ?? $durumBadges['beklemede'];
+                                        ?>
                                     </td>
                                     <td class="text-center">
+                                        <?php if ($durum == 'beklemede'): ?>
+                                            <button type="button" class="btn btn-sm btn-success btn-personel-kesinti-onayla"
+                                                data-id="<?= $k->id ?>" title="Onayla">
+                                                <i class="bx bx-check"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-danger btn-personel-kesinti-reddet"
+                                                data-id="<?= $k->id ?>" title="Reddet">
+                                                <i class="bx bx-x"></i>
+                                            </button>
+                                        <?php endif; ?>
                                         <?php if ($k->tekrar_tipi == 'surekli' && $k->aktif == 1): ?>
                                             <button type="button" class="btn btn-sm btn-warning btn-personel-kesinti-sonlandir"
                                                 data-id="<?= $k->id ?>" title="Sonlandır">

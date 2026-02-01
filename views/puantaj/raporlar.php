@@ -87,8 +87,10 @@ foreach ($regionList as $r) {
                                     <div class="col-md-3">
                                         <?php echo Form::FormSelect2("region", $regionOptions, $region, "Bölge Seçiniz", "grid", "key", "", "form-select select2"); ?>
                                     </div>
-                                    <div class="col-md-2 d-flex align-items-end">
-                                        <button type="submit" class="btn btn-primary w-100">Sorgula</button>
+                                    <div class="col-md-2 d-flex align-items-end gap-2">
+                                        <button type="submit" class="btn btn-primary flex-grow-1">Sorgula</button>
+                                        <button type="button" class="btn btn-secondary"
+                                            id="btnClearFilters">Temizle</button>
                                     </div>
                                 </div>
                             </form>
@@ -180,6 +182,41 @@ foreach ($regionList as $r) {
         let currentPersonelId = '<?= $personel_id ?>';
         let currentRegion = '<?= $region ?>';
 
+        const STORAGE_KEY = 'raporlar_filters';
+
+        function saveFiltersToStorage() {
+            const filters = {
+                tab: currentTab,
+                year: currentYear,
+                month: currentMonth,
+                personel_id: currentPersonelId,
+                region: currentRegion
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
+        }
+
+        function loadFiltersFromStorage() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const filters = JSON.parse(saved);
+                const urlParams = new URLSearchParams(window.location.search);
+
+                // Sadece URL'de olmayan parametreleri storage'dan alalım
+                if (!urlParams.has('tab')) currentTab = filters.tab || currentTab;
+                if (!urlParams.has('year')) currentYear = filters.year || currentYear;
+                if (!urlParams.has('month')) currentMonth = filters.month || currentMonth;
+                if (!urlParams.has('personel_id')) currentPersonelId = filters.personel_id || currentPersonelId;
+                if (!urlParams.has('region')) currentRegion = filters.region || currentRegion;
+
+                // UI bileşenlerini güncelle
+                $(`#raporTabs .nav-link[data-tab="${currentTab}"]`).addClass('active').parent().siblings().find('.nav-link').removeClass('active');
+                $('select[name="year"]').val(currentYear).trigger('change.select2');
+                $('select[name="month"]').val(currentMonth).trigger('change.select2');
+                $('select[name="personel_id"]').val(currentPersonelId).trigger('change.select2');
+                $('select[name="region"]').val(currentRegion).trigger('change.select2');
+            }
+        }
+
         function loadReport() {
             $('#reportContent').html('<div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Rapor hazırlanıyor...</p></div>');
             updateFilterSummary();
@@ -198,6 +235,7 @@ foreach ($regionList as $r) {
                 success: function (html) {
                     $('#reportContent').html(html);
                     updateUrl();
+                    saveFiltersToStorage();
 
                     // Show help info if it's kacak tab
                     if (currentTab === 'kacakkontrol') {
@@ -261,11 +299,10 @@ foreach ($regionList as $r) {
             $(this).addClass('active');
             currentTab = $(this).data('tab');
 
-            // Reset filters on tab change (except year/month)
-            currentPersonelId = '';
-            currentRegion = '';
-            $('select[name="personel_id"]').val('').trigger('change');
-            $('select[name="region"]').val('').trigger('change');
+            // Reset filters on tab change (except year/month) - BU KISMI USER İSTEDİĞİ İÇİN KALDIRIYORUZ VEYA PERSONEL KALSIN MI?
+            // "ay,yıl ve sekme kalmalı" dediği temizle butonu içindi. 
+            // Tab değişiminde personel/bölge sıfırlanmalı mı? 
+            // Genelde kullanıcılar tüm sekmelerde aynı personeli görmek ister.
 
             // Show/Hide Kacak Help Info
             if (currentTab === 'kacakkontrol') {
@@ -301,6 +338,14 @@ foreach ($regionList as $r) {
             if (bsCollapse) bsCollapse.hide();
         });
 
+        $('#btnClearFilters').on('click', function () {
+            currentPersonelId = '';
+            currentRegion = '';
+            $('select[name="personel_id"]').val('').trigger('change');
+            $('select[name="region"]').val('').trigger('change');
+            loadReport();
+        });
+
         $('#btnExportExcel').on('click', function () {
             const url = `views/puantaj/rapor-excel.php?tab=${currentTab}&year=${currentYear}&month=${currentMonth}&personel_id=${currentPersonelId}&region=${currentRegion}`;
             window.location.href = url;
@@ -329,6 +374,7 @@ foreach ($regionList as $r) {
         });
 
         // Initial load
+        loadFiltersFromStorage();
         loadReport();
 
         window.openKacakModal = function (tarih, pIds, sayi) {

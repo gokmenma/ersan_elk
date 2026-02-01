@@ -82,8 +82,8 @@ class BordroDonemModel extends Model
             SELECT * FROM {$this->table} 
             WHERE silinme_tarihi IS NULL 
             AND firma_id = ? 
-            AND baslangic_tarihi BETWEEN ? AND ? 
-            OR bitis_tarihi BETWEEN ? AND ?
+            AND silinme_tarihi IS NULL
+            AND (baslangic_tarihi BETWEEN ? AND ? OR bitis_tarihi BETWEEN ? AND ?)
         ");
         $sql->execute([$firma_id, $baslangic_tarihi, $bitis_tarihi, $baslangic_tarihi, $bitis_tarihi]);
         return $sql->fetch(PDO::FETCH_OBJ);
@@ -95,10 +95,11 @@ class BordroDonemModel extends Model
     public function createDonem($data)
     {
         $sql = $this->db->prepare("
-            INSERT INTO {$this->table} (donem_adi, baslangic_tarihi, bitis_tarihi, olusturma_tarihi) 
-            VALUES (:donem_adi, :baslangic_tarihi, :bitis_tarihi, NOW())
+            INSERT INTO {$this->table} (donem_adi,firma_id, baslangic_tarihi, bitis_tarihi, olusturma_tarihi) 
+            VALUES (:donem_adi, :firma_id, :baslangic_tarihi, :bitis_tarihi, NOW())
         ");
         $sql->bindParam(':donem_adi', $data['donem_adi']);
+        $sql->bindParam(':firma_id', $data['firma_id']);
         $sql->bindParam(':baslangic_tarihi', $data['baslangic_tarihi']);
         $sql->bindParam(':bitis_tarihi', $data['bitis_tarihi']);
         $sql->execute();

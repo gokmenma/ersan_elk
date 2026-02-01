@@ -22,7 +22,8 @@ class PersonelKesintileriModel extends Model
     public function getPersonelKesintileri($personel_id)
     {
         $sql = $this->db->prepare("
-            SELECT pk.*, pi.dosya_no, pi.icra_dairesi, bp.etiket as parametre_adi, bp.kod as parametre_kodu
+            SELECT pk.*, pi.dosya_no, pi.icra_dairesi, bp.etiket as parametre_adi, bp.kod as parametre_kodu,
+                   COALESCE(pk.durum, 'beklemede') as durum
             FROM {$this->table} pk
             LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
             LEFT JOIN bordro_parametreleri bp ON pk.parametre_id = bp.id
@@ -91,6 +92,9 @@ class PersonelKesintileriModel extends Model
             return false; // Zaten mevcut
         }
 
+        // Ana kesintinin durumunu al (onaylandıysa onaylandı olarak, beklemedeyse beklemede olarak kopyala)
+        $durum = $surekliKesinti->durum ?? 'beklemede';
+
         $data = [
             'personel_id' => $surekliKesinti->personel_id,
             'donem_id' => $donem_id,
@@ -103,7 +107,8 @@ class PersonelKesintileriModel extends Model
             'parametre_id' => $surekliKesinti->parametre_id,
             'icra_id' => $surekliKesinti->icra_id,
             'ana_kesinti_id' => $surekliKesinti->id, // Ana kayıt referansı
-            'aktif' => 1
+            'aktif' => 1,
+            'durum' => $durum // Ana kesintinin durumunu koru
         ];
 
         return $this->saveWithAttr($data);
@@ -144,6 +149,20 @@ class PersonelKesintileriModel extends Model
      */
     public function updateKesinti($id, $data)
     {
+        // Mevcut durumu kontrol et
+        $mevcut = $this->getKesinti($id);
+        if (!$mevcut) {
+            throw new \Exception('Kesinti bulunamadı.');
+        }
+
+        // Eğer mevcut durum 'onaylandi' ve yeni durum 'beklemede' ise engelle
+        if (
+            isset($mevcut->durum) && $mevcut->durum === 'onaylandi' &&
+            isset($data['durum']) && $data['durum'] === 'beklemede'
+        ) {
+            throw new \Exception('Onaylanmış bir kesinti tekrar beklemede durumuna alınamaz.');
+        }
+
         $sets = [];
         $params = [];
 

@@ -4,6 +4,7 @@ namespace App\Model;
 
 use App\Model\Model;
 use PDO;
+use App\Helper\Date;
 
 class PuantajModel extends Model
 {
@@ -17,37 +18,42 @@ class PuantajModel extends Model
     public function getFiltered($startDate, $endDate, $ekipKodu, $workType, $workResult = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT t.*, p.adi_soyadi as personel_adi 
+        $sql = "SELECT t.*, 
+                    p.adi_soyadi as personel_adi,
+                    f.firma_adi as firma,
+                    COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi,
+                    COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu
                 FROM $this->table t 
                 LEFT JOIN personel p ON t.personel_id = p.id 
+                LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                LEFT JOIN firmalar f ON f.id = t.firma_id
                 WHERE t.firma_id = ?";
         $params = [$firmaId];
 
         if ($startDate) {
             $sql .= " AND t.tarih >= ?";
-            $params[] = \App\Helper\Date::convertExcelDate($startDate, 'Y-m-d') ?: $startDate;
+            $params[] = Date::Ymd($startDate) ?: $startDate;
         }
         if ($endDate) {
             $sql .= " AND t.tarih <= ?";
-            $params[] = \App\Helper\Date::convertExcelDate($endDate, 'Y-m-d') ?: $endDate;
+            $params[] = Date::Ymd($endDate) ?: $endDate;
         }
         if ($ekipKodu) {
             $sql .= " AND t.personel_id = ?";
             $params[] = $ekipKodu;
         }
         if ($workType) {
-            $sql .= " AND t.is_emri_tipi = ?";
+            $sql .= " AND (tn.tur_adi = ? OR t.is_emri_tipi = ?)";
+            $params[] = $workType;
             $params[] = $workType;
         }
         if ($workResult) {
-            $sql .= " AND t.is_emri_sonucu = ?";
+            $sql .= " AND (tn.is_emri_sonucu = ? OR t.is_emri_sonucu = ?)";
+            $params[] = $workResult;
             $params[] = $workResult;
         }
 
         $sql .= " ORDER BY t.tarih DESC";
-
-        // DEBUG
-        file_put_contents(dirname(__DIR__, 2) . '/debug_sql.txt', "SQL: $sql\nParams: " . print_r($params, true) . "\n----------------\n", FILE_APPEND);
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -57,7 +63,15 @@ class PuantajModel extends Model
     public function getWorkTypes()
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $stmt = $this->db->prepare("SELECT DISTINCT is_emri_tipi FROM $this->table WHERE firma_id = ? AND is_emri_tipi IS NOT NULL AND is_emri_tipi != ''");
+        // Hem yeni normalized hem de eski string alanından unique değerleri al
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT COALESCE(tn.tur_adi, t.is_emri_tipi) as tur_adi
+            FROM $this->table t 
+            LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id 
+            WHERE t.firma_id = ? 
+            AND COALESCE(tn.tur_adi, t.is_emri_tipi) IS NOT NULL 
+            AND COALESCE(tn.tur_adi, t.is_emri_tipi) != ''
+        ");
         $stmt->execute([$firmaId]);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
@@ -65,15 +79,22 @@ class PuantajModel extends Model
     public function getWorkResults($personelId = null)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT DISTINCT is_emri_sonucu FROM $this->table WHERE firma_id = ? AND is_emri_sonucu IS NOT NULL AND is_emri_sonucu != ''";
+        // Hem yeni normalized hem de eski string alanından unique değerleri al
+        $sql = "
+            SELECT DISTINCT COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu
+            FROM $this->table t 
+            LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id 
+            WHERE t.firma_id = ? 
+            AND COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) IS NOT NULL 
+            AND COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) != ''";
         $params = [$firmaId];
 
         if ($personelId) {
-            $sql .= " AND personel_id = ?";
+            $sql .= " AND t.personel_id = ?";
             $params[] = $personelId;
         }
 
-        $sql .= " ORDER BY is_emri_sonucu ASC";
+        $sql .= " ORDER BY COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) ASC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -101,10 +122,14 @@ class PuantajModel extends Model
     public function getMonthlySummaryDetailed($year, $month)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT personel_id, DAY(tarih) as gun, is_emri_sonucu, SUM(sonuclanmis) as toplam 
-                FROM $this->table 
-                WHERE firma_id = ? AND YEAR(tarih) = ? AND MONTH(tarih) = ?
-                GROUP BY personel_id, DAY(tarih), is_emri_sonucu";
+        // COALESCE ile eski ve yeni alanlardan is_emri_sonucu al
+        $sql = "SELECT t.personel_id, DAY(t.tarih) as gun, 
+                    COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu, 
+                    SUM(t.sonuclanmis) as toplam 
+                FROM $this->table t
+                LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                WHERE t.firma_id = ? AND YEAR(t.tarih) = ? AND MONTH(t.tarih) = ?
+                GROUP BY t.personel_id, DAY(t.tarih), COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $year, $month]);
@@ -177,31 +202,33 @@ class PuantajModel extends Model
 
         // Temel sorgu
         $baseWhere = "t.firma_id = :firma_id";
-        
+
         // Tarih filtreleri
         if ($startDate) {
             $baseWhere .= " AND t.tarih >= :start_date";
-            $params['start_date'] = \App\Helper\Date::convertExcelDate($startDate, 'Y-m-d') ?: $startDate;
+            $params['start_date'] = Date::Ymd($startDate) ?: $startDate;
         }
         if ($endDate) {
             $baseWhere .= " AND t.tarih <= :end_date";
-            $params['end_date'] = \App\Helper\Date::convertExcelDate($endDate, 'Y-m-d') ?: $endDate;
+            $params['end_date'] = Date::Ymd($endDate) ?: $endDate;
         }
         if ($ekipKodu) {
             $baseWhere .= " AND t.personel_id = :ekip_kodu";
             $params['ekip_kodu'] = $ekipKodu;
         }
         if ($workType) {
-            $baseWhere .= " AND t.is_emri_tipi = :work_type";
+            // Hem yeni normalized hem de eski string alanından filtrele
+            $baseWhere .= " AND (tn.tur_adi = :work_type OR t.is_emri_tipi = :work_type)";
             $params['work_type'] = $workType;
         }
         if ($workResult) {
-            $baseWhere .= " AND t.is_emri_sonucu = :work_result";
+            // Hem yeni normalized hem de eski string alanından filtrele
+            $baseWhere .= " AND (tn.is_emri_sonucu = :work_result OR t.is_emri_sonucu = :work_result)";
             $params['work_result'] = $workResult;
         }
 
         // Toplam kayıt sayısı (filtresiz)
-        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t WHERE $baseWhere");
+        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id LEFT JOIN firmalar f ON t.firma_id = f.id WHERE $baseWhere");
         foreach ($params as $key => $val) {
             $totalQuery->bindValue(":$key", $val);
         }
@@ -213,29 +240,32 @@ class PuantajModel extends Model
         if (!empty($request['search']['value'])) {
             $searchValue = "%" . $request['search']['value'] . "%";
             $searchWhere = " AND (
-                t.firma LIKE :search OR
-                t.is_emri_tipi LIKE :search OR
+                f.firma_adi LIKE :search OR
+                COALESCE(tn.tur_adi, t.is_emri_tipi) LIKE :search OR
                 t.ekip_kodu LIKE :search OR
-                t.is_emri_sonucu LIKE :search OR
-                p.adi_soyadi LIKE :search
+                COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) LIKE :search OR
+                p.adi_soyadi LIKE :search OR
+                DATE_FORMAT(t.tarih, '%d.%m.%Y') LIKE :search
             )";
             $params['search'] = $searchValue;
         }
 
         // Sütun bazlı arama
         $colSearchMap = [
-            0 => 't.firma',
-            1 => 't.is_emri_tipi',
+            0 => 'DATE_FORMAT(t.tarih, "%d.%m.%Y")',
+            1 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
             2 => 'p.adi_soyadi',
-            3 => 't.is_emri_sonucu',
+            3 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
             4 => 't.sonuclanmis',
-            5 => 't.acik_olanlar',
-            6 => 't.tarih'
+            5 => 't.acik_olanlar'
         ];
-        
+
+
         if (isset($request['columns']) && is_array($request['columns'])) {
             foreach ($request['columns'] as $colIdx => $col) {
                 if (!empty($col['search']['value']) && isset($colSearchMap[$colIdx])) {
+
+
                     $searchVal = "%" . $col['search']['value'] . "%";
                     $paramKey = "col_search_" . $colIdx;
                     $searchWhere .= " AND {$colSearchMap[$colIdx]} LIKE :$paramKey";
@@ -245,24 +275,23 @@ class PuantajModel extends Model
         }
 
         // Filtrelenmiş kayıt sayısı
-        $filteredQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t LEFT JOIN personel p ON t.personel_id = p.id WHERE $baseWhere $searchWhere");
+        $filteredQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t LEFT JOIN personel p ON t.personel_id = p.id LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id LEFT JOIN firmalar f ON t.firma_id = f.id WHERE $baseWhere $searchWhere");
         foreach ($params as $key => $val) {
             $filteredQuery->bindValue(":$key", $val);
         }
         $filteredQuery->execute();
         $recordsFiltered = $filteredQuery->fetchColumn();
 
-        // Sıralama
+        // Sıralama (Tarih başa, Firma kaldırıldı)
         $orderColumn = 't.tarih';
         $orderDir = 'DESC';
         $colMap = [
-            0 => 't.firma',
-            1 => 't.is_emri_tipi',
+            0 => 't.tarih',
+            1 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
             2 => 'p.adi_soyadi',
-            3 => 't.is_emri_sonucu',
+            3 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
             4 => 't.sonuclanmis',
-            5 => 't.acik_olanlar',
-            6 => 't.tarih'
+            5 => 't.acik_olanlar'
         ];
         if (isset($request['order'][0])) {
             $orderColIdx = $request['order'][0]['column'];
@@ -272,10 +301,16 @@ class PuantajModel extends Model
             }
         }
 
-        // Veri çekme
-        $sql = "SELECT t.*, p.adi_soyadi as personel_adi 
+        // Veri çekme - COALESCE ile eski ve yeni alanlardan fallback
+        $sql = "SELECT t.*, 
+                    p.adi_soyadi as personel_adi,
+                    f.firma_adi,
+                    COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi,
+                    COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu
                 FROM {$this->table} t 
                 LEFT JOIN personel p ON t.personel_id = p.id 
+                LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                LEFT JOIN firmalar f ON t.firma_id = f.id
                 WHERE $baseWhere $searchWhere 
                 ORDER BY $orderColumn $orderDir 
                 LIMIT :start, :length";
@@ -284,8 +319,8 @@ class PuantajModel extends Model
         foreach ($params as $key => $val) {
             $stmt->bindValue(":$key", $val);
         }
-        $stmt->bindValue(':start', (int)($request['start'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':length', (int)($request['length'] ?? 10), PDO::PARAM_INT);
+        $stmt->bindValue(':start', (int) ($request['start'] ?? 0), PDO::PARAM_INT);
+        $stmt->bindValue(':length', (int) ($request['length'] ?? 10), PDO::PARAM_INT);
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_OBJ);
 
@@ -331,17 +366,23 @@ class PuantajModel extends Model
         $notInClause = "";
         if (!empty($matchedResults)) {
             $placeholders = implode(',', array_fill(0, count($matchedResults), '?'));
-            $notInClause = " AND t.is_emri_sonucu NOT IN ($placeholders)";
+            // COALESCE ile hem yeni hem eski alanı kontrol et
+            $notInClause = " AND COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) NOT IN ($placeholders)";
             $params = array_merge($params, $matchedResults);
         }
 
-        $sql = "SELECT t.*, p.adi_soyadi as personel_adi, ek.tur_adi as ekip_kodu
+        $sql = "SELECT t.*, 
+                    p.adi_soyadi as personel_adi, 
+                    ek.tur_adi as ekip_kodu,
+                    COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi,
+                    COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu
                 FROM yapilan_isler t
                 LEFT JOIN personel p ON t.personel_id = p.id
                 LEFT JOIN tanimlamalar ek ON p.ekip_no = ek.id
+                LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
                 WHERE t.firma_id = ? AND YEAR(t.tarih) = ? AND MONTH(t.tarih) = ? 
                 $notInClause
-                AND t.is_emri_sonucu IS NOT NULL AND t.is_emri_sonucu != ''
+                AND (t.is_emri_sonucu_id > 0 OR (t.is_emri_sonucu IS NOT NULL AND t.is_emri_sonucu != ''))
                 ORDER BY t.tarih ASC";
 
         $stmt = $this->db->prepare($sql);

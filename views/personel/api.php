@@ -282,6 +282,83 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
+    } elseif ($action == 'kesinti-onayla') {
+        // Kesinti onaylama
+        try {
+            $kesinti_id = intval($_POST['kesinti_id'] ?? 0);
+            
+            // Debug log
+            error_log("Kesinti Onayla - Gelen ID: " . ($_POST['kesinti_id'] ?? 'BOŞ') . " - intval: " . $kesinti_id);
+            
+            if (!$kesinti_id) {
+                throw new Exception("Kesinti ID gerekli.");
+            }
+            
+            $PersonelKesintileriModel = new \App\Model\PersonelKesintileriModel();
+            $result = $PersonelKesintileriModel->updateKesinti($kesinti_id, [
+                'durum' => 'onaylandi',
+                'onaylayan_id' => $_SESSION['user_id'] ?? null,
+                'onay_tarihi' => date('Y-m-d H:i:s')
+            ]);
+            
+            error_log("Kesinti Onayla - Update sonucu: " . ($result ? 'true' : 'false'));
+            
+            echo json_encode(['status' => 'success', 'message' => 'Kesinti onaylandı.']);
+        } catch (Exception $e) {
+            error_log("Kesinti Onayla - Hata: " . $e->getMessage());
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'kesinti-reddet') {
+        // Kesinti reddetme
+        try {
+            $kesinti_id = intval($_POST['kesinti_id'] ?? 0);
+            if (!$kesinti_id) {
+                throw new Exception("Kesinti ID gerekli.");
+            }
+            
+            $PersonelKesintileriModel = new \App\Model\PersonelKesintileriModel();
+            $PersonelKesintileriModel->updateKesinti($kesinti_id, [
+                'durum' => 'reddedildi',
+                'onaylayan_id' => $_SESSION['user_id'] ?? null,
+                'onay_tarihi' => date('Y-m-d H:i:s')
+            ]);
+            
+            echo json_encode(['status' => 'success', 'message' => 'Kesinti reddedildi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'kesinti-sil') {
+        // Kesinti silme
+        try {
+            $kesinti_id = intval($_POST['kesinti_id'] ?? 0);
+            if (!$kesinti_id) {
+                throw new Exception("Kesinti ID gerekli.");
+            }
+            
+            $PersonelKesintileriModel = new \App\Model\PersonelKesintileriModel();
+            $PersonelKesintileriModel->updateKesinti($kesinti_id, [
+                'silinme_tarihi' => date('Y-m-d H:i:s')
+            ]);
+            
+            echo json_encode(['status' => 'success', 'message' => 'Kesinti silindi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'kesinti-sonlandir') {
+        // Sürekli kesinti sonlandırma
+        try {
+            $kesinti_id = intval($_POST['kesinti_id'] ?? 0);
+            if (!$kesinti_id) {
+                throw new Exception("Kesinti ID gerekli.");
+            }
+            
+            $PersonelKesintileriModel = new \App\Model\PersonelKesintileriModel();
+            $PersonelKesintileriModel->sonlandirSurekliKesinti($kesinti_id);
+            
+            echo json_encode(['status' => 'success', 'message' => 'Kesinti sonlandırıldı.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
     } elseif ($action == 'get-details') {
         try {
             $id = Security::decrypt($_POST['id']) ?? 0;

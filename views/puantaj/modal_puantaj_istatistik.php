@@ -10,51 +10,71 @@ $workResult = $_GET['work_result'] ?? '';
 $firmaId = $_SESSION['firma_id'] ?? 0;
 
 $Puantaj = new \App\Model\PuantajModel();
+$Tanimlamalar = new \App\Model\TanimlamalarModel();
+
+// İş emri sonucu bazlı birim ücret ve tür adı map'i oluştur
+$isTurleri = $Tanimlamalar->getIsTurleri();
+$birimUcretMap = [];
+$turAdiMap = [];
+foreach ($isTurleri as $isTuru) {
+    if (!empty($isTuru->is_emri_sonucu)) {
+        $birimUcretMap[$isTuru->is_emri_sonucu] = floatval(\App\Helper\Helper::formattedMoneyToNumber($isTuru->is_turu_ucret ?? 0));
+        $turAdiMap[$isTuru->is_emri_sonucu] = $isTuru->tur_adi ?? '';
+    }
+}
 
 // Convert dates for SQL
 $sqlStart = \App\Helper\Date::convertExcelDate($startDate, 'Y-m-d') ?: $startDate;
 $sqlEnd = \App\Helper\Date::convertExcelDate($endDate, 'Y-m-d') ?: $endDate;
 
-// Common WHERE clause
-$where = " WHERE firma_id = ? AND tarih >= ? AND tarih <= ?";
+// Common WHERE clause - normalizasyon sonrası COALESCE kullanılıyor
+$where = " WHERE t.firma_id = ? AND t.tarih >= ? AND t.tarih <= ?";
 $params = [$firmaId, $sqlStart, $sqlEnd];
 
 if ($personelId) {
-    $where .= " AND personel_id = ?";
+    $where .= " AND t.personel_id = ?";
     $params[] = $personelId;
 }
 
 if ($workType) {
-    $where .= " AND is_emri_tipi = ?";
+    // Hem yeni hem eski alandan filtrele
+    $where .= " AND (tn.tur_adi = ? OR t.is_emri_tipi = ?)";
+    $params[] = $workType;
     $params[] = $workType;
 }
 
 if ($workResult) {
-    $where .= " AND is_emri_sonucu = ?";
+    // Hem yeni hem eski alandan filtrele
+    $where .= " AND (tn.is_emri_sonucu = ? OR t.is_emri_sonucu = ?)";
+    $params[] = $workResult;
     $params[] = $workResult;
 }
 
-// 1. Query for statistics by work type
-$sqlType = "SELECT is_emri_tipi, 
+// 1. Query for statistics by work type - COALESCE ile hem yeni hem eski alanlardan
+$sqlType = "SELECT COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi, 
                COUNT(*) as kayit_sayisi, 
-               SUM(sonuclanmis) as toplam_sonuclanmis,
-               SUM(acik_olanlar) as toplam_acik
-        FROM yapilan_isler 
+               SUM(t.sonuclanmis) as toplam_sonuclanmis,
+               SUM(t.acik_olanlar) as toplam_acik
+        FROM yapilan_isler t
+        LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
         $where
-        GROUP BY is_emri_tipi ORDER BY kayit_sayisi DESC";
+        GROUP BY COALESCE(tn.tur_adi, t.is_emri_tipi) ORDER BY kayit_sayisi DESC";
 
 $stmtType = $Puantaj->db->prepare($sqlType);
 $stmtType->execute($params);
 $statsType = $stmtType->fetchAll(PDO::FETCH_OBJ);
 
-// 2. Query for statistics by work order result
-$sqlResult = "SELECT is_emri_sonucu, 
+// 2. Query for statistics by work order result - COALESCE ile hem yeni hem eski alanlardan
+$sqlResult = "SELECT COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu,
+               COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi,
                COUNT(*) as kayit_sayisi, 
-               SUM(sonuclanmis) as toplam_sonuclanmis,
-               SUM(acik_olanlar) as toplam_acik
-        FROM yapilan_isler 
+               SUM(t.sonuclanmis) as toplam_sonuclanmis,
+               SUM(t.acik_olanlar) as toplam_acik
+        FROM yapilan_isler t
+        LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
         $where
-        GROUP BY is_emri_sonucu ORDER BY kayit_sayisi DESC";
+        GROUP BY COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), COALESCE(tn.tur_adi, t.is_emri_tipi) 
+        ORDER BY kayit_sayisi DESC";
 
 $stmtResult = $Puantaj->db->prepare($sqlResult);
 $stmtResult->execute($params);
@@ -135,7 +155,9 @@ $grandTotalResult = ['kayit' => 0, 'sonuclanmis' => 0, 'acik' => 0];
         <table class="table table-sm table-bordered table-striped mb-0" id="puantajResultTable">
             <thead class="table-light">
                 <tr>
+                    <th>İş Türü</th>
                     <th>İş Emri Sonucu</th>
+                    <th class="text-center">Birim Ücret</th>
                     <th class="text-center">Kayıt Sayısı</th>
                     <th class="text-center">Sonuçlanmış</th>
                     <th class="text-center">Açık Olanlar</th>
@@ -144,16 +166,31 @@ $grandTotalResult = ['kayit' => 0, 'sonuclanmis' => 0, 'acik' => 0];
             <tbody>
                 <?php if (empty($statsResult)): ?>
                     <tr>
-                        <td colspan="4" class="text-center py-3 text-muted">Bu kriterlere uygun veri bulunamadı.</td>
+                        <td colspan="6" class="text-center py-3 text-muted">Bu kriterlere uygun veri bulunamadı.</td>
                     </tr>
                 <?php else: ?>
-                    <?php foreach ($statsResult as $row):
+                    <?php
+                    $grandTotalBirimUcret = 0;
+                    foreach ($statsResult as $row):
                         $grandTotalResult['kayit'] += $row->kayit_sayisi;
                         $grandTotalResult['sonuclanmis'] += $row->toplam_sonuclanmis;
                         $grandTotalResult['acik'] += $row->toplam_acik;
+                        // Birim ücreti al
+                        $birimUcret = $birimUcretMap[$row->is_emri_sonucu] ?? 0;
+                        $grandTotalBirimUcret += $birimUcret * $row->toplam_sonuclanmis;
                         ?>
                         <tr>
+                            <td class="fw-medium">
+                                <?= $row->is_emri_tipi ?: '<span class="text-muted">-</span>' ?>
+                            </td>
                             <td class="fw-medium"><?= $row->is_emri_sonucu ?: 'Belirtilmemiş' ?></td>
+                            <td class="text-center">
+                                <?php if ($birimUcret > 0): ?>
+                                    <span class="badge bg-info"><?= number_format($birimUcret, 2, ',', '.') ?> ₺</span>
+                                <?php else: ?>
+                                    <span class="text-muted">-</span>
+                                <?php endif; ?>
+                            </td>
                             <td class="text-center"><?= $row->kayit_sayisi ?></td>
                             <td class="text-center text-success"><?= number_format($row->toplam_sonuclanmis, 0, ',', '.') ?>
                             </td>
@@ -165,7 +202,10 @@ $grandTotalResult = ['kayit' => 0, 'sonuclanmis' => 0, 'acik' => 0];
             <?php if (!empty($statsResult)): ?>
                 <tfoot class="table-light fw-bold">
                     <tr>
-                        <td>TOPLAM</td>
+                        <td colspan="2">TOPLAM</td>
+                        <td class="text-center">
+                            <span class="badge bg-success"><?= number_format($grandTotalBirimUcret, 2, ',', '.') ?> ₺</span>
+                        </td>
                         <td class="text-center"><?= $grandTotalResult['kayit'] ?></td>
                         <td class="text-center text-success">
                             <?= number_format($grandTotalResult['sonuclanmis'], 0, ',', '.') ?>

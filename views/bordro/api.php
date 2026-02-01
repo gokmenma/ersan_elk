@@ -3,7 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once dirname(__DIR__, 2) . '/Autoloader.php';
+require_once dirname(__DIR__, 2) . '/bootstrap.php';
 
 use App\Model\BordroDonemModel;
 use App\Model\BordroPersonelModel;
@@ -14,6 +14,7 @@ use App\Model\AvansModel;
 use App\Model\PersonelIzinleriModel;
 use App\Helper\Helper;
 use App\Helper\Date;
+use App\Helper\Security;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -260,16 +261,64 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $hesaplananSayisi = 0;
+                $toplamOnayBekleyen = 0;
+                $toplamOnayBekleyenTutar = 0;
+                $onayBekleyenPersoneller = []; // Personel listesi
+
+                $Personel = new PersonelModel();
 
                 foreach ($personel_ids as $bp_id) {
                     if ($BordroPersonel->hesaplaMaas(intval($bp_id))) {
                         $hesaplananSayisi++;
+                        
+                        // Bu personelin onay bekleyen kesintilerini kontrol et
+                        $bp = $BordroPersonel->find(intval($bp_id));
+                        if ($bp) {
+                            $onayBekleyen = $BordroPersonel->getOnayBekleyenKesintiler($bp->personel_id, $bp->donem_id);
+                            if ($onayBekleyen && $onayBekleyen->adet > 0) {
+                                $toplamOnayBekleyen += $onayBekleyen->adet;
+                                $toplamOnayBekleyenTutar += $onayBekleyen->toplam_tutar;
+                                
+                                // Personel adını al
+                                $personelData = $Personel->find($bp->personel_id);
+                                if ($personelData) {
+                                    $onayBekleyenPersoneller[] = [
+                                        'personel_id' => $bp->personel_id,
+                                        'adi_soyadi' => $personelData->adi_soyadi,
+                                        'kesinti_adet' => $onayBekleyen->adet,
+                                        'kesinti_tutar' => $onayBekleyen->toplam_tutar
+                                    ];
+                                }
+                            }
+                        }
                     }
+                }
+
+                $message = "$hesaplananSayisi personelin maaşı hesaplandı.";
+                $warning = null;
+                $warningDetails = null;
+                
+                if ($toplamOnayBekleyen > 0) {
+                    $warning = "Dikkat: $toplamOnayBekleyen adet kesinti onay bekliyor (Toplam: " . number_format($toplamOnayBekleyenTutar, 2, ',', '.') . " TL). Onaylanmadan maaş hesaplamasına dahil edilmeyecek.";
+                    
+                    // Personel detaylarını oluştur (tıklanabilir linkler ile - şifreli ID)
+                    $detaylar = [];
+                    foreach ($onayBekleyenPersoneller as $p) {
+                        $encryptedId = Security::encrypt($p['personel_id']);
+                        $personelLink = "index.php?p=personel%2Fmanage&id=" . urlencode($encryptedId) . "&tab=kesintiler";
+                        $detaylar[] = "<li><a href='" . $personelLink . "' class='text-primary fw-bold'>" . htmlspecialchars($p['adi_soyadi']) . "</a>: " . $p['kesinti_adet'] . " kesinti (" . number_format($p['kesinti_tutar'], 2, ',', '.') . " TL)</li>";
+                    }
+                    $warningDetails = "<ul class='text-start mb-0 ps-3' style='list-style:none;'>" . implode('', $detaylar) . "</ul>";
                 }
 
                 echo json_encode([
                     'status' => 'success',
-                    'message' => "$hesaplananSayisi personelin maaşı hesaplandı."
+                    'message' => $message,
+                    'warning' => $warning,
+                    'warning_details' => $warningDetails,
+                    'onay_bekleyen_adet' => $toplamOnayBekleyen,
+                    'onay_bekleyen_tutar' => $toplamOnayBekleyenTutar,
+                    'onay_bekleyen_personeller' => $onayBekleyenPersoneller
                 ]);
 
                 $SystemLog->logAction($userId, 'Maaş Hesaplama', "$hesaplananSayisi personelin maaşı hesaplandı.");
@@ -1182,6 +1231,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'status' => 'success',
                         'message' => 'Dönem başarıyla silindi.'
                     ]);
+                    unset($_SESSION['selectedDonemId']);
                 } else {
                     throw new Exception('Dönem silinirken bir hata oluştu.');
                 }

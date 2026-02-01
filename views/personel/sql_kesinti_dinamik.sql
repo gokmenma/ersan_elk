@@ -67,6 +67,27 @@ PREPARE stmt FROM @query;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
+-- Durum ekleme (onay durumu için)
+SET @column_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'personel_kesintileri' AND COLUMN_NAME = 'durum');
+SET @query = IF(@column_exists = 0, 'ALTER TABLE personel_kesintileri ADD COLUMN durum ENUM(''beklemede'', ''onaylandi'', ''reddedildi'') NOT NULL DEFAULT ''beklemede'' AFTER aktif', 'SELECT 1');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Onaylayan kullanıcı ID ekleme
+SET @column_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'personel_kesintileri' AND COLUMN_NAME = 'onaylayan_id');
+SET @query = IF(@column_exists = 0, 'ALTER TABLE personel_kesintileri ADD COLUMN onaylayan_id INT NULL AFTER durum', 'SELECT 1');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Onay tarihi ekleme
+SET @column_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'personel_kesintileri' AND COLUMN_NAME = 'onay_tarihi');
+SET @query = IF(@column_exists = 0, 'ALTER TABLE personel_kesintileri ADD COLUMN onay_tarihi DATETIME NULL AFTER onaylayan_id', 'SELECT 1');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 -- =====================================================================
 -- personel_ek_odemeler tablosuna yeni alanlar ekle
 -- =====================================================================
