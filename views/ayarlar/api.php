@@ -19,7 +19,8 @@ $action = $_POST['action'] ?? '';
 
 switch ($action) {
     case 'get':
-        $settings = $Settings->getAllSettingsAsKeyValue();
+        $firma_id = !empty($_POST['firma_id']) ? (int) $_POST['firma_id'] : null;
+        $settings = $Settings->getAllSettingsAsKeyValue($firma_id);
         $response = [
             'status' => 'success',
             'message' => 'Ayarlar başarıyla alındı.',
@@ -31,6 +32,15 @@ switch ($action) {
 
         $settingsToUpdate = $_POST ?? [];
         $firma_id = !empty($_POST['firma_id']) ? (int) $_POST['firma_id'] : null;
+
+        // Checkbox'lar işaretlenmediğinde POST içinde gönderilmez. 
+        // Burada listelenen checkbox'lar eğer POST içinde yoksa '0' olarak kaydedilir.
+        $checkboxKeys = ['email_gonderim_aktif', 'sms_gonderim_aktif', 'online_sorgulama_aktif'];
+        foreach ($checkboxKeys as $cbKey) {
+            if (!isset($settingsToUpdate[$cbKey])) {
+                $settingsToUpdate[$cbKey] = '0';
+            }
+        }
 
         // Ayar olmayan alanları temizle
         $excludeKeys = ['action', 'firma_id', 'user_id', 'config_id'];

@@ -6,32 +6,29 @@ use App\Model\SettingsModel;
 $Settings = new SettingsModel();
 
 // Tüm ayarları al
-$allSettings = $Settings->getAllSettingsAsKeyValue();
-// Bu değişkenlerin veritabanından veya güvenli bir yapılandırma dosyasından geldiğini varsayalım
-// Örnek olması için boş veya varsayılan değerlerle başlatıyoruz
-$config_id = $iletisim_servis_ayarlari->id ?? 1; // Genellikle tek bir kayıt olur (örn: ID=1)
+$firma_id = $_SESSION["firma_id"] ?? null;
+$allSettings = $Settings->getAllSettingsAsKeyValue($firma_id);
 
 // E-posta Ayarları
-$email_gonderim_aktif = $iletisim_servis_ayarlari->email_gonderim_aktif ?? true;
-$smtp_host = $iletisim_servis_ayarlari->smtp_host ?? 'smtp.example.com';
-$smtp_port = $iletisim_servis_ayarlari->smtp_port ?? 587;
-$smtp_kullanici = $iletisim_servis_ayarlari->smtp_kullanici ?? 'user@example.com';
-$smtp_sifre = $iletisim_servis_ayarlari->smtp_sifre ?? ''; // Şifreler genellikle gösterilmez, sadece yeni girilirse güncellenir
-$smtp_guvenlik = $iletisim_servis_ayarlari->smtp_guvenlik ?? 'tls'; // 'ssl', 'tls', 'none'
-$gonderen_eposta = $iletisim_servis_ayarlari->gonderen_eposta ?? 'noreply@example.com';
-$gonderen_adi = $iletisim_servis_ayarlari->gonderen_adi ?? 'Sistem Bildirimleri';
+$email_gonderim_aktif = ($allSettings['email_gonderim_aktif'] ?? '0') === '1';
+$smtp_host = $allSettings['smtp_host'] ?? 'smtp.example.com';
+$smtp_port = $allSettings['smtp_port'] ?? 587;
+$smtp_kullanici = $allSettings['smtp_kullanici'] ?? 'user@example.com';
+$smtp_sifre = $allSettings['smtp_sifre'] ?? '';
+$smtp_guvenlik = $allSettings['smtp_guvenlik'] ?? 'tls'; // 'ssl', 'tls', 'none'
+$gonderen_eposta = $allSettings['gonderen_eposta'] ?? 'noreply@example.com';
+$gonderen_adi = $allSettings['gonderen_adi'] ?? 'Sistem Bildirimleri';
 
 // SMS Ayarları
-$sms_gonderim_aktif = $iletisim_servis_ayarlari->sms_gonderim_aktif ?? true;
-$sms_servis_saglayici = $allSettings['sms_servis_saglayici'] ?? ''; // Örnek: 'netgsm', 'mutlucell', 'iletimerkezi', 'twilio', 'verimor', 'custom_api'
-$sms_api_kullanici = $allSettings['sms_api_kullanici'] ?? ''; // API kullanıcı adı veya numarası
-$sms_api_sifre = $allSettings['sms_api_sifre'] ?? ''; // API şifresi veya token
-$sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
+$sms_gonderim_aktif = ($allSettings['sms_gonderim_aktif'] ?? '0') === '1';
+$sms_servis_saglayici = $allSettings['sms_servis_saglayici'] ?? '';
+$sms_api_kullanici = $allSettings['sms_api_kullanici'] ?? '';
+$sms_api_sifre = $allSettings['sms_api_sifre'] ?? '';
+$sms_baslik = $allSettings['sms_baslik'] ?? '';
 
 ?>
 
 <form action="" id="iletisimServisAyarlariForm">
-    <input type="hidden" name="config_id" value="<?php echo htmlspecialchars($config_id, ENT_QUOTES, 'UTF-8'); ?>">
     <input type="hidden" name="firma_id" value="<?php echo $_SESSION["firma_id"] ?? ''; ?>">
     <input type="hidden" name="user_id" value="<?php echo $_SESSION["user_id"] ?? ''; ?>">
 
@@ -327,7 +324,7 @@ $sms_baslik = $allSettings['sms_baslik']; // SMS başlığı (originator)
                 //     console.log(pair[0] + ': ' + pair[1]);
                 // }
 
-                fetch('/views/ayarlar/api.php', { // API endpoint'inizi buraya girin
+                fetch('views/ayarlar/api.php', { // API endpoint'inizi buraya girin
                     method: 'POST',
                     body: formData
                 })

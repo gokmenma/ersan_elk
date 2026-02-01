@@ -29,17 +29,26 @@ class SettingsModel extends Model
 
     /**
      * Tüm ayarları 'set_name' => 'set_value' formatında bir dizi olarak döndürür.
+     * @param int|null $firma_id Firma bazlı ayarları almak için opsiyonel firma ID
      * @return array Ayarlar dizisi
      */
-    public function getAllSettingsAsKeyValue(): array
+    public function getAllSettingsAsKeyValue(?int $firma_id = null): array
     {
-        $stmt = $this->db->query("SELECT set_name, set_value FROM {$this->table}");
-        $results = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        // Önce global ayarları al
+        $stmt = $this->db->prepare("SELECT set_name, set_value FROM {$this->table} WHERE firma_id IS NULL AND user_id IS NULL");
+        $stmt->execute();
+        $globalSettings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
 
-        if ($results === false) {
-            return [];
+        if ($firma_id !== null) {
+            // Firma bazlı ayarları al ve global olanlarla birleştir (firma ayarları globali ezer)
+            $stmt = $this->db->prepare("SELECT set_name, set_value FROM {$this->table} WHERE firma_id = :firma_id");
+            $stmt->execute(['firma_id' => $firma_id]);
+            $firmaSettings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
+
+            return array_merge($globalSettings, $firmaSettings);
         }
-        return $results;
+
+        return $globalSettings;
     }
 
 
