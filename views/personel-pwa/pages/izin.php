@@ -608,8 +608,8 @@
             return;
         }
 
-        // Kalan izin kontrolü
-        if (hakedisData && toplamGun > hakedisData.kalan_izin) {
+        // Kalan izin kontrolü(izin tipi yıllık izin ise)
+        if (formData.izin_tipi === 'yillik' && hakedisData && toplamGun > hakedisData.kalan_izin) {
             Toast.show(
                 `Yetersiz izin hakkı! Talebiniz: ${toplamGun} gün, Kalan izniniz: ${hakedisData.kalan_izin} gün`,
                 'error'

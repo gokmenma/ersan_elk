@@ -664,6 +664,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     echo json_encode(['status' => $result ? 'success' : 'error']);
     exit;
 }
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'endeks-sil') {
+    $id = $_POST['id'] ?? 0;
+    $EndeksOkuma = new EndeksOkumaModel();
+    $stmt = $EndeksOkuma->db->prepare("UPDATE endeks_okuma SET silinme_tarihi = NOW() WHERE id = ?");
+    $result = $stmt->execute([$id]);
+    echo json_encode(['status' => $result ? 'success' : 'error']);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'puantaj-sil') {
+    $id = $_POST['id'] ?? 0;
+    $Puantaj = new PuantajModel();
+    $stmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE id = ?");
+    $result = $stmt->execute([$id]);
+    echo json_encode(['status' => $result ? 'success' : 'error']);
+    exit;
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'kacak-kaydet') {
     $id = $_POST['id'] ?? 0;
     $tarih = $_POST['tarih'] ?? date('Y-m-d');
@@ -763,7 +781,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'okunan_abone_sayisi' => $record->okunan_abone_sayisi,
             'ort_okunan_abone_sayisi_gunluk' => number_format($record->ort_okunan_abone_sayisi_gunluk, 2, ',', '.'),
             'okuma_performansi' => '%' . number_format($record->okuma_performansi, 2, ',', '.'),
-            'tarih' => \App\Helper\Date::dmY($record->tarih)
+            'tarih' => \App\Helper\Date::dmY($record->tarih),
+            'id' => $record->id
         ];
     }
 
@@ -798,7 +817,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'personel_adi' => $record->personel_adi ?: '<span class="text-muted">' . htmlspecialchars($record->ekip_kodu ?? '') . '</span>',
             'is_emri_sonucu' => $record->is_emri_sonucu ?? '',
             'sonuclanmis' => $record->sonuclanmis ?? 0,
-            'acik_olanlar' => $record->acik_olanlar ?? 0
+            'acik_olanlar' => $record->acik_olanlar ?? 0,
+            'id' => $record->id
         ];
     }
 
@@ -840,6 +860,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                 <td><?= number_format($record->ort_okunan_abone_sayisi_gunluk, 2, ',', '.') ?></td>
                 <td>%<?= number_format($record->okuma_performansi, 2, ',', '.') ?></td>
                 <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
+                <td>
+                    <button class="btn btn-sm btn-soft-danger delete-endeks" data-id="<?= $record->id ?>"><i
+                            class="bx bx-trash"></i></button>
+                </td>
             </tr>
         <?php endforeach;
     } elseif ($tab === 'kacak_kontrol') {
@@ -883,6 +907,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                 <td><?= $record->sonuclanmis ?></td>
                 <td><?= $record->acik_olanlar ?></td>
                 <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
+                <td>
+                    <button class="btn btn-sm btn-soft-danger delete-puantaj" data-id="<?= $record->id ?>"><i
+                            class="bx bx-trash"></i></button>
+                </td>
             </tr>
         <?php endforeach;
     }

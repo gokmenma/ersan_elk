@@ -39,7 +39,7 @@ class EndeksOkumaModel extends Model
         $sql = "SELECT t.*, p.adi_soyadi as personel_adi 
                 FROM $this->table t 
                 LEFT JOIN personel p ON t.personel_id = p.id 
-                WHERE t.firma_id = ?";
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL";
         $params = [$firmaId];
 
         if ($startDate) {
@@ -74,7 +74,7 @@ class EndeksOkumaModel extends Model
         $params = ['firma_id' => $firmaId];
 
         // Temel sorgu
-        $baseWhere = "t.firma_id = :firma_id";
+        $baseWhere = "t.firma_id = :firma_id AND t.silinme_tarihi IS NULL";
 
         // Tarih filtreleri
         if ($startDate) {

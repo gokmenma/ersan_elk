@@ -53,67 +53,91 @@ foreach ($workResults as $wr) {
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header">
-                    <h4 class="card-title">Filtreleme</h4>
-                    <form method="GET" action="" id="filterForm">
-                        <input type="hidden" name="p" value="puantaj/veri-yukleme">
-                        <input type="hidden" name="tab" id="activeTabInput" value="<?= $_GET['tab'] ?? 'okuma' ?>">
-                        <div class="row g-3">
-                            <div class="col-md-2">
-                                <?php echo Form::FormFloatInput(
-                                    type: 'text',
-                                    name: 'start_date',
-                                    value: $startDate,
-                                    placeholder: '',
-                                    label: "Başlangıç Tarihi",
-                                    icon: "calendar",
-                                    class: "form-control flatpickr",
-                                ); ?>
-                            </div>
-                            <div class="col-md-2">
-                                <?php echo Form::FormFloatInput(
-                                    type: 'text',
-                                    name: 'end_date',
-                                    value: $endDate,
-                                    placeholder: '',
-                                    label: "Bitiş Tarihi",
-                                    icon: "calendar",
-                                    class: "form-control flatpickr",
-                                ); ?>
-                            </div>
-                            <div class="col-md-3">
-                                <?php echo Form::FormSelect2('ekip_kodu', $personelOptions, $ekipKodu, 'Personel Adı Soyadı', 'grid', 'key', '', 'form-select select2'); ?>
-                            </div>
-                            <div class="col-md-2" id="workTypeFilterContainer" style="display: none;">
-                                <?php echo Form::FormSelect2(
-                                    name: 'work_type',
-                                    options: $workTypeOptions,
-                                    selectedValue: $workType,
-                                    textField: "",
-                                    label: "Yapılan İş",
-                                    icon: "users",
-                                    valueField: "key"
-                                ); ?>
-                            </div>
-                            <div class="col-md-3" id="workResultFilterContainer" style="display: none;">
-                                <?php echo Form::FormSelect2(
-                                    name: 'work_result',
-                                    options: $workResultOptions,
-                                    selectedValue: $_GET['work_result'] ?? '',
-                                    textField: "",
-                                    label: "İş Sonucu",
-                                    icon: "check-circle",
-                                    valueField: "key"
-                                ); ?>
-                            </div>
+                <div class="card-body p-2">
+                    <div class="accordion" id="filterAccordion">
+                        <div class="accordion-item border-0">
+                            <h2 class="accordion-header" id="headingOne">
+                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                                    <div class="d-flex align-items-center justify-content-between w-100 me-3">
+                                        <div>
+                                            <i class="bx bx-filter-alt me-2"></i> Filtreleme Seçenekleri
+                                        </div>
+                                        <div id="filterSummary" class="d-none d-md-flex gap-2">
+                                            <!-- JS ile doldurulacak -->
+                                        </div>
+                                    </div>
+                                </button>
+                            </h2>
                         </div>
-                        <div class="row mt-3">
-                            <div class="col-md-12 text-end">
-                                <button type="submit" class="btn btn-primary">Filtrele</button>
-                                <button type="button" class="btn btn-secondary" id="btnClearFilters">Temizle</button>
-                            </div>
+                    </div>
+
+                    <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne"
+                        data-bs-parent="#filterAccordion">
+                        <div class="accordion-body pt-3">
+                            <form method="GET" action="" id="filterForm">
+                                <input type="hidden" name="p" value="puantaj/veri-yukleme">
+                                <input type="hidden" name="tab" id="activeTabInput"
+                                    value="<?= $_GET['tab'] ?? 'okuma' ?>">
+                                <div class="row g-3">
+                                    <div class="col-md-2">
+                                        <?php echo Form::FormFloatInput(
+                                            type: 'text',
+                                            name: 'start_date',
+                                            value: $startDate,
+                                            placeholder: '',
+                                            label: "Başlangıç Tarihi",
+                                            icon: "calendar",
+                                            class: "form-control flatpickr",
+                                        ); ?>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <?php echo Form::FormFloatInput(
+                                            type: 'text',
+                                            name: 'end_date',
+                                            value: $endDate,
+                                            placeholder: '',
+                                            label: "Bitiş Tarihi",
+                                            icon: "calendar",
+                                            class: "form-control flatpickr",
+                                        ); ?>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <?php echo Form::FormSelect2('ekip_kodu', $personelOptions, $ekipKodu, 'Personel Adı Soyadı', 'grid', 'key', '', 'form-select select2'); ?>
+                                    </div>
+                                    <div class="col-md-2" id="workTypeFilterContainer"
+                                        style="display: <?= $activeTab === 'yapilan_isler' ? 'block' : 'none' ?>;">
+                                        <?php echo Form::FormSelect2(
+                                            name: 'work_type',
+                                            options: $workTypeOptions,
+                                            selectedValue: $workType,
+                                            textField: "",
+                                            label: "Yapılan İş",
+                                            icon: "users",
+                                            valueField: "key"
+                                        ); ?>
+                                    </div>
+                                    <div class="col-md-3" id="workResultFilterContainer"
+                                        style="display: <?= $activeTab === 'yapilan_isler' ? 'block' : 'none' ?>;">
+                                        <?php echo Form::FormSelect2(
+                                            name: 'work_result',
+                                            options: $workResultOptions,
+                                            selectedValue: $_GET['work_result'] ?? '',
+                                            textField: "",
+                                            label: "İş Sonucu",
+                                            icon: "check-circle",
+                                            valueField: "key"
+                                        ); ?>
+                                    </div>
+                                    <div class="col-md-2 d-flex align-items-end gap-2">
+                                        <button type="submit" class="btn btn-primary flex-grow-1">Filtrele</button>
+                                        <button type="button" class="btn btn-secondary"
+                                            id="btnClearFilters">Temizle</button>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -197,6 +221,7 @@ foreach ($workResults as $wr) {
                                 <th>Ort. Okunan Abone</th>
                                 <th>Okuma Perf. (%)</th>
                                 <th>Tarih</th>
+                                <th>İşlem</th>
                             </tr>
                         </thead>
                         <tbody id="okumaBody">
@@ -249,6 +274,7 @@ foreach ($workResults as $wr) {
                                 <th>İş Emri Sonucu</th>
                                 <th>Sonuçlanmış</th>
                                 <th>Açık Olanlar</th>
+                                <th>İşlem</th>
                             </tr>
                         </thead>
                         <tbody id="yapilanIslerBody">
@@ -725,6 +751,52 @@ foreach ($workResults as $wr) {
         var puantajDataTable = null;
         var kacakDataTable = null;
 
+        // Filtre özetini güncelle
+        function updateFilterSummary() {
+            let summary = '';
+            const startDate = $('input[name="start_date"]').val();
+            const endDate = $('input[name="end_date"]').val();
+            const ekipKodu = $('select[name="ekip_kodu"]').val();
+            const ekipText = $('select[name="ekip_kodu"] option:selected').text();
+            const workType = $('select[name="work_type"]').val();
+            const workTypeText = $('select[name="work_type"] option:selected').text();
+            const workResult = $('select[name="work_result"]').val();
+            const workResultText = $('select[name="work_result"] option:selected').text();
+            const activeTab = $('#activeTabInput').val();
+
+            if (startDate && endDate) {
+                summary += `<div class="filter-summary-badge"><span class="badge-label">Tarih:</span><span class="badge-value">${startDate} - ${endDate}</span></div>`;
+            }
+
+            if (ekipKodu && ekipKodu !== '') {
+                summary += `<div class="filter-summary-badge"><span class="badge-label">Pers:</span><span class="badge-value">${ekipText}</span><button type="button" class="btn-clear-filter" data-filter="ekip_kodu"><i class="bx bx-x"></i></button></div>`;
+            }
+
+            if (activeTab === 'yapilan_isler') {
+                if (workType && workType !== '') {
+                    summary += `<div class="filter-summary-badge"><span class="badge-label">İş:</span><span class="badge-value">${workTypeText}</span><button type="button" class="btn-clear-filter" data-filter="work_type"><i class="bx bx-x"></i></button></div>`;
+                }
+                if (workResult && workResult !== '') {
+                    summary += `<div class="filter-summary-badge"><span class="badge-label">Sonuç:</span><span class="badge-value">${workResultText}</span><button type="button" class="btn-clear-filter" data-filter="work_result"><i class="bx bx-x"></i></button></div>`;
+                }
+            }
+
+            $('#filterSummary').html(summary);
+        }
+
+        $(document).on('click', '.btn-clear-filter', function (e) {
+            e.stopPropagation();
+            const filterType = $(this).data('filter');
+            if (filterType === 'ekip_kodu') {
+                $('select[name="ekip_kodu"]').val('').trigger('change');
+            } else if (filterType === 'work_type') {
+                $('select[name="work_type"]').val('').trigger('change');
+            } else if (filterType === 'work_result') {
+                $('select[name="work_result"]').val('').trigger('change');
+            }
+            $('#filterForm').trigger('submit');
+        });
+
         // Filtre değerlerini localStorage'a kaydet
         function saveFiltersToStorage() {
             var filters = {
@@ -736,6 +808,7 @@ foreach ($workResults as $wr) {
                 tab: $('#activeTabInput').val()
             };
             localStorage.setItem('puantaj_filters', JSON.stringify(filters));
+            updateFilterSummary();
         }
 
         // localStorage'dan filtreleri yükle (eğer URL'de yoksa)
@@ -767,6 +840,7 @@ foreach ($workResults as $wr) {
                         $('select[name="work_result"]').val(filters.work_result).trigger('change');
                     }
                 }
+                updateFilterSummary();
             }
         }
 
@@ -800,20 +874,20 @@ foreach ($workResults as $wr) {
         });
 
         // Form submit öncesi filtreleri kaydet
-        $('#filterForm').on('submit', function() {
+        $('#filterForm').on('submit', function () {
             saveFiltersToStorage();
         });
 
         // Temizle butonu mantığı
-        $('#btnClearFilters').on('click', function() {
+        $('#btnClearFilters').on('click', function () {
             // Sadece ekip ve iş filtrelerini temizle
             $('select[name="ekip_kodu"]').val('').trigger('change');
             $('select[name="work_type"]').val('').trigger('change');
             $('select[name="work_result"]').val('').trigger('change');
-            
+
             // Storage'ı da güncelle (saveFiltersToStorage mevcut UI değerlerini alıp kaydedeceği için ekip_kodu boş gidecek, tarihler/tab kalacak)
             saveFiltersToStorage();
-            
+
             // Formu gönder
             $('#filterForm').trigger('submit');
         });
@@ -864,7 +938,14 @@ foreach ($workResults as $wr) {
                     { data: 'okunan_abone_sayisi' },
                     { data: 'ort_okunan_abone_sayisi_gunluk' },
                     { data: 'okuma_performansi' },
-                    { data: 'tarih' }
+                    { data: 'tarih' },
+                    {
+                        data: 'id',
+                        render: function (data, type, row) {
+                            return `<button class="btn btn-sm btn-soft-danger delete-endeks" data-id="${data}"><i class="bx bx-trash"></i></button>`;
+                        },
+                        orderable: false
+                    }
                 ],
                 order: [[10, 'desc']]
             }));
@@ -897,7 +978,14 @@ foreach ($workResults as $wr) {
                     { data: 'personel_adi' },
                     { data: 'is_emri_sonucu' },
                     { data: 'sonuclanmis' },
-                    { data: 'acik_olanlar' }
+                    { data: 'acik_olanlar' },
+                    {
+                        data: 'id',
+                        render: function (data, type, row) {
+                            return `<button class="btn btn-sm btn-soft-danger delete-puantaj" data-id="${data}"><i class="bx bx-trash"></i></button>`;
+                        },
+                        orderable: false
+                    }
                 ],
                 order: [[0, 'desc']]
             }));
@@ -976,10 +1064,15 @@ foreach ($workResults as $wr) {
         });
 
         // Filter form submit - server-side DataTable'ları yeniden yükle
-        $('form').on('submit', function (e) {
+        $('#filterForm').on('submit', function (e) {
             e.preventDefault();
             var activeTab = $('#puantajTabs .nav-link.active').data('tab-name');
             loadTabContent(activeTab);
+
+            const collapseElement = document.getElementById('collapseOne');
+            const bsCollapse = bootstrap.Collapse.getInstance(collapseElement);
+            if (bsCollapse) bsCollapse.hide();
+            updateFilterSummary();
         });
 
         // Excel Export
@@ -1274,7 +1367,67 @@ foreach ($workResults as $wr) {
                         var res = JSON.parse(response);
                         if (res.status === 'success') {
                             Swal.fire('Silindi!', 'Kayıt başarıyla silindi.', 'success');
-                            loadTabContent('kacak_kontrol');
+                            loadKacakContent();
+                        } else {
+                            Swal.fire('Hata', 'Kayıt silinemedi.', 'error');
+                        }
+                    });
+                }
+            });
+        });
+
+        $(document).on('click', '.delete-endeks', function () {
+            var id = $(this).data('id');
+            Swal.fire({
+                title: 'Emin misiniz?',
+                text: "Bu kayıt silinecektir!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Evet, sil!',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('views/puantaj/api.php', { action: 'endeks-sil', id: id }, function (response) {
+                        var res = JSON.parse(response);
+                        if (res.status === 'success') {
+                            Swal.fire('Silindi!', 'Kayıt başarıyla silindi.', 'success');
+                            if (endeksDataTable) {
+                                endeksDataTable.ajax.reload(null, false);
+                            } else {
+                                loadTabContent('okuma');
+                            }
+                        } else {
+                            Swal.fire('Hata', 'Kayıt silinemedi.', 'error');
+                        }
+                    });
+                }
+            });
+        });
+
+        $(document).on('click', '.delete-puantaj', function () {
+            var id = $(this).data('id');
+            Swal.fire({
+                title: 'Emin misiniz?',
+                text: "Bu kayıt silinecektir!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Evet, sil!',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('views/puantaj/api.php', { action: 'puantaj-sil', id: id }, function (response) {
+                        var res = JSON.parse(response);
+                        if (res.status === 'success') {
+                            Swal.fire('Silindi!', 'Kayıt başarıyla silindi.', 'success');
+                            if (puantajDataTable) {
+                                puantajDataTable.ajax.reload(null, false);
+                            } else {
+                                loadTabContent('yapilan_isler');
+                            }
                         } else {
                             Swal.fire('Hata', 'Kayıt silinemedi.', 'error');
                         }
@@ -1404,3 +1557,68 @@ foreach ($workResults as $wr) {
         });
     });
 </script>
+
+<style>
+    .accordion-button:not(.collapsed) {
+        background-color: transparent;
+        color: #556ee6;
+        box-shadow: none;
+    }
+
+    .accordion-button {
+        box-shadow: none !important;
+    }
+
+    .accordion-button:not(.collapsed) #filterSummary {
+        display: none !important;
+    }
+
+    .filter-summary-badge {
+        display: flex;
+        align-items: center;
+        background: var(--bs-primary);
+        color: #fff;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 500;
+        overflow: hidden;
+        border: 1px solid var(--bs-primary);
+        box-shadow: 0 2px 4px rgba(var(--bs-primary-rgb), 0.15);
+    }
+
+    .filter-summary-badge .badge-label {
+        padding: 6px 8px;
+        background: rgba(0, 0, 0, 0.15);
+        color: rgba(255, 255, 255, 0.85);
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .filter-summary-badge .badge-value {
+        padding: 6px 10px;
+        font-weight: 600;
+    }
+
+    .btn-clear-filter {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: #fff;
+        padding: 4px 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 14px;
+        height: 100%;
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-clear-filter:hover {
+        background: rgba(255, 255, 255, 0.35);
+        color: #fff;
+    }
+
+    .btn-clear-filter i {
+        pointer-events: none;
+    }
+</style>
