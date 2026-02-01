@@ -390,10 +390,9 @@ class PuantajModel extends Model
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
-    public function getWorkTypeStats($year)
+    public function getWorkTypeStats($year, $month = null)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        // Hem tanımlamalardaki grup is_turu olanları hem de yapılan işlerdeki eşleşmeleri sayalım
         $sql = "SELECT 
                     MONTH(t.tarih) as ay,
                     COALESCE(tn.tur_adi, t.is_emri_tipi) as tur,
@@ -403,12 +402,47 @@ class PuantajModel extends Model
                 WHERE (tn.grup = 'is_turu' OR t.is_emri_tipi IS NOT NULL)
                     AND YEAR(t.tarih) = ? 
                     AND t.firma_id = ? 
-                    AND t.silinme_tarihi IS NULL
-                GROUP BY MONTH(t.tarih), COALESCE(tn.tur_adi, t.is_emri_tipi)
+                    AND t.silinme_tarihi IS NULL";
+
+        $params = [$year, $firmaId];
+        if ($month) {
+            $sql .= " AND MONTH(t.tarih) = ?";
+            $params[] = $month;
+        }
+
+        $sql .= " GROUP BY MONTH(t.tarih), COALESCE(tn.tur_adi, t.is_emri_tipi)
                 ORDER BY MONTH(t.tarih) ASC";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$year, $firmaId]);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function getWorkResultStats($year, $month = null)
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $sql = "SELECT 
+                    MONTH(t.tarih) as ay,
+                    COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as sonuc,
+                    COUNT(*) as toplam
+                FROM $this->table t
+                LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                WHERE (tn.grup = 'is_turu' OR t.is_emri_sonucu IS NOT NULL)
+                    AND YEAR(t.tarih) = ? 
+                    AND t.firma_id = ? 
+                    AND t.silinme_tarihi IS NULL";
+
+        $params = [$year, $firmaId];
+        if ($month) {
+            $sql .= " AND MONTH(t.tarih) = ?";
+            $params[] = $month;
+        }
+
+        $sql .= " GROUP BY MONTH(t.tarih), COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)
+                ORDER BY MONTH(t.tarih) ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 }

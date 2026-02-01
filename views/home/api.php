@@ -12,15 +12,16 @@ header('Content-Type: application/json; charset=utf-8');
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $action = $_POST['action'] ?? '';
     $puantajModel = new PuantajModel();
+    $aylar = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+    $aylarUzun = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 
     try {
         switch ($action) {
             case 'get-work-type-stats':
                 $year = intval($_POST['year'] ?? date('Y'));
-                $stats = $puantajModel->getWorkTypeStats($year);
+                $month = !empty($_POST['month']) ? intval($_POST['month']) : null;
+                $stats = $puantajModel->getWorkTypeStats($year, $month);
 
-                // Format data for ApexCharts
-                // We need unique work types and their counts per month
                 $formattedData = [];
                 $workTypes = [];
 
@@ -34,8 +35,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $series = [];
                 foreach ($workTypes as $type) {
                     $data = [];
-                    for ($i = 1; $i <= 12; $i++) {
-                        $data[] = $formattedData[$type][$i] ?? 0;
+                    if ($month) {
+                        $data[] = $formattedData[$type][$month] ?? 0;
+                    } else {
+                        for ($i = 1; $i <= 12; $i++) {
+                            $data[] = $formattedData[$type][$i] ?? 0;
+                        }
                     }
                     $series[] = [
                         'name' => $type,
@@ -43,11 +48,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     ];
                 }
 
+                $categories = $month ? [$aylarUzun[$month - 1]] : $aylar;
+
                 echo json_encode([
                     'status' => 'success',
                     'data' => [
                         'series' => $series,
-                        'categories' => ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
+                        'categories' => $categories
+                    ]
+                ]);
+                break;
+
+            case 'get-work-result-stats':
+                $year = intval($_POST['year'] ?? date('Y'));
+                $month = !empty($_POST['month']) ? intval($_POST['month']) : date('n'); // Ay verilmezse güncel ayı çek
+                $stats = $puantajModel->getWorkResultStats($year, $month);
+
+                $seriesData = [];
+                $categories = [];
+
+                foreach ($stats as $row) {
+                    $sonuc = $row->sonuc ?: 'Belirtilmemiş';
+                    $categories[] = $sonuc;
+                    $seriesData[] = intval($row->toplam);
+                }
+
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => [
+                        'series' => [
+                            [
+                                'name' => 'İş Adeti',
+                                'data' => $seriesData
+                            ]
+                        ],
+                        'categories' => $categories,
+                        'selected_month' => $aylarUzun[$month - 1]
                     ]
                 ]);
                 break;

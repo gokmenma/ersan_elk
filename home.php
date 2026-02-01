@@ -21,41 +21,6 @@ $systemLogModel = new SystemLogModel();
 
 if (Gate::allows("ana_sayfa")) {
 
-    // Dashboard Ayarlarını Çerezden Oku
-    $saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['dashboard_settings'], true) : [];
-    
-    if (!function_exists('getWidgetWidth')) {
-        function getWidgetWidth($id, $default) {
-            global $saved_settings;
-            return $saved_settings[$id]['width'] ?? $default;
-        }
-    }
-
-    if (!function_exists('getWidthControl')) {
-        function getWidthControl() {
-            return '
-            <div class="dropdown ms-1 d-inline-block">
-                <button class="btn btn-link btn-sm p-0 text-muted" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Genişliği Değiştir">
-                    <i class="bx bx-expand-alt"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" style="min-width: 150px; z-index: 1060;">
-                    <li><h6 class="dropdown-header fw-bold text-primary">Genişlik Ayarla</h6></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-2" href="javascript:void(0);">col-2 (1/6)</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-3" href="javascript:void(0);">col-3 (1/4)</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-4" href="javascript:void(0);">col-4 (1/3)</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-5" href="javascript:void(0);">col-5</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-6" href="javascript:void(0);">col-6 (1/2)</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-7" href="javascript:void(0);">col-7</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-8" href="javascript:void(0);">col-8 (2/3)</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-9" href="javascript:void(0);">col-9 (3/4)</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-10" href="javascript:void(0);">col-10</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-11" href="javascript:void(0);">col-11</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-12" href="javascript:void(0);">col-12 (Tam)</a></li>
-                </ul>
-            </div>';
-        }
-    }
-
     // Sistem Logları
     $recent_logs = $systemLogModel->getRecentLogs(10);
 
@@ -231,11 +196,10 @@ if (Gate::allows("ana_sayfa")) {
     <?php $widgets['widget-bekleyen-talepler'] = ob_get_clean();
 
     ob_start(); ?>
-    <div class="<?php echo getWidgetWidth('widget-bildirimler', 'col-12'); ?> widget-item" id="widget-bildirimler">
+    <div class="col-12 widget-item" id="widget-bildirimler">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Görev ve Bildirimler</h5>
-                <?php echo getWidthControl(); ?>
+            <div class="card-header">
+                <h5><i class='bx bx-grid-vertical drag-handle me-1'></i> Görev ve Bildirimler</h5>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -292,11 +256,10 @@ if (Gate::allows("ana_sayfa")) {
     <?php $widgets['widget-bildirimler'] = ob_get_clean();
 
     ob_start(); ?>
-    <div class="<?php echo getWidgetWidth('widget-talepler', 'col-md-6'); ?> widget-item" id="widget-talepler">
+    <div class="col-md-6 widget-item" id="widget-talepler">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Arıza/İzin/Avans Talepleri</h5>
-                <?php echo getWidthControl(); ?>
+            <div class="card-header">
+                <h5><i class='bx bx-grid-vertical drag-handle me-1'></i> Arıza/İzin/Avans Talepleri</h5>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -432,11 +395,10 @@ if (Gate::allows("ana_sayfa")) {
     <?php $widgets['widget-talepler'] = ob_get_clean();
 
     ob_start(); ?>
-    <div class="<?php echo getWidgetWidth('widget-izindekiler', 'col-md-6'); ?> widget-item" id="widget-izindekiler">
+    <div class="col-md-6 widget-item" id="widget-izindekiler">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Şu Anda İzinde Olan Personeller</h5>
-                <?php echo getWidthControl(); ?>
+            <div class="card-header">
+                <h5><i class='bx bx-grid-vertical drag-handle me-1'></i> Şu Anda İzinde Olan Personeller</h5>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -502,22 +464,19 @@ if (Gate::allows("ana_sayfa")) {
     <?php $widgets['widget-izindekiler'] = ob_get_clean();
 
     ob_start(); ?>
-    <div class="<?php echo getWidgetWidth('widget-is-turu-istatistikleri', 'col-md-6'); ?> widget-item" id="widget-is-turu-istatistikleri">
+    <div class="col-md-6 widget-item" id="widget-is-turu-istatistikleri">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> İş Türü İstatistikleri</h5>
-                <div class="d-flex align-items-center gap-2">
-                    <div class="flex-shrink-0">
-                        <select class="form-select form-select-sm" id="stats-year-filter" style="width: 100px;">
-                            <?php
-                            $currentYear = date('Y');
-                            for ($y = $currentYear; $y >= $currentYear - 4; $y--) {
-                                echo "<option value='$y'>$y</option>";
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    <?php echo getWidthControl(); ?>
+                <div class="flex-shrink-0">
+                    <select class="form-select form-select-sm" id="stats-year-filter" style="width: 100px;">
+                        <?php
+                        $currentYear = date('Y');
+                        for ($y = $currentYear; $y >= $currentYear - 4; $y--) {
+                            echo "<option value='$y'>$y</option>";
+                        }
+                        ?>
+                    </select>
                 </div>
             </div>
             <div class="card-body">
@@ -528,33 +487,30 @@ if (Gate::allows("ana_sayfa")) {
     <?php $widgets['widget-is-turu-istatistikleri'] = ob_get_clean();
 
     ob_start(); ?>
-    <div class="<?php echo getWidgetWidth('widget-is-emri-sonucu-istatistikleri', 'col-md-6'); ?> widget-item" id="widget-is-emri-sonucu-istatistikleri">
+    <div class="col-md-6 widget-item" id="widget-is-emri-sonucu-istatistikleri">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> İş Emri Sonuç İstatistikleri</h5>
-                <div class="d-flex align-items-center gap-2">
-                    <div class="flex-shrink-0 d-flex gap-2">
-                        <select class="form-select form-select-sm" id="stats-result-month-filter" style="width: 120px;">
-                            <?php
-                            $aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-                            $currentMonth = date('n');
-                            foreach ($aylar as $index => $ay) {
-                                $val = $index + 1;
-                                $selected = ($val == $currentMonth) ? 'selected' : '';
-                                echo "<option value='$val' $selected>$ay</option>";
-                            }
-                            ?>
-                        </select>
-                        <select class="form-select form-select-sm" id="stats-result-year-filter" style="width: 100px;">
-                            <?php
-                            $currentYear = date('Y');
-                            for ($y = $currentYear; $y >= $currentYear - 4; $y--) {
-                                echo "<option value='$y'>$y</option>";
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    <?php echo getWidthControl(); ?>
+                <div class="flex-shrink-0 d-flex gap-2">
+                    <select class="form-select form-select-sm" id="stats-result-month-filter" style="width: 120px;">
+                        <?php
+                        $aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+                        $currentMonth = date('n');
+                        foreach ($aylar as $index => $ay) {
+                            $val = $index + 1;
+                            $selected = ($val == $currentMonth) ? 'selected' : '';
+                            echo "<option value='$val' $selected>$ay</option>";
+                        }
+                        ?>
+                    </select>
+                    <select class="form-select form-select-sm" id="stats-result-year-filter" style="width: 100px;">
+                        <?php
+                        $currentYear = date('Y');
+                        for ($y = $currentYear; $y >= $currentYear - 4; $y--) {
+                            echo "<option value='$y'>$y</option>";
+                        }
+                        ?>
+                    </select>
                 </div>
             </div>
             <div class="card-body">
@@ -584,83 +540,12 @@ if (Gate::allows("ana_sayfa")) {
 
     <div class="container-fluid">
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                <?php
-                $maintitle = 'Ana Sayfa';
-                $title = '';
-                ?>
-            </div>
-            <div class="d-flex gap-2">
-                <div class="dropdown">
-                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-weight: 500;">
-                        <i class="bx bx-show me-1"></i> Kart Görünürlüğü
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" style="min-width: 280px; z-index: 1060;">
-                        <li><h6 class="dropdown-header fw-bold">Gösterilecek Kartları Seçin</h6></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-aktif-personel" checked>
-                                Aktif Personel
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-pasif-personel" checked>
-                                Pasif Personel
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-toplam-personel" checked>
-                                Toplam Personel
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-bekleyen-talepler" checked>
-                                Bekleyen Talepler
-                            </label>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-bildirimler" checked>
-                                Görev ve Bildirimler
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-talepler" checked>
-                                Arıza/İzin/Avans Talepleri
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-izindekiler" checked>
-                                İzinde Olan Personeller
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-is-turu-istatistikleri" checked>
-                                İş Türü İstatistikleri
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-is-emri-sonucu-istatistikleri" checked>
-                                İş Emri Sonuç İstatistikleri
-                            </label>
-                        </li>
-                    </ul>
-                </div>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-reset-dashboard" style="font-weight: 500;">
-                    <i class="bx bx-reset me-1"></i> Varsayılan Yerleşime Dön
-                </button>
-            </div>
-        </div>
+        <!-- start page title -->
+        <?php
+        $maintitle = 'Ana Sayfa';
+        $title = '';
+        ?>
+        <!-- end page title -->
 
         <div class="row" id="dashboard-widgets">
             <?php
@@ -1298,111 +1183,6 @@ if (Gate::allows("ana_sayfa")) {
             background: rgba(30, 41, 59, 0.5) !important;
             border-color: #334155 !important;
         }
-
-        /* Dashboard Controls Theme */
-        .btn-soft-primary {
-            background-color: rgba(var(--bs-primary-rgb), 0.1);
-            color: var(--bs-primary);
-            border: 1px solid rgba(var(--bs-primary-rgb), 0.2);
-        }
-
-        .btn-soft-primary:hover {
-            background-color: rgba(var(--bs-primary-rgb), 0.2);
-            border-color: rgba(var(--bs-primary-rgb), 0.3);
-        }
-
-        .btn-soft-secondary {
-            background-color: rgba(var(--bs-secondary-rgb), 0.1);
-            color: var(--bs-secondary);
-            border: 1px solid rgba(var(--bs-secondary-rgb), 0.2);
-        }
-
-        .btn-soft-secondary:hover {
-            background-color: rgba(var(--bs-secondary-rgb), 0.2);
-            border-color: rgba(var(--bs-secondary-rgb), 0.3);
-        }
-
-        [data-bs-theme="dark"] .dropdown-menu {
-            background-color: #1e293b;
-            border-color: #334155;
-        }
-
-        [data-bs-theme="dark"] .dropdown-menu .dropdown-header {
-            color: #94a3b8;
-            border-color: #334155;
-        }
-
-        .dropdown-menu .dropdown-header {
-            color: #6c757d;
-        }
-
-        [data-bs-theme="dark"] .dropdown-menu .dropdown-divider {
-            border-color: #334155;
-        }
-
-        [data-bs-theme="dark"] .dropdown-item {
-            color: #cbd5e1;
-        }
-
-        [data-bs-theme="dark"] .dropdown-item:hover,
-        [data-bs-theme="dark"] .dropdown-item:focus {
-            background-color: #334155;
-            color: #f1f5f9;
-        }
-
-        [data-bs-theme="dark"] .dropdown-item.active,
-        [data-bs-theme="dark"] .dropdown-item:active {
-            background-color: #334155;
-        }
-
-        /* Light mode form-check-input */
-        .widget-toggle {
-            background-color: #f1f5f9 !important;
-            border-color: #cbd5e1 !important;
-        }
-
-        .widget-toggle:checked {
-            background-color: var(--dashboard-theme-color, #5156be) !important;
-            border-color: var(--dashboard-theme-color, #5156be) !important;
-        }
-
-        .widget-toggle:focus {
-            box-shadow: 0 0 0 0.15rem rgba(var(--dashboard-theme-color-rgb, 81, 86, 190), 0.25) !important;
-        }
-
-        [data-bs-theme="dark"] .widget-toggle {
-            background-color: #334155 !important;
-            border-color: #475569 !important;
-        }
-
-        [data-bs-theme="dark"] .widget-toggle:checked {
-            background-color: var(--dashboard-theme-color, #5156be) !important;
-            border-color: var(--dashboard-theme-color, #5156be) !important;
-        }
-
-        [data-bs-theme="dark"] .btn-soft-primary {
-            background-color: rgba(var(--bs-primary-rgb), 0.15);
-            color: #60a5fa;
-            border-color: rgba(var(--bs-primary-rgb), 0.3);
-        }
-
-        [data-bs-theme="dark"] .btn-soft-primary:hover {
-            background-color: rgba(var(--bs-primary-rgb), 0.25);
-            color: #93c5fd;
-            border-color: rgba(var(--bs-primary-rgb), 0.5);
-        }
-
-        [data-bs-theme="dark"] .btn-soft-secondary {
-            background-color: rgba(108, 117, 125, 0.15);
-            color: #9ca3af;
-            border-color: rgba(108, 117, 125, 0.3);
-        }
-
-        [data-bs-theme="dark"] .btn-soft-secondary:hover {
-            background-color: rgba(108, 117, 125, 0.25);
-            color: #d1d5db;
-            border-color: rgba(108, 117, 125, 0.5);
-        }
     </style>
 
     <script src="https://code.jquery.com/ui/1.14.1/jquery-ui.js"></script>
@@ -1618,112 +1398,6 @@ if (Gate::allows("ana_sayfa")) {
 
         document.addEventListener('DOMContentLoaded', function () {
             const API_URL = 'views/talepler/api.php';
-
-            // Load widget visibility from localStorage
-            function loadWidgetVisibility() {
-                const visibility = localStorage.getItem('dashboard_widget_visibility');
-                if (visibility) {
-                    const visibleWidgets = JSON.parse(visibility);
-                    $('#dashboard-widgets .widget-item').each(function() {
-                        const id = $(this).attr('id');
-                        const isVisible = visibleWidgets[id] !== false;
-                        $(this).toggle(isVisible);
-                        $(`input[data-widget="${id}"]`).prop('checked', isVisible);
-                    });
-                }
-            }
-
-            // Save widget visibility to localStorage
-            function saveWidgetVisibility() {
-                const visibility = {};
-                $('input.widget-toggle').each(function() {
-                    const widgetId = $(this).data('widget');
-                    visibility[widgetId] = $(this).is(':checked');
-                });
-                localStorage.setItem('dashboard_widget_visibility', JSON.stringify(visibility));
-            }
-
-            // Toggle widget visibility
-            $(document).on('change', '.widget-toggle', function() {
-                const widgetId = $(this).data('widget');
-                const isChecked = $(this).is(':checked');
-                $(`#${widgetId}`).fadeToggle(300);
-                saveWidgetVisibility();
-            });
-
-            // Load visibility on page load
-            loadWidgetVisibility();
-
-            // Theme change listener for checkbox colors and button colors
-            function updateThemeColors() {
-                const html = document.documentElement;
-                const isDarkMode = html.getAttribute('data-bs-theme') === 'dark';
-                const themeMode = html.getAttribute('data-theme-mode') || 'default';
-                
-                // Color Palette Map
-                const colors = {
-                    'red': '#f46a6a',
-                    'orange': '#f1b44c',
-                    'emerald': '#34c38f',
-                    'purple': '#6f42c1',
-                    'slate': '#475569',
-                    'default': '#5156be'
-                };
-
-                // Get color based on theme
-                const color = colors[themeMode] || colors['default'];
-
-                // Set CSS custom property for checkboxes
-                document.documentElement.style.setProperty('--dashboard-theme-color', color);
-
-                // Update checkboxes
-                const checkboxes = document.querySelectorAll('.widget-toggle');
-                checkboxes.forEach(checkbox => {
-                    checkbox.style.accentColor = color;
-                });
-
-                // Update dashboard control buttons
-                const dashboardBtns = document.querySelectorAll('#btn-reset-dashboard, .d-flex.gap-2 .dropdown > .btn');
-                dashboardBtns.forEach(btn => {
-                    if (isDarkMode) {
-                        btn.style.borderColor = '#334155';
-                        btn.style.backgroundColor = '#1e293b';
-                    } else {
-                        btn.style.borderColor = '#e5e7eb';
-                        btn.style.backgroundColor = '#fff';
-                    }
-                    btn.style.color = color;
-                });
-
-                // Update soft-primary buttons (like Detay)
-                const softPrimaryBtns = document.querySelectorAll('.btn-soft-primary');
-                softPrimaryBtns.forEach(btn => {
-                    btn.style.backgroundColor = hexToRgba(color, 0.1);
-                    btn.style.borderColor = hexToRgba(color, 0.2);
-                    btn.style.color = color;
-                });
-            }
-
-            // Helper: Hex to RGBA
-            function hexToRgba(hex, alpha) {
-                const r = parseInt(hex.slice(1, 3), 16);
-                const g = parseInt(hex.slice(3, 5), 16);
-                const b = parseInt(hex.slice(5, 7), 16);
-                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-            }
-
-            // Initial call
-            updateThemeColors();
-
-            // Watch for theme changes
-            const observer = new MutationObserver(() => {
-                updateThemeColors();
-            });
-
-            observer.observe(document.documentElement, {
-                attributes: true,
-                attributeFilter: ['data-bs-theme', 'data-theme-mode']
-            });
 
             // Start counters
             document.querySelectorAll('.main-value').forEach(el => {
@@ -1984,27 +1658,8 @@ if (Gate::allows("ana_sayfa")) {
                 resultYearFilter.addEventListener('change', refreshResultStats);
                 refreshResultStats();
             }
-            // Dashboard Config Persistence
-            const dashboard = $("#dashboard-widgets");
-
-            function saveDashboardConfig() {
-                const order = dashboard.sortable("toArray");
-                const settings = {};
-                $("#dashboard-widgets .widget-item").each(function() {
-                    const id = $(this).attr('id');
-                    const classes = $(this).attr('class').split(' ');
-                    const widthClass = classes.find(c => c.startsWith('col-'));
-                    if (id) {
-                        settings[id] = { width: widthClass };
-                    }
-                });
-                
-                const cookieOptions = "; path=/; max-age=" + (60 * 60 * 24 * 30);
-                document.cookie = "dashboard_order=" + JSON.stringify(order) + cookieOptions;
-                document.cookie = "dashboard_settings=" + JSON.stringify(settings) + cookieOptions;
-            }
-
             // Dashboard Sortable Logic
+            const dashboard = $("#dashboard-widgets");
             dashboard.sortable({
                 handle: ".card-header, .card-header-flex",
                 placeholder: "ui-sortable-placeholder",
@@ -2013,49 +1668,10 @@ if (Gate::allows("ana_sayfa")) {
                     ui.placeholder.attr('class', 'ui-sortable-placeholder ' + classes);
                 },
                 update: function (event, ui) {
-                    saveDashboardConfig();
+                    const order = dashboard.sortable("toArray");
+                    // Save to Cookie (for PHP to read on next load)
+                    document.cookie = "dashboard_order=" + JSON.stringify(order) + "; path=/; max-age=" + (60 * 60 * 24 * 30);
                 }
-            });
-
-            // Card Resize Logic
-            $(document).on('click', '.btn-resize', function(e) {
-                e.preventDefault();
-                const newWidth = $(this).data('width');
-                const widget = $(this).closest('.widget-item');
-                
-                // Remove existing col- classes
-                const classes = widget.attr('class').split(' ');
-                const newClasses = classes.filter(c => !c.startsWith('col-'));
-                newClasses.push(newWidth);
-                
-                widget.attr('class', newClasses.join(' '));
-                saveDashboardConfig();
-                
-                // Trigger window resize to let charts adjust
-                setTimeout(() => {
-                    window.dispatchEvent(new Event('resize'));
-                }, 100);
-            });
-
-            // Reset Dashboard Logic
-            $('#btn-reset-dashboard').on('click', function() {
-                Swal.fire({
-                    title: 'Emin misiniz?',
-                    text: "Tüm kart yerleşimleri ve genişlikleri varsayılan ayarlara dönecektir.",
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonColor: '#3085d6',
-                    cancelButtonColor: '#d33',
-                    confirmButtonText: 'Evet, Sıfırla',
-                    cancelButtonText: 'İptal'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        document.cookie = "dashboard_order=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-                        document.cookie = "dashboard_settings=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-                        localStorage.removeItem('dashboard_widget_visibility');
-                        location.reload();
-                    }
-                });
             });
         });
     </script>
