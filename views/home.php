@@ -498,11 +498,11 @@ if (Gate::allows("ana_sayfa")) {
         </div>
     </div> -->
     <?php //$widgets['widget-istatistikler'] = ob_get_clean();
-
-    // Sıralamayı Çerezden Oku
-    $saved_order = isset($_COOKIE['dashboard_order']) ? json_decode($_COOKIE['dashboard_order'], true) : null;
-    $render_order = $saved_order ?: array_keys($widgets);
-    ?>
+    
+        // Sıralamayı Çerezden Oku
+        $saved_order = isset($_COOKIE['dashboard_order']) ? json_decode($_COOKIE['dashboard_order'], true) : null;
+        $render_order = $saved_order ?: array_keys($widgets);
+        ?>
 
     <div class="container-fluid">
 
@@ -1152,7 +1152,6 @@ if (Gate::allows("ana_sayfa")) {
     </style>
 
     <script src="https://code.jquery.com/ui/1.14.1/jquery-ui.js"></script>
-    <script src="assets/libs/apexcharts/apexcharts.min.js"></script>
     <script>
         // Number Count            er F            unction
         function animateValue(obj, start, end, duration) {
@@ -1189,16 +1188,19 @@ if (Gate::allows("ana_sayfa")) {
         };
         // new ApexCharts(document.querySelector("#chart2"), options2).render();
 
-        var options3 = {
-            series: [<?php echo $toplam_gelir; ?>, <?php echo $toplam_gider; ?>, <?php echo $toplam_bakiye; ?>],
-            chart: { type: 'polarArea', height: 350 },
-            labels: ['Gelir', 'Gider', 'Kasa'],
-            colors: ['#34c38f', '#f46a6a', '#556ee6']
-        };
-        new ApexCharts(document.querySelector("#chart3"), options3).render();
+        // var options3 = {
+        //     series: [<?php echo $toplam_gelir; ?>, <?php echo $toplam_gider; ?>, <?php echo $toplam_bakiye; ?>],
+        //     chart: { type: 'polarArea', height: 350 },
+        //     labels: ['Gelir', 'Gider', 'Kasa'],
+        //     colors: ['#34c38f', '#f46a6a', '#556ee6']
+        // };
+        // new ApexCharts(document.querySelector("#chart3"), options3).render();
 
         let workTypeChart;
         function loadWorkTypeStats(year) {
+            const chartElement = document.querySelector("#work-type-stats-chart");
+            if (!chartElement) return;
+
             const formData = new FormData();
             formData.append('action', 'get-work-type-stats');
             formData.append('year', year);
@@ -1257,12 +1259,6 @@ if (Gate::allows("ana_sayfa")) {
                 });
         }
 
-        document.getElementById('stats-year-filter').addEventListener('change', function () {
-            loadWorkTypeStats(this.value);
-        });
-
-        // İlk yükleme
-        loadWorkTypeStats(new Date().getFullYear());
 
         document.addEventListener('DOMContentLoaded', function () {
             const API_URL = 'views/talepler/api.php';
@@ -1504,6 +1500,15 @@ if (Gate::allows("ana_sayfa")) {
             handleFormSubmit('formIzinOnay');
             handleFormSubmit('formIzinRed');
             handleFormSubmit('formTalepCozuldu');
+
+            // İş Türü İstatistikleri
+            const yearFilter = document.getElementById('stats-year-filter');
+            if (yearFilter) {
+                yearFilter.addEventListener('change', function () {
+                    loadWorkTypeStats(this.value);
+                });
+                loadWorkTypeStats(new Date().getFullYear());
+            }
 
             // Dashboard Sortable Logic
             const dashboard = $("#dashboard-widgets");
