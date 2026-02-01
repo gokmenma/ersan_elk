@@ -27,29 +27,38 @@ class MailGonderService
 
             /**Gönderici mail ayarlarını al */
             $Settings = new SettingsModel();
-            $allSettings = $Settings->getAllSettingsAsKeyValue();
+            $firma_id = $_SESSION['firma_id'] ?? null;
+
+            // CLI ortamında (test dosyası gibi) session olmayabilir, varsayılan 1 alalım
+            if ($firma_id === null && php_sapi_name() === 'cli') {
+                $firma_id = 1;
+            }
+
+            $allSettings = $Settings->getAllSettingsAsKeyValue($firma_id);
+
             // Sunucu Ayarları
             $mail->isSMTP();
 
-            $mail->Host = $allSettings['smtp_host'] ?? $_ENV['SMTP_HOST']; // Kendi SMTP sunucunuz (örn: smtp.gmail.com)
+            $mail->Host = $allSettings['smtp_host'] ?? $_ENV['SMTP_HOST'];
             $mail->SMTPAuth = true;
-            $mail->Username = $allSettings['smtp_kullanici'] ?? $_ENV['SMTP_USER']; // SMTP kullanıcı adınız
+            $mail->Username = $allSettings['smtp_kullanici'] ?? $_ENV['SMTP_USER'];
 
-            $mail->Password = $allSettings['smtp_sifre_yeni'] ?? $_ENV['SMTP_PASSWORD'];           // SMTP şifreniz
+            $mail->Password = $allSettings['smtp_sifre_yeni'] ?? $_ENV['SMTP_PASSWORD'];
 
             $secureType = $allSettings['smtp_guvenlik'] ?? 'tls';
-            $port = $allSettings['smtp_port'] ?? $_ENV['SMTP_PORT']; // Veya 465
+            $port = $allSettings['smtp_port'] ?? $_ENV['SMTP_PORT'] ?? 587;
 
-            // Port 465 genellikle SSL/SMTPS gerektirir. Kullanıcı TLS seçse bile SSL zorlayalım.
-            if ($port == 465) {
+            if ($port == 465 || $secureType == 'ssl') {
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            } elseif ($secureType == 'ssl') {
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            } else {
+            } elseif ($secureType == 'tls') {
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            } else {
+                // Güvenlik yoksa
+                $mail->SMTPSecure = false;
+                $mail->SMTPAutoTLS = false;
             }
 
-            $mail->Port = $allSettings['smtp_port'] ?? $_ENV['SMTP_PORT']; // Veya 465
+            $mail->Port = $port;
             $mail->Timeout = 10; // 10 saniye zaman aşımı
             $mail->SMTPDebug = 0; // Debug kapalı
 
@@ -73,17 +82,16 @@ class MailGonderService
             $fromName = $allSettings['gonderen_adi'] ?? 'Ersan Elektrik | Personel Yönetim';
             $mail->setFrom($fromEmail, $fromName); // Gönderen e-posta ve isim
 
-            // ÖNEMLİ DEĞİŞİKLİK: BCC kullan (alıcılar birbirini görmez)
-            // TO alanına bir dummy adres koy (zorunlu)
-            // $mail->addAddress('bilgi@yonapp.com.tr'); // Görünen alıcı (dummy)
-
-            // Asıl alıcıları BCC'ye ekle, böylece birbirlerini görmezler
+            // Alıcıları ekle
             if (is_array($kime)) {
-                // TO alanına göndericiyi ekleyelim ki boş kalmasın (bazı sunucular reddeder)
-                $mail->addAddress($fromEmail, $fromName);
-
+                $first = true;
                 foreach ($kime as $email) {
-                    $mail->addBCC(trim($email)); // BCC ile ekle - birbirlerini görmezler
+                    if ($first) {
+                        $mail->addAddress(trim($email));
+                        $first = false;
+                    } else {
+                        $mail->addBCC(trim($email));
+                    }
                 }
             } else {
                 $mail->addAddress(trim($kime));

@@ -29,16 +29,22 @@ switch ($action) {
         break;
 
     case 'save':
-
         $settingsToUpdate = $_POST ?? [];
         $firma_id = !empty($_POST['firma_id']) ? (int) $_POST['firma_id'] : null;
 
         // Checkbox'lar işaretlenmediğinde POST içinde gönderilmez. 
-        // Burada listelenen checkbox'lar eğer POST içinde yoksa '0' olarak kaydedilir.
         $checkboxKeys = ['email_gonderim_aktif', 'sms_gonderim_aktif', 'online_sorgulama_aktif'];
         foreach ($checkboxKeys as $cbKey) {
             if (!isset($settingsToUpdate[$cbKey])) {
                 $settingsToUpdate[$cbKey] = '0';
+            }
+        }
+
+        // Boş şifre alanlarının mevcut şifreyi silmesini engelle
+        $passwordKeys = ['smtp_sifre_yeni', 'sms_api_sifre_yeni', 'online_sorgulama_api_sifre_yeni'];
+        foreach ($passwordKeys as $passKey) {
+            if (isset($settingsToUpdate[$passKey]) && empty(trim($settingsToUpdate[$passKey]))) {
+                unset($settingsToUpdate[$passKey]);
             }
         }
 
