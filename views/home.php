@@ -464,27 +464,40 @@ if (Gate::allows("ana_sayfa")) {
     <?php $widgets['widget-izindekiler'] = ob_get_clean();
 
     ob_start(); ?>
-    <div class="col-12 widget-item" id="widget-istatistikler">
-        <div class="card ">
-            <div class="card-header">
-                <h5><i class='bx bx-grid-vertical drag-handle me-1'></i> İş İstatistikleri</h5>
+    <div class="col-md-12 widget-item" id="widget-is-turu-istatistikleri">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> İş Türü İstatistikleri</h5>
+                <div class="flex-shrink-0" style="width: 100px;">
+                    <select class="form-select form-select-sm" id="stats-year-filter">
+                        <?php
+                        $currentYear = date('Y');
+                        for ($y = $currentYear; $y >= $currentYear - 4; $y--) {
+                            echo "<option value='$y'>$y</option>";
+                        }
+                        ?>
+                    </select>
+                </div>
             </div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4">
-                        <div id="chart"></div>
-                    </div>
-                    <div class="col-md-4">
-                        <div id="chart2"></div>
-                    </div>
-                    <div class="col-md-4">
-                        <div id="chart3"></div>
-                    </div>
-                </div>
+                <div id="work-type-stats-chart" style="min-height: 350px;"></div>
             </div>
         </div>
     </div>
-    <?php $widgets['widget-istatistikler'] = ob_get_clean();
+    <?php $widgets['widget-is-turu-istatistikleri'] = ob_get_clean();
+
+    //ob_start(); ?>
+    <!-- <div class="col-md-4 widget-item" id="widget-istatistikler">
+        <div class="card ">
+            <div class="card-header">
+                <h5><i class='bx bx-grid-vertical drag-handle me-1'></i> Genel Özet</h5>
+            </div>
+            <div class="card-body">
+                <div id="chart3"></div>
+            </div>
+        </div>
+    </div> -->
+    <?php //$widgets['widget-istatistikler'] = ob_get_clean();
 
     // Sıralamayı Çerezden Oku
     $saved_order = isset($_COOKIE['dashboard_order']) ? json_decode($_COOKIE['dashboard_order'], true) : null;
@@ -520,13 +533,14 @@ if (Gate::allows("ana_sayfa")) {
     <div class="modal fade" id="modalHomeDetay" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header py-2 px-3 d-flex align-items-center justify-content-between" id="modalHeader"
-                    style="background: #00d2ff; min-height: 50px;">
+                <div class="modal-header py-2 px-3 position-relative" id="modalHeader"
+                    style="background: #00d2ff; min-height: 50px; display: flex; align-items: center;">
                     <div class="d-flex align-items-center">
                         <i class="bx bx-list-ul text-white fs-4 me-2" id="modalHeaderIcon"></i>
                         <h5 class="modal-title text-white fw-semibold mb-0" id="modalTalepTipi">Talep Detayı</h5>
                     </div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    <button type="button" class="btn-close btn-close-white position-absolute"
+                        style="right: 1rem; top: 50%; transform: translateY(-50%);" data-bs-dismiss="modal"
                         aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
@@ -1140,308 +1154,375 @@ if (Gate::allows("ana_sayfa")) {
     <script src="https://code.jquery.com/ui/1.14.1/jquery-ui.js"></script>
     <script src="assets/libs/apexcharts/apexcharts.min.js"></script>
     <script>
-                // Number Count            er F            unction
-                function animateValue(obj, start, end, duration) {
-                    let startTimestamp = null;
-                    const step = (timestamp) => {
-                        if (!startTimestamp) startTimestamp = timestamp;
-                        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                        obj.innerHTML = Math.floor(progress * (end - start) + start);
-                        if (progress < 1) {
-                            window.requestAnimationFrame(step);
-                        }
-                    };
+        // Number Count            er F            unction
+        function animateValue(obj, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerHTML = Math.floor(progress * (end - start) + start);
+                if (progress < 1) {
                     window.requestAnimationFrame(step);
                 }
+            };
+            window.requestAnimationFrame(step);
+        }
 
-                var months = <?php echo json_encode($months); ?>;
-                var totals = <?php echo json_encode($totals); ?>;
+        var months = <?php echo json_encode($months); ?>;
+        var totals = <?php echo json_encode($totals); ?>;
 
-                var options = {
-                    chart: { type: 'line', height: 350 },
-                    series: [{ name: 'Üye Sayısı', data: totals }],
-                    xaxis: { categories: months },
-                    colors: ['#556ee6']
-                }
-                new ApexCharts(document.querySelector("#chart"), options).render();
+        var options = {
+            chart: { type: 'line', height: 350 },
+            series: [{ name: 'Üye Sayısı', data: totals }],
+            xaxis: { categories: months },
+            colors: ['#556ee6']
+        }
+        // new ApexCharts(document.querySelector("#chart"), options).render();
 
-                var options2 = {
-                    series: [{ name: 'Gelir', data: [44, 55, 57, 56, 61, 58, 63, 60, 66, 85, 96, 85] },
-                    { name: 'Gider', data: [76, 85, 101, 98, 87, 105, 91, 114, 94, 78, 77, 25] }],
-                    chart: { type: 'bar', height: 350 },
-                    plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 4 } },
-                    xaxis: { categories: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'] },
-                    colors: ['#34c38f', '#f46a6a']
-                };
-                new ApexCharts(document.querySelector("#chart2"), options2).render();
+        var options2 = {
+            series: [{ name: 'Gelir', data: [44, 55, 57, 56, 61, 58, 63, 60, 66, 85, 96, 85] },
+            { name: 'Gider', data: [76, 85, 101, 98, 87, 105, 91, 114, 94, 78, 77, 25] }],
+            chart: { type: 'bar', height: 350 },
+            plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 4 } },
+            xaxis: { categories: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'] },
+            colors: ['#34c38f', '#f46a6a']
+        };
+        // new ApexCharts(document.querySelector("#chart2"), options2).render();
 
-                var options3 = {
-                    series: [<?php echo $toplam_gelir; ?>, <?php echo $toplam_gider; ?>, <?php echo $toplam_bakiye; ?>],
-                    chart: { type: 'polarArea', height: 350 },
-                    labels: ['Gelir', 'Gider', 'Kasa'],
-                    colors: ['#34c38f', '#f46a6a', '#556ee6']
-                };
-                new ApexCharts(document.querySelector("#chart3"), options3).render();
+        var options3 = {
+            series: [<?php echo $toplam_gelir; ?>, <?php echo $toplam_gider; ?>, <?php echo $toplam_bakiye; ?>],
+            chart: { type: 'polarArea', height: 350 },
+            labels: ['Gelir', 'Gider', 'Kasa'],
+            colors: ['#34c38f', '#f46a6a', '#556ee6']
+        };
+        new ApexCharts(document.querySelector("#chart3"), options3).render();
 
-                document.addEventListener('DOMContentLoaded', function () {
-                    const API_URL = 'views/talepler/api.php';
+        let workTypeChart;
+        function loadWorkTypeStats(year) {
+            const formData = new FormData();
+            formData.append('action', 'get-work-type-stats');
+            formData.append('year', year);
 
-                    // Start counters
-                    document.querySelectorAll('.main-value').forEach(el => {
-                        const finalValue = parseInt(el.innerText);
-                        el.innerText = '0';
-                        setTimeout(() => {
-                            animateValue(el, 0, finalValue, 1500);
-                        }, 300);
-                    });
+            fetch('views/home/api.php', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const options = {
+                            series: data.data.series,
+                            chart: {
+                                type: 'bar',
+                                height: 350,
+                                stacked: false,
+                                toolbar: { show: true }
+                            },
+                            plotOptions: {
+                                bar: {
+                                    horizontal: false,
+                                    columnWidth: '55%',
+                                    borderRadius: 5
+                                },
+                            },
+                            dataLabels: { enabled: false },
+                            stroke: {
+                                show: true,
+                                width: 2,
+                                colors: ['transparent']
+                            },
+                            xaxis: {
+                                categories: data.data.categories,
+                            },
+                            yaxis: {
+                                title: { text: 'İş Adeti' }
+                            },
+                            fill: { opacity: 1 },
+                            tooltip: {
+                                y: {
+                                    formatter: function (val) {
+                                        return val + " adet"
+                                    }
+                                }
+                            }
+                        };
 
-                    // Log Detay Modal
-                    document.querySelectorAll('.btn-log-detay').forEach(function (btn) {
-                        btn.addEventListener('click', function () {
-                            var title = this.dataset.title;
-                            var user = this.dataset.user;
-                            var date = this.dataset.date;
-                            var content = this.dataset.content;
-                            document.getElementById('logDetayTitle').textContent = title;
-                            document.getElementById('logDetayUser').textContent = user;
-                            document.getElementById('logDetayDate').textContent = date;
+                        if (workTypeChart) {
+                            workTypeChart.updateOptions(options);
+                        } else {
+                            workTypeChart = new ApexCharts(document.querySelector("#work-type-stats-chart"), options);
+                            workTypeChart.render();
+                        }
+                    }
+                });
+        }
 
-                            if (content.includes('{') && content.includes('}')) {
-                                try {
-                                    let parts = content.split(' (Güncellenen veriler: { ');
-                                    let mainText = parts[0];
-                                    let changesPart = parts[1].replace(' })', '');
-                                    let changes = changesPart.split(', ');
-                                    let formattedContent = `<div class="mb-2 fw-bold text-primary">${mainText}</div>`;
-                                    formattedContent += `<table class="table table-sm table-bordered mt-2 mb-0">
+        document.getElementById('stats-year-filter').addEventListener('change', function () {
+            loadWorkTypeStats(this.value);
+        });
+
+        // İlk yükleme
+        loadWorkTypeStats(new Date().getFullYear());
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const API_URL = 'views/talepler/api.php';
+
+            // Start counters
+            document.querySelectorAll('.main-value').forEach(el => {
+                const finalValue = parseInt(el.innerText);
+                el.innerText = '0';
+                setTimeout(() => {
+                    animateValue(el, 0, finalValue, 1500);
+                }, 300);
+            });
+
+            // Log Detay Modal
+            document.querySelectorAll('.btn-log-detay').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var title = this.dataset.title;
+                    var user = this.dataset.user;
+                    var date = this.dataset.date;
+                    var content = this.dataset.content;
+                    document.getElementById('logDetayTitle').textContent = title;
+                    document.getElementById('logDetayUser').textContent = user;
+                    document.getElementById('logDetayDate').textContent = date;
+
+                    if (content.includes('{') && content.includes('}')) {
+                        try {
+                            let parts = content.split(' (Güncellenen veriler: { ');
+                            let mainText = parts[0];
+                            let changesPart = parts[1].replace(' })', '');
+                            let changes = changesPart.split(', ');
+                            let formattedContent = `<div class="mb-2 fw-bold text-primary">${mainText}</div>`;
+                            formattedContent += `<table class="table table-sm table-bordered mt-2 mb-0">
                             <thead class="table-light">
                                 <tr><th>Alan</th><th>Değişim</th></tr>
                             </thead>
                             <tbody>`;
-                                    changes.forEach(change => {
-                                        if (change.includes(': ')) {
-                                            let [key, val] = change.split(': ');
-                                            formattedContent += `<tr><td class="fw-bold" style="width: 30%;">${key}</td><td>${val}</td></tr>`;
-                                        } else {
-                                            formattedContent += `<tr><td colspan="2" class="text-center text-muted italic">${change}</td></tr>`;
-                                        }
-                                    });
-                                    formattedContent += `</tbody></table>`;
-                                    document.getElementById('logDetayContent').innerHTML = formattedContent;
-                                } catch (e) {
-                                    document.getElementById('logDetayContent').textContent = content;
+                            changes.forEach(change => {
+                                if (change.includes(': ')) {
+                                    let [key, val] = change.split(': ');
+                                    formattedContent += `<tr><td class="fw-bold" style="width: 30%;">${key}</td><td>${val}</td></tr>`;
+                                } else {
+                                    formattedContent += `<tr><td colspan="2" class="text-center text-muted italic">${change}</td></tr>`;
+                                }
+                            });
+                            formattedContent += `</tbody></table>`;
+                            document.getElementById('logDetayContent').innerHTML = formattedContent;
+                        } catch (e) {
+                            document.getElementById('logDetayContent').textContent = content;
+                        }
+                    } else {
+                        document.getElementById('logDetayContent').textContent = content;
+                    }
+                    new bootstrap.Modal(document.getElementById('modalLogDetay')).show();
+                });
+            });
+
+            // Detay Modal - API'den detay çekiyor
+            document.querySelectorAll('.btn-home-detay').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var id = this.dataset.id;
+                    var tip = this.dataset.tip;
+                    var headerClass = tip === 'Avans' ? 'tip-avans' : (tip === 'İzin' ? 'tip-izin' : 'tip-talep');
+                    var headerIcon = tip === 'Avans' ? 'bx-money' : (tip === 'İzin' ? 'bx-calendar-check' : 'bx-message-square-detail');
+
+                    // Header'ı ayarla
+                    document.getElementById('modalHeader').className = 'modal-detay-header ' + headerClass;
+                    document.getElementById('modalTalepTipi').textContent = tip;
+                    document.getElementById('modalHeaderIcon').className = 'bx ' + headerIcon;
+
+                    // Tab parametresini ayarla
+                    var tabParam = tip === 'Avans' ? 'avans' : (tip === 'İzin' ? 'izin' : 'talep');
+                    document.getElementById('modalGitBtn').href = 'index.php?p=talepler/list&tab=' + tabParam;
+
+                    // Loading göster, content gizle
+                    document.getElementById('modalLoading').style.display = 'block';
+                    document.getElementById('modalContent').style.display = 'none';
+
+                    // Modalı aç
+                    new bootstrap.Modal(document.getElementById('modalHomeDetay')).show();
+
+                    // API'den detay çek
+                    var actionName = tip === 'Avans' ? 'get-avans-detay' : (tip === 'İzin' ? 'get-izin-detay' : 'get-talep-detay');
+                    var formData = new FormData();
+                    formData.append('action', actionName);
+                    formData.append('id', id);
+
+                    fetch(API_URL, { method: 'POST', body: formData })
+                        .then(response => response.json())
+                        .then(data => {
+                            document.getElementById('modalLoading').style.display = 'none';
+                            document.getElementById('modalContent').style.display = 'flex';
+
+                            if (data.status === 'success') {
+                                var d = data.data;
+
+                                // Resim
+                                var resimEl = document.getElementById('modalResim');
+                                resimEl.src = d.resim_yolu || 'assets/images/users/user-dummy-img.jpg';
+                                resimEl.onerror = function () { this.src = 'assets/images/users/user-dummy-img.jpg'; };
+
+                                // Personel bilgileri
+                                document.getElementById('modalPersonelAdi').textContent = d.adi_soyadi || '-';
+                                document.getElementById('modalDepartman').textContent = d.departman || '';
+                                document.getElementById('modalGorev').textContent = d.gorev || '';
+
+                                // Başlık satırını kontrol et (Sadece Talep tipinde gösterilir)
+                                var rowBaslik = document.getElementById('rowBaslik');
+                                if (tip === 'Talep') {
+                                    rowBaslik.style.display = 'table-row';
+                                    document.getElementById('modalBaslik').textContent = d.baslik || '-';
+                                } else {
+                                    rowBaslik.style.display = 'none';
+                                }
+
+                                // Fotoğraf satırını kontrol et
+                                var rowFotograf = document.getElementById('rowFotograf');
+                                if (d.foto || d.dosya_yolu || d.fotograf_yolu) {
+                                    var fotoPath = d.foto || d.dosya_yolu || d.fotograf_yolu;
+                                    rowFotograf.style.display = 'table-row';
+                                    document.getElementById('modalFoto').src = fotoPath;
+                                    document.getElementById('modalFotoLink').href = fotoPath;
+                                } else {
+                                    rowFotograf.style.display = 'none';
+                                }
+
+                                // Tip'e göre detay ve tarih bilgisi
+                                if (tip === 'Avans') {
+                                    var tutar = parseFloat(d.tutar || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+                                    document.getElementById('modalDetay').textContent = tutar;
+                                    document.getElementById('modalTarih').textContent = formatTarih(d.talep_tarihi);
+                                    document.getElementById('modalDurum').innerHTML = '<span class="badge bg-warning text-dark px-2 py-1"><i class="bx bx-time me-1"></i>' + ucFirst(d.durum) + '</span>';
+                                } else if (tip === 'İzin') {
+                                    var izinDetay = (d.izin_tipi_adi || d.izin_tipi || 'İzin');
+                                    if (d.gun_sayisi) izinDetay += ' (' + d.gun_sayisi + ' gün)';
+                                    document.getElementById('modalDetay').textContent = izinDetay;
+                                    document.getElementById('modalTarih').textContent = formatTarih(d.baslangic_tarihi) + ' - ' + formatTarih(d.bitis_tarihi);
+                                    document.getElementById('modalDurum').innerHTML = '<span class="badge bg-warning text-dark px-2 py-1"><i class="bx bx-time me-1"></i>' + ucFirst(d.onay_durumu) + '</span>';
+                                } else {
+                                    document.getElementById('modalDetay').textContent = d.aciklama || '-';
+                                    document.getElementById('modalTarih').textContent = formatTarih(d.olusturma_tarihi);
+                                    document.getElementById('modalDurum').innerHTML = '<span class="badge bg-warning text-dark px-2 py-1"><i class="bx bx-time me-1"></i>' + ucFirst(d.durum) + '</span>';
                                 }
                             } else {
-                                document.getElementById('logDetayContent').textContent = content;
+                                document.getElementById('modalContent').innerHTML = '<div class="col-12 text-center py-4"><div class="alert alert-danger">' + (data.message || 'Bir hata oluştu') + '</div></div>';
                             }
-                            new bootstrap.Modal(document.getElementById('modalLogDetay')).show();
+                        })
+                        .catch(error => {
+                            document.getElementById('modalLoading').style.display = 'none';
+                            document.getElementById('modalContent').style.display = 'flex';
+                            document.getElementById('modalContent').innerHTML = '<div class="col-12 text-center"><div class="alert alert-danger">Detaylar yüklenirken hata oluştu.</div></div>';
                         });
-                    });
-
-                    // Detay Modal - API'den detay çekiyor
-                    document.querySelectorAll('.btn-home-detay').forEach(function (btn) {
-                        btn.addEventListener('click', function () {
-                            var id = this.dataset.id;
-                            var tip = this.dataset.tip;
-                            var headerClass = tip === 'Avans' ? 'tip-avans' : (tip === 'İzin' ? 'tip-izin' : 'tip-talep');
-                            var headerIcon = tip === 'Avans' ? 'bx-money' : (tip === 'İzin' ? 'bx-calendar-check' : 'bx-message-square-detail');
-
-                            // Header'ı ayarla
-                            document.getElementById('modalHeader').className = 'modal-detay-header ' + headerClass;
-                            document.getElementById('modalTalepTipi').textContent = tip;
-                            document.getElementById('modalHeaderIcon').className = 'bx ' + headerIcon;
-
-                            // Tab parametresini ayarla
-                            var tabParam = tip === 'Avans' ? 'avans' : (tip === 'İzin' ? 'izin' : 'talep');
-                            document.getElementById('modalGitBtn').href = 'index.php?p=talepler/list&tab=' + tabParam;
-
-                            // Loading göster, content gizle
-                            document.getElementById('modalLoading').style.display = 'block';
-                            document.getElementById('modalContent').style.display = 'none';
-
-                            // Modalı aç
-                            new bootstrap.Modal(document.getElementById('modalHomeDetay')).show();
-
-                            // API'den detay çek
-                            var actionName = tip === 'Avans' ? 'get-avans-detay' : (tip === 'İzin' ? 'get-izin-detay' : 'get-talep-detay');
-                            var formData = new FormData();
-                            formData.append('action', actionName);
-                            formData.append('id', id);
-
-                            fetch(API_URL, { method: 'POST', body: formData })
-                                .then(response => response.json())
-                                .then(data => {
-                                    document.getElementById('modalLoading').style.display = 'none';
-                                    document.getElementById('modalContent').style.display = 'flex';
-
-                                    if (data.status === 'success') {
-                                        var d = data.data;
-
-                                        // Resim
-                                        var resimEl = document.getElementById('modalResim');
-                                        resimEl.src = d.resim_yolu || 'assets/images/users/user-dummy-img.jpg';
-                                        resimEl.onerror = function () { this.src = 'assets/images/users/user-dummy-img.jpg'; };
-
-                                        // Personel bilgileri
-                                        document.getElementById('modalPersonelAdi').textContent = d.adi_soyadi || '-';
-                                        document.getElementById('modalDepartman').textContent = d.departman || '';
-                                        document.getElementById('modalGorev').textContent = d.gorev || '';
-                                
-                                        // Başlık satırını kontrol et (Sadece Talep tipinde gösterilir)
-                                        var rowBaslik = document.getElementById('rowBaslik');
-                                        if (tip === 'Talep') {
-                                            rowBaslik.style.display = 'table-row';
-                                            document.getElementById('modalBaslik').textContent = d.baslik || '-';
-                                        } else {
-                                            rowBaslik.style.display = 'none';
-                                        }
-
-                                        // Fotoğraf satırını kontrol et
-                                        var rowFotograf = document.getElementById('rowFotograf');
-                                        if (d.foto || d.dosya_yolu || d.fotograf_yolu) {
-                                            var fotoPath = d.foto || d.dosya_yolu || d.fotograf_yolu;
-                                            rowFotograf.style.display = 'table-row';
-                                            document.getElementById('modalFoto').src = fotoPath;
-                                            document.getElementById('modalFotoLink').href = fotoPath;
-                                        } else {
-                                            rowFotograf.style.display = 'none';
-                                        }
-
-                                        // Tip'e göre detay ve tarih bilgisi
-                                        if (tip === 'Avans') {
-                                            var tutar = parseFloat(d.tutar || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2}) + ' ₺';
-                                            document.getElementById('modalDetay').textContent = tutar;
-                                            document.getElementById('modalTarih').textContent = formatTarih(d.talep_tarihi);
-                                            document.getElementById('modalDurum').innerHTML = '<span class="badge bg-warning text-dark px-2 py-1"><i class="bx bx-time me-1"></i>' + ucFirst(d.durum) + '</span>';
-                                        } else if (tip === 'İzin') {
-                                            var izinDetay = (d.izin_tipi_adi || d.izin_tipi || 'İzin');
-                                            if (d.gun_sayisi) izinDetay += ' (' + d.gun_sayisi + ' gün)';
-                                            document.getElementById('modalDetay').textContent = izinDetay;
-                                            document.getElementById('modalTarih').textContent = formatTarih(d.baslangic_tarihi) + ' - ' + formatTarih(d.bitis_tarihi);
-                                            document.getElementById('modalDurum').innerHTML = '<span class="badge bg-warning text-dark px-2 py-1"><i class="bx bx-time me-1"></i>' + ucFirst(d.onay_durumu) + '</span>';
-                                        } else {
-                                            document.getElementById('modalDetay').textContent = d.aciklama || '-';
-                                            document.getElementById('modalTarih').textContent = formatTarih(d.olusturma_tarihi);
-                                            document.getElementById('modalDurum').innerHTML = '<span class="badge bg-warning text-dark px-2 py-1"><i class="bx bx-time me-1"></i>' + ucFirst(d.durum) + '</span>';
-                                        }
-                                    } else {
-                                        document.getElementById('modalContent').innerHTML = '<div class="col-12 text-center py-4"><div class="alert alert-danger">' + (data.message || 'Bir hata oluştu') + '</div></div>';
-                                    }
-                                })
-                                .catch(error => {
-                                    document.getElementById('modalLoading').style.display = 'none';
-                                    document.getElementById('modalContent').style.display = 'flex';
-                                    document.getElementById('modalContent').innerHTML = '<div class="col-12 text-center"><div class="alert alert-danger">Detaylar yüklenirken hata oluştu.</div></div>';
-                                });
-                        });
-                    });
-
-                    // Yardımcı fonksiyonlar
-                    function formatTarih(dateStr) {
-                        if (!dateStr) return '-';
-                        var date = new Date(dateStr);
-                        return date.toLocaleDateString('tr-TR');
-                    }
-
-                    function ucFirst(str) {
-                        if (!str) return '';
-                        return str.charAt(0).toUpperCase() + str.slice(1);
-                    }
-
-                    // Avans Onayla/Reddet, İzin Onayla/Reddet, Talep Çözüldü
-                    document.querySelectorAll('.btn-avans-onayla').forEach(btn => {
-                        btn.addEventListener('click', function () {
-                            document.getElementById('avans_onay_id').value = this.dataset.id;
-                            document.getElementById('avans_onay_personel').textContent = this.dataset.personel;
-                            document.getElementById('avans_onay_tutar').textContent = parseFloat(this.dataset.tutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
-                            new bootstrap.Modal(document.getElementById('modalAvansOnay')).show();
-                        });
-                    });
-                    document.querySelectorAll('.btn-avans-reddet').forEach(btn => {
-                        btn.addEventListener('click', function () {
-                            document.getElementById('avans_red_id').value = this.dataset.id;
-                            document.getElementById('avans_red_personel').textContent = this.dataset.personel;
-                            new bootstrap.Modal(document.getElementById('modalAvansRed')).show();
-                        });
-                    });
-                    document.querySelectorAll('.btn-izin-onayla').forEach(btn => {
-                        btn.addEventListener('click', function () {
-                            document.getElementById('izin_onay_id').value = this.dataset.id;
-                            document.getElementById('izin_onay_personel').textContent = this.dataset.personel;
-                            document.getElementById('izin_onay_tur').textContent = this.dataset.tur;
-                            document.getElementById('izin_onay_gun').textContent = this.dataset.gun;
-                            new bootstrap.Modal(document.getElementById('modalIzinOnay')).show();
-                        });
-                    });
-                    document.querySelectorAll('.btn-izin-reddet').forEach(btn => {
-                        btn.addEventListener('click', function () {
-                            document.getElementById('izin_red_id').value = this.dataset.id;
-                            document.getElementById('izin_red_personel').textContent = this.dataset.personel;
-                            new bootstrap.Modal(document.getElementById('modalIzinRed')).show();
-                        });
-                    });
-                    document.querySelectorAll('.btn-talep-cozuldu').forEach(btn => {
-                        btn.addEventListener('click', function () {
-                            document.getElementById('talep_cozuldu_id').value = this.dataset.id;
-                            document.getElementById('talep_cozuldu_baslik').textContent = this.dataset.baslik;
-                            new bootstrap.Modal(document.getElementById('modalTalepCozuldu')).show();
-                        });
-                    });
-
-                    const handleFormSubmit = (formId) => {
-                        const form = document.getElementById(formId);
-                        if (!form) return;
-                        form.addEventListener('submit', function (e) {
-                            e.preventDefault();
-                            const formData = new FormData(this);
-                            const submitBtn = this.querySelector('button[type="submit"]');
-                            const originalText = submitBtn.innerHTML;
-                            submitBtn.disabled = true;
-                            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> İşleniyor...';
-                            fetch(API_URL, { method: 'POST', body: formData })
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data.status === 'success') {
-                                        Swal.fire({ icon: 'success', title: 'Başarılı', text: data.message, timer: 1500, showConfirmButton: false })
-                                            .then(() => location.reload());
-                                    } else {
-                                        Swal.fire({ icon: 'error', title: 'Hata', text: data.message });
-                                        submitBtn.disabled = false;
-                                        submitBtn.innerHTML = originalText;
-                                    }
-                                })
-                                .catch(error => {
-                                    Swal.fire({ icon: 'error', title: 'Hata', text: 'Bir sorun oluştu.' });
-                                    submitBtn.disabled = false;
-                                    submitBtn.innerHTML = originalText;
-                                });
-                        });
-                    };
-
-                    handleFormSubmit('formAvansOnay');
-                    handleFormSubmit('formAvansRed');
-                    handleFormSubmit('formIzinOnay');
-                    handleFormSubmit('formIzinRed');
-                    handleFormSubmit('formTalepCozuldu');
-
-                    // Dashboard Sortable Logic
-                    const dashboard = $("#dashboard-widgets");
-                    dashboard.sortable({
-                        handle: ".card-header, .card-header-flex",
-                        placeholder: "ui-sortable-placeholder",
-                        start: function (e, ui) {
-                            const classes = ui.item.attr('class');
-                            ui.placeholder.attr('class', 'ui-sortable-placeholder ' + classes);
-                        },
-                        update: function (event, ui) {
-                            const order = dashboard.sortable("toArray");
-                            // Save to Cookie (for PHP to read on next load)
-                            document.cookie = "dashboard_order=" + JSON.stringify(order) + "; path=/; max-age=" + (60 * 60 * 24 * 30);
-                        }
-                    });
                 });
-            </script>
-            <?php
+            });
+
+            // Yardımcı fonksiyonlar
+            function formatTarih(dateStr) {
+                if (!dateStr) return '-';
+                var date = new Date(dateStr);
+                return date.toLocaleDateString('tr-TR');
+            }
+
+            function ucFirst(str) {
+                if (!str) return '';
+                return str.charAt(0).toUpperCase() + str.slice(1);
+            }
+
+            // Avans Onayla/Reddet, İzin Onayla/Reddet, Talep Çözüldü
+            document.querySelectorAll('.btn-avans-onayla').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    document.getElementById('avans_onay_id').value = this.dataset.id;
+                    document.getElementById('avans_onay_personel').textContent = this.dataset.personel;
+                    document.getElementById('avans_onay_tutar').textContent = parseFloat(this.dataset.tutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+                    new bootstrap.Modal(document.getElementById('modalAvansOnay')).show();
+                });
+            });
+            document.querySelectorAll('.btn-avans-reddet').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    document.getElementById('avans_red_id').value = this.dataset.id;
+                    document.getElementById('avans_red_personel').textContent = this.dataset.personel;
+                    new bootstrap.Modal(document.getElementById('modalAvansRed')).show();
+                });
+            });
+            document.querySelectorAll('.btn-izin-onayla').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    document.getElementById('izin_onay_id').value = this.dataset.id;
+                    document.getElementById('izin_onay_personel').textContent = this.dataset.personel;
+                    document.getElementById('izin_onay_tur').textContent = this.dataset.tur;
+                    document.getElementById('izin_onay_gun').textContent = this.dataset.gun;
+                    new bootstrap.Modal(document.getElementById('modalIzinOnay')).show();
+                });
+            });
+            document.querySelectorAll('.btn-izin-reddet').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    document.getElementById('izin_red_id').value = this.dataset.id;
+                    document.getElementById('izin_red_personel').textContent = this.dataset.personel;
+                    new bootstrap.Modal(document.getElementById('modalIzinRed')).show();
+                });
+            });
+            document.querySelectorAll('.btn-talep-cozuldu').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    document.getElementById('talep_cozuldu_id').value = this.dataset.id;
+                    document.getElementById('talep_cozuldu_baslik').textContent = this.dataset.baslik;
+                    new bootstrap.Modal(document.getElementById('modalTalepCozuldu')).show();
+                });
+            });
+
+            const handleFormSubmit = (formId) => {
+                const form = document.getElementById(formId);
+                if (!form) return;
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    const submitBtn = this.querySelector('button[type="submit"]');
+                    const originalText = submitBtn.innerHTML;
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> İşleniyor...';
+                    fetch(API_URL, { method: 'POST', body: formData })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                Swal.fire({ icon: 'success', title: 'Başarılı', text: data.message, timer: 1500, showConfirmButton: false })
+                                    .then(() => location.reload());
+                            } else {
+                                Swal.fire({ icon: 'error', title: 'Hata', text: data.message });
+                                submitBtn.disabled = false;
+                                submitBtn.innerHTML = originalText;
+                            }
+                        })
+                        .catch(error => {
+                            Swal.fire({ icon: 'error', title: 'Hata', text: 'Bir sorun oluştu.' });
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalText;
+                        });
+                });
+            };
+
+            handleFormSubmit('formAvansOnay');
+            handleFormSubmit('formAvansRed');
+            handleFormSubmit('formIzinOnay');
+            handleFormSubmit('formIzinRed');
+            handleFormSubmit('formTalepCozuldu');
+
+            // Dashboard Sortable Logic
+            const dashboard = $("#dashboard-widgets");
+            dashboard.sortable({
+                handle: ".card-header, .card-header-flex",
+                placeholder: "ui-sortable-placeholder",
+                start: function (e, ui) {
+                    const classes = ui.item.attr('class');
+                    ui.placeholder.attr('class', 'ui-sortable-placeholder ' + classes);
+                },
+                update: function (event, ui) {
+                    const order = dashboard.sortable("toArray");
+                    // Save to Cookie (for PHP to read on next load)
+                    document.cookie = "dashboard_order=" + JSON.stringify(order) + "; path=/; max-age=" + (60 * 60 * 24 * 30);
+                }
+            });
+        });
+    </script>
+    <?php
 } else {
     //Alert::danger("Bu sayfaya erişim yetkiniz yok!");
     /**Personelin yetkili olduğu ilk sayfaya yönlendir */

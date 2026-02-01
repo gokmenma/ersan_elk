@@ -389,4 +389,25 @@ class PuantajModel extends Model
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
+
+    public function getWorkTypeStats($year)
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $sql = "SELECT 
+                    MONTH(t.tarih) as ay,
+                    tn.tur_adi as tur,
+                    COUNT(*) as toplam
+                FROM $this->table t
+                JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                WHERE tn.grup = 'is_turu' 
+                    AND YEAR(t.tarih) = ? 
+                    AND t.firma_id = ? 
+                    AND t.silinme_tarihi IS NULL
+                GROUP BY MONTH(t.tarih), tn.tur_adi
+                ORDER BY MONTH(t.tarih) ASC, tn.tur_adi ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$year, $firmaId]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
 }
