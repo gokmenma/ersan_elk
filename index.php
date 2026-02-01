@@ -109,7 +109,7 @@ if (!isset($_SESSION['id'] ) || !isset($_SESSION['firma_id'])) {
     //Title'ı page-title-box classına dahip div'in textinden al
     var title = $(".page-title-box>h4").text();
     //Document'ın title'ına ata
-    document.title = "Ersan Elektrik | " + title;
+    document.title = "Ersan Elektrik | " + title ?? " Ana Sayfa";
 </script>
 
 </body>
