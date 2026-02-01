@@ -616,6 +616,11 @@
             );
             return;
         }
+        /**izin türü mazeret ise açıklama zorunlu olmalıdır */
+        if (formData.izin_tipi === 'mazeret' && !formData.aciklama) {
+            Toast.show('Lütfen açıklama giriniz', 'error');
+            return;
+        }
 
         try {
             const response = await API.request('createIzinTalebi', formData);
