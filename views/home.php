@@ -1198,6 +1198,12 @@ if (Gate::allows("ana_sayfa")) {
 
         let workTypeChart;
         function loadWorkTypeStats(year) {
+            if (typeof ApexCharts === 'undefined') {
+                console.log('ApexCharts henüz yüklenmedi, 500ms sonra tekrar denenecek...');
+                setTimeout(() => loadWorkTypeStats(year), 500);
+                return;
+            }
+
             const chartElement = document.querySelector("#work-type-stats-chart");
             if (!chartElement) return;
 
@@ -1212,13 +1218,20 @@ if (Gate::allows("ana_sayfa")) {
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
+                        if (!data.data.series || data.data.series.length === 0) {
+                            chartElement.innerHTML = '<div class="alert alert-info text-center mt-5">Seçilen yıla ait istatistik verisi bulunamadı.</div>';
+                            workTypeChart = null;
+                            return;
+                        }
+
                         const options = {
                             series: data.data.series,
                             chart: {
                                 type: 'bar',
                                 height: 350,
                                 stacked: false,
-                                toolbar: { show: true }
+                                toolbar: { show: true },
+                                animations: { enabled: true }
                             },
                             plotOptions: {
                                 bar: {
@@ -1240,6 +1253,7 @@ if (Gate::allows("ana_sayfa")) {
                                 title: { text: 'İş Adeti' }
                             },
                             fill: { opacity: 1 },
+                            colors: ['#556ee6', '#34c38f', '#f46a6a', '#f1b44c', '#50a5f1'],
                             tooltip: {
                                 y: {
                                     formatter: function (val) {
@@ -1249,13 +1263,18 @@ if (Gate::allows("ana_sayfa")) {
                             }
                         };
 
+                        chartElement.innerHTML = ''; // Temizle
                         if (workTypeChart) {
-                            workTypeChart.updateOptions(options);
-                        } else {
-                            workTypeChart = new ApexCharts(document.querySelector("#work-type-stats-chart"), options);
-                            workTypeChart.render();
+                            workTypeChart.destroy();
                         }
+
+                        workTypeChart = new ApexCharts(chartElement, options);
+                        workTypeChart.render();
                     }
+                })
+                .catch(err => {
+                    console.error('İstatistik yükleme hatası:', err);
+                    chartElement.innerHTML = '<div class="alert alert-danger text-center mt-5">Veriler yüklenirken bir hata oluştu.</div>';
                 });
         }
 

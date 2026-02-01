@@ -393,18 +393,19 @@ class PuantajModel extends Model
     public function getWorkTypeStats($year)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
+        // Hem tanımlamalardaki grup is_turu olanları hem de yapılan işlerdeki eşleşmeleri sayalım
         $sql = "SELECT 
                     MONTH(t.tarih) as ay,
-                    tn.tur_adi as tur,
+                    COALESCE(tn.tur_adi, t.is_emri_tipi) as tur,
                     COUNT(*) as toplam
                 FROM $this->table t
-                JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
-                WHERE tn.grup = 'is_turu' 
+                LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                WHERE (tn.grup = 'is_turu' OR t.is_emri_tipi IS NOT NULL)
                     AND YEAR(t.tarih) = ? 
                     AND t.firma_id = ? 
                     AND t.silinme_tarihi IS NULL
-                GROUP BY MONTH(t.tarih), tn.tur_adi
-                ORDER BY MONTH(t.tarih) ASC, tn.tur_adi ASC";
+                GROUP BY MONTH(t.tarih), COALESCE(tn.tur_adi, t.is_emri_tipi)
+                ORDER BY MONTH(t.tarih) ASC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$year, $firmaId]);
