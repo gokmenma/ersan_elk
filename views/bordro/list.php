@@ -188,6 +188,11 @@ $ek_odeme_turleri = [
                                             </a>
                                         </li>
                                         <li>
+                                            <a class="dropdown-item" href="javascript:void(0);" id="btnExportExcelSodexo">
+                                                <i class="bx bx-food-menu me-2 text-info"></i> Excel'e İndir (Sodexo)
+                                            </a>
+                                        </li>
+                                        <li>
                                             <hr class="dropdown-divider">
                                         </li>
                                         <li>

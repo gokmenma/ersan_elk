@@ -569,9 +569,7 @@ class BordroPersonelModel extends Model
             return;
         }
 
-        // 5. is_emri_tipi bazında toplam hesapla (aynı iş tipi altındaki tüm sonuçları birleştir)
-        $isTipiBazliToplam = [];
-
+        // 5. is_emri_sonucu bazlı hesapla
         foreach ($yapilanIsler as $is) {
             $isEmriSonucu = $is->is_emri_sonucu;
             $isTipi = $is->is_emri_tipi;
@@ -585,32 +583,17 @@ class BordroPersonelModel extends Model
             $birimUcret = $isEmriSonucuMap[$isEmriSonucu]['birim_ucret'];
             $turAdi = $isEmriSonucuMap[$isEmriSonucu]['tur_adi'];
 
-            // İş tipi bazında topla
-            if (!isset($isTipiBazliToplam[$turAdi])) {
-                $isTipiBazliToplam[$turAdi] = [
-                    'adet' => 0,
-                    'tutar' => 0
-                ];
-            }
+            if ($adet > 0) {
+                $PersonelEkOdemelerModel = new \App\Model\PersonelEkOdemelerModel();
+                $toplamTutar = round($adet * $birimUcret, 2);
+                // Açıklama formatı: [Puantaj] Sonuç (Adet x Birim ₺)
+                $aciklama = "[Puantaj] $isEmriSonucu (" . round($adet) . " Adet x " . number_format($birimUcret, 2, ',', '.') . " ₺)";
 
-            $isTipiBazliToplam[$turAdi]['adet'] += $adet;
-            $isTipiBazliToplam[$turAdi]['tutar'] += $adet * $birimUcret;
-        }
-
-        // 6. Ek ödemeleri oluştur
-        $PersonelEkOdemelerModel = new \App\Model\PersonelEkOdemelerModel();
-
-        foreach ($isTipiBazliToplam as $isTipi => $data) {
-            if ($data['tutar'] > 0) {
-                $adet = intval($data['adet']);
-                $toplamTutar = round($data['tutar'], 2);
-                $aciklama = "[Puantaj] $isTipi ($adet Adet)";
-
-                // Ek ödeme ekle
+                // Ek ödeme oluştur
                 $PersonelEkOdemelerModel->saveWithAttr([
                     'personel_id' => $personel_id,
                     'donem_id' => $donem_id,
-                    'tur' => 'prim', // Prim olarak sınıflandırıyoruz
+                    'tur' => 'prim',
                     'aciklama' => $aciklama,
                     'tutar' => $toplamTutar,
                     'tekrar_tipi' => 'tek_sefer',
@@ -1166,8 +1149,13 @@ class BordroPersonelModel extends Model
         if (!$kayit)
             return false;
 
-        // Maaş durumu kontrolü (Net ise vergisiz/sigortasız)
-        $isNetMaas = (isset($kayit->maas_durumu) && mb_strtolower($kayit->maas_durumu, 'UTF-8') === 'net');
+
+        // Maaş durumu kontrolü (Net ise vergisiz/sigortasız, Prim Usülü ise özel hesaplama)
+        $maasDurumuRaw = $kayit->maas_durumu ?? 'brüt';
+        $maasDurumu = mb_strtolower($maasDurumuRaw, 'UTF-8');
+        $isNetMaas = ($maasDurumu === 'net');
+        // Prim Usülü için esnek karşılaştırma (Türkçe karakter encoding sorunları için)
+        $isPrimUsulu = (stripos($maasDurumuRaw, 'Prim') !== false || stripos($maasDurumu, 'prim') !== false);
 
         // Dönem tarihi - parametreleri bu tarihe göre çek
         $donemTarihi = $kayit->baslangic_tarihi ?? date('Y-m-d');
@@ -1177,9 +1165,13 @@ class BordroPersonelModel extends Model
 
         // Brüt maaş (sürekli kayıtların oran hesabı için önce al)
         $brutMaas = floatval($kayit->maas_tutari ?? 0);
-        if ($brutMaas <= 0) {
+
+        // Net maaş veya Prim Usülü ise 0 olabilir, asgari ücrete çevirme
+        // Sadece brüt maaş ve 0 ise asgari ücret kullan
+        if ($brutMaas <= 0 && !$isNetMaas && !$isPrimUsulu) {
             $brutMaas = $parametreModel->getGenelAyar('asgari_ucret_brut', $donemTarihi) ?? 33030.00;
         }
+
 
         // Net maaş tahmini (sürekli kayıtların oran hesabı için - brütün %70'i)
         $netMaasTahmini = $brutMaas * 0.70;
@@ -1249,7 +1241,8 @@ class BordroPersonelModel extends Model
 
         // Genel ayarları çek
 
-        if ($isNetMaas) {
+        if ($isNetMaas || $isPrimUsulu) {
+            // Net ve Prim Usülü için vergi/SGK yok
             $sgkIsciOrani = 0;
             $issizlikIsciOrani = 0;
             $sgkIsverenOrani = 0;
@@ -1524,7 +1517,7 @@ class BordroPersonelModel extends Model
         $kumulatifMatrah = $this->getKumulatifMatrah($kayit->personel_id, $donemYil, $donemAy);
         $yeniKumulatifMatrah = $kumulatifMatrah + $gelirVergisiMatrahi;
 
-        if ($isNetMaas) {
+        if ($isNetMaas || $isPrimUsulu) {
             $gelirVergisi = 0;
         } else {
             $gelirVergisi = $parametreModel->hesaplaGelirVergisi($yeniKumulatifMatrah, $gelirVergisiMatrahi, $donemYil);
@@ -1555,14 +1548,45 @@ class BordroPersonelModel extends Model
         // ========== ÖDEME DAĞILIMI HESAPLAMA ==========
         // Sodexo = Personel tablosundaki sodexo tutarı
         $sodexoOdemesi = floatval($kayit->sodexo ?? 0);
-        // Banka = Personelin maas_tutari değeri, ancak net maaştan büyük olamaz
-        $bankaOdemesiTalep = floatval($kayit->maas_tutari ?? 0);
-        // Net maaş - sodexo çıktıktan sonra bankaya yatacak maksimum tutar
-        $bankaIcinMaksimum = max(0, $netMaas - $sodexoOdemesi);
-        // Banka ödemesi, talep edilen tutar ile maksimum tutardan küçük olanı
-        $bankaOdemesi = min($bankaOdemesiTalep, $bankaIcinMaksimum);
-        // Elden = Net Maaş - Banka - Sodexo (negatif olamaz)
-        $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi);
+
+        if ($isPrimUsulu) {
+            // Prim Usülü hesaplama
+            // Toplam prim = Net ek ödemeler + Brüt ek ödemeler (primler)
+            $toplamPrim = $netMaas; // Net maaş zaten prim toplamını içeriyor
+
+            // Asgari ücret net tutarını al
+            $asgariUcretNet = $parametreModel->getGenelAyar('asgari_ucret_net', $donemTarihi) ?? 26050.00;
+
+            if ($toplamPrim > $asgariUcretNet) {
+                // Prim asgari ücret neti aştı
+                // Önce asgari ücret netten sodexo düş
+                $sodexoDusenNet = max(0, $asgariUcretNet - $sodexoOdemesi);
+
+                // Kalan tutarı bankaya yatır
+                $bankaOdemesi = $sodexoDusenNet;
+
+                // Asgari ücret üstü tutarı
+                $asgariUstTutar = $toplamPrim - $asgariUcretNet;
+
+                // Elden ödeme = Asgari üstü tutar
+                $eldenOdeme = $asgariUstTutar;
+            } else {
+                // Prim asgari ücret altında, normal dağılım
+                $bankaIcinMaksimum = max(0, $toplamPrim - $sodexoOdemesi);
+                $bankaOdemesi = $bankaIcinMaksimum;
+                $eldenOdeme = 0;
+            }
+        } else {
+            // Normal hesaplama (Brüt veya Net)
+            // Banka = Personelin maas_tutari değeri, ancak net maaştan büyük olamaz
+            $bankaOdemesiTalep = floatval($kayit->maas_tutari ?? 0);
+            // Net maaş - sodexo çıktıktan sonra bankaya yatacak maksimum tutar
+            $bankaIcinMaksimum = max(0, $netMaas - $sodexoOdemesi);
+            // Banka ödemesi, talep edilen tutar ile maksimum tutardan küçük olanı
+            $bankaOdemesi = min($bankaOdemesiTalep, $bankaIcinMaksimum);
+            // Elden = Net Maaş - Banka - Sodexo (negatif olamaz)
+            $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi);
+        }
 
         // Hesaplama Snapshot (JSON)
         $hesaplamaDetay = [

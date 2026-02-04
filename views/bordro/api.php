@@ -270,7 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 foreach ($personel_ids as $bp_id) {
                     if ($BordroPersonel->hesaplaMaas(intval($bp_id))) {
                         $hesaplananSayisi++;
-                        
+
                         // Bu personelin onay bekleyen kesintilerini kontrol et
                         $bp = $BordroPersonel->find(intval($bp_id));
                         if ($bp) {
@@ -278,7 +278,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             if ($onayBekleyen && $onayBekleyen->adet > 0) {
                                 $toplamOnayBekleyen += $onayBekleyen->adet;
                                 $toplamOnayBekleyenTutar += $onayBekleyen->toplam_tutar;
-                                
+
                                 // Personel adını al
                                 $personelData = $Personel->find($bp->personel_id);
                                 if ($personelData) {
@@ -297,10 +297,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $message = "$hesaplananSayisi personelin maaşı hesaplandı.";
                 $warning = null;
                 $warningDetails = null;
-                
+
                 if ($toplamOnayBekleyen > 0) {
                     $warning = "Dikkat: $toplamOnayBekleyen adet kesinti onay bekliyor (Toplam: " . number_format($toplamOnayBekleyenTutar, 2, ',', '.') . " TL). Onaylanmadan maaş hesaplamasına dahil edilmeyecek.";
-                    
+
                     // Personel detaylarını oluştur (tıklanabilir linkler ile - şifreli ID)
                     $detaylar = [];
                     foreach ($onayBekleyenPersoneller as $p) {
@@ -547,11 +547,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     // Puantaj ödemelerini ayrı ayrı göster
                     if (!empty($puantajOdemeler)) {
-                        $html .= '<tr><td colspan="2" class="ps-3 pt-2 pb-1"><small class="text-muted fw-medium"><i class="bx bx-briefcase me-1"></i>Puantaj Ödemeleri</small></td></tr>';
+                        $html .= '<tr><td colspan="2" class="ps-3 pt-2 pb-1 bg-light"><small class="text-primary fw-bold"><i class="bx bx-briefcase me-1"></i>Puantaj Ödemeleri</small></td></tr>';
                         foreach ($puantajOdemeler as $puantaj) {
-                            // [Puantaj] AÇMA İŞ EMRİ (1 Adet) formatından temiz açıklama çıkar
+                            // [Puantaj] Sonuç (Adet x Birim ₺) formatından temiz açıklama çıkar
                             $aciklama = str_replace('[Puantaj] ', '', $puantaj->aciklama ?? '');
-                            $html .= '<tr><td class="ps-4 small">' . htmlspecialchars($aciklama) . '</td><td class="text-end pe-3 text-success">+' . number_format($puantaj->tutar, 2, ',', '.') . ' ₺</td></tr>';
+
+                            // Parantez içindeki (Adet x Birim) kısmını ayırıp daha güzel gösterebiliriz
+                            if (preg_match('/^(.*?)\s*\((.*?)\)$/', $aciklama, $matches)) {
+                                $anaMetin = $matches[1];
+                                $detayMetin = $matches[2];
+                                $html .= '<tr><td class="ps-4 py-2"><div class="fw-medium">' . htmlspecialchars($anaMetin) . '</div><small class="text-muted">' . htmlspecialchars($detayMetin) . '</small></td><td class="text-end pe-3 text-success align-middle">+' . number_format($puantaj->tutar, 2, ',', '.') . ' ₺</td></tr>';
+                            } else {
+                                $html .= '<tr><td class="ps-4 py-2 small">' . htmlspecialchars($aciklama) . '</td><td class="text-end pe-3 text-success align-middle">+' . number_format($puantaj->tutar, 2, ',', '.') . ' ₺</td></tr>';
+                            }
                         }
                     }
                 }

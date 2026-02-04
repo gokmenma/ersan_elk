@@ -192,6 +192,7 @@ class PersonelModel extends Model
             ) AS pasif_personel
         FROM $this->table
         WHERE firma_id = ?
+        AND aktif_mi != 2
     ");
 
         $sql->execute([$_SESSION['firma_id']]);

@@ -120,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 /**Parasal tutarlar için money formatını kaldır */
-                if (strpos($key, 'tutar') !== false || $key == 'gunluk_ucret') {
+                if (strpos($key, 'tutar') !== false || $key == 'gunluk_ucret' || $key == 'sodexo') {
                     $data[$key] = Helper::formattedMoneyToNumber($value);
                 }
 
@@ -465,7 +465,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'iban_numarasi' => ['iban numarası', 'iban no', 'iban', 'iban numarasi', 'ıban numarası', 'ıban no', 'ıban', 'ıban numarasi'],
                 'maas_durumu' => ['maaş durumu', 'maas durumu', 'maaş tipi', 'maas tipi'],
                 'maas_tutari' => ['maaş tutarı', 'maas tutari', 'maaş'],
-                'sodexo' => ['sodexo kart no', 'sodexo kart numarası', 'sodexo kart', 'sodexo ödemesi tutarı', 'sodexo odemesi tutari'],
+                'sodexo' => ['sodexo ödemesi tutarı', 'sodexo odemesi tutari', 'sodexo'],
+                'sodexo_kart_no' => ['sodexo kart no', 'sodexo kart numarası', 'sodexo kart', 'kart no', 'kart numarası'],
                 'gunluk_ucret' => ['günlük ücret', 'gunluk ucret'],
                 'bes_kesintisi_varmi' => ['bes kesintisi var mı?', 'bes kesintisi var mi?', 'bes kesintisi', 'bes']
             ];

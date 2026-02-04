@@ -339,19 +339,26 @@ $(document).ready(function () {
         if (response.status === "success") {
           // Onay bekleyen kesinti varsa uyarı göster
           if (response.warning) {
-            var detailsHtml = response.warning_details ? 
-                '<div class="mt-3 mb-2"><strong>Onay Bekleyen Personeller:</strong></div>' + response.warning_details : '';
-            
+            var detailsHtml = response.warning_details
+              ? '<div class="mt-3 mb-2"><strong>Onay Bekleyen Personeller:</strong></div>' +
+                response.warning_details
+              : "";
+
             Swal.fire({
               icon: "warning",
               title: "Maaş Hesaplandı - Dikkat!",
-              html: '<p class="mb-3">' + response.message + '</p>' +
-                    '<div class="alert alert-warning text-start mb-2">' +
-                    '<i class="bx bx-error-circle me-2"></i>' + response.warning + '</div>' +
-                    detailsHtml +
-                    '<p class="text-muted small mt-3">Kesintileri onaylamak için ilgili personelin "Kesintiler" sekmesine gidin.</p>',
+              html:
+                '<p class="mb-3">' +
+                response.message +
+                "</p>" +
+                '<div class="alert alert-warning text-start mb-2">' +
+                '<i class="bx bx-error-circle me-2"></i>' +
+                response.warning +
+                "</div>" +
+                detailsHtml +
+                '<p class="text-muted small mt-3">Kesintileri onaylamak için ilgili personelin "Kesintiler" sekmesine gidin.</p>',
               confirmButtonText: "Tamam",
-              width: '500px'
+              width: "500px",
             }).then(() => {
               location.reload();
             });
@@ -618,6 +625,15 @@ $(document).ready(function () {
     if (donemId) {
       window.location.href =
         "views/bordro/excel-banka-export.php?donem_id=" + donemId;
+    }
+  });
+
+  // Excel Export (Sodexo Formatı)
+  $("#btnExportExcelSodexo").on("click", function () {
+    const donemId = $("#donemSelect").val();
+    if (donemId) {
+      window.location.href =
+        "views/bordro/excel-sodexo-export.php?donem_id=" + donemId;
     }
   });
 

@@ -32,7 +32,7 @@ try {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-    
+
     if (!isset($_SESSION['firma_id'])) {
         throw new Exception("Oturum bilgisi bulunamadı. Lütfen tekrar giriş yapın.");
     }
@@ -88,6 +88,7 @@ try {
         'Maaş Durumu' => 'maas_durumu',
         'Maaş Tutarı' => 'maas_tutari',
         'Sodexo Ödemesi Tutarı' => 'sodexo',
+        'Sodexo Kart No' => 'sodexo_kart_no',
         'Günlük Ücret' => 'gunluk_ucret',
         'Bes Kesintisi Var mı?' => 'bes_kesintisi_varmi',
     ];
@@ -109,7 +110,7 @@ try {
         // Başlık stili
         $style = $sheet->getStyle($columnLetter . '1');
         $style->getFont()->setBold(true);
-        
+
         // TC Kimlik No sütunu için sarı arka plan (önemli - güncelleme anahtarı)
         if ($dbField === 'tc_kimlik_no') {
             $style->getFill()

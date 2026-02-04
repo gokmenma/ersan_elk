@@ -98,6 +98,7 @@ try {
         'Maaş Durumu' => 'maas_durumu',
         'Maaş Tutarı' => 'maas_tutari',
         'Sodexo Ödemesi Tutarı' => 'sodexo',
+        'Sodexo Kart No' => 'sodexo_kart_no',
         'Günlük Ücret' => 'gunluk_ucret',
         'Bes Kesintisi Var mı?' => 'bes_kesintisi_varmi',
     ];
@@ -116,7 +117,7 @@ try {
         // Stil
         $style = $sheet->getStyle($columnLetter . '1');
         $style->getFont()->setBold(true);
-        
+
         // TC Kimlik No sütunu için sarı arka plan (güncelleme anahtarı)
         if ($dbField === 'tc_kimlik_no') {
             $style->getFill()
@@ -192,13 +193,13 @@ try {
             $sheet->setCellValueExplicit($columnLetter . $rowIndex, $val, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
             $colIndex++;
         }
-        
+
         // TC Kimlik No hücresini vurgula
         $tcColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(2); // TC Kimlik No 2. sütun
         $sheet->getStyle($tcColLetter . $rowIndex)->getFill()
             ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
             ->getStartColor()->setARGB('FFFFFDE7');
-        
+
         $rowIndex++;
     }
 
