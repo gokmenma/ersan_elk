@@ -135,6 +135,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
 
 
+            // Dizileri virgülle ayrılmış stringe çevir (Örn: departman)
+            foreach ($data as $key => $value) {
+                if (is_array($value)) {
+                    $data[$key] = implode(',', $value);
+                }
+            }
+
+
             //echo json_encode($data); exit();
 
             // Ekip kodu kontrolü - Aynı ekip kodunda aktif personel var mı?
@@ -286,23 +294,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Kesinti onaylama
         try {
             $kesinti_id = intval($_POST['kesinti_id'] ?? 0);
-            
+
             // Debug log
             error_log("Kesinti Onayla - Gelen ID: " . ($_POST['kesinti_id'] ?? 'BOŞ') . " - intval: " . $kesinti_id);
-            
+
             if (!$kesinti_id) {
                 throw new Exception("Kesinti ID gerekli.");
             }
-            
+
             $PersonelKesintileriModel = new \App\Model\PersonelKesintileriModel();
             $result = $PersonelKesintileriModel->updateKesinti($kesinti_id, [
                 'durum' => 'onaylandi',
                 'onaylayan_id' => $_SESSION['user_id'] ?? null,
                 'onay_tarihi' => date('Y-m-d H:i:s')
             ]);
-            
+
             error_log("Kesinti Onayla - Update sonucu: " . ($result ? 'true' : 'false'));
-            
+
             echo json_encode(['status' => 'success', 'message' => 'Kesinti onaylandı.']);
         } catch (Exception $e) {
             error_log("Kesinti Onayla - Hata: " . $e->getMessage());
@@ -315,14 +323,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (!$kesinti_id) {
                 throw new Exception("Kesinti ID gerekli.");
             }
-            
+
             $PersonelKesintileriModel = new \App\Model\PersonelKesintileriModel();
             $PersonelKesintileriModel->updateKesinti($kesinti_id, [
                 'durum' => 'reddedildi',
                 'onaylayan_id' => $_SESSION['user_id'] ?? null,
                 'onay_tarihi' => date('Y-m-d H:i:s')
             ]);
-            
+
             echo json_encode(['status' => 'success', 'message' => 'Kesinti reddedildi.']);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -334,12 +342,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (!$kesinti_id) {
                 throw new Exception("Kesinti ID gerekli.");
             }
-            
+
             $PersonelKesintileriModel = new \App\Model\PersonelKesintileriModel();
             $PersonelKesintileriModel->updateKesinti($kesinti_id, [
                 'silinme_tarihi' => date('Y-m-d H:i:s')
             ]);
-            
+
             echo json_encode(['status' => 'success', 'message' => 'Kesinti silindi.']);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -351,10 +359,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (!$kesinti_id) {
                 throw new Exception("Kesinti ID gerekli.");
             }
-            
+
             $PersonelKesintileriModel = new \App\Model\PersonelKesintileriModel();
             $PersonelKesintileriModel->sonlandirSurekliKesinti($kesinti_id);
-            
+
             echo json_encode(['status' => 'success', 'message' => 'Kesinti sonlandırıldı.']);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -771,6 +779,101 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             $PuantajModel->saveWithAttr($saveData);
             echo json_encode(['status' => 'success', 'message' => 'İş kaydı başarıyla eklendi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'ekip-gecmisi-ekle') {
+        try {
+            $data = $_POST;
+            $Personel = new PersonelModel();
+
+            $saveData = [
+                'personel_id' => $data['personel_id'],
+                'ekip_kodu_id' => $data['ekip_kodu_id'],
+                'baslangic_tarihi' => Date::Ymd($data['baslangic_tarihi'], 'Y-m-d'),
+                'bitis_tarihi' => !empty($data['bitis_tarihi']) ? Date::Ymd($data['bitis_tarihi'], 'Y-m-d') : null,
+                'firma_id' => $_SESSION['firma_id']
+            ];
+
+            $Personel->addEkipGecmisi($saveData);
+            echo json_encode(['status' => 'success', 'message' => 'Ekip geçmişi başarıyla eklendi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'ekip-gecmisi-sil') {
+        try {
+            $id = $_POST['id'];
+            $Personel = new PersonelModel();
+
+            // Kaydı getir
+            $gecmis = $Personel->getSingleEkipGecmisi($id);
+            if (!$gecmis) {
+                throw new Exception("Kayıt bulunamadı.");
+            }
+
+            // Yapılan işler tablosunda kontrol et
+            $stmt = $Personel->db->prepare("SELECT COUNT(*) FROM yapilan_isler WHERE personel_id = ? AND ekip_kodu_id = ? AND silinme_tarihi IS NULL");
+            $stmt->execute([$gecmis->personel_id, $gecmis->ekip_kodu_id]);
+            if ($stmt->fetchColumn() > 0) {
+                throw new Exception("Bu ekip atamasına ait 'Yapılan İşler' kaydı bulunduğu için silemezsiniz.");
+            }
+
+            // Endeks okuma tablosunda kontrol et
+            $stmt = $Personel->db->prepare("SELECT COUNT(*) FROM endeks_okuma WHERE personel_id = ? AND ekip_kodu_id = ? AND silinme_tarihi IS NULL");
+            $stmt->execute([$gecmis->personel_id, $gecmis->ekip_kodu_id]);
+            if ($stmt->fetchColumn() > 0) {
+                throw new Exception("Bu ekip atamasına ait 'Endeks Okuma' kaydı bulunduğu için silemezsiniz.");
+            }
+
+            $Personel->deleteEkipGecmisi($id);
+            echo json_encode(['status' => 'success', 'message' => 'Ekip geçmişi kaydı silindi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'get-musait-ekipler') {
+        try {
+            $ekipler = $Tanimlamalar->getMusaitEkipKodlari();
+            echo json_encode(['status' => 'success', 'data' => $ekipler]);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'get-ekip-gecmisi') {
+        try {
+            $personel_id = $_POST['personel_id'] ?? 0;
+            $gecmis = $Personel->getEkipGecmisi($personel_id);
+            echo json_encode(['status' => 'success', 'data' => $gecmis]);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'ekip-gecmisi-get') {
+        try {
+            $id = $_POST['id'];
+            $data = $Personel->getSingleEkipGecmisi($id);
+            if ($data) {
+                // Tarihleri d.m.Y formatına çevir
+                $data->baslangic_tarihi = Date::dmY($data->baslangic_tarihi);
+                if ($data->bitis_tarihi) {
+                    $data->bitis_tarihi = Date::dmY($data->bitis_tarihi);
+                }
+                echo json_encode(['status' => 'success', 'data' => $data]);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Kayıt bulunamadı.']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'ekip-gecmisi-guncelle') {
+        try {
+            $data = $_POST;
+            $saveData = [
+                'id' => $data['id'],
+                'ekip_kodu_id' => $data['ekip_kodu_id'],
+                'baslangic_tarihi' => Date::Ymd($data['baslangic_tarihi'], 'Y-m-d'),
+                'bitis_tarihi' => !empty($data['bitis_tarihi']) ? Date::Ymd($data['bitis_tarihi'], 'Y-m-d') : null
+            ];
+
+            $Personel->updateEkipGecmisi($saveData);
+            echo json_encode(['status' => 'success', 'message' => 'Ekip geçmişi başarıyla güncellendi.']);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }

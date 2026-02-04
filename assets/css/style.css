@@ -432,6 +432,7 @@ body {
 .form-floating .select2-container .select2-selection--multiple {
   min-height: 58px !important;
   height: auto !important;
+  padding-top: 22px !important;
 }
 
 .select2-container--default
@@ -2000,8 +2001,20 @@ body[data-sidebar-size="sm"] #sidebar-menu > ul > li:hover > ul.sub-menu {
 /* Main table wrapper with border-radius */
 .table-responsive {
   border-radius: 0.5rem !important;
-  overflow: hidden;
+  overflow: auto !important;
   margin-bottom: 1rem !important;
+}
+
+/* Allow dropdowns to be visible when open without breaking scroll when closed */
+.table-responsive:has(.show) {
+  overflow: visible !important;
+}
+
+/* Horizontal scroll management */
+@media (max-width: 991.98px) {
+  .table-responsive {
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Table base styling */
@@ -2011,7 +2024,6 @@ table.dataTable,
   border-radius: 0.5rem !important;
   border-collapse: separate !important;
   border-spacing: 0 !important;
-  overflow: hidden !important;
   margin-bottom: 1rem !important;
 }
 
@@ -2097,13 +2109,17 @@ table tfoot tr:last-child td:last-child,
 /* Box shadow for better visual */
 .table-bordered,
 table.dataTable.table-bordered {
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1) !important;
+  box-shadow:
+    0 1px 3px 0 rgb(0 0 0 / 0.1),
+    0 1px 2px -1px rgb(0 0 0 / 0.1) !important;
 }
 
 /* Dark mode table border-radius */
 [data-bs-theme="dark"] .table-bordered,
 [data-bs-theme="dark"] table.dataTable.table-bordered {
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3) !important;
+  box-shadow:
+    0 1px 3px 0 rgb(0 0 0 / 0.3),
+    0 1px 2px -1px rgb(0 0 0 / 0.3) !important;
 }
 
 [data-bs-theme="dark"] .table-bordered > :not(caption) > * > * {

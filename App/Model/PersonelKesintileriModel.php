@@ -92,9 +92,6 @@ class PersonelKesintileriModel extends Model
             return false; // Zaten mevcut
         }
 
-        // Ana kesintinin durumunu al (onaylandıysa onaylandı olarak, beklemedeyse beklemede olarak kopyala)
-        $durum = $surekliKesinti->durum ?? 'beklemede';
-
         $data = [
             'personel_id' => $surekliKesinti->personel_id,
             'donem_id' => $donem_id,
@@ -107,8 +104,7 @@ class PersonelKesintileriModel extends Model
             'parametre_id' => $surekliKesinti->parametre_id,
             'icra_id' => $surekliKesinti->icra_id,
             'ana_kesinti_id' => $surekliKesinti->id, // Ana kayıt referansı
-            'aktif' => 1,
-            'durum' => $durum // Ana kesintinin durumunu koru
+            'aktif' => 1
         ];
 
         return $this->saveWithAttr($data);

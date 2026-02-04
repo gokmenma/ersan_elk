@@ -39,9 +39,8 @@ foreach ($workResults as $wr) {
 }
 
 
-
-//Helper::dd($personelOptions);
-
+// PHP tarafında aktif sekmeyi belirle (URL -> Storage (yok) -> Varsayılan)
+$activeTab = $_GET['tab'] ?? 'okuma';
 ?>
 <div class="container-fluid">
     <?php
@@ -143,176 +142,178 @@ foreach ($workResults as $wr) {
         </div>
     </div>
 
-    <?php
-    $activeTab = $_GET['tab'] ?? 'okuma';
-    ?>
 
-    <ul class="nav nav-tabs nav-tabs-custom nav-success mb-3" role="tablist" id="puantajTabs">
-        <li class="nav-item">
-            <a class="nav-link <?= $activeTab === 'okuma' ? 'active' : '' ?>" data-bs-toggle="tab" href="#okuma"
-                role="tab" data-tab-name="okuma">
-                <span class="d-block d-sm-none"><i class="fas fa-home"></i></span>
-                <span class="d-none d-sm-block">Okuma İşlemleri</span>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link <?= $activeTab === 'yapilan_isler' ? 'active' : '' ?>" data-bs-toggle="tab"
-                href="#yapilan_isler" role="tab" data-tab-name="yapilan_isler">
-                <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
-                <span class="d-none d-sm-block">Kesme/Açma İşlem.</span>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link <?= $activeTab === 'kacak_kontrol' ? 'active' : '' ?>" data-bs-toggle="tab"
-                href="#kacak_kontrol" role="tab" data-tab-name="kacak_kontrol">
-                <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
-                <span class="d-none d-sm-block">Kaçak Kontrol</span>
-            </a>
-        </li>
-    </ul>
 
-    <div class="tab-content">
-        <div class="tab-pane <?= $activeTab === 'okuma' ? 'active' : '' ?>" id="okuma" role="tabpanel">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="card-title">Endeks Okuma Raporu</h4>
-                    <div class="d-flex gap-2">
-                        <div class="dropdown">
-                            <button class="btn btn-soft-secondary dropdown-toggle" type="button"
-                                data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bx bx-dots-vertical-rounded"></i> İşlemler
+    <div id="puantajMainWrapper" style="opacity: 0;">
+        <ul class="nav nav-tabs nav-tabs-custom nav-success mb-3" role="tablist" id="puantajTabs">
+            <li class="nav-item">
+                <a class="nav-link <?= $activeTab === 'okuma' ? 'active' : '' ?>" data-bs-toggle="tab" href="#okuma"
+                    role="tab" data-tab-name="okuma">
+                    <span class="d-block d-sm-none"><i class="fas fa-home"></i></span>
+                    <span class="d-none d-sm-block">Okuma İşlemleri</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?= $activeTab === 'yapilan_isler' ? 'active' : '' ?>" data-bs-toggle="tab"
+                    href="#yapilan_isler" role="tab" data-tab-name="yapilan_isler">
+                    <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
+                    <span class="d-none d-sm-block">Kesme/Açma İşlem.</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?= $activeTab === 'kacak_kontrol' ? 'active' : '' ?>" data-bs-toggle="tab"
+                    href="#kacak_kontrol" role="tab" data-tab-name="kacak_kontrol">
+                    <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
+                    <span class="d-none d-sm-block">Kaçak Kontrol</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="puantajTabContent">
+            <div class="tab-pane <?= $activeTab === 'okuma' ? 'active' : '' ?>" id="okuma" role="tabpanel">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4 class="card-title">Endeks Okuma Raporu</h4>
+                        <div class="d-flex gap-2">
+                            <div class="dropdown">
+                                <button class="btn btn-soft-secondary dropdown-toggle" type="button"
+                                    data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false">
+                                    <i class="bx bx-dots-vertical-rounded"></i> İşlemler
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <a class="dropdown-item" href="javascript:void(0);" id="btnExportEndeksExcel">
+                                            <i class="bx bx-spreadsheet me-2"></i> Excele Aktar
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="javascript:void(0);" id="btnShowStats">
+                                            <i class="bx bx-pie-chart-alt-2 me-2"></i> İstatistikler
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                            <button type="button" class="btn btn-secondary" data-bs-toggle="modal"
+                                data-bs-target="#importOnlineIcmalRaporuModal">
+                                <i class="bx bxs-file"></i> Online Sorgula
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li>
-                                    <a class="dropdown-item" href="javascript:void(0);" id="btnExportEndeksExcel">
-                                        <i class="bx bx-spreadsheet me-2"></i> Excele Aktar
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="javascript:void(0);" id="btnShowStats">
-                                        <i class="bx bx-pie-chart-alt-2 me-2"></i> İstatistikler
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                        <button type="button" class="btn btn-secondary" data-bs-toggle="modal"
-                            data-bs-target="#importOnlineIcmalRaporuModal">
-                            <i class="bx bxs-file"></i> Online Sorgula
-                        </button>
-                        <button type="button" class="btn btn-success" data-bs-toggle="modal"
-                            data-bs-target="#importEndeksModal">
-                            <i class="bx bxs-file-import"></i> Dosya Yükle
-                        </button>
+                            <button type="button" class="btn btn-success" data-bs-toggle="modal"
+                                data-bs-target="#importEndeksModal">
+                                <i class="bx bxs-file-import"></i> Dosya Yükle
+                            </button>
 
+                        </div>
                     </div>
-                </div>
-                <div class="card-body">
-                    <table id="endeksTable" class="table table-bordered dt-responsive nowrap w-100">
-                        <thead>
-                            <tr class="table-light">
-                                <th>Bölgesi</th>
-                                <th>Personel Adı</th>
-                                <th>Sarfiyat</th>
-                                <th>Ort. Sarfiyat (Günlük)</th>
-                                <th>Tahakkuk</th>
-                                <th>Ort. Tahakkuk (Günlük)</th>
-                                <th>Okunan Gün</th>
-                                <th>Okunan Abone</th>
-                                <th>Ort. Okunan Abone</th>
-                                <th>Okuma Perf. (%)</th>
-                                <th>Tarih</th>
-                                <th>İşlem</th>
-                            </tr>
-                        </thead>
-                        <tbody id="okumaBody">
-                            <!-- AJAX Content -->
-                        </tbody>
-                    </table>
+                    <div class="card-body">
+                        <table id="endeksTable" class="table table-bordered dt-responsive nowrap w-100">
+                            <thead>
+                                <tr class="table-light">
+                                    <th>Bölgesi</th>
+                                    <th>Personel Adı</th>
+                                    <th>Sarfiyat</th>
+                                    <th>Ort. Sarfiyat (Günlük)</th>
+                                    <th>Tahakkuk</th>
+                                    <th>Ort. Tahakkuk (Günlük)</th>
+                                    <th>Okunan Gün</th>
+                                    <th>Okunan Abone</th>
+                                    <th>Ort. Okunan Abone</th>
+                                    <th>Okuma Perf. (%)</th>
+                                    <th>Tarih</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="okumaBody">
+                                <!-- AJAX Content -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="tab-pane <?= $activeTab === 'yapilan_isler' ? 'active' : '' ?>" id="yapilan_isler" role="tabpanel">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="card-title">İş Listesi</h4>
-                    <div class="d-flex gap-2">
-                        <div class="dropdown">
-                            <button class="btn btn-soft-secondary dropdown-toggle" type="button"
-                                data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bx bx-dots-vertical-rounded"></i> İşlemler
+            <div class="tab-pane <?= $activeTab === 'yapilan_isler' ? 'active' : '' ?>" id="yapilan_isler"
+                role="tabpanel">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4 class="card-title">İş Listesi</h4>
+                        <div class="d-flex gap-2">
+                            <div class="dropdown">
+                                <button class="btn btn-soft-secondary dropdown-toggle" type="button"
+                                    data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false">
+                                    <i class="bx bx-dots-vertical-rounded"></i> İşlemler
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <a class="dropdown-item" href="javascript:void(0);" id="btnExportPuantajExcel">
+                                            <i class="bx bx-spreadsheet me-2"></i> Excele Aktar
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="javascript:void(0);" id="btnShowPuantajStats">
+                                            <i class="bx bx-pie-chart-alt-2 me-2"></i> İstatistikler
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                            <button type="button" class="btn btn-secondary" data-bs-toggle="modal"
+                                data-bs-target="#importOnlinePuantajModal">
+                                <i class="bx bxs-file"></i> Online Sorgula
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li>
-                                    <a class="dropdown-item" href="javascript:void(0);" id="btnExportPuantajExcel">
-                                        <i class="bx bx-spreadsheet me-2"></i> Excele Aktar
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="javascript:void(0);" id="btnShowPuantajStats">
-                                        <i class="bx bx-pie-chart-alt-2 me-2"></i> İstatistikler
-                                    </a>
-                                </li>
-                            </ul>
+                            <button type="button" class="btn btn-success" data-bs-toggle="modal"
+                                data-bs-target="#importPuantajModal">
+                                <i class="bx bxs-file-import"></i> Excel Yükle
+                            </button>
                         </div>
-                        <button type="button" class="btn btn-secondary" data-bs-toggle="modal"
-                            data-bs-target="#importOnlinePuantajModal">
-                            <i class="bx bxs-file"></i> Online Sorgula
-                        </button>
-                        <button type="button" class="btn btn-success" data-bs-toggle="modal"
-                            data-bs-target="#importPuantajModal">
-                            <i class="bx bxs-file-import"></i> Excel Yükle
-                        </button>
                     </div>
-                </div>
-                <div class="card-body">
-                    <table id="puantajTable" class="table table-bordered dt-responsive nowrap w-100">
-                        <thead>
-                            <tr class="table-light">
-                                <th>Tarih</th>
-                                <th>İş Emri Tipi</th>
-                                <th>Ekip (Personel)</th>
-                                <th>İş Emri Sonucu</th>
-                                <th>Sonuçlanmış</th>
-                                <th>Açık Olanlar</th>
-                                <th>İşlem</th>
-                            </tr>
-                        </thead>
-                        <tbody id="yapilanIslerBody">
-                            <!-- AJAX Content -->
-                        </tbody>
-                    </table>
+                    <div class="card-body">
+                        <table id="puantajTable" class="table table-bordered dt-responsive nowrap w-100">
+                            <thead>
+                                <tr class="table-light">
+                                    <th>Tarih</th>
+                                    <th>İş Emri Tipi</th>
+                                    <th>Ekip (Personel)</th>
+                                    <th>İş Emri Sonucu</th>
+                                    <th>Sonuçlanmış</th>
+                                    <th>Açık Olanlar</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="yapilanIslerBody">
+                                <!-- AJAX Content -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="tab-pane <?= $activeTab === 'kacak_kontrol' ? 'active' : '' ?>" id="kacak_kontrol" role="tabpanel">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="card-title">Kaçak Kontrol Listesi</h4>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-primary" id="btnNewKacak">
-                            <i class="bx bx-plus"></i> Yeni Ekle
-                        </button>
-                        <button type="button" class="btn btn-success" data-bs-toggle="modal"
-                            data-bs-target="#importKacakModal">
-                            <i class="bx bxs-file-import"></i> Excel Yükle
-                        </button>
+            <div class="tab-pane <?= $activeTab === 'kacak_kontrol' ? 'active' : '' ?>" id="kacak_kontrol"
+                role="tabpanel">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4 class="card-title">Kaçak Kontrol Listesi</h4>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-primary" id="btnNewKacak">
+                                <i class="bx bx-plus"></i> Yeni Ekle
+                            </button>
+                            <button type="button" class="btn btn-success" data-bs-toggle="modal"
+                                data-bs-target="#importKacakModal">
+                                <i class="bx bxs-file-import"></i> Excel Yükle
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div class="card-body">
-                    <table id="kacakTable" class="table table-bordered dt-responsive nowrap w-100">
-                        <thead>
-                            <tr class="table-light">
-                                <th>Tarih</th>
-                                <th>Ekip (Personel)</th>
-                                <th>Sayı</th>
-                                <th>Açıklama</th>
-                                <th>İşlem</th>
-                            </tr>
-                        </thead>
-                        <tbody id="kacakKontrolBody">
-                            <!-- AJAX Content -->
-                        </tbody>
-                    </table>
+                    <div class="card-body">
+                        <table id="kacakTable" class="table table-bordered dt-responsive nowrap w-100">
+                            <thead>
+                                <tr class="table-light">
+                                    <th>Tarih</th>
+                                    <th>Ekip (Personel)</th>
+                                    <th>Sayı</th>
+                                    <th>Açıklama</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kacakKontrolBody">
+                                <!-- AJAX Content -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -498,7 +499,7 @@ foreach ($workResults as $wr) {
                             name: 'kacak_personel_ids',
                             options: $personelOptionsMultiple,
                             selectedValues: [],
-                            label: '',
+                            label: 'Personel',
                             icon: 'users',
                             valueField: 'key',
                             textField: '',
@@ -751,6 +752,9 @@ foreach ($workResults as $wr) {
         var puantajDataTable = null;
         var kacakDataTable = null;
 
+        var tabContentLoading = false;
+        var initialTabLoaded = false;
+
         // Filtre özetini güncelle
         function updateFilterSummary() {
             let summary = '';
@@ -825,7 +829,19 @@ foreach ($workResults as $wr) {
                 if (!urlParams.has('end_date') && filters.end_date) $('input[name="end_date"]').val(filters.end_date);
                 if (!urlParams.has('tab') && filters.tab) {
                     $('#activeTabInput').val(filters.tab);
-                    $(`#puantajTabs a[data-tab-name="${filters.tab}"]`).tab('show');
+                    // Manuel olarak sınıfları değiştiriyoruz ki 'jump' (animasyon) olmasın
+                    $(`#puantajTabs a`).removeClass('active');
+                    $(`.tab-pane`).removeClass('active show');
+
+                    var $targetTab = $(`#puantajTabs a[data-tab-name="${filters.tab}"]`);
+                    if ($targetTab.length > 0) {
+                        $targetTab.addClass('active');
+                        $($targetTab.attr('href')).addClass('active show');
+                    } else {
+                        // Eğer storage'daki tab artık yoksa varsayılana dön
+                        $(`#puantajTabs a[data-tab-name="okuma"]`).addClass('active');
+                        $('#okuma').addClass('active show');
+                    }
                 }
 
                 // Diğer filtreler sadece URL boşsa storage'dan
@@ -844,7 +860,7 @@ foreach ($workResults as $wr) {
             }
         }
 
-        // Tab değişikliğinde hidden input güncelle ve URL'yi güncelle
+        // Tab değişikliğinde hidden input güncelle, URL'yi güncelle ve içeriği yükle
         $('#puantajTabs a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
             var tabName = $(e.target).attr('data-tab-name');
             $('#activeTabInput').val(tabName);
@@ -871,6 +887,18 @@ foreach ($workResults as $wr) {
 
             // Filtreleri kaydet
             saveFiltersToStorage();
+
+            // Filtre panellerini göster/gizle
+            if (tabName === 'yapilan_isler') {
+                $('#workTypeFilterContainer').show();
+                $('#workResultFilterContainer').show();
+            } else {
+                $('#workTypeFilterContainer').hide();
+                $('#workResultFilterContainer').hide();
+            }
+
+            // İçeriği yükle
+            loadTabContent(tabName);
         });
 
         // Form submit öncesi filtreleri kaydet
@@ -892,8 +920,7 @@ foreach ($workResults as $wr) {
             $('#filterForm').trigger('submit');
         });
 
-        // Sayfa yüklendiğinde filtreleri storage'dan al
-        loadFiltersFromStorage();
+
 
         // Server-side DataTable için özelleştirilmiş seçenekleri oluştur
         function getServerSideOptions(customOptions) {
@@ -1019,6 +1046,7 @@ foreach ($workResults as $wr) {
         }
 
         function loadTabContent(tabName) {
+            initialTabLoaded = true;
             if (tabName === 'okuma') {
                 initEndeksDataTable();
             } else if (tabName === 'yapilan_isler') {
@@ -1039,29 +1067,18 @@ foreach ($workResults as $wr) {
             $('#kacakUploadForm input[name="excel_file"]').val('');
         });
 
-        // Initial load
-        var activeTab = '<?= $activeTab ?>';
-        loadTabContent(activeTab);
-        if (activeTab === 'yapilan_isler') {
-            $('#workTypeFilterContainer').show();
-            $('#workResultFilterContainer').show();
-        } else {
-            $('#workTypeFilterContainer').hide();
-            $('#workResultFilterContainer').hide();
-        }
+        // Sayfa yüklendiğinde filtreleri storage'dan al
+        loadFiltersFromStorage();
 
-        // Tab click event
-        $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
-            var tabName = $(e.target).data('tab-name');
-            if (tabName === 'yapilan_isler') {
-                $('#workTypeFilterContainer').show();
-                $('#workResultFilterContainer').show();
-            } else {
-                $('#workTypeFilterContainer').hide();
-                $('#workResultFilterContainer').hide();
-            }
-            loadTabContent(tabName);
-        });
+        // İlk yükleme: Şu an aktif olan sekmeyi bul ve içeriğini yükle
+        var currentActiveTab = $('#puantajTabs .nav-link.active').data('tab-name');
+
+        // Zarif geçiş: Doğru sekme ayarlandıktan sonra göster
+        $('#puantajMainWrapper').css('opacity', '1');
+
+        if (currentActiveTab) {
+            loadTabContent(currentActiveTab);
+        }
 
         // Filter form submit - server-side DataTable'ları yeniden yükle
         $('#filterForm').on('submit', function (e) {
@@ -1620,5 +1637,22 @@ foreach ($workResults as $wr) {
 
     .btn-clear-filter i {
         pointer-events: none;
+    }
+
+    /* Tab altındaki tüm olası çizgileri kaldır */
+    #puantajTabs,
+    .nav-tabs-custom,
+    .nav-tabs {
+        border-bottom: none !important;
+    }
+
+    .nav-tabs-custom .nav-link,
+    .nav-tabs-custom .nav-link.active {
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .nav-tabs-custom .nav-link::after {
+        display: none !important;
     }
 </style>

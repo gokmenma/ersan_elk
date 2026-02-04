@@ -69,6 +69,7 @@ class PuantajModel extends Model
             FROM $this->table t 
             LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id 
             WHERE t.firma_id = ? 
+            AND t.silinme_tarihi IS NULL
             AND COALESCE(tn.tur_adi, t.is_emri_tipi) IS NOT NULL 
             AND COALESCE(tn.tur_adi, t.is_emri_tipi) != ''
         ");
@@ -85,6 +86,7 @@ class PuantajModel extends Model
             FROM $this->table t 
             LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id 
             WHERE t.firma_id = ? 
+            AND t.silinme_tarihi IS NULL
             AND COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) IS NOT NULL 
             AND COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) != ''";
         $params = [$firmaId];
@@ -103,10 +105,10 @@ class PuantajModel extends Model
     public function getMonthlySummary($year, $month)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT personel_id, DAY(tarih) as gun, SUM(sonuclanmis) as toplam 
+        $sql = "SELECT personel_id, ekip_kodu_id, DAY(tarih) as gun, SUM(sonuclanmis) as toplam 
                 FROM $this->table 
-                WHERE firma_id = ? AND YEAR(tarih) = ? AND MONTH(tarih) = ?
-                GROUP BY personel_id, DAY(tarih)";
+                WHERE firma_id = ? AND YEAR(tarih) = ? AND MONTH(tarih) = ? AND silinme_tarihi IS NULL
+                GROUP BY personel_id, ekip_kodu_id, DAY(tarih)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $year, $month]);
@@ -114,7 +116,7 @@ class PuantajModel extends Model
 
         $summary = [];
         foreach ($results as $row) {
-            $summary[$row->personel_id][$row->gun] = $row->toplam;
+            $summary[$row->personel_id][$row->ekip_kodu_id][$row->gun] = $row->toplam;
         }
         return $summary;
     }
@@ -123,13 +125,13 @@ class PuantajModel extends Model
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         // COALESCE ile eski ve yeni alanlardan is_emri_sonucu al
-        $sql = "SELECT t.personel_id, DAY(t.tarih) as gun, 
+        $sql = "SELECT t.personel_id, t.ekip_kodu_id, DAY(t.tarih) as gun, 
                     COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu, 
                     SUM(t.sonuclanmis) as toplam 
                 FROM $this->table t
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
-                WHERE t.firma_id = ? AND YEAR(t.tarih) = ? AND MONTH(t.tarih) = ?
-                GROUP BY t.personel_id, DAY(t.tarih), COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)";
+                WHERE t.firma_id = ? AND YEAR(t.tarih) = ? AND MONTH(t.tarih) = ? AND t.silinme_tarihi IS NULL
+                GROUP BY t.personel_id, t.ekip_kodu_id, DAY(t.tarih), COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $year, $month]);
@@ -137,7 +139,7 @@ class PuantajModel extends Model
 
         $summary = [];
         foreach ($results as $row) {
-            $summary[$row->personel_id][$row->gun][$row->is_emri_sonucu] = $row->toplam;
+            $summary[$row->personel_id][$row->ekip_kodu_id][$row->gun][$row->is_emri_sonucu] = $row->toplam;
         }
         return $summary;
     }
@@ -184,11 +186,23 @@ class PuantajModel extends Model
 
         $mapping = [];
         foreach ($results as $row) {
-            // Use the first personel_ids found for each ekip_adi
-            if (!isset($mapping[$row->ekip_adi]) && $row->personel_ids) {
-                $mapping[$row->ekip_adi] = $row->personel_ids;
+            if ($row->ekip_adi && $row->personel_ids) {
+                if (!isset($mapping[$row->ekip_adi])) {
+                    $mapping[$row->ekip_adi] = [];
+                }
+                $recordIds = explode(',', $row->personel_ids);
+                foreach ($recordIds as $rid) {
+                    $rid = trim($rid);
+                    if ($rid)
+                        $mapping[$row->ekip_adi][] = $rid;
+                }
             }
         }
+
+        foreach ($mapping as $key => $ids) {
+            $mapping[$key] = implode(',', array_unique($ids));
+        }
+
         return $mapping;
     }
 
@@ -378,9 +392,13 @@ class PuantajModel extends Model
                     COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu
                 FROM yapilan_isler t
                 LEFT JOIN personel p ON t.personel_id = p.id
-                LEFT JOIN tanimlamalar ek ON p.ekip_no = ek.id
+                LEFT JOIN personel_ekip_gecmisi pg ON t.personel_id = pg.personel_id 
+                    AND pg.baslangic_tarihi <= t.tarih 
+                    AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= t.tarih)
+                LEFT JOIN tanimlamalar ek ON pg.ekip_kodu_id = ek.id
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
                 WHERE t.firma_id = ? AND YEAR(t.tarih) = ? AND MONTH(t.tarih) = ? 
+                AND t.silinme_tarihi IS NULL
                 $notInClause
                 AND (t.is_emri_sonucu_id > 0 OR (t.is_emri_sonucu IS NOT NULL AND t.is_emri_sonucu != ''))
                 ORDER BY t.tarih ASC";

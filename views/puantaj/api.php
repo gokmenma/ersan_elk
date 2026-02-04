@@ -85,6 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $insertedCount = 0;
         $skippedCount = 0;
         $skippedRows = []; // Atlanan satırların detayları
+        $workTypeCache = []; // Aynı yükleme sırasında yeni eklenen türleri takip etmek için cache
 
         // Process rows
         for ($i = $headerRowIndex + 1; $i < count($rows); $i++) {
@@ -100,12 +101,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $acikOlanlar = isset($colMap['acik_olanlar']) ? (int) trim($row[$colMap['acik_olanlar']]) : 0;
 
             // Skip empty rows or summary rows (often total rows have empty fields)
-            if (empty($firma) && empty($ekip)) {
+            // If ekip is empty, it's definitely not a data row we want to process or warn about
+            if (empty($ekip)) {
                 continue;
             }
 
-            // Skip rows that look like totals (e.g. Firma is empty but stats are there, or starts with 'Toplam')
-            if (empty($firma) || stripos($firma, 'Toplam') !== false) {
+            /** sonuclanmış iş 0 veya daha küçükse atla */
+            if ($sonuclanmis <= 0) {
+                $skippedCount++;
+                $skippedRows[] = [
+                    'satir' => $excelRowNum,
+                    'ekip' => $ekip,
+                    'neden' => 'Bu iş sonuclanmadığı için atlandı.'
+                ];
+                continue;
+            }
+
+
+
+            // Skip rows that look like totals (e.g. starts with 'Toplam' or Firma is empty)
+            if (empty($firma) || stripos($firma, 'Toplam') !== false || stripos($ekip, 'Toplam') !== false) {
                 continue;
             }
 
@@ -117,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $islemId = md5($rawString);
 
             // Check if exists
-            $exists = $Puantaj->db->prepare("SELECT COUNT(*) FROM yapilan_isler WHERE islem_id = ?");
+            $exists = $Puantaj->db->prepare("SELECT COUNT(*) FROM yapilan_isler WHERE islem_id = ? AND silinme_tarihi IS NULL");
             $exists->execute([$islemId]);
             if ($exists->fetchColumn() > 0) {
                 $skippedCount++;
@@ -147,16 +162,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     // - aktif_mi = 1 (active)
                     // - ise_giris_tarihi <= uploadDate (started before or on the date)
                     // - isten_cikis_tarihi IS NULL OR isten_cikis_tarihi >= uploadDate (hasn't left yet or left after the date)
+                    // 2. Find person from team history who was ACTIVE on the upload date
                     $stmtPersonel = $Puantaj->db->prepare("
-                        SELECT id FROM personel 
-                        WHERE ekip_no = ? 
-                        AND silinme_tarihi IS NULL
-                        AND aktif_mi = 1
-                        AND (ise_giris_tarihi IS NULL OR ise_giris_tarihi <= ?)
-                        AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi >= ?)
+                        SELECT p.id 
+                        FROM personel p
+                        JOIN personel_ekip_gecmisi pg ON p.id = pg.personel_id
+                        WHERE pg.ekip_kodu_id = ? 
+                        AND pg.baslangic_tarihi <= ?
+                        AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= ?)
+                        AND p.silinme_tarihi IS NULL
+                        AND pg.firma_id = ?
                         LIMIT 1
                     ");
-                    $stmtPersonel->execute([$defId, $uploadDate, $uploadDate]);
+                    $stmtPersonel->execute([$defId, $uploadDate, $uploadDate, $_SESSION['firma_id']]);
                     $personelId = $stmtPersonel->fetchColumn() ?: 0;
                     $ekipId = $defId;
                 }
@@ -175,21 +193,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             /**İş Emri Tipi ve iş Emri Sonucuna göre Tanımlamlar tablosundan id'yi getir */
             /** Tanımlı is id'sini al,tanımlı değilse yeni kayıt ekle onun id'sini al */
-            //$isEmriSonucuId = 0;
-            $isExistingTur = $Tanimlamalar->isEmriSonucu($isEmriTipi, $isEmriSonucu);
-            if (!$isExistingTur) {
-                $data = [
-                    'firma_id' => $_SESSION["firma_id"],
-                    'grup' => 'is_turu',
-                    'tur_adi' => $isEmriTipi,
-                    'is_emri_sonucu' => $isEmriSonucu,
-                    'aciklama' => "Puantaj yükleme sırasında otomatik oluşturuldu"
-                ];
-                $encryptedId = $Tanimlamalar->saveWithAttr($data);
-                // saveWithAttr şifreli id döndürüyor, decrypt et
-                $isEmriSonucuId = \App\Helper\Security::decrypt($encryptedId);
+            $cacheKey = $isEmriTipi . '|' . $isEmriSonucu;
+            if (isset($workTypeCache[$cacheKey])) {
+                $isEmriSonucuId = $workTypeCache[$cacheKey];
             } else {
-                $isEmriSonucuId = $isExistingTur->id;
+                $isExistingTur = $Tanimlamalar->isEmriSonucu($isEmriTipi, $isEmriSonucu);
+                if (!$isExistingTur) {
+                    $data = [
+                        'firma_id' => $_SESSION["firma_id"],
+                        'grup' => 'is_turu',
+                        'tur_adi' => $isEmriTipi,
+                        'is_emri_sonucu' => $isEmriSonucu,
+                        'aciklama' => "Puantaj yükleme sırasında otomatik oluşturuldu"
+                    ];
+                    $encryptedId = $Tanimlamalar->saveWithAttr($data);
+                    // saveWithAttr şifreli id döndürüyor, decrypt et
+                    $isEmriSonucuId = \App\Helper\Security::decrypt($encryptedId);
+                    // Cache'e ekle
+                    $workTypeCache[$cacheKey] = $isEmriSonucuId;
+                } else {
+                    $isEmriSonucuId = $isExistingTur->id;
+                    // Cache'e ekle
+                    $workTypeCache[$cacheKey] = $isEmriSonucuId;
+                }
             }
 
             // Insert
@@ -453,16 +479,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     // - aktif_mi = 1 (active)
                     // - ise_giris_tarihi <= uploadDate (started before or on the date)
                     // - isten_cikis_tarihi IS NULL OR isten_cikis_tarihi >= uploadDate (hasn't left yet or left after the date)
+                    // 2. Find person from team history who was ACTIVE on the upload date
                     $stmtPersonel = $EndeksOkuma->db->prepare("
-                        SELECT id FROM personel 
-                        WHERE ekip_no = ? 
-                        AND silinme_tarihi IS NULL
-                        AND aktif_mi = 1
-                        AND (ise_giris_tarihi IS NULL OR ise_giris_tarihi <= ?)
-                        AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi >= ?)
+                        SELECT p.id 
+                        FROM personel p
+                        JOIN personel_ekip_gecmisi pg ON p.id = pg.personel_id
+                        WHERE pg.ekip_kodu_id = ? 
+                        AND pg.baslangic_tarihi <= ?
+                        AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= ?)
+                        AND p.silinme_tarihi IS NULL
+                        AND pg.firma_id = ?
                         LIMIT 1
                     ");
-                    $stmtPersonel->execute([$defId, $uploadDate, $uploadDate]);
+                    $stmtPersonel->execute([$defId, $uploadDate, $uploadDate, $_SESSION['firma_id']]);
                     $personelId = $stmtPersonel->fetchColumn() ?: 0;
                 }
             }
@@ -478,8 +507,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 continue;
             }
 
-            $stmt = $EndeksOkuma->db->prepare("INSERT INTO endeks_okuma (personel_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $result = $stmt->execute([$personelId, $firmaId, $bolge, $kullanici_adi, $sarfiyat, $ort_sarfiyat, $tahakkuk, $ort_tahakkuk, $okunan_gun, $okunan_abone, $ort_okunan_abone, $performans, $uploadDate]);
+            $stmt = $EndeksOkuma->db->prepare("INSERT INTO endeks_okuma (personel_id, ekip_kodu_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $result = $stmt->execute([$personelId, $defId, $firmaId, $bolge, $kullanici_adi, $sarfiyat, $ort_sarfiyat, $tahakkuk, $ort_tahakkuk, $okunan_gun, $okunan_abone, $ort_okunan_abone, $performans, $uploadDate]);
             if ($result)
                 $insertedCount++;
         }
@@ -603,7 +632,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             // Unique ID for idempotency
             $islemId = md5($uploadDate . '|' . $ekipStr . '|' . $sayi . '|' . $aciklama);
 
-            $exists = $Puantaj->db->prepare("SELECT COUNT(*) FROM kacak_kontrol WHERE islem_id = ?");
+            $exists = $Puantaj->db->prepare("SELECT COUNT(*) FROM kacak_kontrol WHERE islem_id = ? AND silinme_tarihi IS NULL");
             $exists->execute([$islemId]);
             if ($exists->fetchColumn() > 0) {
                 $skippedCount++;
@@ -683,54 +712,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'kacak-kaydet') {
-    $id = $_POST['id'] ?? 0;
-    $tarih = $_POST['tarih'] ?? date('Y-m-d');
-    $personelIdsArr = $_POST['kacak_personel_ids'] ?? [];
-    $sayi = $_POST['sayi'] ?? 0;
-    $aciklama = $_POST['aciklama'] ?? '';
-    $firmaId = $_SESSION['firma_id'] ?? 0;
+    $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
+    try {
+        $id = $_POST['id'] ?? 0;
+        $tarih = $_POST['tarih'] ?? date('Y-m-d');
+        $personelIdsArr = $_POST['kacak_personel_ids'] ?? [];
+        $sayi = $_POST['sayi'] ?? 0;
+        $aciklama = $_POST['aciklama'] ?? '';
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $passedEkipAdi = $_POST['ekip_adi'] ?? '';
 
-    $dbTarih = \App\Helper\Date::convertExcelDate($tarih, 'Y-m-d') ?: $tarih;
+        $dbTarih = \App\Helper\Date::convertExcelDate($tarih, 'Y-m-d') ?: $tarih;
 
-    // personel_ids'i virgülle ayrılmış string yap
-    $personelIdsStr = is_array($personelIdsArr) ? implode(',', $personelIdsArr) : $personelIdsArr;
+        // personel_ids'i virgülle ayrılmış string yap
+        $personelIdsStr = is_array($personelIdsArr) ? implode(',', $personelIdsArr) : $personelIdsArr;
 
-    // Seçilen personellerin isimlerini ekip_adi olarak oluştur
-    $ekipAdi = '';
-    if (!empty($personelIdsArr) && is_array($personelIdsArr)) {
-        $Personel = new PersonelModel();
-        $isimler = [];
-        foreach ($personelIdsArr as $pId) {
-            $p = $Personel->find($pId);
-            if ($p) {
-                $isimler[] = $p->adi_soyadi;
+        // Ekip adını belirle (Önce varsa parametreden al, yoksa isimlerden oluştur)
+        $ekipAdi = $passedEkipAdi;
+        if (empty($ekipAdi) && !empty($personelIdsArr) && is_array($personelIdsArr)) {
+            $Personel = new PersonelModel();
+            $isimler = [];
+            foreach ($personelIdsArr as $pId) {
+                $p = $Personel->find($pId);
+                if ($p) {
+                    $isimler[] = $p->adi_soyadi;
+                }
+            }
+            $ekipAdi = implode(', ', $isimler);
+        }
+
+        if ($id > 0) {
+            // Explicit update by ID
+            $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET tarih = ?, personel_ids = ?, ekip_adi = ?, sayi = ?, aciklama = ? WHERE id = ?");
+            $result = $stmt->execute([$dbTarih, $personelIdsStr, $ekipAdi, $sayi, $aciklama, $id]);
+        } else {
+            // Check if a record with the same tarih and personel_ids OR the same tarih and ekip_adi already exists
+            // Since kacak_kontrol is team-based, if we have the same date and same team name (ekip_adi), it's likely the same record
+            $checkSql = "SELECT id FROM kacak_kontrol WHERE firma_id = ? AND tarih = ? AND silinme_tarihi IS NULL";
+            $checkParams = [$firmaId, $dbTarih];
+
+            if (!empty($passedEkipAdi)) {
+                $checkSql .= " AND ekip_adi = ?";
+                $checkParams[] = $passedEkipAdi;
+            } else {
+                $checkSql .= " AND personel_ids = ?";
+                $checkParams[] = $personelIdsStr;
+            }
+
+            $checkStmt = $Puantaj->db->prepare($checkSql);
+            $checkStmt->execute($checkParams);
+            $existingRecord = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($existingRecord) {
+                // Update existing record
+                $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET sayi = ?, aciklama = ?, personel_ids = ?, ekip_adi = ? WHERE id = ?");
+                $result = $stmt->execute([$sayi, $aciklama, $personelIdsStr, $ekipAdi, $existingRecord['id']]);
+            } else {
+                // Insert new record
+                $islemId = md5($dbTarih . '|' . $personelIdsStr . '|' . $sayi . '|' . $aciklama . '|' . microtime());
+                $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $result = $stmt->execute([$firmaId, $personelIdsStr, $dbTarih, $ekipAdi, $sayi, $aciklama, $islemId]);
             }
         }
-        $ekipAdi = implode(', ', $isimler);
+        $response = ['status' => $result ? 'success' : 'error'];
+    } catch (Exception $e) {
+        $response['message'] = $e->getMessage();
     }
-
-    if ($id > 0) {
-        // Explicit update by ID
-        $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET tarih = ?, personel_ids = ?, ekip_adi = ?, sayi = ?, aciklama = ? WHERE id = ?");
-        $result = $stmt->execute([$dbTarih, $personelIdsStr, $ekipAdi, $sayi, $aciklama, $id]);
-    } else {
-        // Check if a record with the same tarih and personel_ids already exists
-        $checkStmt = $Puantaj->db->prepare("SELECT id FROM kacak_kontrol WHERE firma_id = ? AND tarih = ? AND personel_ids = ? AND silinme_tarihi IS NULL");
-        $checkStmt->execute([$firmaId, $dbTarih, $personelIdsStr]);
-        $existingRecord = $checkStmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($existingRecord) {
-            // Update existing record
-            $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET sayi = ?, aciklama = ? WHERE id = ?");
-            $result = $stmt->execute([$sayi, $aciklama, $existingRecord['id']]);
-        } else {
-            // Insert new record
-            $islemId = md5($dbTarih . '|' . $personelIdsStr . '|' . $sayi . '|' . $aciklama);
-            $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $result = $stmt->execute([$firmaId, $personelIdsStr, $dbTarih, $ekipAdi, $sayi, $aciklama, $islemId]);
-        }
-    }
-    echo json_encode(['status' => $result ? 'success' : 'error']);
+    echo json_encode($response);
     exit;
 }
 
@@ -844,6 +892,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $dbStartDate = \App\Helper\Date::convertExcelDate($startDate, 'Y-m-d') ?: $startDate;
     $dbEndDate = \App\Helper\Date::convertExcelDate($endDate, 'Y-m-d') ?: $endDate;
 
+    $Puantaj = new PuantajModel();
+
     if ($tab === 'okuma') {
         $EndeksOkuma = new \App\Model\EndeksOkumaModel();
         $endeksRecords = $EndeksOkuma->getFiltered($dbStartDate, $dbEndDate, $ekipKodu);
@@ -867,9 +917,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             </tr>
         <?php endforeach;
     } elseif ($tab === 'kacak_kontrol') {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
         // personel_ids artık virgülle ayrılmış ID'ler içerdiği için doğrudan ekip_adi gösteriliyor
-        $sql = "SELECT k.* FROM kacak_kontrol k WHERE k.tarih BETWEEN ? AND ? AND k.silinme_tarihi IS NULL";
-        $params = [$dbStartDate, $dbEndDate];
+        $sql = "SELECT k.* FROM kacak_kontrol k WHERE k.tarih BETWEEN ? AND ? AND k.silinme_tarihi IS NULL AND k.firma_id = ?";
+        $params = [$dbStartDate, $dbEndDate, $firmaId];
 
         // Personel filtresi - personel_ids içinde aranan ID var mı kontrol et
         if (!empty($ekipKodu)) {
@@ -896,7 +947,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             </tr>
         <?php endforeach;
     } else {
-        $Puantaj = new PuantajModel();
         $records = $Puantaj->getFiltered($dbStartDate, $dbEndDate, $ekipKodu, $workType, $workResult);
         foreach ($records as $record): ?>
             <tr>
@@ -981,7 +1031,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         foreach ($testVeriler as $veri) {
             // Daha önce aynı islem_id ile kayıt var mı kontrol et
-            $checkStmt = $Puantaj->db->prepare("SELECT id, islem_id, ekip_kodu, is_emri_tipi FROM yapilan_isler WHERE islem_id = ?");
+            $checkStmt = $Puantaj->db->prepare("SELECT id, islem_id, ekip_kodu, is_emri_tipi FROM yapilan_isler WHERE islem_id = ? AND silinme_tarihi IS NULL");
             $checkStmt->execute([$veri['islem_id']]);
             $mevcutKayit = $checkStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -1012,10 +1062,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 }
 
                 // Yeni kayıt ekle
-                $insertStmt = $Puantaj->db->prepare("INSERT INTO yapilan_isler (islem_id, personel_id, firma_id, firma, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $insertStmt = $Puantaj->db->prepare("INSERT INTO yapilan_isler (islem_id, personel_id, ekip_kodu_id, firma_id, firma, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 $insertStmt->execute([
                     $veri['islem_id'],
                     $personelId,
+                    $defId ?? 0,
                     $firmaId,
                     $veri['firma'],
                     $veri['is_emri_tipi'],
@@ -1118,7 +1169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         foreach ($testVeriler as $veri) {
             // Daha önce aynı islem_id ile kayıt var mı kontrol et
-            $checkStmt = $EndeksOkuma->db->prepare("SELECT id, islem_id, kullanici_adi, bolge FROM endeks_okuma WHERE islem_id = ?");
+            $checkStmt = $EndeksOkuma->db->prepare("SELECT id, islem_id, kullanici_adi, bolge FROM endeks_okuma WHERE islem_id = ? AND silinme_tarihi IS NULL");
             $checkStmt->execute([$veri['islem_id']]);
             $mevcutKayit = $checkStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -1160,10 +1211,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 }
 
                 // Yeni kayıt ekle
-                $insertStmt = $EndeksOkuma->db->prepare("INSERT INTO endeks_okuma (islem_id, personel_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $insertStmt = $EndeksOkuma->db->prepare("INSERT INTO endeks_okuma (islem_id, personel_id, ekip_kodu_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 $insertStmt->execute([
                     $veri['islem_id'],
                     $personelId,
+                    $defId ?? 0,
                     $firmaId,
                     $veri['bolge'],
                     $veri['kullanici_adi'],

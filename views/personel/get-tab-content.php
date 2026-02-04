@@ -130,6 +130,7 @@ switch ($tab) {
         $icralar = $PersonelIcralariModel->getPersonelIcralari($id);
         include_once __DIR__ . "/icerik/icralar.php";
         break;
+
     case 'puantaj':
         include_once __DIR__ . "/icerik/puantaj.php";
         break;

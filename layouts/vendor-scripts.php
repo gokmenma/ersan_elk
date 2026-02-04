@@ -11,22 +11,22 @@ $page = $_GET['p'] ?? 'home';
 
 
 ?>
-    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.js"></script>
-    <script src="assets/libs/imask/imask.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.js"></script>
+<script src="assets/libs/imask/imask.min.js"></script>
 
 
 
 <!-- Select2 , Jquery Validate , iMask Scriptler -->
 <!--***************************************-->
 <?php if (
-$page === 'home' ||
+    $page === 'home' ||
     $page == "gelir-gider/list" || $page == "temsilcilik/talep" ||
     $page == "tanimlamalar/gelir-gider-turu" ||
     $page == "demirbas/list" || $page == "temsilcilik/duzenle" ||
     $page == "personel/manage" || $page == "mail-sms/mail-gonder" || $page == "mail-sms/sms-gonder" ||
     $page == "kullanici-gruplari/list" || $page == "kullanici/list"
 ) { ?>
-    
+
 <?php } ?>
 <!--***************************************-->
 

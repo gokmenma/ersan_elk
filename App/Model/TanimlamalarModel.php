@@ -19,7 +19,7 @@ class TanimlamalarModel extends Model
 
     public function getGelirGiderTurleriSelect($type)
     {
-        $sql = $this->db->prepare("SELECT id,tur_adi FROM $this->table WHERE type = ?");
+        $sql = $this->db->prepare("SELECT id,tur_adi FROM $this->table WHERE type = ? AND silinme_tarihi IS NULL");
         $sql->execute([$type]);
         $result = $sql->fetchAll(PDO::FETCH_OBJ);
 
@@ -69,13 +69,25 @@ class TanimlamalarModel extends Model
     // Ekip Kodu için tablo satırı
     public function getEkipKoduTableRow($id)
     {
-        $data = $this->find($id);
+        $sql = "SELECT t.*, 
+                (SELECT COUNT(DISTINCT p.id) FROM personel p WHERE p.aktif_mi = 1 AND (p.ekip_no = t.id OR EXISTS (SELECT 1 FROM personel_ekip_gecmisi peg WHERE peg.personel_id = p.id AND peg.ekip_kodu_id = t.id AND (peg.bitis_tarihi IS NULL OR peg.bitis_tarihi = '')))) as kullanim_sayisi,
+                (SELECT GROUP_CONCAT(DISTINCT p.adi_soyadi SEPARATOR ', ') FROM personel p WHERE p.aktif_mi = 1 AND (p.ekip_no = t.id OR EXISTS (SELECT 1 FROM personel_ekip_gecmisi peg WHERE peg.personel_id = p.id AND peg.ekip_kodu_id = t.id AND (peg.bitis_tarihi IS NULL OR peg.bitis_tarihi = '')))) as personel_isimleri
+                FROM $this->table t 
+                WHERE t.id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        $data = $stmt->fetch(PDO::FETCH_OBJ);
+
         $enc_id = Security::encrypt($data->id);
+        $durum = $data->kullanim_sayisi > 0 ? '<span class="badge bg-danger">Dolu</span>' : '<span class="badge bg-success">Boşta</span>';
+        $personel = !empty($data->personel_isimleri) ? '<br><small class="text-muted">' . $data->personel_isimleri . '</small>' : '';
 
         return '<tr id="row_' . $data->id . '">
             <td class="text-center">' . $data->id . '</td>
+            <td class="text-center">' . $data->ekip_bolge . '</td>
             <td class="text-center">' . $data->tur_adi . '</td>
             <td class="text-center">' . $data->aciklama . '</td>
+            <td class="text-center">' . $durum . $personel . '</td>
             <td class="text-center" style="width:5%">
                 <div class="flex-shrink-0">
                     <div class="dropdown align-self-start">
@@ -98,9 +110,30 @@ class TanimlamalarModel extends Model
 
     public function getEkipKodlari()
     {
-        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE grup = ? ORDER BY id DESC");
+        $sql = $this->db->prepare("SELECT t.*, 
+                                   (SELECT COUNT(DISTINCT p.id) FROM personel p WHERE p.aktif_mi = 1 AND (p.ekip_no = t.id OR EXISTS (SELECT 1 FROM personel_ekip_gecmisi peg WHERE peg.personel_id = p.id AND peg.ekip_kodu_id = t.id AND (peg.bitis_tarihi IS NULL OR peg.bitis_tarihi = '')))) as kullanim_sayisi,
+                                   (SELECT GROUP_CONCAT(DISTINCT p.adi_soyadi SEPARATOR ', ') FROM personel p WHERE p.aktif_mi = 1 AND (p.ekip_no = t.id OR EXISTS (SELECT 1 FROM personel_ekip_gecmisi peg WHERE peg.personel_id = p.id AND peg.ekip_kodu_id = t.id AND (peg.bitis_tarihi IS NULL OR peg.bitis_tarihi = '')))) as personel_isimleri
+                                   FROM $this->table t 
+                                   WHERE t.grup = ? AND t.silinme_tarihi IS NULL
+                                   ORDER BY t.id DESC");
         $sql->execute(['ekip_kodu']);
         return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Ekip kodunun personel tablosunda kullanılıp kullanılmadığını kontrol eder
+     * @param int $id Ekip kodu ID'si
+     * @return bool Boşta ise true, dolu ise false döner
+     */
+    public function getEkipKoduBosmu($id)
+    {
+        $sql = $this->db->prepare("SELECT COUNT(DISTINCT p.id) 
+                                   FROM personel p 
+                                   WHERE p.aktif_mi = 1 
+                                     AND (p.ekip_no = ? OR EXISTS (SELECT 1 FROM personel_ekip_gecmisi peg WHERE peg.personel_id = p.id AND peg.ekip_kodu_id = ? AND (peg.bitis_tarihi IS NULL OR peg.bitis_tarihi = '')))");
+        $sql->execute([$id, $id]);
+        $count = $sql->fetchColumn();
+        return $count > 0 ? false : true;
     }
 
     /**
@@ -110,30 +143,32 @@ class TanimlamalarModel extends Model
      */
     public function getMusaitEkipKodlari($includeEkipNo = null)
     {
-        // Aktif personeli olan ekip kodlarını bul
-        $aktifEkipKodlari = [];
-        $personelSql = $this->db->prepare("SELECT DISTINCT ekip_no FROM personel WHERE ekip_no IS NOT NULL AND ekip_no != '' AND ekip_no != 0 AND aktif_mi = 1 AND firma_id = ?");
-        $personelSql->execute([$_SESSION['firma_id']]);
-        $aktifEkipKodlariResult = $personelSql->fetchAll(PDO::FETCH_COLUMN);
+        $firma_id = $_SESSION['firma_id'];
+        $personelSql = $this->db->prepare("SELECT DISTINCT ekip_no FROM personel WHERE ekip_no IS NOT NULL AND ekip_no != 0 AND aktif_mi = 1 AND firma_id = ?");
+        $personelSql->execute([$firma_id]);
+        $personelAktif = $personelSql->fetchAll(PDO::FETCH_COLUMN);
 
-        // Dahil edilecek ekip kodu varsa, onu aktif listesinden çıkar
+        $gecmisSql = $this->db->prepare("SELECT DISTINCT ekip_kodu_id FROM personel_ekip_gecmisi WHERE (bitis_tarihi IS NULL OR bitis_tarihi = '') AND firma_id = ?");
+        $gecmisSql->execute([$firma_id]);
+        $gecmisAktif = $gecmisSql->fetchAll(PDO::FETCH_COLUMN);
+
+        $aktifEkipKodlariResult = array_unique(array_merge($personelAktif, $gecmisAktif));
+
         if ($includeEkipNo) {
             $aktifEkipKodlariResult = array_filter($aktifEkipKodlariResult, function ($kod) use ($includeEkipNo) {
-                return $kod != $includeEkipNo;
+                return (int) $kod != (int) $includeEkipNo;
             });
         }
 
-        // Tüm ekip kodlarını al
-        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE grup = ? ORDER BY id DESC");
-        $sql->execute(['ekip_kodu']);
+        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE grup = 'ekip_kodu' AND firma_id = ? AND silinme_tarihi IS NULL ORDER BY tur_adi ASC");
+        $sql->execute([$firma_id]);
         $tumEkipKodlari = $sql->fetchAll(PDO::FETCH_OBJ);
 
-        // Aktif personeli olmayan ekip kodlarını filtrele
         $musaitEkipKodlari = array_filter($tumEkipKodlari, function ($item) use ($aktifEkipKodlariResult) {
             return !in_array($item->id, $aktifEkipKodlariResult);
         });
 
-        return array_values($musaitEkipKodlari); // Reindex array
+        return array_values($musaitEkipKodlari);
     }
 
 
@@ -225,7 +260,7 @@ class TanimlamalarModel extends Model
     {
 
         $firma_id = $_SESSION['firma_id'];
-        $sql = "SELECT id FROM $this->table WHERE tur_adi = ? AND firma_id = ?";
+        $sql = "SELECT id FROM $this->table WHERE tur_adi = ? AND firma_id = ? AND silinme_tarihi IS NULL";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$ekip_no, $firma_id]);
         return $stmt->fetch(PDO::FETCH_OBJ);
@@ -236,7 +271,7 @@ class TanimlamalarModel extends Model
      */
     public function getEkipBolgeleri()
     {
-        $sql = "SELECT DISTINCT ekip_bolge FROM $this->table WHERE grup = 'ekip_kodu' AND ekip_bolge IS NOT NULL AND ekip_bolge != '' AND ekip_bolge != '0' AND firma_id = ?";
+        $sql = "SELECT DISTINCT ekip_bolge FROM $this->table WHERE grup = 'ekip_kodu' AND ekip_bolge IS NOT NULL AND ekip_bolge != '' AND ekip_bolge != '0' AND firma_id = ? AND silinme_tarihi IS NULL";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$_SESSION['firma_id']]);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -250,25 +285,28 @@ class TanimlamalarModel extends Model
      */
     public function getMusaitEkipKodlariByBolge($bolge, $includeEkipNo = null)
     {
-        // Aktif personeli olan ekip kodlarını bul
+        $firma_id = $_SESSION['firma_id'];
         $personelSql = $this->db->prepare("SELECT DISTINCT ekip_no FROM personel WHERE ekip_no IS NOT NULL AND ekip_no != 0 AND aktif_mi = 1 AND firma_id = ?");
-        $personelSql->execute([$_SESSION['firma_id']]);
-        $aktifEkipKodlariResult = $personelSql->fetchAll(PDO::FETCH_COLUMN);
+        $personelSql->execute([$firma_id]);
+        $personelAktif = $personelSql->fetchAll(PDO::FETCH_COLUMN);
 
-        // Dahil edilecek ekip kodu varsa, onu aktif listesinden çıkar
+        $gecmisSql = $this->db->prepare("SELECT DISTINCT ekip_kodu_id FROM personel_ekip_gecmisi WHERE (bitis_tarihi IS NULL OR bitis_tarihi = '') AND firma_id = ?");
+        $gecmisSql->execute([$firma_id]);
+        $gecmisAktif = $gecmisSql->fetchAll(PDO::FETCH_COLUMN);
+
+        $aktifEkipKodlariResult = array_unique(array_merge($personelAktif, $gecmisAktif));
+
         if ($includeEkipNo) {
             $aktifEkipKodlariResult = array_filter($aktifEkipKodlariResult, function ($kod) use ($includeEkipNo) {
                 return (int) $kod != (int) $includeEkipNo;
             });
         }
 
-        // Belirli bölgedeki ekip kodlarını al
-        $sql = "SELECT * FROM $this->table WHERE grup = 'ekip_kodu' AND ekip_bolge = ? AND firma_id = ? ORDER BY tur_adi ASC";
+        $sql = "SELECT * FROM $this->table WHERE grup = 'ekip_kodu' AND ekip_bolge = ? AND firma_id = ? AND silinme_tarihi IS NULL ORDER BY tur_adi ASC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$bolge, $_SESSION['firma_id']]);
+        $stmt->execute([$bolge, $firma_id]);
         $bolgeEkipKodlari = $stmt->fetchAll(PDO::FETCH_OBJ);
 
-        // Aktif personeli olmayanları filtrele
         $musaitEkipKodlari = array_filter($bolgeEkipKodlari, function ($item) use ($aktifEkipKodlariResult) {
             return !in_array($item->id, $aktifEkipKodlariResult);
         });
@@ -326,4 +364,28 @@ class TanimlamalarModel extends Model
         ]);
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
+
+
+    /**Ekip Kodu silerken personel,puantaj ve endeks_okuma tablolarında kontrol eder */
+    public function ekipKoduKullaniliyormu($id)
+    {
+        $sql = "SELECT 
+                t.id,
+                COUNT(DISTINCT p.id) AS personel_sayisi,
+                COUNT(DISTINCT yi.id) AS is_sayisi,
+                COUNT(DISTINCT eo.id) AS okuma_sayisi
+            FROM tanimlamalar t
+            LEFT JOIN personel p ON p.ekip_no = t.id
+            LEFT JOIN yapilan_isler yi ON yi.personel_id = p.id
+            LEFT JOIN endeks_okuma eo ON eo.personel_id = p.id
+            WHERE t.id = ?
+            GROUP BY t.id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        return $stmt->fetch(PDO::FETCH_OBJ);
+    }
+
+
+
+
 }

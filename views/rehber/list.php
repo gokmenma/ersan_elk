@@ -62,7 +62,7 @@ $kisiler = $Rehber->all()->get();
                                 <th>Telefon</th>
                                 <th>Email</th>
                                 <th>Adres</th>
-                             
+
                                 <th>Kayıt Tarihi</th>
                                 <th style="width:5%" class="no-sort">İşlem</th>
                             </tr>
@@ -85,20 +85,20 @@ $kisiler = $Rehber->all()->get();
                                     <td class="text-center">
                                         <?php echo $kisi->adi_soyadi ?>
                                     </td>
-                                    
+
                                     <td data-tooltip="true" data-tooltip-title="top">
                                         <a href="#" data-id="<?php echo $enc_id; ?>" class="dropdown-item duzenle">
                                             <?php echo $kisi->kurum_adi; ?></a>
                                     </td>
-                                    
+
                                     <td>
                                         <?php echo $kisi->telefon ?>
                                     </td>
-                                    
+
                                     <td>
                                         <?php echo $kisi->email ?>
                                     </td>
-                                    
+
                                     <td>
                                         <?php echo $kisi->adres ?>
                                     </td>
@@ -112,11 +112,11 @@ $kisiler = $Rehber->all()->get();
                                         <div class="flex-shrink-0">
                                             <div class="dropdown align-self-start">
                                                 <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
-                                                    aria-haspopup="true" aria-expanded="false">
+                                                    data-bs-boundary="viewport" aria-haspopup="true" aria-expanded="false">
                                                     <i class="bx bx-dots-vertical-rounded font-size-24 text-dark"></i>
                                                 </a>
                                                 <div class="dropdown-menu">
-                                                    <a href="#" data-id="<?php echo $enc_id; ?>" 
+                                                    <a href="#" data-id="<?php echo $enc_id; ?>"
                                                         class="dropdown-item kayit-duzenle"><span
                                                             class="mdi mdi-account-edit font-size-18"></span>
                                                         Düzenle</a>

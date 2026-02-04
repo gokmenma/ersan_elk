@@ -60,10 +60,26 @@ class BordroPersonelModel extends Model
             }
         }
 
-
-        /**Firma id'yi Session'dan al */
+        /** Firma id'yi Session'dan al */
         $firma_id = $_SESSION['firma_id'];
-        // Uygun personelleri bul
+
+        // Maaş hesaplanmayan (aktif_mi = 2) veya artık uygun olmayan personelleri dönemden çıkar (soft delete)
+        $sqlRemove = $this->db->prepare("
+            UPDATE {$this->table} bp
+            INNER JOIN personel p ON bp.personel_id = p.id
+            SET bp.silinme_tarihi = NOW()
+            WHERE bp.donem_id = ? 
+            AND bp.silinme_tarihi IS NULL
+            AND (
+                p.aktif_mi = 2 
+                OR p.aktif_mi = 0
+                OR (p.ise_giris_tarihi IS NOT NULL AND p.ise_giris_tarihi != '0000-00-00' AND p.ise_giris_tarihi > ?)
+                OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '' AND p.isten_cikis_tarihi != '0000-00-00' AND p.isten_cikis_tarihi < ?)
+            )
+        ");
+        $sqlRemove->execute([$donem_id, $bitis_tarihi, $baslangic_tarihi]);
+
+        // Uygun personelleri bul (Sadece aktif_mi = 1 olanlar)
         // İşten çıkış tarihi: NULL, '0000-00-00', boş string veya dönem başlangıcından büyük/eşit olanlar
         $sql = $this->db->prepare("
             SELECT id, adi_soyadi, ise_giris_tarihi, isten_cikis_tarihi 
@@ -95,7 +111,7 @@ class BordroPersonelModel extends Model
         foreach ($uygunPersoneller as $personel) {
             // Zaten eklenmişse
             if (in_array($personel->id, $existingIds)) {
-                // Eğer soft-deleted ise geri getir
+                // Eğer soft-deleted ise geri getir (ancak sadece hala uygunsa)
                 if (in_array($personel->id, $softDeletedIds)) {
                     $restoreSql = $this->db->prepare("UPDATE {$this->table} SET silinme_tarihi = NULL, olusturma_tarihi = NOW() WHERE donem_id = ? AND personel_id = ?");
                     $restoreSql->execute([$donem_id, $personel->id]);

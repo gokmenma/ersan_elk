@@ -64,7 +64,6 @@ $(document).ready(function () {
       },
       dogum_tarihi: {
         required: "Lütfen Doğum Tarihi giriniz.",
-
       },
       cep_telefonu: {
         required: "Lütfen Cep Telefonu giriniz.",
@@ -137,13 +136,10 @@ $(document).ready(function () {
             confirmButtonText: "Tamam",
           }).then((result) => {
             if (personel_id == 0 || personel_id == "") {
-              // Yeni kayıt ise sayfayı oluşturulan ID ile yenile veya yönlendir
-              // window.location.href = "index.php?p=personel/manage&id=" + res.id;
-              // Şimdilik sadece ID'yi güncelleyelim
               $("#personel_id").val(res.id);
-
-              /**Butonu eski haline getir */
               $btn.prop("disabled", false).html(originalText);
+            } else {
+              location.reload();
             }
           });
         } else {

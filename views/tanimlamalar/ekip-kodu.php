@@ -56,6 +56,7 @@ $bolgeler = $Tanimlamalar->getEkipBolgeleri();
                                 <th class="text-center">Bölge</th>
                                 <th class="text-center">Ekip Kodu</th>
                                 <th class="text-center">Açıklama</th>
+                                <th class="text-center">Durum</th>
                                 <th style="width:5%">İşlem</th>
                             </tr>
                         </thead>
@@ -71,16 +72,24 @@ $bolgeler = $Tanimlamalar->getEkipBolgeleri();
                                 ?>
                                 <tr id="row_<?php echo $ekip->id; ?>">
                                     <td class="text-center">
-                                        <?php echo $ekip->id ?>
+                                        <?php echo $i ?>
                                     </td>
                                     <td class="text-center">
                                         <?php echo $ekip->ekip_bolge ?>
                                     </td>
-                                    <td class="text-center">
+                                    <td class="text-center" style="width: 30%;">
                                         <?php echo $ekip->tur_adi ?>
                                     </td>
-                                    <td class="text-center">
+                                    <td class="text-center " style="width: 30%;">
                                         <?php echo $ekip->aciklama ?>
+                                    </td>
+                                    <td class="text-center text-nowrap">
+                                        <?php
+                                        echo $ekip->kullanim_sayisi > 0 ? '<span class="badge bg-danger">Dolu</span>' : '<span class="badge bg-success">Boşta</span>';
+                                        if (!empty($ekip->personel_isimleri)) {
+                                            echo '<br><small class="text-muted">' . $ekip->personel_isimleri . '</small>';
+                                        }
+                                        ?>
                                     </td>
 
 
@@ -88,7 +97,7 @@ $bolgeler = $Tanimlamalar->getEkipBolgeleri();
                                         <div class="flex-shrink-0">
                                             <div class="dropdown align-self-start">
                                                 <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
-                                                    aria-haspopup="true" aria-expanded="false">
+                                                    data-bs-boundary="viewport" aria-haspopup="true" aria-expanded="false">
                                                     <i class="bx bx-dots-vertical-rounded font-size-24 text-dark"></i>
                                                 </a>
                                                 <div class="dropdown-menu">

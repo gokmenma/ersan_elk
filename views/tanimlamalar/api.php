@@ -134,7 +134,20 @@ if (isset($_POST["action"]) && $_POST["action"] == "ekip-kodu-getir") {
 if (isset($_POST["action"]) && $_POST["action"] == "ekip-kodu-sil") {
     $id = Security::decrypt($_POST["id"]);
     try {
-        $Tanimlamalar->delete($id);
+
+        /**Eğer yapilan_isler veya endeks_okuma veya personel tablosundan bu ekip id kullanılıyorsa silmeye izin verme */
+
+        /** Önce peronel tablosunu kontrol et */
+        $ekipKoduKullaniliyormu = $Tanimlamalar->ekipKoduKullaniliyormu($id);
+        if ($ekipKoduKullaniliyormu) {
+            $status = "error";
+            $message = "Bu ekip kodu kullanılıyor. Silinemez.";
+            echo json_encode(["status" => $status, "message" => $message]);
+            exit;
+        }
+
+
+        $Tanimlamalar->softDelete($id);
         $status = "success";
         $message = "Kayıt silindi.";
     } catch (PDOException $ex) {

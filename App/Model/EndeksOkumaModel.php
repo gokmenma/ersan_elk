@@ -17,10 +17,10 @@ class EndeksOkumaModel extends Model
     public function getMonthlySummary($year, $month)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT personel_id, DAY(tarih) as gun, SUM(okunan_abone_sayisi) as toplam 
+        $sql = "SELECT personel_id, ekip_kodu_id, DAY(tarih) as gun, SUM(okunan_abone_sayisi) as toplam 
                 FROM $this->table 
-                WHERE firma_id = ? AND YEAR(tarih) = ? AND MONTH(tarih) = ?
-                GROUP BY personel_id, DAY(tarih)";
+                WHERE firma_id = ? AND YEAR(tarih) = ? AND MONTH(tarih) = ? AND silinme_tarihi IS NULL
+                GROUP BY personel_id, ekip_kodu_id, DAY(tarih)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $year, $month]);
@@ -28,7 +28,7 @@ class EndeksOkumaModel extends Model
 
         $summary = [];
         foreach ($results as $row) {
-            $summary[$row->personel_id][$row->gun] = $row->toplam;
+            $summary[$row->personel_id][$row->ekip_kodu_id][$row->gun] = $row->toplam;
         }
         return $summary;
     }

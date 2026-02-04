@@ -81,14 +81,21 @@ $headerRowspan = ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol') && $h
 
 // Personel mapping for easy access
 $allPersonel = $Personel->all();
-$personelMap = [];
 $personelById = [];
 foreach ($allPersonel as $p) {
-    if ($p->ekip_no) {
-        $ekipNoInt = intval($p->ekip_no);
-        $personelMap[$ekipNoInt] = $p;
-    }
     $personelById[$p->id] = $p;
+}
+
+// Fetch all active assignments for this month range
+$startDateStr = "$year-$month-01";
+$endDateStr = date('Y-m-t', strtotime($startDateStr));
+$activeAssignments = $Personel->getAllActiveAssignmentsInRange($startDateStr, $endDateStr);
+
+// Pre-fetch all teams to have a lookup
+$allTeams = $Tanimlamalar->getEkipKodlari();
+$teamById = [];
+foreach ($allTeams as $t) {
+    $teamById[$t->id] = $t;
 }
 
 // Kacak Kontrol: Get ekip_adi to personel_ids mapping from kacak_kontrol table
@@ -109,117 +116,153 @@ $allSummaryPersonels = ($activeTab !== 'kacakkontrol') ? array_keys($summary ?? 
 $tableData = []; // Structure: [ [region_name, teams: [ [team_obj, personel_obj] ] ] ]
 $alreadySeenIds = [];
 
-if ($activeTab !== 'kacakkontrol') {
-    // 1. Regions & Teams
-    foreach ($regions as $regionName) {
-        $teams = $Tanimlamalar->getEkipKodlariByBolgeAll($regionName);
-        $regionTeams = [];
-        foreach ($teams as $team) {
-            $personel = $personelMap[$team->id] ?? null;
+if (true) { // Always use unified logic for all standard tabs
+    $validPairs = []; // key: [pId]_[tId] => ['pId' => X, 'tId' => Y]
 
-            $isValid = false;
-            if ($personel) {
-                if ($activeTab === 'okuma') {
-                    // Görevi "Okuma" olanlar VEYA o dönemde endeks okuma verisi olanlar
-                    if (mb_stripos($personel->gorev, 'Okuma') !== false || isset($summary[$personel->id]))
-                        $isValid = true;
-                } elseif ($activeTab === 'kesme') {
-                    // Görevi "Kesme-Açma" olanlar VEYA o dönemde işlem verisi olanlar
-                    if (mb_stripos($personel->gorev, 'Kesme-Açma') !== false || isset($summary[$personel->id]))
-                        $isValid = true;
-                } elseif ($activeTab === 'sokme_takma') {
-                    // Görevi "Sayaç Sökme Takma" olanlar VEYA o dönemde işlem verisi olanlar
-                    if (mb_stripos($personel->gorev, 'Sayaç Sökme Takma') !== false || isset($summary[$personel->id]))
-                        $isValid = true;
-                } elseif ($activeTab === 'muhurleme') {
-                    // Görevi "Mühürleme" olanlar VEYA o dönemde işlem verisi olanlar
-                    if (mb_stripos($personel->gorev, 'Mühürleme') !== false || isset($summary[$personel->id]))
-                        $isValid = true;
-                } else {
-                    $isValid = true;
-                }
-            }
+    // 1. From Summary (The primary source of rows)
+    // For okuma/kesme/etc, summary is [pId][tId]
+    // For kacak, summary is [teamName][day]
+    if (!empty($summary)) {
+        if ($activeTab === 'kacakkontrol') {
+            foreach ($summary as $teamName => $days) {
+                // Find teams with this name to get their IDs
 
-            if ($isValid) {
-                // Apply personnel filter if set
-                if ($filterPersonelId && $personel->id != $filterPersonelId) {
-                    $isValid = false;
-                }
-            }
+                $matchingTeams = array_filter($allTeams, function ($t) use ($teamName) {
+                    return $t->tur_adi === $teamName;
+                });
+                $tId = !empty($matchingTeams) ? reset($matchingTeams)->id : 0;
 
-            if ($isValid) {
-                $regionTeams[] = [
-                    'team' => $team,
-                    'personel' => $personel
+                $validPairs['kacak_' . $teamName] = [
+                    'pId' => 'kacak_' . $teamName,
+                    'tId' => $tId,
+                    'isKacak' => true,
+                    'teamName' => $teamName
                 ];
-                $alreadySeenIds[] = $personel->id;
             }
-        }
-        if (!empty($regionTeams)) {
-            // Sort teams within region by personel name
-            usort($regionTeams, function ($a, $b) {
-                return strcoll($a['personel']->adi_soyadi, $b['personel']->adi_soyadi);
-            });
-
-            $tableData[] = [
-                'region' => $regionName,
-                'teams' => $regionTeams
-            ];
+        } else {
+            foreach ($summary as $pId => $teams) {
+                foreach ($teams as $tId => $data) {
+                    if ($filterPersonelId && $pId != $filterPersonelId)
+                        continue;
+                    $validPairs[$pId . '_' . $tId] = ['pId' => $pId, 'tId' => $tId];
+                }
+            }
         }
     }
 
-    // 2. Unassigned Personnel (Tanımsız Bölge)
-    $unseenIds = array_diff($allSummaryPersonels, $alreadySeenIds);
-    $unassignedTeams = [];
-    foreach ($unseenIds as $uid) {
-        $p = $personelById[$uid] ?? null;
-        if (!$p)
+    // 2. From History Assignments (To show active personnel even without data)
+    foreach ($activeAssignments as $assign) {
+        if ($filterPersonelId && $assign->personel_id != $filterPersonelId)
             continue;
 
         $isValid = false;
+        $personelDepts = !empty($assign->departman) ? array_map('trim', explode(',', $assign->departman)) : [];
+        $gorev = $assign->gorev ?? '';
+
         if ($activeTab === 'okuma') {
-            // Görevi "Okuma" olanlar VEYA o dönemde endeks okuma verisi olanlar
-            if (mb_stripos($p->gorev, 'Okuma') !== false || isset($summary[$p->id]))
+            if (in_array('Endeks Okuma', $personelDepts) || in_array('Okuma', $personelDepts))
                 $isValid = true;
         } elseif ($activeTab === 'kesme') {
-            // Görevi "Kesme-Açma" olanlar VEYA o dönemde işlem verisi olanlar
-            if (mb_stripos($p->gorev, 'Kesme-Açma') !== false || isset($summary[$p->id]))
+            if (in_array('Kesme Açma', $personelDepts) || in_array('Kesme-Açma', $personelDepts))
                 $isValid = true;
         } elseif ($activeTab === 'sokme_takma') {
-            // Görevi "Sayaç Sökme Takma" olanlar VEYA o dönemde işlem verisi olanlar
-            if (mb_stripos($p->gorev, 'Sayaç Sökme Takma') !== false || isset($summary[$p->id]))
+            if (in_array('Sayaç Sökme Takma', $personelDepts) || in_array('Sökme Takma', $personelDepts))
                 $isValid = true;
         } elseif ($activeTab === 'muhurleme') {
-            // Görevi "Mühürleme" olanlar VEYA o dönemde işlem verisi olanlar
-            if (mb_stripos($p->gorev, 'Mühürleme') !== false || isset($summary[$p->id]))
+            if (in_array('Mühürleme', $personelDepts))
                 $isValid = true;
+        } elseif ($activeTab === 'kacakkontrol') {
+            // Kaçak Kontrol - Sadece verisi olanlar summary üzerinden eklensin isteniyor.
+            // Bu nedenle assignments üzerinden otomatik ekleme yapmıyoruz.
+            $isValid = false;
         } else {
+            // Other unofficial tabs might show everyone
             $isValid = true;
         }
 
         if ($isValid) {
-            // Apply personnel filter if set
-            if ($filterPersonelId && $p->id != $filterPersonelId) {
-                $isValid = false;
-            }
-        }
-
-        if ($isValid) {
-            $unassignedTeams[] = [
-                'team' => (object) ['tur_adi' => '-'],
-                'personel' => $p
+            $validPairs[$assign->personel_id . '_' . $assign->ekip_kodu_id] = [
+                'pId' => $assign->personel_id,
+                'tId' => $assign->ekip_kodu_id
             ];
         }
     }
-    if (!empty($unassignedTeams)) {
-        // Sort unassigned teams by personel name
-        usort($unassignedTeams, function ($a, $b) {
+
+    // Now organize pairs into regions
+    $regionGrouped = []; // regionName => [teams => []]
+
+    foreach ($validPairs as $pair) {
+        $pId = $pair['pId'];
+        $tId = $pair['tId'];
+
+        if (isset($pair['isKacak'])) {
+            $teamName = $pair['teamName'];
+            $team = $teamById[$tId] ?? (object) ['id' => 0, 'tur_adi' => $teamName, 'ekip_bolge' => 'TANIMSIZ BÖLGE'];
+
+            // Get combined personnel names
+            $pIdsStr = $kacakPersonelMapping[$teamName] ?? '';
+            if (empty($pIdsStr)) {
+                $mappedIds = [];
+                foreach ($activeAssignments as $assign) {
+                    if ($assign->ekip_kodu_id == $tId && $tId > 0)
+                        $mappedIds[] = $assign->personel_id;
+                }
+                $pIdsStr = implode(',', array_unique($mappedIds));
+            }
+
+            $names = [];
+            foreach (explode(',', $pIdsStr) as $id) {
+                if (isset($personelById[trim($id)])) {
+                    $names[] = $personelById[trim($id)]->adi_soyadi;
+                }
+            }
+
+            $p = (object) [
+                'id' => 0,
+                'adi_soyadi' => !empty($names) ? implode(', ', $names) : $teamName,
+                'ekip_no' => 0
+            ];
+            $regionName = $team->ekip_bolge ?: 'TANIMSIZ BÖLGE';
+        } else {
+            $p = $personelById[$pId] ?? null;
+            if (!$p)
+                continue;
+
+            $team = $teamById[$tId] ?? (object) ['id' => 0, 'tur_adi' => '-', 'ekip_bolge' => 'TANIMSIZ BÖLGE'];
+            $regionName = $team->ekip_bolge ?: 'TANIMSIZ BÖLGE';
+        }
+
+        $regionGrouped[$regionName][] = [
+            'team' => $team,
+            'personel' => $p,
+            'pId' => $pId,
+            'tId' => $tId
+        ];
+    }
+
+    // Build final tableData from grouped regions
+    foreach ($regions as $rName) {
+        if (!empty($regionGrouped[$rName])) {
+            $teams = $regionGrouped[$rName];
+            usort($teams, function ($a, $b) {
+                return strcoll($a['personel']->adi_soyadi, $b['personel']->adi_soyadi);
+            });
+            $tableData[] = [
+                'region' => $rName,
+                'teams' => $teams
+            ];
+            unset($regionGrouped[$rName]);
+        }
+    }
+
+    // Remaining (Tanımsızlar)
+    foreach ($regionGrouped as $rName => $teams) {
+        usort($teams, function ($a, $b) {
             return strcoll($a['personel']->adi_soyadi, $b['personel']->adi_soyadi);
         });
-
         $tableData[] = [
-            'region' => 'TANIMSIZ BÖLGE',
-            'teams' => $unassignedTeams
+            'region' => $rName,
+            'teams' => $teams
         ];
     }
 }
@@ -231,9 +274,10 @@ if (!empty($workTypeCols)) {
         $total = 0;
         foreach ($tableData as $item) {
             foreach ($item['teams'] as $tData) {
-                $pId = $tData['personel']->id;
-                if (isset($summary[$pId])) {
-                    foreach ($summary[$pId] as $dayData) {
+                $pId = $tData['pId'];
+                $tId = $tData['tId'];
+                if (isset($summary[$pId][$tId])) {
+                    foreach ($summary[$pId][$tId] as $dayData) {
                         $total += $dayData[$wt['name']] ?? 0;
                     }
                 }
@@ -425,6 +469,16 @@ if (!empty($workTypeCols)) {
         background: #fff;
         max-height: calc(100vh - 350px);
     }
+
+    .kacakkontrol-name-col {
+        position: sticky;
+        left: 51px;
+        z-index: 10;
+        background-color: #fff !important;
+        width: 340px !important;
+        min-width: 340px !important;
+        max-width: 340px !important;
+    }
 </style>
 
 <?php
@@ -443,17 +497,20 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             <tr>
                 <th rowspan="<?= $headerRowspan ?>" class="sticky-col-1"
                     style="width: 50px; min-width: 50px; max-width: 50px;">SIRA</th>
-                <th rowspan="<?= $headerRowspan ?>" class="sticky-col-2"
-                    style="width: 120px; min-width: 120px; max-width: 120px;">EKİP / BÖLGE</th>
                 <?php if ($activeTab !== 'kacakkontrol'): ?>
-                    <th rowspan="<?= $headerRowspan ?>" class="sticky-col-3"
-                        style="width: 220px; min-width: 220px; max-width: 220px;">İSİM SOYİSİM</th><?php endif; ?>
+                    <th rowspan="<?= $headerRowspan ?>" class="sticky-col-2"
+                        style="width: 120px; min-width: 120px; max-width: 120px;">EKİP / BÖLGE</th>
+                <?php endif; ?>
+                <th rowspan="<?= $headerRowspan ?>"
+                    class="<?= ($activeTab === 'kacakkontrol') ? 'kacakkontrol-name-col' : 'sticky-col-3' ?>"
+                    style="<?= ($activeTab === 'kacakkontrol') ? '' : 'width: 220px; min-width: 220px; max-width: 220px;' ?>">
+                    İSİM SOYİSİM</th>
                 <th colspan="<?= $daysInMonth * $subColCount ?>" id="mainGunlerHeader">GÜNLER</th>
                 <?php if ($hasSubCols): ?>
                     <th colspan="<?= $subColCount ?>" id="actionTotalsHeader">İŞLEM TOPLAMLARI</th><?php endif; ?>
-                <th rowspan="<?= $headerRowspan ?>">TOPLAM</th><?php if ($activeTab !== 'kacakkontrol'): ?>
-                    <th rowspan="<?= $headerRowspan ?>">BÖLGE TOP.</th>
-                    <th rowspan="<?= $headerRowspan ?>">BÖLGE ADI</th><?php endif; ?>
+                <th rowspan="<?= $headerRowspan ?>">TOPLAM</th>
+                <th rowspan="<?= $headerRowspan ?>">BÖLGE TOP.</th>
+                <th rowspan="<?= $headerRowspan ?>">BÖLGE ADI</th>
             </tr>
             <tr>
                 <?php for ($d = 1; $d <= $daysInMonth; $d++):
@@ -494,118 +551,26 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             $dailyDetailedTotals = [];
             $grandTotal = 0;
 
-            if ($activeTab === 'kacakkontrol'):
-                // Kaçak Kontrol uses its own special logic (team-based, not personel-based)
-                $seenTeams = [];
-                $allKacakTeams = array_keys($summary);
-                foreach ($regions as $regionName):
-                    $teams = $Tanimlamalar->getEkipKodlariByBolgeAll($regionName);
-                    $visibleTeams = [];
-                    foreach ($teams as $team) {
+            foreach ($tableData as $item):
+                $regionTotal = 0;
+                foreach ($item['teams'] as $tData) {
+                    $pId = $tData['pId'];
+                    $tId = $tData['tId'];
+                    $team = $tData['team'];
+
+                    if ($activeTab === 'kacakkontrol') {
                         if (isset($summary[$team->tur_adi])) {
-                            $visibleTeams[] = $team;
+                            $regionTotal += array_sum($summary[$team->tur_adi]);
                         }
-                    }
-                    if (empty($visibleTeams))
-                        continue;
-
-                    $regionTotal = 0;
-                    foreach ($visibleTeams as $team) {
-                        $regionTotal += array_sum($summary[$team->tur_adi]);
-                    }
-
-                    $firstRow = true;
-                    foreach ($visibleTeams as $team):
-                        $teamTotal = array_sum($summary[$team->tur_adi]);
-                        $grandTotal += $teamTotal;
-                        $seenTeams[] = $team->tur_adi;
-                        ?>
-                        <tr>
-                            <td class="sticky-col-1"><?= $sira++ ?></td>
-                            <td class="sticky-col-2">
-                                <?= $team->tur_adi ?>
-                            </td>
-                            <?php for ($d = 1; $d <= $daysInMonth; $d++):
-                                $val = $summary[$team->tur_adi][$d] ?? 0;
-                                $dailyTotals[$d] += $val;
-                                $currentDate = str_pad($d, 2, '0', STR_PAD_LEFT) . "." . str_pad($month, 2, '0', STR_PAD_LEFT) . "." . $year;
-                                // Get personel_ids from kacak_kontrol table mapping
-                                $pIdsStr = $kacakPersonelMapping[$team->tur_adi] ?? '';
-                                $isSunday = in_array($d, $sundayDays);
-                                ?>
-                                <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?> kacak-quick-cell <?= $isSunday ? 'sunday-cell' : '' ?>"
-                                    data-date="<?= $currentDate ?>" data-personel-ids="<?= $pIdsStr ?>" style="cursor: cell;"
-                                    title="Çift tıklayarak yeni kayıt ekle">
-                                    <?= $val ?: '' ?>
-                                </td>
-                            <?php endfor; ?>
-                            <td class="table-light fw-bold"><?= $teamTotal ?: '' ?></td>
-                            <?php if ($firstRow): ?>
-                                <td rowspan="<?= count($visibleTeams) ?>" class="fw-bold"><?= $regionTotal ?: '' ?></td>
-                                <td rowspan="<?= count($visibleTeams) ?>" class="fw-bold text-uppercase" style="font-size: 9px;">
-                                    <?= $regionName ?>
-                                </td>
-                                <?php $firstRow = false; ?>
-                            <?php endif; ?>
-                        </tr>
-                    <?php endforeach;
-                endforeach;
-
-                // Unseen kacak teams
-                $unseenKacakTeams = array_diff($allKacakTeams, $seenTeams);
-                if (!empty($unseenKacakTeams)):
-                    $regionTotal = 0;
-                    $firstRow = true;
-                    foreach ($unseenKacakTeams as $teamName)
-                        $regionTotal += array_sum($summary[$teamName]);
-                    foreach ($unseenKacakTeams as $teamName):
-                        $teamTotal = array_sum($summary[$teamName]);
-                        $grandTotal += $teamTotal;
-                        ?>
-                        <tr>
-                            <td class="sticky-col-1"><?= $sira++ ?></td>
-                            <td class="sticky-col-2">
-                                <?= $teamName ?>
-                            </td>
-                            <?php for ($d = 1; $d <= $daysInMonth; $d++):
-                                $val = $summary[$teamName][$d] ?? 0;
-                                $dailyTotals[$d] += $val;
-                                $currentDate = str_pad($d, 2, '0', STR_PAD_LEFT) . "." . str_pad($month, 2, '0', STR_PAD_LEFT) . "." . $year;
-                                // Get personel_ids from kacak_kontrol table mapping
-                                $pIdsStr = $kacakPersonelMapping[$teamName] ?? '';
-                                $isSunday = in_array($d, $sundayDays);
-                                ?>
-                                <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?> kacak-quick-cell <?= $isSunday ? 'sunday-cell' : '' ?>"
-                                    data-date="<?= $currentDate ?>" data-personel-ids="<?= $pIdsStr ?>" style="cursor: cell;"
-                                    title="Çift tıklayarak yeni kayıt ekle">
-                                    <?= $val ?: '' ?>
-                                </td>
-                            <?php endfor; ?>
-                            <td class="table-light fw-bold"><?= $teamTotal ?: '' ?></td>
-                            <?php if ($firstRow): ?>
-                                <td rowspan="<?= count($unseenKacakTeams) ?>" class="fw-bold"><?= $regionTotal ?: '' ?></td>
-                                <td rowspan="<?= count($unseenKacakTeams) ?>" class="fw-bold text-uppercase" style="font-size: 9px;">
-                                    TANIMSIZ</td>
-                                <?php $firstRow = false; ?>
-                            <?php endif; ?>
-                        </tr>
-                    <?php endforeach;
-                endif;
-
-            else:
-                // Universal logic for Personnel-based reports (Okuma, Kesme, Sokme, Muhurleme)
-                foreach ($tableData as $item):
-                    $regionTotal = 0;
-                    foreach ($item['teams'] as $tData) {
-                        $pId = $tData['personel']->id;
-                        if (isset($summary[$pId])) {
+                    } else {
+                        if (isset($summary[$pId][$tId])) {
                             if ($activeTab === 'okuma') {
-                                $regionTotal += array_sum($summary[$pId]);
+                                $regionTotal += array_sum($summary[$pId][$tId]);
                             } else {
                                 // İŞLEM TOPLAMLARI kolonlarının toplamını hesapla
                                 foreach ($workTypeCols as $wt) {
                                     $wtTotal = 0;
-                                    foreach ($summary[$pId] as $dayData) {
+                                    foreach ($summary[$pId][$tId] as $dayData) {
                                         $wtTotal += $dayData[$wt['name']] ?? 0;
                                     }
                                     $regionTotal += $wtTotal;
@@ -613,93 +578,122 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                             }
                         }
                     }
+                }
 
-                    $firstRow = true;
-                    foreach ($item['teams'] as $tData):
-                        $team = $tData['team'];
-                        $personel = $tData['personel'];
-                        $personelTotal = 0;
-                        // Okuma sekmesi için toplam hesapla (diğer sekmeler için İŞLEM TOPLAMLARI bölümünde hesaplanacak)
-                        if ($activeTab === 'okuma' && isset($summary[$personel->id])) {
-                            $personelTotal = array_sum($summary[$personel->id]);
+                $firstRow = true;
+                foreach ($item['teams'] as $tData):
+                    $team = $tData['team'];
+                    $personel = $tData['personel'];
+                    $pId = $tData['pId'];
+                    $tId = $tData['tId'];
+                    $personelTotal = 0;
+
+                    if ($activeTab === 'kacakkontrol') {
+                        if (isset($summary[$team->tur_adi])) {
+                            // Personnel-based total in kacak is tricky; here we show the full team value 
+                            // because kacak records don't have individual personnel links in the data rows themselves.
+                            // However, to satisfy the report, we show the team's data on each person's row.
+                            $personelTotal = array_sum($summary[$team->tur_adi]);
                             $grandTotal += $personelTotal;
                         }
-                        // Bölge ID'si olarak bölge adının hash'i kullanılıyor
-                        $regionId = md5($item['region']);
-                        ?>
-                        <tr data-region-id="<?= $regionId ?>">
-                            <td class="sticky-col-1"><?= $sira++ ?></td>
+                    } elseif ($activeTab === 'okuma' && isset($summary[$pId][$tId])) {
+                        $personelTotal = array_sum($summary[$pId][$tId]);
+                        $grandTotal += $personelTotal;
+                    }
+                    // Bölge ID'si olarak bölge adının hash'i kullanılıyor
+                    $regionId = md5($item['region']);
+                    ?>
+                    <tr data-region-id="<?= $regionId ?>">
+                        <td class="sticky-col-1"><?= $sira++ ?></td>
+                        <?php if ($activeTab !== 'kacakkontrol'): ?>
                             <td class="sticky-col-2">
                                 <?= $team->tur_adi ?>
                             </td>
-                            <td class="sticky-col-3 text-start"><?= $personel->adi_soyadi ?></td>
+                        <?php endif; ?>
+                        <td
+                            class="<?= ($activeTab === 'kacakkontrol') ? 'kacakkontrol-name-col' : 'sticky-col-3' ?> text-start">
+                            <?= $personel->adi_soyadi ?>
+                        </td>
 
-                            <?php if ($activeTab === 'okuma'): ?>
-                                <?php for ($d = 1; $d <= $daysInMonth; $d++):
-                                    $val = $summary[$personel->id][$d] ?? 0;
-                                    $dailyTotals[$d] += $val;
-                                    $isSunday = in_array($d, $sundayDays); ?>
+                        <?php if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol'): ?>
+                            <?php for ($d = 1; $d <= $daysInMonth; $d++):
+                                $val = 0;
+                                $pIdsStr = '';
+                                if ($activeTab === 'kacakkontrol') {
+                                    $val = $summary[$team->tur_adi][$d] ?? 0;
+                                    $pIdsStr = $kacakPersonelMapping[$team->tur_adi] ?? '';
+                                } else {
+                                    $val = $summary[$pId][$tId][$d] ?? 0;
+                                }
+
+                                $dailyTotals[$d] += $val;
+                                $isSunday = in_array($d, $sundayDays);
+                                $currentDate = str_pad($d, 2, '0', STR_PAD_LEFT) . "." . str_pad($month, 2, '0', STR_PAD_LEFT) . "." . $year;
+                                ?>
+                                <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?> <?= ($activeTab === 'kacakkontrol') ? 'kacak-quick-cell' : '' ?>"
+                                    <?php if ($activeTab === 'kacakkontrol'): ?> data-date="<?= $currentDate ?>"
+                                        data-personel-ids="<?= $pIdsStr ?: $pId ?>" data-ekip-adi="<?= htmlspecialchars($team->tur_adi) ?>"
+                                        style="cursor: cell;" title="Çift tıklayarak yeni kayıt ekle" <?php endif; ?>>
+                                    <?= $val ?: '' ?>
+                                </td>
+                            <?php endfor; ?>
+                        <?php else: ?>
+                            <?php for ($d = 1; $d <= $daysInMonth; $d++):
+                                $isSunday = in_array($d, $sundayDays); ?>
+                                <?php $idx = 0;
+                                foreach ($workTypeCols as $wt):
+                                    $idx++;
+                                    $val = $summary[$pId][$tId][$d][$wt['name']] ?? 0;
+                                    if (!isset($dailyDetailedTotals[$d][$wt['name']]))
+                                        $dailyDetailedTotals[$d][$wt['name']] = 0;
+                                    $dailyDetailedTotals[$d][$wt['name']] += $val;
+                                    $dailyTotals[$d] += $val; ?>
                                     <td
-                                        class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>">
+                                        class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>">
                                         <?= $val ?: '' ?>
                                     </td>
-                                <?php endfor; ?>
-                            <?php else: ?>
-                                <?php for ($d = 1; $d <= $daysInMonth; $d++):
-                                    $isSunday = in_array($d, $sundayDays); ?>
-                                    <?php $idx = 0;
-                                    foreach ($workTypeCols as $wt):
-                                        $idx++;
-                                        $val = $summary[$personel->id][$d][$wt['name']] ?? 0;
-                                        if (!isset($dailyDetailedTotals[$d][$wt['name']]))
-                                            $dailyDetailedTotals[$d][$wt['name']] = 0;
-                                        $dailyDetailedTotals[$d][$wt['name']] += $val;
-                                        $dailyTotals[$d] += $val; ?>
-                                        <td
-                                            class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>">
-                                            <?= $val ?: '' ?>
-                                        </td>
-                                    <?php endforeach; ?>
-                                <?php endfor; ?>
-                                <?php
-                                // İŞLEM TOPLAMLARI değerlerini hesapla ve sakla
-                                $personelActTotals = [];
-                                foreach ($workTypeCols as $wt) {
-                                    $actTotal = 0;
-                                    foreach ($summary[$personel->id] ?? [] as $dayData) {
-                                        $actTotal += $dayData[$wt['name']] ?? 0;
-                                    }
-                                    $personelActTotals[$wt['name']] = $actTotal;
-                                }
-                                // TOPLAM = İŞLEM TOPLAMLARI kolonlarının toplamı
-                                $personelTotal = array_sum($personelActTotals);
-                                $grandTotal += $personelTotal;
-                                ?>
-                                <?php foreach ($workTypeCols as $wt): ?>
-                                    <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> table-info fw-bold row-action-total">
-                                        <?= $personelActTotals[$wt['name']] ?: '' ?>
-                                    </td>
                                 <?php endforeach; ?>
-                            <?php endif; ?>
-
-                            <td class="table-light fw-bold row-total-cell"><?= $personelTotal ?: '' ?></td>
-                            <?php if ($firstRow): ?>
-                                <td rowspan="<?= count($item['teams']) ?>" class="fw-bold region-total-cell"
-                                    data-region-id="<?= $regionId ?>"><?= $regionTotal ?: '' ?></td>
-                                <td rowspan="<?= count($item['teams']) ?>" class="fw-bold text-uppercase" style="font-size: 9px;">
-                                    <?= $item['region'] ?>
+                            <?php endfor; ?>
+                            <?php
+                            // İŞLEM TOPLAMLARI değerlerini hesapla ve sakla
+                            $personelActTotals = [];
+                            foreach ($workTypeCols as $wt) {
+                                $actTotal = 0;
+                                foreach ($summary[$pId][$tId] ?? [] as $dayData) {
+                                    $actTotal += $dayData[$wt['name']] ?? 0;
+                                }
+                                $personelActTotals[$wt['name']] = $actTotal;
+                            }
+                            // TOPLAM = İŞLEM TOPLAMLARI kolonlarının toplamı
+                            $personelTotal = array_sum($personelActTotals);
+                            $grandTotal += $personelTotal;
+                            ?>
+                            <?php foreach ($workTypeCols as $wt): ?>
+                                <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> table-info fw-bold row-action-total">
+                                    <?= $personelActTotals[$wt['name']] ?: '' ?>
                                 </td>
-                                <?php $firstRow = false; ?>
-                            <?php endif; ?>
-                        </tr>
-                    <?php endforeach;
-                endforeach;
-            endif; ?>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+
+                        <td class="table-light fw-bold row-total-cell"><?= $personelTotal ?: '' ?></td>
+                        <?php if ($firstRow): ?>
+                            <td rowspan="<?= count($item['teams']) ?>" class="fw-bold region-total-cell"
+                                data-region-id="<?= $regionId ?>"><?= $regionTotal ?: '' ?></td>
+                            <td rowspan="<?= count($item['teams']) ?>" class="fw-bold text-uppercase" style="font-size: 9px;">
+                                <?= $item['region'] ?>
+                            </td>
+                            <?php $firstRow = false; ?>
+                        <?php endif; ?>
+                    </tr>
+                <?php endforeach;
+            endforeach;
+            ?>
         </tbody>
         <tfoot class="table-light fw-bold">
             <?php if ($hasSubCols): ?>
                 <tr class="tfoot-action">
-                    <td colspan="3" class="text-end text-muted sticky-col-1" style="font-size: 10px; left: 0; z-index: 25;">
+                    <td colspan="<?= ($activeTab === 'kacakkontrol') ? '2' : '3' ?>"
+                        class="text-end text-muted sticky-col-1" style="font-size: 10px; left: 0; z-index: 25;">
                         İŞLEM BAZINDA GÜNLÜK TOPLAMLAR</td>
                     <?php for ($d = 1; $d <= $daysInMonth; $d++):
                         $isSunday = in_array($d, $sundayDays); ?>
@@ -731,7 +725,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             <?php endif; ?>
             <tr class="tfoot-general">
                 <td colspan="<?= ($activeTab === 'kacakkontrol') ? '2' : '3' ?>" class="text-end sticky-col-1"
-                    style="left: 0; z-index: 26; width: <?= ($activeTab === 'kacakkontrol') ? '170px' : '390px' ?>; min-width: <?= ($activeTab === 'kacakkontrol') ? '170px' : '390px' ?>; max-width: <?= ($activeTab === 'kacakkontrol') ? '170px' : '390px' ?>;">
+                    style="left: 0; z-index: 26; width: 390px; min-width: 390px; max-width: 390px;">
                     GÜNLÜK TOPLAMLAR</td>
                 <?php for ($d = 1; $d <= $daysInMonth; $d++):
                     $isSunday = in_array($d, $sundayDays); ?>
@@ -747,9 +741,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     </td>
                 <?php endif; ?>
                 <td class="grand-total-cell"><?= $grandTotal ?: '' ?></td>
-                <?php if ($activeTab !== 'kacakkontrol'): ?>
-                    <td colspan="2"></td>
-                <?php endif; ?>
+                <td colspan="2"></td>
             </tr>
         </tfoot>
     </table>

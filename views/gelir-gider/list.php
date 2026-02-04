@@ -23,14 +23,14 @@ $kasaOptions = [];
 $kasalar = $Kasa->getKasaListByOwner($_SESSION['owner_id']);
 
 foreach ($kasalar as $kasa) {
-    $kasaOptions[Security::encrypt($kasa->id )] = $kasa->kasa_adi;
+    $kasaOptions[Security::encrypt($kasa->id)] = $kasa->kasa_adi;
 }
 
 
 /** Get ile gelmiyorsa varsayilan kasayı al */
-if(!isset($_GET['kasa_id']) ){
-    $_SESSION['kasa_id'] =$Kasa->getDefaultCashboxId($_SESSION['owner_id']);
-}else if(!empty($_GET['kasa_id'])){
+if (!isset($_GET['kasa_id'])) {
+    $_SESSION['kasa_id'] = $Kasa->getDefaultCashboxId($_SESSION['owner_id']);
+} else if (!empty($_GET['kasa_id'])) {
     $_SESSION['kasa_id'] = Security::decrypt($_GET['kasa_id']);
 }
 
@@ -80,63 +80,63 @@ $summary = $GelirGider->summary();
                         <div class="row align-items-center">
                             <div class="col-md-2">
                                 <?php echo
-                                Form::FormFloatInput(
-                                    "text",
-                                    "dogum_tarihi",
-                                    $uye->dogum_tarihi ?? "",
-                                    "Başlama Tarihi giriniz!",
-                                    "Başlama Tarihi",
-                                    "calendar",
-                                    "form-control form-control-sm flatpickr"
-                                ); ?>
+                                    Form::FormFloatInput(
+                                        "text",
+                                        "dogum_tarihi",
+                                        $uye->dogum_tarihi ?? "",
+                                        "Başlama Tarihi giriniz!",
+                                        "Başlama Tarihi",
+                                        "calendar",
+                                        "form-control form-control-sm flatpickr"
+                                    ); ?>
                             </div>
                             <div class="col-md-2">
                                 <?php echo
-                                Form::FormFloatInput(
-                                    "text",
-                                    "dogum_tarihi",
-                                    $uye->dogum_tarihi ?? "",
-                                    "Bitiş Tarihi giriniz!",
-                                    "Bitiş Tarihi",
-                                    "calendar",
-                                    "form-control flatpickr"
-                                ); ?>
+                                    Form::FormFloatInput(
+                                        "text",
+                                        "dogum_tarihi",
+                                        $uye->dogum_tarihi ?? "",
+                                        "Bitiş Tarihi giriniz!",
+                                        "Bitiş Tarihi",
+                                        "calendar",
+                                        "form-control flatpickr"
+                                    ); ?>
                             </div>
                             <div class="col-md-2">
                                 <?php echo
-                                Form::FormFloatInput(
-                                    "text",
-                                    "tutar_min",
-                                    $uye->dogum_tarihi ?? "",
-                                    "Bitiş Tarihi giriniz!",
-                                    "Min Tutar",
-                                    "arrow-down",
-                                    "form-control money"
-                                ); ?>
+                                    Form::FormFloatInput(
+                                        "text",
+                                        "tutar_min",
+                                        $uye->dogum_tarihi ?? "",
+                                        "Bitiş Tarihi giriniz!",
+                                        "Min Tutar",
+                                        "arrow-down",
+                                        "form-control money"
+                                    ); ?>
                             </div>
                             <div class="col-md-2">
                                 <?php echo
-                                Form::FormFloatInput(
-                                    "text",
-                                    "tutar_max",
-                                    $uye->dogum_tarihi ?? "",
-                                    "Bitiş Tarihi giriniz!",
-                                    "Max Tutar",
-                                    "arrow-up",
-                                    "form-control money"
-                                ); ?>
+                                    Form::FormFloatInput(
+                                        "text",
+                                        "tutar_max",
+                                        $uye->dogum_tarihi ?? "",
+                                        "Bitiş Tarihi giriniz!",
+                                        "Max Tutar",
+                                        "arrow-up",
+                                        "form-control money"
+                                    ); ?>
                             </div>
-                              <div class="col-md-2">
-                        <?php echo Form::FormSelect2(
-                            'kasa_id',
-                            $kasaOptions,
-                            $decrypted_kasa_id ?? null,
-                            'Kasa Seçin',
-                            'briefcase',
-                            'key',
-                            'Kasa Seçin'
-                        ) ?>
-                    </div>
+                            <div class="col-md-2">
+                                <?php echo Form::FormSelect2(
+                                    'kasa_id',
+                                    $kasaOptions,
+                                    $decrypted_kasa_id ?? null,
+                                    'Kasa Seçin',
+                                    'briefcase',
+                                    'key',
+                                    'Kasa Seçin'
+                                ) ?>
+                            </div>
                             <div class="col-md-2 mt-2 d-block align-self-end">
                                 <button class="btn btn-primary px-4 me-2">
                                     <i class="bi bi-funnel me-1"></i> Filtrele
@@ -155,8 +155,7 @@ $summary = $GelirGider->summary();
 
         <div class="row mb-4">
 
-            <link
-                href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
                 rel="stylesheet">
             <style>
                 :root {
@@ -325,8 +324,8 @@ $summary = $GelirGider->summary();
                 <!-- Gelir Kartı -->
                 <div class="finance-card income">
                     <svg class="sparkline" viewBox="0 0 100 40" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M0,30 C20,10 40,25 60,15 80,5 100,20" stroke="#4cc9f0" stroke-width="2"
-                            fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="M0,30 C20,10 40,25 60,15 80,5 100,20" stroke="#4cc9f0" stroke-width="2" fill="none"
+                            stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
                     <div class="card-header">
                         <div>
@@ -354,15 +353,15 @@ $summary = $GelirGider->summary();
                 <!-- Gider Kartı -->
                 <div class="finance-card expense">
                     <svg class="sparkline" viewBox="0 0 100 40" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M0,15 C20,25 40,10 60,20 80,30 100,15" stroke="#f72585"
-                            stroke-width="2" fill="none" stroke-linecap="round"
-                            stroke-linejoin="round" />
+                        <path d="M0,15 C20,25 40,10 60,20 80,30 100,15" stroke="#f72585" stroke-width="2" fill="none"
+                            stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
                     <div class="card-header">
                         <div>
                             <div class="card-title">Toplam Gider</div>
                             <div class="card-value">
-                                <?php echo Helper::formattedMoney($summary->toplam_gider ?? 0); ?></div>
+                                <?php echo Helper::formattedMoney($summary->toplam_gider ?? 0); ?>
+                            </div>
                             <div class="card-change">
                                 <i class="bi bi-arrow-up"></i> 8.2% artış
                             </div>
@@ -381,9 +380,8 @@ $summary = $GelirGider->summary();
                 <!-- Bakiye Kartı -->
                 <div class="finance-card balance">
                     <svg class="sparkline" viewBox="0 0 100 40" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M0,20 C20,25 40,15 60,25 80,15 100,20" stroke="#7209b7"
-                            stroke-width="2" fill="none" stroke-linecap="round"
-                            stroke-linejoin="round" />
+                        <path d="M0,20 C20,25 40,15 60,25 80,15 100,20" stroke="#7209b7" stroke-width="2" fill="none"
+                            stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
                     <div class="card-header">
                         <div>
@@ -470,12 +468,12 @@ $summary = $GelirGider->summary();
                                 <?php
                                 foreach ($gelir_gider as $islem) {
                                     $enc_id = Security::encrypt($islem->id);
-                                ?>
+                                    ?>
                                     <tr id="gelir_gider_<?php echo $islem->id ?>" data-id="<?php echo $enc_id ?>">
                                         <td class="text-center">
                                             <?php echo $kayit_sayisi ?>
                                         </td>
-                                        <td class="text-center" style="width: 8%;"  >
+                                        <td class="text-center" style="width: 8%;">
                                             <?php echo $islem->kayit_tarihi ?>
                                         </td>
 
@@ -520,8 +518,8 @@ $summary = $GelirGider->summary();
                                             <div class="flex-shrink-0">
                                                 <div class="dropdown align-self-start icon-demo-content">
                                                     <a class="dropdown-toggle" href="#" role="button"
-                                                        data-bs-toggle="dropdown" aria-haspopup="true"
-                                                        aria-expanded="false">
+                                                        data-bs-toggle="dropdown" data-bs-boundary="viewport"
+                                                        aria-haspopup="true" aria-expanded="false">
                                                         <i class="bx bx-list-ul font-size-24 text-dark"></i>
                                                     </a>
                                                     <div class="dropdown-menu">
@@ -539,7 +537,7 @@ $summary = $GelirGider->summary();
                                             </div>
                                         </td>
                                     </tr>
-                                <?php
+                                    <?php
                                     $kayit_sayisi--;
                                 } ?>
                             </tbody>
@@ -620,16 +618,16 @@ $summary = $GelirGider->summary();
                             <div class="col-md-12">
 
                                 <?php echo
-                                Form::FormFloatInput(
-                                    "text",
-                                    "hesap_adi_text",
-                                    "",
-                                    "Hesap Adı giriniz!",
-                                    "Hesap Adı",
-                                    "user",
-                                    "form-control"
+                                    Form::FormFloatInput(
+                                        "text",
+                                        "hesap_adi_text",
+                                        "",
+                                        "Hesap Adı giriniz!",
+                                        "Hesap Adı",
+                                        "user",
+                                        "form-control"
 
-                                ); ?>
+                                    ); ?>
 
                             </div>
                         </div>
@@ -649,15 +647,15 @@ $summary = $GelirGider->summary();
                                     <div class="row">
 
                                         <?php echo
-                                        Form::FormSelect2(
-                                            "hesap_adi",
-                                            $hesap_adi,
-                                            "",
-                                            "Hesap Adı!",
-                                            "user",
-                                            "adi_soyadi",
-                                            "adi_soyadi",
-                                        ); ?>
+                                            Form::FormSelect2(
+                                                "hesap_adi",
+                                                $hesap_adi,
+                                                "",
+                                                "Hesap Adı!",
+                                                "user",
+                                                "adi_soyadi",
+                                                "adi_soyadi",
+                                            ); ?>
 
                                     </div>
                                 </div>
@@ -666,44 +664,44 @@ $summary = $GelirGider->summary();
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <?php echo
-                                Form::FormFloatInput(
-                                    "text",
-                                    "islem_tarihi",
-                                    date("d.m.Y"),
-                                    "İşlem Tarihi giriniz!",
-                                    "İşlem Tarihi",
-                                    "calendar",
-                                    "form-control flatpickr"
+                                    Form::FormFloatInput(
+                                        "text",
+                                        "islem_tarihi",
+                                        date("d.m.Y"),
+                                        "İşlem Tarihi giriniz!",
+                                        "İşlem Tarihi",
+                                        "calendar",
+                                        "form-control flatpickr"
 
-                                ); ?>
+                                    ); ?>
                             </div>
                             <div class="col-md-6">
                                 <?php echo
-                                Form::FormFloatInput(
-                                    "text",
-                                    "tutar",
-                                    "",
-                                    "Tutar giriniz!",
-                                    "Tutar",
-                                    "dollar-sign",
-                                    "form-control money"
+                                    Form::FormFloatInput(
+                                        "text",
+                                        "tutar",
+                                        "",
+                                        "Tutar giriniz!",
+                                        "Tutar",
+                                        "dollar-sign",
+                                        "form-control money"
 
-                                ); ?>
+                                    ); ?>
                             </div>
 
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-12">
                                 <?php echo
-                                Form::FormFloatTextarea(
-                                    "aciklama",
-                                    $uye->aciklama ?? "",
-                                    "Açıklama giriniz",
-                                    "Açıklama",
-                                    "map-pin",
+                                    Form::FormFloatTextarea(
+                                        "aciklama",
+                                        $uye->aciklama ?? "",
+                                        "Açıklama giriniz",
+                                        "Açıklama",
+                                        "map-pin",
 
 
-                                ); ?>
+                                    ); ?>
                             </div>
                         </div>
                     </form>
@@ -726,7 +724,7 @@ $summary = $GelirGider->summary();
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        document.addEventListener("DOMContentLoaded", function () {
             flatpickr(".flatpickr", {
                 dateFormat: "d.m.Y H:i",
                 enableTime: true,
@@ -737,7 +735,7 @@ $summary = $GelirGider->summary();
         });
 
         /**kasa_id değişiklik olunca get ile yönlendir */
-        $("#kasa_id").change(function() {
+        $("#kasa_id").change(function () {
             var kasa_id = $(this).val();
             window.location.href = "index?p=gelir-gider/list&kasa_id=" + kasa_id;
         });

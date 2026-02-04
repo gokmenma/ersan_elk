@@ -82,13 +82,30 @@ if ($activeTab !== 'okuma' && !empty($workTypes)) {
 }
 $subColCount = count($workTypeCols) ?: 1;
 
+// Personel mapping for easy access
 $allPersonel = $Personel->all();
-$personelMap = [];
+$personelById = [];
 foreach ($allPersonel as $p) {
-    if ($p->ekip_no) {
-        $personelMap[$p->ekip_no] = $p;
-    }
+    $personelById[$p->id] = $p;
 }
+
+// Fetch all active assignments for this month range
+$startDateStr = "$year-$month-01";
+$endDateStr = date('Y-m-t', strtotime($startDateStr));
+$activeAssignments = $Personel->getAllActiveAssignmentsInRange($startDateStr, $endDateStr);
+
+// Pre-fetch all teams to have a lookup
+$allTeams = $Tanimlamalar->getEkipKodlari();
+$teamById = [];
+foreach ($allTeams as $t) {
+    $teamById[$t->id] = $t;
+}
+
+// Kacak Kontrol: Get mapping
+$kacakPersonelMapping = $Puantaj->getKacakPersonelMapping();
+
+$alreadySeenIds = [];
+$allSummaryPersonels = ($activeTab !== 'kacakkontrol' && is_array($summary)) ? array_keys($summary) : [];
 
 $isUnmatchedReport = isset($_GET['unmatched']) && $_GET['unmatched'] == 1;
 
@@ -235,22 +252,22 @@ if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeC
     // İŞLEM TOPLAMLARI header'ı satır 1'de - colIndex şu an son gün kolonlarından sonra
     $islemToplamStartIdx = $colIndex;
     $islemToplamEndIdx = $colIndex + $subColCount - 1;
-    
+
     $islemToplamStartCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($islemToplamStartIdx);
     $islemToplamEndCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($islemToplamEndIdx);
-    
+
     // Row 1: İŞLEM TOPLAMLARI başlığı zaten toplamCol ile yönetiliyor, ancak bu bölüm ekstra
     $sheet->setCellValue($islemToplamStartCol . '1', 'İŞLEM TOPLAMLARI');
     if ($subColCount > 1) {
         $sheet->mergeCells($islemToplamStartCol . '1:' . $islemToplamEndCol . '1');
     }
-    
+
     // Row 2: GENEL
     $sheet->setCellValue($islemToplamStartCol . '2', 'GENEL');
     if ($subColCount > 1) {
         $sheet->mergeCells($islemToplamStartCol . '2:' . $islemToplamEndCol . '2');
     }
-    
+
     // Row 3: İş türü kodları
     $tempColIdx = $islemToplamStartIdx;
     foreach ($workTypeCols as $wt) {
@@ -261,13 +278,13 @@ if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeC
         $sheet->getColumnDimension($wtColLetter)->setWidth(4);
         $tempColIdx++;
     }
-    
+
     // TOPLAM sütunu indexini güncelle
     $toplamColIdx = $islemToplamEndIdx + 1;
     $toplamCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($toplamColIdx);
     $sheet->setCellValue($toplamCol . '1', 'TOPLAM');
     $sheet->mergeCells($toplamCol . '1:' . $toplamCol . $headerRows);
-    
+
     // BÖLGE TOPLAMI ve BÖLGE ADI sütunlarını güncelle
     $bolgeToplamColIdx = $toplamColIdx + 1;
     $bolgeToplamCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($bolgeToplamColIdx);
@@ -289,121 +306,240 @@ if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeC
 $sheet->getStyle('A1:' . $lastCol . $headerRows)->applyFromArray($headerStyle);
 
 // Data
+// Data Rendering
 $row = $headerRows + 1;
 $sira = 1;
 $dailyTotals = array_fill(1, $daysInMonth, 0);
 $dailyDetailedTotals = [];
 $grandTotal = 0;
-$seenTeams = [];
-$allKacakTeams = ($activeTab === 'kacakkontrol') ? array_keys($summary) : [];
 
+// 1. Build Valid Pairs
+$validPairs = []; // key: [pId]_[tId] => ['pId' => X, 'tId' => Y]
+if (!empty($summary)) {
+    if ($activeTab === 'kacakkontrol') {
+        foreach ($summary as $teamName => $days) {
+            $matchingTeams = array_filter($allTeams, function ($t) use ($teamName) {
+                return $t->tur_adi === $teamName;
+            });
+            foreach ($matchingTeams as $mt) {
+                foreach ($activeAssignments as $assign) {
+                    if ($assign->ekip_kodu_id == $mt->id) {
+                        $validPairs[$assign->personel_id . '_' . $mt->id] = ['pId' => $assign->personel_id, 'tId' => $mt->id];
+                    }
+                }
+            }
+        }
+    } else {
+        foreach ($summary as $pId => $teams) {
+            foreach ($teams as $tId => $data) {
+                if ($filterPersonelId && $pId != $filterPersonelId)
+                    continue;
+                $validPairs[$pId . '_' . $tId] = ['pId' => $pId, 'tId' => $tId];
+            }
+        }
+    }
+}
+
+// 2. Add from history (even if no data)
+foreach ($activeAssignments as $assign) {
+    if ($filterPersonelId && $assign->personel_id != $filterPersonelId)
+        continue;
+
+    $isValid = false;
+    $personelDepts = !empty($assign->departman) ? array_map('trim', explode(',', $assign->departman)) : [];
+    $gorev = $assign->gorev ?? '';
+
+    if ($activeTab === 'okuma') {
+        if (in_array('Endeks Okuma', $personelDepts) || in_array('Okuma', $personelDepts))
+            $isValid = true;
+    } elseif ($activeTab === 'kesme') {
+        if (in_array('Kesme Açma', $personelDepts) || in_array('Kesme-Açma', $personelDepts))
+            $isValid = true;
+    } elseif ($activeTab === 'sokme_takma') {
+        if (in_array('Sayaç Sökme Takma', $personelDepts) || in_array('Sökme Takma', $personelDepts))
+            $isValid = true;
+    } elseif ($activeTab === 'muhurleme') {
+        if (in_array('Mühürleme', $personelDepts))
+            $isValid = true;
+    } elseif ($activeTab === 'kacakkontrol') {
+        if (in_array('Kaçak Kontrol', $personelDepts) || in_array('Kaçak Su Tespiti', $personelDepts))
+            $isValid = true;
+    } else {
+        $isValid = true;
+    }
+
+    if ($isValid) {
+        $validPairs[$assign->personel_id . '_' . $assign->ekip_kodu_id] = [
+            'pId' => $assign->personel_id,
+            'tId' => $assign->ekip_kodu_id
+        ];
+    }
+}
+
+// 3. Group by region
+$regionGrouped = [];
+foreach ($validPairs as $pair) {
+    $pId = $pair['pId'];
+    $tId = $pair['tId'];
+    $p = $personelById[$pId] ?? null;
+    if (!$p)
+        continue;
+    $team = $teamById[$tId] ?? (object) ['id' => 0, 'tur_adi' => '-', 'ekip_bolge' => 'TANIMSIZ BÖLGE'];
+    $regionName = $team->ekip_bolge ?: 'TANIMSIZ BÖLGE';
+    if ($filterRegion && $regionName != $filterRegion)
+        continue;
+
+    $regionGrouped[$regionName][] = [
+        'team' => $team,
+        'personel' => $p,
+        'pId' => $pId,
+        'tId' => $tId
+    ];
+}
+
+// 4. Render Data
 foreach ($regions as $regionName) {
-    $teams = $Tanimlamalar->getEkipKodlariByBolgeAll($regionName);
-
-    if (empty($teams))
+    if (empty($regionGrouped[$regionName]))
         continue;
-
-    // Filtreleme (Personel Seçimi & Görev Bazlı)
-    $teams = array_filter($teams, function ($team) use ($activeTab, $personelMap, $filterPersonelId) {
-        $personel = $personelMap[$team->id] ?? null;
-
-        // Personel seçilmişse sadece onu getir
-        if ($filterPersonelId && (!$personel || $personel->id != $filterPersonelId)) {
-            return false;
-        }
-
-        // Görev bazlı filtreleme
-        if ($activeTab === 'kesme') {
-            return $personel && mb_stripos($personel->gorev, 'KESME-AÇMA') !== false;
-        } elseif ($activeTab === 'okuma') {
-            return $personel && mb_stripos($personel->gorev, 'OKUMA') !== false;
-        } elseif ($activeTab === 'sokme_takma') {
-            return $personel && mb_stripos($personel->gorev, 'SÖKME') !== false;
-        } elseif ($activeTab === 'muhurleme') {
-            return $personel && mb_stripos($personel->gorev, 'MÜHÜRLEME') !== false;
-        }
-        return true;
+    $teamsInRegion = $regionGrouped[$regionName];
+    usort($teamsInRegion, function ($a, $b) {
+        return strcoll($a['personel']->adi_soyadi, $b['personel']->adi_soyadi);
     });
-
-    if (empty($teams))
-        continue;
 
     $regionStartRow = $row;
     $regionTotal = 0;
 
-    foreach ($teams as $team) {
-        $personel = $personelMap[$team->id] ?? null;
+    foreach ($teamsInRegion as $tData) {
+        $team = $tData['team'];
+        $personel = $tData['personel'];
+        $pId = $tData['pId'];
+        $tId = $tData['tId'];
         $personelTotal = 0;
-        $lookupKey = ($activeTab === 'kacakkontrol') ? $team->tur_adi : ($personel ? $personel->id : null);
-
-        if (!$lookupKey || !isset($summary[$lookupKey])) {
-            if ($activeTab === 'kacakkontrol' || $activeTab === 'okuma')
-                continue;
-        }
-
-        if ($activeTab === 'kacakkontrol')
-            $seenTeams[] = $team->tur_adi;
 
         $sheet->setCellValue('A' . $row, $sira++);
         $sheet->setCellValue('B' . $row, $team->tur_adi);
-        if ($activeTab !== 'kacakkontrol') {
-            $sheet->setCellValue('C' . $row, $personel ? $personel->adi_soyadi : '-');
-        }
+        if ($activeTab !== 'kacakkontrol')
+            $sheet->setCellValue('C' . $row, $personel->adi_soyadi);
 
-        $colIndex = $daysColStartIdx;
-        $personelWorkTypeTotals = []; // Her iş türü için personel toplamı
-        foreach ($workTypeCols as $wt) {
-            $personelWorkTypeTotals[$wt['name']] = 0;
-        }
-        
-        for ($d = 1; $d <= $daysInMonth; $d++) {
-            if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol') {
-                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
-                $val = ($lookupKey && isset($summary[$lookupKey][$d])) ? $summary[$lookupKey][$d] : 0;
+        $colIdx = $daysColStartIdx;
+        if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol') {
+            for ($d = 1; $d <= $daysInMonth; $d++) {
+                $val = ($activeTab === 'kacakkontrol') ? ($summary[$team->tur_adi][$d] ?? 0) : ($summary[$pId][$tId][$d] ?? 0);
                 if ($val > 0) {
+                    $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
                     $sheet->setCellValue($colLetter . $row, $val);
                     $dailyTotals[$d] += $val;
                     $personelTotal += $val;
                 }
-                $colIndex++;
-            } else {
+                $colIdx++;
+            }
+        } else {
+            $personelWorkTypeTotals = [];
+            foreach ($workTypeCols as $wt)
+                $personelWorkTypeTotals[$wt['name']] = 0;
+            for ($d = 1; $d <= $daysInMonth; $d++) {
                 foreach ($workTypeCols as $wt) {
-                    $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
-                    $val = ($personel && isset($summary[$personel->id][$d][$wt['name']])) ? $summary[$personel->id][$d][$wt['name']] : 0;
+                    $val = $summary[$pId][$tId][$d][$wt['name']] ?? 0;
                     if ($val > 0) {
+                        $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
                         $sheet->setCellValue($colLetter . $row, $val);
                         if (!isset($dailyDetailedTotals[$d][$wt['name']]))
                             $dailyDetailedTotals[$d][$wt['name']] = 0;
                         $dailyDetailedTotals[$d][$wt['name']] += $val;
-                        $dailyTotals[$d] += $val; // Günlük toplamları da güncelle
+                        $dailyTotals[$d] += $val;
                         $personelTotal += $val;
                         $personelWorkTypeTotals[$wt['name']] += $val;
                     }
-                    $colIndex++;
+                    $colIdx++;
                 }
             }
-        }
-
-        // İŞLEM TOPLAMLARI - GENEL sütunları (sadece detaylı raporlar için)
-        if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeCols)) {
             foreach ($workTypeCols as $wt) {
-                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
                 if ($personelWorkTypeTotals[$wt['name']] > 0) {
+                    $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
                     $sheet->setCellValue($colLetter . $row, $personelWorkTypeTotals[$wt['name']]);
                 }
-                $colIndex++;
+                $colIdx++;
             }
         }
-
         $sheet->setCellValue($toplamCol . $row, $personelTotal ?: '');
         $regionTotal += $personelTotal;
         $grandTotal += $personelTotal;
         $row++;
     }
 
-    // Region Total and Name (Merged)
-    if ($activeTab !== 'kacakkontrol' && count($teams) > 0) {
-        $regionEndRow = $row - 1;
+    $regionEndRow = $row - 1;
+    if ($activeTab !== 'kacakkontrol' && isset($bolgeToplamCol) && isset($bolgeAdiCol)) {
+        if ($regionStartRow < $regionEndRow) {
+            $sheet->mergeCells($bolgeToplamCol . $regionStartRow . ':' . $bolgeToplamCol . $regionEndRow);
+            $sheet->mergeCells($bolgeAdiCol . $regionStartRow . ':' . $bolgeAdiCol . $regionEndRow);
+        }
+        $sheet->setCellValue($bolgeToplamCol . $regionStartRow, $regionTotal ?: '');
+        $sheet->setCellValue($bolgeAdiCol . $regionStartRow, $regionName);
+    }
+    unset($regionGrouped[$regionName]);
+}
+
+// 5. Handle TANIMSIZ regions
+foreach ($regionGrouped as $regionName => $teamsInRegion) {
+    $regionStartRow = $row;
+    $regionTotal = 0;
+    foreach ($teamsInRegion as $tData) {
+        $team = $tData['team'];
+        $personel = $tData['personel'];
+        $pId = $tData['pId'];
+        $tId = $tData['tId'];
+        $personelTotal = 0;
+        $sheet->setCellValue('A' . $row, $sira++);
+        $sheet->setCellValue('B' . $row, $team->tur_adi);
+        if ($activeTab !== 'kacakkontrol')
+            $sheet->setCellValue('C' . $row, $personel->adi_soyadi);
+        $colIdx = $daysColStartIdx;
+        if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol') {
+            for ($d = 1; $d <= $daysInMonth; $d++) {
+                $val = ($activeTab === 'kacakkontrol') ? ($summary[$team->tur_adi][$d] ?? 0) : ($summary[$pId][$tId][$d] ?? 0);
+                if ($val > 0) {
+                    $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
+                    $sheet->setCellValue($colLetter . $row, $val);
+                    $dailyTotals[$d] += $val;
+                    $personelTotal += $val;
+                }
+                $colIdx++;
+            }
+        } else {
+            $personelWorkTypeTotals = [];
+            foreach ($workTypeCols as $wt)
+                $personelWorkTypeTotals[$wt['name']] = 0;
+            for ($d = 1; $d <= $daysInMonth; $d++) {
+                foreach ($workTypeCols as $wt) {
+                    $val = $summary[$pId][$tId][$d][$wt['name']] ?? 0;
+                    if ($val > 0) {
+                        $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
+                        $sheet->setCellValue($colLetter . $row, $val);
+                        if (!isset($dailyDetailedTotals[$d][$wt['name']]))
+                            $dailyDetailedTotals[$d][$wt['name']] = 0;
+                        $dailyDetailedTotals[$d][$wt['name']] += $val;
+                        $dailyTotals[$d] += $val;
+                        $personelTotal += $val;
+                        $personelWorkTypeTotals[$wt['name']] += $val;
+                    }
+                    $colIdx++;
+                }
+            }
+            foreach ($workTypeCols as $wt) {
+                if ($personelWorkTypeTotals[$wt['name']] > 0) {
+                    $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
+                    $sheet->setCellValue($colLetter . $row, $personelWorkTypeTotals[$wt['name']]);
+                }
+                $colIdx++;
+            }
+        }
+        $sheet->setCellValue($toplamCol . $row, $personelTotal ?: '');
+        $regionTotal += $personelTotal;
+        $grandTotal += $personelTotal;
+        $row++;
+    }
+    $regionEndRow = $row - 1;
+    if ($activeTab !== 'kacakkontrol' && isset($bolgeToplamCol) && isset($bolgeAdiCol)) {
         if ($regionStartRow < $regionEndRow) {
             $sheet->mergeCells($bolgeToplamCol . $regionStartRow . ':' . $bolgeToplamCol . $regionEndRow);
             $sheet->mergeCells($bolgeAdiCol . $regionStartRow . ':' . $bolgeAdiCol . $regionEndRow);
@@ -413,143 +549,70 @@ foreach ($regions as $regionName) {
     }
 }
 
-// Extra section for unseen teams in kacak_kontrol
-$unseenKacakTeams = array_diff($allKacakTeams, $seenTeams);
-if (!empty($unseenKacakTeams)) {
-    $regionStartRow = $row;
-    $regionTotal = 0;
-    foreach ($unseenKacakTeams as $teamName) {
-        $personelTotal = array_sum($summary[$teamName]);
-        $sheet->setCellValue('A' . $row, $sira++);
-        $sheet->setCellValue('B' . $row, $teamName);
-        if ($activeTab !== 'kacakkontrol') {
-            $sheet->setCellValue('C' . $row, '-');
-        }
-
-        $colIndex = $daysColStartIdx;
-        for ($d = 1; $d <= $daysInMonth; $d++) {
-            $val = $summary[$teamName][$d] ?? 0;
-            if ($val > 0) {
-                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
-                $sheet->setCellValue($colLetter . $row, $val);
-                $dailyTotals[$d] += $val;
-            }
-            $colIndex++;
-        }
-        $sheet->setCellValue($toplamCol . $row, $personelTotal ?: '');
-        $regionTotal += $personelTotal;
-        $grandTotal += $personelTotal;
-        $row++;
-    }
-
-    if ($activeTab !== 'kacakkontrol') {
-        $regionEndRow = $row - 1;
-        if ($regionStartRow < $regionEndRow) {
-            $sheet->mergeCells($bolgeToplamCol . $regionStartRow . ':' . $bolgeToplamCol . $regionEndRow);
-            $sheet->mergeCells($bolgeAdiCol . $regionStartRow . ':' . $bolgeAdiCol . $regionEndRow);
-        }
-        $sheet->setCellValue($bolgeToplamCol . $regionStartRow, $regionTotal ?: '');
-        $sheet->setCellValue($bolgeAdiCol . $regionStartRow, 'TANIMSIZ');
-    }
-}
-
-// Footer - İŞLEM BAZINDA GÜNLÜK TOPLAMLAR (only for detailed reports with workTypeCols)
+// 6. Footer (Action Totals)
 if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeCols)) {
     $sheet->setCellValue('A' . $row, 'İŞLEM BAZINDA GÜNLÜK TOPLAMLAR');
     $sheet->mergeCells('A' . $row . ':C' . $row);
     $sheet->getStyle('A' . $row . ':C' . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-    
-    $colIndex = $daysColStartIdx;
-    $actionGrandTotals = []; // Track grand totals per work type
-    foreach ($workTypeCols as $wt) {
+    $colIdx = $daysColStartIdx;
+    $actionGrandTotals = [];
+    foreach ($workTypeCols as $wt)
         $actionGrandTotals[$wt['name']] = 0;
-    }
-    
     for ($d = 1; $d <= $daysInMonth; $d++) {
         foreach ($workTypeCols as $wt) {
-            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
             $val = $dailyDetailedTotals[$d][$wt['name']] ?? 0;
             if ($val > 0) {
+                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
                 $sheet->setCellValue($colLetter . $row, $val);
             }
             $actionGrandTotals[$wt['name']] += $val;
-            $colIndex++;
+            $colIdx++;
         }
     }
-    
-    // İŞLEM TOPLAMLARI - GENEL sütunları
     $actionTypesGrandTotal = 0;
     foreach ($workTypeCols as $wt) {
-        $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
-        if ($actionGrandTotals[$wt['name']] > 0) {
+        $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
+        if ($actionGrandTotals[$wt['name']] > 0)
             $sheet->setCellValue($colLetter . $row, $actionGrandTotals[$wt['name']]);
-        }
         $actionTypesGrandTotal += $actionGrandTotals[$wt['name']];
-        $colIndex++;
+        $colIdx++;
     }
-    
-    // Action types grand total cell
     $sheet->setCellValue($toplamCol . $row, $actionTypesGrandTotal ?: '');
-    
-    // İşlem bazında satır için stil
-    $actionFooterStyle = [
-        'font' => ['bold' => true],
-        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E3F2FD']],
-        'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-        'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
-    ];
-    $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->applyFromArray($actionFooterStyle);
+    $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->applyFromArray(['font' => ['bold' => true], 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E3F2FD']]]);
     $row++;
 }
 
-// Footer (Daily Totals - GÜNLÜK TOPLAMLAR)
+// 7. Footer (Daily Totals)
 $sheet->setCellValue('A' . $row, 'GÜNLÜK TOPLAMLAR');
 $footerMergeEnd = ($activeTab === 'kacakkontrol') ? 'B' : 'C';
 $sheet->mergeCells('A' . $row . ':' . $footerMergeEnd . $row);
 $sheet->getStyle('A' . $row . ':' . $footerMergeEnd . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-
-$colIndex = $daysColStartIdx;
+$colIdx = $daysColStartIdx;
 for ($d = 1; $d <= $daysInMonth; $d++) {
-    if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol') {
-        $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
-        if ($dailyTotals[$d] > 0) {
-            $sheet->setCellValue($colLetter . $row, $dailyTotals[$d]);
-        }
-        $colIndex++;
+    $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
+    if ($dailyTotals[$d] > 0)
+        $sheet->setCellValue($colLetter . $row, $dailyTotals[$d]);
+    if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && $subColCount > 1) {
+        $endColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx + $subColCount - 1);
+        $sheet->mergeCells($colLetter . $row . ':' . $endColLetter . $row);
+        $colIdx += $subColCount;
     } else {
-        // Detaylı raporlarda tüm sub-colonları kapsayan tek hücre
-        $startColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
-        $endColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + $subColCount - 1);
-        if ($dailyTotals[$d] > 0) {
-            $sheet->setCellValue($startColLetter . $row, $dailyTotals[$d]);
-        }
-        if ($subColCount > 1) {
-            $sheet->mergeCells($startColLetter . $row . ':' . $endColLetter . $row);
-        }
-        $colIndex += $subColCount;
+        $colIdx++;
     }
 }
-
-// İŞLEM TOPLAMLARI - GENEL sütunları için GÜNLÜK TOPLAMLAR satırında merge
 if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeCols)) {
-    $startColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
-    $endColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + $subColCount - 1);
-    $sheet->setCellValue($startColLetter . $row, $grandTotal ?: '');
-    if ($subColCount > 1) {
-        $sheet->mergeCells($startColLetter . $row . ':' . $endColLetter . $row);
-    }
+    $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
+    $endColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx + $subColCount - 1);
+    $sheet->setCellValue($colLetter . $row, $grandTotal ?: '');
+    if ($subColCount > 1)
+        $sheet->mergeCells($colLetter . $row . ':' . $endColLetter . $row);
 }
-
 $sheet->setCellValue($toplamCol . $row, $grandTotal ?: '');
 $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->applyFromArray($footerStyle);
 
-// Apply data style to all data rows
-$sheet->getStyle('A' . ($headerRows + 1) . ':' . $lastCol . $row)->applyFromArray([
-    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
-    'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]
-]);
-$sheet->getStyle('A' . ($headerRows + 1) . ':A' . ($row - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-$sheet->getStyle('B' . ($headerRows + 1) . ':B' . ($row - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+// 8. Styles
+$sheet->getStyle('A' . ($headerRows + 1) . ':' . $lastCol . $row)->applyFromArray(['borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]], 'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]]);
+$sheet->getStyle('A' . ($headerRows + 1) . ':B' . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 $sheet->getStyle(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($daysColStartIdx) . ($headerRows + 1) . ':' . $toplamCol . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 if ($activeTab !== 'kacakkontrol') {
     $sheet->getStyle($bolgeToplamCol . ($headerRows + 1) . ':' . $bolgeAdiCol . ($row - 1))->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);

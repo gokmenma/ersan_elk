@@ -36,7 +36,7 @@ class PersonelModel extends Model
                 LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
                 LEFT JOIN tanimlamalar t ON p.ekip_no = t.id
                 LEFT JOIN firmalar f ON p.firma_id = f.id
-                WHERE p.firma_id = :firma_id
+                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL
                 GROUP BY p.id";
 
         $query = $this->db->prepare($sql);
@@ -238,13 +238,24 @@ class PersonelModel extends Model
     {
         $params = ['firma_id' => $_SESSION['firma_id']];
 
-        // Temel sorgu
-        $sql = "SELECT p.*, t.tur_adi as ekip_adi,
+        // Temel sorgu - Birden fazla ekip için GROUP_CONCAT kullanıldı
+        $sql = "SELECT p.*, 
+                GROUP_CONCAT(DISTINCT t_all.tur_adi SEPARATOR ', ') as ekip_adi,
+                GROUP_CONCAT(DISTINCT t_all.ekip_bolge SEPARATOR ', ') as ekip_bolge,
                 CASE WHEN ps.id IS NOT NULL THEN 1 ELSE 0 END as bildirim_abonesi
                 FROM {$this->table} p 
                 LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
-                LEFT JOIN tanimlamalar t ON p.ekip_no = t.id
-                WHERE p.firma_id = :firma_id";
+                LEFT JOIN (
+                    SELECT pg.personel_id, t.tur_adi, t.ekip_bolge
+                    FROM personel_ekip_gecmisi pg
+                    JOIN tanimlamalar t ON pg.ekip_kodu_id = t.id
+                    WHERE pg.baslangic_tarihi <= CURDATE() 
+                    AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
+                    AND pg.firma_id = :firma_id_internal
+                ) t_all ON p.id = t_all.personel_id
+                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL";
+
+        $params['firma_id_internal'] = $_SESSION['firma_id'];
 
         // Toplam kayıt sayısı (filtresiz)
         $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} WHERE firma_id = :firma_id");
@@ -264,14 +275,14 @@ class PersonelModel extends Model
                 p.email_adresi LIKE :search OR
                 p.gorev LIKE :search OR
                 p.ekip_bolge LIKE :search OR
-                t.tur_adi LIKE :search
+                t_all.tur_adi LIKE :search
             )";
             $params['search'] = $searchValue;
         }
 
         // Sütun Bazlı Arama
         $colMap = [
-            2 => 't.tur_adi',
+            2 => 't_all.tur_adi',
             3 => 'p.tc_kimlik_no',
             4 => 'p.adi_soyadi',
             5 => 'p.ise_giris_tarihi',
@@ -298,7 +309,7 @@ class PersonelModel extends Model
                         }
                     } elseif ($i == 2) { // Ekip / Bölge
                         $val = "%" . $column['search']['value'] . "%";
-                        $filterSql .= " AND (t.tur_adi LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
+                        $filterSql .= " AND (t_all.tur_adi LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
                         $params[$paramName] = $val;
                     } elseif ($i == 5 || $i == 6) { // Tarih
                         $filterSql .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramName";
@@ -316,10 +327,19 @@ class PersonelModel extends Model
         $sql .= " GROUP BY p.id";
 
         // Filtrelenmiş kayıt sayısı
-        $filteredQuerySql = "SELECT COUNT(*) FROM (SELECT p.id FROM {$this->table} p LEFT JOIN tanimlamalar t ON p.ekip_no = t.id WHERE p.firma_id = :firma_id $filterSql GROUP BY p.id) as temp";
+        $filteredQuerySql = "SELECT COUNT(*) FROM (SELECT p.id FROM {$this->table} p 
+                             LEFT JOIN (
+                                 SELECT pg.personel_id, t.tur_adi, t.ekip_bolge
+                                 FROM personel_ekip_gecmisi pg
+                                 JOIN tanimlamalar t ON pg.ekip_kodu_id = t.id
+                                 WHERE pg.baslangic_tarihi <= CURDATE() 
+                                 AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
+                                 AND pg.firma_id = :firma_id_internal_v2
+                             ) t_all ON p.id = t_all.personel_id
+                             WHERE p.firma_id = :firma_id $filterSql GROUP BY p.id) as temp";
         $filteredQuery = $this->db->prepare($filteredQuerySql);
         // Filtrelenmiş sayı için parametreleri temizle (sadece gerekli olanları bırak)
-        $filteredParams = ['firma_id' => $_SESSION['firma_id']];
+        $filteredParams = ['firma_id' => $_SESSION['firma_id'], 'firma_id_internal_v2' => $_SESSION['firma_id']];
         if (isset($params['search']))
             $filteredParams['search'] = $params['search'];
         foreach ($params as $key => $val) {
@@ -369,5 +389,137 @@ class PersonelModel extends Model
             "recordsFiltered" => intval($recordsFiltered),
             "data" => $data
         ];
+    }
+
+    /**
+     * Personelin ekip geçmişini getirir
+     */
+    public function getEkipGecmisi($personel_id)
+    {
+        $sql = "SELECT pg.*, t.tur_adi as ekip_adi 
+                FROM personel_ekip_gecmisi pg
+                LEFT JOIN tanimlamalar t ON pg.ekip_kodu_id = t.id
+                WHERE pg.personel_id = :personel_id AND pg.firma_id = :firma_id
+                ORDER BY pg.baslangic_tarihi DESC";
+        $query = $this->db->prepare($sql);
+        $query->execute([
+            'personel_id' => $personel_id,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+        return $query->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Belirli bir tarihteki aktif ekip kodunu getirir
+     */
+    public function getEkipByDate($personel_id, $date)
+    {
+        $sql = "SELECT pg.*, t.tur_adi as ekip_adi 
+                FROM personel_ekip_gecmisi pg
+                LEFT JOIN tanimlamalar t ON pg.ekip_kodu_id = t.id
+                WHERE pg.personel_id = :personel_id 
+                AND pg.firma_id = :firma_id
+                AND pg.baslangic_tarihi <= :date
+                AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= :date)
+                ORDER BY pg.baslangic_tarihi DESC
+                LIMIT 1";
+        $query = $this->db->prepare($sql);
+        $query->execute([
+            'personel_id' => $personel_id,
+            'firma_id' => $_SESSION['firma_id'],
+            'date' => $date
+        ]);
+        return $query->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Ekip geçmişi ekler
+     */
+    public function addEkipGecmisi($data)
+    {
+
+
+        $sql = "INSERT INTO personel_ekip_gecmisi (personel_id, ekip_kodu_id, baslangic_tarihi, bitis_tarihi, firma_id) 
+                VALUES (:personel_id, :ekip_kodu_id, :baslangic_tarihi, :bitis_tarihi, :firma_id)";
+        $query = $this->db->prepare($sql);
+        return $query->execute([
+            'personel_id' => $data['personel_id'],
+            'ekip_kodu_id' => $data['ekip_kodu_id'],
+            'baslangic_tarihi' => $data['baslangic_tarihi'],
+            'bitis_tarihi' => !empty($data['bitis_tarihi']) ? $data['bitis_tarihi'] : null,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+    }
+
+    /**
+     * Tek bir ekip geçmişi kaydını getirir
+     */
+    public function getSingleEkipGecmisi($id)
+    {
+        $sql = "SELECT pg.*, t.tur_adi as ekip_adi 
+                FROM personel_ekip_gecmisi pg
+                LEFT JOIN tanimlamalar t ON pg.ekip_kodu_id = t.id
+                WHERE pg.id = :id AND pg.firma_id = :firma_id";
+        $query = $this->db->prepare($sql);
+        $query->execute([
+            'id' => $id,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+        return $query->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Ekip geçmişi günceller
+     */
+    public function updateEkipGecmisi($data)
+    {
+        $sql = "UPDATE personel_ekip_gecmisi SET 
+                ekip_kodu_id = :ekip_kodu_id, 
+                baslangic_tarihi = :baslangic_tarihi, 
+                bitis_tarihi = :bitis_tarihi 
+                WHERE id = :id AND firma_id = :firma_id";
+        $query = $this->db->prepare($sql);
+        return $query->execute([
+            'id' => $data['id'],
+            'ekip_kodu_id' => $data['ekip_kodu_id'],
+            'baslangic_tarihi' => $data['baslangic_tarihi'],
+            'bitis_tarihi' => !empty($data['bitis_tarihi']) ? $data['bitis_tarihi'] : null,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+    }
+
+    /**
+     * Belirli bir tarih aralığındaki tüm aktif ekip atamalarını getirir
+     */
+    public function getAllActiveAssignmentsInRange($startDate, $endDate)
+    {
+        $sql = "SELECT pg.personel_id, pg.ekip_kodu_id, p.adi_soyadi, p.gorev, p.departman
+                FROM personel_ekip_gecmisi pg
+                JOIN personel p ON pg.personel_id = p.id
+                WHERE pg.firma_id = :firma_id 
+                AND p.silinme_tarihi IS NULL
+                AND pg.baslangic_tarihi <= :end_date
+                AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= :start_date)
+                GROUP BY pg.personel_id, pg.ekip_kodu_id";
+        $query = $this->db->prepare($sql);
+        $query->execute([
+            'firma_id' => $_SESSION['firma_id'],
+            'start_date' => $startDate,
+            'end_date' => $endDate
+        ]);
+        return $query->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Ekip geçmişi siler
+     */
+    public function deleteEkipGecmisi($id)
+    {
+        $sql = "DELETE FROM personel_ekip_gecmisi WHERE id = :id AND firma_id = :firma_id";
+        $query = $this->db->prepare($sql);
+        return $query->execute([
+            'id' => $id,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
     }
 }

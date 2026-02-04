@@ -25,64 +25,73 @@ foreach ($workResults as $wr) {
 }
 ?>
 
-<div class="row mb-3">
-    <div class="col-12">
-
-        <form id="puantajFilterForm">
-            <input type="hidden" name="ekip_kodu" value="<?php echo $id; ?>">
-            <div class="row g-2">
-                <div class="col-md-2">
-                    <?php echo Form::FormFloatInput(
-                        type: 'text',
-                        name: 'start_date',
-                        value: $startDate,
-                        placeholder: '',
-                        label: "Başlangıç Tarihi",
-                        icon: "calendar",
-                        class: "form-control flatpickr"
-                    ); ?>
-                </div>
-                <div class="col-md-2">
-                    <?php echo Form::FormFloatInput(
-                        type: 'text',
-                        name: 'end_date',
-                        value: $endDate,
-                        placeholder: '',
-                        label: "Bitiş Tarihi",
-                        icon: "calendar",
-                        class: "form-control flatpickr"
-                    ); ?>
-                </div>
-                <div class="col-md-3" id="workTypeFilterContainer" style="display: none;">
-                    <?php echo Form::FormSelect2(
-                        name: 'work_type',
-                        options: $workTypeOptions,
-                        selectedValue: '',
-                        textField: "",
-                        label: "Yapılan İş",
-                        icon: "briefcase",
-                        valueField: "key"
-                    ); ?>
-                </div>
-                <div class="col-md-3" id="workResultFilterContainer" style="display: none;">
-                    <?php echo Form::FormSelect2(
-                        name: 'work_result',
-                        options: $workResultOptions,
-                        selectedValue: '',
-                        textField: "",
-                        label: "İş Sonucu",
-                        icon: "check-circle",
-                        valueField: "key"
-                    ); ?>
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100" style="height: 50px;">
-                        <i class="bx bx-filter-alt me-1"></i> Filtrele
-                    </button>
-                </div>
+<div class="accordion accordion-flush mb-3" id="puantajFilterAccordion">
+    <div class="accordion-item border-0 shadow-sm rounded">
+        <h2 class="accordion-header" id="headingFilter">
+            <button class="accordion-button fw-semibold rounded" type="button" data-bs-toggle="collapse"
+                data-bs-target="#collapseFilter" aria-expanded="true" aria-controls="collapseFilter">
+                <i class="bx bx-filter-alt me-2 text-primary"></i> Filtreleme Seçenekleri
+            </button>
+        </h2>
+        <div id="collapseFilter" class="accordion-collapse collapse show" aria-labelledby="headingFilter"
+            data-bs-parent="#puantajFilterAccordion">
+            <div class="accordion-body bg-light bg-opacity-10">
+                <form id="puantajFilterForm">
+                    <input type="hidden" name="ekip_kodu" value="<?php echo $id; ?>">
+                    <div class="row g-2">
+                        <div class="col-md-2">
+                                 <?php echo Form::FormFloatInput(
+                                     type: 'text',
+                                     name: 'start_date',
+                                     value: $startDate,
+                                     placeholder: '',
+                                     label: "Başlangıç Tarihi",
+                                     icon: "calendar",
+                                     class: "form-control flatpickr"
+                                 ); ?>
+                           </div>
+                        <div class="col-md-2">
+                            <?php echo Form::FormFloatInput(
+                                type: 'text',
+                                name: 'end_date',
+                                value: $endDate,
+                                placeholder: '',
+                                label: "Bitiş Tarihi",
+                                icon: "calendar",
+                                class: "form-control flatpickr"
+                            ); ?>
+                        </div>
+                        <div class="col-md-3" id="workTypeFilterContainer" style="display: none;">
+                            <?php echo Form::FormSelect2(
+                                name: 'work_type',
+                                options: $workTypeOptions,
+                                selectedValue: '',
+                                textField: "",
+                                label: "Yapılan İş",
+                                icon: "briefcase",
+                                valueField: "key"
+                            ); ?>
+                        </div>
+                        <div class="col-md-3" id="workResultFilterContainer" style="display: none;">
+                            <?php echo Form::FormSelect2(
+                                name: 'work_result',
+                                options: $workResultOptions,
+                                selectedValue: '',
+                                textField: "",
+                                label: "İş Sonucu",
+                                icon: "check-circle",
+                                valueField: "key"
+                            ); ?>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100" style="height: 50px;">
+                                <i class="bx bx-filter-alt me-1"></i> Filtrele
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
-        </form>
-
+        </div>
     </div>
 </div>
 
@@ -113,7 +122,8 @@ foreach ($workResults as $wr) {
 
             <div class="card-body">
                 <div class="table-responsive">
-                    <table id="endeksTable" class="table table-bordered table-hover dt-responsive nowrap w-100">
+                    <table id="endeksTable"
+                        class="table table-bordered table-hover dt-responsive nowrap w-100 datatable">
                         <thead>
                             <tr class="table-light">
                                 <th>Bölgesi</th>
@@ -127,6 +137,7 @@ foreach ($workResults as $wr) {
                                 <th>Ort. Abone</th>
                                 <th>Perf. (%)</th>
                                 <th>Tarih</th>
+                                <th class="no-export">İşlem</th>
                             </tr>
                         </thead>
                         <tbody id="okumaBody">
@@ -153,7 +164,8 @@ foreach ($workResults as $wr) {
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table id="puantajTable" class="table table-bordered table-hover dt-responsive nowrap w-100">
+                    <table id="puantajTable"
+                        class="table table-bordered table-hover dt-responsive nowrap w-100 datatable">
                         <thead>
                             <tr class="table-light">
                                 <th>Firma</th>
@@ -163,6 +175,7 @@ foreach ($workResults as $wr) {
                                 <th>Sonuçlanmış</th>
                                 <th>Açık Olanlar</th>
                                 <th>Tarih</th>
+                                <th class="no-export">İşlem</th>
                             </tr>
                         </thead>
                         <tbody id="yapilanIslerBody">
@@ -213,7 +226,7 @@ foreach ($workResults as $wr) {
                             <?php echo Form::FormFloatInput("number", "sonuclanmis", "0", "0", "Sonuçlanmış", "check", "form-control", true, null, "on", false, 'step="1"'); ?>
                         </div>
                         <div class="col-md-6">
-                            <?php echo Form::FormFloatInput("number", "acik_olanlar", "0", "0", "Açık Olanlar", "info-circle", "form-control", true, null, "on", false, 'step="1"'); ?>
+                            <?php echo Form::FormFloatInput("number", "acik_olanlar", "0", "0", "Açık Olanlar", "play", "form-control", true, null, "on", false, 'step="1"'); ?>
                         </div>
                     </div>
 
@@ -225,7 +238,7 @@ foreach ($workResults as $wr) {
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Vazgeç</button>
                     <button type="submit" class="btn btn-primary" id="btnPuantajKaydet">Kaydet</button>
                 </div>
-                </fo rm>
+            </form>
 
         </div>
     </div>
@@ -246,8 +259,8 @@ foreach ($workResults as $wr) {
 
             var targetBody = tabName === 'okuma' ? '#okumaBody' : '#yapilanIslerBody';
             var targetTable = tabName === 'okuma' ? '#endeksTable' : '#puantajTable';
-
-            $(targetBody).html('<tr><td colspan="11" class="text-center"><div class="spinner-border text-primary" role="status"></div></td></tr>');
+            var colCount = tabName === 'okuma' ? 12 : 8;
+            $(targetBody).html('<tr><td colspan="' + colCount + '" class="text-center"><div class="spinner-border text-primary" role="status"></div></td></tr>');
 
             $.ajax({
                 url: 'views/puantaj/api.php',
@@ -296,7 +309,7 @@ foreach ($workResults as $wr) {
             window.location.href = `views/personel/api.php?action=export-puantaj&id=<?php echo $id; ?>&type=okuma&start_date=${$('#puantajFilterForm input[name="start_date"]').val()}&end_date=${$('#puantajFilterForm input[name="end_date"]').val()}`;
         });
 
-        $('#btnExpor    tPuantajExcel').on('click', function () {
+        $('#btnExportPuantajExcel').on('click', function () {
             window.location.href = `views/personel/api.php?action=export-puantaj&id=<?php echo $id; ?>&type=puantaj&start_date=${$('#puantajFilterForm input[name="start_date"]').val()}&end_date=${$('#puantajFilterForm input[name="end_date"]').val()}`;
         });
 

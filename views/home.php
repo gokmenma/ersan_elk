@@ -31,26 +31,41 @@ if (Gate::allows("ana_sayfa")) {
         }
     }
 
+    if (!function_exists('getWidgetHeight')) {
+        function getWidgetHeight($id, $default) {
+            global $saved_settings;
+            return $saved_settings[$id]['height'] ?? $default;
+        }
+    }
+
     if (!function_exists('getWidthControl')) {
         function getWidthControl() {
             return '
             <div class="dropdown ms-1 d-inline-block">
-                <button class="btn btn-link btn-sm p-0 text-muted" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Genişliği Değiştir">
+                <button class="btn btn-link btn-sm p-0 text-muted" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Boyutları Ayarla">
                     <i class="bx bx-expand-alt"></i>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" style="min-width: 150px; z-index: 1060;">
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" style="min-width: 200px; z-index: 1060;">
                     <li><h6 class="dropdown-header fw-bold text-primary">Genişlik Ayarla</h6></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-2" href="javascript:void(0);">col-2 (1/6)</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-3" href="javascript:void(0);">col-3 (1/4)</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-4" href="javascript:void(0);">col-4 (1/3)</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-5" href="javascript:void(0);">col-5</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-6" href="javascript:void(0);">col-6 (1/2)</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-7" href="javascript:void(0);">col-7</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-8" href="javascript:void(0);">col-8 (2/3)</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-9" href="javascript:void(0);">col-9 (3/4)</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-10" href="javascript:void(0);">col-10</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-11" href="javascript:void(0);">col-11</a></li>
-                    <li><a class="dropdown-item btn-resize" data-width="col-md-12" href="javascript:void(0);">col-12 (Tam)</a></li>
+                    <li><a class="dropdown-item btn-resize-width" data-width="col-md-2" href="javascript:void(0);">col-2 (1/6)</a></li>
+                    <li><a class="dropdown-item btn-resize-width" data-width="col-md-3" href="javascript:void(0);">col-3 (1/4)</a></li>
+                    <li><a class="dropdown-item btn-resize-width" data-width="col-md-4" href="javascript:void(0);">col-4 (1/3)</a></li>
+                    <li><a class="dropdown-item btn-resize-width" data-width="col-md-5" href="javascript:void(0);">col-5</a></li>
+                    <li><a class="dropdown-item btn-resize-width" data-width="col-md-6" href="javascript:void(0);">col-6 (1/2)</a></li>
+                    <li><a class="dropdown-item btn-resize-width" data-width="col-md-7" href="javascript:void(0);">col-7</a></li>
+                    <li><a class="dropdown-item btn-resize-width" data-width="col-md-8" href="javascript:void(0);">col-8 (2/3)</a></li>
+                    <li><a class="dropdown-item btn-resize-width" data-width="col-md-9" href="javascript:void(0);">col-9 (3/4)</a></li>
+                    <li><a class="dropdown-item btn-resize-width" data-width="col-md-10" href="javascript:void(0);">col-10</a></li>
+                    <li><a class="dropdown-item btn-resize-width" data-width="col-md-11" href="javascript:void(0);">col-11</a></li>
+                    <li><a class="dropdown-item btn-resize-width" data-width="col-md-12" href="javascript:void(0);">col-12 (Tam)</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><h6 class="dropdown-header fw-bold text-success">Yükseklik Ayarla</h6></li>
+                    <li><a class="dropdown-item btn-resize-height" data-height="300px" href="javascript:void(0);">Kısa (300px)</a></li>
+                    <li><a class="dropdown-item btn-resize-height" data-height="400px" href="javascript:void(0);">Orta (400px)</a></li>
+                    <li><a class="dropdown-item btn-resize-height" data-height="500px" href="javascript:void(0);">Uzun (500px)</a></li>
+                    <li><a class="dropdown-item btn-resize-height" data-height="600px" href="javascript:void(0);">X-Uzun (600px)</a></li>
+                    <li><a class="dropdown-item btn-resize-height" data-height="800px" href="javascript:void(0);">Maksimum (800px)</a></li>
+                    <li><a class="dropdown-item btn-resize-height" data-height="auto" href="javascript:void(0);">Otomatik (Auto)</a></li>
                 </ul>
             </div>';
         }
@@ -237,7 +252,7 @@ if (Gate::allows("ana_sayfa")) {
                 <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Görev ve Bildirimler</h5>
                 <?php echo getWidthControl(); ?>
             </div>
-            <div class="card-body">
+            <div class="card-body" style="height: <?php echo getWidgetHeight('widget-bildirimler', 'auto'); ?>; overflow-y: auto;">
                 <div class="table-responsive">
                     <table class="table table-centered table-nowrap mb-0">
                         <thead class="table-light">
@@ -298,7 +313,7 @@ if (Gate::allows("ana_sayfa")) {
                 <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Arıza/İzin/Avans Talepleri</h5>
                 <?php echo getWidthControl(); ?>
             </div>
-            <div class="card-body">
+            <div class="card-body" style="height: <?php echo getWidgetHeight('widget-talepler', 'auto'); ?>; overflow-y: auto;">
                 <div class="table-responsive">
                     <table class="table table-centered table-nowrap mb-0">
                         <thead class="table-light">
@@ -438,7 +453,7 @@ if (Gate::allows("ana_sayfa")) {
                 <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Şu Anda İzinde Olan Personeller</h5>
                 <?php echo getWidthControl(); ?>
             </div>
-            <div class="card-body">
+            <div class="card-body" style="height: <?php echo getWidgetHeight('widget-izindekiler', 'auto'); ?>; overflow-y: auto;">
                 <div class="table-responsive">
                     <table class="table table-centered table-nowrap mb-0">
                         <thead class="table-light">
@@ -520,8 +535,8 @@ if (Gate::allows("ana_sayfa")) {
                     <?php echo getWidthControl(); ?>
                 </div>
             </div>
-            <div class="card-body">
-                <div id="work-type-stats-chart" style="min-height: 400px;"></div>
+            <div class="card-body" style="height: <?php echo getWidgetHeight('widget-is-turu-istatistikleri', 'auto'); ?>; overflow-y: auto;">
+                <div id="work-type-stats-chart" style="min-height: 400px; height: 100%;"></div>
             </div>
         </div>
     </div>
@@ -557,8 +572,8 @@ if (Gate::allows("ana_sayfa")) {
                     <?php echo getWidthControl(); ?>
                 </div>
             </div>
-            <div class="card-body">
-                <div id="work-result-stats-chart" style="min-height: 400px;"></div>
+            <div class="card-body" style="height: <?php echo getWidgetHeight('widget-is-emri-sonucu-istatistikleri', 'auto'); ?>; overflow-y: auto;">
+                <div id="work-result-stats-chart" style="min-height: 400px; height: 100%;"></div>
             </div>
         </div>
     </div>
@@ -1483,7 +1498,7 @@ if (Gate::allows("ana_sayfa")) {
                             series: data.data.series,
                             chart: {
                                 type: 'bar',
-                                height: 400,
+                                height: '100%',
                                 stacked: false,
                                 toolbar: { show: true },
                                 animations: { enabled: true }
@@ -1564,7 +1579,7 @@ if (Gate::allows("ana_sayfa")) {
                             series: data.data.series,
                             chart: {
                                 type: 'bar',
-                                height: 400,
+                                height: '100%',
                                 stacked: false,
                                 toolbar: { show: true }
                             },
@@ -1992,10 +2007,19 @@ if (Gate::allows("ana_sayfa")) {
                 const settings = {};
                 $("#dashboard-widgets .widget-item").each(function() {
                     const id = $(this).attr('id');
+                    
+                    // Width
                     const classes = $(this).attr('class').split(' ');
                     const widthClass = classes.find(c => c.startsWith('col-'));
+                    
+                    // Height
+                    const height = $(this).find('.card-body').css('height');
+                    
                     if (id) {
-                        settings[id] = { width: widthClass };
+                        settings[id] = { 
+                            width: widthClass,
+                            height: height
+                        };
                     }
                 });
                 
@@ -2017,8 +2041,8 @@ if (Gate::allows("ana_sayfa")) {
                 }
             });
 
-            // Card Resize Logic
-            $(document).on('click', '.btn-resize', function(e) {
+            // Card Resize Logic (Width)
+            $(document).on('click', '.btn-resize-width', function(e) {
                 e.preventDefault();
                 const newWidth = $(this).data('width');
                 const widget = $(this).closest('.widget-item');
@@ -2029,6 +2053,22 @@ if (Gate::allows("ana_sayfa")) {
                 newClasses.push(newWidth);
                 
                 widget.attr('class', newClasses.join(' '));
+                saveDashboardConfig();
+                
+                // Trigger window resize to let charts adjust
+                setTimeout(() => {
+                    window.dispatchEvent(new Event('resize'));
+                }, 100);
+            });
+
+            // Card Resize Logic (Height)
+            $(document).on('click', '.btn-resize-height', function(e) {
+                e.preventDefault();
+                const newHeight = $(this).data('height');
+                const widget = $(this).closest('.widget-item');
+                const cardBody = widget.find('.card-body');
+                
+                cardBody.css('height', newHeight);
                 saveDashboardConfig();
                 
                 // Trigger window resize to let charts adjust

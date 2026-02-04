@@ -322,8 +322,9 @@ foreach ($regionList as $r) {
 
             let tarih = $(this).attr('data-date');
             let pIds = $(this).attr('data-personel-ids');
+            let ekipAdi = $(this).attr('data-ekip-adi'); // Yeni
             let sayi = $(this).text().trim() || '';
-            window.openKacakModal(tarih, pIds, sayi);
+            window.openKacakModal(tarih, pIds, sayi, ekipAdi);
         });
 
         $('#filterForm').on('submit', function (e) {
@@ -377,7 +378,7 @@ foreach ($regionList as $r) {
         loadFiltersFromStorage();
         loadReport();
 
-        window.openKacakModal = function (tarih, pIds, sayi) {
+        window.openKacakModal = function (tarih, pIds, sayi, ekipAdi) {
             $('#kacakManualForm input[name="id"]').val(0);
             $('#kacakManualForm')[0].reset();
 
@@ -399,6 +400,9 @@ foreach ($regionList as $r) {
 
             // Set Sayi (number)
             $('#kacakManualForm input[name="sayi"]').val(sayi || '');
+
+            // Set Ekip Adi
+            $('#kacakManualForm input[name="ekip_adi"]').val(ekipAdi || '');
 
             // Initialize flatpickr if available
             if (typeof flatpickr !== 'undefined' && $('#kacakManualForm .flatpickr').length > 0) {
@@ -493,6 +497,7 @@ foreach ($personelList as $p) {
             </div>
             <form id="kacakManualForm">
                 <input type="hidden" name="id" id="kacak_id" value="0">
+                <input type="hidden" name="ekip_adi" id="kacak_ekip_adi" value="">
                 <div class="modal-body">
                     <div class="mb-3">
                         <?php echo Form::FormFloatInput(

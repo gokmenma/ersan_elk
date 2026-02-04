@@ -170,7 +170,7 @@ $ek_odeme_turleri = [
                                 </button>
                                 <div class="btn-group">
                                     <button type="button" class="btn btn-secondary dropdown-toggle waves-effect waves-light"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
+                                        data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false">
                                         <i class="bx bx-menu me-1"></i> İşlemler
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end">
@@ -373,7 +373,8 @@ $ek_odeme_turleri = [
                                                 <td class="text-center">
                                                     <div class="dropdown">
                                                         <button class="btn btn-sm btn-secondary dropdown-toggle" type="button"
-                                                            data-bs-toggle="dropdown" aria-expanded="false">
+                                                            data-bs-toggle="dropdown" data-bs-boundary="viewport"
+                                                            aria-expanded="false">
                                                             <i class="bx bx-dots-vertical-rounded"></i>
                                                         </button>
                                                         <ul class="dropdown-menu dropdown-menu-end">

@@ -103,7 +103,7 @@ $users = $User->getUsers();
                                         <div class="flex-shrink-0">
                                             <div class="dropdown align-self-start icon-demo-content">
                                                 <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
-                                                    aria-haspopup="true" aria-expanded="false">
+                                                    data-bs-boundary="viewport" aria-haspopup="true" aria-expanded="false">
                                                     <i class="bx bx-list-ul font-size-24 text-dark"></i>
 
                                                 </a>

@@ -162,6 +162,7 @@ $allPersonel = array_map(function ($item) use ($id, &$selectedOption) {
                                                 <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'evraklar' ? 'active' : ''; ?>"
                                                         href="javascript:void(0);" data-target="#evraklar">Evraklar <i
                                                             class="bx bx-file ms-2"></i></a></li>
+
                                                 <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'puantaj' ? 'active' : ''; ?>"
                                                         href="javascript:void(0);" data-target="#puantaj">Puantaj/İş Takip
                                                         <i class="bx bx-time-five ms-2"></i></a></li>
@@ -222,6 +223,7 @@ $allPersonel = array_map(function ($item) use ($id, &$selectedOption) {
                             <li class="nav-item"><a
                                     class="nav-link <?php echo $activeTab === 'evraklar' ? 'active' : ''; ?>"
                                     data-bs-toggle="tab" href="#evraklar" role="tab">Evraklar</a></li>
+
                             <li class="nav-item"><a class="nav-link <?php echo $activeTab === 'puantaj' ? 'active' : ''; ?>"
                                     data-bs-toggle="tab" href="#puantaj" role="tab">Puantaj/İş Takip</a></li>
                         <?php endif; ?>
@@ -343,6 +345,7 @@ $allPersonel = array_map(function ($item) use ($id, &$selectedOption) {
                             <?php include_once "icerik/diger_bilgiler.php"; ?>
                         </div>
                     </form>
+                    <?php include_once "icerik/modals/ekip_gecmisi.php"; ?>
                     <!-- Dinamik yüklenen tab'lar (izinler, zimmetler vb.) form dışında kalmalı, iç içe form sorunu yaşanmaması için -->
                     <?php if ($id > 0): ?>
                         <div class="tab-pane <?php echo $activeTab === 'izinler' ? 'active show' : ''; ?>" id="izinler"
@@ -408,6 +411,7 @@ $allPersonel = array_map(function ($item) use ($id, &$selectedOption) {
                                 </div>
                             </div>
                         </div>
+
                         <div class="tab-pane <?php echo $activeTab === 'puantaj' ? 'active show' : ''; ?>" id="puantaj"
                             role="tabpanel" data-loaded="false"
                             data-url="views/personel/get-tab-content.php?tab=puantaj&id=<?php echo $id; ?>">
@@ -451,6 +455,13 @@ $allPersonel = array_map(function ($item) use ($id, &$selectedOption) {
             activePane.setAttribute('data-loaded', 'false');
             loadTabContent(activePane);
         }
+    };
+
+    window.invalidateAllTabs = function () {
+        var panes = document.querySelectorAll('.tab-pane[data-url]');
+        panes.forEach(function (pane) {
+            pane.setAttribute('data-loaded', 'false');
+        });
     };
 
     function initPlugins(container) {

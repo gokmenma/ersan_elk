@@ -33,9 +33,58 @@ $(document).ready(function () {
       {
         data: null,
         render: function (data, type, row) {
+          if (
+            !row.ekip_adi ||
+            row.ekip_adi === "YOK" ||
+            row.ekip_adi.trim() === ""
+          ) {
+            return "";
+          }
+
+          // Badge renk paleti
+          const badgeColors = [
+            "bg-primary-subtle text-primary border-primary-subtle",
+            "bg-success-subtle text-success border-success-subtle",
+            "bg-info-subtle text-info border-info-subtle",
+            "bg-warning-subtle text-warning border-warning-subtle",
+            "bg-danger-subtle text-danger border-danger-subtle",
+            "bg-secondary-subtle text-secondary border-secondary-subtle",
+            "bg-dark-subtle text-dark border-dark-subtle",
+          ];
+
+          // İsimden renk seçen basit fonksiyon (aynı ekip hep aynı renk kalır)
+          const getColor = (str) => {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+              hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            return badgeColors[Math.abs(hash) % badgeColors.length];
+          };
+
+          // Birden fazla ekip olabilir, virgülle ayrılmışları temizle
+          let ekipler = row.ekip_adi.split(",");
+          let badges = ekipler.map((ekip) => {
+            let cleanEkip = ekip.trim();
+            // ERSAN ELEKTRİK, ER-SAN ELEKTRİK, vb. ibareleri kaldır
+            cleanEkip = cleanEkip
+              .replace(/ER-SAN ELEKTRİK/gi, "")
+              .replace(/ERSAN ELEKTRİK/gi, "")
+              .replace(/ER SAN ELEKTRİK/gi, "")
+              .trim();
+
+            const colorClass = getColor(cleanEkip);
+
+            return `<span class="badge ${colorClass} font-size-12 px-2 py-1 mb-1 me-1 border">${cleanEkip}</span>`;
+          });
+
+          let bolgeler = "";
+          if (row.ekip_bolge && row.ekip_bolge !== "---") {
+            bolgeler = `<div class="text-muted small mt-1"><i class="bx bx-map-pin"></i> ${row.ekip_bolge}</div>`;
+          }
+
           return `
-            <div class="fw-bold">${row.ekip_adi}</div>
-            <div class="text-muted small">${row.ekip_bolge}</div>
+            <div class="d-flex flex-wrap">${badges.join("")}</div>
+            ${bolgeler}
           `;
         },
       },

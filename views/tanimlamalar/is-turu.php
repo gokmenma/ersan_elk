@@ -101,7 +101,7 @@ $isTuruAdlari = $Tanimlamalar->getIsTurleriAdlari();
                                         <div class="flex-shrink-0">
                                             <div class="dropdown align-self-start">
                                                 <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
-                                                    aria-haspopup="true" aria-expanded="false">
+                                                    data-bs-boundary="viewport" aria-haspopup="true" aria-expanded="false">
                                                     <i class="bx bx-dots-vertical-rounded font-size-24 text-dark"></i>
                                                 </a>
                                                 <div class="dropdown-menu">
