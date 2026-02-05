@@ -59,8 +59,83 @@ use App\Helper\Helper;
         </div>
     </header>
 
+    <!-- Görev Takip Bileşeni -->
+    <section class="px-4 -mt-4 relative z-20 mb-4">
+        <div id="gorev-takip-card" class="card overflow-hidden">
+            <!-- Loading State -->
+            <div id="gorev-loading" class="p-6 flex items-center justify-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+
+            <!-- Görev Durumu Container -->
+            <div id="gorev-durumu-container" class="hidden">
+                <!-- GÖREVE BAŞLA (Görev Yok) -->
+                <div id="gorev-basla-panel" class="p-4 hidden">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div
+                            class="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-green-600 text-2xl">play_circle</span>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-slate-900 dark:text-white">Saha Görev Takibi</h3>
+                            <p class="text-xs text-slate-500">Konumunuz kayıt altına alınacaktır</p>
+                        </div>
+                    </div>
+
+                    <!-- Konum İzni Uyarı -->
+                    <div id="konum-izni-uyari"
+                        class="hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 mb-4">
+                        <div class="flex items-start gap-2">
+                            <span class="material-symbols-outlined text-amber-600 text-lg">warning</span>
+                            <div>
+                                <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Konum İzni Gerekli</p>
+                                <p class="text-xs text-amber-600 dark:text-amber-400">Göreve başlamak için konum izni
+                                    vermeniz gerekmektedir.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="btn-gorev-basla" onclick="gorevBasla()"
+                        class="w-full py-4 px-6 rounded-xl font-bold text-white text-lg transition-all duration-300 flex items-center justify-center gap-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/30 active:scale-[0.98]">
+                        <span class="material-symbols-outlined text-2xl">play_arrow</span>
+                        <span>Göreve Başla</span>
+                    </button>
+                </div>
+
+                <!-- GÖREVİ BİTİR (Görev Var) -->
+                <div id="gorev-bitir-panel" class="hidden">
+                    <!-- Aktif Görev Bilgi Kartı -->
+                    <div class="bg-gradient-to-r from-primary to-primary-dark text-white p-4 rounded-t-none">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center animate-pulse">
+                                <span class="material-symbols-outlined text-2xl">location_on</span>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-white/80 text-xs">Aktif Görev Devam Ediyor</p>
+                                <p class="font-bold text-lg" id="gorev-baslangic-saat">--:--</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-white/80 text-xs">Geçen Süre</p>
+                                <p class="font-bold text-lg" id="gorev-gecen-sure">0 dk</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-4">
+                        <button id="btn-gorev-bitir" onclick="gorevBitir()"
+                            class="w-full py-4 px-6 rounded-xl font-bold text-white text-lg transition-all duration-300 flex items-center justify-center gap-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/30 active:scale-[0.98]">
+                            <span class="material-symbols-outlined text-2xl">stop_circle</span>
+                            <span>Görevi Bitir</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Stats Cards -->
-    <section class="px-4 -mt-4 relative z-20">
+    <section class="px-4 relative z-20">
         <div class="grid grid-cols-1 gap-3">
             <!-- Toplam Hakediş -->
             <div class="card p-4 flex items-center gap-4">
@@ -165,11 +240,12 @@ use App\Helper\Helper;
 <div id="notification-modal" class="modal-overlay">
     <div class="modal-content p-6 pt-3">
         <div class="modal-handle"></div>
-        
+
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-bold text-slate-900 dark:text-white">Bildirimler</h3>
             <div class="flex items-center gap-2">
-                <button onclick="markAllAsRead()" class="text-xs text-primary font-medium" title="Tümünü Okundu İşaretle">
+                <button onclick="markAllAsRead()" class="text-xs text-primary font-medium"
+                    title="Tümünü Okundu İşaretle">
                     <span class="material-symbols-outlined text-lg">done_all</span>
                 </button>
                 <button onclick="deleteAllNotifications()" class="text-xs text-red-500 font-medium" title="Tümünü Sil">
@@ -213,15 +289,17 @@ use App\Helper\Helper;
 <div id="notification-detail-modal" class="modal-overlay">
     <div class="modal-content p-6 pt-3">
         <div class="modal-handle"></div>
-        
+
         <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-3">
-                <button onclick="closeNotificationDetail()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <button onclick="closeNotificationDetail()"
+                    class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                     <span class="material-symbols-outlined text-slate-600">arrow_back</span>
                 </button>
                 <h3 class="text-lg font-bold text-slate-900 dark:text-white">Bildirim Detayı</h3>
             </div>
-            <button onclick="deleteCurrentNotification()" class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center" title="Sil">
+            <button onclick="deleteCurrentNotification()"
+                class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center" title="Sil">
                 <span class="material-symbols-outlined text-red-600 text-lg">delete</span>
             </button>
         </div>
@@ -243,7 +321,12 @@ use App\Helper\Helper;
     var allNotificationsData = [];
     var currentNotificationIndex = -1;
 
+    var gorevSureInterval = null;
+    var gorevBaslangicZamani = null;
+
     document.addEventListener('DOMContentLoaded', function () {
+        // Load görev durumu (öncelikli)
+        loadGorevDurumu();
         // Load dashboard data
         loadDashboardData();
         // Load notification count
@@ -251,6 +334,269 @@ use App\Helper\Helper;
         // Load recent activities
         loadRecentActivities();
     });
+
+    // ===== GÖREV TAKİP FONKSİYONLARI =====
+    
+    async function loadGorevDurumu() {
+        try {
+            var response = await API.request('getGorevDurumu');
+            
+            document.getElementById('gorev-loading').classList.add('hidden');
+            document.getElementById('gorev-durumu-container').classList.remove('hidden');
+            
+            if (response.success && response.data) {
+                if (response.data.gorev_var) {
+                    // Aktif görev var - Bitir panelini göster
+                    showGorevBitirPanel(response.data);
+                } else {
+                    // Görev yok - Başla panelini göster
+                    showGorevBaslaPanel();
+                }
+            } else {
+                showGorevBaslaPanel();
+            }
+        } catch (error) {
+            console.error('Görev durumu yüklenemedi:', error);
+            document.getElementById('gorev-loading').classList.add('hidden');
+            document.getElementById('gorev-durumu-container').classList.remove('hidden');
+            showGorevBaslaPanel();
+        }
+    }
+
+    function showGorevBaslaPanel() {
+        document.getElementById('gorev-basla-panel').classList.remove('hidden');
+        document.getElementById('gorev-bitir-panel').classList.add('hidden');
+        
+        // Konum izni kontrolü
+        checkKonumIzni();
+    }
+
+    function showGorevBitirPanel(data) {
+        document.getElementById('gorev-basla-panel').classList.add('hidden');
+        document.getElementById('gorev-bitir-panel').classList.remove('hidden');
+        
+        // Başlangıç saatini göster
+        document.getElementById('gorev-baslangic-saat').textContent = data.baslangic_saat || '--:--';
+        
+        // Süre takibini başlat
+        gorevBaslangicZamani = new Date(data.baslangic_zamani);
+        updateGecenSure();
+        gorevSureInterval = setInterval(updateGecenSure, 60000); // Her dakika güncelle
+    }
+
+    function updateGecenSure() {
+        if (!gorevBaslangicZamani) return;
+        
+        var simdi = new Date();
+        var diff = simdi - gorevBaslangicZamani;
+        var dakika = Math.floor(diff / 60000);
+        var saat = Math.floor(dakika / 60);
+        dakika = dakika % 60;
+        
+        var sureText = '';
+        if (saat > 0) {
+            sureText = saat + ' sa ' + dakika + ' dk';
+        } else {
+            sureText = dakika + ' dk';
+        }
+        
+        document.getElementById('gorev-gecen-sure').textContent = sureText;
+    }
+
+    async function checkKonumIzni() {
+        if (!navigator.geolocation) {
+            showKonumUyari();
+            disableGorevButton();
+            return;
+        }
+
+        try {
+            var permission = await navigator.permissions.query({ name: 'geolocation' });
+            
+            if (permission.state === 'denied') {
+                showKonumUyari();
+                disableGorevButton();
+            } else {
+                hideKonumUyari();
+                enableGorevButton();
+            }
+            
+            permission.onchange = function() {
+                if (this.state === 'denied') {
+                    showKonumUyari();
+                    disableGorevButton();
+                } else {
+                    hideKonumUyari();
+                    enableGorevButton();
+                }
+            };
+        } catch (error) {
+            // Permissions API desteklenmiyorsa devam et
+            hideKonumUyari();
+            enableGorevButton();
+        }
+    }
+
+    function showKonumUyari() {
+        document.getElementById('konum-izni-uyari').classList.remove('hidden');
+    }
+
+    function hideKonumUyari() {
+        document.getElementById('konum-izni-uyari').classList.add('hidden');
+    }
+
+    function disableGorevButton() {
+        var btn = document.getElementById('btn-gorev-basla');
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+
+    function enableGorevButton() {
+        var btn = document.getElementById('btn-gorev-basla');
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+
+    function getKonum() {
+        return new Promise(function(resolve, reject) {
+            if (!navigator.geolocation) {
+                reject(new Error('Konum servisi desteklenmiyor'));
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    resolve({
+                        enlem: position.coords.latitude,
+                        boylam: position.coords.longitude,
+                        hassasiyet: position.coords.accuracy
+                    });
+                },
+                function(error) {
+                    var message = 'Konum alınamadı';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            message = 'Konum izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            message = 'Konum bilgisi alınamıyor.';
+                            break;
+                        case error.TIMEOUT:
+                            message = 'Konum isteği zaman aşımına uğradı.';
+                            break;
+                    }
+                    reject(new Error(message));
+                },
+                {
+                    enableHighAccuracy: true,  // Yüksek hassasiyet
+                    timeout: 15000,            // 15 saniye timeout
+                    maximumAge: 0              // Cache kullanma, her zaman taze konum al
+                }
+            );
+        });
+    }
+
+    async function gorevBasla() {
+        var btn = document.getElementById('btn-gorev-basla');
+        var originalHtml = btn.innerHTML;
+        
+        // Butonu disable yap
+        btn.disabled = true;
+        btn.innerHTML = '<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div><span>Konum Alınıyor...</span>';
+
+        try {
+            // Konum al
+            var konum = await getKonum();
+
+            btn.innerHTML = '<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div><span>Kaydediliyor...</span>';
+
+            // API'ye gönder
+            var response = await API.request('baslaGorev', {
+                konum_enlem: konum.enlem,
+                konum_boylam: konum.boylam,
+                konum_hassasiyeti: konum.hassasiyet,
+                cihaz_bilgisi: navigator.userAgent
+            });
+
+            if (response.success) {
+                Toast.show(response.message || 'Göreve başarıyla başladınız!', 'success');
+                
+                // Paneli güncelle
+                showGorevBitirPanel({
+                    baslangic_saat: response.data.baslangic_saat,
+                    baslangic_zamani: new Date().toISOString()
+                });
+            } else {
+                Toast.show(response.message || 'Görev başlatılamadı', 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        } catch (error) {
+            Toast.show(error.message || 'Bir hata oluştu', 'error');
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            
+            // Konum izni reddedildiyse uyarı göster
+            if (error.message.includes('izni')) {
+                showKonumUyari();
+            }
+        }
+    }
+
+    async function gorevBitir() {
+        var confirmed = await Alert.confirm(
+            'Görevi Bitir',
+            'Görevinizi bitirmek istediğinize emin misiniz?',
+            'Evet, Bitir',
+            'Vazgeç'
+        );
+
+        if (!confirmed) return;
+
+        var btn = document.getElementById('btn-gorev-bitir');
+        var originalHtml = btn.innerHTML;
+        
+        // Butonu disable yap
+        btn.disabled = true;
+        btn.innerHTML = '<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div><span>Konum Alınıyor...</span>';
+
+        try {
+            // Konum al
+            var konum = await getKonum();
+
+            btn.innerHTML = '<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div><span>Kaydediliyor...</span>';
+
+            // API'ye gönder
+            var response = await API.request('bitirGorev', {
+                konum_enlem: konum.enlem,
+                konum_boylam: konum.boylam,
+                konum_hassasiyeti: konum.hassasiyet,
+                cihaz_bilgisi: navigator.userAgent
+            });
+
+            if (response.success) {
+                // Süre takibini durdur
+                if (gorevSureInterval) {
+                    clearInterval(gorevSureInterval);
+                    gorevSureInterval = null;
+                }
+                gorevBaslangicZamani = null;
+
+                Toast.show(response.message || 'Görev başarıyla tamamlandı!', 'success');
+                
+                // Paneli güncelle
+                showGorevBaslaPanel();
+            } else {
+                Toast.show(response.message || 'Görev bitirilemedi', 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        } catch (error) {
+            Toast.show(error.message || 'Bir hata oluştu', 'error');
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
 
     async function loadDashboardData() {
         try {
@@ -270,7 +616,7 @@ use App\Helper\Helper;
             var response = await API.request('getMyNotifications');
             if (response.success && response.data) {
                 // Sadece okunmamış bildirimleri say
-                var unreadCount = response.data.filter(function(n) { return !n.okundu; }).length;
+                var unreadCount = response.data.filter(function (n) { return !n.okundu; }).length;
                 var badge = document.getElementById('notification-badge');
                 if (badge) {
                     if (unreadCount > 0) {
@@ -288,15 +634,15 @@ use App\Helper\Helper;
 
     async function loadRecentActivities() {
         var container = document.getElementById('activities-container');
-        
+
         try {
             var response = await API.request('getRecentActivities');
-            
+
             if (response.success && response.data && response.data.length > 0) {
                 allActivitiesData = response.data;
                 // Show first 5 activities on homepage
                 var displayActivities = response.data.slice(0, 5);
-                container.innerHTML = displayActivities.map(function(activity, index) {
+                container.innerHTML = displayActivities.map(function (activity, index) {
                     return renderActivityItem(activity, index === displayActivities.length - 1);
                 }).join('');
             } else {
@@ -329,30 +675,30 @@ use App\Helper\Helper;
 
         return '<div class="activity-item flex items-center gap-4 p-4 ' + borderClass + '">' +
             '<div class="w-10 h-10 rounded-full ' + iconClass + ' flex items-center justify-center">' +
-                '<span class="material-symbols-outlined text-xl">' + escapeHtml(activity.icon) + '</span>' +
+            '<span class="material-symbols-outlined text-xl">' + escapeHtml(activity.icon) + '</span>' +
             '</div>' +
             '<div class="flex-1 min-w-0">' +
-                '<p class="text-sm font-semibold text-slate-900 dark:text-white truncate">' + escapeHtml(activity.title) + '</p>' +
-                '<p class="text-xs text-slate-500 truncate">' + escapeHtml(activity.description) + '</p>' +
+            '<p class="text-sm font-semibold text-slate-900 dark:text-white truncate">' + escapeHtml(activity.title) + '</p>' +
+            '<p class="text-xs text-slate-500 truncate">' + escapeHtml(activity.description) + '</p>' +
             '</div>' +
             '<div class="text-right flex-shrink-0">' +
-                '<p class="text-xs text-slate-400">' + escapeHtml(activity.time_ago) + '</p>' +
-                '<span class="badge ' + badgeClass + '">' + escapeHtml(activity.status_text) + '</span>' +
+            '<p class="text-xs text-slate-400">' + escapeHtml(activity.time_ago) + '</p>' +
+            '<span class="badge ' + badgeClass + '">' + escapeHtml(activity.status_text) + '</span>' +
             '</div>' +
-        '</div>';
+            '</div>';
     }
 
     function showAllActivities() {
         var container = document.getElementById('all-activities-list');
-        
+
         if (allActivitiesData.length > 0) {
-            container.innerHTML = allActivitiesData.map(function(activity, index) {
+            container.innerHTML = allActivitiesData.map(function (activity, index) {
                 return renderActivityItem(activity, index === allActivitiesData.length - 1);
             }).join('');
         } else {
             container.innerHTML = '<div class="flex flex-col items-center justify-center py-8 text-center"><span class="material-symbols-outlined text-4xl text-slate-300 mb-2">timeline</span><p class="text-sm text-slate-500">Henüz etkinlik yok</p></div>';
         }
-        
+
         Modal.open('all-activities-modal');
     }
 
@@ -367,31 +713,31 @@ use App\Helper\Helper;
 
         try {
             var response = await API.request('getMyNotifications');
-            
+
             if (response.success && response.data && response.data.length > 0) {
                 allNotificationsData = response.data;
-                container.innerHTML = response.data.map(function(notification, index) {
+                container.innerHTML = response.data.map(function (notification, index) {
                     var unreadIndicator = notification.okundu ? '' : '<div class="absolute top-2 left-2 w-2 h-2 bg-primary rounded-full"></div>';
                     var bgClass = notification.okundu ? 'bg-slate-50 dark:bg-slate-800' : 'bg-blue-50 dark:bg-blue-900/20 border border-primary/20';
-                    
+
                     // Resim varsa küçük thumbnail göster
-                    var thumbnailHtml = notification.image 
+                    var thumbnailHtml = notification.image
                         ? '<img src="' + escapeHtml(notification.image) + '" class="w-10 h-10 rounded-lg object-cover flex-shrink-0" onerror="this.style.display=\'none\'">'
                         : '';
-                    
+
                     return '<div class="relative flex items-start gap-3 p-3 ' + bgClass + ' rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" onclick="showNotificationDetail(' + index + ')">' +
                         unreadIndicator +
                         '<div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">' +
-                            '<span class="material-symbols-outlined text-blue-600 text-lg">notifications</span>' +
+                        '<span class="material-symbols-outlined text-blue-600 text-lg">notifications</span>' +
                         '</div>' +
                         '<div class="flex-1 min-w-0">' +
-                            '<p class="text-sm font-medium text-slate-900 dark:text-white ' + (notification.okundu ? '' : 'font-bold') + '">' + escapeHtml(notification.title) + '</p>' +
-                            '<p class="text-xs text-slate-500 line-clamp-2">' + escapeHtml(notification.body) + '</p>' +
-                            '<p class="text-[10px] text-primary mt-1">' + notification.time_ago + '</p>' +
+                        '<p class="text-sm font-medium text-slate-900 dark:text-white ' + (notification.okundu ? '' : 'font-bold') + '">' + escapeHtml(notification.title) + '</p>' +
+                        '<p class="text-xs text-slate-500 line-clamp-2">' + escapeHtml(notification.body) + '</p>' +
+                        '<p class="text-[10px] text-primary mt-1">' + notification.time_ago + '</p>' +
                         '</div>' +
                         thumbnailHtml +
                         '<span class="material-symbols-outlined text-slate-400 text-lg self-center">chevron_right</span>' +
-                    '</div>';
+                        '</div>';
                 }).join('');
             } else {
                 container.innerHTML = '<div class="flex flex-col items-center justify-center py-8 text-center"><span class="material-symbols-outlined text-4xl text-slate-300 mb-2">notifications_off</span><p class="text-sm text-slate-500">Henüz bildirim yok</p></div>';
@@ -416,37 +762,37 @@ use App\Helper\Helper;
         }
 
         var container = document.getElementById('notification-detail-content');
-        
+
         // Resim HTML'i oluştur
         var imageHtml = '';
         if (notification.image) {
             imageHtml = '<div class="mt-4 rounded-xl overflow-hidden">' +
                 '<img src="' + escapeHtml(notification.image) + '" alt="Bildirim resmi" class="w-full h-auto object-cover" onerror="this.parentElement.style.display=\'none\'">' +
-            '</div>';
+                '</div>';
         }
-        
-        container.innerHTML = 
+
+        container.innerHTML =
             '<div class="flex items-center gap-3 mb-4">' +
-                '<div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">' +
-                    '<span class="material-symbols-outlined text-blue-600 text-2xl">notifications</span>' +
-                '</div>' +
-                '<div>' +
-                    '<p class="text-xs text-primary font-medium">' + escapeHtml(notification.time_ago) + '</p>' +
-                '</div>' +
+            '<div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">' +
+            '<span class="material-symbols-outlined text-blue-600 text-2xl">notifications</span>' +
+            '</div>' +
+            '<div>' +
+            '<p class="text-xs text-primary font-medium">' + escapeHtml(notification.time_ago) + '</p>' +
+            '</div>' +
             '</div>' +
             '<h4 class="text-lg font-bold text-slate-900 dark:text-white mb-3">' + escapeHtml(notification.title) + '</h4>' +
             '<p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">' + escapeHtml(notification.body) + '</p>' +
             imageHtml;
 
         Modal.close('notification-modal');
-        setTimeout(function() {
+        setTimeout(function () {
             Modal.open('notification-detail-modal');
         }, 200);
     }
 
     function closeNotificationDetail() {
         Modal.close('notification-detail-modal');
-        setTimeout(function() {
+        setTimeout(function () {
             Modal.open('notification-modal');
             loadNotifications(); // Listeyi güncelle
         }, 200);
@@ -454,7 +800,7 @@ use App\Helper\Helper;
 
     async function deleteCurrentNotification() {
         if (currentNotificationIndex < 0) return;
-        
+
         var notification = allNotificationsData[currentNotificationIndex];
         if (!notification) return;
 

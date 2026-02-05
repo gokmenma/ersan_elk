@@ -1,0 +1,323 @@
+<?php
+
+namespace App\Model;
+
+use App\Model\Model;
+use PDO;
+
+/**
+ * Personel Hareketleri Model
+ * Saha personelinin görev giriş-çıkış konum takibi
+ */
+class PersonelHareketleriModel extends Model
+{
+    protected $table = 'personel_hareketleri';
+    protected $primaryKey = 'id';
+
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
+    /**
+     * Personelin bugün açık (bitirilmemiş) görevi var mı kontrol eder
+     * @param int $personel_id
+     * @return object|null Açık görev varsa BASLA kaydını döner, yoksa null
+     */
+    public function getAcikGorev($personel_id)
+    {
+        // Bugünün son BASLA kaydını bul
+        $sql = "SELECT ph.* 
+                FROM {$this->table} ph
+                WHERE ph.personel_id = :personel_id 
+                AND ph.islem_tipi = 'BASLA'
+                AND ph.silinme_tarihi IS NULL
+                AND NOT EXISTS (
+                    SELECT 1 FROM {$this->table} ph2 
+                    WHERE ph2.personel_id = ph.personel_id 
+                    AND ph2.islem_tipi = 'BITIR' 
+                    AND ph2.zaman > ph.zaman
+                    AND ph2.silinme_tarihi IS NULL
+                )
+                ORDER BY ph.zaman DESC
+                LIMIT 1";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':personel_id' => $personel_id]);
+        $result = $stmt->fetch(PDO::FETCH_OBJ);
+
+        return $result ?: null;
+    }
+
+    /**
+     * Göreve başlama işlemi kaydet
+     * @param array $data [personel_id, konum_enlem, konum_boylam, konum_hassasiyeti, cihaz_bilgisi, ip_adresi, firma_id]
+     * @return int|false Eklenen kayıt ID'si veya hata durumunda false
+     */
+    public function baslaGorev($data)
+    {
+        // Zaten açık görev var mı kontrol et
+        $acikGorev = $this->getAcikGorev($data['personel_id']);
+        if ($acikGorev) {
+            return false; // Zaten başlamış bir görev var
+        }
+
+        $sql = "INSERT INTO {$this->table} 
+                (personel_id, islem_tipi, zaman, konum_enlem, konum_boylam, konum_hassasiyeti, cihaz_bilgisi, ip_adresi, firma_id)
+                VALUES 
+                (:personel_id, 'BASLA', NOW(), :konum_enlem, :konum_boylam, :konum_hassasiyeti, :cihaz_bilgisi, :ip_adresi, :firma_id)";
+
+        $stmt = $this->db->prepare($sql);
+        $result = $stmt->execute([
+            ':personel_id' => $data['personel_id'],
+            ':konum_enlem' => $data['konum_enlem'],
+            ':konum_boylam' => $data['konum_boylam'],
+            ':konum_hassasiyeti' => $data['konum_hassasiyeti'] ?? null,
+            ':cihaz_bilgisi' => $data['cihaz_bilgisi'] ?? null,
+            ':ip_adresi' => $data['ip_adresi'] ?? null,
+            ':firma_id' => $data['firma_id'] ?? null
+        ]);
+
+        if ($result) {
+            return $this->db->lastInsertId();
+        }
+
+        return false;
+    }
+
+    /**
+     * Görevi bitirme işlemi kaydet
+     * @param array $data [personel_id, konum_enlem, konum_boylam, konum_hassasiyeti, cihaz_bilgisi, ip_adresi, firma_id]
+     * @return int|false Eklenen kayıt ID'si veya hata durumunda false
+     */
+    public function bitirGorev($data)
+    {
+        // Açık görev var mı kontrol et
+        $acikGorev = $this->getAcikGorev($data['personel_id']);
+        if (!$acikGorev) {
+            return false; // Bitirilecek görev yok
+        }
+
+        $sql = "INSERT INTO {$this->table} 
+                (personel_id, islem_tipi, zaman, konum_enlem, konum_boylam, konum_hassasiyeti, cihaz_bilgisi, ip_adresi, firma_id)
+                VALUES 
+                (:personel_id, 'BITIR', NOW(), :konum_enlem, :konum_boylam, :konum_hassasiyeti, :cihaz_bilgisi, :ip_adresi, :firma_id)";
+
+        $stmt = $this->db->prepare($sql);
+        $result = $stmt->execute([
+            ':personel_id' => $data['personel_id'],
+            ':konum_enlem' => $data['konum_enlem'],
+            ':konum_boylam' => $data['konum_boylam'],
+            ':konum_hassasiyeti' => $data['konum_hassasiyeti'] ?? null,
+            ':cihaz_bilgisi' => $data['cihaz_bilgisi'] ?? null,
+            ':ip_adresi' => $data['ip_adresi'] ?? null,
+            ':firma_id' => $data['firma_id'] ?? null
+        ]);
+
+        if ($result) {
+            return $this->db->lastInsertId();
+        }
+
+        return false;
+    }
+
+    /**
+     * Personelin günlük çalışma özetini getirir
+     * @param int $personel_id
+     * @param string $tarih Y-m-d formatında tarih (varsayılan bugün)
+     * @return object Günlük özet bilgileri
+     */
+    public function getGunlukOzet($personel_id, $tarih = null)
+    {
+        if (!$tarih) {
+            $tarih = date('Y-m-d');
+        }
+
+        $sql = "SELECT 
+                    ph.*,
+                    (SELECT ph2.zaman FROM {$this->table} ph2 
+                     WHERE ph2.personel_id = ph.personel_id 
+                     AND ph2.islem_tipi = 'BITIR' 
+                     AND ph2.zaman > ph.zaman 
+                     AND DATE(ph2.zaman) = :tarih
+                     AND ph2.silinme_tarihi IS NULL
+                     ORDER BY ph2.zaman ASC LIMIT 1) as bitis_zamani
+                FROM {$this->table} ph
+                WHERE ph.personel_id = :personel_id 
+                AND ph.islem_tipi = 'BASLA'
+                AND DATE(ph.zaman) = :tarih2
+                AND ph.silinme_tarihi IS NULL
+                ORDER BY ph.zaman ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':personel_id' => $personel_id,
+            ':tarih' => $tarih,
+            ':tarih2' => $tarih
+        ]);
+
+        $hareketler = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $toplam_dakika = 0;
+        $baslangic = null;
+        $bitis = null;
+
+        foreach ($hareketler as $hareket) {
+            if ($hareket->bitis_zamani) {
+                $start = new \DateTime($hareket->zaman);
+                $end = new \DateTime($hareket->bitis_zamani);
+                $diff = $start->diff($end);
+                $toplam_dakika += ($diff->h * 60) + $diff->i;
+
+                if (!$baslangic) {
+                    $baslangic = $hareket->zaman;
+                }
+                $bitis = $hareket->bitis_zamani;
+            }
+        }
+
+        return (object) [
+            'tarih' => $tarih,
+            'toplam_dakika' => $toplam_dakika,
+            'toplam_saat' => round($toplam_dakika / 60, 2),
+            'baslangic' => $baslangic,
+            'bitis' => $bitis,
+            'hareket_sayisi' => count($hareketler)
+        ];
+    }
+
+    /**
+     * Personelin son 7 günlük hareketlerini getirir
+     * @param int $personel_id
+     * @return array
+     */
+    public function getHaftaOzet($personel_id)
+    {
+        $sql = "SELECT 
+                    DATE(zaman) as tarih,
+                    islem_tipi,
+                    zaman,
+                    konum_enlem,
+                    konum_boylam
+                FROM {$this->table}
+                WHERE personel_id = :personel_id
+                AND zaman >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                AND silinme_tarihi IS NULL
+                ORDER BY zaman DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':personel_id' => $personel_id]);
+
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Tüm personellerin bugünkü durumunu getirir (Admin için)
+     * @param int|null $firma_id
+     * @return array
+     */
+    public function getTumPersonelDurumu($firma_id = null)
+    {
+        $sql = "SELECT 
+                    p.id as personel_id,
+                    p.adi_soyadi,
+                    p.foto,
+                    (SELECT ph.zaman FROM personel_hareketleri ph 
+                     WHERE ph.personel_id = p.id AND ph.islem_tipi = 'BASLA' 
+                     AND DATE(ph.zaman) = CURDATE() AND ph.silinme_tarihi IS NULL
+                     ORDER BY ph.zaman DESC LIMIT 1) as son_baslama,
+                    (SELECT ph.zaman FROM personel_hareketleri ph 
+                     WHERE ph.personel_id = p.id AND ph.islem_tipi = 'BITIR' 
+                     AND DATE(ph.zaman) = CURDATE() AND ph.silinme_tarihi IS NULL
+                     ORDER BY ph.zaman DESC LIMIT 1) as son_bitis,
+                    (SELECT ph.konum_enlem FROM personel_hareketleri ph 
+                     WHERE ph.personel_id = p.id AND ph.silinme_tarihi IS NULL
+                     ORDER BY ph.zaman DESC LIMIT 1) as son_enlem,
+                    (SELECT ph.konum_boylam FROM personel_hareketleri ph 
+                     WHERE ph.personel_id = p.id AND ph.silinme_tarihi IS NULL
+                     ORDER BY ph.zaman DESC LIMIT 1) as son_boylam
+                FROM personel p
+                WHERE p.silinme_tarihi IS NULL
+                AND p.durum = 'Aktif'";
+
+        if ($firma_id) {
+            $sql .= " AND p.firma_id = :firma_id";
+        }
+
+        $sql .= " ORDER BY p.adi_soyadi ASC";
+
+        $stmt = $this->db->prepare($sql);
+
+        if ($firma_id) {
+            $stmt->execute([':firma_id' => $firma_id]);
+        } else {
+            $stmt->execute();
+        }
+
+        $personeller = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        // Her personel için aktif görev durumunu belirle
+        foreach ($personeller as &$personel) {
+            if ($personel->son_baslama && (!$personel->son_bitis || $personel->son_baslama > $personel->son_bitis)) {
+                $personel->durum = 'aktif';
+                $personel->durum_text = 'Görevde';
+            } elseif ($personel->son_bitis) {
+                $personel->durum = 'bitti';
+                $personel->durum_text = 'Görevi Tamamladı';
+            } else {
+                $personel->durum = 'baslamadi';
+                $personel->durum_text = 'Henüz Başlamadı';
+            }
+        }
+
+        return $personeller;
+    }
+
+    /**
+     * Tarih aralığına göre hareket raporunu getirir
+     * @param int|null $personel_id (null ise tümü)
+     * @param string $baslangic_tarihi Y-m-d
+     * @param string $bitis_tarihi Y-m-d
+     * @param int|null $firma_id
+     * @return array
+     */
+    public function getRapor($personel_id = null, $baslangic_tarihi = null, $bitis_tarihi = null, $firma_id = null)
+    {
+        $sql = "SELECT 
+                    ph.*,
+                    p.adi_soyadi,
+                    p.foto
+                FROM {$this->table} ph
+                INNER JOIN personel p ON ph.personel_id = p.id
+                WHERE ph.silinme_tarihi IS NULL";
+
+        $params = [];
+
+        if ($personel_id) {
+            $sql .= " AND ph.personel_id = :personel_id";
+            $params[':personel_id'] = $personel_id;
+        }
+
+        if ($baslangic_tarihi) {
+            $sql .= " AND DATE(ph.zaman) >= :baslangic";
+            $params[':baslangic'] = $baslangic_tarihi;
+        }
+
+        if ($bitis_tarihi) {
+            $sql .= " AND DATE(ph.zaman) <= :bitis";
+            $params[':bitis'] = $bitis_tarihi;
+        }
+
+        if ($firma_id) {
+            $sql .= " AND ph.firma_id = :firma_id";
+            $params[':firma_id'] = $firma_id;
+        }
+
+        $sql .= " ORDER BY ph.zaman DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+}

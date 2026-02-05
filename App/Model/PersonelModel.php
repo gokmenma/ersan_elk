@@ -103,15 +103,15 @@ class PersonelModel extends Model
         // Column Searches
         if (!empty($colSearches)) {
             $colMap = [
-                2 => 't.tur_adi',
-                3 => 'p.tc_kimlik_no',
-                4 => 'p.adi_soyadi',
-                5 => 'p.ise_giris_tarihi',
-                6 => 'p.isten_cikis_tarihi',
-                7 => 'p.cep_telefonu',
-                8 => 'p.email_adresi',
-                9 => 'p.gorev',
-                10 => 'p.departman',
+                2 => 'p.tc_kimlik_no',
+                3 => 'p.adi_soyadi',
+                4 => 'p.ise_giris_tarihi',
+                5 => 'p.isten_cikis_tarihi',
+                6 => 'p.cep_telefonu',
+                7 => 'p.email_adresi',
+                8 => 'p.gorev',
+                9 => 'p.departman',
+                10 => 't.tur_adi',
                 12 => 'p.aktif_mi'
             ];
 
@@ -126,7 +126,7 @@ class PersonelModel extends Model
                         } elseif (stripos('Pasif', $val) !== false) {
                             $sql .= " AND p.aktif_mi = 0";
                         }
-                    } elseif ($idx == 2) { // Ekip / Bölge
+                    } elseif ($idx == 10) { // Ekip / Bölge
                         $val = "%$val%";
                         $sql .= " AND (t.tur_adi LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
                         $params[$paramName] = $val;
@@ -283,15 +283,15 @@ class PersonelModel extends Model
 
         // Sütun Bazlı Arama
         $colMap = [
-            2 => 't_all.tur_adi',
-            3 => 'p.tc_kimlik_no',
-            4 => 'p.adi_soyadi',
-            5 => 'p.ise_giris_tarihi',
-            6 => 'p.isten_cikis_tarihi',
-            7 => 'p.cep_telefonu',
-            8 => 'p.email_adresi',
-            9 => 'p.gorev',
-            10 => 'p.departman',
+            2 => 'p.tc_kimlik_no',
+            3 => 'p.adi_soyadi',
+            4 => 'p.ise_giris_tarihi',
+            5 => 'p.isten_cikis_tarihi',
+            6 => 'p.cep_telefonu',
+            7 => 'p.email_adresi',
+            8 => 'p.gorev',
+            9 => 'p.departman',
+            10 => 't_all.tur_adi',
             12 => 'p.aktif_mi'
         ];
 
@@ -308,7 +308,7 @@ class PersonelModel extends Model
                         } elseif (stripos('Pasif', $column['search']['value']) !== false) {
                             $filterSql .= " AND p.aktif_mi = 0";
                         }
-                    } elseif ($i == 2) { // Ekip / Bölge
+                    } elseif ($i == 10) { // Ekip / Bölge
                         $val = "%" . $column['search']['value'] . "%";
                         $filterSql .= " AND (t_all.tur_adi LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
                         $params[$paramName] = $val;

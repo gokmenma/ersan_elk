@@ -132,7 +132,6 @@ if (Gate::canWithMessage("personel_listesi")) {
                                         #
                                     </th>
                                     <th class="text-center">SIRA</th>
-                                    <th style="min-width: 160px; width: 160px;">EKİP / BÖLGE</th>
                                     <th style="width: 100px;">TC KİMLİK NO</th>
                                     <th>ADI SOYADI</th>
                                     <th style="width: 110px;">İŞE BAŞLAMA TARİHİ</th>
@@ -141,6 +140,7 @@ if (Gate::canWithMessage("personel_listesi")) {
                                     <th>EMAIL</th>
                                     <th>GÖREV</th>
                                     <th>DEPARTMAN</th>
+                                    <th style="min-width: 160px; width: 160px;">EKİP / BÖLGE</th>
                                     <th class="text-center">BİLDİRİM</th>
                                     <th>DURUM</th>
                                 </tr>

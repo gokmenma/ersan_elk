@@ -741,14 +741,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'id' => $enc_id,
                     'tc_kimlik_no' => $row->tc_kimlik_no,
                     'adi_soyadi' => $row->adi_soyadi,
-                    'ekip_adi' => $row->ekip_adi ?? 'YOK',
-                    'ekip_bolge' => $row->ekip_bolge ?? '---',
+                    
                     'ise_giris_tarihi' => (!empty($row->ise_giris_tarihi) && $row->ise_giris_tarihi != '0000-00-00') ? Date::dmY($row->ise_giris_tarihi) : '',
                     'isten_cikis_tarihi' => (!empty($row->isten_cikis_tarihi) && $row->isten_cikis_tarihi != '0000-00-00') ? Date::dmY($row->isten_cikis_tarihi) : '',
                     'cep_telefonu' => $row->cep_telefonu,
                     'email_adresi' => $row->email_adresi,
                     'gorev' => $row->gorev,
                     'departman' => $row->departman,
+                    'ekip_adi' => $row->ekip_adi ?? 'YOK',
+                    'ekip_bolge' => $row->ekip_bolge ?? '---',
                     'bildirim_abonesi' => $row->bildirim_abonesi,
                     'aktif_mi' => $row->aktif_mi,
                     'resim_yolu' => $row->resim_yolu

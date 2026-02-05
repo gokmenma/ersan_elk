@@ -21,6 +21,7 @@ use App\Service\MailGonderService;
 use App\Model\PushSubscriptionModel;
 use App\Model\BildirimModel;
 use App\Model\UserModel;
+use App\Model\PersonelHareketleriModel;
 
 // Oturum kontrolü (logout hariç)
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
@@ -1703,6 +1704,125 @@ try {
             }, $activities);
 
             response(true, $formattedActivities);
+            break;
+
+        // ===== GÖREV TAKİP İŞLEMLERİ =====
+        case 'getGorevDurumu':
+            $HareketModel = new PersonelHareketleriModel();
+            $acikGorev = $HareketModel->getAcikGorev($personel_id);
+
+            if ($acikGorev) {
+                response(true, [
+                    'gorev_var' => true,
+                    'baslangic_zamani' => $acikGorev->zaman,
+                    'baslangic_saat' => date('H:i', strtotime($acikGorev->zaman)),
+                    'baslangic_tarih' => date('d.m.Y', strtotime($acikGorev->zaman)),
+                    'konum_enlem' => $acikGorev->konum_enlem,
+                    'konum_boylam' => $acikGorev->konum_boylam
+                ]);
+            } else {
+                response(true, [
+                    'gorev_var' => false
+                ]);
+            }
+            break;
+
+        case 'baslaGorev':
+            $konum_enlem = $_POST['konum_enlem'] ?? null;
+            $konum_boylam = $_POST['konum_boylam'] ?? null;
+            $konum_hassasiyeti = $_POST['konum_hassasiyeti'] ?? null;
+            $cihaz_bilgisi = $_POST['cihaz_bilgisi'] ?? $_SERVER['HTTP_USER_AGENT'] ?? null;
+            $ip_adresi = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? null;
+
+            // Konum zorunlu
+            if (empty($konum_enlem) || empty($konum_boylam)) {
+                response(false, null, 'Konum bilgisi alınamadı. Lütfen konum iznini kontrol edin.');
+            }
+
+            $HareketModel = new PersonelHareketleriModel();
+
+            // Zaten açık görev var mı kontrol
+            $acikGorev = $HareketModel->getAcikGorev($personel_id);
+            if ($acikGorev) {
+                response(false, null, 'Zaten başlamış bir göreviniz var. Önce mevcut görevi bitirin.');
+            }
+
+            // Firma ID'yi session'dan al (varsa)
+            $firma_id = $_SESSION['firma_id'] ?? null;
+
+            $result = $HareketModel->baslaGorev([
+                'personel_id' => $personel_id,
+                'konum_enlem' => $konum_enlem,
+                'konum_boylam' => $konum_boylam,
+                'konum_hassasiyeti' => $konum_hassasiyeti,
+                'cihaz_bilgisi' => $cihaz_bilgisi,
+                'ip_adresi' => $ip_adresi,
+                'firma_id' => $firma_id
+            ]);
+
+            if ($result) {
+                response(true, [
+                    'id' => $result,
+                    'baslangic_saat' => date('H:i'),
+                    'baslangic_tarih' => date('d.m.Y')
+                ], 'Göreve başarıyla başladınız!');
+            } else {
+                response(false, null, 'Görev başlatılamadı. Lütfen tekrar deneyin.');
+            }
+            break;
+
+        case 'bitirGorev':
+            $konum_enlem = $_POST['konum_enlem'] ?? null;
+            $konum_boylam = $_POST['konum_boylam'] ?? null;
+            $konum_hassasiyeti = $_POST['konum_hassasiyeti'] ?? null;
+            $cihaz_bilgisi = $_POST['cihaz_bilgisi'] ?? $_SERVER['HTTP_USER_AGENT'] ?? null;
+            $ip_adresi = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? null;
+
+            // Konum zorunlu
+            if (empty($konum_enlem) || empty($konum_boylam)) {
+                response(false, null, 'Konum bilgisi alınamadı. Lütfen konum iznini kontrol edin.');
+            }
+
+            $HareketModel = new PersonelHareketleriModel();
+
+            // Açık görev var mı kontrol
+            $acikGorev = $HareketModel->getAcikGorev($personel_id);
+            if (!$acikGorev) {
+                response(false, null, 'Bitirilecek aktif bir görev bulunamadı.');
+            }
+
+            // Firma ID'yi session'dan al (varsa)
+            $firma_id = $_SESSION['firma_id'] ?? null;
+
+            $result = $HareketModel->bitirGorev([
+                'personel_id' => $personel_id,
+                'konum_enlem' => $konum_enlem,
+                'konum_boylam' => $konum_boylam,
+                'konum_hassasiyeti' => $konum_hassasiyeti,
+                'cihaz_bilgisi' => $cihaz_bilgisi,
+                'ip_adresi' => $ip_adresi,
+                'firma_id' => $firma_id
+            ]);
+
+            if ($result) {
+                // Görev süresini hesapla
+                $baslangic = new DateTime($acikGorev->zaman);
+                $bitis = new DateTime();
+                $diff = $baslangic->diff($bitis);
+                $sure = '';
+                if ($diff->h > 0)
+                    $sure .= $diff->h . ' saat ';
+                $sure .= $diff->i . ' dakika';
+
+                response(true, [
+                    'id' => $result,
+                    'bitis_saat' => date('H:i'),
+                    'bitis_tarih' => date('d.m.Y'),
+                    'calisma_suresi' => $sure
+                ], 'Görev başarıyla tamamlandı! Toplam süre: ' . $sure);
+            } else {
+                response(false, null, 'Görev bitirilemedi. Lütfen tekrar deneyin.');
+            }
             break;
 
         case 'logout':

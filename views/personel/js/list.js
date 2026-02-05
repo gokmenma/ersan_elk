@@ -30,6 +30,30 @@ $(document).ready(function () {
           return meta.row + meta.settings._iDisplayStart + 1;
         },
       },
+      
+      { data: "tc_kimlik_no" },
+      {
+        data: "adi_soyadi",
+        render: function (data, type, row) {
+          return `
+            <div class="personel-name-container">
+                <a class="fw-bold" target="_blank" href="index?p=personel/manage&id=${row.id}">${data}</a>
+                <img src="${row.resim_yolu ? row.resim_yolu : "assets/images/users/user-dummy-img.jpg"}"
+                    alt="${data}" class="personel-hover-image">
+            </div>`;
+        },
+      },
+      { data: "ise_giris_tarihi" },
+      { data: "isten_cikis_tarihi" },
+      {
+        data: "cep_telefonu",
+        render: function (data) {
+          return `<i class="feather feather-smartphone"></i> ${data}`;
+        },
+      },
+      { data: "email_adresi" },
+      { data: "gorev" },
+      { data: "departman" },
       {
         data: null,
         render: function (data, type, row) {
@@ -88,29 +112,6 @@ $(document).ready(function () {
           `;
         },
       },
-      { data: "tc_kimlik_no" },
-      {
-        data: "adi_soyadi",
-        render: function (data, type, row) {
-          return `
-            <div class="personel-name-container">
-                <a class="fw-bold" target="_blank" href="index?p=personel/manage&id=${row.id}">${data}</a>
-                <img src="${row.resim_yolu ? row.resim_yolu : "assets/images/users/user-dummy-img.jpg"}"
-                    alt="${data}" class="personel-hover-image">
-            </div>`;
-        },
-      },
-      { data: "ise_giris_tarihi" },
-      { data: "isten_cikis_tarihi" },
-      {
-        data: "cep_telefonu",
-        render: function (data) {
-          return `<i class="feather feather-smartphone"></i> ${data}`;
-        },
-      },
-      { data: "email_adresi" },
-      { data: "gorev" },
-      { data: "departman" },
       {
         data: "bildirim_abonesi",
         className: "text-center",

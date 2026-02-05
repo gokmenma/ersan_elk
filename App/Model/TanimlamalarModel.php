@@ -15,6 +15,18 @@ class TanimlamalarModel extends Model
         parent::__construct($this->table);
     }
 
+    /**
+     * Belirli bir gruba ait tanımlamaları getirir
+     * @param string $grup Grup adı (departman, is_turu, izin_turu, ekip_kodu, vb.)
+     * @return array Tanımlamalar listesi
+     */
+    public function getByGrup($grup)
+    {
+        $sql = "SELECT * FROM {$this->table} WHERE grup = ? AND firma_id = ? AND silinme_tarihi IS NULL ORDER BY tur_adi ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$grup, $_SESSION['firma_id']]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
 
 
     public function getGelirGiderTurleriSelect($type)
