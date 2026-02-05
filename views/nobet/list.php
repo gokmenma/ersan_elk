@@ -235,11 +235,18 @@ $title = 'Nöbet Planlama';
         <div class="calendar-card">
             <!-- 3. Görsel Referansı (Tab Bar ve Navigasyon) -->
             <div class="calendar-header">
-                <div class="view-buttons">
-                    <button class="btn active" data-view="dayGridMonth">Ay</button>
-                    <button class="btn" data-view="timeGridWeek">Hafta</button>
-                    <button class="btn" data-view="timeGridDay">Gün</button>
-                    <button class="btn" data-view="listMonth">Liste</button>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="view-buttons">
+                        <button class="btn active" data-view="dayGridMonth">Ay</button>
+                        <button class="btn" data-view="timeGridWeek">Hafta</button>
+                        <button class="btn" data-view="timeGridDay">Gün</button>
+                        <button class="btn me-1" data-view="listMonth">Liste</button>
+                    </div>
+                    <button class="btn btn-soft-primary"
+                        style="background: rgba(85, 110, 230, 0.1); color: #556ee6; border: none; font-weight: 600; display: flex; align-items: center; gap: 5px; height: 38px; padding: 0 15px; border-radius: 8px;"
+                        data-bs-toggle="modal" data-bs-target="#nobetBildirimModal">
+                        <i class="bx bx-send"></i> Personele Bildir
+                    </button>
                 </div>
 
                 <div class="d-flex align-items-center gap-3">
@@ -414,6 +421,99 @@ $title = 'Nöbet Planlama';
 </div>
 
 
+<!-- Nöbet Bildirim Modalı -->
+<div class="modal fade nobet-modal" id="nobetBildirimModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background: #556ee6;">
+                <h5 class="modal-title text-white">
+                    <i class="bx bx-send me-2"></i>Personele Bildir
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="nobet-bildirim-form">
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Bildirim Kapsamı</label>
+                        <div class="d-flex gap-2">
+                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_aylik" value="aylik"
+                                checked>
+                            <label class="btn btn-outline-primary flex-grow-1" for="turu_aylik">Aylık</label>
+
+                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_haftalik"
+                                value="haftalik">
+                            <label class="btn btn-outline-primary flex-grow-1" for="turu_haftalik">Haftalık</label>
+
+                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_kisi" value="kisi">
+                            <label class="btn btn-outline-primary flex-grow-1" for="turu_kisi">Kişiye Özel</label>
+                        </div>
+                    </div>
+
+                    <!-- Aylık Seçimi -->
+                    <div class="bildirim-area" id="area-aylik">
+                        <div class="mb-3">
+                            <?php
+                            $monthsNames = [1 => 'Ocak', 2 => 'Şubat', 3 => 'Mart', 4 => 'Nisan', 5 => 'Mayıs', 6 => 'Haziran', 7 => 'Temmuz', 8 => 'Ağustos', 9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık'];
+                            $currentM = (int) date('m');
+                            $currentY = (int) date('Y');
+                            $monthOptions = [];
+                            for ($i = -1; $i <= 2; $i++) {
+                                $targetDate = strtotime("$i month");
+                                $m = (int) date('m', $targetDate);
+                                $y = (int) date('Y', $targetDate);
+                                $monthOptions["$y-$m"] = "{$monthsNames[$m]} $y";
+                            }
+                            echo \App\Helper\Form::FormSelect2('bildirim_ayi', $monthOptions, "$currentY-$currentM", 'Bildirim Ayı Seçin', 'calendar', 'key', '', 'form-control select2-modal', true);
+                            ?>
+                        </div>
+                    </div>
+
+                    <!-- Haftalık Seçimi -->
+                    <div class="bildirim-area" id="area-haftalik" style="display:none;">
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <?php echo \App\Helper\Form::FormFloatInput('text', 'hafta_baslangic', date('Y-m-d'), '', 'Başlangıç', 'calendar', 'form-control flatpickr-modal', true); ?>
+                            </div>
+                            <div class="col-6">
+                                <?php echo \App\Helper\Form::FormFloatInput('text', 'hafta_bitis', date('Y-m-d', strtotime('+6 days')), '', 'Bitiş', 'calendar', 'form-control flatpickr-modal', true); ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Kişiye Özel -->
+                    <div class="bildirim-area" id="area-kisi" style="display:none;">
+                        <div class="mb-3">
+                            <?php
+                            $pOptions = [];
+                            if (isset($personeller)) {
+                                foreach ($personeller as $p) {
+                                    $pOptions[\App\Helper\Security::encrypt($p->id)] = htmlspecialchars($p->adi_soyadi);
+                                }
+                            }
+                            echo \App\Helper\Form::FormSelect2('personel_id', $pOptions, '', 'Personel Seçin', 'user', 'key', '', 'form-control select2-modal', true);
+                            ?>
+                        </div>
+                        <div class="mb-3">
+                            <?php echo \App\Helper\Form::FormFloatInput('text', 'tek_tarih', date('Y-m-d'), '', 'Nöbet Tarihi', 'calendar', 'form-control flatpickr-modal', true); ?>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <?php echo \App\Helper\Form::FormFloatTextarea('mesaj', '', 'Bildirime eklenecek özel not...', 'Ek Mesaj (Opsiyonel)', 'message-square-detail', 'form-control', false, '80px'); ?>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bx bx-paper-plane me-1"></i> Bildirim Gönder
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
 <!-- FullCalendar -->
 <script src="assets/libs/fullcalendar/index.global.min.js"></script>
 
@@ -518,6 +618,21 @@ $title = 'Nöbet Planlama';
             // Etkinlik yeniden boyutlandırıldığında
             eventResize: function (info) {
                 // Nöbetler tek günlük olduğu için gerek yok ama ileride genişletilebilir
+            },
+
+            // Her etkinlik render edildiğinde - Silme butonu ekle
+            eventDidMount: function (info) {
+                const deleteBtn = document.createElement('div');
+                deleteBtn.className = 'fc-event-delete-btn';
+                deleteBtn.innerHTML = '<i class="bx bx-x"></i>';
+                deleteBtn.title = 'Nöbeti Sil';
+
+                deleteBtn.onclick = function (e) {
+                    e.stopPropagation();
+                    deleteNobet(info.event.id);
+                };
+
+                info.el.appendChild(deleteBtn);
             }
         });
 
@@ -827,6 +942,112 @@ $title = 'Nöbet Planlama';
         // ============================================
         // YARDIMCI FONKSİYONLAR
         // ============================================
+        // ============================================
+        // BİLDİRİM YÖNETİMİ
+        // ============================================
+
+        // Bildirim Türü Değişimi
+        document.querySelectorAll('input[name="bildirim_turu"]').forEach(radio => {
+            radio.addEventListener('change', function () {
+                document.querySelectorAll('.bildirim-area').forEach(area => area.style.display = 'none');
+                const targetArea = document.getElementById('area-' + this.value);
+                if (targetArea) targetArea.style.display = 'block';
+            });
+        });
+
+        // Modal açıldığında Select2 ve Flatpickr'ı başlat
+        document.getElementById('nobetBildirimModal').addEventListener('shown.bs.modal', function () {
+            $('.select2-modal').select2({
+                dropdownParent: $('#nobetBildirimModal'),
+                width: '100%'
+            });
+
+            flatpickr(".flatpickr-modal", {
+                locale: "tr",
+                dateFormat: "Y-m-d"
+            });
+        });
+
+        // Bildirim Gönderimi
+        document.getElementById('nobet-bildirim-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const btn = this.querySelector('button[type="submit"]');
+            const originalHtml = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i> Gönderiliyor...';
+
+            const formData = new FormData(this);
+            formData.append('action', 'send-bulk-notifications');
+
+            fetch('views/nobet/api.php', {
+                method: 'POST',
+                body: new URLSearchParams(formData)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showToast('success', data.message);
+                        bootstrap.Modal.getInstance(document.getElementById('nobetBildirimModal')).hide();
+                        this.reset();
+                        // Varsayılan alana geri dön
+                        document.getElementById('turu_aylik').checked = true;
+                        document.querySelectorAll('.bildirim-area').forEach(area => area.style.display = 'none');
+                        document.getElementById('area-aylik').style.display = 'block';
+                    } else {
+                        showToast('error', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Bildirim hatası:', error);
+                    showToast('error', 'Bildirim gönderilirken bir hata oluştu');
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                });
+        });
+
+        // ============================================
+        // NÖBET SİLME
+        // ============================================
+        function deleteNobet(id) {
+            Swal.fire({
+                title: 'Nöbeti Sil?',
+                text: "Bu nöbet kaydı tamamen silinecektir!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Evet, Sil',
+                cancelButtonText: 'Vazgeç'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('views/nobet/api.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            action: 'delete-nobet',
+                            nobet_id: id
+                        })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                showToast('success', 'Nöbet silindi');
+                                if (calendar) calendar.refetchEvents();
+                            } else {
+                                showToast('error', data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Silme hatası:', error);
+                            showToast('error', 'Silme işlemi sırasında bir hata oluştu');
+                        });
+                }
+            });
+        }
+
         function updateStats(events) {
             const today = new Date().toISOString().split('T')[0];
             let totalMonth = events.length;
@@ -886,8 +1107,12 @@ $title = 'Nöbet Planlama';
                 text: message,
                 duration: 3000,
                 gravity: "top",
-                position: "right",
-                backgroundColor: type === 'success' ? '#34c38f' : '#f46a6a',
+                position: "center",
+                style: {
+                    background: "#000000",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
+                },
                 stopOnFocus: true
             }).showToast();
         }

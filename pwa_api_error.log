@@ -1,0 +1,20 @@
+[05-Feb-2026 10:41:08 Europe/Berlin] PHP Warning:  Undefined array key "firma_id" in C:\xampp\htdocs\ersan_elk\App\Model\PersonelModel.php on line 167
+[05-Feb-2026 10:41:08 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to a member function where() on array in C:\xampp\htdocs\ersan_elk\views\personel-pwa\api.php:1919
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\ersan_elk\views\personel-pwa\api.php on line 1919
+[05-Feb-2026 10:41:38 Europe/Berlin] PHP Warning:  Undefined array key "firma_id" in C:\xampp\htdocs\ersan_elk\App\Model\PersonelModel.php on line 167
+[05-Feb-2026 10:41:38 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to a member function where() on array in C:\xampp\htdocs\ersan_elk\views\personel-pwa\api.php:1919
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\ersan_elk\views\personel-pwa\api.php on line 1919
+[05-Feb-2026 10:43:37 Europe/Berlin] PHP Warning:  Undefined array key "firma_id" in C:\xampp\htdocs\ersan_elk\App\Model\PersonelModel.php on line 167
+[05-Feb-2026 10:43:37 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to a member function where() on array in C:\xampp\htdocs\ersan_elk\views\personel-pwa\api.php:1919
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\ersan_elk\views\personel-pwa\api.php on line 1919
+[05-Feb-2026 10:46:12 Europe/Berlin] PHP Warning:  Undefined array key "firma_id" in C:\xampp\htdocs\ersan_elk\App\Model\PersonelModel.php on line 167
+[05-Feb-2026 10:46:12 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to a member function where() on array in C:\xampp\htdocs\ersan_elk\views\personel-pwa\api.php:1919
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\ersan_elk\views\personel-pwa\api.php on line 1919

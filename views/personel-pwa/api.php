@@ -1858,6 +1858,262 @@ try {
             }
             break;
 
+        // =====================================================
+        // NÖBET İŞLEMLERİ
+        // =====================================================
+        case 'getNobetler':
+            $NobetModel = new \App\Model\NobetModel();
+            $yil = $_POST['yil'] ?? date('Y');
+            $ay = $_POST['ay'] ?? date('m');
+
+            $baslangic = "$yil-" . str_pad($ay, 2, '0', STR_PAD_LEFT) . "-01";
+            $bitis = date('Y-m-t', strtotime($baslangic));
+
+            $nobetler = $NobetModel->getPersonelNobetleri($personel_id, $baslangic, $bitis);
+
+            $data = [];
+            foreach ($nobetler as $nobet) {
+                $data[] = [
+                    'id' => $nobet->id,
+                    'nobet_tarihi' => $nobet->nobet_tarihi,
+                    'baslangic_saati' => $nobet->baslangic_saati,
+                    'bitis_saati' => $nobet->bitis_saati,
+                    'nobet_tipi' => $nobet->nobet_tipi,
+                    'aciklama' => $nobet->aciklama,
+                    'durum' => $nobet->durum ?? 'aktif'
+                ];
+            }
+
+            response(true, $data);
+            break;
+
+        case 'getNobetTalepleri':
+            $NobetModel = new \App\Model\NobetModel();
+            $talepler = $NobetModel->getPersonelDegisimTalepleri($personel_id, 'hepsi');
+
+            $data = [];
+            foreach ($talepler as $talep) {
+                $talepTipi = ($talep->talep_edilen_id == $personel_id) ? 'gelen' : 'giden';
+
+                $data[] = [
+                    'id' => $talep->id,
+                    'nobet_tarihi' => $talep->nobet_tarihi,
+                    'talep_eden_adi' => $talep->talep_eden_adi,
+                    'talep_edilen_adi' => $talep->talep_edilen_adi,
+                    'durum' => $talep->durum,
+                    'aciklama' => $talep->aciklama,
+                    'talep_tarihi' => $talep->talep_tarihi,
+                    'talep_tipi' => $talepTipi
+                ];
+            }
+
+            response(true, $data);
+            break;
+
+        case 'getNobetPersonelleri':
+            $firma_id = $personel->firma_id ?? $_SESSION['firma_id'] ?? null;
+
+            // Aynı firmadaki diğer personelleri getir (doğrudan SQL sorgusu)
+            $db = new \App\Core\Db();
+            $sql = "SELECT id, adi_soyadi, departman FROM personel 
+                    WHERE firma_id = :firma_id 
+                    AND aktif_mi = 1 
+                    AND silinme_tarihi IS NULL 
+                    AND id != :personel_id 
+                    ORDER BY adi_soyadi ASC";
+            $stmt = $db->db->prepare($sql);
+            $stmt->execute([':firma_id' => $firma_id, ':personel_id' => $personel_id]);
+            $personeller = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+            $data = [];
+            foreach ($personeller as $p) {
+                $data[] = [
+                    'id' => $p->id,
+                    'adi_soyadi' => $p->adi_soyadi,
+                    'departman' => $p->departman
+                ];
+            }
+
+            response(true, $data);
+            break;
+
+        case 'createNobetDegisimTalebi':
+            $NobetModel = new \App\Model\NobetModel();
+            $nobet_id = $_POST['nobet_id'] ?? null;
+            $talep_edilen_id = $_POST['talep_edilen_id'] ?? null;
+            $aciklama = $_POST['aciklama'] ?? null;
+
+            if (!$nobet_id || !$talep_edilen_id) {
+                response(false, null, 'Gerekli alanlar eksik.');
+            }
+
+            // Nöbetin bu personele ait olduğunu kontrol et
+            $nobet = $NobetModel->find($nobet_id);
+            if (!$nobet || $nobet->personel_id != $personel_id) {
+                response(false, null, 'Bu nöbet size ait değil.');
+            }
+
+            // Nöbet tarihi geçmiş mi kontrol et
+            if (strtotime($nobet->nobet_tarihi) < strtotime('today')) {
+                response(false, null, 'Geçmiş tarihli nöbetler için talep oluşturamazsınız.');
+            }
+
+            $result = $NobetModel->createDegisimTalebi([
+                'nobet_id' => $nobet_id,
+                'talep_eden_id' => $personel_id,
+                'talep_edilen_id' => $talep_edilen_id,
+                'aciklama' => $aciklama
+            ]);
+
+            if ($result) {
+                // Karşı tarafa bildirim gönder
+                try {
+                    $NobetModel->sendDegisimTalepBildirimi($talep_edilen_id, $personel->adi_soyadi, $nobet->nobet_tarihi);
+                } catch (Exception $e) {
+                    // Bildirim hatası ana işlemi etkilemesin
+                }
+
+                response(true, ['id' => $result], 'Değişim talebiniz oluşturuldu. Karşı tarafın onayı bekleniyor.');
+            } else {
+                response(false, null, 'Talep oluşturulamadı.');
+            }
+            break;
+
+        case 'onaylaNobetDegisimTalebi':
+            $NobetModel = new \App\Model\NobetModel();
+            $talep_id = $_POST['talep_id'] ?? null;
+
+            if (!$talep_id) {
+                response(false, null, 'Talep ID gerekli.');
+            }
+
+            // Talebin bu personele geldiğini kontrol et
+            $sql = "SELECT dt.*, n.nobet_tarihi FROM nobet_degisim_talepleri dt 
+                    LEFT JOIN nobetler n ON dt.nobet_id = n.id 
+                    WHERE dt.id = :id AND dt.talep_edilen_id = :pid AND dt.durum = 'beklemede'";
+            $db = new \App\Core\Db();
+            $stmt = $db->db->prepare($sql);
+            $stmt->execute([':id' => $talep_id, ':pid' => $personel_id]);
+            $talep = $stmt->fetch(PDO::FETCH_OBJ);
+
+            if (!$talep) {
+                response(false, null, 'Bu talep size ait değil veya zaten işlem görmüş.');
+            }
+
+            $result = $NobetModel->onaylaPersonelTalebi($talep_id);
+
+            if ($result) {
+                // Yöneticiye mail ve bildirim
+                try {
+                    $BildirimModel = new BildirimModel();
+                    $BildirimModel->createNotification(
+                        1, // Admin user_id
+                        'Nöbet Değişim Talebi Onayı Bekliyor',
+                        $personel->adi_soyadi . " nöbet değişim talebini onayladı. Yönetici onayı bekleniyor.",
+                        'index?p=nobet/list'
+                    );
+                } catch (Exception $e) {
+                }
+
+                response(true, null, 'Talebi onayladınız. Yönetici onayı bekleniyor.');
+            } else {
+                response(false, null, 'Onaylama işlemi başarısız.');
+            }
+            break;
+
+        case 'reddetNobetDegisimTalebi':
+            $NobetModel = new \App\Model\NobetModel();
+            $talep_id = $_POST['talep_id'] ?? null;
+
+            if (!$talep_id) {
+                response(false, null, 'Talep ID gerekli.');
+            }
+
+            // Talebin bu personele geldiğini kontrol et
+            $db = new \App\Core\Db();
+            $sql = "SELECT * FROM nobet_degisim_talepleri WHERE id = :id AND talep_edilen_id = :pid AND durum = 'beklemede'";
+            $stmt = $db->db->prepare($sql);
+            $stmt->execute([':id' => $talep_id, ':pid' => $personel_id]);
+            $talep = $stmt->fetch(PDO::FETCH_OBJ);
+
+            if (!$talep) {
+                response(false, null, 'Bu talep size ait değil veya zaten işlem görmüş.');
+            }
+
+            $result = $NobetModel->reddetTalebi($talep_id, $personel_id, 'Personel tarafından reddedildi');
+
+            if ($result) {
+                // Talep edene bildirim
+                try {
+                    $NobetModel->sendDegisimSonucBildirimi($talep->talep_eden_id, 'reddedildi', '');
+                } catch (Exception $e) {
+                }
+
+                response(true, null, 'Talebi reddettiniz.');
+            } else {
+                response(false, null, 'Reddetme işlemi başarısız.');
+            }
+            break;
+
+        case 'createNobetMazeretBildirimi':
+            $NobetModel = new \App\Model\NobetModel();
+            $nobet_id = $_POST['nobet_id'] ?? null;
+            $aciklama = $_POST['aciklama'] ?? null;
+
+            if (!$nobet_id || !$aciklama) {
+                response(false, null, 'Gerekli alanlar eksik.');
+            }
+
+            // Nöbetin bu personele ait olduğunu kontrol et
+            $nobet = $NobetModel->find($nobet_id);
+            if (!$nobet || $nobet->personel_id != $personel_id) {
+                response(false, null, 'Bu nöbet size ait değil.');
+            }
+
+            // Nöbet durumunu mazeret_bildirildi olarak güncelle
+            $result = $NobetModel->updateNobet($nobet_id, [
+                'durum' => 'mazeret_bildirildi',
+                'mazeret_aciklama' => $aciklama,
+                'mazeret_tarihi' => date('Y-m-d H:i:s')
+            ]);
+
+            if ($result) {
+                // Yöneticiye mail ve bildirim
+                try {
+                    $BildirimModel = new BildirimModel();
+                    $tarihFormatli = date('d.m.Y', strtotime($nobet->nobet_tarihi));
+                    $BildirimModel->createNotification(
+                        1, // Admin user_id
+                        'Nöbet Mazeret Bildirimi',
+                        $personel->adi_soyadi . ", $tarihFormatli tarihli nöbeti için mazeret bildirdi: " . mb_substr($aciklama, 0, 100),
+                        'index?p=nobet/list'
+                    );
+
+                    // Mail gönder - Admin kullanıcıları doğrudan sorgula
+                    $dbMail = new \App\Core\Db();
+                    $sqlMail = "SELECT email FROM users WHERE role = 'admin' AND email IS NOT NULL AND email != ''";
+                    $stmtMail = $dbMail->db->prepare($sqlMail);
+                    $stmtMail->execute();
+                    $adminler = $stmtMail->fetchAll(PDO::FETCH_OBJ);
+                    foreach ($adminler as $admin) {
+                        if ($admin->email) {
+                            MailGonderService::gonder(
+                                [$admin->email],
+                                'Nöbet Mazeret Bildirimi - ' . $personel->adi_soyadi,
+                                "<p><strong>{$personel->adi_soyadi}</strong>, <strong>$tarihFormatli</strong> tarihli nöbeti için mazeret bildirdi.</p><p><strong>Mazeret:</strong> $aciklama</p>"
+                            );
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log("Nöbet mazeret bildirim hatası: " . $e->getMessage());
+                }
+
+                response(true, null, 'Mazeret bildiriminiz yöneticiye iletildi.');
+            } else {
+                response(false, null, 'Mazeret bildirimi kaydedilemedi.');
+            }
+            break;
+
         case 'logout':
             session_destroy();
             response(true, null, 'Çıkış yapıldı');

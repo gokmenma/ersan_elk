@@ -22,6 +22,55 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     try {
         switch ($action) {
+            case 'send-bulk-notifications':
+                $turu = $_POST['bildirim_turu'] ?? 'aylik';
+                $ekMesaj = $_POST['mesaj'] ?? '';
+                $sentCount = 0;
+                $processedPersonelIds = [];
+                $nobetler = [];
+                $bildirimBaslik = '📅 Nöbet Programı';
+                $bildirimMesaj = '';
+
+                if ($turu == 'aylik') {
+                    $monthYear = $_POST['bildirim_ayi']; // Y-m format
+                    list($year, $month) = explode('-', $monthYear);
+                    $baslangic = "$year-$month-01";
+                    $bitis = date('Y-m-t', strtotime($baslangic));
+                    $nobetler = $Nobet->getCalendarEvents($baslangic, $bitis);
+                    $bildirimMesaj = date('m/Y', strtotime($baslangic)) . " dönemi nöbet programı hazırlandı.";
+                } elseif ($turu == 'haftalik') {
+                    $baslangic = $_POST['hafta_baslangic'];
+                    $bitis = $_POST['hafta_bitis'];
+                    $nobetler = $Nobet->getCalendarEvents($baslangic, $bitis);
+                    $bildirimMesaj = date('d.m', strtotime($baslangic)) . " - " . date('d.m', strtotime($bitis)) . " tarihleri arasındaki nöbetleriniz planlandı.";
+                } elseif ($turu == 'kisi') {
+                    $personel_id = Security::decrypt($_POST['personel_id']);
+                    $tek_tarih = $_POST['tek_tarih'];
+                    // Sadece bu personelin o tarihteki nöbetini "simüle" et veya direkt ona gönder
+                    $nobetler = [(object) ['personel_id' => $personel_id, 'nobet_tarihi' => $tek_tarih]];
+                    $bildirimMesaj = date('d.m.Y', strtotime($tek_tarih)) . " tarihindeki nöbetiniz ile ilgili bilgilendirme.";
+                }
+
+                $pushService = new \App\Service\PushNotificationService();
+                foreach ($nobetler as $nobet) {
+                    $pId = is_object($nobet) ? $nobet->personel_id : $nobet['personel_id'];
+                    if (!in_array($pId, $processedPersonelIds)) {
+                        $payload = [
+                            'title' => $bildirimBaslik,
+                            'body' => $bildirimMesaj . " " . ($ekMesaj ?: "Uygulama üzerinden kontrol edebilirsiniz."),
+                            'url' => 'index?p=nobet/list'
+                        ];
+
+                        if ($pushService->sendToPersonel($pId, $payload)) {
+                            $sentCount++;
+                        }
+                        $processedPersonelIds[] = $pId;
+                    }
+                }
+
+                echo json_encode(['status' => 'success', 'message' => "$sentCount personele bildirim gönderildi."]);
+                break;
+
             // =====================================================
             // TAKVİM İŞLEMLERİ
             // =====================================================
