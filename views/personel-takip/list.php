@@ -221,8 +221,9 @@ $title = "Saha Personel Takibi";
                                 </div>
                             </div>
                             <div class="table-responsive">
-                                <table class="table table-bordered table-striped" id="calismaRaporuTable">
-                                    <thead class="table-dark">
+                                <table class="table table-bordered table-striped dt-responsive nowrap"
+                                    id="calismaRaporuTable" style="width: 100%;">
+                                    <thead>
                                         <tr>
                                             <th>Personel</th>
                                             <th class="text-center">Toplam Gün</th>
@@ -265,8 +266,9 @@ $title = "Saha Personel Takibi";
                                 </div>
                             </div>
                             <div class="table-responsive">
-                                <table class="table table-bordered" id="gecKalanlarTable">
-                                    <thead class="table-danger">
+                                <table class="table table-bordered table-striped dt-responsive nowrap"
+                                    id="gecKalanlarTable" style="width: 100%;">
+                                    <thead>
                                         <tr>
                                             <th>Personel</th>
                                             <th class="text-center">Başlama Saati</th>
@@ -484,6 +486,21 @@ $title = "Saha Personel Takibi";
             loadOzet();
             loadPersonelDurumlari();
         }, 60000);
+
+        // Sayfa yenilendiğinde aktif olan tabın verisini yükle
+        setTimeout(function() {
+            const activeTab = document.querySelector('.nav-tabs .nav-link.active');
+            if (activeTab) {
+                const target = activeTab.getAttribute('href');
+                if (target === '#tabHarita') {
+                    initHarita();
+                } else if (target === '#tabRapor') {
+                    loadCalismaRaporu();
+                } else if (target === '#tabGecKalanlar') {
+                    loadGecKalanlar();
+                }
+            }
+        }, 300);
     });
 
     async function loadOzet() {
@@ -559,32 +576,57 @@ $title = "Saha Personel Takibi";
 
     // ============ KONUM İSTEĞİ FONKSİYONU ============
     async function konumIste(personelId) {
-        if (!confirm('Bu personelden anlık konum talep etmek istediğinize emin misiniz?')) return;
+        const result = await Swal.fire({
+            title: 'Emin misiniz?',
+            text: "Bu personelden anlık konum talep edilecektir.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#f46a6a',
+            cancelButtonColor: '#74788d',
+            confirmButtonText: 'Evet, Talep Et',
+            cancelButtonText: 'İptal'
+        });
 
-        try {
-            const btn = event.target.closest('button');
-            const originalContent = btn.innerHTML;
-            btn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> İsteniyor...';
-            btn.disabled = true;
+        if (result.isConfirmed) {
+            try {
+                // UI feedback
+                Swal.fire({
+                    title: 'İşlem Yapılıyor...',
+                    html: 'Lütfen bekleyiniz, talep iletiliyor.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading()
+                    }
+                });
 
-            const response = await fetch('views/personel-takip/api.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=istekKonum&personel_id=' + personelId
-            });
-            const result = await response.json();
+                const response = await fetch('views/personel-takip/api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'action=istekKonum&personel_id=' + personelId
+                });
+                const apiResult = await response.json();
 
-            if (result.success) {
-                alert(result.message || 'Konum talebi iletildi.');
-            } else {
-                alert(result.message || 'Hata oluştu.');
+                if (apiResult.success) {
+                    Swal.fire({
+                        title: 'Başarılı!',
+                        text: apiResult.message || 'Konum talebi iletildi. Cihaz konumu aldığında harita güncellenecektir.',
+                        icon: 'success'
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Uyarı',
+                        text: apiResult.message || 'Hata oluştu.',
+                        icon: 'warning'
+                    });
+                }
+            } catch (error) {
+                console.error('Konum isteği hatası:', error);
+                Swal.fire({
+                    title: 'Hata!',
+                    text: 'İstek gönderilirken bir bağlantı hatası oluştu.',
+                    icon: 'error'
+                });
             }
-
-            btn.innerHTML = originalContent;
-            btn.disabled = false;
-        } catch (error) {
-            console.error('Konum isteği hatası:', error);
-            alert('İstek gönderilirken bir hata oluştu.');
         }
     }
 
@@ -716,22 +758,37 @@ $title = "Saha Personel Takibi";
 
             const tbody = document.getElementById('calismaRaporuBody');
 
+            // DataTable'ı temizle
+            if ($.fn.DataTable.isDataTable('#calismaRaporuTable')) {
+                $('#calismaRaporuTable').DataTable().destroy();
+                $('#calismaRaporuBody').empty();
+            }
+
             if (result.success && result.data && result.data.length > 0) {
                 let html = '';
                 result.data.forEach(function (p) {
                     html += '<tr>';
                     html += '<td><strong>' + p.adi_soyadi + '</strong></td>';
                     html += '<td class="text-center">' + p.toplam_gun + ' gün</td>';
-                    html += '<td class="text-center"><span class="badge bg-primary">' + p.toplam_saat + ' saat</span></td>';
+                    html += '<td class="text-center"><span class="badge bg-soft-primary text-primary">' + p.toplam_saat + ' saat</span></td>';
                     html += '<td class="text-center">' + p.ort_baslama + '</td>';
                     html += '<td class="text-center">' + p.ort_bitis + '</td>';
-                    html += '<td class="text-center">' + (p.gec_kalma > 0 ? '<span class="badge bg-danger">' + p.gec_kalma + ' gün</span>' : '<span class="badge bg-success">0</span>') + '</td>';
+                    html += '<td class="text-center">' + (p.gec_kalma > 0 ? '<span class="badge bg-soft-danger text-danger">' + p.gec_kalma + ' gün</span>' : '<span class="badge bg-soft-success text-success">0</span>') + '</td>';
                     html += '</tr>';
                 });
                 tbody.innerHTML = html;
             } else {
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Bu tarih aralığında veri bulunamadı</td></tr>';
             }
+
+            // DataTable'ı başlat
+            $('#calismaRaporuTable').DataTable({
+                ...getDatatableOptions(), // Genel ayarları al
+                order: [[2, 'desc']], // Varsayılan: Toplam saate göre sırala
+                pageLength: 25,
+                destroy: true // Varsa üzerine yaz
+            });
+
         } catch (error) {
             console.error('Çalışma raporu yüklenirken hata:', error);
             document.getElementById('calismaRaporuBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Yüklenirken hata oluştu</td></tr>';
@@ -776,6 +833,12 @@ $title = "Saha Personel Takibi";
 
             const tbody = document.getElementById('gecKalanlarBody');
 
+            // DataTable'ı temizle
+            if ($.fn.DataTable.isDataTable('#gecKalanlarTable')) {
+                $('#gecKalanlarTable').DataTable().destroy();
+                $('#gecKalanlarBody').empty();
+            }
+
             // Geç kalan sayısını güncelle
             if (result.success && result.data) {
                 document.getElementById('stat-gec-kalan').textContent = result.data.length;
@@ -784,10 +847,10 @@ $title = "Saha Personel Takibi";
             if (result.success && result.data && result.data.length > 0) {
                 let html = '';
                 result.data.forEach(function (p) {
-                    html += '<tr class="table-warning">';
+                    html += '<tr>';
                     html += '<td><strong>' + p.adi_soyadi + '</strong></td>';
                     html += '<td class="text-center">' + p.baslama_saati + '</td>';
-                    html += '<td class="text-center"><span class="badge bg-danger">' + p.gecikme + '</span></td>';
+                    html += '<td class="text-center"><span class="badge bg-soft-danger text-danger">' + p.gecikme + '</span></td>';
                     html += '<td class="text-center">' + p.durum + '</td>';
                     html += '</tr>';
                 });
@@ -795,6 +858,15 @@ $title = "Saha Personel Takibi";
             } else {
                 tbody.innerHTML = '<tr><td colspan="4" class="text-center text-success"><i class="bx bx-check-circle me-1"></i> Bugün geç kalan personel bulunmuyor</td></tr>';
             }
+
+            // DataTable'ı başlat
+            $('#gecKalanlarTable').DataTable({
+                ...getDatatableOptions(), // Genel ayarları al
+                order: [[2, 'desc']], // Varsayılan: Gecikmeye göre
+                pageLength: 25,
+                destroy: true
+            });
+
         } catch (error) {
             console.error('Geç kalanlar yüklenirken hata:', error);
             document.getElementById('gecKalanlarBody').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Yüklenirken hata oluştu</td></tr>';

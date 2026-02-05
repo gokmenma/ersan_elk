@@ -31,6 +31,8 @@ try {
     $HareketModel = new PersonelHareketleriModel();
     $PersonelModel = new PersonelModel();
 
+    $db = (new \App\Core\Db())->db;
+
     switch ($action) {
 
         // Özet istatistikler
@@ -196,7 +198,6 @@ try {
 
         // Harita verileri
         case 'getHaritaVerileri':
-            $db = (new \App\Core\Db())->db; // Veritabanı bağlantısını sağla
             $firma_id = $_SESSION['firma_id'] ?? null;
             $tumPersoneller = $_POST['tumPersoneller'] ?? '0';
             $viewType = $_POST['viewType'] ?? 'gorev'; // gorev veya anlik
@@ -270,8 +271,18 @@ try {
             $bitis = $_POST['bitis'] ?? date('Y-m-d');
             $firma_id = $_SESSION['firma_id'] ?? null;
 
-            // Tüm aktif personelleri al
-            $personeller = $db->query("SELECT id, adi_soyadi FROM personel WHERE silinme_tarihi IS NULL AND aktif_mi = 1")->fetchAll(PDO::FETCH_OBJ);
+            // Tüm sahada takip edilen aktif personelleri al
+            $query = "SELECT id, adi_soyadi FROM personel WHERE silinme_tarihi IS NULL AND aktif_mi = 1 AND saha_takibi = 1";
+            if ($firma_id) {
+                $query .= " AND firma_id = :firma_id";
+            }
+            $stmt = $db->prepare($query);
+            if ($firma_id) {
+                $stmt->execute([':firma_id' => $firma_id]);
+            } else {
+                $stmt->execute();
+            }
+            $personeller = $stmt->fetchAll(PDO::FETCH_OBJ);
 
             $data = [];
             foreach ($personeller as $personel) {
@@ -290,24 +301,30 @@ try {
                 $limit_saat = '08:30'; // Geç kalma limiti
 
                 foreach ($hareketler as $h) {
-                    $tarih = date('Y-m-d', strtotime($h->zaman));
-                    $saat = date('H:i', strtotime($h->zaman));
+                    $timestamp = strtotime($h->zaman);
+                    $tarih = date('Y-m-d', $timestamp);
+                    $saat = date('H:i', $timestamp);
+                    $saat_sn = date('H:i:s', $timestamp); // Ortalama için
 
                     if (!isset($gunler[$tarih])) {
                         $gunler[$tarih] = ['basla' => null, 'bitir' => null];
                     }
 
                     if ($h->islem_tipi === 'BASLA') {
-                        $gunler[$tarih]['basla'] = $saat;
-                        $baslama_saatleri[] = strtotime($saat);
+                        if (!$gunler[$tarih]['basla'] || $saat < $gunler[$tarih]['basla']) {
+                            $gunler[$tarih]['basla'] = $saat;
+                        }
+                        $baslama_saatleri[] = strtotime('1970-01-01 ' . $saat_sn);
 
                         // Geç kalma kontrolü
                         if ($saat > $limit_saat) {
                             $gec_kalma_sayisi++;
                         }
                     } else {
-                        $gunler[$tarih]['bitir'] = $saat;
-                        $bitis_saatleri[] = strtotime($saat);
+                        if (!$gunler[$tarih]['bitir'] || $saat > $gunler[$tarih]['bitir']) {
+                            $gunler[$tarih]['bitir'] = $saat;
+                        }
+                        $bitis_saatleri[] = strtotime('1970-01-01 ' . $saat_sn);
                     }
                 }
 
@@ -316,7 +333,9 @@ try {
                     if ($gun['basla'] && $gun['bitir']) {
                         $start = strtotime($gun['basla']);
                         $end = strtotime($gun['bitir']);
-                        $toplam_dakika += ($end - $start) / 60;
+                        if ($end > $start) {
+                            $toplam_dakika += ($end - $start) / 60;
+                        }
                     }
                 }
 
@@ -341,7 +360,9 @@ try {
 
             // Toplam saate göre sırala (azalan)
             usort($data, function ($a, $b) {
-                return $b['toplam_saat'] <=> $a['toplam_saat'];
+                if ($a['toplam_saat'] == $b['toplam_saat'])
+                    return 0;
+                return ($b['toplam_saat'] > $a['toplam_saat']) ? 1 : -1;
             });
 
             response(true, $data);
