@@ -394,11 +394,16 @@ class NobetModel extends Model
         ]);
 
         if ($result) {
-            // Nöbet durumunu güncelle
-            $this->updateNobet($nobet_id, ['durum' => 'devir_alindi']);
+            // Nöbet durumunu ve asıl personelini güncelle
+            // Durum 'devir_alindi' yerine 'standart' veya NULL yapılabilir ki mazeret listesinden düşsün 
+            // ve takvimde normal görünsün. Ama sistemde 'devir_alindi' özel rengi varsa o da kalabilir.
+            $this->updateNobet($nobet_id, [
+                'durum' => 'devir_alindi',
+                'personel_id' => $personel_id
+            ]);
         }
 
-        return $result ? $this->db->lastInsertId() : false;
+        return $result ? true : false;
     }
 
     /**
@@ -694,9 +699,17 @@ class NobetModel extends Model
     /**
      * Tüm değişim taleplerini getir (Yönetici görünümü)
      */
-    public function getAllDegisimTalepleri()
+    public function getAllDegisimTalepleri($ay = null, $yil = null)
     {
         $firma_id = $_SESSION['firma_id'] ?? null;
+        $params = [':firma_id' => $firma_id];
+        $where = "WHERE n.firma_id = :firma_id";
+
+        if ($ay && $yil) {
+            $where .= " AND MONTH(n.nobet_tarihi) = :ay AND YEAR(n.nobet_tarihi) = :yil";
+            $params[':ay'] = $ay;
+            $params[':yil'] = $yil;
+        }
 
         $sql = "SELECT dt.*, 
                 n.nobet_tarihi, n.baslangic_saati, n.bitis_saati,
@@ -706,36 +719,87 @@ class NobetModel extends Model
                 LEFT JOIN nobetler n ON dt.nobet_id = n.id
                 LEFT JOIN personel pe ON dt.talep_eden_id = pe.id
                 LEFT JOIN personel ped ON dt.talep_edilen_id = ped.id
-                WHERE n.firma_id = :firma_id
+                $where
                 ORDER BY 
                     CASE dt.durum WHEN 'personel_onayladi' THEN 1 WHEN 'beklemede' THEN 2 ELSE 3 END,
                     dt.talep_tarihi DESC
-                LIMIT 50";
+                LIMIT 100";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':firma_id' => $firma_id]);
+        $stmt->execute($params);
         return $stmt->fetchAll(\PDO::FETCH_OBJ);
     }
 
     /**
      * Mazeret bildirilmiş nöbetleri getir (Yönetici görünümü)
      */
-    public function getMazeretBildirimleri()
+    public function getMazeretBildirimleri($ay = null, $yil = null)
     {
         $firma_id = $_SESSION['firma_id'] ?? null;
+        $params = [':firma_id' => $firma_id];
+        $where = "WHERE n.firma_id = :firma_id AND n.durum = 'mazeret_bildirildi'";
+
+        if ($ay && $yil) {
+            $where .= " AND MONTH(n.nobet_tarihi) = :ay AND YEAR(n.nobet_tarihi) = :yil";
+            $params[':ay'] = $ay;
+            $params[':yil'] = $yil;
+        } else {
+            $where .= " AND n.nobet_tarihi >= CURDATE()";
+        }
 
         $sql = "SELECT n.*, 
                 p.adi_soyadi as personel_adi
                 FROM nobetler n
                 LEFT JOIN personel p ON n.personel_id = p.id
-                WHERE n.firma_id = :firma_id
-                AND n.durum = 'mazeret_bildirildi'
-                AND n.nobet_tarihi >= CURDATE()
+                $where
                 ORDER BY n.nobet_tarihi ASC";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':firma_id' => $firma_id]);
+        $stmt->execute($params);
         return $stmt->fetchAll(\PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Talep istatistiklerini getirir (Yönetici Dashboard için)
+     */
+    public function getTalepIstatistikleri($ay = null, $yil = null)
+    {
+        $firma_id = $_SESSION['firma_id'] ?? null;
+
+        if ($ay && $yil) {
+            $bas_tarih = "$yil-$ay-01";
+            $bit_tarih = date('Y-m-t', strtotime($bas_tarih));
+        } else {
+            $bas_tarih = date('Y-m-01');
+            $bit_tarih = date('Y-m-t');
+        }
+
+        $stats = [
+            'onaylanan' => 0,
+            'reddedilen' => 0
+        ];
+
+        // Onaylananlar
+        $sql = "SELECT COUNT(*) FROM nobet_degisim_talepleri dt
+                LEFT JOIN nobetler n ON dt.nobet_id = n.id
+                WHERE n.firma_id = :firma_id 
+                AND dt.durum = 'onaylandi'
+                AND dt.amir_onay_tarihi BETWEEN :bas AND :bit";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['firma_id' => $firma_id, 'bas' => $bas_tarih, 'bit' => $bit_tarih]);
+        $stats['onaylanan'] = $stmt->fetchColumn();
+
+        // Reddedilenler
+        $sql = "SELECT COUNT(*) FROM nobet_degisim_talepleri dt
+                LEFT JOIN nobetler n ON dt.nobet_id = n.id
+                WHERE n.firma_id = :firma_id 
+                AND dt.durum = 'reddedildi'
+                AND dt.amir_onay_tarihi BETWEEN :bas AND :bit";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['firma_id' => $firma_id, 'bas' => $bas_tarih, 'bit' => $bit_tarih]);
+        $stats['reddedilen'] = $stmt->fetchColumn();
+
+        return $stats;
     }
 }
 

@@ -499,8 +499,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // DEĞİŞİM TALEPLERİ VE MAZERET BİLDİRİMLERİ (YÖNETİCİ)
             // =====================================================
             case 'get-degisim-talepleri':
-                // Tüm değişim taleplerini getir (yönetici görünümü)
-                $talepler = $Nobet->getAllDegisimTalepleri();
+                $ay = $_POST['ay'] ?? null;
+                $yil = $_POST['yil'] ?? null;
+                $talepler = $Nobet->getAllDegisimTalepleri($ay, $yil);
                 foreach ($talepler as &$t) {
                     $t->id = Security::encrypt($t->id);
                     $t->nobet_id = Security::encrypt($t->nobet_id);
@@ -511,13 +512,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             case 'get-mazeret-bildirimleri':
-                // Mazeret bildirilmiş nöbetleri getir
-                $mazeretler = $Nobet->getMazeretBildirimleri();
+                $ay = $_POST['ay'] ?? null;
+                $yil = $_POST['yil'] ?? null;
+                $mazeretler = $Nobet->getMazeretBildirimleri($ay, $yil);
                 foreach ($mazeretler as &$m) {
                     $m->id = Security::encrypt($m->id);
                     $m->personel_id = Security::encrypt($m->personel_id);
                 }
                 echo json_encode(['success' => true, 'data' => $mazeretler]);
+                break;
+
+            case 'get-talep-stats':
+                $ay = $_POST['ay'] ?? null;
+                $yil = $_POST['yil'] ?? null;
+                $stats = $Nobet->getTalepIstatistikleri($ay, $yil);
+                echo json_encode(['success' => true, 'data' => $stats]);
                 break;
 
             case 'onayla-degisim-talebi':

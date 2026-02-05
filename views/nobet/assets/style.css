@@ -566,8 +566,8 @@
 /* Takvim Etkinlik Durum İkonları */
 .fc-event-status-icons {
   position: absolute;
-  top: -10px;
-  left: -5px;
+  top: -12px;
+  left: 0px;
   display: flex;
   gap: 2px;
   z-index: 100 !important;

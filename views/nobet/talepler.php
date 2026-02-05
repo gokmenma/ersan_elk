@@ -86,17 +86,40 @@ $title = 'Talepler & Mazeretler';
 <div class="row">
     <div class="col-12">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center"
-                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <h5 class="mb-0 text-white">
+            <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom py-3">
+                <h5 class="mb-0 text-primary fw-bold">
                     <i class="bx bx-transfer-alt me-2"></i>Bekleyen Talepler & Mazeretler
                 </h5>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-sm btn-light" onclick="loadTaleplerVeMazeretler()">
+                    <select class="form-select form-select-sm" id="filter-ay" style="width: 130px;">
+                        <?php
+                        $aylar = [
+                            1 => 'Ocak',
+                            2 => 'Şubat',
+                            3 => 'Mart',
+                            4 => 'Nisan',
+                            5 => 'Mayıs',
+                            6 => 'Haziran',
+                            7 => 'Temmuz',
+                            8 => 'Ağustos',
+                            9 => 'Eylül',
+                            10 => 'Ekim',
+                            11 => 'Kasım',
+                            12 => 'Aralık'
+                        ];
+                        foreach ($aylar as $num => $ad): ?>
+                            <option value="<?= $num ?>" <?= date('n') == $num ? 'selected' : '' ?>><?= $ad ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <select class="form-select form-select-sm" id="filter-yil" style="width: 100px;">
+                        <?php for ($y = date('Y'); $y >= 2024; $y--): ?>
+                            <option value="<?= $y ?>" <?= date('Y') == $y ? 'selected' : '' ?>>
+                                <?= $y ?>
+                            </option>
+                        <?php endfor; ?>
+                    </select>
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadTaleplerVeMazeretler()">
                         <i class="bx bx-refresh"></i> Yenile
-                    </button>
-                    <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#gecmisModal">
-                        <i class="bx bx-history"></i> Geçmiş
                     </button>
                 </div>
             </div>
@@ -263,6 +286,17 @@ $title = 'Talepler & Mazeretler';
         const devirModal = new bootstrap.Modal(document.getElementById('devirModal'));
         const gecmisModal = new bootstrap.Modal(document.getElementById('gecmisModal'));
 
+        // ============================================
+        // VERİ YÜKLEME FONKSİYONLARI (Global Scope)
+        // ============================================
+        window.loadTaleplerVeMazeretler = function () {
+            const ay = document.getElementById('filter-ay').value;
+            const yil = document.getElementById('filter-yil').value;
+            loadDegisimTalepleri(ay, yil);
+            loadMazeretBildirimleri(ay, yil);
+            loadTalepStats(ay, yil);
+        }
+
         // İlk yüklemede verileri getir
         loadTaleplerVeMazeretler();
 
@@ -271,25 +305,28 @@ $title = 'Talepler & Mazeretler';
             loadGecmis();
         });
 
-        // ============================================
-        // VERİ YÜKLEME FONKSİYONLARI
-        // ============================================
-        window.loadTaleplerVeMazeretler = function () {
-            loadDegisimTalepleri();
-            loadMazeretBildirimleri();
-        }
+        function loadDegisimTalepleri(ay, yil) {
+            // First destroy existing DataTable before modifying DOM
+            if ($.fn.dataTable && $.fn.dataTable.isDataTable('#degisim-table')) {
+                $('#degisim-table').DataTable().destroy();
+            }
+            // Robust cleanup of any extra header rows (created by DataTables)
+            $('#degisim-table thead tr:not(:first-child)').remove();
 
-        function loadDegisimTalepleri() {
-            const tbody = document.getElementById('degisim-tbody');
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">
+            const tbody = $('#degisim-tbody');
+            tbody.html(`<tr><td colspan="7" class="text-center text-muted py-4">
             <i class="bx bx-loader-alt bx-spin bx-lg"></i>
             <p class="mb-0 mt-2">Yükleniyor...</p>
-        </td></tr>`;
+        </td></tr>`);
+
+            const params = new URLSearchParams({ action: 'get-degisim-talepleri' });
+            if (ay) params.append('ay', ay);
+            if (yil) params.append('yil', yil);
 
             fetch('views/nobet/api.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ action: 'get-degisim-talepleri' })
+                body: params
             })
                 .then(response => response.json())
                 .then(data => {
@@ -298,14 +335,15 @@ $title = 'Talepler & Mazeretler';
                         let bekleyenCount = 0;
 
                         data.data.forEach(talep => {
-                            if (talep.durum === 'personel_onayladi') bekleyenCount++;
+                            // Count all pending requests (both waiting for partner or manager)
+                            if (talep.durum === 'personel_onayladi' || talep.durum === 'beklemede') bekleyenCount++;
 
                             const durumBadge = getDegisimDurumBadge(talep.durum);
                             const islemButtons = talep.durum === 'personel_onayladi' ? `
-                        <button class="btn btn-sm btn-success me-1" onclick="onaylaDegisimTalebi(${talep.id})" title="Onayla">
+                        <button class="btn btn-sm btn-success me-1" onclick="onaylaDegisimTalebi('${talep.id}')" title="Onayla">
                             <i class="bx bx-check"></i>
                         </button>
-                        <button class="btn btn-sm btn-danger" onclick="reddetDegisimTalebi(${talep.id})" title="Reddet">
+                        <button class="btn btn-sm btn-danger" onclick="reddetDegisimTalebi('${talep.id}')" title="Reddet">
                             <i class="bx bx-x"></i>
                         </button>
                     ` : '<span class="text-muted">-</span>';
@@ -316,7 +354,7 @@ $title = 'Talepler & Mazeretler';
                                 <div class="d-flex align-items-center">
                                     <div class="avatar-sm me-2">
                                         <span class="avatar-title bg-primary-subtle text-primary rounded-circle">
-                                            ${(talep.talep_eden_adi || '?')[0].toUpperCase()}
+                                            ${(talep.talep_eden_adi ? talep.talep_eden_adi[0] : '?').toUpperCase()}
                                         </span>
                                     </div>
                                     <strong>${talep.talep_eden_adi || '-'}</strong>
@@ -326,7 +364,7 @@ $title = 'Talepler & Mazeretler';
                                 <div class="d-flex align-items-center">
                                     <div class="avatar-sm me-2">
                                         <span class="avatar-title bg-success-subtle text-success rounded-circle">
-                                            ${(talep.talep_edilen_adi || '?')[0].toUpperCase()}
+                                            ${(talep.talep_edilen_adi ? talep.talep_edilen_adi[0] : '?').toUpperCase()}
                                         </span>
                                     </div>
                                     ${talep.talep_edilen_adi || '-'}
@@ -341,100 +379,127 @@ $title = 'Talepler & Mazeretler';
                     `;
                         });
 
-                        tbody.innerHTML = html;
+                        tbody.html(html);
+
+                        if (typeof getDatatableOptions === 'function') {
+                            $('#degisim-table').DataTable(getDatatableOptions());
+                        }
+
                         document.getElementById('degisim-badge').textContent = bekleyenCount;
                         document.getElementById('stat-degisim-bekleyen').textContent = bekleyenCount;
                     } else {
-                        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">
+                        tbody.html(`<tr><td colspan="7" class="text-center text-muted py-4">
                     <i class="bx bx-check-circle bx-lg text-success"></i>
                     <p class="mb-0 mt-2">Bekleyen değişim talebi yok</p>
-                </td></tr>`;
+                </td></tr>`);
                         document.getElementById('degisim-badge').textContent = '0';
                         document.getElementById('stat-degisim-bekleyen').textContent = '0';
                     }
                 })
                 .catch(error => {
                     console.error('Değişim talepleri yüklenemedi:', error);
-                    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">
+                    tbody.html(`<tr><td colspan="7" class="text-center text-danger py-4">
                 <i class="bx bx-error bx-lg"></i>
                 <p class="mb-0 mt-2">Yüklenirken hata oluştu</p>
-            </td></tr>`;
+            </td></tr>`);
                 });
         }
 
-        function loadMazeretBildirimleri() {
-            const tbody = document.getElementById('mazeret-tbody');
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">
+        function loadMazeretBildirimleri(ay, yil) {
+            if ($.fn.dataTable && $.fn.dataTable.isDataTable('#mazeret-table')) {
+                $('#mazeret-table').DataTable().destroy();
+            }
+            $('#mazeret-table thead tr:not(:first-child)').remove();
+
+            const tbody = $('#mazeret-tbody');
+            tbody.html(`<tr><td colspan="6" class="text-center text-muted py-4">
             <i class="bx bx-loader-alt bx-spin bx-lg"></i>
             <p class="mb-0 mt-2">Yükleniyor...</p>
-        </td></tr>`;
+        </td></tr>`);
+
+            const params = new URLSearchParams({ action: 'get-mazeret-bildirimleri' });
+            if (ay) params.append('ay', ay);
+            if (yil) params.append('yil', yil);
 
             fetch('views/nobet/api.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ action: 'get-mazeret-bildirimleri' })
+                body: params
             })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.data.length > 0) {
                         let html = '';
-
+                        // ... processing loop
                         data.data.forEach(mazeret => {
                             html += `
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar-sm me-2">
-                                        <span class="avatar-title bg-danger-subtle text-danger rounded-circle">
-                                            ${(mazeret.personel_adi || '?')[0].toUpperCase()}
-                                        </span>
-                                    </div>
-                                    <strong>${mazeret.personel_adi || '-'}</strong>
-                                </div>
-                            </td>
-                            <td><span class="badge bg-warning-subtle text-warning">${formatDateShort(mazeret.nobet_tarihi)}</span></td>
-                            <td>${mazeret.baslangic_saati || '18:00'} - ${mazeret.bitis_saati || '08:00'}</td>
-                            <td>${mazeret.mazeret_aciklama || '<span class="text-muted">Açıklama yok</span>'}</td>
-                            <td>${formatDateShort(mazeret.mazeret_tarihi)}</td>
-                            <td class="text-center">
-                                <button class="btn btn-sm btn-primary me-1" onclick="openDevirModal(${mazeret.id}, '${mazeret.personel_adi}')" title="Başka Personele Devret">
-                                    <i class="bx bx-user-plus"></i> Devret
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger" onclick="mazeretIptalEt(${mazeret.id})" title="Nöbeti İptal Et">
-                                    <i class="bx bx-x"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    `;
+                                <tr>
+                                    <td><div class="d-flex align-items-center"><div class="avatar-sm me-2"><span class="avatar-title bg-danger-subtle text-danger rounded-circle">${(mazeret.personel_adi ? mazeret.personel_adi[0] : '?').toUpperCase()}</span></div><strong>${mazeret.personel_adi || '-'}</strong></div></td>
+                                    <td><span class="badge bg-warning-subtle text-warning">${formatDateShort(mazeret.nobet_tarihi)}</span></td>
+                                    <td>${mazeret.baslangic_saati || '18:00'} - ${mazeret.bitis_saati || '08:00'}</td>
+                                    <td>${mazeret.mazeret_aciklama || '<span class="text-muted">Açıklama yok</span>'}</td>
+                                    <td>${formatDateShort(mazeret.mazeret_tarihi)}</td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-primary me-1" onclick="openDevirModal('${mazeret.id}', '${mazeret.personel_adi}')" title="Başka Personele Devret"><i class="bx bx-user-plus"></i> Devret</button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="mazeretIptalEt('${mazeret.id}')" title="Nöbeti İptal Et"><i class="bx bx-x"></i></button>
+                                    </td>
+                                </tr>`;
                         });
 
-                        tbody.innerHTML = html;
+                        tbody.html(html);
+                        $('#mazeret-table').DataTable(getDatatableOptions());
+
                         document.getElementById('mazeret-badge').textContent = data.data.length;
                         document.getElementById('stat-mazeret-bekleyen').textContent = data.data.length;
                     } else {
-                        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">
+                        tbody.html(`<tr><td colspan="6" class="text-center text-muted py-4">
                     <i class="bx bx-check-circle bx-lg text-success"></i>
                     <p class="mb-0 mt-2">Mazeret bildirimi yok</p>
-                </td></tr>`;
+                </td></tr>`);
                         document.getElementById('mazeret-badge').textContent = '0';
                         document.getElementById('stat-mazeret-bekleyen').textContent = '0';
                     }
                 })
                 .catch(error => {
                     console.error('Mazeret bildirimleri yüklenemedi:', error);
-                    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">
+                    tbody.html(`<tr><td colspan="6" class="text-center text-danger py-4">
                 <i class="bx bx-error bx-lg"></i>
                 <p class="mb-0 mt-2">Yüklenirken hata oluştu</p>
-            </td></tr>`;
+            </td></tr>`);
                 });
         }
 
+        function loadTalepStats(ay, yil) {
+            const params = new URLSearchParams({ action: 'get-talep-stats' });
+            if (ay) params.append('ay', ay);
+            if (yil) params.append('yil', yil);
+
+            fetch('views/nobet/api.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('stat-onaylanan').textContent = data.data.onaylanan;
+                        document.getElementById('stat-reddedilen').textContent = data.data.reddedilen;
+                    }
+                })
+                .catch(error => console.error('İstatistikler yüklenemedi:', error));
+        }
+
         function loadGecmis() {
-            const tbody = document.getElementById('gecmis-tbody');
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">
+            if ($.fn.dataTable && $.fn.dataTable.isDataTable('#gecmis-table')) {
+                $('#gecmis-table').DataTable().destroy();
+            }
+            $('#gecmis-table thead tr:not(:first-child)').remove();
+
+            const tbody = $('#gecmis-tbody');
+            tbody.html(`<tr><td colspan="5" class="text-center text-muted py-4">
             <i class="bx bx-loader-alt bx-spin bx-lg"></i>
             <p class="mb-0 mt-2">Yükleniyor...</p>
-        </td></tr>`;
+        </td></tr>`);
 
             fetch('views/nobet/api.php', {
                 method: 'POST',
@@ -447,20 +512,24 @@ $title = 'Talepler & Mazeretler';
                         let html = '';
                         data.data.forEach(talep => {
                             html += `
-                        <tr>
-                            <td>${talep.talep_eden_adi || '-'}</td>
-                            <td>${talep.talep_edilen_adi || '-'}</td>
-                            <td>${formatDateShort(talep.nobet_tarihi)}</td>
-                            <td>${getDegisimDurumBadge(talep.durum)}</td>
-                            <td>${formatDateShort(talep.guncelleme_tarihi)}</td>
-                        </tr>
-                    `;
+                                <tr>
+                                    <td>${talep.talep_eden_adi || '-'}</td>
+                                    <td>${talep.talep_edilen_adi || '-'}</td>
+                                    <td>${formatDateShort(talep.nobet_tarihi)}</td>
+                                    <td>${getDegisimDurumBadge(talep.durum)}</td>
+                                    <td>${formatDateShort(talep.guncelleme_tarihi)}</td>
+                                </tr>`;
                         });
-                        tbody.innerHTML = html;
+
+                        tbody.html(html);
+
+                        if (typeof getDatatableOptions === 'function') {
+                            $('#gecmis-table').DataTable(getDatatableOptions());
+                        }
                     } else {
-                        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">
+                        tbody.html(`<tr><td colspan="5" class="text-center text-muted py-4">
                     <p class="mb-0">Geçmiş talep bulunamadı</p>
-                </td></tr>`;
+                </td></tr>`);
                     }
                 });
         }
@@ -595,11 +664,14 @@ $title = 'Talepler & Mazeretler';
             e.preventDefault();
 
             const formData = new FormData(this);
-            // API uyumu için: nobet_id ve personel_id (yeni_personel_id yerine)
             const params = new URLSearchParams();
             params.append('action', 'devir-yap');
             params.append('nobet_id', formData.get('nobet_id'));
             params.append('personel_id', formData.get('yeni_personel_id'));
+
+            // Get current filters to maintain view after reload
+            const curAy = document.getElementById('filter-ay').value;
+            const curYil = document.getElementById('filter-yil').value;
 
             fetch('views/nobet/api.php', {
                 method: 'POST',
@@ -611,10 +683,12 @@ $title = 'Talepler & Mazeretler';
                     if (data.status === 'success' || data.success) {
                         showToast('success', data.message || 'Nöbet başarıyla devredildi');
                         devirModal.hide();
-                        loadMazeretBildirimleri();
-                        loadDegisimTalepleri();
+                        // Reload with current filters
+                        loadMazeretBildirimleri(curAy, curYil);
+                        loadDegisimTalepleri(curAy, curYil);
+                        loadTalepStats(curAy, curYil);
                     } else {
-                        showToast('error', data.message || 'Bir hata oluştu');
+                        showToast('error', data.message || 'Bir hata oluştu: ' + data.message);
                     }
                 })
                 .catch(error => {

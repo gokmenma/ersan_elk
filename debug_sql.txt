@@ -1789,3 +1789,42 @@ Params: Array
 )
 
 ----------------
+SQL: SELECT t.*, p.adi_soyadi as personel_adi 
+                FROM endeks_okuma t 
+                LEFT JOIN personel p ON t.personel_id = p.id 
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih >= ? AND t.tarih <= ? AND t.personel_id = ? ORDER BY t.tarih DESC, t.id ASC
+Params: Array
+(
+    [0] => 1
+    [1] => 2026-02-01
+    [2] => 2026-02-05
+    [3] => 76
+)
+
+----------------
+SQL: SELECT t.*, p.adi_soyadi as personel_adi 
+                FROM endeks_okuma t 
+                LEFT JOIN personel p ON t.personel_id = p.id 
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih >= ? AND t.tarih <= ? AND t.personel_id = ? ORDER BY t.tarih DESC, t.id ASC
+Params: Array
+(
+    [0] => 1
+    [1] => 2026-02-01
+    [2] => 2026-02-05
+    [3] => 80
+)
+
+----------------
+SQL: SELECT t.*, p.adi_soyadi as personel_adi 
+                FROM endeks_okuma t 
+                LEFT JOIN personel p ON t.personel_id = p.id 
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih >= ? AND t.tarih <= ? AND t.personel_id = ? ORDER BY t.tarih DESC, t.id ASC
+Params: Array
+(
+    [0] => 1
+    [1] => 2026-01-01
+    [2] => 2026-02-05
+    [3] => 80
+)
+
+----------------
