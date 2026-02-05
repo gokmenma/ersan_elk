@@ -333,17 +333,45 @@ use App\Helper\Helper;
         loadNotificationCount();
         // Load recent activities
         loadRecentActivities();
+
+        // --- ANLIK KONUM İSTEĞİ KONTROLÜ ---
+        // Uygulama açık olduğu sürece her 2 dakikada bir kontrol et
+        checkKonumIstegi();
+        setInterval(checkKonumIstegi, 120000);
     });
 
+    async function checkKonumIstegi() {
+        try {
+            const response = await API.request('checkKonumIstegi');
+            if (response.success && response.data && response.data.istek_id) {
+                const istekId = response.data.istek_id;
+                console.log('Anlık konum isteği alındı (ID: ' + istekId + '). Konum alınıyor...');
+
+                // getKonum() fonksiyonu aşağıda tanımlı olmalı
+                const konum = await getKonum();
+                if (konum) {
+                    await API.request('yanitlaKonumIstegi', {
+                        istek_id: istekId,
+                        lat: konum.enlem,
+                        lng: konum.boylam
+                    });
+                    console.log('Anlık konum başarıyla iletildi.');
+                }
+            }
+        } catch (error) {
+            console.error('Konum isteği kontrol hatası:', error);
+        }
+    }
+
     // ===== GÖREV TAKİP FONKSİYONLARI =====
-    
+
     async function loadGorevDurumu() {
         try {
             var response = await API.request('getGorevDurumu');
-            
+
             document.getElementById('gorev-loading').classList.add('hidden');
             document.getElementById('gorev-durumu-container').classList.remove('hidden');
-            
+
             if (response.success && response.data) {
                 if (response.data.gorev_var) {
                     // Aktif görev var - Bitir panelini göster
@@ -366,7 +394,7 @@ use App\Helper\Helper;
     function showGorevBaslaPanel() {
         document.getElementById('gorev-basla-panel').classList.remove('hidden');
         document.getElementById('gorev-bitir-panel').classList.add('hidden');
-        
+
         // Konum izni kontrolü
         checkKonumIzni();
     }
@@ -374,10 +402,10 @@ use App\Helper\Helper;
     function showGorevBitirPanel(data) {
         document.getElementById('gorev-basla-panel').classList.add('hidden');
         document.getElementById('gorev-bitir-panel').classList.remove('hidden');
-        
+
         // Başlangıç saatini göster
         document.getElementById('gorev-baslangic-saat').textContent = data.baslangic_saat || '--:--';
-        
+
         // Süre takibini başlat
         gorevBaslangicZamani = new Date(data.baslangic_zamani);
         updateGecenSure();
@@ -386,20 +414,20 @@ use App\Helper\Helper;
 
     function updateGecenSure() {
         if (!gorevBaslangicZamani) return;
-        
+
         var simdi = new Date();
         var diff = simdi - gorevBaslangicZamani;
         var dakika = Math.floor(diff / 60000);
         var saat = Math.floor(dakika / 60);
         dakika = dakika % 60;
-        
+
         var sureText = '';
         if (saat > 0) {
             sureText = saat + ' sa ' + dakika + ' dk';
         } else {
             sureText = dakika + ' dk';
         }
-        
+
         document.getElementById('gorev-gecen-sure').textContent = sureText;
     }
 
@@ -412,7 +440,7 @@ use App\Helper\Helper;
 
         try {
             var permission = await navigator.permissions.query({ name: 'geolocation' });
-            
+
             if (permission.state === 'denied') {
                 showKonumUyari();
                 disableGorevButton();
@@ -420,8 +448,8 @@ use App\Helper\Helper;
                 hideKonumUyari();
                 enableGorevButton();
             }
-            
-            permission.onchange = function() {
+
+            permission.onchange = function () {
                 if (this.state === 'denied') {
                     showKonumUyari();
                     disableGorevButton();
@@ -458,39 +486,49 @@ use App\Helper\Helper;
     }
 
     function getKonum() {
-        return new Promise(function(resolve, reject) {
+        return new Promise(function (resolve, reject) {
             if (!navigator.geolocation) {
-                reject(new Error('Konum servisi desteklenmiyor'));
+                reject(new Error('Konum servisi bu tarayıcıda desteklenmiyor.'));
                 return;
             }
 
+            // Localhost testi için yardımcı mesaj
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                console.log('Localhost üzerindesiniz, konum alma biraz zaman alabilir...');
+            }
+
             navigator.geolocation.getCurrentPosition(
-                function(position) {
+                function (position) {
                     resolve({
                         enlem: position.coords.latitude,
                         boylam: position.coords.longitude,
                         hassasiyet: position.coords.accuracy
                     });
                 },
-                function(error) {
-                    var message = 'Konum alınamadı';
-                    switch(error.code) {
+                function (error) {
+                    var message = '';
+                    switch (error.code) {
                         case error.PERMISSION_DENIED:
-                            message = 'Konum izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.';
+                            message = 'Konum izni reddedildi. Lütfen tarayıcı ayarlarından konuma izin verin.';
                             break;
                         case error.POSITION_UNAVAILABLE:
-                            message = 'Konum bilgisi alınamıyor.';
+                            message = 'Konum bilgisi şu an ulaşılamaz durumda. GPS sinyalini kontrol edin.';
                             break;
                         case error.TIMEOUT:
-                            message = 'Konum isteği zaman aşımına uğradı.';
+                            message = 'Konum isteği zaman aşımına uğradı. Tekrar deneyiniz.';
                             break;
+                        default:
+                            message = 'Konum alınırken bilinmeyen bir hata oluştu.';
                     }
+
+                    // Localhost için özel durum: Gerçekten konum alınamıyorsa sabit bir konum önerelim mi?
+                    // Şimdilik sadece hata mesajını detaylandırıyoruz.
                     reject(new Error(message));
                 },
                 {
-                    enableHighAccuracy: true,  // Yüksek hassasiyet
-                    timeout: 15000,            // 15 saniye timeout
-                    maximumAge: 0              // Cache kullanma, her zaman taze konum al
+                    enableHighAccuracy: true,
+                    timeout: 20000, // 20 saniye
+                    maximumAge: 0
                 }
             );
         });
@@ -499,7 +537,7 @@ use App\Helper\Helper;
     async function gorevBasla() {
         var btn = document.getElementById('btn-gorev-basla');
         var originalHtml = btn.innerHTML;
-        
+
         // Butonu disable yap
         btn.disabled = true;
         btn.innerHTML = '<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div><span>Konum Alınıyor...</span>';
@@ -520,7 +558,7 @@ use App\Helper\Helper;
 
             if (response.success) {
                 Toast.show(response.message || 'Göreve başarıyla başladınız!', 'success');
-                
+
                 // Paneli güncelle
                 showGorevBitirPanel({
                     baslangic_saat: response.data.baslangic_saat,
@@ -535,7 +573,7 @@ use App\Helper\Helper;
             Toast.show(error.message || 'Bir hata oluştu', 'error');
             btn.disabled = false;
             btn.innerHTML = originalHtml;
-            
+
             // Konum izni reddedildiyse uyarı göster
             if (error.message.includes('izni')) {
                 showKonumUyari();
@@ -555,7 +593,7 @@ use App\Helper\Helper;
 
         var btn = document.getElementById('btn-gorev-bitir');
         var originalHtml = btn.innerHTML;
-        
+
         // Butonu disable yap
         btn.disabled = true;
         btn.innerHTML = '<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div><span>Konum Alınıyor...</span>';
@@ -583,7 +621,7 @@ use App\Helper\Helper;
                 gorevBaslangicZamani = null;
 
                 Toast.show(response.message || 'Görev başarıyla tamamlandı!', 'success');
-                
+
                 // Paneli güncelle
                 showGorevBaslaPanel();
             } else {

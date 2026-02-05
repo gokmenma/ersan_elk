@@ -49,6 +49,35 @@ class NobetModel extends Model
     }
 
     /**
+     * Personelin belirli bir tarihte başka nöbeti olup olmadığını kontrol eder
+     * @param int $personel_id Personel ID
+     * @param string $tarih Tarih (Y-m-d)
+     * @param int|null $exclude_id Kontrol dışı bırakılacak nöbet ID (güncelleme işlemleri için)
+     * @return bool Varsa true, yoksa false
+     */
+    public function hasNobetOnDate($personel_id, $tarih, $exclude_id = null)
+    {
+        $sql = "SELECT COUNT(*) FROM {$this->table} 
+                WHERE personel_id = :personel_id 
+                AND nobet_tarihi = :tarih 
+                AND silinme_tarihi IS NULL";
+
+        $params = [
+            'personel_id' => $personel_id,
+            'tarih' => $tarih
+        ];
+
+        if ($exclude_id) {
+            $sql .= " AND id != :exclude_id";
+            $params['exclude_id'] = $exclude_id;
+        }
+
+        $query = $this->db->prepare($sql);
+        $query->execute($params);
+        return $query->fetchColumn() > 0;
+    }
+
+    /**
      * Personelin nöbetlerini getirir
      */
     public function getPersonelNobetleri($personel_id, $baslangic = null, $bitis = null)

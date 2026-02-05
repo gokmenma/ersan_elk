@@ -155,34 +155,37 @@
 .personel-item {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
   gap: 2px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   background: #fff;
-  border: 2px solid var(--dept-color, #6b7280) !important; /* Daha kalın ve belirgin border */
-  margin: 8px 12px;
+  border: 1px solid var(--dept-color, #6b7280);
+  border-left: 3px solid var(--dept-color, #6b7280);
+  margin: 6px 12px;
   cursor: grab;
   transition: all 0.2s ease;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Hafif gölge */
+  border-radius: 6px;
 }
 
 .personel-item:hover {
   background-color: #f8f9fa;
-  border-color: #ced4da;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
 }
 
 .personel-item .personel-name {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 13px;
-  color: #111827;
+  color: #1f2937;
   margin: 0;
+  text-align: left;
 }
 
 .personel-item .personel-dept {
   font-size: 11px;
-  color: #9ca3af;
+  color: #6b7280;
   margin: 0;
+  text-align: left;
 }
 
 /* Sağ Panel - Takvim */

@@ -33,7 +33,7 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                         <?php echo Form::FormFloatInput("text", "isten_cikis_tarihi", Date::dmY($personel->isten_cikis_tarihi ?? null), "İşten Çıkış", "İşten Çıkış Tarihi", "calendar", "form-control flatpickr"); ?>
                     </div>
                     <div class="col-md-2 mb-2">
-                        <?php echo Form::FormSelect2("aktif_mi", ['1' => 'Aktif', '0' => 'Pasif','2' => "Maaş Hesaplanmayan"], $personel->aktif_mi ?? '1', "Durum", "toggle-right"); ?>
+                        <?php echo Form::FormSelect2("aktif_mi", ['1' => 'Aktif', '0' => 'Pasif', '2' => "Maaş Hesaplanmayan"], $personel->aktif_mi ?? '1', "Durum", "toggle-right"); ?>
                     </div>
 
                     <div class="col-md-2 mb-2">
@@ -56,6 +56,9 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                     </div>
                     <div class="col-md-2 mb-2">
                         <?php echo Form::FormFloatInput("text", "gorev", $personel->gorev ?? "", "Görev", "Görev", "award"); ?>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <?php echo Form::FormSelect2("saha_takibi", ['1' => 'Evet', '0' => 'Hayır'], $personel->saha_takibi ?? '0', "Saha Takibi", "map-pin"); ?>
                     </div>
                 </div>
 

@@ -221,7 +221,7 @@ class PersonelHareketleriModel extends Model
         $sql = "SELECT 
                     p.id as personel_id,
                     p.adi_soyadi,
-                    p.foto,
+                    p.resim_yolu as foto,
                     (SELECT ph.zaman FROM personel_hareketleri ph 
                      WHERE ph.personel_id = p.id AND ph.islem_tipi = 'BASLA' 
                      AND DATE(ph.zaman) = CURDATE() AND ph.silinme_tarihi IS NULL
@@ -238,7 +238,8 @@ class PersonelHareketleriModel extends Model
                      ORDER BY ph.zaman DESC LIMIT 1) as son_boylam
                 FROM personel p
                 WHERE p.silinme_tarihi IS NULL
-                AND p.durum = 'Aktif'";
+                AND p.aktif_mi = 1
+                AND p.saha_takibi = 1";
 
         if ($firma_id) {
             $sql .= " AND p.firma_id = :firma_id";
@@ -286,7 +287,7 @@ class PersonelHareketleriModel extends Model
         $sql = "SELECT 
                     ph.*,
                     p.adi_soyadi,
-                    p.foto
+                    p.resim_yolu as foto
                 FROM {$this->table} ph
                 INNER JOIN personel p ON ph.personel_id = p.id
                 WHERE ph.silinme_tarihi IS NULL";

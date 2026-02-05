@@ -1727,6 +1727,39 @@ try {
             }
             break;
 
+        case 'checkKonumIstegi':
+            $db = (new \App\Core\Db())->db;
+            $stmt = $db->prepare("SELECT id FROM personel_konum_istekleri WHERE personel_id = :pid AND durum = 'BEKLIYOR' ORDER BY istek_zamani DESC LIMIT 1");
+            $stmt->execute([':pid' => $personel_id]);
+            $istek = $stmt->fetch(PDO::FETCH_OBJ);
+
+            if ($istek) {
+                response(true, ['istek_id' => $istek->id]);
+            } else {
+                response(true, null);
+            }
+            break;
+
+        case 'yanitlaKonumIstegi':
+            $db = (new \App\Core\Db())->db;
+            $istek_id = $_POST['istek_id'] ?? null;
+            $lat = $_POST['lat'] ?? null;
+            $lng = $_POST['lng'] ?? null;
+
+            if (!$istek_id || !$lat || !$lng) {
+                response(false, null, 'Eksik veri');
+            }
+
+            $stmt = $db->prepare("UPDATE personel_konum_istekleri SET enlem = :lat, boylam = :lng, durum = 'TAMAMLANDI', yanit_zamani = NOW() WHERE id = :id");
+            $result = $stmt->execute([':lat' => $lat, ':lng' => $lng, ':id' => $istek_id]);
+
+            if ($result) {
+                response(true, null, 'Konum iletildi.');
+            } else {
+                response(false, null, 'Konum iletilemedi.');
+            }
+            break;
+
         case 'baslaGorev':
             $konum_enlem = $_POST['konum_enlem'] ?? null;
             $konum_boylam = $_POST['konum_boylam'] ?? null;

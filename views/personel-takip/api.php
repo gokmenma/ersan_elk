@@ -41,20 +41,37 @@ try {
             $gorevde = 0;
             $tamamladi = 0;
             $baslamadi = 0;
+            $gec_kalan = 0;
+            $limit_saat = '08:30';
 
             foreach ($personeller as $p) {
-                if ($p->durum === 'aktif')
+                if ($p->durum === 'aktif') {
                     $gorevde++;
-                elseif ($p->durum === 'bitti')
+                    // Geç başlama kontrolü
+                    if ($p->son_baslama) {
+                        $baslama_saati = date('H:i', strtotime($p->son_baslama));
+                        if (date('Y-m-d', strtotime($p->son_baslama)) === date('Y-m-d') && $baslama_saati > $limit_saat) {
+                            $gec_kalan++;
+                        }
+                    }
+                } elseif ($p->durum === 'bitti') {
                     $tamamladi++;
-                else
+                } else {
                     $baslamadi++;
+                    // Başlamamış ve saat geçmiş (bugün için)
+                    $now = new DateTime();
+                    $limit_time = DateTime::createFromFormat('H:i', $limit_saat);
+                    if ($now > $limit_time) {
+                        $gec_kalan++;
+                    }
+                }
             }
 
             response(true, [
                 'gorevde' => $gorevde,
                 'tamamladi' => $tamamladi,
                 'baslamadi' => $baslamadi,
+                'gec_kalan' => $gec_kalan,
                 'toplam' => count($personeller)
             ]);
             break;
@@ -179,25 +196,234 @@ try {
 
         // Harita verileri
         case 'getHaritaVerileri':
+            $db = (new \App\Core\Db())->db; // Veritabanı bağlantısını sağla
             $firma_id = $_SESSION['firma_id'] ?? null;
+            $tumPersoneller = $_POST['tumPersoneller'] ?? '0';
+            $viewType = $_POST['viewType'] ?? 'gorev'; // gorev veya anlik
+
             $personeller = $HareketModel->getTumPersonelDurumu($firma_id);
 
             $markers = [];
             foreach ($personeller as $p) {
-                if ($p->son_enlem && $p->son_boylam) {
+                $lat = null;
+                $lng = null;
+                $zaman = null;
+
+                if ($viewType === 'anlik') {
+                    // Anlık konum tablosundan son başarılı yanıtı al
+                    $stmt = $db->prepare("SELECT enlem, boylam, yanit_zamani FROM personel_konum_istekleri WHERE personel_id = :pid AND durum = 'TAMAMLANDI' ORDER BY yanit_zamani DESC LIMIT 1");
+                    $stmt->execute([':pid' => $p->personel_id]);
+                    $anlik = $stmt->fetch(PDO::FETCH_OBJ);
+                    if ($anlik) {
+                        $lat = $anlik->enlem;
+                        $lng = $anlik->boylam;
+                        $zaman = $anlik->yanit_zamani;
+                    }
+                } else {
+                    // Görev konumları (giriş-çıkış)
+                    $lat = $p->son_enlem;
+                    $lng = $p->son_boylam;
+                    $zaman = $p->son_baslama;
+                }
+
+                if ($tumPersoneller === '1' || ($lat && $lng)) {
                     $markers[] = [
                         'id' => $p->personel_id,
                         'adi_soyadi' => $p->adi_soyadi,
-                        'lat' => (float) $p->son_enlem,
-                        'lng' => (float) $p->son_boylam,
+                        'lat' => $lat ? (float) $lat : null,
+                        'lng' => $lng ? (float) $lng : null,
                         'durum' => $p->durum,
                         'durum_text' => $p->durum_text,
-                        'foto' => $p->foto
+                        'foto' => $p->foto,
+                        'son_zaman' => $zaman
                     ];
                 }
             }
 
             response(true, $markers);
+            break;
+
+        case 'istekKonum':
+            $personel_id = $_POST['personel_id'] ?? null;
+            if (!$personel_id) {
+                response(false, null, 'Personel seçilmedi');
+            }
+
+            // Bekleyen işlem var mı kontrol et (tekrar tekrar istememek için son 5 dk)
+            $stmt = $db->prepare("SELECT id FROM personel_konum_istekleri WHERE personel_id = :pid AND durum = 'BEKLIYOR' AND istek_zamani > DATE_SUB(NOW(), INTERVAL 5 MINUTE)");
+            $stmt->execute([':pid' => $personel_id]);
+            if ($stmt->fetch()) {
+                response(false, null, 'Bu personel için zaten bekleyen bir konum isteği var.');
+            }
+
+            $stmt = $db->prepare("INSERT INTO personel_konum_istekleri (personel_id, durum) VALUES (:pid, 'BEKLIYOR')");
+            if ($stmt->execute([':pid' => $personel_id])) {
+                response(true, null, 'Konum talebi personele iletildi. Cihaz konumu aldığında harita güncellenecektir.');
+            } else {
+                response(false, null, 'Talep oluşturulamadı.');
+            }
+            break;
+
+        // Çalışma süreleri raporu
+        case 'getCalismaRaporu':
+            $baslangic = $_POST['baslangic'] ?? date('Y-m-d', strtotime('-7 days'));
+            $bitis = $_POST['bitis'] ?? date('Y-m-d');
+            $firma_id = $_SESSION['firma_id'] ?? null;
+
+            // Tüm aktif personelleri al
+            $personeller = $db->query("SELECT id, adi_soyadi FROM personel WHERE silinme_tarihi IS NULL AND aktif_mi = 1")->fetchAll(PDO::FETCH_OBJ);
+
+            $data = [];
+            foreach ($personeller as $personel) {
+                // Bu personelin tarih aralığındaki hareketlerini al
+                $hareketler = $HareketModel->getRapor($personel->id, $baslangic, $bitis);
+
+                if (empty($hareketler))
+                    continue;
+
+                // Günlük gruplandırma
+                $gunler = [];
+                $toplam_dakika = 0;
+                $baslama_saatleri = [];
+                $bitis_saatleri = [];
+                $gec_kalma_sayisi = 0;
+                $limit_saat = '08:30'; // Geç kalma limiti
+
+                foreach ($hareketler as $h) {
+                    $tarih = date('Y-m-d', strtotime($h->zaman));
+                    $saat = date('H:i', strtotime($h->zaman));
+
+                    if (!isset($gunler[$tarih])) {
+                        $gunler[$tarih] = ['basla' => null, 'bitir' => null];
+                    }
+
+                    if ($h->islem_tipi === 'BASLA') {
+                        $gunler[$tarih]['basla'] = $saat;
+                        $baslama_saatleri[] = strtotime($saat);
+
+                        // Geç kalma kontrolü
+                        if ($saat > $limit_saat) {
+                            $gec_kalma_sayisi++;
+                        }
+                    } else {
+                        $gunler[$tarih]['bitir'] = $saat;
+                        $bitis_saatleri[] = strtotime($saat);
+                    }
+                }
+
+                // Toplam çalışma süresini hesapla
+                foreach ($gunler as $gun) {
+                    if ($gun['basla'] && $gun['bitir']) {
+                        $start = strtotime($gun['basla']);
+                        $end = strtotime($gun['bitir']);
+                        $toplam_dakika += ($end - $start) / 60;
+                    }
+                }
+
+                // Ortalama saatleri hesapla
+                $ort_baslama = count($baslama_saatleri) > 0
+                    ? date('H:i', array_sum($baslama_saatleri) / count($baslama_saatleri))
+                    : '-';
+                $ort_bitis = count($bitis_saatleri) > 0
+                    ? date('H:i', array_sum($bitis_saatleri) / count($bitis_saatleri))
+                    : '-';
+
+                $data[] = [
+                    'personel_id' => $personel->id,
+                    'adi_soyadi' => $personel->adi_soyadi,
+                    'toplam_gun' => count($gunler),
+                    'toplam_saat' => round($toplam_dakika / 60, 1),
+                    'ort_baslama' => $ort_baslama,
+                    'ort_bitis' => $ort_bitis,
+                    'gec_kalma' => $gec_kalma_sayisi
+                ];
+            }
+
+            // Toplam saate göre sırala (azalan)
+            usort($data, function ($a, $b) {
+                return $b['toplam_saat'] <=> $a['toplam_saat'];
+            });
+
+            response(true, $data);
+            break;
+
+        // Geç kalanları getir
+        case 'getGecKalanlar':
+            $limit_saat = $_POST['limit_saat'] ?? '08:30';
+            $firma_id = $_SESSION['firma_id'] ?? null;
+
+            $personeller = $HareketModel->getTumPersonelDurumu($firma_id);
+
+            $gec_kalanlar = [];
+            foreach ($personeller as $p) {
+                $gec_kaldi = false;
+                $baslama_saati = '-';
+                $gecikme = '';
+                $durum_text = '';
+
+                if ($p->son_baslama) {
+                    $baslama_saati = date('H:i', strtotime($p->son_baslama));
+
+                    // Sadece bugün başlayanları kontrol et
+                    if (date('Y-m-d', strtotime($p->son_baslama)) === date('Y-m-d')) {
+                        if ($baslama_saati > $limit_saat) {
+                            $gec_kaldi = true;
+
+                            // Gecikme süresini hesapla
+                            $limit = strtotime($limit_saat);
+                            $baslama = strtotime($baslama_saati);
+                            $fark = ($baslama - $limit) / 60; // dakika
+
+                            if ($fark >= 60) {
+                                $gecikme = floor($fark / 60) . ' sa ' . ($fark % 60) . ' dk';
+                            } else {
+                                $gecikme = $fark . ' dk';
+                            }
+
+                            $durum_text = '<span class="badge bg-warning">Geç Başladı</span>';
+                        }
+                    }
+                } else {
+                    // Hiç başlamamış
+                    $now = new DateTime();
+                    $limit_time = DateTime::createFromFormat('H:i', $limit_saat);
+
+                    if ($now > $limit_time) {
+                        $gec_kaldi = true;
+                        $baslama_saati = 'Başlamadı';
+
+                        $fark = ($now->getTimestamp() - $limit_time->getTimestamp()) / 60;
+                        if ($fark >= 60) {
+                            $gecikme = floor($fark / 60) . ' sa ' . (round($fark) % 60) . ' dk';
+                        } else {
+                            $gecikme = round($fark) . ' dk';
+                        }
+
+                        $durum_text = '<span class="badge bg-danger">Başlamadı</span>';
+                    }
+                }
+
+                if ($gec_kaldi) {
+                    $gec_kalanlar[] = [
+                        'personel_id' => $p->personel_id,
+                        'adi_soyadi' => $p->adi_soyadi,
+                        'baslama_saati' => $baslama_saati,
+                        'gecikme' => $gecikme,
+                        'durum' => $durum_text
+                    ];
+                }
+            }
+
+            // Gecikme süresine göre sırala
+            usort($gec_kalanlar, function ($a, $b) {
+                if ($a['baslama_saati'] === 'Başlamadı')
+                    return -1;
+                if ($b['baslama_saati'] === 'Başlamadı')
+                    return 1;
+                return $b['gecikme'] <=> $a['gecikme'];
+            });
+
+            response(true, $gec_kalanlar);
             break;
 
         default:

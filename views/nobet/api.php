@@ -135,6 +135,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'aciklama' => $_POST['aciklama'] ?? null
                 ];
 
+                // Çakışma kontrolü
+                if ($Nobet->hasNobetOnDate($personel_id, $nobet_tarihi)) {
+                    $personel = $Personel->find($personel_id);
+                    throw new Exception("{$personel->adi_soyadi} isimli personelin {$nobet_tarihi} tarihinde zaten bir nöbeti bulunuyor.");
+                }
+
                 $nobet_id = $Nobet->addNobet($data);
 
                 if ($nobet_id) {
@@ -173,6 +179,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $data['aciklama'] = $_POST['aciklama'];
                 }
 
+                // Çakışma kontrolü (Eğer personel veya tarih değişmişse)
+                $currentNobet = $Nobet->find($id);
+                $checkPersonelId = $data['personel_id'] ?? $currentNobet->personel_id;
+                $checkTarih = $data['nobet_tarihi'] ?? $currentNobet->nobet_tarihi;
+
+                if ($Nobet->hasNobetOnDate($checkPersonelId, $checkTarih, $id)) {
+                    $personel = $Personel->find($checkPersonelId);
+                    throw new Exception("{$personel->adi_soyadi} isimli personelin {$checkTarih} tarihinde zaten bir nöbeti bulunuyor.");
+                }
+
                 $result = $Nobet->updateNobet($id, $data);
 
                 if ($result) {
@@ -204,6 +220,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $yeni_tarih = $_POST['yeni_tarih']; // Y-m-d formatında
                 $personel_id = isset($_POST['personel_id']) ? Security::decrypt($_POST['personel_id']) : null;
 
+                $result = false;
+                $currentNobet = $Nobet->find($id);
+                $finalPersonelId = $personel_id ?? $currentNobet->personel_id;
+
+                // Çakışma kontrolü
+                if ($Nobet->hasNobetOnDate($finalPersonelId, $yeni_tarih, $id)) {
+                    $personel = $Personel->find($finalPersonelId);
+                    throw new Exception("{$personel->adi_soyadi} isimli personelin {$yeni_tarih} tarihinde zaten bir nöbeti bulunuyor.");
+                }
+
                 $result = $Nobet->moveNobet($id, $yeni_tarih, $personel_id);
 
                 if ($result) {
@@ -225,6 +251,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'bitis_saati' => $_POST['bitis_saati'] ?? '08:00:00',
                     'nobet_tipi' => $_POST['nobet_tipi'] ?? 'standart'
                 ];
+
+                // Çakışma kontrolü
+                if ($Nobet->hasNobetOnDate($personel_id, $nobet_tarihi)) {
+                    $personel = $Personel->find($personel_id);
+                    throw new Exception("{$personel->adi_soyadi} isimli personelin {$nobet_tarihi} tarihinde zaten bir nöbeti bulunuyor.");
+                }
 
                 $nobet_id = $Nobet->addNobet($data);
 
