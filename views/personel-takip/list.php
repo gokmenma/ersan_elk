@@ -183,19 +183,15 @@ $title = "Saha Personel Takibi";
                                     <h5 class="mb-0">Personel Konum Haritası</h5>
                                     <div class="btn-group btn-group-sm" role="group">
                                         <input type="radio" class="btn-check" name="haritaModu" id="modGorev" checked
-                                            onchange="toggleAnlikButton(); loadHaritaVerileri()">
+                                            onchange="loadHaritaVerileri()">
                                         <label class="btn btn-outline-primary" for="modGorev"><i
                                                 class="bx bx-briefcase me-1"></i> Görev Konumları</label>
 
                                         <input type="radio" class="btn-check" name="haritaModu" id="modAnlik"
-                                            onchange="toggleAnlikButton(); loadHaritaVerileri()">
+                                            onchange="loadHaritaVerileri(); autoIstekTumKonum()">
                                         <label class="btn btn-outline-danger ms-2" for="modAnlik"><i
                                                 class="bx bx-target-lock me-1"></i> Anlık Konumlar</label>
                                     </div>
-                                    <button id="btnTumKonumIste" class="btn btn-danger btn-sm d-none"
-                                        onclick="istekTumKonum()">
-                                        <i class="bx bx-broadcast me-1"></i> Tümünden Konum İste
-                                    </button>
                                 </div>
                                 <div class="d-flex gap-2">
                                     <span class="badge bg-success"><i class="bx bx-circle"></i> Görevde</span>
@@ -634,58 +630,24 @@ $title = "Saha Personel Takibi";
         }
     }
 
-    function toggleAnlikButton() {
-        const isAnlik = document.getElementById('modAnlik').checked;
-        const btn = document.getElementById('btnTumKonumIste');
-        if (isAnlik) {
-            btn.classList.remove('d-none');
-        } else {
-            btn.classList.add('d-none');
-        }
-    }
-
-    async function istekTumKonum() {
-        const result = await Swal.fire({
-            title: 'Emin misiniz?',
-            text: "Saha takibi aktif olan tüm personellerden anlık konum talep edilecektir. Bu işlem personellerin cihazlarına konum isteği gönderir.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#f46a6a',
-            cancelButtonColor: '#74788d',
-            confirmButtonText: 'Evet, Tümünden İste',
-            cancelButtonText: 'İptal',
-            reverseButtons: true
-        });
-
-        if (result.isConfirmed) {
-            try {
-                Swal.fire({
-                    title: 'İşlem Yapılıyor...',
-                    html: 'Talepler iletiliyor, lütfen bekleyiniz.',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading()
-                    }
-                });
-
-                const response = await fetch('views/personel-takip/api.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'action=istekTumKonum'
-                });
-                const res = await response.json();
-
-                if (res.success) {
-                    Swal.fire('Başarılı!', res.message, 'success');
-                    // Haritayı birkaç saniye sonra güncelle (yanıtların gelmesi için süre tanı)
-                    setTimeout(loadHaritaVerileri, 5000);
-                } else {
-                    Swal.fire('Hata!', res.message, 'error');
-                }
-            } catch (error) {
-                console.error('Konum isteği hatası:', error);
-                Swal.fire('Hata!', 'İstek gönderilirken bir hata oluştu.', 'error');
+    async function autoIstekTumKonum() {
+        try {
+            // Arka planda sessizce istek gönder
+            const response = await fetch('views/personel-takip/api.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'action=istekTumKonum'
+            });
+            const res = await response.json();
+            
+            if (res.success && res.data.eklenen > 0) {
+                // Sadece yeni istek eklendiyse ufak bir uyarı verebiliriz (isteğe bağlı)
+                console.log(res.message);
+                // 3 saniye sonra haritayı bir kez daha tazele ki ilk gelen yanıtlar görünsün
+                setTimeout(loadHaritaVerileri, 3000);
             }
+        } catch (error) {
+            console.error('Anlık konum talebi hatası:', error);
         }
     }
 
