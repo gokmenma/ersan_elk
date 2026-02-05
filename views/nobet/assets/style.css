@@ -566,35 +566,35 @@
 /* Takvim Etkinlik Durum İkonları */
 .fc-event-status-icons {
   position: absolute;
-  top: 4px;
-  left: 4px;
+  top: -10px;
+  left: -5px;
   display: flex;
-  gap: 3px;
-  z-index: 5;
+  gap: 2px;
+  z-index: 100 !important;
   pointer-events: none;
 }
 
 .fc-event-status-icon {
-  width: 18px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-size: 18px;
+  font-weight: bold;
   transition: all 0.2s ease;
+  text-shadow:
+    0 0 3px rgba(255, 255, 255, 0.8),
+    1px 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .fc-event-status-icon.mazeret {
-  background: #ef4444;
-  color: #ffffff;
+  color: #ef4444;
 }
 
 .fc-event-status-icon.talep {
-  background: #3b82f6;
-  color: #ffffff;
+  color: #f59e0b;
 }
 
 /* Geçmiş Nöbetler - Pasif Görünüm */
