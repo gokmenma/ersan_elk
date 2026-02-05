@@ -594,11 +594,11 @@ use App\Helper\Helper;
         var btn = document.getElementById('btn-gorev-bitir');
         var originalHtml = btn.innerHTML;
 
-        // Butonu disable yap
-        btn.disabled = true;
-        btn.innerHTML = '<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div><span>Konum Alınıyor...</span>';
-
         try {
+            // Butonu disable yap ve spinner göster
+            btn.disabled = true;
+            btn.innerHTML = '<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div><span>Konum Alınıyor...</span>';
+
             // Konum al
             var konum = await getKonum();
 
@@ -622,14 +622,21 @@ use App\Helper\Helper;
 
                 Toast.show(response.message || 'Görev başarıyla tamamlandı!', 'success');
 
-                // Paneli güncelle
+                // Butonu temizle (panel gizlenecek olsa da UI tutarlılığı için)
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+
+                // Paneli güncelle ve verileri yenile
                 showGorevBaslaPanel();
+                loadDashboardData();
+                loadRecentActivities();
             } else {
                 Toast.show(response.message || 'Görev bitirilemedi', 'error');
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
             }
         } catch (error) {
+            console.error('Görev Bitir Hatası:', error);
             Toast.show(error.message || 'Bir hata oluştu', 'error');
             btn.disabled = false;
             btn.innerHTML = originalHtml;

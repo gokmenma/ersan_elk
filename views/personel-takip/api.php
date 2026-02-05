@@ -244,6 +244,43 @@ try {
             response(true, $markers);
             break;
 
+        case 'istekTumKonum':
+            $firma_id = $_SESSION['firma_id'] ?? null;
+
+            // Saha takibi olan ve silinmemiş tüm personelleri al
+            $query = "SELECT id FROM personel WHERE silinme_tarihi IS NULL AND aktif_mi = 1 AND saha_takibi = 1";
+            if ($firma_id) {
+                $query .= " AND firma_id = :firma_id";
+            }
+            $stmt = $db->prepare($query);
+            if ($firma_id) {
+                $stmt->execute([':firma_id' => $firma_id]);
+            } else {
+                $stmt->execute();
+            }
+            $personeller = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+            $eklenen = 0;
+            $zaten_var = 0;
+
+            foreach ($personeller as $p) {
+                // Bekleyen işlem var mı kontrol et (son 5 dk)
+                $stmtCheck = $db->prepare("SELECT id FROM personel_konum_istekleri WHERE personel_id = :pid AND durum = 'BEKLIYOR' AND istek_zamani > DATE_SUB(NOW(), INTERVAL 5 MINUTE)");
+                $stmtCheck->execute([':pid' => $p->id]);
+                if ($stmtCheck->fetch()) {
+                    $zaten_var++;
+                    continue;
+                }
+
+                $stmtInsert = $db->prepare("INSERT INTO personel_konum_istekleri (personel_id, durum) VALUES (:pid, 'BEKLIYOR')");
+                if ($stmtInsert->execute([':pid' => $p->id])) {
+                    $eklenen++;
+                }
+            }
+
+            response(true, ['eklenen' => $eklenen, 'zaten_var' => $zaten_var], "$eklenen personelden konum talep edildi. $zaten_var personel için zaten bekleyen talep vardı.");
+            break;
+
         case 'istekKonum':
             $personel_id = $_POST['personel_id'] ?? null;
             if (!$personel_id) {
