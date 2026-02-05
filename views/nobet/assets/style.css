@@ -562,3 +562,49 @@
   background: #dc2626;
   color: #fff;
 }
+
+/* Takvim Etkinlik Durum İkonları */
+.fc-event-status-icons {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  display: flex;
+  gap: 3px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.fc-event-status-icon {
+  width: 18px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.fc-event-status-icon.mazeret {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.fc-event-status-icon.talep {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+/* Geçmiş Nöbetler - Pasif Görünüm */
+.fc-event-past {
+  opacity: 0.65 !important;
+  filter: grayscale(0.6);
+  cursor: not-allowed !important;
+  pointer-events: all; /* Click olaylarını yakalayıp engellemek için */
+}
+
+.fc-event-past .fc-event-delete-btn {
+  display: none !important;
+}

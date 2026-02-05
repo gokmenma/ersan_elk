@@ -160,7 +160,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             'durum' => $nobet->durum,
                             'nobet_tipi' => $nobet->nobet_tipi,
                             'aciklama' => $nobet->aciklama,
-                            'resim' => $nobet->resim_yolu ?? 'assets/images/users/user-dummy-img.jpg'
+                            'resim' => $nobet->resim_yolu ?? 'assets/images/users/user-dummy-img.jpg',
+                            'has_talep' => $nobet->has_talep > 0
                         ]
                     ];
                 }
@@ -500,12 +501,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             case 'get-degisim-talepleri':
                 // Tüm değişim taleplerini getir (yönetici görünümü)
                 $talepler = $Nobet->getAllDegisimTalepleri();
+                foreach ($talepler as &$t) {
+                    $t->id = Security::encrypt($t->id);
+                    $t->nobet_id = Security::encrypt($t->nobet_id);
+                    $t->talep_eden_id = Security::encrypt($t->talep_eden_id);
+                    $t->talep_edilen_id = Security::encrypt($t->talep_edilen_id);
+                }
                 echo json_encode(['success' => true, 'data' => $talepler]);
                 break;
 
             case 'get-mazeret-bildirimleri':
                 // Mazeret bildirilmiş nöbetleri getir
                 $mazeretler = $Nobet->getMazeretBildirimleri();
+                foreach ($mazeretler as &$m) {
+                    $m->id = Security::encrypt($m->id);
+                    $m->personel_id = Security::encrypt($m->personel_id);
+                }
                 echo json_encode(['success' => true, 'data' => $mazeretler]);
                 break;
 
@@ -526,22 +537,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 break;
 
-            case 'reddet-degisim-talebi':
-                $talepId = $_POST['talep_id'] ?? null;
-                $redNedeni = $_POST['red_nedeni'] ?? '';
-
-                if (!$talepId) {
-                    throw new Exception("Talep ID gerekli.");
-                }
-
-                $result = $Nobet->reddetTalebi($talepId, $userId, $redNedeni);
-
-                if ($result) {
-                    $SystemLog->logAction($userId, 'nobet_degisim_reddet', 'Nöbet değişim talebi reddedildi');
-                    echo json_encode(['success' => true, 'message' => 'Değişim talebi reddedildi.']);
-                } else {
-                    throw new Exception("Reddetme işlemi başarısız.");
-                }
+            case 'get-talep-gecmisi':
+                $firma_id = $_SESSION['firma_id'] ?? null;
+                $sql = "SELECT dt.*, 
+                        n.nobet_tarihi,
+                        pe.adi_soyadi as talep_eden_adi,
+                        ped.adi_soyadi as talep_edilen_adi
+                        FROM nobet_degisim_talepleri dt
+                        LEFT JOIN nobetler n ON dt.nobet_id = n.id
+                        LEFT JOIN personel pe ON dt.talep_eden_id = pe.id
+                        LEFT JOIN personel ped ON dt.talep_edilen_id = ped.id
+                        WHERE n.firma_id = :firma_id AND dt.durum IN ('onaylandi', 'reddedildi', 'iptal')
+                        ORDER BY dt.guncelleme_tarihi DESC
+                        LIMIT 100";
+                $stmt = $Nobet->getDb()->prepare($sql);
+                $stmt->execute([':firma_id' => $firma_id]);
+                $results = $stmt->fetchAll(PDO::FETCH_OBJ);
+                echo json_encode(['success' => true, 'data' => $results]);
                 break;
 
             default:
