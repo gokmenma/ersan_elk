@@ -494,6 +494,56 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 break;
 
+            // =====================================================
+            // DEĞİŞİM TALEPLERİ VE MAZERET BİLDİRİMLERİ (YÖNETİCİ)
+            // =====================================================
+            case 'get-degisim-talepleri':
+                // Tüm değişim taleplerini getir (yönetici görünümü)
+                $talepler = $Nobet->getAllDegisimTalepleri();
+                echo json_encode(['success' => true, 'data' => $talepler]);
+                break;
+
+            case 'get-mazeret-bildirimleri':
+                // Mazeret bildirilmiş nöbetleri getir
+                $mazeretler = $Nobet->getMazeretBildirimleri();
+                echo json_encode(['success' => true, 'data' => $mazeretler]);
+                break;
+
+            case 'onayla-degisim-talebi':
+                $talepId = $_POST['talep_id'] ?? null;
+                if (!$talepId) {
+                    throw new Exception("Talep ID gerekli.");
+                }
+
+                // Yönetici olarak talebi onayla ve nöbeti değiştir
+                $result = $Nobet->onaylaAmirTalebi($talepId, $userId);
+
+                if ($result) {
+                    $SystemLog->logAction($userId, 'nobet_degisim_onayla', 'Nöbet değişim talebi onaylandı');
+                    echo json_encode(['success' => true, 'message' => 'Değişim talebi onaylandı.']);
+                } else {
+                    throw new Exception("Onaylama işlemi başarısız.");
+                }
+                break;
+
+            case 'reddet-degisim-talebi':
+                $talepId = $_POST['talep_id'] ?? null;
+                $redNedeni = $_POST['red_nedeni'] ?? '';
+
+                if (!$talepId) {
+                    throw new Exception("Talep ID gerekli.");
+                }
+
+                $result = $Nobet->reddetTalebi($talepId, $userId, $redNedeni);
+
+                if ($result) {
+                    $SystemLog->logAction($userId, 'nobet_degisim_reddet', 'Nöbet değişim talebi reddedildi');
+                    echo json_encode(['success' => true, 'message' => 'Değişim talebi reddedildi.']);
+                } else {
+                    throw new Exception("Reddetme işlemi başarısız.");
+                }
+                break;
+
             default:
                 throw new Exception("Geçersiz işlem.");
         }

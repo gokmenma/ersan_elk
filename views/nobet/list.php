@@ -276,6 +276,100 @@ $title = 'Nöbet Planlama';
                     <div class="legend-color" style="background: #ef4444;"></div>
                     <span>İptal</span>
                 </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f59e0b;"></div>
+                    <span>Mazeret Bildirildi</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bekleyen Talepler ve Mazeretler Paneli -->
+        <div class="calendar-card mt-4">
+            <div class="calendar-header">
+                <div class="d-flex align-items-center gap-2">
+                    <h5 class="mb-0" style="font-weight: 700; color: #1a1d21;">
+                        <i class="bx bx-transfer-alt me-2"></i>Bekleyen Talepler & Mazeretler
+                    </h5>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadTaleplerVeMazeretler()">
+                        <i class="bx bx-refresh"></i> Yenile
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-3">
+                <!-- Tabs -->
+                <ul class="nav nav-tabs mb-3" id="talepTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="degisim-tab" data-bs-toggle="tab"
+                            data-bs-target="#degisim-talepler" type="button" role="tab">
+                            <i class="bx bx-transfer me-1"></i>Değişim Talepleri
+                            <span class="badge bg-warning ms-1" id="degisim-badge">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="mazeret-tab" data-bs-toggle="tab"
+                            data-bs-target="#mazeret-bildirimleri" type="button" role="tab">
+                            <i class="bx bx-error-circle me-1"></i>Mazeret Bildirimleri
+                            <span class="badge bg-danger ms-1" id="mazeret-badge">0</span>
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="talepTabContent">
+                    <!-- Değişim Talepleri Tab -->
+                    <div class="tab-pane fade show active" id="degisim-talepler" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle" id="degisim-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Talep Eden</th>
+                                        <th>Talep Edilen</th>
+                                        <th>Nöbet Tarihi</th>
+                                        <th>Açıklama</th>
+                                        <th>Durum</th>
+                                        <th>Talep Tarihi</th>
+                                        <th class="text-center">İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="degisim-tbody">
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">
+                                            <i class="bx bx-loader-alt bx-spin bx-lg"></i>
+                                            <p class="mb-0 mt-2">Yükleniyor...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Mazeret Bildirimleri Tab -->
+                    <div class="tab-pane fade" id="mazeret-bildirimleri" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle" id="mazeret-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Personel</th>
+                                        <th>Nöbet Tarihi</th>
+                                        <th>Mazeret Açıklaması</th>
+                                        <th>Bildirim Tarihi</th>
+                                        <th class="text-center">İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mazeret-tbody">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">
+                                            <i class="bx bx-loader-alt bx-spin bx-lg"></i>
+                                            <p class="mb-0 mt-2">Yükleniyor...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1116,6 +1210,242 @@ $title = 'Nöbet Planlama';
                 stopOnFocus: true
             }).showToast();
         }
+
+    // ============================================
+        // TALEPLER VE MAZERETLER YÖNETİMİ
+        // ============================================
+        function loadTaleplerVeMazeretler() {
+            loadDegisimTalepleri();
+            loadMazeretBildirimleri();
+        }
+
+        function loadDegisimTalepleri() {
+            const tbody = document.getElementById('degisim-tbody');
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">
+                <i class="bx bx-loader-alt bx-spin bx-lg"></i>
+                <p class="mb-0 mt-2">Yükleniyor...</p>
+            </td></tr>`;
+
+            fetch('views/nobet/api.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ action: 'get-degisim-talepleri' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.data.length > 0) {
+                    let html = '';
+                    let bekleyenCount = 0;
+                    
+                    data.data.forEach(talep => {
+                        if (talep.durum === 'personel_onayladi') bekleyenCount++;
+                        
+                        const durumBadge = getDegisimDurumBadge(talep.durum);
+                        const islemButtons = talep.durum === 'personel_onayladi' ? `
+                            <button class="btn btn-sm btn-success me-1" onclick="onaylaDegisimTalebi(${talep.id})" title="Onayla">
+                                <i class="bx bx-check"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="reddetDegisimTalebi(${talep.id})" title="Reddet">
+                                <i class="bx bx-x"></i>
+                            </button>
+                        ` : '<span class="text-muted">-</span>';
+                        
+                        html += `
+                            <tr>
+                                <td><strong>${talep.talep_eden_adi}</strong></td>
+                                <td>${talep.talep_edilen_adi}</td>
+                                <td>${formatDateShort(talep.nobet_tarihi)}</td>
+                                <td>${talep.aciklama || '-'}</td>
+                                <td>${durumBadge}</td>
+                                <td>${formatDateShort(talep.talep_tarihi)}</td>
+                                <td class="text-center">${islemButtons}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    tbody.innerHTML = html;
+                    document.getElementById('degisim-badge').textContent = bekleyenCount;
+                    document.getElementById('stat-pending').textContent = bekleyenCount;
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">
+                        <i class="bx bx-check-circle bx-lg text-success"></i>
+                        <p class="mb-0 mt-2">Bekleyen değişim talebi yok</p>
+                    </td></tr>`;
+                    document.getElementById('degisim-badge').textContent = '0';
+                    document.getElementById('stat-pending').textContent = '0';
+                }
+            })
+            .catch(error => {
+                console.error('Değişim talepleri yüklenemedi:', error);
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">
+                    <i class="bx bx-error bx-lg"></i>
+                    <p class="mb-0 mt-2">Yüklenirken hata oluştu</p>
+                </td></tr>`;
+            });
+        }
+
+        function loadMazeretBildirimleri() {
+            const tbody = document.getElementById('mazeret-tbody');
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">
+                <i class="bx bx-loader-alt bx-spin bx-lg"></i>
+                <p class="mb-0 mt-2">Yükleniyor...</p>
+            </td></tr>`;
+
+            fetch('views/nobet/api.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ action: 'get-mazeret-bildirimleri' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.data.length > 0) {
+                    let html = '';
+                    
+                    data.data.forEach(mazeret => {
+                        html += `
+                            <tr>
+                                <td><strong>${mazeret.personel_adi}</strong></td>
+                                <td>${formatDateShort(mazeret.nobet_tarihi)}</td>
+                                <td>${mazeret.mazeret_aciklama || '-'}</td>
+                                <td>${formatDateShort(mazeret.mazeret_tarihi)}</td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-primary me-1" onclick="mazeretNobetDevret(${mazeret.id})" title="Başka Personele Ata">
+                                        <i class="bx bx-user-plus"></i> Devret
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="mazeretIptalEt(${mazeret.id})" title="İptal Et">
+                                        <i class="bx bx-x"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    
+                    tbody.innerHTML = html;
+                    document.getElementById('mazeret-badge').textContent = data.data.length;
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">
+                        <i class="bx bx-check-circle bx-lg text-success"></i>
+                        <p class="mb-0 mt-2">Mazeret bildirimi yok</p>
+                    </td></tr>`;
+                    document.getElementById('mazeret-badge').textContent = '0';
+                }
+            })
+            .catch(error => {
+                console.error('Mazeret bildirimleri yüklenemedi:', error);
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">
+                    <i class="bx bx-error bx-lg"></i>
+                    <p class="mb-0 mt-2">Yüklenirken hata oluştu</p>
+                </td></tr>`;
+            });
+        }
+
+        function getDegisimDurumBadge(durum) {
+            const badges = {
+                'beklemede': '<span class="badge bg-secondary">Personel Onayı Bekleniyor</span>',
+                'personel_onayladi': '<span class="badge bg-warning">Yönetici Onayı Bekleniyor</span>',
+                'onaylandi': '<span class="badge bg-success">Onaylandı</span>',
+                'reddedildi': '<span class="badge bg-danger">Reddedildi</span>',
+                'iptal': '<span class="badge bg-dark">İptal</span>'
+            };
+            return badges[durum] || '<span class="badge bg-secondary">Bilinmiyor</span>';
+        }
+
+        function formatDateShort(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        function onaylaDegisimTalebi(talepId) {
+            Swal.fire({
+                title: 'Değişim Talebini Onayla',
+                text: 'Bu değişim talebini onaylamak istediğinize emin misiniz? Nöbet ataması değiştirilecektir.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#28a745',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Evet, Onayla',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('views/nobet/api.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ action: 'onayla-degisim-talebi', talep_id: talepId })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast('success', 'Değişim talebi onaylandı');
+                            loadTaleplerVeMazeretler();
+                            calendar.refetchEvents();
+                        } else {
+                            showToast('error', data.message || 'Bir hata oluştu');
+                        }
+                    });
+                }
+            });
+        }
+
+        function reddetDegisimTalebi(talepId) {
+            Swal.fire({
+                title: 'Değişim Talebini Reddet',
+                input: 'textarea',
+                inputLabel: 'Red Sebebi (Opsiyonel)',
+                inputPlaceholder: 'Neden reddedildiğini açıklayabilirsiniz...',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Reddet',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('views/nobet/api.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ 
+                            action: 'reddet-degisim-talebi', 
+                            talep_id: talepId,
+                            red_nedeni: result.value || ''
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast('success', 'Değişim talebi reddedildi');
+                            loadTaleplerVeMazeretler();
+                        } else {
+                            showToast('error', data.message || 'Bir hata oluştu');
+                        }
+                    });
+                }
+            });
+        }
+
+        function mazeretNobetDevret(nobetId) {
+            openFormModal(nobetId);
+        }
+
+        function mazeretIptalEt(nobetId) {
+            Swal.fire({
+                title: 'Nöbeti İptal Et',
+                text: 'Bu nöbeti tamamen iptal etmek istediğinize emin misiniz?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Evet, İptal Et',
+                cancelButtonText: 'Vazgeç'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    deleteNobet(nobetId);
+                    loadMazeretBildirimleri();
+                }
+            });
+        }
+
+        // Sayfa yüklendiğinde talepleri yükle
+        loadTaleplerVeMazeretler();
 
     });
 </script>

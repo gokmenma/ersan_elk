@@ -615,12 +615,24 @@
                     <p class="text-sm text-slate-700 dark:text-slate-300">${nobet.aciklama}</p>
                 </div>
                 ` : ''}
+
+                ${nobet.durum === 'mazeret_bildirildi' ? `
+                <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 p-4 rounded-xl">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-red-500">warning</span>
+                        <p class="font-semibold text-red-700 dark:text-red-400">Mazeret Bildirildi</p>
+                    </div>
+                    <p class="text-sm text-red-600 dark:text-red-400 mt-1">Bu nöbet için mazeret bildirilmiştir. Yönetici tarafından işlem bekleniyor.</p>
+                </div>
+                ` : ''}
             </div>
         `;
 
         // Action buttons
         const actionsContainer = document.getElementById('nobet-detay-actions');
-        if (!isPast) {
+        const isMazeretBildirildi = nobet.durum === 'mazeret_bildirildi';
+
+        if (!isPast && !isMazeretBildirildi) {
             actionsContainer.innerHTML = `
                 <button onclick="openDegisimModal('${nobetId}')" 
                     class="w-full py-3 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-semibold rounded-xl flex items-center justify-center gap-2">

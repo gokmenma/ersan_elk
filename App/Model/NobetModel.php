@@ -689,5 +689,52 @@ class NobetModel extends Model
         $gunler = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
         return $gunler[date('w', strtotime($tarih))];
     }
+
+    /**
+     * Tüm değişim taleplerini getir (Yönetici görünümü)
+     */
+    public function getAllDegisimTalepleri()
+    {
+        $firma_id = $_SESSION['firma_id'] ?? null;
+
+        $sql = "SELECT dt.*, 
+                n.nobet_tarihi, n.baslangic_saati, n.bitis_saati,
+                pe.adi_soyadi as talep_eden_adi,
+                ped.adi_soyadi as talep_edilen_adi
+                FROM nobet_degisim_talepleri dt
+                LEFT JOIN nobetler n ON dt.nobet_id = n.id
+                LEFT JOIN personel pe ON dt.talep_eden_id = pe.id
+                LEFT JOIN personel ped ON dt.talep_edilen_id = ped.id
+                WHERE n.firma_id = :firma_id
+                ORDER BY 
+                    CASE dt.durum WHEN 'personel_onayladi' THEN 1 WHEN 'beklemede' THEN 2 ELSE 3 END,
+                    dt.talep_tarihi DESC
+                LIMIT 50";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':firma_id' => $firma_id]);
+        return $stmt->fetchAll(\PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Mazeret bildirilmiş nöbetleri getir (Yönetici görünümü)
+     */
+    public function getMazeretBildirimleri()
+    {
+        $firma_id = $_SESSION['firma_id'] ?? null;
+
+        $sql = "SELECT n.*, 
+                p.adi_soyadi as personel_adi
+                FROM nobetler n
+                LEFT JOIN personel p ON n.personel_id = p.id
+                WHERE n.firma_id = :firma_id
+                AND n.durum = 'mazeret_bildirildi'
+                AND n.nobet_tarihi >= CURDATE()
+                ORDER BY n.nobet_tarihi ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':firma_id' => $firma_id]);
+        return $stmt->fetchAll(\PDO::FETCH_OBJ);
+    }
 }
 
