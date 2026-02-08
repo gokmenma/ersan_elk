@@ -329,25 +329,13 @@ try {
                 }
             }
 
-            // İş başı tarihini yakala (Dökümandaki ISBASKONTTAR veya ABITTAR + 1)
-            $bitisRaw = $rapor['ISBASKONTTAR'] ?? '';
-            if (empty($bitisRaw)) {
-                $checkKeysEnd = ['ABITTAR', 'istirahatBitisTarihi', 'istirahatBitis', 'raporBitisTarihi', 'YATRAPBITTAR'];
-                foreach ($checkKeysEnd as $key) {
-                    if (!empty($rapor[$key])) {
-                        // Eğer ABITTAR bulunduysa, iş başı tarihi +1 gündür
-                        try {
-                            $tempDate = (strpos($rapor[$key], '.') !== false)
-                                ? DateTime::createFromFormat('d.m.Y', $rapor[$key])
-                                : new DateTime($rapor[$key]);
-                            if ($tempDate) {
-                                $tempDate->modify('+1 day');
-                                $bitisRaw = $tempDate->format('d.m.Y');
-                                break;
-                            }
-                        } catch (Exception $e) {
-                        }
-                    }
+            // İş başı tarihini yakala (Dökümandaki ISBASKONTTAR veya ABITTAR)
+            $bitisRaw = '';
+            $checkKeysEnd = ['ISBASKONTTAR', 'ABITTAR', 'istirahatBitisTarihi', 'istirahatBitis', 'raporBitisTarihi', 'YATRAPBITTAR'];
+            foreach ($checkKeysEnd as $key) {
+                if (!empty($rapor[$key])) {
+                    $bitisRaw = $rapor[$key];
+                    break;
                 }
             }
 
@@ -374,19 +362,18 @@ try {
                         ? DateTime::createFromFormat('d.m.Y', $bitisRaw)
                         : new DateTime($bitisRaw);
                     if ($eDate) {
-                        $bitisRaw = $eDate->format('d.m.Y'); // Modalda görünen İşbaşı
+                        $bitisRaw = $eDate->format('d.m.Y'); // Modalda görünen İşbaşı (SGK'dan gelen orijinal tarih)
 
-                        // Puantaj bitişi = İşbaşı - 1 gün
+                        // Puantaj bitişi = İşbaşı - 1 gün (Personel iş başında çalışır)
                         $eDate->modify('-1 day');
                         $bitis = $eDate->format('Y-m-d');
                     }
                 }
 
-                // Toplam Gün Hesapla (Kullanıcı Talebi: İşbaşı - Başlangıç)
+                // Toplam Gün Hesapla (Yeni aralığa göre: Başlangıç'tan İşbaşı-1'e kadar)
                 if (!empty($baslangic) && !empty($bitis)) {
                     $d1 = new DateTime($baslangic);
                     $d2 = new DateTime($bitis);
-                    // Rapor süresi = inclusive (bitis-baslangic+1)
                     $toplam_gun = $d1->diff($d2)->days + 1;
                     if ($d1 > $d2)
                         $toplam_gun = 0;
@@ -473,20 +460,7 @@ try {
 
             // Tarihleri yakala
             $baslangicRaw = $rapor['POLIKLINIKTAR'] ?? '';
-            $bitisRaw = $rapor['ISBASKONTTAR'] ?? '';
-
-            if (empty($bitisRaw) && !empty($rapor['ABITTAR'])) {
-                try {
-                    $tempDate = (strpos($rapor['ABITTAR'], '.') !== false)
-                        ? DateTime::createFromFormat('d.m.Y', $rapor['ABITTAR'])
-                        : new DateTime($rapor['ABITTAR']);
-                    if ($tempDate) {
-                        $tempDate->modify('+1 day');
-                        $bitisRaw = $tempDate->format('d.m.Y');
-                    }
-                } catch (Exception $e) {
-                }
-            }
+            $bitisRaw = $rapor['ISBASKONTTAR'] ?? $rapor['ABITTAR'] ?? '';
 
             $baslangic = '';
             $bitis = '';
