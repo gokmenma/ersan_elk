@@ -651,8 +651,8 @@ use App\Service\Gate;
             <div class="modal-body p-0" id="sgkRaporModalBody">
                 <!-- İçerik JS ile dolacak -->
             </div>
-            <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-link text-muted text-decoration-none px-4" data-bs-dismiss="modal">
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
                     <i class="mdi mdi-close me-1"></i> Vazgeç
                 </button>
                 <button type="button" class="btn btn-primary px-4 fw-bold" id="btn-sgk-rapor-onayla">

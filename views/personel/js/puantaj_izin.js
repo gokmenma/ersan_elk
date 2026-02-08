@@ -1061,14 +1061,14 @@ $(document).ready(function () {
                     <div class="fw-bold text-dark">${rapor.personel_adi}</div>
                     <div class="text-muted small">${rapor.tc_kimlik || ""}</div>
                    </div>`
-                : `<span class="badge bg-soft-danger text-danger border border-danger border-opacity-10 px-2 py-1">Eşleşen Kayıt Yok</span>`
+                : `<span class="badge badge-danger text-white px-2 py-1">Eşleşen Kayıt Yok</span>`
             }
           </td>
           <td>
             <div class="fw-medium">${rapor.ad_soyad}</div>
           </td>
           <td>
-            <span class="badge bg-soft-info text-info border border-info border-opacity-10 px-2 py-1">
+            <span class="badge badge-info text-white px-2 py-1">
                 <i class="mdi mdi-medical-bag me-1"></i>${rapor.vaka_adi}
             </span>
           </td>
