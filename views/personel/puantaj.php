@@ -466,6 +466,7 @@ use App\Service\Gate;
 
                                     <div class="vr mx-1 my-1" style="height: 30px;"></div>
 
+                                    <?php if(Gate::allows("puantaj_sgk_rapor_islemleri")): ?>
                                     <div class="dropdown">
                                         <button type="button"
                                             class="btn btn-link btn-sm text-info text-decoration-none dropdown-toggle px-2 d-flex align-items-center"
@@ -487,6 +488,8 @@ use App\Service\Gate;
                                     </div>
 
                                     <div class="vr mx-1 my-1" style="height: 30px;"></div>
+
+                                    <?php endif; ?>
 
                                     <div class="dropdown">
                                         <button type="button"
