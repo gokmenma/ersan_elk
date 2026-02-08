@@ -329,59 +329,69 @@ try {
                 }
             }
 
-            $bitisRaw = '';
-            $checkKeysEnd = ['ABITTAR', 'istirahatBitisTarihi', 'ISBASKONTTAR', 'istirahatBitis', 'raporBitisTarihi', 'YATRAPBITTAR'];
-            foreach ($checkKeysEnd as $key) {
-                if (!empty($rapor[$key])) {
-                    $bitisRaw = $rapor[$key];
-                    break;
+            // İş başı tarihini yakala (Dökümandaki ISBASKONTTAR veya ABITTAR + 1)
+            $bitisRaw = $rapor['ISBASKONTTAR'] ?? '';
+            if (empty($bitisRaw)) {
+                $checkKeysEnd = ['ABITTAR', 'istirahatBitisTarihi', 'istirahatBitis', 'raporBitisTarihi', 'YATRAPBITTAR'];
+                foreach ($checkKeysEnd as $key) {
+                    if (!empty($rapor[$key])) {
+                        // Eğer ABITTAR bulunduysa, iş başı tarihi +1 gündür
+                        try {
+                            $tempDate = (strpos($rapor[$key], '.') !== false)
+                                ? DateTime::createFromFormat('d.m.Y', $rapor[$key])
+                                : new DateTime($rapor[$key]);
+                            if ($tempDate) {
+                                $tempDate->modify('+1 day');
+                                $bitisRaw = $tempDate->format('d.m.Y');
+                                break;
+                            }
+                        } catch (Exception $e) {
+                        }
+                    }
                 }
             }
 
             // Tarihleri işle ve Formatla (Y-m-d iç işlemler, d.m.Y gösterim için)
-            $baslangic = '';
-            $bitis = '';
+            $baslangic = ''; // Puantaj başlangıç
+            $bitis = '';     // Puantaj bitiş (İşbaşı - 1 gün)
             $toplam_gun = 0;
 
             try {
+                // Başlangıç Normalizasyon
                 if (!empty($baslangicRaw)) {
                     $bDate = (strpos($baslangicRaw, '.') !== false)
                         ? DateTime::createFromFormat('d.m.Y', $baslangicRaw)
                         : new DateTime($baslangicRaw);
-
                     if ($bDate) {
                         $baslangic = $bDate->format('Y-m-d');
                         $baslangicRaw = $bDate->format('d.m.Y');
                     }
                 }
 
+                // İş Başı (bitisRaw) Normalizasyon ve Puantaj Bitiş (bitis) Hesaplama
                 if (!empty($bitisRaw)) {
                     $eDate = (strpos($bitisRaw, '.') !== false)
                         ? DateTime::createFromFormat('d.m.Y', $bitisRaw)
                         : new DateTime($bitisRaw);
-
                     if ($eDate) {
-                        // İşbaşı kontrol tarihi düzeltmesi
-                        $isBasiRaw = $rapor['ISBASKONTTAR'] ?? '';
-                        if (empty($rapor['ABITTAR']) && !empty($isBasiRaw) && ($bitisRaw === $isBasiRaw)) {
-                            $eDate->modify('-1 day');
-                        }
+                        $bitisRaw = $eDate->format('d.m.Y'); // Modalda görünen İşbaşı
 
+                        // Puantaj bitişi = İşbaşı - 1 gün
+                        $eDate->modify('-1 day');
                         $bitis = $eDate->format('Y-m-d');
-                        $bitisRaw = $eDate->format('d.m.Y');
                     }
                 }
 
-                // Toplam Gün Hesapla
+                // Toplam Gün Hesapla (Kullanıcı Talebi: İşbaşı - Başlangıç)
                 if (!empty($baslangic) && !empty($bitis)) {
                     $d1 = new DateTime($baslangic);
                     $d2 = new DateTime($bitis);
+                    // Rapor süresi = inclusive (bitis-baslangic+1)
                     $toplam_gun = $d1->diff($d2)->days + 1;
                     if ($d1 > $d2)
-                        $toplam_gun = 0; // Hatalı tarih durumu
+                        $toplam_gun = 0;
                 }
             } catch (Exception $e) {
-                // Hata durumunda ham veriyi koru ama standart formatı zorla (eğer mümkünse)
             }
 
             $islenecekRaporlar[] = [
@@ -461,35 +471,63 @@ try {
             $tc = $rapor['TCKIMLIKNO'] ?? '';
             $personelData = $tcToPersonel[$tc] ?? null;
 
-            // Tarihleri parse et (dd.mm.yyyy formatından)
+            // Tarihleri yakala
             $baslangicRaw = $rapor['POLIKLINIKTAR'] ?? '';
-            $bitisRaw = $rapor['ISBASKONTTAR'] ?? $rapor['ABITTAR'] ?? '';
+            $bitisRaw = $rapor['ISBASKONTTAR'] ?? '';
 
-            // Tarihi Y-m-d formatına çevir
+            if (empty($bitisRaw) && !empty($rapor['ABITTAR'])) {
+                try {
+                    $tempDate = (strpos($rapor['ABITTAR'], '.') !== false)
+                        ? DateTime::createFromFormat('d.m.Y', $rapor['ABITTAR'])
+                        : new DateTime($rapor['ABITTAR']);
+                    if ($tempDate) {
+                        $tempDate->modify('+1 day');
+                        $bitisRaw = $tempDate->format('d.m.Y');
+                    }
+                } catch (Exception $e) {
+                }
+            }
+
             $baslangic = '';
             $bitis = '';
-            if (!empty($baslangicRaw)) {
-                $parts = explode('.', $baslangicRaw);
-                if (count($parts) === 3) {
-                    $baslangic = $parts[2] . '-' . $parts[1] . '-' . $parts[0];
-                }
-            }
-            if (!empty($bitisRaw)) {
-                $parts = explode('.', $bitisRaw);
-                if (count($parts) === 3) {
-                    $bitis = $parts[2] . '-' . $parts[1] . '-' . $parts[0];
-                }
-            }
+            $toplam_gun = 0;
 
-            // Eğer bitis bos ise baslangicı kullan
-            if (empty($bitis))
-                $bitis = $baslangic;
+            try {
+                if (!empty($baslangicRaw)) {
+                    $bDate = (strpos($baslangicRaw, '.') !== false)
+                        ? DateTime::createFromFormat('d.m.Y', $baslangicRaw)
+                        : new DateTime($baslangicRaw);
+                    if ($bDate) {
+                        $baslangic = $bDate->format('Y-m-d');
+                        $baslangicRaw = $bDate->format('d.m.Y');
+                    }
+                }
+
+                if (!empty($bitisRaw)) {
+                    $eDate = (strpos($bitisRaw, '.') !== false)
+                        ? DateTime::createFromFormat('d.m.Y', $bitisRaw)
+                        : new DateTime($bitisRaw);
+                    if ($eDate) {
+                        $bitisRaw = $eDate->format('d.m.Y');
+                        $eDate->modify('-1 day');
+                        $bitis = $eDate->format('Y-m-d');
+                    }
+                }
+
+                if (!empty($baslangic) && !empty($bitis)) {
+                    $d1 = new DateTime($baslangic);
+                    $d2 = new DateTime($bitis);
+                    $toplam_gun = $d1->diff($d2)->days + 1;
+                    if ($d1 > $d2)
+                        $toplam_gun = 0;
+                }
+            } catch (Exception $e) {
+            }
 
             // Filtreleme: Ay aralığıyla çakışıyor mu?
-            // (RaporBaşlangıç <= AyBitiş) AND (RaporBitiş >= AyBaşlangıç)
             if (!empty($baslangic) && !empty($bitis)) {
                 if (!($baslangic <= $ayBitis && $bitis >= $ayBaslangic)) {
-                    continue; // Bu aya ait değil, atla
+                    continue;
                 }
             }
 
@@ -501,6 +539,7 @@ try {
                 'baslangic_raw' => $baslangicRaw,
                 'bitis' => $bitis,
                 'bitis_raw' => $bitisRaw,
+                'toplam_gun' => $toplam_gun,
                 'rapor_id' => $rapor['MEDULARAPORID'] ?? '',
                 'rapor_durumu' => $rapor['RAPORDURUMU'] ?? '',
                 'personel_id' => $personelData ? $personelData['id'] : null,

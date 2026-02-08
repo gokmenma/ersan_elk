@@ -1025,7 +1025,7 @@ $(document).ready(function () {
               <th class="text-white">SGK Sistemindeki Ad</th>
               <th class="text-white">Vaka Türü</th>
               <th class="text-center text-white">Başlangıç</th>
-              <th class="text-center text-white">Bitiş</th>
+              <th class="text-center text-white">İş başı tarihi</th>
               <th class="text-center text-white">Gün</th>
               <th class="text-end px-4 text-white">Durum</th>
             </tr>
