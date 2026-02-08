@@ -319,22 +319,30 @@ try {
             $tc = $rapor['TCKIMLIKNO'] ?? '';
             $personelData = $tcToPersonel[$tc] ?? null;
 
-            // Tarihleri yakala (Boş stringleri atlamak için empty kontrolü ile)
-            $baslangicRaw = !empty($rapor['ABASTAR']) ? $rapor['ABASTAR'] :
-                (!empty($rapor['istirahatBaslangicTarihi']) ? $rapor['istirahatBaslangicTarihi'] :
-                    (!empty($rapor['POLIKLINIKTAR']) ? $rapor['POLIKLINIKTAR'] :
-                        (!empty($rapor['YATRAPBASTAR']) ? $rapor['YATRAPBASTAR'] : '')));
+            // Tarihleri yakala - Tüm olası alanları hiyerarşik olarak tara
+            $baslangicRaw = '';
+            $checkKeysStart = ['ABASTAR', 'istirahatBaslangicTarihi', 'POLIKLINIKTAR', 'istirahatBaslangic', 'raporBaslangicTarihi', 'YATRAPBASTAR'];
+            foreach ($checkKeysStart as $key) {
+                if (!empty($rapor[$key])) {
+                    $baslangicRaw = $rapor[$key];
+                    break;
+                }
+            }
 
-            $bitisRaw = !empty($rapor['ABITTAR']) ? $rapor['ABITTAR'] :
-                (!empty($rapor['istirahatBitisTarihi']) ? $rapor['istirahatBitisTarihi'] :
-                    (!empty($rapor['ISBASKONTTAR']) ? $rapor['ISBASKONTTAR'] :
-                        (!empty($rapor['YATRAPBITTAR']) ? $rapor['YATRAPBITTAR'] : '')));
+            $bitisRaw = '';
+            $checkKeysEnd = ['ABITTAR', 'istirahatBitisTarihi', 'ISBASKONTTAR', 'istirahatBitis', 'raporBitisTarihi', 'YATRAPBITTAR'];
+            foreach ($checkKeysEnd as $key) {
+                if (!empty($rapor[$key])) {
+                    $bitisRaw = $rapor[$key];
+                    break;
+                }
+            }
 
-            // Tarihi Y-m-d formatına çevirmeyi dene
+            // Tarihi Y-m-d formatına çevirmeyi dene (iç işlemler için)
             $baslangic = $baslangicRaw;
             $bitis = $bitisRaw;
 
-            // Eğer format dd.mm.yyyy ise çevir
+            // dd.mm.yyyy formatını Y-m-d'ye çevir
             if (strpos($baslangicRaw, '.') !== false) {
                 $parts = explode('.', $baslangicRaw);
                 if (count($parts) === 3)
@@ -344,15 +352,29 @@ try {
             if (strpos($bitisRaw, '.') !== false) {
                 $parts = explode('.', $bitisRaw);
                 if (count($parts) === 3) {
-                    $bitisDate = new DateTime($parts[2] . '-' . $parts[1] . '-' . $parts[0]);
+                    try {
+                        $bitisDate = new DateTime($parts[2] . '-' . $parts[1] . '-' . $parts[0]);
 
-                    // Eğer ISBASKONTTAR kullanılıyorsa rapor bir gün önce bitiyor demektir
+                        // Eğer ISBASKONTTAR (İşbaşı Kontrol Tarihi) kullanılıyorsa, rapor bir gün önce bitiyor demektir.
+                        if (empty($rapor['ABITTAR']) && !empty($rapor['ISBASKONTTAR']) && $bitisRaw === $rapor['ISBASKONTTAR']) {
+                            $bitisDate->modify('-1 day');
+                        }
+
+                        $bitis = $bitisDate->format('Y-m-d');
+                        $bitisRaw = $bitisDate->format('d.m.Y'); // Modalda düzeltilmiş tarih görünsün
+                    } catch (Exception $e) {
+                    }
+                }
+            } else if (!empty($bitisRaw) && strpos($bitisRaw, '-') !== false) {
+                // Zaten Y-m-d formatındaysa (örn. 2026-01-07)
+                try {
+                    $bitisDate = new DateTime($bitisRaw);
                     if (empty($rapor['ABITTAR']) && !empty($rapor['ISBASKONTTAR']) && $bitisRaw === $rapor['ISBASKONTTAR']) {
                         $bitisDate->modify('-1 day');
+                        $bitis = $bitisDate->format('Y-m-d');
+                        $bitisRaw = $bitisDate->format('d.m.Y');
                     }
-
-                    $bitis = $bitisDate->format('Y-m-d');
-                    $bitisRaw = $bitisDate->format('d.m.Y');
+                } catch (Exception $e) {
                 }
             }
 
