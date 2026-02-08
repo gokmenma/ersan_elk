@@ -338,41 +338,40 @@ try {
                 }
             }
 
-            // Tarihi Y-m-d formatına çevirmeyi dene (iç işlemler için)
-            $baslangic = $baslangicRaw;
-            $bitis = $bitisRaw;
+            // Tarihleri işle ve Formatla (Y-m-d iç işlemler, d.m.Y gösterim için)
+            $baslangic = '';
+            $bitis = '';
 
-            // dd.mm.yyyy formatını Y-m-d'ye çevir
-            if (strpos($baslangicRaw, '.') !== false) {
-                $parts = explode('.', $baslangicRaw);
-                if (count($parts) === 3)
-                    $baslangic = $parts[2] . '-' . $parts[1] . '-' . $parts[0];
+            if (!empty($baslangicRaw)) {
+                try {
+                    $bDate = (strpos($baslangicRaw, '.') !== false)
+                        ? DateTime::createFromFormat('d.m.Y', $baslangicRaw)
+                        : new DateTime($baslangicRaw);
+
+                    if ($bDate) {
+                        $baslangic = $bDate->format('Y-m-d');
+                        $baslangicRaw = $bDate->format('d.m.Y');
+                    }
+                } catch (Exception $e) {
+                }
             }
 
-            if (strpos($bitisRaw, '.') !== false) {
-                $parts = explode('.', $bitisRaw);
-                if (count($parts) === 3) {
-                    try {
-                        $bitisDate = new DateTime($parts[2] . '-' . $parts[1] . '-' . $parts[0]);
+            if (!empty($bitisRaw)) {
+                try {
+                    $eDate = (strpos($bitisRaw, '.') !== false)
+                        ? DateTime::createFromFormat('d.m.Y', $bitisRaw)
+                        : new DateTime($bitisRaw);
 
-                        // Eğer ISBASKONTTAR (İşbaşı Kontrol Tarihi) kullanılıyorsa, rapor bir gün önce bitiyor demektir.
-                        if (empty($rapor['ABITTAR']) && !empty($rapor['ISBASKONTTAR']) && $bitisRaw === $rapor['ISBASKONTTAR']) {
-                            $bitisDate->modify('-1 day');
+                    if ($eDate) {
+                        // Eğer ISBASKONTTAR (İşbaşı Kontrol Tarihi) üzerinden bitiş belirlendiyse, rapor bir gün önce bitiyor demektir.
+                        // Bu kontrolü hem dd.mm.yyyy hem de Y-m-d formatları için yapıyoruz.
+                        $isBasiRaw = $rapor['ISBASKONTTAR'] ?? '';
+                        if (empty($rapor['ABITTAR']) && !empty($isBasiRaw) && ($bitisRaw === $isBasiRaw)) {
+                            $eDate->modify('-1 day');
                         }
 
-                        $bitis = $bitisDate->format('Y-m-d');
-                        $bitisRaw = $bitisDate->format('d.m.Y'); // Modalda düzeltilmiş tarih görünsün
-                    } catch (Exception $e) {
-                    }
-                }
-            } else if (!empty($bitisRaw) && strpos($bitisRaw, '-') !== false) {
-                // Zaten Y-m-d formatındaysa (örn. 2026-01-07)
-                try {
-                    $bitisDate = new DateTime($bitisRaw);
-                    if (empty($rapor['ABITTAR']) && !empty($rapor['ISBASKONTTAR']) && $bitisRaw === $rapor['ISBASKONTTAR']) {
-                        $bitisDate->modify('-1 day');
-                        $bitis = $bitisDate->format('Y-m-d');
-                        $bitisRaw = $bitisDate->format('d.m.Y');
+                        $bitis = $eDate->format('Y-m-d');
+                        $bitisRaw = $eDate->format('d.m.Y');
                     }
                 } catch (Exception $e) {
                 }
