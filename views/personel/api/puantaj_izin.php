@@ -319,34 +319,40 @@ try {
             $tc = $rapor['TCKIMLIKNO'] ?? '';
             $personelData = $tcToPersonel[$tc] ?? null;
 
-            // Tarihleri parse et (Genellikle dd.mm.yyyy formatında gelir)
-            $baslangicRaw = $rapor['ABASTAR'] ?? $rapor['YATRAPBASTAR'] ?? $rapor['POLIKLINIKTAR'] ?? '';
-            $bitisRaw = $rapor['ABITTAR'] ?? $rapor['YATRAPBITTAR'] ?? $rapor['ISBASKONTTAR'] ?? '';
+            // Tarihleri yakala (Boş stringleri atlamak için empty kontrolü ile)
+            $baslangicRaw = !empty($rapor['ABASTAR']) ? $rapor['ABASTAR'] :
+                (!empty($rapor['istirahatBaslangicTarihi']) ? $rapor['istirahatBaslangicTarihi'] :
+                    (!empty($rapor['POLIKLINIKTAR']) ? $rapor['POLIKLINIKTAR'] :
+                        (!empty($rapor['YATRAPBASTAR']) ? $rapor['YATRAPBASTAR'] : '')));
+
+            $bitisRaw = !empty($rapor['ABITTAR']) ? $rapor['ABITTAR'] :
+                (!empty($rapor['istirahatBitisTarihi']) ? $rapor['istirahatBitisTarihi'] :
+                    (!empty($rapor['ISBASKONTTAR']) ? $rapor['ISBASKONTTAR'] :
+                        (!empty($rapor['YATRAPBITTAR']) ? $rapor['YATRAPBITTAR'] : '')));
 
             // Tarihi Y-m-d formatına çevirmeyi dene
             $baslangic = $baslangicRaw;
             $bitis = $bitisRaw;
 
-            // Başlangıç tarihi parsing
+            // Eğer format dd.mm.yyyy ise çevir
             if (strpos($baslangicRaw, '.') !== false) {
                 $parts = explode('.', $baslangicRaw);
                 if (count($parts) === 3)
                     $baslangic = $parts[2] . '-' . $parts[1] . '-' . $parts[0];
             }
 
-            // Bitiş tarihi parsing ve mantığı (Dökümana göre)
             if (strpos($bitisRaw, '.') !== false) {
                 $parts = explode('.', $bitisRaw);
                 if (count($parts) === 3) {
                     $bitisDate = new DateTime($parts[2] . '-' . $parts[1] . '-' . $parts[0]);
 
-                    // Eğer dökümandaki ISBASKONTTAR alanından çekildiyse, rapor bir gün önce bitiyor demektir
-                    if (isset($rapor['ISBASKONTTAR']) && $bitisRaw === $rapor['ISBASKONTTAR'] && empty($rapor['ABITTAR'])) {
+                    // Eğer ISBASKONTTAR kullanılıyorsa rapor bir gün önce bitiyor demektir
+                    if (empty($rapor['ABITTAR']) && !empty($rapor['ISBASKONTTAR']) && $bitisRaw === $rapor['ISBASKONTTAR']) {
                         $bitisDate->modify('-1 day');
                     }
 
                     $bitis = $bitisDate->format('Y-m-d');
-                    $bitisRaw = $bitisDate->format('d.m.Y'); // Modalda düzeltilmiş hali görünsün
+                    $bitisRaw = $bitisDate->format('d.m.Y');
                 }
             }
 

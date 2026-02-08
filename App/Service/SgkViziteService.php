@@ -239,27 +239,26 @@ XML;
 
                     // 1. ADIM: Her bir rapor objesini standart bir PHP dizisine çevirip
                     // önce bir değişkene atıyoruz.
-                    // SGK dökümanına (Metot 8) göre alan eşleştirmelerini yapıyoruz.
                     $yeniRaporDizisi = [
-                        'TCKIMLIKNO' => (string) ($rapor->TCKIMLIKNO ?? $rapor->tcKimlikNo),
-                        'AD' => (string) ($rapor->AD ?? $rapor->ad),
-                        'SOYAD' => (string) ($rapor->SOYAD ?? $rapor->soyad),
-                        'SIGORTALIADSOYAD' => (string) ($rapor->SIGORTALIADSOYAD ?? $rapor->sigortaliAdSoyad ?? (($rapor->AD ?? $rapor->ad) . ' ' . ($rapor->SOYAD ?? $rapor->soyad))),
-                        'VAKAADI' => (string) ($rapor->VAKAADI ?? $rapor->vakaAdi),
-                        'POLIKLINIKTAR' => (string) ($rapor->POLIKLINIKTAR ?? $rapor->poliklinikTarihi),
-                        'ISBASKONTTAR' => (string) ($rapor->ISBASKONTTAR ?? $rapor->isBasiKontrolTarihi ?? $rapor->isBasiTarihi),
-                        'MEDULARAPORID' => (string) ($rapor->MEDULARAPORID ?? $rapor->medulaRaporId),
-                        'RAPORTAKIPNO' => (string) ($rapor->RAPORTAKIPNO ?? $rapor->raporTakipNo),
-                        'RAPORSIRANO' => (string) ($rapor->RAPORSIRANO ?? $rapor->raporSiraNo),
-                        'TESISKODU' => (string) ($rapor->TESISKODU ?? $rapor->tesisKodu),
-                        'BRANSKODU' => (string) ($rapor->BRANSKODU ?? $rapor->bransKodu),
-                        'RAPORDURUMADI' => (string) ($rapor->RAPORDURUMADI ?? $rapor->raporDurumAdi),
-                        'YATRAPBASTAR' => (string) ($rapor->YATRAPBASTAR ?? $rapor->yatRaporBaslangicTarihi),
-                        'YATRAPBITTAR' => (string) ($rapor->YATRAPBITTAR ?? $rapor->yatRaporBitisTarihi),
-                        'ABASTAR' => (string) ($rapor->ABASTAR ?? $rapor->raporBaslangicTarihi ?? $rapor->istirahatBaslangicTarihi),
-                        'ABITTAR' => (string) ($rapor->ABITTAR ?? $rapor->raporBitisTarihi ?? $rapor->istirahatBitisTarihi),
-                        'ISKAZASITARI' => (string) ($rapor->ISKAZASITARI ?? $rapor->isKazasiTarihi),
-                        'VAKA' => (string) ($rapor->VAKA ?? $rapor->vaka),
+                        'TCKIMLIKNO' => (string)$rapor->TCKIMLIKNO,
+                        'AD' => (string)$rapor->AD,
+                        'SOYAD' => (string)$rapor->SOYAD,
+                        'SIGORTALIADSOYAD' => (string)$rapor->AD . ' ' . (string)$rapor->SOYAD,
+                        'VAKAADI' => (string)$rapor->VAKAADI,
+                        'POLIKLINIKTAR' => (string)$rapor->POLIKLINIKTAR,
+                        'ISBASKONTTAR' => (string)$rapor->ISBASKONTTAR,
+                        // Diğer tüm gerekli alanları buraya ekleyin...
+                        'MEDULARAPORID' => (string)$rapor->MEDULARAPORID,
+                        'RAPORTAKIPNO' => (string)$rapor->RAPORTAKIPNO,
+                        'RAPORSIRANO' => (string)$rapor->RAPORSIRANO,
+                        'TESISKODU' => (string)$rapor->TESISKODU,
+                        'BRANSKODU' => (string)$rapor->BRANSKODU,
+                        'RAPORDURUMADI' => (string)$rapor->RAPORDURUMADI,
+                        'YATRAPBASTAR' => (string)$rapor->YATRAPBASTAR,
+                        'YATRAPBITTAR' => (string)$rapor->YATRAPBITTAR,
+                        'ABASTAR' => (string)$rapor->ABASTAR,
+                        'ABITTAR' => (string)$rapor->ABITTAR,
+                        'VAKA' => (string)$rapor->VAKA,
                     ];
 
                     // 2. ADIM: Oluşturduğumuz bu yeni diziyi, MEDULARAPORID'sini anahtar 
@@ -275,7 +274,7 @@ XML;
             // Rapor bulunamadıysa boş dizi döner, bu bir hata değildir.
         } else {
             $hataMesaji = isset($returnNode->sonucAciklama)
-                ? (string) $returnNode->sonucAciklama
+                ? (string)$returnNode->sonucAciklama
                 : 'Bilinmeyen bir hata oluştu.';
             throw new Exception("Onaylı raporlar getirilemedi: " . $hataMesaji);
         }
