@@ -32,30 +32,30 @@ class SgkViziteService
         }
 
         //Eğer dışarıdan parametre gelirse onları kullan değilse session'dan al
-        
-       if($kullaniciAdi === null) {
+
+        if ($kullaniciAdi === null) {
             $kullaniciAdi = $_SESSION['kullaniciAdi'] ?? null;
         }
 
-        if($isyeriKodu === null) {
+        if ($isyeriKodu === null) {
             $isyeriKodu = $_SESSION['isyeriKodu'] ?? null;
         }
 
-        if($wsSifre === null) {
+        if ($wsSifre === null) {
             $wsSifre = Security::decrypt($_SESSION['wsSifre'] ?? null);
         }
 
- 
+
         // 1. Parametreleri ata:
-        $this->kullaniciAdi         = $kullaniciAdi;
-        $this->isyeriKodu           = $isyeriKodu;
-        $this->wsSifre              = $wsSifre;
-        $this->wsToken              = null;
-        $this->tokenExpiresAt       = null;
+        $this->kullaniciAdi = $kullaniciAdi;
+        $this->isyeriKodu = $isyeriKodu;
+        $this->wsSifre = $wsSifre;
+        $this->wsToken = null;
+        $this->tokenExpiresAt = null;
 
 
 
-      //  3. Son kontrol: Tüm kontrollerden sonra bile bilgiler hala eksikse hata ver
+        //  3. Son kontrol: Tüm kontrollerden sonra bile bilgiler hala eksikse hata ver
         if (!$this->kullaniciAdi || !$this->isyeriKodu || !$this->wsSifre) {
             throw new Exception("SGK Servisi için gerekli kimlik bilgileri eksik veya bulunamadı.");
         }
@@ -153,7 +153,7 @@ XML;
             // Gelen cevabın doğru katmanına erişiyoruz: wsLoginReturn
             if (isset($response->wsLoginReturn->sonucKod) && $response->wsLoginReturn->sonucKod == '0') {
                 // Token'ı ve açıklamayı da doğru yoldan alıyoruz
-                $this->wsToken = (string)$response->wsLoginReturn->wsToken;
+                $this->wsToken = (string) $response->wsLoginReturn->wsToken;
                 $this->tokenExpiresAt = time() + (29 * 60);
                 $this->activeUserKey = $currentUserKey;
 
@@ -161,7 +161,7 @@ XML;
             } else {
                 // Hata mesajını da doğru yoldan alıyoruz
                 $hataMesaji = isset($response->wsLoginReturn->sonucAciklama)
-                    ? (string)$response->wsLoginReturn->sonucAciklama
+                    ? (string) $response->wsLoginReturn->sonucAciklama
                     : 'Bilinmeyen Hata';
                 throw new Exception("Login başarısız: " . $hataMesaji);
             }
@@ -239,26 +239,27 @@ XML;
 
                     // 1. ADIM: Her bir rapor objesini standart bir PHP dizisine çevirip
                     // önce bir değişkene atıyoruz.
+                    // SGK dökümanına (Metot 8) göre alan eşleştirmelerini yapıyoruz.
                     $yeniRaporDizisi = [
-                        'TCKIMLIKNO' => (string)$rapor->TCKIMLIKNO,
-                        'AD' => (string)$rapor->AD,
-                        'SOYAD' => (string)$rapor->SOYAD,
-                        'SIGORTALIADSOYAD' => (string)$rapor->AD . ' ' . (string)$rapor->SOYAD,
-                        'VAKAADI' => (string)$rapor->VAKAADI,
-                        'POLIKLINIKTAR' => (string)$rapor->POLIKLINIKTAR,
-                        'ISBASKONTTAR' => (string)$rapor->ISBASKONTTAR,
-                        // Diğer tüm gerekli alanları buraya ekleyin...
-                        'MEDULARAPORID' => (string)$rapor->MEDULARAPORID,
-                        'RAPORTAKIPNO' => (string)$rapor->RAPORTAKIPNO,
-                        'RAPORSIRANO' => (string)$rapor->RAPORSIRANO,
-                        'TESISKODU' => (string)$rapor->TESISKODU,
-                        'BRANSKODU' => (string)$rapor->BRANSKODU,
-                        'RAPORDURUMADI' => (string)$rapor->RAPORDURUMADI,
-                        'YATRAPBASTAR' => (string)$rapor->YATRAPBASTAR,
-                        'YATRAPBITTAR' => (string)$rapor->YATRAPBITTAR,
-                        'ABASTAR' => (string)$rapor->ABASTAR,
-                        'ABITTAR' => (string)$rapor->ABITTAR,
-                        'VAKA' => (string)$rapor->VAKA,
+                        'TCKIMLIKNO' => (string) ($rapor->TCKIMLIKNO ?? $rapor->tcKimlikNo),
+                        'AD' => (string) ($rapor->AD ?? $rapor->ad),
+                        'SOYAD' => (string) ($rapor->SOYAD ?? $rapor->soyad),
+                        'SIGORTALIADSOYAD' => (string) ($rapor->SIGORTALIADSOYAD ?? $rapor->sigortaliAdSoyad ?? (($rapor->AD ?? $rapor->ad) . ' ' . ($rapor->SOYAD ?? $rapor->soyad))),
+                        'VAKAADI' => (string) ($rapor->VAKAADI ?? $rapor->vakaAdi),
+                        'POLIKLINIKTAR' => (string) ($rapor->POLIKLINIKTAR ?? $rapor->poliklinikTarihi),
+                        'ISBASKONTTAR' => (string) ($rapor->ISBASKONTTAR ?? $rapor->isBasiKontrolTarihi ?? $rapor->isBasiTarihi),
+                        'MEDULARAPORID' => (string) ($rapor->MEDULARAPORID ?? $rapor->medulaRaporId),
+                        'RAPORTAKIPNO' => (string) ($rapor->RAPORTAKIPNO ?? $rapor->raporTakipNo),
+                        'RAPORSIRANO' => (string) ($rapor->RAPORSIRANO ?? $rapor->raporSiraNo),
+                        'TESISKODU' => (string) ($rapor->TESISKODU ?? $rapor->tesisKodu),
+                        'BRANSKODU' => (string) ($rapor->BRANSKODU ?? $rapor->bransKodu),
+                        'RAPORDURUMADI' => (string) ($rapor->RAPORDURUMADI ?? $rapor->raporDurumAdi),
+                        'YATRAPBASTAR' => (string) ($rapor->YATRAPBASTAR ?? $rapor->yatRaporBaslangicTarihi),
+                        'YATRAPBITTAR' => (string) ($rapor->YATRAPBITTAR ?? $rapor->yatRaporBitisTarihi),
+                        'ABASTAR' => (string) ($rapor->ABASTAR ?? $rapor->raporBaslangicTarihi ?? $rapor->istirahatBaslangicTarihi),
+                        'ABITTAR' => (string) ($rapor->ABITTAR ?? $rapor->raporBitisTarihi ?? $rapor->istirahatBitisTarihi),
+                        'ISKAZASITARI' => (string) ($rapor->ISKAZASITARI ?? $rapor->isKazasiTarihi),
+                        'VAKA' => (string) ($rapor->VAKA ?? $rapor->vaka),
                     ];
 
                     // 2. ADIM: Oluşturduğumuz bu yeni diziyi, MEDULARAPORID'sini anahtar 
@@ -274,7 +275,7 @@ XML;
             // Rapor bulunamadıysa boş dizi döner, bu bir hata değildir.
         } else {
             $hataMesaji = isset($returnNode->sonucAciklama)
-                ? (string)$returnNode->sonucAciklama
+                ? (string) $returnNode->sonucAciklama
                 : 'Bilinmeyen bir hata oluştu.';
             throw new Exception("Onaylı raporlar getirilemedi: " . $hataMesaji);
         }
@@ -346,7 +347,6 @@ XML;
      * @throws Exception
      */
     public function raporlariGetir(DateTime $tarih, $arsiv = true)
-
     {
         $params = [
             'kullaniciAdi' => $this->kullaniciAdi,
@@ -365,41 +365,42 @@ XML;
                 $raporlarObject = $returnNode->raporAramaTarihleBeanArray->RaporAramaTarihleBean;
 
                 foreach ($raporlarObject as $rapor) {
-                    if ($arsiv == false && (string)$rapor->ARSIV == '1') {
+                    if ($arsiv == false && (string) $rapor->ARSIV == '1') {
                         continue;
                     }
                     // Cevapta gelen 'VAKA' alanı vaka kodunu (1, 2, 3, 4) içerir.
                     $sonucDizisi[] = [
-                        'TCKIMLIKNO' => (string)$rapor->TCKIMLIKNO,
-                        'AD' => (string)$rapor->AD,
-                        'SOYAD' => (string)$rapor->SOYAD,
-                        'VAKA' => (string)$rapor->VAKA, // Vaka Kodunu alıyoruz
-                        'VAKAADI' => (string)$rapor->VAKAADI, // Vaka Adını alıyoruz
-                        'POLIKLINIKTAR' => (string)$rapor->POLIKLINIKTAR,
-                        'ISBASKONTTAR' => (string)$rapor->ISBASKONTTAR,
-                        'ABITTAR' => (string)$rapor->ABITTAR,
-                        'MEDULARAPORID' => (string)$rapor->MEDULARAPORID,
-                        'RAPORTAKIPNO' => (string)$rapor->RAPORTAKIPNO,
-                        'ARSIV' => (string)$rapor->ARSIV, // <-- BU SATIRIN OLDUĞUNDAN EMİN OLUN
-                        'SIGORTALIADSOYAD' => (string)$rapor->AD . ' ' . (string)$rapor->SOYAD,
-                        'RAPORDURUMU' => (string)$rapor->RAPORDURUMU,
-                        'EKRANTARIHI' => (string)$rapor->EKRANTARIHI,
-                        'TESISKODU' => (string)$rapor->TESISKODU,
-                        'BRANSKODU' => (string)$rapor->BRANSKODU,
-                        'TESISADI' => (string)$rapor->TESISADI,
-                        'BRANSADI' => (string)$rapor->BRANSADI,
+                        'TCKIMLIKNO' => (string) $rapor->TCKIMLIKNO,
+                        'AD' => (string) $rapor->AD,
+                        'SOYAD' => (string) $rapor->SOYAD,
+                        'VAKA' => (string) $rapor->VAKA, // Vaka Kodunu alıyoruz
+                        'VAKAADI' => (string) $rapor->VAKAADI, // Vaka Adını alıyoruz
+                        'POLIKLINIKTAR' => (string) $rapor->POLIKLINIKTAR,
+                        'ISBASKONTTAR' => (string) $rapor->ISBASKONTTAR,
+                        'ABITTAR' => (string) $rapor->ABITTAR,
+                        'MEDULARAPORID' => (string) $rapor->MEDULARAPORID,
+                        'RAPORTAKIPNO' => (string) $rapor->RAPORTAKIPNO,
+                        'ARSIV' => (string) $rapor->ARSIV, // <-- BU SATIRIN OLDUĞUNDAN EMİN OLUN
+                        'SIGORTALIADSOYAD' => (string) $rapor->AD . ' ' . (string) $rapor->SOYAD,
+                        'RAPORDURUMU' => (string) $rapor->RAPORDURUMU,
+                        'EKRANTARIHI' => (string) $rapor->EKRANTARIHI,
+                        'TESISKODU' => (string) $rapor->TESISKODU,
+                        'BRANSKODU' => (string) $rapor->BRANSKODU,
+                        'TESISADI' => (string) $rapor->TESISADI,
+                        'BRANSADI' => (string) $rapor->BRANSADI,
                     ];
                 }
-            };
+            }
+            ;
             //Helper::dd($sonucDizisi);
         } else if (isset($returnNode->sonucKod) && $returnNode->sonucKod == '503') {
             // Rapor bulunamadı.
         } else {
-            $hataMesaji = isset($returnNode->sonucAciklama) ? (string)$returnNode->sonucAciklama : 'Bilinmeyen Hata';
+            $hataMesaji = isset($returnNode->sonucAciklama) ? (string) $returnNode->sonucAciklama : 'Bilinmeyen Hata';
             throw new Exception("Raporlar getirilemedi: " . $hataMesaji);
         }
 
-       // var_dump($sonucDizisi);
+        // var_dump($sonucDizisi);
         return $sonucDizisi;
     }
 
@@ -440,7 +441,7 @@ XML;
             return null; // Rapor bulunamadıysa null döndür.
         } else {
             $hataMesaji = isset($returnNode->sonucAciklama)
-                ? (string)$returnNode->sonucAciklama
+                ? (string) $returnNode->sonucAciklama
                 : 'Bilinmeyen bir hata oluştu.';
             throw new Exception("Raporlar getirilemedi: " . $hataMesaji);
         }
@@ -536,7 +537,7 @@ XML;
             return null;
         } else {
             $hataMesaji = isset($returnNode->sonucAciklama)
-                ? (string)$returnNode->sonucAciklama
+                ? (string) $returnNode->sonucAciklama
                 : 'Bilinmeyen bir hata oluştu.';
             throw new Exception("İletişim bilgileri alınamadı: " . $hataMesaji);
         }
@@ -662,13 +663,13 @@ XML;
                 // Gelen verinin tekil mi çoğul mu olduğunu bu şekilde anlarız.
                 foreach ($raporlarObject as $rapor) {
                     $sonucDizisi[] = [
-                        'id' => (string)$rapor->id,
-                        'tcKimlikNo' => (string)$rapor->tcKimlikNo,
-                        'adiSoyadi' => (string)$rapor->adiSoyadi,
-                        'odenenTutar' => (string)$rapor->odenenTutar,
-                        'odemeBasTar' => (string)$rapor->odemeBasTar,
-                        'odemeBitTar' => (string)$rapor->odemeBitTar,
-                        'vakaAdi' => (string)$rapor->vakaAdi
+                        'id' => (string) $rapor->id,
+                        'tcKimlikNo' => (string) $rapor->tcKimlikNo,
+                        'adiSoyadi' => (string) $rapor->adiSoyadi,
+                        'odenenTutar' => (string) $rapor->odenenTutar,
+                        'odemeBasTar' => (string) $rapor->odemeBasTar,
+                        'odemeBitTar' => (string) $rapor->odemeBitTar,
+                        'vakaAdi' => (string) $rapor->vakaAdi
                     ];
                 }
             }
@@ -676,7 +677,7 @@ XML;
             // Rapor bulunamadı.
         } else {
             $hataMesaji = isset($returnNode->sonucAciklama)
-                ? (string)$returnNode->sonucAciklama
+                ? (string) $returnNode->sonucAciklama
                 : 'Bilinmeyen bir hata oluştu.';
             throw new Exception("Mahsuplaştırılacak raporlar getirilemedi: " . $hataMesaji);
         }
@@ -748,14 +749,14 @@ XML;
                 // Manuel döngü ile en sağlam dönüşümü yapıyoruz
                 foreach ($raporlarObject as $rapor) {
                     $sonucDizisi[] = [
-                        'tcKimlikNo' => (string)$rapor->tcKimlikNo,
-                        'adiSoyadi' => (string)$rapor->adiSoyadi,
-                        'vakaAdi' => (string)$rapor->vakaAdi,
-                        'odemeBasTar' => (string)$rapor->odemeBasTar,
-                        'odemeBitTar' => (string)$rapor->odemeBitTar,
-                        'odenenTutar' => (string)$rapor->odenenTutar,
-                        'mahsuplasmaTar' => (string)$rapor->mahsuplasmaTar,
-                        'durumStr' => (string)$rapor->durumStr // Makbuz Durumu
+                        'tcKimlikNo' => (string) $rapor->tcKimlikNo,
+                        'adiSoyadi' => (string) $rapor->adiSoyadi,
+                        'vakaAdi' => (string) $rapor->vakaAdi,
+                        'odemeBasTar' => (string) $rapor->odemeBasTar,
+                        'odemeBitTar' => (string) $rapor->odemeBitTar,
+                        'odenenTutar' => (string) $rapor->odenenTutar,
+                        'mahsuplasmaTar' => (string) $rapor->mahsuplasmaTar,
+                        'durumStr' => (string) $rapor->durumStr // Makbuz Durumu
                     ];
                 }
             }
@@ -763,7 +764,7 @@ XML;
             // Rapor bulunamadı.
         } else {
             $hataMesaji = isset($returnNode->sonucAciklama)
-                ? (string)$returnNode->sonucAciklama
+                ? (string) $returnNode->sonucAciklama
                 : 'Bilinmeyen bir hata oluştu.';
             throw new Exception("Mahsuplaşması onaylanmış raporlar getirilemedi: " . $hataMesaji);
         }
@@ -804,16 +805,16 @@ XML;
                 // Manuel döngü ile en sağlam dönüşümü yapıyoruz
                 foreach ($kayitlarObject as $kayit) {
                     $sonucDizisi[] = [
-                        'tcKimlikNo' => (string)$kayit->tcKimlikNo,
-                        'adiSoyadi' => (string)$kayit->adiSoyadi,
-                        'vakaAdi' => (string)$kayit->vakaAdi,
-                        'odemeBasTar' => (string)$kayit->odemeBasTar,
-                        'odemeBitTar' => (string)$kayit->odemeBitTar,
-                        'odenenTutar' => (string)$kayit->odenenTutar,
-                        'mahsuplasmaTar' => (string)$kayit->mahsuplasmaTar,
-                        'tahsilat_tutar' => (string)$kayit->tahsilat_tutar,
+                        'tcKimlikNo' => (string) $kayit->tcKimlikNo,
+                        'adiSoyadi' => (string) $kayit->adiSoyadi,
+                        'vakaAdi' => (string) $kayit->vakaAdi,
+                        'odemeBasTar' => (string) $kayit->odemeBasTar,
+                        'odemeBitTar' => (string) $kayit->odemeBitTar,
+                        'odenenTutar' => (string) $kayit->odenenTutar,
+                        'mahsuplasmaTar' => (string) $kayit->mahsuplasmaTar,
+                        'tahsilat_tutar' => (string) $kayit->tahsilat_tutar,
 
-                        'primTahsilatDonem' => (string)$kayit->primTahsilatDonem
+                        'primTahsilatDonem' => (string) $kayit->primTahsilatDonem
                     ];
                 }
             }
@@ -821,7 +822,7 @@ XML;
             // Kayıt yok.
         } else {
             $hataMesaji = isset($returnNode->sonucAciklama)
-                ? (string)$returnNode->sonucAciklama
+                ? (string) $returnNode->sonucAciklama
                 : 'Bilinmeyen bir hata oluştu.';
             throw new Exception("Prim borcuna mahsup edilen ödemeler getirilemedi: " . $hataMesaji);
         }
@@ -883,21 +884,21 @@ XML;
                 // Manuel döngü ile en sağlam dönüşümü yapıyoruz
                 foreach ($bildirimlerObject as $bildirim) {
                     $sonucDizisi[] = [
-                        'ID' => (string)$bildirim->ID,
-                        'tcKimlikNo' => (string)$bildirim->tcKimlikNo,
-                        'adi' => (string)$bildirim->adi,
-                        'soyadi' => (string)$bildirim->soyadi,
-                        'istenAyrTarih' => (string)$bildirim->istenAyrTarih,
-                        'iseDonusTarih' => (string)$bildirim->iseDonusTarih,
-                        'nitelikDurumu' => (string)$bildirim->nitelikDurumu, // E veya H
-                        'islemTar' => (string)$bildirim->islemTar
+                        'ID' => (string) $bildirim->ID,
+                        'tcKimlikNo' => (string) $bildirim->tcKimlikNo,
+                        'adi' => (string) $bildirim->adi,
+                        'soyadi' => (string) $bildirim->soyadi,
+                        'istenAyrTarih' => (string) $bildirim->istenAyrTarih,
+                        'iseDonusTarih' => (string) $bildirim->iseDonusTarih,
+                        'nitelikDurumu' => (string) $bildirim->nitelikDurumu, // E veya H
+                        'islemTar' => (string) $bildirim->islemTar
                     ];
                 }
             }
         } else if (isset($returnNode->sonucKod) && $returnNode->sonucKod == '501') { // Kayıt Bulunamadı
             // Kayıt yoksa boş dizi döner, bu bir hata değildir.
         } else {
-            $hataMesaji = isset($returnNode->sonucAciklama) ? (string)$returnNode->sonucAciklama : 'Bilinmeyen bir hata oluştu.';
+            $hataMesaji = isset($returnNode->sonucAciklama) ? (string) $returnNode->sonucAciklama : 'Bilinmeyen bir hata oluştu.';
             throw new Exception("Manuel bildirimler getirilemedi: " . $hataMesaji);
         }
 
@@ -994,15 +995,15 @@ XML;
                 $kayitlarObject = $returnNode->isKazasiHastaneBilgiBeanArray->IsKazasiHastaneBilgiBean;
                 foreach ($kayitlarObject as $kayit) {
                     $sonucDizisi[] = [
-                        'BILDIRIMID' => (string)$kayit->BILDIRIMID,
-                        'TCKIMLIKNO' => (string)$kayit->TCKIMLIKNO,
-                        'CINSIYET' => (string)$kayit->CINSIYET,
-                        'PROVIZYONTARIHI' => (string)$kayit->PROVIZYONTARIHI,
-                        'TESISADI' => (string)$kayit->TESISADI,
-                        'UNVANI' => (string)$kayit->UNVANI,
-                        'ISLEMTUR' => (string)$kayit->ISLEMTUR,
-                        'GIBSUBENO' => (string)$kayit->GIBSUBENO,
-                        'ISKAZASITARIHI' => (string)$kayit->ISKAZASITARIHI,
+                        'BILDIRIMID' => (string) $kayit->BILDIRIMID,
+                        'TCKIMLIKNO' => (string) $kayit->TCKIMLIKNO,
+                        'CINSIYET' => (string) $kayit->CINSIYET,
+                        'PROVIZYONTARIHI' => (string) $kayit->PROVIZYONTARIHI,
+                        'TESISADI' => (string) $kayit->TESISADI,
+                        'UNVANI' => (string) $kayit->UNVANI,
+                        'ISLEMTUR' => (string) $kayit->ISLEMTUR,
+                        'GIBSUBENO' => (string) $kayit->GIBSUBENO,
+                        'ISKAZASITARIHI' => (string) $kayit->ISKAZASITARIHI,
                     ];
                 }
             }

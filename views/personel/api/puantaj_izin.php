@@ -319,16 +319,45 @@ try {
             $tc = $rapor['TCKIMLIKNO'] ?? '';
             $personelData = $tcToPersonel[$tc] ?? null;
 
-            // Tarih fallbacks
-            $baslangic = $rapor['ABASTAR'] ?? $rapor['YATRAPBASTAR'] ?? $rapor['POLIKLINIKTAR'] ?? '';
-            $bitis = $rapor['ABITTAR'] ?? $rapor['YATRAPBITTAR'] ?? $rapor['ISBASKONTTAR'] ?? '';
+            // Tarihleri parse et (Genellikle dd.mm.yyyy formatında gelir)
+            $baslangicRaw = $rapor['ABASTAR'] ?? $rapor['YATRAPBASTAR'] ?? $rapor['POLIKLINIKTAR'] ?? '';
+            $bitisRaw = $rapor['ABITTAR'] ?? $rapor['YATRAPBITTAR'] ?? $rapor['ISBASKONTTAR'] ?? '';
+
+            // Tarihi Y-m-d formatına çevirmeyi dene
+            $baslangic = $baslangicRaw;
+            $bitis = $bitisRaw;
+
+            // Başlangıç tarihi parsing
+            if (strpos($baslangicRaw, '.') !== false) {
+                $parts = explode('.', $baslangicRaw);
+                if (count($parts) === 3)
+                    $baslangic = $parts[2] . '-' . $parts[1] . '-' . $parts[0];
+            }
+
+            // Bitiş tarihi parsing ve mantığı (Dökümana göre)
+            if (strpos($bitisRaw, '.') !== false) {
+                $parts = explode('.', $bitisRaw);
+                if (count($parts) === 3) {
+                    $bitisDate = new DateTime($parts[2] . '-' . $parts[1] . '-' . $parts[0]);
+
+                    // Eğer dökümandaki ISBASKONTTAR alanından çekildiyse, rapor bir gün önce bitiyor demektir
+                    if (isset($rapor['ISBASKONTTAR']) && $bitisRaw === $rapor['ISBASKONTTAR'] && empty($rapor['ABITTAR'])) {
+                        $bitisDate->modify('-1 day');
+                    }
+
+                    $bitis = $bitisDate->format('Y-m-d');
+                    $bitisRaw = $bitisDate->format('d.m.Y'); // Modalda düzeltilmiş hali görünsün
+                }
+            }
 
             $islenecekRaporlar[] = [
                 'tc_kimlik' => $tc,
                 'ad_soyad' => $rapor['SIGORTALIADSOYAD'] ?? ($rapor['AD'] . ' ' . $rapor['SOYAD']),
                 'vaka_adi' => $rapor['VAKAADI'] ?? 'Bilinmiyor',
                 'baslangic' => $baslangic,
+                'baslangic_raw' => $baslangicRaw,
                 'bitis' => $bitis,
+                'bitis_raw' => $bitisRaw,
                 'is_basi' => $rapor['ISBASKONTTAR'] ?? '',
                 'rapor_id' => $rapor['MEDULARAPORID'] ?? '',
                 'personel_id' => $personelData ? $personelData['id'] : null,
