@@ -1097,6 +1097,14 @@ $(document).ready(function () {
     modal.show();
 
     // Event Listeners
+    const updateButtonState = () => {
+      const checkedCount = $(".sgk-rapor-check:checked").length;
+      $("#btn-sgk-rapor-onayla").prop("disabled", checkedCount === 0);
+    };
+
+    // İlk açılışta buton durumunu ayarla
+    updateButtonState();
+
     $("#sgk-select-all")
       .off("change")
       .on("change", function () {
@@ -1104,14 +1112,16 @@ $(document).ready(function () {
           "checked",
           $(this).is(":checked"),
         );
+        updateButtonState();
       });
 
-    $(".sgk-rapor-check")
-      .off("change")
-      .on("change", function () {
+    $(document)
+      .off("change", ".sgk-rapor-check")
+      .on("change", ".sgk-rapor-check", function () {
         const total = $(".sgk-rapor-check:not(:disabled)").length;
         const checked = $(".sgk-rapor-check:not(:disabled):checked").length;
-        $("#sgk-select-all").prop("checked", total === checked);
+        $("#sgk-select-all").prop("checked", total === checked && total > 0);
+        updateButtonState();
       });
 
     $("#btn-sgk-rapor-onayla")
@@ -1120,11 +1130,20 @@ $(document).ready(function () {
         const secilenler = [];
         $(".sgk-rapor-check:checked").each(function () {
           const index = $(this).data("index");
-          secilenler.push(raporlar[index]);
+          const rapor = raporlar[index];
+
+          // Güvenlik Kontrolü: Sadece eşleşmiş kayıtları al (Hacker-proof)
+          if (rapor && rapor.eslesti) {
+            secilenler.push(rapor);
+          }
         });
 
         if (secilenler.length === 0) {
-          showToast("Lütfen en az bir rapor seçin.", "error");
+          showToast(
+            "İşlem yapılabilecek geçerli bir rapor seçilmedi.",
+            "error",
+          );
+          updateButtonState();
           return;
         }
 
