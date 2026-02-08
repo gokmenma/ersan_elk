@@ -51,9 +51,14 @@
             </div>
 
             <div class="form-check form-check-inline">
-                <input class="form-check-input theme-color" type="radio" name="theme-mode" id="theme-rose"
-                    value="rose">
+                <input class="form-check-input theme-color" type="radio" name="theme-mode" id="theme-rose" value="rose">
                 <label class="form-check-label" for="theme-rose">Rose</label>
+            </div>
+
+            <div class="form-check form-check-inline">
+                <input class="form-check-input theme-color" type="radio" name="theme-mode" id="theme-ersan"
+                    value="ersan">
+                <label class="form-check-label" for="theme-ersan">Ersan</label>
             </div>
 
             <h6 class="mt-4 mb-3 pt-2">Görünüm</h6>

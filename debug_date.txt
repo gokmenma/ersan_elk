@@ -5755,3 +5755,69 @@ Result (String Match j.n.Y): 2026-01-08
 Input: 07.02.2026 Type: string
 Result (String Match j.n.Y): 2026-02-07
 ----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 03.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-03
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 03.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-03
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 03.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-03
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 03.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-03
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 03.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-03
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 03.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-03
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 03.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-03
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 03.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-03
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 03.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-03
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 03.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-03
+----------------
+Input: 01.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-01
+----------------
+Input: 03.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-03
+----------------

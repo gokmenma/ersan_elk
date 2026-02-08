@@ -148,12 +148,17 @@ $title = "Saha Personel Takibi";
                         <div class="tab-pane fade show active" id="tabListe" role="tabpanel">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h5 class="mb-0">Bugünkü Personel Durumları</h5>
-                                <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-soft-primary btn-sm" onclick="yenile()">
-                                        <i class="bx bx-refresh"></i> Yenile
+                                <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                                    <button type="button"
+                                        class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
+                                        onclick="yenile()">
+                                        <i class="mdi mdi-refresh fs-5 me-1"></i> Yenile
                                     </button>
-                                    <button type="button" class="btn btn-soft-success btn-sm" id="exportExcel">
-                                        <i class="bx bx-file"></i> Excel
+                                    <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                                    <button type="button"
+                                        class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center"
+                                        id="exportExcel">
+                                        <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel
                                     </button>
                                 </div>
                             </div>
@@ -212,12 +217,18 @@ $title = "Saha Personel Takibi";
                                     <span>-</span>
                                     <input type="date" class="form-control form-control-sm" id="raporBitis"
                                         style="width: 150px;">
-                                    <button class="btn btn-sm btn-primary" onclick="loadCalismaRaporu()">
-                                        <i class="bx bx-filter-alt"></i> Filtrele
-                                    </button>
-                                    <button class="btn btn-sm btn-success" onclick="raporExcelIndir()">
-                                        <i class="bx bx-download"></i> Excel
-                                    </button>
+                                    <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                                        <button type="button"
+                                            class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center"
+                                            onclick="raporExcelIndir()">
+                                            <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel
+                                        </button>
+                                        <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                                        <button type="button" class="btn btn-primary btn-sm px-3 fw-bold shadow-primary"
+                                            onclick="loadCalismaRaporu()">
+                                            <i class="mdi mdi-filter-variant me-1"></i> Filtrele
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             <div class="table-responsive">
@@ -250,9 +261,12 @@ $title = "Saha Personel Takibi";
                                     <label class="form-label mb-0 me-2">Başlama Saati Limiti:</label>
                                     <input type="time" class="form-control form-control-sm" id="gecKalmaSaati"
                                         value="08:30" style="width: 120px;">
-                                    <button class="btn btn-sm btn-primary" onclick="loadGecKalanlar()">
-                                        <i class="bx bx-filter-alt"></i> Filtrele
-                                    </button>
+                                    <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                                        <button type="button" class="btn btn-primary btn-sm px-3 fw-bold shadow-primary"
+                                            onclick="loadGecKalanlar()">
+                                            <i class="mdi mdi-filter-variant me-1"></i> Filtrele
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             <div class="alert alert-warning d-flex align-items-center" role="alert">

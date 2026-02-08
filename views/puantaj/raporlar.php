@@ -87,10 +87,17 @@ foreach ($regionList as $r) {
                                     <div class="col-md-3">
                                         <?php echo Form::FormSelect2("region", $regionOptions, $region, "Bölge Seçiniz", "grid", "key", "", "form-select select2"); ?>
                                     </div>
-                                    <div class="col-md-2 d-flex align-items-end gap-2">
-                                        <button type="submit" class="btn btn-primary flex-grow-1">Sorgula</button>
-                                        <button type="button" class="btn btn-secondary"
-                                            id="btnClearFilters">Temizle</button>
+                                    <div class="col-md-2 d-flex align-items-end">
+                                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 w-100">
+                                            <button type="submit" class="btn btn-primary btn-sm flex-grow-1 fw-bold">
+                                                <i class="mdi mdi-magnify me-1"></i> Sorgula
+                                            </button>
+                                            <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                                            <button type="button" class="btn btn-link btn-sm text-secondary text-decoration-none px-2"
+                                                id="btnClearFilters">
+                                                <i class="mdi mdi-filter-remove"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </form>
@@ -139,12 +146,17 @@ foreach ($regionList as $r) {
                 </a>
             </li>
         </ul>
-        <div class="d-flex gap-2">
-            <button type="button" class="btn btn-soft-primary" id="btnFullScreen">
-                <i class="bx bx-fullscreen me-1"></i> Tam Ekran
+        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+            <button type="button"
+                class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
+                id="btnFullScreen">
+                <i class="mdi mdi-fullscreen fs-5 me-1"></i> Tam Ekran
             </button>
-            <button type="button" class="btn btn-success" id="btnExportExcel">
-                <i class="bx bx-spreadsheet me-1"></i> Excel'e Aktar
+            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+            <button type="button"
+                class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center"
+                id="btnExportExcel">
+                <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel'e Aktar
             </button>
         </div>
     </div>

@@ -175,7 +175,7 @@ use App\Service\Gate;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            padding: 10px 5px !important;
+            padding: 10px 15px !important;
             vertical-align: middle;
             border: 1px dashed #ced4da !important;
             border-radius: 4px;

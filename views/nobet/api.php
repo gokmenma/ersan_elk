@@ -22,6 +22,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     try {
         switch ($action) {
+            case 'save-settings':
+                $Settings = new \App\Model\SettingsModel();
+                $firma_id = $_SESSION['firma_id'] ?? null;
+                $islem = $_POST['nobet_gecmis_islem'] ?? '0';
+
+                $result = $Settings->upsertMultipleSettings(['nobet_gecmis_islem' => $islem], $firma_id);
+                if ($result) {
+                    echo json_encode(['status' => 'success', 'message' => 'Ayarlar güncellendi.']);
+                } else {
+                    throw new Exception("Ayarlar kaydedilemedi.");
+                }
+                break;
             case 'send-bulk-notifications':
                 $turu = $_POST['bildirim_turu'] ?? 'bekleyen';
                 $ekMesaj = $_POST['mesaj'] ?? '';

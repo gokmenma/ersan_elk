@@ -94,34 +94,38 @@ if (Gate::canWithMessage("personel_listesi")) {
 
                     <div class="card-body overflow-auto">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div>
-
+                            <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
                                 <button type="button" id="exportExcel"
-                                    class="btn btn-secondary waves-effect btn-label waves-light"> <i
-                                        class='bx bxs-file-export label-icon'></i>
-                                    Excele Aktar
+                                    class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
+                                    <i class='mdi mdi-file-excel fs-5 me-1'></i> Excele Aktar
                                 </button>
+                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
                                 <button type="button" id="btnImportExcel"
-                                    class="btn btn-warning waves-effect btn-label waves-light me-1"> <i
-                                        class='bx bxs-file-import label-icon'></i>
-                                    Excelden Yükle
+                                    class="btn btn-link btn-sm text-warning text-decoration-none px-2 d-flex align-items-center">
+                                    <i class='mdi mdi-file-import fs-5 me-1'></i> Excelden Yükle
                                 </button>
                             </div>
-                            <div>
-                                <a href="index?p=personel/manage" type="button" id="saveButton"
-                                    class="btn btn-success waves-effect btn-label waves-light me-1"><i
-                                        class="bx bx-plus label-icon"></i> Yeni Personel</a>
+                            <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                                <a href="index?p=personel/manage" id="saveButton"
+                                    class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
+                                    <i class="mdi mdi-plus-circle fs-5 me-1"></i> Yeni Personel</a>
+                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
                                 <button type="button" id="btnEditSelected"
-                                    class="btn btn-primary waves-effect waves-light me-1" disabled>
-                                    <i class="bx bx-edit-alt"></i> Görüntüle
-                                </button>
-                                <button type="button" id="btnDeleteSelected"
-                                    class="btn btn-danger waves-effect waves-light me-1" disabled>
-                                    <i class="bx bx-trash"></i> Sil
-                                </button>
-                                <button type="button" id="btnDetailSelected" class="btn btn-info waves-effect waves-light"
+                                    class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
                                     disabled>
-                                    <i class="bx bx-show"></i> Detay
+                                    <i class="mdi mdi-pencil fs-5 me-1"></i> Görüntüle
+                                </button>
+                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                                <button type="button" id="btnDeleteSelected"
+                                    class="btn btn-link btn-sm text-danger text-decoration-none px-2 d-flex align-items-center"
+                                    disabled>
+                                    <i class="mdi mdi-trash-can fs-5 me-1"></i> Sil
+                                </button>
+                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                                <button type="button" id="btnDetailSelected"
+                                    class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center"
+                                    disabled>
+                                    <i class="mdi mdi-information fs-5 me-1"></i> Detay
                                 </button>
                             </div>
                         </div>

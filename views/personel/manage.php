@@ -105,18 +105,30 @@ $activeTab = $_GET['tab'] ?? 'home';
                                     </div>
                                 <?php } ?>
 
-                                <div class="mobile-action-buttons">
-                                    <a href="index?p=personel/list" class="btn btn-light waves-effect waves-light"
-                                        title="Listeye Dön"><i
-                                            class="bx bx-left-arrow-alt font-size-16 align-middle"></i></a>
+                                <div
+                                    class="mobile-action-buttons d-flex align-items-center border rounded shadow-sm p-1 gap-1">
+                                    <a href="index?p=personel/list"
+                                        class="btn btn-link btn-sm text-decoration-none px-2 d-flex align-items-center"
+                                        title="Listeye Dön">
+                                        <i class="mdi mdi-arrow-left-circle fs-5 me-1"></i> <span
+                                            class="d-none d-xl-inline">Listeye Dön</span>
+                                    </a>
 
-                                    <a href="index?p=personel/manage" type="button"
-                                        class="btn btn-success waves-effect waves-light" title="Yeni Personel"><i
-                                            class="bx bx-plus font-size-16 align-middle"></i></a>
+                                    <div class="vr mx-1 d-none d-xl-block" style="height: 25px; align-self: center;">
+                                    </div>
+
+                                    <a href="index?p=personel/manage"
+                                        class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center"
+                                        title="Yeni Personel">
+                                        <i class="mdi mdi-plus-circle fs-5 me-1"></i> <span
+                                            class="d-none d-xl-inline">Yeni Personel</span>
+                                    </a>
+
+                                    <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
 
                                     <button type="button" id="saveButton"
-                                        class="btn btn-primary waves-effect btn-label waves-light">
-                                        <i class="bx bx-save label-icon"></i> <span>Kaydet</span>
+                                        class="btn btn-primary px-3 fw-bold shadow-primary">
+                                        <i class="mdi mdi-content-save-outline me-1"></i> Kaydet
                                     </button>
 
                                     <!-- Mobile Tabs Menu -->

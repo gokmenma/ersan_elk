@@ -1,9 +1,16 @@
 <?php
 use App\Model\PersonelModel;
 use App\Model\TanimlamalarModel;
+use App\Model\SettingsModel;
+use App\Service\Gate;
 
 $Personel = new PersonelModel();
 $Tanimlamalar = new TanimlamalarModel();
+$Settings = new SettingsModel();
+
+$settingsData = $Settings->getAllSettingsAsKeyValue($_SESSION['firma_id'] ?? null);
+$canEditPast = ($settingsData['nobet_gecmis_islem'] ?? '0') === '1';
+$hasSettingPermission = Gate::allows("nobet_onceki_gunlerde_islem_yapabilir");
 
 $personeller = $Personel->all();
 
@@ -74,70 +81,6 @@ $maintitle = "Nöbet Yönetimi";
 $title = 'Nöbet Planlama';
 ?>
 <?php include 'layouts/breadcrumb.php'; ?>
-
-<!-- İstatistik Kartları - Modern Dashboard Tasarımı -->
-<div class="row mb-4 g-3">
-    <div class="col-xl-3 col-md-6">
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-label">
-                    <i class="bx bx-calendar-check mt-1"></i>
-                    Bu Ay Toplam Nöbet
-                </div>
-                <div class="stat-trend up">
-                    <i class="bx bx-trending-up"></i> +12%
-                </div>
-            </div>
-            <div class="stat-value" id="stat-total">0</div>
-            <div class="stat-sub">Aylık planlama özeti</div>
-        </div>
-    </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-label">
-                    <i class="bx bx-user-check mt-1"></i>
-                    Bugün Nöbetçi
-                </div>
-                <div class="stat-trend">
-                    <i class="bx bx-minus"></i> Stabil
-                </div>
-            </div>
-            <div class="stat-value" id="stat-today">-</div>
-            <div class="stat-sub">Güncel görevli personel</div>
-        </div>
-    </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-label">
-                    <i class="bx bx-transfer-alt mt-1"></i>
-                    Bekleyen Talepler
-                </div>
-                <div class="stat-trend down">
-                    <i class="bx bx-trending-down"></i> -8%
-                </div>
-            </div>
-            <div class="stat-value" id="stat-pending">0</div>
-            <div class="stat-sub">Onay bekleyen değişimler</div>
-        </div>
-    </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-label">
-                    <i class="bx bx-calendar-week mt-1"></i>
-                    Hafta Sonu Nöbet
-                </div>
-                <div class="stat-trend up">
-                    <i class="bx bx-trending-up"></i> +4%
-                </div>
-            </div>
-            <div class="stat-value" id="stat-weekend">0</div>
-            <div class="stat-sub">Tatil günü mesaileri</div>
-        </div>
-    </div>
-</div>
 
 <!-- Ana İçerik -->
 <div class="nobet-container">
@@ -263,6 +206,70 @@ $title = 'Nöbet Planlama';
 
     <!-- Sağ Panel - Takvim -->
     <div class="calendar-panel">
+        <!-- İstatistik Kartları - Modern Dashboard Tasarımı -->
+        <div class="row mb-4 g-3">
+            <div class="col-xl-3 col-md-6">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-label">
+                            <i class="bx bx-calendar-check mt-1"></i>
+                            Bu Ay Toplam Nöbet
+                        </div>
+                        <div class="stat-trend up">
+                            <i class="bx bx-trending-up"></i> +12%
+                        </div>
+                    </div>
+                    <div class="stat-value" id="stat-total">0</div>
+                    <div class="stat-sub">Aylık planlama özeti</div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-label">
+                            <i class="bx bx-user-check mt-1"></i>
+                            Bugün Nöbetçi
+                        </div>
+                        <div class="stat-trend">
+                            <i class="bx bx-minus"></i> Stabil
+                        </div>
+                    </div>
+                    <div class="stat-value" id="stat-today">-</div>
+                    <div class="stat-sub">Güncel görevli personel</div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-label">
+                            <i class="bx bx-transfer-alt mt-1"></i>
+                            Bekleyen Talepler
+                        </div>
+                        <div class="stat-trend down">
+                            <i class="bx bx-trending-down"></i> -8%
+                        </div>
+                    </div>
+                    <div class="stat-value" id="stat-pending">0</div>
+                    <div class="stat-sub">Onay bekleyen değişimler</div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-label">
+                            <i class="bx bx-calendar-week mt-1"></i>
+                            Hafta Sonu Nöbet
+                        </div>
+                        <div class="stat-trend up">
+                            <i class="bx bx-trending-up"></i> +4%
+                        </div>
+                    </div>
+                    <div class="stat-value" id="stat-weekend">0</div>
+                    <div class="stat-sub">Tatil günü mesaileri</div>
+                </div>
+            </div>
+        </div>
+
         <div class="calendar-card">
             <!-- 3. Görsel Referansı (Tab Bar ve Navigasyon) -->
             <div class="calendar-header">
@@ -286,6 +293,12 @@ $title = 'Nöbet Planlama';
                         <button class="btn" id="calendar-today"
                             style="width:auto; height:32px; padding:0 12px; font-weight:500;">Bugün</button>
                         <button class="btn" id="calendar-next"><i class="bx bx-chevron-right"></i></button>
+                        <?php if ($hasSettingPermission): ?>
+                            <button class="btn ms-1" id="btn-nobet-settings" title="Nöbet Ayarları" data-bs-toggle="modal"
+                                data-bs-target="#nobetSettingsModal">
+                                <i class="bx bx-cog"></i>
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -317,64 +330,66 @@ $title = 'Nöbet Planlama';
 
 
 
-<!-- Nöbet Detay Modal (Bilgi Kartı Tasarımı) -->
-<div class="modal fade nobet-modal" id="nobetDetailModal" tabindex="-1">
+<!-- Nöbet Detay Modal (Premium Modern Tasarım) -->
+<div class="modal fade modern-settings-modal premium-detail-modal" id="nobetDetailModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
-            <div class="modal-header border-0 pb-0 pt-4 px-4">
-                <h5 class="modal-title d-flex align-items-center" style="font-weight: 700; color: #495057;">
-                    <i class="bx bxs-info-circle me-2 text-primary"></i>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title d-flex align-items-center">
+                    <i class="bx bx-info-circle me-2 text-primary" style="font-size: 20px;"></i>
                     Giriş Kaydı Detayı
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4">
-                <!-- Üst Kısım: Personel Bilgisi -->
-                <div class="nobet-detail-card-header d-flex align-items-center mb-4">
-                    <img id="modal-personel-img" src="" class="rounded-circle shadow-sm me-3" width="64" height="64"
-                        style="object-fit: cover; border: 3px solid #fff;">
-                    <div>
-                        <h5 class="mb-0" id="modal-personel-name" style="font-weight: 700; color: #212529;"></h5>
-                        <p class="mb-0 text-muted small" id="modal-personel-dept"></p>
+            <div class="modal-body">
+                <!-- Personel Kartı -->
+                <div class="detail-personel-card d-flex align-items-center mb-4">
+                    <div class="personel-avatar-wrapper me-3">
+                        <img id="modal-personel-img" src="" class="rounded-circle" width="56" height="56"
+                            style="object-fit: cover;">
                     </div>
-                    <div class="ms-auto text-end">
-                        <span id="modal-durum-badge" class="badge rounded-pill px-3 py-2"></span>
+                    <div class="personel-info">
+                        <h6 class="mb-0 fw-bold" id="modal-personel-name" style="font-size: 16px;"></h6>
+                        <p class="mb-0 text-muted small" id="modal-personel-dept" style="font-size: 13px;"></p>
+                    </div>
+                    <div class="ms-auto">
+                        <span id="modal-durum-badge" class="badge rounded-pill px-3 py-2"
+                            style="font-size: 12px; font-weight: 600;"></span>
                     </div>
                 </div>
 
-                <!-- Orta Kısım: Büyük Tarih ve Saat -->
-                <div class="text-center py-2 mb-4">
-                    <div class="modal-time-title mb-1">NÖBET ZAMAN DİLİMİ</div>
-                    <h2 class="modal-date-large mb-0" id="modal-tarih-text"></h2>
-                    <h4 class="modal-time-sub mt-1" id="modal-saat-text"></h4>
+                <!-- Nöbet Zamanı -->
+                <div class="detail-time-section text-center py-3 mb-4">
+                    <div class="section-label mb-2">NÖBET ZAMAN DİLİMİ</div>
+                    <h3 class="fw-bold mb-1" id="modal-tarih-text" style="font-size: 24px; letter-spacing: -0.01em;">
+                    </h3>
+                    <div class="text-primary fw-bold" id="modal-saat-text" style="font-size: 18px;"></div>
                 </div>
 
-                <!-- Alt Kısım: Detay Grid (ForgeUI Style) -->
-                <div class="row text-center border-top pt-4 mx-0">
+                <!-- Detay Grid -->
+                <div class="detail-grid row text-center border-top pt-4 mx-0">
                     <div class="col-4 border-end px-1">
-                        <div class="modal-info-label">TİP</div>
-                        <div id="modal-tip-text" class="modal-info-value"></div>
+                        <div class="grid-label">TİP</div>
+                        <div id="modal-tip-text" class="grid-value"></div>
                     </div>
                     <div class="col-4 border-end px-1">
-                        <div class="modal-info-label">İLETİŞİM</div>
-                        <div id="modal-telefon-text" class="modal-info-value"></div>
+                        <div class="grid-label">İLETİŞİM</div>
+                        <div id="modal-telefon-text" class="grid-value"></div>
                     </div>
                     <div class="col-4 px-1">
-                        <div class="modal-info-label">BÖLGE</div>
-                        <div id="modal-bolge-text" class="modal-info-value"></div>
+                        <div class="grid-label">BÖLGE</div>
+                        <div id="modal-bolge-text" class="grid-value"></div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-0 pt-0 justify-content-between pb-4">
-                <button type="button" class="btn btn-danger px-4 fw-bold" id="btn-delete-nobet"
-                    style="border-radius: 12px; height: 45px;">
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger btn-sm px-3 fw-bold me-auto" id="btn-delete-nobet">
                     <i class="bx bx-trash me-1"></i>Sil
                 </button>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-light px-4 fw-bold" data-bs-dismiss="modal"
-                        style="border-radius: 12px; height: 45px; background: #f8f9fa; color: #495057;">Kapat</button>
-                    <button type="button" class="btn btn-primary px-4 fw-bold" id="btn-edit-nobet"
-                        style="border-radius: 12px; height: 45px;">
+                    <button type="button" class="btn btn-secondary btn-sm px-4 fw-bold"
+                        data-bs-dismiss="modal">Kapat</button>
+                    <button type="button" class="btn btn-primary btn-sm px-4 fw-bold" id="btn-edit-nobet">
                         <i class="bx bx-edit me-1"></i>Düzenle
                     </button>
                 </div>
@@ -384,15 +399,15 @@ $title = 'Nöbet Planlama';
 </div>
 
 <!-- Nöbet Ekleme/Düzenleme Modal -->
-<div class="modal fade nobet-modal" id="nobetFormModal" tabindex="-1">
+<div class="modal fade modern-settings-modal" id="nobetFormModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white border-0">
-                <h5 class="modal-title text-white">
-                    <i class="bx bx-plus-circle me-2" id="form-modal-icon"></i>
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bx bx-plus-circle me-2 text-primary" id="form-modal-icon"></i>
                     <span id="form-modal-title">Nöbet Ekle</span>
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="nobet-form">
                 <div class="modal-body">
@@ -440,13 +455,8 @@ $title = 'Nöbet Planlama';
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary waves-effect btn-label waves-light float-start"
-                        data-bs-dismiss="modal">
-                        <i class="bx bx-x label-icon"></i>İptal
-                    </button>
-                    <button type="submit" class="btn btn-primary waves-effect btn-label waves-light ms-auto">
-                        <i class="bx bx-save label-icon"></i>Kaydet
-                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm px-4 fw-bold" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-4 fw-bold">Kaydet</button>
                 </div>
             </form>
         </div>
@@ -454,62 +464,60 @@ $title = 'Nöbet Planlama';
 </div>
 
 
-<!-- Nöbet Bildirim Modalı (Geliştirilmiş) -->
-<div class="modal fade nobet-modal" id="nobetBildirimModal" tabindex="-1">
+<!-- Nöbet Bildirim Modalı (Geliştirilmiş Premium Tasarım) -->
+<div class="modal fade modern-settings-modal" id="nobetBildirimModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
-            <div class="modal-header" style="background: #556ee6;">
-                <h5 class="modal-title text-white">
-                    <i class="bx bx-send me-2"></i>Personele Bildir
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bx bx-send me-2 text-primary"></i>Personele Bildir
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="nobet-bildirim-form">
                 <div class="modal-body">
                     <!-- Bildirim İstatistikleri -->
                     <div class="row mb-4">
                         <div class="col-md-4">
-                            <div class="border rounded-3 p-3 text-center bg-light">
-                                <div class="text-muted small">Toplam Nöbet</div>
+                            <div class="border rounded-4 p-3 text-center bg-light">
+                                <div class="text-muted small fw-bold">TOPLAM NÖBET</div>
                                 <div class="fs-4 fw-bold text-dark" id="bildirim-stat-total">0</div>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="border rounded-3 p-3 text-center bg-success bg-opacity-10">
-                                <div class="text-muted small">Bildirim Gönderildi</div>
+                            <div class="border rounded-4 p-3 text-center bg-success bg-opacity-10">
+                                <div class="text-muted small fw-bold">BİLDİRİLDİ</div>
                                 <div class="fs-4 fw-bold text-success" id="bildirim-stat-sent">0</div>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="border rounded-3 p-3 text-center bg-warning bg-opacity-10">
-                                <div class="text-muted small">Bekleyen</div>
+                            <div class="border rounded-4 p-3 text-center bg-warning bg-opacity-10">
+                                <div class="text-muted small fw-bold">BEKLEYEN</div>
                                 <div class="fs-4 fw-bold text-warning" id="bildirim-stat-pending">0</div>
                             </div>
                         </div>
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label fw-bold">Bildirim Kapsamı</label>
+                        <label class="form-label fw-bold mb-3" style="font-size: 13px; color: #71717a;">BİLDİRİM KAPSAMI</label>
                         <div class="d-flex flex-wrap gap-2">
-                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_bekleyen"
-                                value="bekleyen" checked>
-                            <label class="btn btn-outline-warning flex-grow-1" for="turu_bekleyen">
+                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_bekleyen" value="bekleyen" checked>
+                            <label class="btn btn-outline-warning btn-sm flex-grow-1 py-2" for="turu_bekleyen">
                                 <i class="bx bx-bell-plus me-1"></i>Henüz Bildirilmeyenler
                             </label>
 
                             <input type="radio" class="btn-check" name="bildirim_turu" id="turu_aylik" value="aylik">
-                            <label class="btn btn-outline-primary flex-grow-1" for="turu_aylik">
+                            <label class="btn btn-outline-primary btn-sm flex-grow-1 py-2" for="turu_aylik">
                                 <i class="bx bx-calendar me-1"></i>Aylık (Tümü)
                             </label>
 
-                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_haftalik"
-                                value="haftalik">
-                            <label class="btn btn-outline-primary flex-grow-1" for="turu_haftalik">
+                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_haftalik" value="haftalik">
+                            <label class="btn btn-outline-primary btn-sm flex-grow-1 py-2" for="turu_haftalik">
                                 <i class="bx bx-calendar-week me-1"></i>Haftalık
                             </label>
 
                             <input type="radio" class="btn-check" name="bildirim_turu" id="turu_kisi" value="kisi">
-                            <label class="btn btn-outline-primary flex-grow-1" for="turu_kisi">
+                            <label class="btn btn-outline-primary btn-sm flex-grow-1 py-2" for="turu_kisi">
                                 <i class="bx bx-user me-1"></i>Kişiye Özel
                             </label>
                         </div>
@@ -517,9 +525,9 @@ $title = 'Nöbet Planlama';
 
                     <!-- Bekleyen Seçimi (Varsayılan) -->
                     <div class="bildirim-area" id="area-bekleyen">
-                        <div class="alert alert-warning d-flex align-items-center" role="alert">
-                            <i class="bx bx-info-circle fs-4 me-2"></i>
-                            <div>
+                        <div class="alert alert-warning border-0 bg-warning bg-opacity-10 d-flex align-items-center rounded-4" role="alert">
+                            <i class="bx bx-info-circle fs-4 me-3"></i>
+                            <div class="small">
                                 Henüz bildirim gönderilmemiş <span id="bekleyen-count" class="fw-bold">0</span>
                                 personele bildirim gönderilecek.
                             </div>
@@ -543,10 +551,9 @@ $title = 'Nöbet Planlama';
 
                     <!-- Aylık Seçimi -->
                     <div class="bildirim-area" id="area-aylik" style="display:none;">
-                        <div class="alert alert-info d-flex align-items-center" role="alert">
-                            <i class="bx bx-info-circle fs-4 me-2"></i>
-                            <div>Seçili aydaki <strong>tüm personellere</strong> bildirim gönderilecek (daha önce
-                                bildirim almış olsalar bile).</div>
+                        <div class="alert alert-info border-0 bg-info bg-opacity-10 d-flex align-items-center rounded-4" role="alert">
+                            <i class="bx bx-info-circle fs-4 me-3"></i>
+                            <div class="small">Seçili aydaki <strong>tüm personellere</strong> bildirim gönderilecek (daha önce bildirim almış olsalar bile).</div>
                         </div>
                         <div class="mb-3">
                             <?php
@@ -590,13 +597,8 @@ $title = 'Nöbet Planlama';
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary waves-effect btn-label waves-light float-start"
-                        data-bs-dismiss="modal">
-                        <i class="bx bx-x label-icon"></i>İptal
-                    </button>
-                    <button type="submit" class="btn btn-primary waves-effect btn-label waves-light ms-auto">
-                        <i class="bx bx-paper-plane label-icon"></i>Bildirim Gönder
-                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm px-4 fw-bold" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-4 fw-bold">Bildirim Gönder</button>
                 </div>
             </form>
         </div>
@@ -604,6 +606,42 @@ $title = 'Nöbet Planlama';
 </div>
 
 
+
+<!-- Nöbet Ayarları Modalı -->
+<div class="modal fade modern-settings-modal" id="nobetSettingsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nöbet Planlama Ayarları</h5>
+            </div>
+            <form id="nobet-settings-form">
+                <div class="modal-body">
+                    <div class="setting-group">
+                        <div class="setting-main">
+                            <div class="form-check form-switch form-switch-lg p-0">
+                                <input class="form-check-input" type="checkbox" name="nobet_gecmis_islem"
+                                    id="setting-gecmis-islem" <?php echo $canEditPast ? 'checked' : ''; ?>>
+                            </div>
+                            <label class="setting-label" for="setting-gecmis-islem">
+                                Geçmiş Tarihlerde İşlem Yapılabilsin
+                            </label>
+                        </div>
+                        <span class="settings-description">
+                            Geçmiş tarihlerde nöbet düzenleme izni, takvim üzerindeki geçmiş etkinliklerin silinmesini
+                            ve taşınmasını kontrol eder.
+                        </span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        Ayarları Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <!-- FullCalendar -->
 <script src="assets/libs/fullcalendar/index.global.min.js"></script>
@@ -617,8 +655,10 @@ $title = 'Nöbet Planlama';
         // ============================================
         let calendar;
         let currentNobetId = null;
+        let canEditPast = <?php echo $canEditPast ? 'true' : 'false'; ?>;
         const detailModal = new bootstrap.Modal(document.getElementById('nobetDetailModal'));
         const formModal = new bootstrap.Modal(document.getElementById('nobetFormModal'));
+        const settingsModal = new bootstrap.Modal(document.getElementById('nobetSettingsModal'));
 
         // ============================================
         // TAKVİM BAŞLATMA
@@ -687,6 +727,13 @@ $title = 'Nöbet Planlama';
 
             // Tarih seçildiğinde - Yeni nöbet ekle
             dateClick: function (info) {
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                const selectedDate = new Date(info.dateStr); selectedDate.setHours(0, 0, 0, 0);
+
+                if (!canEditPast && selectedDate < today) {
+                    showToast('error', 'Geçmiş tarihlere nöbet ekleyemezsiniz.');
+                    return;
+                }
                 openFormModal(null, info.dateStr);
             },
 
@@ -695,7 +742,7 @@ $title = 'Nöbet Planlama';
                 const today = new Date(); today.setHours(0, 0, 0, 0);
                 const eventDate = new Date(info.event.start); eventDate.setHours(0, 0, 0, 0);
 
-                if (eventDate < today) {
+                if (!canEditPast && eventDate < today) {
                     showToast('error', 'Geçmiş nöbetlerde düzenleme yapılamaz.');
                     return;
                 }
@@ -704,6 +751,15 @@ $title = 'Nöbet Planlama';
 
             // Personel sürüklenip bırakıldığında
             eventReceive: function (info) {
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                const eventDate = new Date(info.event.start); eventDate.setHours(0, 0, 0, 0);
+
+                if (!canEditPast && eventDate < today) {
+                    info.revert();
+                    showToast('error', 'Geçmiş tarihlere nöbet atayamazsınız.');
+                    return;
+                }
+
                 if (info.event.extendedProps.isNew) {
                     saveDroppedNobet(info);
                 }
@@ -714,11 +770,19 @@ $title = 'Nöbet Planlama';
                 const today = new Date(); today.setHours(0, 0, 0, 0);
                 const oldDate = new Date(info.oldEvent.start); oldDate.setHours(0, 0, 0, 0);
 
-                if (oldDate < today) {
+                if (!canEditPast && oldDate < today) {
                     info.revert();
                     showToast('error', 'Geçmiş nöbetler taşınamaz.');
                     return;
                 }
+
+                const newDate = new Date(info.event.start); newDate.setHours(0, 0, 0, 0);
+                if (!canEditPast && newDate < today) {
+                    info.revert();
+                    showToast('error', 'Geçmiş tarihlere nöbet taşıyamazsınız.');
+                    return;
+                }
+
                 moveNobet(info.event.id, info.event.startStr);
             },
 
@@ -732,6 +796,7 @@ $title = 'Nöbet Planlama';
                 const today = new Date(); today.setHours(0, 0, 0, 0);
                 const eventDate = new Date(info.event.start); eventDate.setHours(0, 0, 0, 0);
                 const isPast = eventDate < today;
+                const isReadOnlyPast = isPast && !canEditPast;
 
                 // Tooltip Ekle
                 info.el.setAttribute('data-bs-toggle', 'tooltip');
@@ -739,13 +804,16 @@ $title = 'Nöbet Planlama';
                 info.el.setAttribute('data-bs-title', info.event.title + ' | ' + formatDate(info.event.startStr));
                 new bootstrap.Tooltip(info.el);
 
-                if (isPast) {
+                if (isReadOnlyPast) {
                     info.el.classList.add('fc-event-past');
                     info.event.setProp('editable', false);
+                } else {
+                    info.el.classList.remove('fc-event-past');
+                    info.event.setProp('editable', true);
                 }
 
-                // Silme butonu (Sadece gelecek nöbetler için)
-                if (!isPast) {
+                // Silme butonu (Gelecek nöbetler veya ayar açıksa geçmiş nöbetler için)
+                if (!isReadOnlyPast) {
                     const deleteBtn = document.createElement('div');
                     deleteBtn.className = 'fc-event-delete-btn';
                     deleteBtn.innerHTML = '<i class="bx bx-x"></i>';
@@ -794,6 +862,39 @@ $title = 'Nöbet Planlama';
                     tooltip.dispose();
                 }
             }
+        });
+
+        // ============================================
+        // AYARLAR KAYDETME
+        // ============================================
+        document.getElementById('nobet-settings-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            formData.append('action', 'save-settings');
+
+            // Switch (checkbox) değeri kontrolü
+            const isChecked = document.getElementById('setting-gecmis-islem').checked;
+            formData.set('nobet_gecmis_islem', isChecked ? '1' : '0');
+
+            fetch('views/nobet/api.php', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showToast('success', data.message);
+                        canEditPast = isChecked;
+                        calendar.refetchEvents();
+                        settingsModal.hide();
+                    } else {
+                        showToast('error', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Ayarlar kaydedilemedi:', error);
+                    showToast('error', 'Bir hata oluştu.');
+                });
         });
 
         calendar.render();

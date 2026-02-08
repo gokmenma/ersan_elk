@@ -128,10 +128,19 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                             valueField: "key"
                                         ); ?>
                                     </div>
-                                    <div class="col-md-2 d-flex align-items-end gap-2">
-                                        <button type="submit" class="btn btn-primary flex-grow-1">Filtrele</button>
-                                        <button type="button" class="btn btn-secondary"
-                                            id="btnClearFilters">Temizle</button>
+                                    <div class="col-md-2 d-flex align-items-end">
+                                        <div
+                                            class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 w-100">
+                                            <button type="submit" class="btn btn-primary btn-sm flex-grow-1 fw-bold">
+                                                <i class="mdi mdi-filter-variant me-1"></i> Filtrele
+                                            </button>
+                                            <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                                            <button type="button"
+                                                class="btn btn-link btn-sm text-secondary text-decoration-none px-2"
+                                                id="btnClearFilters">
+                                                <i class="mdi mdi-filter-remove"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </form>
@@ -174,34 +183,22 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="card-title">Endeks Okuma Raporu</h4>
-                        <div class="d-flex gap-2">
-                            <div class="dropdown">
-                                <button class="btn btn-soft-secondary dropdown-toggle" type="button"
-                                    data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false">
-                                    <i class="bx bx-dots-vertical-rounded"></i> İşlemler
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li>
-                                        <a class="dropdown-item" href="javascript:void(0);" id="btnExportEndeksExcel">
-                                            <i class="bx bx-spreadsheet me-2"></i> Excele Aktar
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="javascript:void(0);" id="btnShowStats">
-                                            <i class="bx bx-pie-chart-alt-2 me-2"></i> İstatistikler
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                            <button type="button" class="btn btn-secondary" data-bs-toggle="modal"
-                                data-bs-target="#importOnlineIcmalRaporuModal">
-                                <i class="bx bxs-file"></i> Online Sorgula
+                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                            <button type="button" class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center" id="btnShowStats">
+                                <i class="mdi mdi-chart-box-outline fs-5 me-1"></i> İstatistikler
                             </button>
-                            <button type="button" class="btn btn-success" data-bs-toggle="modal"
-                                data-bs-target="#importEndeksModal">
-                                <i class="bx bxs-file-import"></i> Dosya Yükle
+                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                            <button type="button" id="btnExportEndeksExcel" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
+                                <i class="mdi mdi-file-excel fs-5 me-1"></i> Excele Aktar
                             </button>
-
+                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                            <button type="button" class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#importOnlineIcmalRaporuModal">
+                                <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Online Sorgula
+                            </button>
+                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                            <button type="button" class="btn btn-success px-3 fw-bold shadow-success" data-bs-toggle="modal" data-bs-target="#importEndeksModal">
+                                <i class="mdi mdi-upload me-1"></i> Dosya Yükle
+                            </button>
                         </div>
                     </div>
                     <div class="card-body">
@@ -234,32 +231,21 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="card-title">İş Listesi</h4>
-                        <div class="d-flex gap-2">
-                            <div class="dropdown">
-                                <button class="btn btn-soft-secondary dropdown-toggle" type="button"
-                                    data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false">
-                                    <i class="bx bx-dots-vertical-rounded"></i> İşlemler
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li>
-                                        <a class="dropdown-item" href="javascript:void(0);" id="btnExportPuantajExcel">
-                                            <i class="bx bx-spreadsheet me-2"></i> Excele Aktar
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="javascript:void(0);" id="btnShowPuantajStats">
-                                            <i class="bx bx-pie-chart-alt-2 me-2"></i> İstatistikler
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                            <button type="button" class="btn btn-secondary" data-bs-toggle="modal"
-                                data-bs-target="#importOnlinePuantajModal">
-                                <i class="bx bxs-file"></i> Online Sorgula
+                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                            <button type="button" class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center" id="btnShowPuantajStats">
+                                <i class="mdi mdi-chart-box-outline fs-5 me-1"></i> İstatistikler
                             </button>
-                            <button type="button" class="btn btn-success" data-bs-toggle="modal"
-                                data-bs-target="#importPuantajModal">
-                                <i class="bx bxs-file-import"></i> Excel Yükle
+                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                            <button type="button" id="btnExportPuantajExcel" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
+                                <i class="mdi mdi-file-excel fs-5 me-1"></i> Excele Aktar
+                            </button>
+                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                            <button type="button" class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#importOnlinePuantajModal">
+                                <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Online Sorgula
+                            </button>
+                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                            <button type="button" class="btn btn-success px-3 fw-bold shadow-success" data-bs-toggle="modal" data-bs-target="#importPuantajModal">
+                                <i class="mdi mdi-upload me-1"></i> Excel Yükle
                             </button>
                         </div>
                     </div>
@@ -289,13 +275,13 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="card-title">Kaçak Kontrol Listesi</h4>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-primary" id="btnNewKacak">
-                                <i class="bx bx-plus"></i> Yeni Ekle
+                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                            <button type="button" class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center" id="btnNewKacak">
+                                <i class="mdi mdi-plus-circle fs-5 me-1"></i> Yeni Ekle
                             </button>
-                            <button type="button" class="btn btn-success" data-bs-toggle="modal"
-                                data-bs-target="#importKacakModal">
-                                <i class="bx bxs-file-import"></i> Excel Yükle
+                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                            <button type="button" class="btn btn-success px-3 fw-bold shadow-success" data-bs-toggle="modal" data-bs-target="#importKacakModal">
+                                <i class="mdi mdi-upload me-1"></i> Excel Yükle
                             </button>
                         </div>
                     </div>

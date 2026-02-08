@@ -104,120 +104,132 @@ $ek_odeme_turleri = [
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <div class="d-flex flex-wrap align-items-center gap-2">
-                        <?php echo Form::FormSelect2(
-                            name: 'yilSelect',
-                            options: $yil_option,
-                            selectedValue: $selectedYil,
-                            label: 'Yıl Seçiniz',
-                            icon: 'calendar',
-                            style: 'min-width: 200px;'
-                        ); ?>
-
-                        <div class="d-flex align-items-center gap-2">
-                            <?php echo Form::FormSelect2(
-                                name: 'donemSelect',
-                                options: $donem_option,
-                                selectedValue: $selectedDonemId,
-                                label: 'Dönem Seçiniz',
-                                icon: 'calendar',
-                                style: 'min-width: 200px;'
-                            ); ?>
-
+                    <div class="d-flex flex-wrap align-items-center gap-3">
+                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-2">
+                            <div style="min-width: 150px;">
+                                <?php echo Form::FormSelect2(
+                                    name: 'yilSelect',
+                                    options: $yil_option,
+                                    selectedValue: $selectedYil,
+                                    label: 'Yıl',
+                                    icon: 'calendar',
+                                    class: 'form-control select2'
+                                ); ?>
+                            </div>
+                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                            <div style="min-width: 180px;">
+                                <?php echo Form::FormSelect2(
+                                    name: 'donemSelect',
+                                    options: $donem_option,
+                                    selectedValue: $selectedDonemId,
+                                    label: 'Dönem',
+                                    icon: 'calendar',
+                                    class: 'form-control select2'
+                                ); ?>
+                            </div>
                             <?php if ($selectedDonem): ?>
-                                <div class="form-check form-switch ms-2">
+                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                                <div class="form-check form-switch px-4">
                                     <input class="form-check-input" type="checkbox" role="switch" id="switchDonemDurum"
                                         <?= $donemKapali ? 'checked' : '' ?>>
                                     <label
-                                        class="form-check-label small <?= $donemKapali ? 'text-danger' : 'text-success' ?>"
-                                        for="switchDonemDurum">
-                                        <?= $donemKapali ? '<i class="bx bx-lock"></i> Kapalı' : '<i class="bx bx-lock-open"></i> Açık' ?>
+                                        class="form-check-label small <?= $donemKapali ? 'text-danger' : 'text-success' ?> fw-bold"
+                                        for="switchDonemDurum" style="font-size: 11px;">
+                                        <?= $donemKapali ? 'KAPALI' : 'AÇIK' ?>
                                     </label>
                                 </div>
                             <?php endif; ?>
                         </div>
 
-                        <div class="vr mx-2 d-none d-md-block"></div>
-
-                        <button type="button" class="btn btn-outline-success waves-effect waves-light"
-                            data-bs-toggle="modal" data-bs-target="#yeniDonemModal" title="Yeni Dönem Oluştur">
-                            <i class="bx bx-plus"></i>
-                        </button>
-
-                        <?php if ($selectedDonem && !$donemKapali): ?>
-                            <button type="button" class="btn btn-outline-primary waves-effect waves-light"
-                                id="btnHeaderEditDonem" title="Dönem Adını Güncelle">
-                                <i class="bx bx-edit-alt"></i>
+                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                            <button type="button" class="btn btn-link btn-sm text-success text-decoration-none px-2"
+                                data-bs-toggle="modal" data-bs-target="#yeniDonemModal" title="Yeni Dönem">
+                                <i class="mdi mdi-plus-circle fs-5"></i>
                             </button>
-                        <?php endif; ?>
+                            <?php if ($selectedDonem && !$donemKapali): ?>
+                                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                                <button type="button" class="btn btn-link btn-sm text-primary text-decoration-none px-2"
+                                    id="btnHeaderEditDonem" title="Düzenle">
+                                    <i class="mdi mdi-pencil fs-5"></i>
+                                </button>
+                            <?php endif; ?>
+                            <?php if (!$donemKapali) { ?>
+                                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                                <button type="button" id="donemSil"
+                                    class="btn btn-link btn-sm text-danger text-decoration-none px-2" title="Dönemi Sil">
+                                    <i class="mdi mdi-trash-can fs-5"></i>
+                                </button>
+                            <?php } ?>
+                        </div>
 
-                        <?php if (!$donemKapali) { ?>
-                            <button type="button" id="donemSil" class="btn btn-outline-danger waves-effect waves-light"
-                                title="Dönemi Sil">
-                                <i class="bx bx-trash"></i>
-                            </button>
-                        <?php } ?>
-
-                        <div class="d-flex flex-wrap gap-2 ms-auto">
+                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 ms-auto">
                             <?php if ($selectedDonem): ?>
-                                <button type="button" class="btn btn-info waves-effect waves-light" id="btnRefreshPersonel"
-                                    <?= $donemKapali ? 'disabled' : '' ?>>
-                                    <i class="bx bx-refresh me-1"></i> Personel Güncelle
+                                <button type="button"
+                                    class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
+                                    id="btnRefreshPersonel" <?= $donemKapali ? 'disabled' : '' ?>>
+                                    <i class="mdi mdi-refresh fs-5 me-1"></i> <span class="d-none d-xl-inline">Personel
+                                        Güncelle</span>
                                 </button>
-                                <button type="button" class="btn btn-warning waves-effect waves-light" id="btnHesapla"
-                                    <?= $donemKapali ? 'disabled' : '' ?>>
-                                    <i class="bx bx-calculator me-1"></i> Maaş Hesapla
-                                </button>
-                                <div class="btn-group">
-                                    <button type="button" class="btn btn-secondary dropdown-toggle waves-effect waves-light"
-                                        data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false">
-                                        <i class="bx bx-menu me-1"></i> İşlemler
+                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                                 <div class="dropdown">
+                                    <button class="btn btn-link btn-sm px-3 fw-bold dropdown-toggle"
+                                        type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="mdi mdi-menu me-1"></i> İşlemler
+                                        <i class="mdi mdi-chevron-down"></i>
                                     </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
                                         <li>
-                                            <a class="dropdown-item" href="javascript:void(0);" id="btnExportExcel">
-                                                <i class="bx bx-download me-2 text-success"></i> Excel'e İndir
+                                            <a class="dropdown-item py-2" href="javascript:void(0);" id="btnExportExcel">
+                                                <i class="mdi mdi-file-excel me-2 text-success fs-5"></i> Excel'e İndir
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item py-2" href="javascript:void(0);"
+                                                id="btnExportExcelBanka">
+                                                <i class="mdi mdi-bank me-2 text-primary fs-5"></i> Excel'e İndir (Banka)
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item py-2" href="javascript:void(0);"
+                                                id="btnExportExcelSodexo">
+                                                <i class="mdi mdi-food me-2 text-info fs-5"></i> Excel'e İndir (Sodexo)
                                             </a>
                                         </li>
                                         <li>
                                             <hr class="dropdown-divider">
                                         </li>
                                         <li>
-                                            <a class="dropdown-item" href="javascript:void(0);" id="btnExportExcelBanka">
-                                                <i class="bx bxs-bank me-2 text-primary"></i> Excel'e İndir (Banka)
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a class="dropdown-item" href="javascript:void(0);" id="btnExportExcelSodexo">
-                                                <i class="bx bx-food-menu me-2 text-info"></i> Excel'e İndir (Sodexo)
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <hr class="dropdown-divider">
-                                        </li>
-                                        <li>
-                                            <a class="dropdown-item <?= $donemKapali ? 'disabled' : '' ?>"
+                                            <a class="dropdown-item py-2 <?= $donemKapali ? 'disabled' : '' ?>"
                                                 href="javascript:void(0);" data-bs-toggle="modal"
                                                 data-bs-target="#gelirEkleModal">
-                                                <i class="bx bx-plus-circle me-2 text-primary"></i> Gelir Ekle (Excel)
+                                                <i class="mdi mdi-plus-box me-2 text-primary fs-5"></i> Gelir Ekle (Excel)
                                             </a>
                                         </li>
                                         <li>
-                                            <a class="dropdown-item <?= $donemKapali ? 'disabled' : '' ?>"
+                                            <a class="dropdown-item py-2 <?= $donemKapali ? 'disabled' : '' ?>"
                                                 href="javascript:void(0);" data-bs-toggle="modal"
                                                 data-bs-target="#kesintiEkleModal">
-                                                <i class="bx bx-minus-circle me-2 text-danger"></i> Kesinti Ekle (Excel)
+                                                <i class="mdi mdi-minus-box me-2 text-danger fs-5"></i> Kesinti Ekle (Excel)
                                             </a>
                                         </li>
                                         <li>
-                                            <a class="dropdown-item <?= $donemKapali ? 'disabled' : '' ?>"
+                                            <a class="dropdown-item py-2 <?= $donemKapali ? 'disabled' : '' ?>"
                                                 href="javascript:void(0);" data-bs-toggle="modal"
                                                 data-bs-target="#odemeEkleModal">
-                                                <i class="bx bx-wallet me-2 text-info"></i> Ödeme Dağıt (Excel)
+                                                <i class="mdi mdi-wallet me-2 text-info fs-5"></i> Ödeme Dağıt (Excel)
                                             </a>
                                         </li>
                                     </ul>
                                 </div>
+                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+
+                                <button type="button"
+                                    class="btn btn-primary btn-sm text-white shadow-primary text-decoration-none px-2 d-flex align-items-center"
+                                    id="btnHesapla" <?= $donemKapali ? 'disabled' : '' ?>>
+                                    <i class="mdi mdi-calculator fs-5 me-1"></i> <span class="d-none d-xl-inline">Maaş
+                                        Hesapla</span>
+                                </button>
+                               
                             <?php endif; ?>
                         </div>
                     </div>
@@ -494,14 +506,14 @@ $ek_odeme_turleri = [
                                                     }
                                                     ?>
                                                     <?= $hesaplananEkOdeme > 0 ? number_format($hesaplananEkOdeme, 2, ',', '.') . ' ₺' : '-' ?>
-                                                    <i class="bx bx-list-ul ms-1 text-primary cursor-pointer btn-detail-ekodeme"
+                                                    <i class="mdi mdi-format-list-bulleted ms-1 text-primary cursor-pointer btn-detail-ekodeme"
                                                         data-id="<?= $personel->personel_id ?>"
                                                         data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"
                                                         title="Detayları Gör"></i>
                                                 </td>
                                                 <td class="text-end text-danger">
                                                     <?= $personel->guncel_toplam_kesinti > 0 ? number_format($personel->guncel_toplam_kesinti, 2, ',', '.') . ' ₺' : '-' ?>
-                                                    <i class="bx bx-list-ul ms-1 text-danger cursor-pointer btn-detail-kesinti"
+                                                    <i class="mdi mdi-format-list-bulleted ms-1 text-danger cursor-pointer btn-detail-kesinti"
                                                         data-id="<?= $personel->personel_id ?>"
                                                         data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"
                                                         title="Detayları Gör"></i>
@@ -542,13 +554,14 @@ $ek_odeme_turleri = [
                                                                     data-sodexo="<?= $personel->sodexo_odemesi ?? 0 ?>"
                                                                     data-diger="<?= $personel->diger_odeme ?? 0 ?>"
                                                                     data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>">
-                                                                    <i class="bx bx-wallet me-2"></i> Ödeme Dağıt
+                                                                    <i class="mdi mdi-wallet-outline me-2 text-primary"></i> Ödeme
+                                                                    Dağıt
                                                                 </a>
                                                             </li>
                                                             <li>
                                                                 <a class="dropdown-item btn-detail" href="javascript:void(0);"
                                                                     data-id="<?= $personel->id ?>">
-                                                                    <i class="bx bx-show me-2"></i> Detay
+                                                                    <i class="mdi mdi-information-outline me-2 text-info"></i> Detay
                                                                 </a>
                                                             </li>
                                                             <li>
@@ -558,7 +571,8 @@ $ek_odeme_turleri = [
                                                                     href="javascript:void(0);"
                                                                     data-id="<?= $personel->personel_id ?>"
                                                                     data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>">
-                                                                    <i class="bx bx-plus-circle me-2 text-success"></i> Gelir Ekle
+                                                                    <i class="mdi mdi-plus-circle-outline me-2 text-success"></i>
+                                                                    Gelir Ekle
                                                                 </a>
                                                             </li>
                                                             <li>
@@ -566,7 +580,8 @@ $ek_odeme_turleri = [
                                                                     href="javascript:void(0);"
                                                                     data-id="<?= $personel->personel_id ?>"
                                                                     data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>">
-                                                                    <i class="bx bx-minus-circle me-2 text-danger"></i> Kesinti Ekle
+                                                                    <i class="mdi mdi-minus-circle-outline me-2 text-danger"></i>
+                                                                    Kesinti Ekle
                                                                 </a>
                                                             </li>
                                                             <li>
@@ -574,7 +589,7 @@ $ek_odeme_turleri = [
                                                             <li>
                                                                 <a class="dropdown-item btn-remove text-danger<?= $donemKapali ? ' disabled' : '' ?>"
                                                                     href="javascript:void(0);" data-id="<?= $personel->id ?>">
-                                                                    <i class="bx bx-trash me-2"></i> Dönemden Çıkar
+                                                                    <i class="mdi mdi-trash-can-outline me-2"></i> Dönemden Çıkar
                                                                 </a>
                                                             </li>
                                                         </ul>
@@ -591,9 +606,9 @@ $ek_odeme_turleri = [
                             <i class="bx bx-calendar-x display-1 text-muted"></i>
                             <h5 class="mt-3">Henüz Dönem Oluşturulmamış</h5>
                             <p class="text-muted">Bordro işlemlerine başlamak için yeni bir dönem oluşturun.</p>
-                            <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                            <button type="button" class="btn btn-primary px-4 fw-bold shadow-primary" data-bs-toggle="modal"
                                 data-bs-target="#yeniDonemModal">
-                                <i class="bx bx-plus me-1"></i> İlk Dönemi Oluştur
+                                <i class="mdi mdi-plus-circle me-1"></i> İlk Dönemi Oluştur
                             </button>
                         </div>
                     <?php endif; ?>

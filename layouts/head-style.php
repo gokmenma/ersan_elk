@@ -40,10 +40,11 @@ use App\Helper\Helper;
     type="text/css" />
 <!-- Icons Css -->
 <!-- App Css-->
-<link href="<?php echo Helper::base_url('assets/css/app.min.css'); ?>" id="app-style" rel="stylesheet" type="text/css" />
+<link href="<?php echo Helper::base_url('assets/css/app.min.css'); ?>" id="app-style" rel="stylesheet"
+    type="text/css" />
 
-<link href="<?php echo Helper::base_url('assets/css/style.css?v=' . filemtime("assets/css/style.css")); ?>" id="app-style" rel="stylesheet" type="text/css" />
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href=" <?php echo Helper::base_url('assets/css/style.css?v=' . filemtime("assets/css/style.css")); ?>" id="app-style" rel="stylesheet" type="text/css" />
 <!-- sweet-alert -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
