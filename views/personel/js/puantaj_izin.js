@@ -1018,15 +1018,15 @@ $(document).ready(function () {
       </div>
       <div class="table-responsive" style="max-height: calc(100vh - 350px);">
         <table class="table table-hover align-middle mb-0">
-          <thead class="table-light sticky-top">
+          <thead class="table-primary text-white sticky-top">
             <tr>
-              <th class="px-4 text-center" style="width: 60px;">#</th>
-              <th>Personel</th>
-              <th>SGK Sistemindeki Ad</th>
-              <th>Vaka Türü</th>
-              <th class="text-center">Başlangıç</th>
-              <th class="text-center">Bitiş</th>
-              <th class="text-end px-4">Durum</th>
+              <th class="px-4 text-center text-white" style="width: 60px;">#</th>
+              <th class="text-white">Personel</th>
+              <th class="text-white">SGK Sistemindeki Ad</th>
+              <th class="text-white">Vaka Türü</th>
+              <th class="text-center text-white">Başlangıç</th>
+              <th class="text-center text-white">Bitiş</th>
+              <th class="text-end px-4 text-white">Durum</th>
             </tr>
           </thead>
           <tbody>
@@ -1156,9 +1156,12 @@ $(document).ready(function () {
    * Seçilen SGK raporlarını puantaja işle
    */
   function isleSgkRaporlari(raporlar) {
+    const ay = $("#select-ay").val();
+    const yil = $("#select-yil").val();
+
     Swal.fire({
       title: "İşleniyor...",
-      html: `${raporlar.length} rapor puantaja işleniyor...`,
+      html: `<b>${raporlar.length}</b> rapor seçilen dönem (<b>${ay}/${yil}</b>) için puantaja işleniyor...`,
       allowOutsideClick: false,
       didOpen: () => {
         Swal.showLoading();
@@ -1170,6 +1173,8 @@ $(document).ready(function () {
       {
         action: "sgk-raporlari-isle",
         raporlar: JSON.stringify(raporlar),
+        ay: ay,
+        yil: yil,
       },
       function (res) {
         if (res.status === "success") {

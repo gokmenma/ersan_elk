@@ -319,12 +319,16 @@ try {
             $tc = $rapor['TCKIMLIKNO'] ?? '';
             $personelData = $tcToPersonel[$tc] ?? null;
 
+            // Tarih fallbacks
+            $baslangic = $rapor['ABASTAR'] ?? $rapor['YATRAPBASTAR'] ?? $rapor['POLIKLINIKTAR'] ?? '';
+            $bitis = $rapor['ABITTAR'] ?? $rapor['YATRAPBITTAR'] ?? $rapor['ISBASKONTTAR'] ?? '';
+
             $islenecekRaporlar[] = [
                 'tc_kimlik' => $tc,
                 'ad_soyad' => $rapor['SIGORTALIADSOYAD'] ?? ($rapor['AD'] . ' ' . $rapor['SOYAD']),
                 'vaka_adi' => $rapor['VAKAADI'] ?? 'Bilinmiyor',
-                'baslangic' => $rapor['ABASTAR'] ?? $rapor['YATRAPBASTAR'] ?? '',
-                'bitis' => $rapor['ABITTAR'] ?? $rapor['YATRAPBITTAR'] ?? '',
+                'baslangic' => $baslangic,
+                'bitis' => $bitis,
                 'is_basi' => $rapor['ISBASKONTTAR'] ?? '',
                 'rapor_id' => $rapor['MEDULARAPORID'] ?? '',
                 'personel_id' => $personelData ? $personelData['id'] : null,
@@ -413,6 +417,18 @@ try {
                 }
             }
 
+            // Eğer bitis bos ise baslangicı kullan
+            if (empty($bitis))
+                $bitis = $baslangic;
+
+            // Filtreleme: Ay aralığıyla çakışıyor mu?
+            // (RaporBaşlangıç <= AyBitiş) AND (RaporBitiş >= AyBaşlangıç)
+            if (!empty($baslangic) && !empty($bitis)) {
+                if (!($baslangic <= $ayBitis && $bitis >= $ayBaslangic)) {
+                    continue; // Bu aya ait değil, atla
+                }
+            }
+
             $islenecekRaporlar[] = [
                 'tc_kimlik' => $tc,
                 'ad_soyad' => $rapor['SIGORTALIADSOYAD'] ?? ($rapor['AD'] . ' ' . $rapor['SOYAD']),
@@ -439,6 +455,12 @@ try {
     } elseif ($action === 'sgk-raporlari-isle') {
         // Seçilen SGK raporlarını puantaja işle
         $raporlar = json_decode($_POST['raporlar'] ?? '[]', true);
+        $ay = $_POST['ay'] ?? date('m');
+        $yil = $_POST['yil'] ?? date('Y');
+
+        // Ayın ilk ve son günü (Sınırlama için)
+        $ayBaslangic = "$yil-$ay-01";
+        $ayBitis = date('Y-m-t', strtotime($ayBaslangic));
 
         if (empty($raporlar)) {
             throw new Exception("İşlenecek rapor bulunamadı.");
@@ -477,8 +499,19 @@ try {
                 }
 
                 // Bitiş yoksa başlangıç ile aynı gün
-                if (empty($bitis)) {
+                if (empty($bitis))
                     $bitis = $baslangic;
+
+                // GÜVENLİK VE DÖNEM KONTROLÜ: 
+                // Rapor tarihlerini sadece bu ayın sınırları içine çek (Örn: 26 Aralık - 5 Ocak raporu, Ocak ayında sadece 1-5 Ocak olarak işlenir)
+                if ($baslangic < $ayBaslangic)
+                    $baslangic = $ayBaslangic;
+                if ($bitis > $ayBitis)
+                    $bitis = $ayBitis;
+
+                // Eğer kısıtlama sonrası rapor süresi geçersizse (tümü başka bir ayda ise) atla
+                if ($baslangic > $bitis) {
+                    continue;
                 }
 
                 // Toplam gün hesapla
@@ -490,7 +523,6 @@ try {
                 $Puantaj->db->prepare("
                     DELETE FROM personel_izinleri 
                     WHERE personel_id = ? 
-                    AND izin_tipi_id = ?
                     AND silinme_tarihi IS NULL
                     AND (
                         (baslangic_tarihi >= ? AND baslangic_tarihi <= ?)
@@ -499,7 +531,6 @@ try {
                     )
                 ")->execute([
                             $personel_id,
-                            $rpTurId,
                             $baslangic,
                             $bitis,
                             $baslangic,
@@ -544,7 +575,7 @@ try {
 
         echo json_encode([
             'status' => 'success',
-            'message' => "$kayit_sayisi rapor başarıyla puantaja işlendi."
+            'message' => "Seçilen dönem için $kayit_sayisi rapor başarıyla puantaja işlendi."
         ]);
 
     } elseif ($action === 'export-excel') {
@@ -576,11 +607,6 @@ try {
         // Column style
         $pNameStyle = [
             'font' => ['bold' => true],
-            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_DASHED]]
-        ];
-
-        $dataCellStyle = [
-            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
             'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_DASHED]]
         ];
 
@@ -712,4 +738,5 @@ try {
 } catch (Exception $e) {
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }
+
 
