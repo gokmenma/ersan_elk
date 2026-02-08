@@ -341,9 +341,10 @@ try {
             // Tarihleri işle ve Formatla (Y-m-d iç işlemler, d.m.Y gösterim için)
             $baslangic = '';
             $bitis = '';
+            $toplam_gun = 0;
 
-            if (!empty($baslangicRaw)) {
-                try {
+            try {
+                if (!empty($baslangicRaw)) {
                     $bDate = (strpos($baslangicRaw, '.') !== false)
                         ? DateTime::createFromFormat('d.m.Y', $baslangicRaw)
                         : new DateTime($baslangicRaw);
@@ -352,19 +353,15 @@ try {
                         $baslangic = $bDate->format('Y-m-d');
                         $baslangicRaw = $bDate->format('d.m.Y');
                     }
-                } catch (Exception $e) {
                 }
-            }
 
-            if (!empty($bitisRaw)) {
-                try {
+                if (!empty($bitisRaw)) {
                     $eDate = (strpos($bitisRaw, '.') !== false)
                         ? DateTime::createFromFormat('d.m.Y', $bitisRaw)
                         : new DateTime($bitisRaw);
 
                     if ($eDate) {
-                        // Eğer ISBASKONTTAR (İşbaşı Kontrol Tarihi) üzerinden bitiş belirlendiyse, rapor bir gün önce bitiyor demektir.
-                        // Bu kontrolü hem dd.mm.yyyy hem de Y-m-d formatları için yapıyoruz.
+                        // İşbaşı kontrol tarihi düzeltmesi
                         $isBasiRaw = $rapor['ISBASKONTTAR'] ?? '';
                         if (empty($rapor['ABITTAR']) && !empty($isBasiRaw) && ($bitisRaw === $isBasiRaw)) {
                             $eDate->modify('-1 day');
@@ -373,8 +370,18 @@ try {
                         $bitis = $eDate->format('Y-m-d');
                         $bitisRaw = $eDate->format('d.m.Y');
                     }
-                } catch (Exception $e) {
                 }
+
+                // Toplam Gün Hesapla
+                if (!empty($baslangic) && !empty($bitis)) {
+                    $d1 = new DateTime($baslangic);
+                    $d2 = new DateTime($bitis);
+                    $toplam_gun = $d1->diff($d2)->days + 1;
+                    if ($d1 > $d2)
+                        $toplam_gun = 0; // Hatalı tarih durumu
+                }
+            } catch (Exception $e) {
+                // Hata durumunda ham veriyi koru ama standart formatı zorla (eğer mümkünse)
             }
 
             $islenecekRaporlar[] = [
@@ -385,6 +392,7 @@ try {
                 'baslangic_raw' => $baslangicRaw,
                 'bitis' => $bitis,
                 'bitis_raw' => $bitisRaw,
+                'toplam_gun' => $toplam_gun,
                 'is_basi' => $rapor['ISBASKONTTAR'] ?? '',
                 'rapor_id' => $rapor['MEDULARAPORID'] ?? '',
                 'personel_id' => $personelData ? $personelData['id'] : null,

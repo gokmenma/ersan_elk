@@ -1026,6 +1026,7 @@ $(document).ready(function () {
               <th class="text-white">Vaka Türü</th>
               <th class="text-center text-white">Başlangıç</th>
               <th class="text-center text-white">Bitiş</th>
+              <th class="text-center text-white">Gün</th>
               <th class="text-end px-4 text-white">Durum</th>
             </tr>
           </thead>
@@ -1074,6 +1075,7 @@ $(document).ready(function () {
           </td>
           <td class="text-center fw-medium text-dark">${baslangicDisplay}</td>
           <td class="text-center fw-medium text-dark">${bitisDisplay}</td>
+          <td class="text-center fw-bold text-primary">${rapor.toplam_gun || 0}</td>
           <td class="text-end px-4">
             <span class="badge ${badgeClass} bg-opacity-10 text-${badgeClass.replace("bg-", "")} px-2 py-1">
                 <i class="mdi ${statusIcon} me-1"></i>${statusText}
