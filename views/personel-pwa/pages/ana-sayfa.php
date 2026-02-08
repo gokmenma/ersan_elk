@@ -407,7 +407,12 @@ use App\Helper\Helper;
         document.getElementById('gorev-baslangic-saat').textContent = data.baslangic_saat || '--:--';
 
         // Süre takibini başlat
-        gorevBaslangicZamani = new Date(data.baslangic_zamani);
+        // Safari ve bazı mobil tarayıcılar için ISO formatına (boşluk yerine T) dönüştür
+        var zamanStr = data.baslangic_zamani;
+        if (zamanStr && typeof zamanStr === 'string') {
+            zamanStr = zamanStr.replace(' ', 'T');
+        }
+        gorevBaslangicZamani = new Date(zamanStr);
         updateGecenSure();
         gorevSureInterval = setInterval(updateGecenSure, 60000); // Her dakika güncelle
     }
@@ -416,7 +421,14 @@ use App\Helper\Helper;
         if (!gorevBaslangicZamani) return;
 
         var simdi = new Date();
-        var diff = simdi - gorevBaslangicZamani;
+        // Safari uyumluluğu için NaN kontrolü ve güvenli tarih farkı hesaplama
+        var diff = simdi.getTime() - gorevBaslangicZamani.getTime();
+
+        if (isNaN(diff) || diff < 0) {
+            document.getElementById('gorev-gecen-sure').textContent = '...';
+            return;
+        }
+
         var dakika = Math.floor(diff / 60000);
         var saat = Math.floor(dakika / 60);
         dakika = dakika % 60;
@@ -570,14 +582,17 @@ use App\Helper\Helper;
                 btn.innerHTML = originalHtml;
             }
         } catch (error) {
+            console.error('Görev Başla Hatası:', error);
             Toast.show(error.message || 'Bir hata oluştu', 'error');
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
 
             // Konum izni reddedildiyse uyarı göster
-            if (error.message.includes('izni')) {
+            if (error.message && error.message.includes('izni')) {
                 showKonumUyari();
             }
+        } finally {
+            // Buton her durumda eski haline dönsün
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
         }
     }
 
@@ -638,6 +653,8 @@ use App\Helper\Helper;
         } catch (error) {
             console.error('Görev Bitir Hatası:', error);
             Toast.show(error.message || 'Bir hata oluştu', 'error');
+        } finally {
+            // Buton her durumda eski haline dönsün
             btn.disabled = false;
             btn.innerHTML = originalHtml;
         }
