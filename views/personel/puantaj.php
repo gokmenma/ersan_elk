@@ -559,14 +559,7 @@ use App\Service\Gate;
             <div class="col-12">
                 <div class="card">
                     <div class="card-body p-0 position-relative">
-                        <div class="puantaj-preloader" id="puantaj-loader">
-                            <div class="text-center">
-                                <div class="spinner-border text-primary m-1" role="status">
-                                    <span class="sr-only">Yükleniyor...</span>
-                                </div>
-                                <h5 class="mt-2">Veriler Hazırlanıyor...</h5>
-                            </div>
-                        </div>
+
                         <div class="table-responsive puantaj-table-wrapper">
                             <table class="table table-puantaj mb-0" id="puantaj-table">
                                 <thead>
@@ -577,6 +570,14 @@ use App\Service\Gate;
                                 </thead>
                                 <tbody id="table-body">
                                     <!-- Personeller ve veriler dinamik gelecek -->
+                                    <div class="puantaj-preloader" id="puantaj-loader">
+                                        <div class="text-center">
+                                            <div class="spinner-border text-primary m-1" role="status">
+                                                <span class="sr-only">Yükleniyor...</span>
+                                            </div>
+                                            <h5 class="mt-2">Veriler Hazırlanıyor...</h5>
+                                        </div>
+                                    </div>
                                 </tbody>
                             </table>
                         </div>
@@ -638,6 +639,31 @@ use App\Service\Gate;
     </div>
 </div>
 
+<!-- SGK Rapor Modal -->
+<div class="modal fade" id="sgkRaporModal" tabindex="-1" aria-labelledby="sgkRaporModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title text-white" id="sgkRaporModalLabel">SGK Raporları</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" id="sgkRaporModalBody">
+                <!-- İçerik JS ile dolacak -->
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-link text-muted text-decoration-none px-4" data-bs-dismiss="modal">
+                    <i class="mdi mdi-close me-1"></i> Vazgeç
+                </button>
+                <button type="button" class="btn btn-primary px-4 fw-bold" id="btn-sgk-rapor-onayla">
+                    <i class="mdi mdi-check-all me-1"></i> Seçilenleri Puantaja İşle
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="views/personel/js/puantaj_izin.js"></script>

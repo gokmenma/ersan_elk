@@ -987,59 +987,98 @@ $(document).ready(function () {
    * SGK Rapor Modal - Raporları göster ve işleme al
    */
   function showSgkRaporModal(raporlar, title, toplam, eslesen) {
+    $("#sgkRaporModalLabel").text(title);
+
     let tableHtml = `
-      <div class="mb-3 d-flex justify-content-between align-items-center">
-        <div>
-          <span class="badge bg-primary me-2">Toplam: ${toplam}</span>
-          <span class="badge bg-success">Eşleşen: ${eslesen}</span>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="sgk-select-all" checked>
-          <label class="form-check-label" for="sgk-select-all">Tümünü Seç</label>
-        </div>
+      <div class="px-4 py-3 bg-soft-primary border-bottom border-light">
+          <div class="row align-items-center">
+              <div class="col-md-8">
+                  <div class="d-flex align-items-center gap-3">
+                      <div class="d-flex flex-column">
+                          <span class="text-muted small fw-medium">Sorgulama Sonucu</span>
+                          <div class="d-flex align-items-center gap-2">
+                              <span class="badge rounded-pill bg-primary px-3">Toplam: ${toplam} Rapor</span>
+                              <span class="badge rounded-pill bg-success px-3">Eşleşen: ${eslesen} Personel</span>
+                          </div>
+                      </div>
+                      <div class="vr mx-2" style="height: 30px; opacity: 0.1;"></div>
+                      <div class="text-muted small">
+                          <i class="mdi mdi-information-outline text-info me-1"></i>
+                          Seçilen raporlar puantaja <b>RP</b> olarak işlenecektir.
+                      </div>
+                  </div>
+              </div>
+              <div class="col-md-4 text-end">
+                  <div class="form-check form-switch d-inline-flex align-items-center gap-2 bg-white px-3 py-2 rounded-pill shadow-sm">
+                      <label class="form-check-label small fw-bold text-dark cursor-pointer" for="sgk-select-all">Tümünü Seç</label>
+                      <input class="form-check-input ms-0 cursor-pointer" type="checkbox" id="sgk-select-all" checked>
+                  </div>
+              </div>
+          </div>
       </div>
-      <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-        <table class="table table-sm table-hover table-bordered mb-0">
+      <div class="table-responsive" style="max-height: calc(100vh - 350px);">
+        <table class="table table-hover align-middle mb-0">
           <thead class="table-light sticky-top">
             <tr>
-              <th style="width: 40px;"></th>
+              <th class="px-4 text-center" style="width: 60px;">#</th>
               <th>Personel</th>
-              <th>SGK Adı</th>
-              <th>Vaka</th>
-              <th>Başlangıç</th>
-              <th>Bitiş</th>
-              <th>Durum</th>
+              <th>SGK Sistemindeki Ad</th>
+              <th>Vaka Türü</th>
+              <th class="text-center">Başlangıç</th>
+              <th class="text-center">Bitiş</th>
+              <th class="text-end px-4">Durum</th>
             </tr>
           </thead>
           <tbody>
     `;
 
     raporlar.forEach((rapor, index) => {
-      const eslesmeDurumu = rapor.eslesti
-        ? `<span class="badge bg-success"><i class="mdi mdi-check"></i> Eşleşti</span>`
-        : `<span class="badge bg-warning text-dark"><i class="mdi mdi-alert"></i> Eşleşmedi</span>`;
-
-      const personelAdi = rapor.eslesti
-        ? `<strong class="text-success">${rapor.personel_adi}</strong>`
-        : `<span class="text-muted">-</span>`;
+      const isEslesti = !!rapor.eslesti;
+      const rowClass = isEslesti ? "" : "table-light opacity-75";
+      const badgeClass = isEslesti ? "bg-success" : "bg-warning";
+      const statusIcon = isEslesti
+        ? "mdi-check-decagram"
+        : "mdi-alert-decagram-outline";
+      const statusText = isEslesti ? "Eşleşti" : "Eşleşmedi";
 
       const baslangicDisplay = rapor.baslangic_raw || rapor.baslangic || "-";
       const bitisDisplay = rapor.bitis_raw || rapor.bitis || "-";
 
       tableHtml += `
-        <tr class="${rapor.eslesti ? "" : "table-warning"}">
-          <td class="text-center">
-            <input type="checkbox" class="form-check-input sgk-rapor-check" 
-                   data-index="${index}" 
-                   ${rapor.eslesti ? "checked" : "disabled"} 
-                   ${!rapor.eslesti ? 'title="TC Kimlik eşleşmedi"' : ""}>
+        <tr class="${rowClass} ${!isEslesti ? "text-muted" : ""}">
+          <td class="text-center px-4">
+            <div class="form-check d-flex justify-content-center">
+                <input type="checkbox" class="form-check-input sgk-rapor-check cursor-pointer" 
+                       data-index="${index}" 
+                       ${isEslesti ? "checked" : "disabled"} 
+                       style="width: 1.2rem; height: 1.2rem;">
+            </div>
           </td>
-          <td>${personelAdi}</td>
-          <td>${rapor.ad_soyad}</td>
-          <td><span class="badge bg-info">${rapor.vaka_adi}</span></td>
-          <td>${baslangicDisplay}</td>
-          <td>${bitisDisplay}</td>
-          <td>${eslesmeDurumu}</td>
+          <td>
+            ${
+              isEslesti
+                ? `<div>
+                    <div class="fw-bold text-dark">${rapor.personel_adi}</div>
+                    <div class="text-muted small">${rapor.tc_kimlik || ""}</div>
+                   </div>`
+                : `<span class="badge bg-soft-danger text-danger border border-danger border-opacity-10 px-2 py-1">Eşleşen Kayıt Yok</span>`
+            }
+          </td>
+          <td>
+            <div class="fw-medium">${rapor.ad_soyad}</div>
+          </td>
+          <td>
+            <span class="badge bg-soft-info text-info border border-info border-opacity-10 px-2 py-1">
+                <i class="mdi mdi-medical-bag me-1"></i>${rapor.vaka_adi}
+            </span>
+          </td>
+          <td class="text-center fw-medium text-dark">${baslangicDisplay}</td>
+          <td class="text-center fw-medium text-dark">${bitisDisplay}</td>
+          <td class="text-end px-4">
+            <span class="badge ${badgeClass} bg-opacity-10 text-${badgeClass.replace("bg-", "")} px-2 py-1">
+                <i class="mdi ${statusIcon} me-1"></i>${statusText}
+            </span>
+          </td>
         </tr>
       `;
     });
@@ -1048,39 +1087,36 @@ $(document).ready(function () {
           </tbody>
         </table>
       </div>
-      <div class="mt-3 text-muted small">
-        <i class="mdi mdi-information-outline me-1"></i>
-        Seçilen raporlar puantaja <strong>RP (Raporlu)</strong> olarak işlenecektir.
-        TC Kimlik eşleşmeyen personeller için rapor işlenemez.
-      </div>
     `;
 
-    Swal.fire({
-      title: title,
-      html: tableHtml,
-      width: "900px",
-      showCancelButton: true,
-      confirmButtonText: '<i class="mdi mdi-check me-1"></i> Seçilenleri İşle',
-      cancelButtonText: '<i class="mdi mdi-close me-1"></i> Kapat',
-      confirmButtonColor: "#34c38f",
-      cancelButtonColor: "#6c757d",
-      didOpen: () => {
-        // Tümünü seç/kaldır
-        $("#sgk-select-all").on("change", function () {
-          $(".sgk-rapor-check:not(:disabled)").prop(
-            "checked",
-            $(this).is(":checked"),
-          );
-        });
+    $("#sgkRaporModalBody").html(tableHtml);
 
-        // Tek tek seçim değiştiğinde tümünü seç checkbox'ını güncelle
-        $(".sgk-rapor-check").on("change", function () {
-          const total = $(".sgk-rapor-check:not(:disabled)").length;
-          const checked = $(".sgk-rapor-check:not(:disabled):checked").length;
-          $("#sgk-select-all").prop("checked", total === checked);
-        });
-      },
-      preConfirm: () => {
+    // Bootstrap Modal'ı göster
+    const modalEl = document.getElementById("sgkRaporModal");
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+
+    // Event Listeners
+    $("#sgk-select-all")
+      .off("change")
+      .on("change", function () {
+        $(".sgk-rapor-check:not(:disabled)").prop(
+          "checked",
+          $(this).is(":checked"),
+        );
+      });
+
+    $(".sgk-rapor-check")
+      .off("change")
+      .on("change", function () {
+        const total = $(".sgk-rapor-check:not(:disabled)").length;
+        const checked = $(".sgk-rapor-check:not(:disabled):checked").length;
+        $("#sgk-select-all").prop("checked", total === checked);
+      });
+
+    $("#btn-sgk-rapor-onayla")
+      .off("click")
+      .on("click", function () {
         const secilenler = [];
         $(".sgk-rapor-check:checked").each(function () {
           const index = $(this).data("index");
@@ -1088,17 +1124,13 @@ $(document).ready(function () {
         });
 
         if (secilenler.length === 0) {
-          Swal.showValidationMessage("Lütfen en az bir rapor seçin.");
-          return false;
+          showToast("Lütfen en az bir rapor seçin.", "error");
+          return;
         }
 
-        return secilenler;
-      },
-    }).then((result) => {
-      if (result.isConfirmed && result.value) {
-        isleSgkRaporlari(result.value);
-      }
-    });
+        modal.hide();
+        isleSgkRaporlari(secilenler);
+      });
   }
 
   /**
