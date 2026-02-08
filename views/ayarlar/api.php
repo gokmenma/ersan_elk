@@ -218,6 +218,85 @@ switch ($action) {
         }
         break;
 
+    case 'save_sgk_ayarlari':
+        try {
+            $firma_id = !empty($_POST['firma_id']) ? (int) $_POST['firma_id'] : null;
+
+            $settingsToUpdate = [];
+
+            // SGK Kullanıcı Adı
+            if (isset($_POST['sgk_kullanici_adi'])) {
+                $settingsToUpdate['sgk_kullanici_adi'] = trim($_POST['sgk_kullanici_adi']);
+            }
+
+            // SGK İşyeri Kodu
+            if (isset($_POST['sgk_isyeri_kodu'])) {
+                $settingsToUpdate['sgk_isyeri_kodu'] = trim($_POST['sgk_isyeri_kodu']);
+            }
+
+            // SGK İşyeri Şifresi - şifrelenmiş olarak kaydedilecek
+            if (!empty($_POST['sgk_isyeri_sifresi_yeni'])) {
+                $settingsToUpdate['sgk_isyeri_sifresi'] = Security::encrypt(trim($_POST['sgk_isyeri_sifresi_yeni']));
+            }
+
+            // Otomatik Rapor Onaylama
+            $settingsToUpdate['sgk_otomatik_rapor_onaylama'] = isset($_POST['sgk_otomatik_rapor_onaylama']) ? '1' : '0';
+
+            if ($Settings->upsertMultipleSettings($settingsToUpdate, $firma_id, null)) {
+                $response = [
+                    'status' => 'success',
+                    'message' => 'SGK Vizite ayarları başarıyla kaydedildi.'
+                ];
+            } else {
+                $response['message'] = 'Ayarlar kaydedilemedi.';
+            }
+        } catch (\Throwable $e) {
+            $response['message'] = 'Hata: ' . $e->getMessage();
+        }
+        break;
+
+    case 'test_sgk_baglantisi':
+        try {
+            require_once dirname(__DIR__, 2) . '/App/Service/SgkViziteService.php';
+
+            $firma_id = !empty($_POST['firma_id']) ? (int) $_POST['firma_id'] : null;
+
+            // Formdan gelen bilgileri kullan
+            $kullaniciAdi = trim($_POST['sgk_kullanici_adi'] ?? '');
+            $isyeriKodu = trim($_POST['sgk_isyeri_kodu'] ?? '');
+            $isyeriSifresi = trim($_POST['sgk_isyeri_sifresi_yeni'] ?? '');
+
+            // Eğer yeni şifre girilmemişse, kayıtlı şifreyi kullan
+            if (empty($isyeriSifresi)) {
+                $allSettings = $Settings->getAllSettingsAsKeyValue($firma_id);
+                $encryptedPassword = $allSettings['sgk_isyeri_sifresi'] ?? '';
+                if (!empty($encryptedPassword)) {
+                    $isyeriSifresi = Security::decrypt($encryptedPassword);
+                }
+            }
+
+            if (empty($kullaniciAdi) || empty($isyeriKodu) || empty($isyeriSifresi)) {
+                throw new \Exception("Lütfen tüm SGK bilgilerini doldurun.");
+            }
+
+            // SgkViziteService ile bağlantı testi
+            $sgkService = new SgkViziteService($kullaniciAdi, $isyeriKodu, $isyeriSifresi);
+            $result = $sgkService->bilgileriDogrula($kullaniciAdi, $isyeriKodu, $isyeriSifresi);
+
+            if (isset($result->sonucKod) && $result->sonucKod == '0') {
+                $response = [
+                    'status' => 'success',
+                    'message' => 'SGK bağlantısı başarılı! Bilgileriniz doğrulandı.'
+                ];
+            } else {
+                $hataMesaji = isset($result->sonucAciklama) ? (string) $result->sonucAciklama : 'Bilinmeyen hata';
+                throw new \Exception("SGK Doğrulama Hatası: " . $hataMesaji);
+            }
+        } catch (\Throwable $e) {
+            $response['message'] = $e->getMessage();
+        }
+        break;
+
     default:
         $response['message'] = 'Geçersiz işlem.';
         break;

@@ -96,7 +96,7 @@
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  overflow: hidden;
+  /* overflow: hidden; */ /* Dropdown'ların kesilmemesi için kaldırıldı */
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -162,7 +162,7 @@
   background: #fff;
   border: 1px solid var(--dept-color, #6b7280);
   border-left: 3px solid var(--dept-color, #6b7280);
-  margin: 6px 12px;
+  /* margin: 6px 12px; */
   cursor: grab;
   transition: all 0.2s ease;
   border-radius: 6px;
@@ -186,6 +186,50 @@
   color: #6b7280;
   margin: 0;
   text-align: left;
+}
+
+.nobet-count {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 6px;
+  border-radius: 6px;
+  min-width: 24px;
+  text-align: center;
+  transition: all 0.2s ease;
+  line-height: 1;
+  display: inline-block;
+}
+
+/* Aktif Nöbeti Olan */
+.nobet-count.bg-primary {
+  background-color: #556ee6 !important;
+  color: #fff !important;
+  border: none;
+  box-shadow: 0 2px 4px rgba(85, 110, 230, 0.2);
+}
+
+/* Nöbeti Olmayan */
+.nobet-count.bg-light {
+  background-color: #f8fafc !important;
+  color: #64748b !important; /* Daha koyu gri yapıldı */
+  border: 1px solid #e2e8f0;
+}
+
+[data-bs-theme="dark"] .nobet-count.bg-light {
+  background-color: #32394e !important;
+  color: #adb5bd !important;
+  border-color: #3b445e;
+}
+
+[data-bs-theme="dark"] .nobet-count.bg-primary {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Dropdown menüsünün konteyner dışına taşabilmesi için */
+#dept-filter-dropdown,
+#personel-sort-dropdown {
+  z-index: 1050;
+  margin-top: 5px;
 }
 
 /* Sağ Panel - Takvim */
@@ -328,7 +372,7 @@
   font-weight: 600 !important;
   cursor: pointer !important;
   border: 1.5px solid rgba(0, 0, 0, 0.1) !important; /* İnce bir iç border */
-  margin: 2px 4px !important;
+  /* margin: 2px 4px !important; */
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -430,7 +474,6 @@
 }
 
 .nobet-modal .modal-header {
-  background: #1a1d21;
   padding: 16px 20px;
   border: none;
   display: flex;
@@ -438,7 +481,6 @@
 }
 
 .nobet-modal .modal-title {
-  color: #fff;
   font-size: 16px;
   font-weight: 600;
   display: flex;
@@ -503,6 +545,19 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.nobet-modal .btn-warning:hover {
+  box-shadow: 0 4px 8px rgba(241, 180, 76, 0.3);
+}
+
+.nobet-modal .btn-danger:hover {
+  box-shadow: 0 4px 8px rgba(244, 102, 102, 0.3);
+}
+
+.nobet-modal .btn-primary:hover {
+  box-shadow: 0 4px 8px rgba(85, 110, 230, 0.3);
 }
 
 /* ============================================
@@ -607,4 +662,246 @@
 
 .fc-event-past .fc-event-delete-btn {
   display: none !important;
+}
+
+/* ============================================
+   DETAY KARTI TASARIMI (Informational)
+   ============================================ */
+.nobet-detail-card-header {
+  background: #f8f9fa;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.modal-info-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #adb5bd;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.modal-info-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #343a40;
+}
+
+.modal-time-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #adb5bd;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.modal-date-large {
+  font-size: 28px;
+  font-weight: 800;
+  color: #1a1d21;
+}
+
+.modal-time-sub {
+  font-size: 18px;
+  font-weight: 600;
+  color: #556ee6;
+}
+
+/* ============================================
+   DARK MODE DESTEĞİ (Dason Theme Match)
+   ============================================ */
+[data-bs-theme="dark"] .stat-card,
+[data-bs-theme="dark"] .personel-pool-card,
+[data-bs-theme="dark"] .calendar-card,
+[data-bs-theme="dark"] .modal-content,
+[data-bs-theme="dark"] .personel-list,
+[data-bs-theme="dark"] #nobet-calendar,
+[data-bs-theme="dark"] .fc {
+  background: #2a3042 !important;
+  border-color: #32394e !important;
+  color: #adb5bd !important;
+}
+
+[data-bs-theme="dark"] .stat-card .stat-value,
+[data-bs-theme="dark"] .stat-card .stat-label,
+[data-bs-theme="dark"] .personel-name,
+[data-bs-theme="dark"] .calendar-title,
+[data-bs-theme="dark"] .modal-title,
+[data-bs-theme="dark"] .modal-date-large,
+[data-bs-theme="dark"] .modal-info-value {
+  color: #eff2f7 !important;
+}
+
+[data-bs-theme="dark"] .stat-card .stat-trend {
+  background: #32394e;
+  color: #eff2f7;
+}
+
+[data-bs-theme="dark"] .stat-card .stat-trend.up {
+  background: rgba(52, 211, 153, 0.1);
+  color: #34d399;
+}
+
+[data-bs-theme="dark"] .stat-card .stat-trend.down {
+  background: rgba(248, 113, 113, 0.1);
+  color: #f87171;
+}
+
+[data-bs-theme="dark"] .pool-header,
+[data-bs-theme="dark"] .calendar-header {
+  border-bottom: 1px solid #32394e !important;
+  background-color: transparent !important;
+}
+
+[data-bs-theme="dark"] .personel-item {
+  background: rgba(50, 57, 78, 0.4) !important;
+  border-color: #32394e !important;
+}
+
+[data-bs-theme="dark"] .personel-item:hover {
+  background: #32394e !important;
+}
+
+[data-bs-theme="dark"] .personel-dept {
+  color: #74788d;
+}
+
+[data-bs-theme="dark"] .nobet-detail-card-header {
+  background: #32394e !important;
+}
+
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select,
+[data-bs-theme="dark"] .pool-filters .form-control {
+  background-color: #2e3446 !important;
+  border-color: #32394e !important;
+  color: #eff2f7 !important;
+}
+
+/* FullCalendar Dark mode Overrides */
+[data-bs-theme="dark"] .fc-theme-standard td,
+[data-bs-theme="dark"] .fc-theme-standard th,
+[data-bs-theme="dark"] .fc-theme-standard .fc-scrollgrid {
+  border-color: #32394e !important;
+}
+
+[data-bs-theme="dark"] .fc-col-header-cell {
+  background: #32394e !important;
+}
+
+[data-bs-theme="dark"] .fc-col-header-cell-cushion {
+  color: #eff2f7 !important;
+}
+
+[data-bs-theme="dark"] .fc-daygrid-day-number {
+  color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .fc-daygrid-day {
+  background-color: #2a3042 !important;
+}
+
+[data-bs-theme="dark"] .fc-day-today {
+  background: rgba(85, 110, 230, 0.15) !important;
+}
+
+[data-bs-theme="dark"] .fc-day-other {
+  background: #262b3b !important;
+}
+
+/* Takvim Butonları Dark Mode */
+[data-bs-theme="dark"] .fc .fc-button-primary {
+  background-color: #32394e !important;
+  border-color: #32394e !important;
+  color: #eff2f7 !important;
+  text-transform: capitalize;
+}
+
+[data-bs-theme="dark"] .fc .fc-button-primary:hover {
+  background-color: #3b445e !important;
+  border-color: #3b445e !important;
+}
+
+[data-bs-theme="dark"] .fc .fc-button-active {
+  background-color: #556ee6 !important;
+  border-color: #556ee6 !important;
+  color: #fff !important;
+}
+
+[data-bs-theme="dark"] .fc .fc-button-primary:disabled {
+  background-color: #2a3042 !important;
+  border-color: #32394e !important;
+  opacity: 0.6;
+}
+
+[data-bs-theme="dark"] .fc-list-day-cushion {
+  background: #32394e !important;
+}
+
+[data-bs-theme="dark"] .fc-list-event:hover td {
+  background-color: #32394e !important;
+}
+
+[data-bs-theme="dark"] .btn-light {
+  background-color: #32394e;
+  border-color: #32394e;
+  color: #eff2f7;
+}
+
+[data-bs-theme="dark"] .btn-light:hover {
+  background-color: #3b445e;
+}
+
+/* Modal Dark Mode Fixes */
+[data-bs-theme="dark"] .nobet-modal .modal-body {
+  background: #2a3042 !important;
+  color: #eff2f7 !important;
+}
+
+[data-bs-theme="dark"] .nobet-modal .modal-header {
+  background: #32394e !important;
+  border-bottom: 1px solid #3b445e !important;
+}
+
+[data-bs-theme="dark"] .nobet-modal .modal-footer {
+  background: #2a3042 !important;
+  border-top: 1px solid #3b445e !important;
+}
+
+[data-bs-theme="dark"] .form-floating-custom > label {
+  color: #adb5bd !important;
+}
+
+[data-bs-theme="dark"] .form-floating-custom > .form-control:focus ~ label,
+[data-bs-theme="dark"]
+  .form-floating-custom
+  > .form-control:not(:placeholder-shown)
+  ~ label {
+  background-color: #32394e !important;
+  color: #556ee6 !important;
+}
+
+[data-bs-theme="dark"] .select2-container--default .select2-selection--single {
+  background-color: #2e3446 !important;
+  border-color: #32394e !important;
+  color: #eff2f7 !important;
+}
+
+[data-bs-theme="dark"]
+  .select2-container--default
+  .select2-selection--single
+  .select2-selection__rendered {
+  color: #eff2f7 !important;
+}
+
+[data-bs-theme="dark"] .nobet-modal .btn-primary {
+  background: #556ee6 !important;
+  color: #fff !important;
+}
+
+[data-bs-theme="dark"] .nobet-modal .btn-secondary {
+  background: #32394e !important;
+  color: #adb5bd !important;
+  border: 1px solid #3b445e !important;
 }

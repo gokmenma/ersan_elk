@@ -1,5 +1,9 @@
 /* PWA Personel Portalı - Custom Styles */
 @import url("https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap');
+
+
 
 /* ===== CSS Variables ===== */
 :root {
@@ -14,7 +18,7 @@
   --danger: #ef4444;
   --safe-area-inset-top: env(safe-area-inset-top, 0px);
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-  --font-family: "Roboto Condensed", sans-serif;
+  --font-family: "Geist", sans-serif;
 }
 
 /* ===== Base Styles ===== */

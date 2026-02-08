@@ -43,6 +43,10 @@ if ($personel_id > 0) {
         echo json_encode(['success' => false, 'error' => 'Session expired', 'redirect' => 'login.php']);
         exit;
     }
+    // Firma ID'yi oturuma ekleyelim (Model'ler için gerekli)
+    if (!isset($_SESSION['firma_id']) && isset($personel->firma_id)) {
+        $_SESSION['firma_id'] = $personel->firma_id;
+    }
 }
 
 // Response helper
@@ -1460,42 +1464,19 @@ try {
             $PersonelModel = new PersonelModel();
             $personelData = $PersonelModel->find($personel_id);
 
-            if (!$personelData || empty($personelData->ekip_no)) {
+            if (!$personelData) {
                 response(true, [
                     'items' => [],
                     'stats' => ['toplam' => 0, 'sonuclanan' => 0, 'acik' => 0]
                 ]);
             }
 
-            $ekipKodu = $personelData->ekip_no;
             $startDate = $_POST['start_date'] ?? '';
             $endDate = $_POST['end_date'] ?? '';
             $workType = $_POST['work_type'] ?? '';
 
-            // Query ile veri çek
-            $sql = "SELECT * FROM yapilan_isler WHERE ekip_kodu = ?";
-            $params = [$ekipKodu];
-
-            if (!empty($startDate)) {
-                $sql .= " AND tarih >= ?";
-                $params[] = $startDate;
-            }
-
-            if (!empty($endDate)) {
-                $sql .= " AND tarih <= ?";
-                $params[] = $endDate;
-            }
-
-            if (!empty($workType)) {
-                $sql .= " AND is_emri_tipi = ?";
-                $params[] = $workType;
-            }
-
-            $sql .= " ORDER BY tarih DESC LIMIT 100";
-
-            $stmt = $PersonelModel->getDb()->prepare($sql);
-            $stmt->execute($params);
-            $items = $stmt->fetchAll(PDO::FETCH_OBJ);
+            $PuantajModel = new \App\Model\PuantajModel();
+            $items = $PuantajModel->getFiltered($startDate, $endDate, $personel_id, $workType);
 
             // İstatistikler
             $totalSonuclanan = 0;
@@ -1517,22 +1498,16 @@ try {
             break;
 
         case 'getPuantajWorkTypes':
-            $PersonelModel = new PersonelModel();
-            $personelData = $PersonelModel->find($personel_id);
-
-            if (!$personelData || empty($personelData->ekip_no)) {
-                response(true, []);
-            }
-
-            $ekipKodu = $personelData->ekip_no;
-
-            $stmt = $PersonelModel->getDb()->prepare(
-                "SELECT DISTINCT is_emri_tipi FROM yapilan_isler WHERE ekip_kodu = ? AND is_emri_tipi IS NOT NULL AND is_emri_tipi != '' ORDER BY is_emri_tipi"
-            );
-            $stmt->execute([$ekipKodu]);
-            $types = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
+            $PuantajModel = new \App\Model\PuantajModel();
+            $types = $PuantajModel->getWorkTypes($personel_id);
             response(true, $types);
+            break;
+
+        case 'getPuantajWorkResults':
+            $workType = $_POST['work_type'] ?? null;
+            $PuantajModel = new \App\Model\PuantajModel();
+            $results = $PuantajModel->getWorkResults($personel_id, $workType);
+            response(true, $results);
             break;
 
         case 'getRecentActivities':
@@ -2111,6 +2086,111 @@ try {
                 response(true, null, 'Mazeret bildiriminiz yöneticiye iletildi.');
             } else {
                 response(false, null, 'Mazeret bildirimi kaydedilemedi.');
+            }
+            break;
+
+        // ============ Nöbet Talep İşlemleri ============
+        case 'getMusaitNobetGunleri':
+            $yil = $_POST['yil'] ?? date('Y');
+            $ay = $_POST['ay'] ?? date('m');
+            $firma_id = $personel->firma_id ?? $_SESSION['firma_id'] ?? null;
+
+            $baslangic = "$yil-" . str_pad($ay, 2, '0', STR_PAD_LEFT) . "-01";
+            $bitis = date('Y-m-t', strtotime($baslangic));
+
+            $db = new \App\Core\Db();
+
+            // Atanmış nöbetleri getir
+            $sql = "SELECT DISTINCT nobet_tarihi FROM nobetler 
+                    WHERE firma_id = :firma_id 
+                    AND nobet_tarihi BETWEEN :bas AND :bit 
+                    AND silinme_tarihi IS NULL";
+            $stmt = $db->db->prepare($sql);
+            $stmt->execute([':firma_id' => $firma_id, ':bas' => $baslangic, ':bit' => $bitis]);
+            $assignedDays = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            // Bu personelin bekleyen nöbet taleplerini getir
+            $sqlReq = "SELECT baslik FROM personel_talepleri 
+                       WHERE personel_id = :pid 
+                       AND kategori = 'nobet_talebi' 
+                       AND deleted_at IS NULL 
+                       AND durum != 'reddedildi'";
+            $stmtReq = $db->db->prepare($sqlReq);
+            $stmtReq->execute([':pid' => $personel_id]);
+            $requestedDaysArr = $stmtReq->fetchAll(PDO::FETCH_COLUMN);
+
+            $requestedDays = [];
+            foreach ($requestedDaysArr as $title) {
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $title)) {
+                    $requestedDays[] = $title;
+                }
+            }
+
+            $allDays = [];
+            $gunler_tr = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+
+            $current = strtotime($baslangic);
+            $end = strtotime($bitis);
+            $today = strtotime(date('Y-m-d'));
+
+            while ($current <= $end) {
+                $date = date('Y-m-d', $current);
+                // Sadece bugün ve sonrası, atanmamış ve talep edilmemiş günleri getir
+                if ($current >= $today && !in_array($date, $assignedDays) && !in_array($date, $requestedDays)) {
+                    $allDays[] = [
+                        'tarih' => $date,
+                        'formatli' => date('d.m.Y', $current),
+                        'gun' => date('d', $current),
+                        'gun_adi' => $gunler_tr[date('w', $current)]
+                    ];
+                }
+                $current = strtotime("+1 day", $current);
+            }
+            response(true, $allDays);
+            break;
+
+        case 'createYeniNobetTalebi':
+            $tarih = $_POST['tarih'] ?? '';
+            $aciklama = $_POST['aciklama'] ?? '';
+
+            if (empty($tarih)) {
+                response(false, null, 'Lütfen bir tarih seçiniz.');
+            }
+
+            $TalepModel = new \App\Model\TalepModel();
+            $ref_no = $TalepModel->generateRefNo();
+
+            $result = $TalepModel->saveWithAttr([
+                'personel_id' => $personel_id,
+                'ref_no' => $ref_no,
+                'konum' => 'PWA',
+                'kategori' => 'nobet_talebi',
+                'oncelik' => 'orta',
+                'baslik' => $tarih,
+                'aciklama' => $aciklama,
+                'durum' => 'beklemede',
+                'olusturma_tarihi' => date('Y-m-d H:i:s')
+            ]);
+
+            if ($result) {
+                // Yöneticiye bildirim
+                try {
+                    $BildirimModel = new BildirimModel();
+                    $tarihFormatli = date('d.m.Y', strtotime($tarih));
+                    $BildirimModel->createNotification(
+                        1,
+                        'Yeni Nöbet Talebi',
+                        ($personel->adi_soyadi ?? 'Bir personel') . ", $tarihFormatli tarihi için nöbet talep etti.",
+                        'index?p=nobet/talepler#talepler',
+                        'calendar',
+                        'info'
+                    );
+                } catch (Exception $e) {
+                }
+
+                response(true, null, 'Nöbet talebiniz iletildi. Yönetici onayı bekleniyor.');
+            } else {
+                response(false, null, 'Talep oluşturulamadı.');
             }
             break;
 

@@ -9,10 +9,13 @@ use App\Helper\Security;
 use App\Model\DemirbasModel;
 use App\Model\DemirbasZimmetModel;
 use App\Model\DemirbasKategoriModel;
+use App\Model\DemirbasHareketModel;
 
 $Demirbas = new DemirbasModel();
 $Zimmet = new DemirbasZimmetModel();
 $Kategori = new DemirbasKategoriModel();
+$Hareket = new DemirbasHareketModel();
+
 
 $action = $_POST["action"] ?? $_GET["action"] ?? null;
 
@@ -52,6 +55,8 @@ if ($action == "demirbas-kaydet") {
             "miktar" => $miktar,
             "durum" => $_POST["durum"] ?? 'aktif',
             "aciklama" => $_POST["aciklama"] ?? null,
+            "otomatik_zimmet_is_emri" => !empty($_POST["otomatik_zimmet_is_emri"]) ? $_POST["otomatik_zimmet_is_emri"] : null,
+            "otomatik_iade_is_emri" => !empty($_POST["otomatik_iade_is_emri"]) ? $_POST["otomatik_iade_is_emri"] : null,
         ];
 
         // Yeni kayıtta kalan_miktar = miktar
@@ -258,8 +263,33 @@ if ($action == "zimmet-detay") {
     try {
         $zimmet = $Zimmet->find($id);
         if ($zimmet) {
-            // Demirbaşın tüm geçmişini getir
-            $gecmis = $Zimmet->getByDemirbas($zimmet->demirbas_id);
+            // Hareket tablosundan personel genel bakiyesini al
+            $bakiye = $Hareket->getPersonelDemirbasBakiye($zimmet->personel_id, $zimmet->demirbas_id);
+
+            // Bu zimmet kaydına ait özel hareket geçmişini al
+            $hareketler = $Hareket->getZimmetHareketleri($id);
+
+            // Hareket verilerini formatla
+            foreach ($hareketler as $h) {
+                $h->tarih_format = date('d.m.Y', strtotime($h->tarih));
+                $h->hareket_badge = DemirbasHareketModel::getHareketTipiBadge($h->hareket_tipi);
+                $h->kaynak_badge = DemirbasHareketModel::getKaynakBadge($h->kaynak);
+            }
+
+
+            // Sadece seçili zimmet kaydına ait geçmişi getir (aynı personel + aynı demirbaş) - eski tablo
+            $gecmisSql = $Zimmet->getDb()->prepare("
+                SELECT 
+                    z.*,
+                    p.adi_soyadi AS personel_adi,
+                    p.cep_telefonu AS personel_telefon
+                FROM demirbas_zimmet z
+                LEFT JOIN personel p ON z.personel_id = p.id
+                WHERE z.demirbas_id = ? AND z.personel_id = ?
+                ORDER BY z.teslim_tarihi DESC
+            ");
+            $gecmisSql->execute([$zimmet->demirbas_id, $zimmet->personel_id]);
+            $gecmis = $gecmisSql->fetchAll(PDO::FETCH_OBJ);
 
             // Geçmiş verilerini formatla
             foreach ($gecmis as $g) {
@@ -289,7 +319,9 @@ if ($action == "zimmet-detay") {
 
             jsonResponse("success", "Başarılı", [
                 "data" => $zimmet,
-                "gecmis" => $gecmis
+                "gecmis" => $gecmis,
+                "hareketler" => $hareketler,
+                "bakiye" => $bakiye
             ]);
         } else {
             jsonResponse("error", "Zimmet bulunamadı.");
@@ -298,6 +330,7 @@ if ($action == "zimmet-detay") {
         jsonResponse("error", $ex->getMessage());
     }
 }
+
 
 // Excel'den Yükle
 if ($action == "excel-upload") {
@@ -399,6 +432,83 @@ if ($action == "kategori-listesi") {
     try {
         $kategoriler = $Kategori->getActiveCategories();
         jsonResponse("success", "Başarılı", ["data" => $kategoriler]);
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+}
+
+// İş emri sonuçlarını getir (otomatik zimmet ayarları için)
+if ($action == "is-emri-sonuclari") {
+    try {
+        require_once dirname(__DIR__, 2) . '/App/Model/TanimlamalarModel.php';
+        $Tanimlamalar = new \App\Model\TanimlamalarModel();
+        $sonuclar = $Tanimlamalar->getIsEmriSonuclari();
+
+        $options = [['id' => '', 'text' => 'Seçiniz (Yok)']];
+        foreach ($sonuclar as $sonuc) {
+            $options[] = ['id' => $sonuc, 'text' => $sonuc];
+        }
+
+        jsonResponse("success", "Başarılı", ["data" => $options]);
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+}
+
+// Hareket Geçmişi - Personel bazlı
+if ($action == "hareket-gecmisi") {
+    $personel_id = intval($_POST["personel_id"] ?? $_GET["personel_id"] ?? 0);
+    $demirbas_id = intval($_POST["demirbas_id"] ?? $_GET["demirbas_id"] ?? 0);
+
+    try {
+        if ($personel_id > 0) {
+            // Bakiyeyi hesapla
+            $bakiyeler = $Hareket->getPersonelTumBakiyeler($personel_id);
+
+            // Hareket geçmişini al
+            $hareketler = $Hareket->getPersonelHareketleri($personel_id, $demirbas_id > 0 ? $demirbas_id : null, 200);
+
+            // Formatla
+            foreach ($hareketler as $h) {
+                $h->tarih_format = date('d.m.Y', strtotime($h->tarih));
+                $h->hareket_badge = DemirbasHareketModel::getHareketTipiBadge($h->hareket_tipi);
+                $h->kaynak_badge = DemirbasHareketModel::getKaynakBadge($h->kaynak);
+            }
+
+            jsonResponse("success", "Başarılı", [
+                "bakiyeler" => $bakiyeler,
+                "hareketler" => $hareketler
+            ]);
+        } elseif ($demirbas_id > 0) {
+            // Demirbaş bazlı
+            $hareketler = $Hareket->getDemirbasHareketleri($demirbas_id);
+
+            foreach ($hareketler as $h) {
+                $h->tarih_format = date('d.m.Y', strtotime($h->tarih));
+                $h->hareket_badge = DemirbasHareketModel::getHareketTipiBadge($h->hareket_tipi);
+                $h->kaynak_badge = DemirbasHareketModel::getKaynakBadge($h->kaynak);
+            }
+
+            jsonResponse("success", "Başarılı", ["hareketler" => $hareketler]);
+        } else {
+            jsonResponse("error", "Personel veya demirbaş ID gereklidir.");
+        }
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+}
+
+// Personel Demirbaş Bakiyesi
+if ($action == "personel-bakiye") {
+    $personel_id = intval($_POST["personel_id"] ?? $_GET["personel_id"] ?? 0);
+
+    try {
+        if ($personel_id > 0) {
+            $bakiyeler = $Hareket->getPersonelTumBakiyeler($personel_id);
+            jsonResponse("success", "Başarılı", ["bakiyeler" => $bakiyeler]);
+        } else {
+            jsonResponse("error", "Personel ID gereklidir.");
+        }
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());
     }

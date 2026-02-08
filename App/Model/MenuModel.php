@@ -132,7 +132,7 @@ class MenuModel extends Model
         $placeholders = implode(',', array_fill(0, count($allRequiredIds), '?'));
         $sql = "SELECT * FROM {$this->table} as m
                 WHERE m.is_active = 1 AND m.id IN ({$placeholders})
-                ORDER BY m.group_name, m.menu_order";
+                ORDER BY m.group_order, m.menu_order";
         //sql çıktısını göster 
 
         $stmt = $this->db->prepare($sql);

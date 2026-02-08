@@ -54,9 +54,11 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
                             <tr>
                                 <th class="text-center" style="width:5%">Sıra</th>
                                 <th class="text-center">İzin Türü</th>
+                                <th class="text-center" style="width:5%">Kısa Kod</th>
                                 <th class="text-center">Görünüm (PWA)</th>
                                 <th class="text-center" style="width:12%">Ücret Durumu</th>
                                 <th class="text-center" style="width:12%">Personel Görebilir</th>
+                                <th class="text-center" style="width:12%">Yetkili Onayı</th>
                                 <th class="text-center">Açıklama</th>
                                 <th style="width:5%">İşlem</th>
                             </tr>
@@ -101,6 +103,11 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
                                     ? '<span class="badge bg-info"><i class="bx bx-show me-1"></i>Evet</span>'
                                     : '<span class="badge bg-secondary"><i class="bx bx-hide me-1"></i>Hayır</span>';
 
+                                // Yetkili onayına tabi badge
+                                $onayBadge = isset($izinTuru->yetkili_onayina_tabi) && $izinTuru->yetkili_onayina_tabi == 1
+                                    ? '<span class="badge bg-warning"><i class="bx bx-lock-alt me-1"></i>Evet</span>'
+                                    : '<span class="badge bg-light text-dark"><i class="bx bx-lock-open-alt me-1"></i>Hayır</span>';
+
                                 // Renk ve İkon önizleme
                                 $renkClass = $izinTuru->renk ?? 'bg-primary/10 text-primary';
                                 $ikonName = $izinTuru->ikon ?? 'event';
@@ -124,6 +131,10 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
                                         <strong><?php echo $izinTuru->tur_adi ?></strong>
                                     </td>
                                     <td class="text-center">
+                                        <span
+                                            class="badge badge-soft-dark border font-size-12 px-2"><?php echo $izinTuru->kisa_kod ?></span>
+                                    </td>
+                                    <td class="text-center">
                                         <?php echo $gorunumHtml; ?>
                                     </td>
                                     <td class="text-center">
@@ -131,6 +142,9 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
                                     </td>
                                     <td class="text-center">
                                         <?php echo $gorebilirBadge ?>
+                                    </td>
+                                    <td class="text-center">
+                                        <?php echo $onayBadge ?>
                                     </td>
                                     <td class="text-center">
                                         <?php echo $izinTuru->aciklama ?>
@@ -183,7 +197,7 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
 
                     <div class="row mb-3">
 
-                        <div class="col-md-12">
+                        <div class="col-md-8">
                             <?php echo
                                 Form::FormFloatInput(
                                     "text",
@@ -196,15 +210,28 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
 
                                 ); ?>
                         </div>
+                        <div class="col-md-4">
+                            <?php echo
+                                Form::FormFloatInput(
+                                    "text",
+                                    "kisa_kod",
+                                    "",
+                                    "Kısa kod giriniz!",
+                                    "Kısa Kod",
+                                    "code",
+                                    "form-control"
+
+                                ); ?>
+                        </div>
                     </div>
 
 
                     <div class="row mb-3">
-                         <div class="col-md-6">
+                        <div class="col-md-6">
                             <?php echo
                                 Form::FormSelect2(
-                                    name:"renk",
-                                     options: [
+                                    name: "renk",
+                                    options: [
                                         "bg-primary/10 text-primary" => "Varsayılan (Mavi)",
                                         "bg-blue-100 dark:bg-blue-900/30 text-blue-600" => "Mavi (Yıllık)",
                                         "bg-amber-100 dark:bg-amber-900/30 text-amber-600" => "Turuncu (Mazeret)",
@@ -214,21 +241,21 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
                                         "bg-green-100 dark:bg-green-900/30 text-green-600" => "Yeşil",
                                         "bg-purple-100 dark:bg-purple-900/30 text-purple-600" => "Mor",
                                     ],
-                                    selectedValue :'',
-                                    label:'Renk',
-                                    icon:'columns',
-                                    class:'form-control select2'
-                                    
-                                    
+                                    selectedValue: '',
+                                    label: 'Renk',
+                                    icon: 'columns',
+                                    class: 'form-control select2'
+
+
 
                                 ); ?>
                         </div>
-                     
+
                         <div class="col-md-6">
                             <?php echo
                                 Form::FormSelect2(
-                                    name:"ikon",
-                                     options: [
+                                    name: "ikon",
+                                    options: [
                                         "event" => "Takvim (Varsayılan)",
                                         "beach_access" => "Plaj (Yıllık)",
                                         "event_note" => "Notlu Takvim (Mazeret)",
@@ -239,24 +266,24 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
                                         "home" => "Ev",
                                         "work_off" => "İş Yok",
                                         "celebration" => "Kutlama",
-                                     
+
                                     ],
-                                    selectedValue :'',
-                                    label:'İkon',
-                                    icon:'home',
-                                    class:'form-control select2'
-                                    
-                                    
+                                    selectedValue: '',
+                                    label: 'İkon',
+                                    icon: 'home',
+                                    class: 'form-control select2'
+
+
 
                                 ); ?>
                         </div>
 
-                              
-                        
+
+
                     </div>
 
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="card border mb-0">
                                 <div class="card-body p-3">
                                     <div class="form-check form-switch">
@@ -270,7 +297,7 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="card border mb-0">
                                 <div class="card-body p-3">
                                     <div class="form-check form-switch">
@@ -281,6 +308,20 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
                                         </label>
                                     </div>
                                     <small class="text-muted d-block mt-1">İzin talebinde görünür</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border mb-0">
+                                <div class="card-body p-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="yetkili_onayina_tabi"
+                                            name="yetkili_onayina_tabi">
+                                        <label class="form-check-label fw-medium" for="yetkili_onayina_tabi">
+                                            <i class="bx bx-lock-alt text-warning me-1"></i>Yetkili Onayı
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">Onay sonrası kilitleme</small>
                                 </div>
                             </div>
                         </div>
@@ -313,4 +354,4 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
     </div>
 </div>
 
-<script src="views/tanimlamalar/js/izin-turu.js"></script>
+<script src="views/tanimlamalar/js/izin-turu.js?v=<?php echo time(); ?>"></script>

@@ -479,6 +479,16 @@ if (!empty($workTypeCols)) {
         min-width: 340px !important;
         max-width: 340px !important;
     }
+
+    #raporTable td a {
+        transition: all 0.2s ease;
+        display: inline-block;
+    }
+
+    #raporTable td a:hover {
+        transform: translateY(-1px);
+        filter: brightness(0.85);
+    }
 </style>
 
 <?php
@@ -612,7 +622,28 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                         <?php endif; ?>
                         <td
                             class="<?= ($activeTab === 'kacakkontrol') ? 'kacakkontrol-name-col' : 'sticky-col-3' ?> text-start">
-                            <?= $personel->adi_soyadi ?>
+                            <?php if ($activeTab === 'kacakkontrol'): ?>
+                                <?php
+                                $pIdsStr = $kacakPersonelMapping[$team->tur_adi] ?? '';
+                                if (!empty($pIdsStr)) {
+                                    $nameLinks = [];
+                                    foreach (explode(',', $pIdsStr) as $pid) {
+                                        $pid = trim($pid);
+                                        if (isset($personelById[$pid])) {
+                                            $pers = $personelById[$pid];
+                                            $nameLinks[] = '<a class="fw-bold text-primary" target="_blank" href="index?p=personel/manage&id=' . $pid . '">' . htmlspecialchars($pers->adi_soyadi) . '</a>';
+                                        }
+                                    }
+                                    echo !empty($nameLinks) ? implode(', ', $nameLinks) : htmlspecialchars($personel->adi_soyadi);
+                                } else {
+                                    echo htmlspecialchars($personel->adi_soyadi);
+                                }
+                                ?>
+                            <?php else: ?>
+                                <a class="fw-bold text-primary" target="_blank" href="index?p=personel/manage&id=<?= $pId ?>">
+                                    <?= htmlspecialchars($personel->adi_soyadi) ?>
+                                </a>
+                            <?php endif; ?>
                         </td>
 
                         <?php if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol'): ?>

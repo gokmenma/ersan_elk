@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
         switch ($action) {
             case 'send-bulk-notifications':
-                $turu = $_POST['bildirim_turu'] ?? 'aylik';
+                $turu = $_POST['bildirim_turu'] ?? 'bekleyen';
                 $ekMesaj = $_POST['mesaj'] ?? '';
                 $sentCount = 0;
                 $processedPersonelIds = [];
@@ -31,7 +31,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $bildirimBaslik = '📅 Nöbet Programı';
                 $bildirimMesaj = '';
 
-                if ($turu == 'aylik') {
+                if ($turu == 'bekleyen') {
+                    // Sadece henüz bildirim gönderilmemiş nöbetlere gönder
+                    $monthYear = $_POST['bekleyen_ay']; // Y-m format
+                    list($year, $month) = explode('-', $monthYear);
+                    $baslangic = "$year-$month-01";
+                    $bitis = date('Y-m-t', strtotime($baslangic));
+
+                    // Bildirim gönderilmemiş nöbetleri getir
+                    $nobetler = $Nobet->getUnnotifiedNobetler($baslangic, $bitis);
+                    $bildirimMesaj = date('m/Y', strtotime($baslangic)) . " dönemi nöbet programınız hazırlandı.";
+                } elseif ($turu == 'aylik') {
                     $monthYear = $_POST['bildirim_ayi']; // Y-m format
                     list($year, $month) = explode('-', $monthYear);
                     $baslangic = "$year-$month-01";
@@ -47,13 +57,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $personel_id = Security::decrypt($_POST['personel_id']);
                     $tek_tarih = $_POST['tek_tarih'];
                     // Sadece bu personelin o tarihteki nöbetini "simüle" et veya direkt ona gönder
-                    $nobetler = [(object) ['personel_id' => $personel_id, 'nobet_tarihi' => $tek_tarih]];
+                    $nobetler = [(object) ['personel_id' => $personel_id, 'nobet_tarihi' => $tek_tarih, 'id' => 0]];
                     $bildirimMesaj = date('d.m.Y', strtotime($tek_tarih)) . " tarihindeki nöbetiniz ile ilgili bilgilendirme.";
                 }
 
                 $pushService = new \App\Service\PushNotificationService();
+                $nobetIdsToUpdate = [];
+
                 foreach ($nobetler as $nobet) {
                     $pId = is_object($nobet) ? $nobet->personel_id : $nobet['personel_id'];
+                    $nobetId = is_object($nobet) ? $nobet->id : ($nobet['id'] ?? 0);
+
                     if (!in_array($pId, $processedPersonelIds)) {
                         $payload = [
                             'title' => $bildirimBaslik,
@@ -66,9 +80,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                         $processedPersonelIds[] = $pId;
                     }
+
+                    // Bildirim gönderildi olarak işaretle
+                    if ($nobetId > 0) {
+                        $nobetIdsToUpdate[] = $nobetId;
+                    }
                 }
 
-                echo json_encode(['status' => 'success', 'message' => "$sentCount personele bildirim gönderildi."]);
+                // Nöbetleri bildirim gönderildi olarak güncelle
+                if (!empty($nobetIdsToUpdate)) {
+                    $Nobet->markAsNotified($nobetIdsToUpdate);
+                }
+
+                echo json_encode(['success' => true, 'status' => 'success', 'message' => "$sentCount personele bildirim gönderildi."]);
+                break;
+
+            case 'get-bildirim-stats':
+                $monthYear = $_POST['ay'] ?? date('Y-m');
+                list($year, $month) = explode('-', $monthYear);
+                $baslangic = "$year-$month-01";
+                $bitis = date('Y-m-t', strtotime($baslangic));
+
+                $stats = $Nobet->getBildirimStats($baslangic, $bitis);
+                echo json_encode([
+                    'success' => true,
+                    'total' => $stats['total'] ?? 0,
+                    'sent' => $stats['sent'] ?? 0,
+                    'pending' => $stats['pending'] ?? 0
+                ]);
                 break;
 
             // =====================================================
@@ -153,6 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'textColor' => $textColor,
                         'extendedProps' => [
                             'personel_id' => Security::encrypt($nobet->personel_id),
+                            'raw_personel_id' => $nobet->personel_id,
                             'departman' => $nobet->departman,
                             'ekip_adi' => $nobet->ekip_adi,
                             'ekip_bolge' => $nobet->ekip_bolge,
@@ -197,10 +237,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $personel = $Personel->find($personel_id);
                     $SystemLog->logAction($userId, 'Nöbet Ekleme', "{$personel->adi_soyadi} için {$nobet_tarihi} tarihinde nöbet eklendi.");
 
-                    // PWA Push bildirimi gönder
-                    $Nobet->sendNobetAtamaBildirimi($personel_id, $nobet_tarihi);
+                    // PWA Push bildirimi artık otomatik gönderilmiyor
+                    // Kullanıcı "Personele Bildir" modalından toplu bildirim yapabilir
+                    // $Nobet->sendNobetAtamaBildirimi($personel_id, $nobet_tarihi);
 
-                    echo json_encode(['status' => 'success', 'message' => 'Nöbet başarıyla eklendi.', 'id' => Security::encrypt($nobet_id)]);
+                    echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Nöbet başarıyla eklendi.', 'id' => Security::encrypt($nobet_id)]);
                 } else {
                     throw new Exception("Nöbet eklenirken bir hata oluştu.");
                 }
@@ -242,7 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $result = $Nobet->updateNobet($id, $data);
 
                 if ($result) {
-                    echo json_encode(['status' => 'success', 'message' => 'Nöbet güncellendi.']);
+                    echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Nöbet güncellendi.']);
                 } else {
                     throw new Exception("Güncelleme sırasında hata oluştu.");
                 }
@@ -256,7 +297,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 if ($result) {
                     $SystemLog->logAction($userId, 'Nöbet Silme', "{$nobet->adi_soyadi}'nin {$nobet->nobet_tarihi} tarihli nöbeti silindi.");
-                    echo json_encode(['status' => 'success', 'message' => 'Nöbet silindi.']);
+                    echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Nöbet silindi.']);
                 } else {
                     throw new Exception("Silme işlemi başarısız.");
                 }
@@ -283,7 +324,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $result = $Nobet->moveNobet($id, $yeni_tarih, $personel_id);
 
                 if ($result) {
-                    echo json_encode(['status' => 'success', 'message' => 'Nöbet taşındı.']);
+                    echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Nöbet taşındı.']);
                 } else {
                     throw new Exception("Taşıma işlemi başarısız.");
                 }
@@ -313,10 +354,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($nobet_id) {
                     $personel = $Personel->find($personel_id);
 
-                    // PWA Push bildirimi gönder
-                    $Nobet->sendNobetAtamaBildirimi($personel_id, $nobet_tarihi);
+                    // PWA Push bildirimi artık otomatik gönderilmiyor
+                    // Kullanıcı "Personele Bildir" modalından toplu bildirim yapabilir
+                    // $Nobet->sendNobetAtamaBildirimi($personel_id, $nobet_tarihi);
 
                     echo json_encode([
+                        'success' => true,
                         'status' => 'success',
                         'message' => 'Nöbet atandı.',
                         'id' => Security::encrypt($nobet_id),
@@ -344,7 +387,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $talep_id = $Nobet->createDegisimTalebi($data);
 
                 if ($talep_id) {
-                    echo json_encode(['status' => 'success', 'message' => 'Değişim talebi oluşturuldu.']);
+                    echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Değişim talebi oluşturuldu.']);
                 } else {
                     throw new Exception("Talep oluşturulamadı.");
                 }
@@ -355,7 +398,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $result = $Nobet->onaylaPersonelTalebi($talep_id);
 
                 if ($result) {
-                    echo json_encode(['status' => 'success', 'message' => 'Talep onaylandı. Amir onayı bekleniyor.']);
+                    echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Talep onaylandı. Amir onayı bekleniyor.']);
                 } else {
                     throw new Exception("Onaylama başarısız.");
                 }
@@ -367,7 +410,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 if ($result) {
                     $SystemLog->logAction($userId, 'Nöbet Değişim Onayı', "Nöbet değişim talebi #{$talep_id} onaylandı.");
-                    echo json_encode(['status' => 'success', 'message' => 'Değişim onaylandı. Takvim güncellendi.']);
+                    echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Değişim onaylandı. Takvim güncellendi.']);
                 } else {
                     throw new Exception("Onaylama başarısız.");
                 }
@@ -380,7 +423,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $result = $Nobet->reddetTalebi($talep_id, $userId, $red_nedeni);
 
                 if ($result) {
-                    echo json_encode(['status' => 'success', 'message' => 'Talep reddedildi.']);
+                    echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Talep reddedildi.']);
                 } else {
                     throw new Exception("Reddetme başarısız.");
                 }
@@ -388,7 +431,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             case 'get-bekleyen-talepler':
                 $talepler = $Nobet->getBekleyenDegisimTalepleri();
-                echo json_encode(['status' => 'success', 'data' => $talepler]);
+                echo json_encode(['success' => true, 'status' => 'success', 'data' => $talepler]);
                 break;
 
             // =====================================================
@@ -403,7 +446,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($result) {
                     $personel = $Personel->find($personel_id);
                     $SystemLog->logAction($userId, 'Nöbet Devri', "{$personel->adi_soyadi} nöbeti devraldı.");
-                    echo json_encode(['status' => 'success', 'message' => 'Nöbet devralındı. Zaman damgası kaydedildi.']);
+                    echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Nöbet devralındı. Zaman damgası kaydedildi.']);
                 } else {
                     throw new Exception("Devir işlemi başarısız.");
                 }
@@ -467,7 +510,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     ];
                 }
 
-                echo json_encode(['status' => 'success', 'data' => $data]);
+                echo json_encode(['success' => true, 'status' => 'success', 'data' => $data]);
                 break;
 
             // =====================================================
@@ -478,7 +521,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $ay = $_POST['ay'] ?? date('m');
 
                 $dagilim = $Nobet->getAylikNobetDagilimi($yil, $ay);
-                echo json_encode(['status' => 'success', 'data' => $dagilim]);
+                echo json_encode(['success' => true, 'status' => 'success', 'data' => $dagilim]);
                 break;
 
             case 'get-nobet-detay':
@@ -489,7 +532,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $nobet->id = Security::encrypt($nobet->id);
                     $nobet->personel_id = Security::encrypt($nobet->personel_id);
                     $nobet->nobet_tarihi_formatted = Date::dmY($nobet->nobet_tarihi);
-                    echo json_encode(['status' => 'success', 'data' => $nobet]);
+                    echo json_encode(['success' => true, 'status' => 'success', 'data' => $nobet]);
                 } else {
                     throw new Exception("Nöbet bulunamadı.");
                 }
@@ -501,7 +544,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             case 'get-degisim-talepleri':
                 $ay = $_POST['ay'] ?? null;
                 $yil = $_POST['yil'] ?? null;
-                $talepler = $Nobet->getAllDegisimTalepleri($ay, $yil);
+                $onlyPending = ($_POST['is_gecmis'] ?? '0') == '0';
+                $talepler = $Nobet->getAllDegisimTalepleri($ay, $yil, $onlyPending);
                 foreach ($talepler as &$t) {
                     $t->id = Security::encrypt($t->id);
                     $t->nobet_id = Security::encrypt($t->nobet_id);
@@ -514,7 +558,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             case 'get-mazeret-bildirimleri':
                 $ay = $_POST['ay'] ?? null;
                 $yil = $_POST['yil'] ?? null;
-                $mazeretler = $Nobet->getMazeretBildirimleri($ay, $yil);
+                $isGecmis = ($_POST['is_gecmis'] ?? '0') == '1';
+                $mazeretler = $Nobet->getMazeretBildirimleri($ay, $yil, $isGecmis);
                 foreach ($mazeretler as &$m) {
                     $m->id = Security::encrypt($m->id);
                     $m->personel_id = Security::encrypt($m->personel_id);
@@ -563,6 +608,110 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $stmt->execute([':firma_id' => $firma_id]);
                 $results = $stmt->fetchAll(PDO::FETCH_OBJ);
                 echo json_encode(['success' => true, 'data' => $results]);
+                break;
+
+            case 'get-mazeret-gecmisi':
+                $firma_id = $_SESSION['firma_id'] ?? null;
+                $sql = "SELECT n.*, 
+                        p.adi_soyadi as personel_adi
+                        FROM nobetler n
+                        LEFT JOIN personel p ON n.personel_id = p.id
+                        WHERE n.firma_id = :firma_id 
+                        AND n.durum = 'devir_alindi'
+                        ORDER BY n.nobet_tarihi DESC
+                        LIMIT 100";
+                $stmt = $Nobet->getDb()->prepare($sql);
+                $stmt->execute([':firma_id' => $firma_id]);
+                $results = $stmt->fetchAll(PDO::FETCH_OBJ);
+                echo json_encode(['success' => true, 'data' => $results]);
+                break;
+
+            case 'get-personel-nobet-talepleri':
+                $ay = $_POST['ay'] ?? null;
+                $yil = $_POST['yil'] ?? null;
+                $onlyPending = ($_POST['is_gecmis'] ?? '0') == '0';
+
+                $where = "pt.kategori = 'nobet_talebi' AND pt.deleted_at IS NULL AND p.firma_id = :firma_id";
+                $params = [':firma_id' => $_SESSION['firma_id']];
+
+                if ($onlyPending) {
+                    $where .= " AND pt.durum = 'beklemede'";
+                } else {
+                    $where .= " AND pt.durum != 'beklemede'";
+                }
+
+                if ($ay && $yil) {
+                    $where .= " AND MONTH(STR_TO_DATE(pt.baslik, '%Y-%m-%d')) = :ay AND YEAR(STR_TO_DATE(pt.baslik, '%Y-%m-%d')) = :yil";
+                    $params[':ay'] = $ay;
+                    $params[':yil'] = $yil;
+                }
+
+                $sql = "SELECT pt.*, p.adi_soyadi as personel_adi
+                        FROM personel_talepleri pt
+                        JOIN personel p ON pt.personel_id = p.id
+                        WHERE $where
+                        ORDER BY pt.olusturma_tarihi DESC";
+
+                $stmt = $Nobet->getDb()->prepare($sql);
+                $stmt->execute($params);
+                $results = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+                foreach ($results as &$r) {
+                    $r->id = Security::encrypt($r->id);
+                    $r->personel_id = Security::encrypt($r->personel_id);
+                }
+                echo json_encode(['success' => true, 'data' => $results]);
+                break;
+
+            case 'onayla-personel-nobet-talebi':
+                $id = Security::decrypt($_POST['talep_id']);
+                $TalepModel = new \App\Model\TalepModel();
+                $talep = $TalepModel->getTalepDetay($id);
+
+                if (!$talep)
+                    throw new Exception("Talep bulunamadı.");
+
+                // Nöbet ekle
+                $nobetData = [
+                    'personel_id' => $talep->personel_id,
+                    'nobet_tarihi' => $talep->baslik, // baslik stores the date
+                    'baslangic_saati' => '18:00:00',
+                    'bitis_saati' => '08:00:00',
+                    'nobet_tipi' => 'standart',
+                    'aciklama' => $talep->aciklama
+                ];
+
+                if ($Nobet->hasNobetOnDate($talep->personel_id, $talep->baslik)) {
+                    throw new Exception("Bu personelin bu tarihte zaten bir nöbeti var.");
+                }
+
+                $nobet_id = $Nobet->addNobet($nobetData);
+
+                if ($nobet_id) {
+                    $TalepModel->updateDurum($id, 'cozuldu', 'Nöbet ataması yapıldı.');
+                    $SystemLog->logAction($userId, 'Nöbet Talebi Onayı', "{$talep->adi_soyadi} için {$talep->baslik} tarihli nöbet talebi onaylandı.");
+
+                    // PWA Bildirimi
+                    $Nobet->sendNobetAtamaBildirimi($talep->personel_id, $talep->baslik);
+
+                    echo json_encode(['success' => true, 'message' => 'Talep onaylandı ve nöbet atandı.']);
+                } else {
+                    throw new Exception("Nöbet oluşturulamadı.");
+                }
+                break;
+
+            case 'reddet-personel-nobet-talebi':
+                $id = Security::decrypt($_POST['talep_id']);
+                $red_nedeni = $_POST['red_nedeni'] ?? 'Yönetici tarafından reddedildi.';
+
+                $TalepModel = new \App\Model\TalepModel();
+                $result = $TalepModel->updateDurum($id, 'reddedildi', $red_nedeni);
+
+                if ($result) {
+                    echo json_encode(['success' => true, 'message' => 'Talep reddedildi.']);
+                } else {
+                    throw new Exception("İşlem başarısız.");
+                }
                 break;
 
             default:

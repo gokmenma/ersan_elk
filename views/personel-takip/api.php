@@ -46,14 +46,27 @@ try {
             $gec_kalan = 0;
             $limit_saat = '08:30';
 
+            $gun = date('Y-m-d');
+            $now = new DateTime();
+
+            try {
+                $limit_time = new DateTime($gun . ' ' . $limit_saat);
+            } catch (Exception $e) {
+                $limit_time = new DateTime($gun . ' 08:30');
+            }
+
             foreach ($personeller as $p) {
                 if ($p->durum === 'aktif') {
                     $gorevde++;
                     // Geç başlama kontrolü
-                    if ($p->son_baslama) {
-                        $baslama_saati = date('H:i', strtotime($p->son_baslama));
-                        if (date('Y-m-d', strtotime($p->son_baslama)) === date('Y-m-d') && $baslama_saati > $limit_saat) {
-                            $gec_kalan++;
+                    if (!empty($p->son_baslama) && $p->son_baslama !== '0000-00-00 00:00:00') {
+                        try {
+                            $baslama_dt = new DateTime($p->son_baslama);
+                            if ($baslama_dt->format('Y-m-d') === $gun && $baslama_dt->format('H:i') > $limit_saat) {
+                                $gec_kalan++;
+                            }
+                        } catch (Exception $e) {
+                            // Hatalı tarih, pas geç
                         }
                     }
                 } elseif ($p->durum === 'bitti') {
@@ -61,8 +74,6 @@ try {
                 } else {
                     $baslamadi++;
                     // Başlamamış ve saat geçmiş (bugün için)
-                    $now = new DateTime();
-                    $limit_time = DateTime::createFromFormat('H:i', $limit_saat);
                     if ($now > $limit_time) {
                         $gec_kalan++;
                     }
@@ -413,48 +424,68 @@ try {
             $personeller = $HareketModel->getTumPersonelDurumu($firma_id);
 
             $gec_kalanlar = [];
+            $gun = date('Y-m-d');
+
+            try {
+                // Limit zamanını güvenli oluştur
+                $limit_time = new DateTime($gun . ' ' . $limit_saat);
+            } catch (Exception $e) {
+                // Hatalı format gelirse varsayılanı kullan
+                $limit_time = new DateTime($gun . ' 08:30');
+                $limit_saat = '08:30';
+            }
+
             foreach ($personeller as $p) {
                 $gec_kaldi = false;
                 $baslama_saati = '-';
-                $gecikme = '';
+                $gecikme_dk = 0;
+                $gecikme_text = '';
                 $durum_text = '';
 
-                if ($p->son_baslama) {
-                    $baslama_saati = date('H:i', strtotime($p->son_baslama));
+                // Geçerli bir başlama zamanı var mı?
+                $has_valid_start = !empty($p->son_baslama) && $p->son_baslama !== '0000-00-00 00:00:00';
 
-                    // Sadece bugün başlayanları kontrol et
-                    if (date('Y-m-d', strtotime($p->son_baslama)) === date('Y-m-d')) {
-                        if ($baslama_saati > $limit_saat) {
-                            $gec_kaldi = true;
+                if ($has_valid_start) {
+                    try {
+                        $baslama_dt = new DateTime($p->son_baslama);
+                        $baslama_saat_str = $baslama_dt->format('H:i');
+                        $baslama_saati = $baslama_saat_str;
 
-                            // Gecikme süresini hesapla
-                            $limit = strtotime($limit_saat);
-                            $baslama = strtotime($baslama_saati);
-                            $fark = ($baslama - $limit) / 60; // dakika
+                        // Sadece bugün başlayanları kontrol et
+                        if ($baslama_dt->format('Y-m-d') === $gun) {
+                            if ($baslama_saat_str > $limit_saat) {
+                                $gec_kaldi = true;
 
-                            if ($fark >= 60) {
-                                $gecikme = floor($fark / 60) . ' sa ' . ($fark % 60) . ' dk';
-                            } else {
-                                $gecikme = $fark . ' dk';
+                                // Gecikme süresini hesapla
+                                $fark = $baslama_dt->getTimestamp() - $limit_time->getTimestamp();
+                                $gecikme_dk = max(0, floor($fark / 60));
+
+                                if ($gecikme_dk >= 60) {
+                                    $gecikme_text = floor($gecikme_dk / 60) . ' sa ' . ($gecikme_dk % 60) . ' dk';
+                                } else {
+                                    $gecikme_text = $gecikme_dk . ' dk';
+                                }
+
+                                $durum_text = '<span class="badge bg-warning">Geç Başladı</span>';
                             }
-
-                            $durum_text = '<span class="badge bg-warning">Geç Başladı</span>';
                         }
+                    } catch (Exception $e) {
+                        // Hatalı tarih formatı, yok say
                     }
                 } else {
-                    // Hiç başlamamış
+                    // Hiç başlamamış veya geçersiz veri
                     $now = new DateTime();
-                    $limit_time = DateTime::createFromFormat('H:i', $limit_saat);
-
                     if ($now > $limit_time) {
                         $gec_kaldi = true;
                         $baslama_saati = 'Başlamadı';
 
-                        $fark = ($now->getTimestamp() - $limit_time->getTimestamp()) / 60;
-                        if ($fark >= 60) {
-                            $gecikme = floor($fark / 60) . ' sa ' . (round($fark) % 60) . ' dk';
+                        $fark = $now->getTimestamp() - $limit_time->getTimestamp();
+                        $gecikme_dk = max(0, floor($fark / 60));
+
+                        if ($gecikme_dk >= 60) {
+                            $gecikme_text = floor($gecikme_dk / 60) . ' sa ' . (round($gecikme_dk) % 60) . ' dk';
                         } else {
-                            $gecikme = round($fark) . ' dk';
+                            $gecikme_text = $gecikme_dk . ' dk';
                         }
 
                         $durum_text = '<span class="badge bg-danger">Başlamadı</span>';
@@ -466,19 +497,16 @@ try {
                         'personel_id' => $p->personel_id,
                         'adi_soyadi' => $p->adi_soyadi,
                         'baslama_saati' => $baslama_saati,
-                        'gecikme' => $gecikme,
+                        'gecikme' => $gecikme_text,
+                        'gecikme_dk' => $gecikme_dk,
                         'durum' => $durum_text
                     ];
                 }
             }
 
-            // Gecikme süresine göre sırala
+            // Gecikme süresine göre sayısal sırala (azalan)
             usort($gec_kalanlar, function ($a, $b) {
-                if ($a['baslama_saati'] === 'Başlamadı')
-                    return -1;
-                if ($b['baslama_saati'] === 'Başlamadı')
-                    return 1;
-                return $b['gecikme'] <=> $a['gecikme'];
+                return $b['gecikme_dk'] <=> $a['gecikme_dk'];
             });
 
             response(true, $gec_kalanlar);

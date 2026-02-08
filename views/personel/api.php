@@ -120,7 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 /**Parasal tutarlar için money formatını kaldır */
-                if (strpos($key, 'tutar') !== false || $key == 'gunluk_ucret' || $key == 'sodexo') {
+                // NOT: maas_durumu alanı 'maas' içerdiği için para dönüşümüne giriyor, onu hariç tut
+                if ($key !== 'maas_durumu' && (strpos($key, 'tutar') !== false || strpos($key, 'ucret') !== false || strpos($key, 'maas') !== false || strpos($key, 'sodexo') !== false)) {
                     $data[$key] = Helper::formattedMoneyToNumber($value);
                 }
 
@@ -741,7 +742,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'id' => $enc_id,
                     'tc_kimlik_no' => $row->tc_kimlik_no,
                     'adi_soyadi' => $row->adi_soyadi,
-                    
+
                     'ise_giris_tarihi' => (!empty($row->ise_giris_tarihi) && $row->ise_giris_tarihi != '0000-00-00') ? Date::dmY($row->ise_giris_tarihi) : '',
                     'isten_cikis_tarihi' => (!empty($row->isten_cikis_tarihi) && $row->isten_cikis_tarihi != '0000-00-00') ? Date::dmY($row->isten_cikis_tarihi) : '',
                     'cep_telefonu' => $row->cep_telefonu,

@@ -60,24 +60,31 @@ class PuantajModel extends Model
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
-    public function getWorkTypes()
+    public function getWorkTypes($personelId = null)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         // Hem yeni normalized hem de eski string alanından unique değerleri al
-        $stmt = $this->db->prepare("
+        $sql = "
             SELECT DISTINCT COALESCE(tn.tur_adi, t.is_emri_tipi) as tur_adi
             FROM $this->table t 
             LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id 
             WHERE t.firma_id = ? 
             AND t.silinme_tarihi IS NULL
             AND COALESCE(tn.tur_adi, t.is_emri_tipi) IS NOT NULL 
-            AND COALESCE(tn.tur_adi, t.is_emri_tipi) != ''
-        ");
-        $stmt->execute([$firmaId]);
+            AND COALESCE(tn.tur_adi, t.is_emri_tipi) != ''";
+        $params = [$firmaId];
+
+        if ($personelId) {
+            $sql .= " AND t.personel_id = ?";
+            $params[] = $personelId;
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
-    public function getWorkResults($personelId = null)
+    public function getWorkResults($personelId = null, $workType = null)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         // Hem yeni normalized hem de eski string alanından unique değerleri al
@@ -94,6 +101,12 @@ class PuantajModel extends Model
         if ($personelId) {
             $sql .= " AND t.personel_id = ?";
             $params[] = $personelId;
+        }
+
+        if ($workType) {
+            $sql .= " AND (tn.tur_adi = ? OR t.is_emri_tipi = ?)";
+            $params[] = $workType;
+            $params[] = $workType;
         }
 
         $sql .= " ORDER BY COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) ASC";
@@ -257,6 +270,7 @@ class PuantajModel extends Model
                 f.firma_adi LIKE :search OR
                 COALESCE(tn.tur_adi, t.is_emri_tipi) LIKE :search OR
                 t.ekip_kodu LIKE :search OR
+                ek.tur_adi LIKE :search OR
                 COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) LIKE :search OR
                 p.adi_soyadi LIKE :search OR
                 DATE_FORMAT(t.tarih, '%d.%m.%Y') LIKE :search
@@ -264,14 +278,15 @@ class PuantajModel extends Model
             $params['search'] = $searchValue;
         }
 
-        // Sütun bazlı arama
+        // Sütun bazlı arama (yeni sıralama: Tarih, Ekip Kodu, Personel, İş Emri Tipi, İş Emri Sonucu, Sonuçlanmış, Açık Olanlar)
         $colSearchMap = [
             0 => 'DATE_FORMAT(t.tarih, "%d.%m.%Y")',
-            1 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
+            1 => 'ek.tur_adi',
             2 => 'p.adi_soyadi',
-            3 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
-            4 => 't.sonuclanmis',
-            5 => 't.acik_olanlar'
+            3 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
+            4 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
+            5 => 't.sonuclanmis',
+            6 => 't.acik_olanlar'
         ];
 
 
@@ -288,24 +303,32 @@ class PuantajModel extends Model
             }
         }
 
-        // Filtrelenmiş kayıt sayısı
-        $filteredQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t LEFT JOIN personel p ON t.personel_id = p.id LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id LEFT JOIN firmalar f ON t.firma_id = f.id WHERE $baseWhere $searchWhere");
+        // Filtrelenmiş kayıt sayısı (yapilan_isler.ekip_kodu_id üzerinden join)
+        $filteredQuery = $this->db->prepare("
+            SELECT COUNT(*) FROM {$this->table} t 
+            LEFT JOIN personel p ON t.personel_id = p.id 
+            LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id 
+            LEFT JOIN firmalar f ON t.firma_id = f.id
+            LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
+            WHERE $baseWhere $searchWhere
+        ");
         foreach ($params as $key => $val) {
             $filteredQuery->bindValue(":$key", $val);
         }
         $filteredQuery->execute();
         $recordsFiltered = $filteredQuery->fetchColumn();
 
-        // Sıralama (Tarih başa, Firma kaldırıldı)
+        // Sıralama (yeni sıralama: Tarih, Ekip Kodu, Personel, İş Emri Tipi, İş Emri Sonucu, Sonuçlanmış, Açık Olanlar)
         $orderColumn = 't.tarih';
         $orderDir = 'DESC';
         $colMap = [
             0 => 't.tarih',
-            1 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
+            1 => 'ek.tur_adi',
             2 => 'p.adi_soyadi',
-            3 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
-            4 => 't.sonuclanmis',
-            5 => 't.acik_olanlar'
+            3 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
+            4 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
+            5 => 't.sonuclanmis',
+            6 => 't.acik_olanlar'
         ];
         if (isset($request['order'][0])) {
             $orderColIdx = $request['order'][0]['column'];
@@ -316,15 +339,18 @@ class PuantajModel extends Model
         }
 
         // Veri çekme - COALESCE ile eski ve yeni alanlardan fallback
+        // ekip_kodu_adi: yapilan_isler tablosundaki ekip_kodu_id üzerinden getiriliyor
         $sql = "SELECT t.*, 
                     p.adi_soyadi as personel_adi,
                     f.firma_adi,
                     COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi,
-                    COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu
+                    COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu,
+                    ek.tur_adi as ekip_kodu_adi
                 FROM {$this->table} t 
                 LEFT JOIN personel p ON t.personel_id = p.id 
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
                 LEFT JOIN firmalar f ON t.firma_id = f.id
+                LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
                 WHERE $baseWhere $searchWhere 
                 ORDER BY $orderColumn $orderDir 
                 LIMIT :start, :length";

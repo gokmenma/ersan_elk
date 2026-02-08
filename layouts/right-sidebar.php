@@ -50,6 +50,12 @@
                 <label class="form-check-label" for="theme-orange">Turuncu</label>
             </div>
 
+            <div class="form-check form-check-inline">
+                <input class="form-check-input theme-color" type="radio" name="theme-mode" id="theme-rose"
+                    value="rose">
+                <label class="form-check-label" for="theme-rose">Rose</label>
+            </div>
+
             <h6 class="mt-4 mb-3 pt-2">Görünüm</h6>
             <div class="form-check form-check-inline">
                 <input class="form-check-input" type="radio" name="layout" id="layout-vertical" value="vertical">

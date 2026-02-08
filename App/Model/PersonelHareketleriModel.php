@@ -21,12 +21,13 @@ class PersonelHareketleriModel extends Model
 
     /**
      * Personelin bugün açık (bitirilmemiş) görevi var mı kontrol eder
+     * Eğer görev başlangıç günü geçmişse veya aynı gün 23:50'yi geçmişse otomatik sonlandırır
      * @param int $personel_id
      * @return object|null Açık görev varsa BASLA kaydını döner, yoksa null
      */
     public function getAcikGorev($personel_id)
     {
-        // Bugünün son BASLA kaydını bul
+        // Son BASLA kaydını bul (bitirilmemiş)
         $sql = "SELECT ph.* 
                 FROM {$this->table} ph
                 WHERE ph.personel_id = :personel_id 
@@ -46,7 +47,140 @@ class PersonelHareketleriModel extends Model
         $stmt->execute([':personel_id' => $personel_id]);
         $result = $stmt->fetch(PDO::FETCH_OBJ);
 
-        return $result ?: null;
+        if (!$result) {
+            return null;
+        }
+
+        // Otomatik sonlandırma kontrolü (23:50 kuralı)
+        $baslangicZamani = new \DateTime($result->zaman);
+        $baslangicTarihi = $baslangicZamani->format('Y-m-d');
+        $bugun = date('Y-m-d');
+        $simdikiSaat = date('H:i');
+
+        // Başlangıç günü bugünden önceyse VEYA bugün ama saat 23:50'yi geçmişse
+        if ($baslangicTarihi < $bugun || ($baslangicTarihi === $bugun && $simdikiSaat >= '23:50')) {
+            // Otomatik sonlandır - 23:50 olarak kaydet
+            $this->otomatikSonlandir($personel_id, $result->id, $baslangicTarihi);
+            return null;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Görevi otomatik olarak 23:50'de sonlandırır
+     * @param int $personel_id
+     * @param int $basla_id Başlangıç kaydının ID'si
+     * @param string $tarih Y-m-d formatında tarih
+     * @return bool
+     */
+    public function otomatikSonlandir($personel_id, $basla_id, $tarih)
+    {
+        // Bitiş zamanı - 23:50 olarak
+        $bitisZamani = $tarih . ' 23:50:00';
+
+        // Önce bu tarihte zaten BITIR kaydı var mı kontrol et
+        $checkSql = "SELECT id FROM {$this->table} 
+                     WHERE personel_id = :personel_id 
+                     AND islem_tipi = 'BITIR'
+                     AND DATE(zaman) = :tarih
+                     AND silinme_tarihi IS NULL
+                     LIMIT 1";
+        
+        $checkStmt = $this->db->prepare($checkSql);
+        $checkStmt->execute([':personel_id' => $personel_id, ':tarih' => $tarih]);
+        
+        if ($checkStmt->fetch()) {
+            return true; // Zaten sonlandırılmış
+        }
+
+        // Başlangıç kaydından firma_id'yi al
+        $firmaStmt = $this->db->prepare("SELECT firma_id FROM {$this->table} WHERE id = :id");
+        $firmaStmt->execute([':id' => $basla_id]);
+        $firma = $firmaStmt->fetch(\PDO::FETCH_OBJ);
+        $firma_id = $firma ? $firma->firma_id : null;
+
+        // aciklama kolonu varsa onu kullan, yoksa basit insert yap
+        try {
+            $sql = "INSERT INTO {$this->table} 
+                    (personel_id, islem_tipi, zaman, aciklama, firma_id)
+                    VALUES (:personel_id, 'BITIR', :bitis_zamani, 'Otomatik sonlandırıldı (23:50 kuralı)', :firma_id)";
+
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute([
+                ':personel_id' => $personel_id,
+                ':bitis_zamani' => $bitisZamani,
+                ':firma_id' => $firma_id
+            ]);
+        } catch (\PDOException $e) {
+            // aciklama kolonu yoksa kolonsuz dene
+            if (strpos($e->getMessage(), 'aciklama') !== false) {
+                $sql = "INSERT INTO {$this->table} 
+                        (personel_id, islem_tipi, zaman, firma_id)
+                        VALUES (:personel_id, 'BITIR', :bitis_zamani, :firma_id)";
+
+                $stmt = $this->db->prepare($sql);
+                $result = $stmt->execute([
+                    ':personel_id' => $personel_id,
+                    ':bitis_zamani' => $bitisZamani,
+                    ':firma_id' => $firma_id
+                ]);
+            } else {
+                throw $e;
+            }
+        }
+
+        if ($result) {
+            // Log kaydı
+            error_log("[" . date('Y-m-d H:i:s') . "] Personel ID: {$personel_id} için görev otomatik sonlandırıldı. Tarih: {$tarih}");
+        }
+
+        return $result;
+    }
+
+    /**
+     * Tüm açık görevleri otomatik sonlandırır (Cron job için)
+     * @return array Sonlandırılan görevlerin listesi
+     */
+    public function tumAcikGorevleriSonlandir()
+    {
+        // 23:50'yi geçmiş tüm açık görevleri bul
+        $sql = "SELECT ph.* 
+                FROM {$this->table} ph
+                WHERE ph.islem_tipi = 'BASLA'
+                AND ph.silinme_tarihi IS NULL
+                AND (
+                    DATE(ph.zaman) < CURDATE() 
+                    OR (DATE(ph.zaman) = CURDATE() AND TIME(NOW()) >= '23:50:00')
+                )
+                AND NOT EXISTS (
+                    SELECT 1 FROM {$this->table} ph2 
+                    WHERE ph2.personel_id = ph.personel_id 
+                    AND ph2.islem_tipi = 'BITIR' 
+                    AND ph2.zaman > ph.zaman
+                    AND ph2.silinme_tarihi IS NULL
+                )";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        $acikGorevler = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $sonlandirilanlar = [];
+
+        foreach ($acikGorevler as $gorev) {
+            $baslangicTarihi = date('Y-m-d', strtotime($gorev->zaman));
+            $sonuc = $this->otomatikSonlandir($gorev->personel_id, $gorev->id, $baslangicTarihi);
+
+            if ($sonuc) {
+                $sonlandirilanlar[] = [
+                    'personel_id' => $gorev->personel_id,
+                    'baslangic' => $gorev->zaman,
+                    'tarih' => $baslangicTarihi
+                ];
+            }
+        }
+
+        return $sonlandirilanlar;
     }
 
     /**

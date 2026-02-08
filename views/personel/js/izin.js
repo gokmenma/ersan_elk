@@ -201,6 +201,10 @@ $(document).ready(function () {
 
       var formData = new FormData(form[0]);
       formData.append("action", "izin_kaydet");
+      // id alanının formda olduğundan emin olalım, eğer yoksa veya 0 ise insert, varsa update
+      if (!formData.has("id")) {
+        formData.append("id", $("#izin_id").val() || 0);
+      }
 
       $.ajax({
         url: "views/personel/api/APIizinler.php",
@@ -273,15 +277,17 @@ $(document).ready(function () {
       var id = btn.data("id");
       var durum = btn.data("durum");
 
-      if (durum !== "Beklemede") {
+      var onayaTabi = btn.data("onaya-tabi") == 1;
+
+      if (durum !== "Beklemede" && onayaTabi) {
         if (typeof Swal !== "undefined") {
           Swal.fire({
             icon: "warning",
             title: "Uyarı",
-            text: "Sadece bekleyen izinler silinebilir.",
+            text: "Yetkili onayından geçmiş kayıtlar silinemez.",
           });
         } else {
-          alert("Sadece bekleyen izinler silinebilir.");
+          alert("Yetkili onayından geçmiş kayıtlar silinemez.");
         }
         return;
       }
@@ -395,13 +401,111 @@ $(document).ready(function () {
     });
 
   // İzin Detay Butonu
-  // İzin Detay Butonu
   $(document)
     .off("click.izinler", ".btn-izin-detay")
     .on("click.izinler", ".btn-izin-detay", function () {
       const id = $(this).data("id");
       loadIzinDetay(id);
     });
+
+  // İzin Düzenle Butonu
+  $(document)
+    .off("click.izinler", ".btn-izin-duzenle")
+    .on("click.izinler", ".btn-izin-duzenle", function () {
+      const btn = $(this);
+      const data = btn.data("json");
+
+      if (!data) return;
+
+      $("#formIzinEkle")[0].reset();
+      $("#izin_id").val(data.id);
+
+      // Ücret durumu
+      const ucretliMi = data.ucretli_mi !== undefined ? data.ucretli_mi : 1;
+      $('[name="izin_ucret_durumu"][value="' + ucretliMi + '"]')
+        .prop("checked", true)
+        .trigger("change");
+
+      // İzin tipi (Select dolmuş olmalı)
+      setTimeout(function () {
+        $('[name="izin_tipi"]').val(data.izin_tipi_id).trigger("change");
+      }, 200);
+
+      // Tarihleri doldur
+      function setFpDate(name, dateStr) {
+        if (!dateStr) return;
+        var el = $('[name="' + name + '"]')[0];
+        if (el && el._flatpickr) {
+          // YYYY-MM-DD HH:mm:ss formatını Date objesine çeviriyoruz
+          // Sadece tarih varsa YYYY-MM-DD olarak gelir
+          var d = new Date(dateStr.replace(/-/g, "/")); // Bazı tarayıcılarda "-" parsing sorunu olabiliyor
+          if (isNaN(d.getTime())) d = new Date(dateStr);
+
+          if (!isNaN(d.getTime())) {
+            el._flatpickr.setDate(d, true);
+          } else {
+            el._flatpickr.setDate(dateStr, true);
+          }
+        } else {
+          $('[name="' + name + '"]').val(dateStr);
+        }
+      }
+
+      setFpDate("baslangic_tarihi", data.baslangic_tarihi);
+      setFpDate("bitis_tarihi", data.bitis_tarihi);
+
+      // Diğer alanlar
+      $('[name="sure"]').val(data.toplam_gun || data.sure || "");
+      $('[name="aciklama"]').val(data.aciklama || "");
+
+      if (data.izin_durumu) {
+        $('[name="izin_durumu"]').val(data.izin_durumu).trigger("change");
+      }
+      if (data.yillik_izne_etki !== undefined) {
+        $('[name="yillik_izne_etki"]')
+          .val(data.yillik_izne_etki)
+          .trigger("change");
+      }
+      if (data.bordroya_aktar) {
+        $('[name="bordroya_aktar"]').val(data.bordroya_aktar).trigger("change");
+      }
+
+      // Onay bilgileri
+      $('[name="onay_durumu"]')
+        .val(data.son_durum || data.onay_durumu || "Beklemede")
+        .trigger("change");
+      $("#onaylayan_id").val(data.onaylayan_id || "");
+
+      // Onaylayan arama alanına isim yaz
+      if (data.onaylayan_adi_soyadi) {
+        $("#onaylayan_ara").val(data.onaylayan_adi_soyadi);
+      } else if (data.onaylar && data.onaylar.length > 0) {
+        $("#onaylayan_ara").val(data.onaylar[data.onaylar.length - 1].adi);
+      }
+
+      $("#onay_aciklama").val(data.onay_aciklama || "");
+
+      if (data.onay_tarihi) {
+        setFpDate("onay_tarihi", data.onay_tarihi);
+      }
+
+      $("#modalIzinEkleLabel").text("İzin Düzenle");
+      $("#modalIzinEkle").modal("show");
+    });
+
+  // Yeni İzin Ekle modalı açıldığında label'ı düzelt ve id'yi sıfırla
+  $(document).on("click", '[data-bs-target="#modalIzinEkle"]', function () {
+    if (!$(this).hasClass("btn-izin-duzenle")) {
+      $("#formIzinEkle")[0].reset();
+      $("#izin_id").val(0);
+      $("#modalIzinEkleLabel").text("Yeni Ekle");
+      // Varsayılanları ayarla
+      $('[name="izin_ucret_durumu"][value="1"]')
+        .prop("checked", true)
+        .trigger("change");
+      $('[name="onay_durumu"]').val("Beklemede").trigger("change");
+    }
+  });
 
   // İzin Onay Form Submit
   // İzin Onay Form Submit
@@ -715,12 +819,54 @@ $(document).ready(function () {
     }
   });
 
-  // Event listener ekle
-  $("body").on(
-    "change input",
-    '[name="baslangic_tarihi"], [name="bitis_tarihi"], [name="izin_tipi"]',
-    function () {
+  // Tarih senkronizasyonu (Başlangıç değişince bitişi aynı yap)
+  $(document)
+    .off("change.izin_sync input.izin_sync", "#baslangic_tarihi")
+    .on("change.izin_sync input.izin_sync", "#baslangic_tarihi", function () {
+      var startVal = $(this).val();
+
+      if (startVal) {
+        var endInput = $("#bitis_tarihi");
+        if (endInput.length > 0) {
+          if (endInput[0]._flatpickr) {
+            endInput[0]._flatpickr.set("minDate", startVal);
+
+            var currentEnd = endInput.val();
+            // Eğer bitiş tarihi boşsa VEYA başlangıçtan küçükse güncelle
+            if (!currentEnd || parseDate(currentEnd) < parseDate(startVal)) {
+              endInput[0]._flatpickr.setDate(startVal, true);
+            }
+          } else {
+            var currentEnd = endInput.val();
+            if (!currentEnd || parseDate(currentEnd) < parseDate(startVal)) {
+              endInput.val(startVal).trigger("change");
+            }
+          }
+        }
+      }
       calculateDuration();
-    },
-  );
+    });
+
+  // Bitiş tarihi veya izin tipi değiştiğinde süreyi hesapla
+  $(document)
+    .off("change.izin_calc", "#bitis_tarihi, [name='izin_tipi']")
+    .on("change.izin_calc", "#bitis_tarihi, [name='izin_tipi']", function () {
+      calculateDuration();
+    });
+
+  function parseDate(str) {
+    if (!str) return null;
+    if (str.includes(".")) {
+      var parts = str.split(".");
+      if (parts.length === 3) {
+        return new Date(parts[2], parts[1] - 1, parts[0]);
+      }
+    } else if (str.includes("-")) {
+      var parts = str.split("-");
+      if (parts.length === 3) {
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+      }
+    }
+    return new Date(str);
+  }
 });

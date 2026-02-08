@@ -5,10 +5,12 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Helper\Helper;
 use App\Helper\Security;
-
+use App\Service\Gate;
 use App\Model\TanimlamalarModel;
+use App\Model\SettingsModel;
 
 $Tanimlamalar = new TanimlamalarModel();
+$Settings = new SettingsModel();
 $firma_id = $_SESSION["firma_id"];
 
 /**firma id boş ise işlem yapma */
@@ -59,6 +61,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "gelir-gider-turu-kaydet") {
 if (isset($_POST["action"]) && $_POST["action"] == "ekip-kodu-kaydet") {
     $id = Security::decrypt($_POST["ekip_id"]);
     $tur_adi = $_POST["ekip_kodu"];
+    $ekip_bolge = $_POST["ekip_bolge"] ?? '';
     $son_kayit = null;
     $plainId = 0;
 
@@ -71,6 +74,33 @@ if (isset($_POST["action"]) && $_POST["action"] == "ekip-kodu-kaydet") {
         echo json_encode(["status" => $status, "message" => $message]);
         exit;
     }
+
+    /**Bölge kuralı validasyonu */
+    if (!empty($ekip_bolge)) {
+        $kurallarJson = $Settings->getSettings('ekip_kodu_bolge_kurallari') ?? '{}';
+        $bolgeKurallari = json_decode($kurallarJson, true) ?: [];
+
+        if (isset($bolgeKurallari[$ekip_bolge])) {
+            // Ekip kodundan sayıyı çıkar (örn: "ER-SAN ELEKTRİK EKİP-10" -> 10)
+            if (preg_match('/(\d+)$/', $tur_adi, $matches)) {
+                $ekipNo = intval($matches[1]);
+                $kural = $bolgeKurallari[$ekip_bolge];
+
+                if ($ekipNo < $kural['min'] || $ekipNo > $kural['max']) {
+                    $status = "error";
+                    $message = "{$ekip_bolge} bölgesi için ekip numarası {$kural['min']} ile {$kural['max']} arasında olmalıdır. Girilen: {$ekipNo}";
+                    echo json_encode(["status" => $status, "message" => $message]);
+                    exit;
+                }
+            } else {
+                $status = "error";
+                $message = "Ekip kodunun sonunda bir sayı bulunmalıdır (örn: ER-SAN ELEKTRİK EKİP-10)";
+                echo json_encode(["status" => $status, "message" => $message]);
+                exit;
+            }
+        }
+    }
+
 
 
 
@@ -222,6 +252,18 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-getir") {
 if (isset($_POST["action"]) && $_POST["action"] == "is-turu-sil") {
     $id = Security::decrypt($_POST["id"]);
     try {
+
+        /** Önce yapilan_isler tablosundan bu is turu kullanılıyormu kontrol et */
+        $isTuruKullaniliyor = $Tanimlamalar->isTuruKullaniliyor($id);
+        if ($isTuruKullaniliyor) {
+            $status = "error";
+            $message = "Bu is turu kullanılıyor. Silinemez.";
+            echo json_encode(["status" => $status, "message" => $message]);
+            exit;
+        }
+
+
+
         $Tanimlamalar->softDelete($id);
         $status = "success";
         $message = "Kayıt silindi." . $id;
@@ -389,17 +431,22 @@ if (isset($_POST["action"]) && $_POST["action"] == "izin-turu-kaydet") {
             "type" => 0,
             "grup" => "izin_turu",
             "tur_adi" => $_POST["izin_turu"],
+            "kisa_kod" => $_POST["kisa_kod"],
             "aciklama" => $_POST["aciklama"],
-            "ucretli_mi" => $_POST["ucretli_mi"],
-            "personel_gorebilir" => $_POST["personel_gorebilir"],
+            "ucretli_mi" => (int) ($_POST["ucretli_mi"] ?? 0),
+            "personel_gorebilir" => (int) ($_POST["personel_gorebilir"] ?? 0),
             "renk" => $_POST["renk"],
-            "ikon" => $_POST["ikon"]
+            "ikon" => $_POST["ikon"],
+            "yetkili_onayina_tabi" => (int) ($_POST["yetkili_onayina_tabi"] ?? 0)
         ];
 
         if ($id == 0) {
             $data["kayit_yapan"] = $_SESSION["id"] ?? 0;
+            $data["firma_id"] = $_SESSION["firma_id"];
             $plainId = $Tanimlamalar->saveWithAttr($data);
         } else {
+            // Debug için logla (geçici)
+            // error_log("Updating ID $id with yetkili_onayina_tabi: " . $_POST["yetkili_onayina_tabi"]);
             $Tanimlamalar->saveWithAttr($data);
             $plainId = $id;
         }
@@ -416,7 +463,8 @@ if (isset($_POST["action"]) && $_POST["action"] == "izin-turu-kaydet") {
         "message" => $message,
         "son_kayit" => $son_kayit,
         "id" => $plainId,
-        "is_update" => ($id != 0)
+        "is_update" => ($id != 0),
+        "data" => $data
     ];
 
     echo json_encode($res);
@@ -448,4 +496,59 @@ if (isset($_POST["action"]) && $_POST["action"] == "izin-turu-sil") {
         $message = $ex->getMessage();
     }
     echo json_encode(["status" => $status, "message" => $message, "deleted_id" => $id]);
+}
+
+// Bölge Kurallarını Getir
+if (isset($_POST["action"]) && $_POST["action"] == "bolge-kurallari-getir") {
+    try {
+        $kurallarJson = $Settings->getSettings('ekip_kodu_bolge_kurallari') ?? '{}';
+        $kurallar = json_decode($kurallarJson, true) ?: [];
+
+        echo json_encode([
+            "status" => "success",
+            "kurallar" => $kurallar
+        ]);
+    } catch (PDOException $ex) {
+        echo json_encode([
+            "status" => "error",
+            "message" => $ex->getMessage(),
+            "kurallar" => []
+        ]);
+    }
+    exit;
+}
+
+// Bölge Kurallarını Kaydet
+if (isset($_POST["action"]) && $_POST["action"] == "bolge-kurallari-kaydet") {
+    // Yetki kontrolü
+    Gate::can('ekip_kodu_kurallari');
+
+    try {
+        $kurallar = $_POST["kurallar"] ?? '{}';
+
+        // JSON formatını doğrula
+        $kurallarArray = json_decode($kurallar, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception("Geçersiz JSON formatı");
+        }
+
+        // Kuralları kaydet
+        $Settings->upsertSetting('ekip_kodu_bolge_kurallari', $kurallar);
+
+        echo json_encode([
+            "status" => "success",
+            "message" => "Bölge kuralları başarıyla kaydedildi."
+        ]);
+    } catch (PDOException $ex) {
+        echo json_encode([
+            "status" => "error",
+            "message" => "Veritabanı hatası: " . $ex->getMessage()
+        ]);
+    } catch (Exception $ex) {
+        echo json_encode([
+            "status" => "error",
+            "message" => $ex->getMessage()
+        ]);
+    }
+    exit;
 }

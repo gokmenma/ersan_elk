@@ -53,7 +53,7 @@ $page = $_GET['p'] ?? 'home';
 
 <?php if ($page == 'personel/manage') { ?>
     <script src="views/personel/js/manage.js"></script>
-    <script src="views/personel/js/izin.js"></script>
+    <script src="views/personel/js/izin.js?v=<?php echo time(); ?>"></script>
 <?php } ?>
 
 

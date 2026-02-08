@@ -397,7 +397,32 @@ class TanimlamalarModel extends Model
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
 
+    /**İş türü kullanılıyor mu kontrol et */
+    public function isTuruKullaniliyor($id)
+    {
+        $sql = "SELECT * FROM yapilan_isler WHERE is_emri_sonucu_id = ? AND silinme_tarihi IS NULL";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        return $stmt->fetch(PDO::FETCH_OBJ);
+    }
 
+    /**
+     * Benzersiz iş emri sonuçlarını getirir (Demirbaş otomatik zimmet için)
+     * @return array İş emri sonuçları listesi
+     */
+    public function getIsEmriSonuclari()
+    {
+        $sql = "SELECT DISTINCT is_emri_sonucu 
+                FROM {$this->table} 
+                WHERE grup = 'is_turu' 
+                AND is_emri_sonucu IS NOT NULL 
+                AND is_emri_sonucu != '' 
+                AND silinme_tarihi IS NULL 
+                ORDER BY is_emri_sonucu ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
 
 
 }

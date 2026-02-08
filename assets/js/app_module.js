@@ -466,7 +466,11 @@ File: Main Js File
                 document.documentElement.getAttribute("data-theme-mode") ==
                   "orange"
               ? updateRadio("theme-orange")
-              : updateRadio("theme-default");
+              : document.documentElement.hasAttribute("data-theme-mode") &&
+                  document.documentElement.getAttribute("data-theme-mode") ==
+                    "rose"
+                ? updateRadio("theme-rose")
+                : updateRadio("theme-default");
 
     html.hasAttribute("data-bs-theme") &&
     html.getAttribute("data-bs-theme") == "dark"

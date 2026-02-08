@@ -17,7 +17,7 @@ use App\Helper\Date;
         </div>
 
         <div class="relative z-10 flex items-center justify-between">
-            <h1 class="text-xl font-bold">Puantaj / İş Takip</h1>
+            <h1 class="text-xl font-bold">İş Takip</h1>
             <button onclick="toggleDarkMode()"
                 class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
                 <span class="material-symbols-outlined" id="theme-icon">dark_mode</span>
@@ -51,18 +51,21 @@ use App\Helper\Date;
             <div class="flex items-center gap-2">
                 <div class="flex-1">
                     <label class="text-xs text-slate-500 mb-1 block">Başlangıç</label>
-                    <input type="date" id="filter-start-date" class="form-input text-sm" 
-                        value="<?php echo date('Y-m-01'); ?>" onchange="loadPuantajData()">
+                    <input type="date" id="filter-start-date" class="form-input text-sm"
+                        value="<?php echo date('Y-m-d', strtotime('-30 days')); ?>" onchange="loadPuantajData()">
                 </div>
                 <div class="flex-1">
                     <label class="text-xs text-slate-500 mb-1 block">Bitiş</label>
-                    <input type="date" id="filter-end-date" class="form-input text-sm" 
+                    <input type="date" id="filter-end-date" class="form-input text-sm"
                         value="<?php echo date('Y-m-d'); ?>" onchange="loadPuantajData()">
                 </div>
             </div>
-            <div>
-                <select id="filter-type" class="form-select text-sm" onchange="loadPuantajData()">
+            <div class="grid grid-cols-2 gap-2">
+                <select id="filter-type" class="form-select text-sm" onchange="handleWorkTypeChange()">
                     <option value="">Tüm İş Türleri</option>
+                </select>
+                <select id="filter-result" class="form-select text-sm" onchange="loadPuantajData()">
+                    <option value="">Tüm İş Sonuçları</option>
                 </select>
             </div>
         </div>
@@ -119,8 +122,9 @@ use App\Helper\Date;
     let puantajData = [];
     let workTypes = [];
 
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         loadWorkTypes();
+        loadWorkResults();
         loadPuantajData();
     });
 
@@ -128,9 +132,9 @@ use App\Helper\Date;
         try {
             const response = await API.request('getPuantajWorkTypes');
             if (response.success && response.data) {
-                workTypes = response.data;
+                const types = response.data;
                 const select = document.getElementById('filter-type');
-                workTypes.forEach(type => {
+                types.forEach(type => {
                     const option = document.createElement('option');
                     option.value = type;
                     option.textContent = type;
@@ -142,10 +146,41 @@ use App\Helper\Date;
         }
     }
 
+    async function handleWorkTypeChange() {
+        // İş türü değiştiğinde sonuçları da filtrele
+        const workType = document.getElementById('filter-type').value;
+        await loadWorkResults(workType);
+        loadPuantajData();
+    }
+
+    async function loadWorkResults(workType = '') {
+        try {
+            const select = document.getElementById('filter-result');
+            const currentValue = select.value;
+
+            // Mevcut seçenekleri temizle (ilk seçenek hariç)
+            select.innerHTML = '<option value="">Tüm İş Sonuçları</option>';
+
+            const response = await API.request('getPuantajWorkResults', { work_type: workType });
+            if (response.success && response.data) {
+                const results = response.data;
+                results.forEach(result => {
+                    const option = document.createElement('option');
+                    option.value = result;
+                    option.textContent = result;
+                    if (result === currentValue) option.selected = true;
+                    select.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('İş sonuçları yüklenemedi:', error);
+        }
+    }
+
     async function loadPuantajData() {
         const listContainer = document.getElementById('puantaj-list');
         const emptyState = document.getElementById('empty-state');
-        
+
         // Show skeleton
         listContainer.innerHTML = `
             <div class="card p-4 animate-pulse">
@@ -162,12 +197,14 @@ use App\Helper\Date;
         const startDate = document.getElementById('filter-start-date').value;
         const endDate = document.getElementById('filter-end-date').value;
         const workType = document.getElementById('filter-type').value;
+        const workResult = document.getElementById('filter-result').value;
 
         try {
             const response = await API.request('getPuantajData', {
                 start_date: startDate,
                 end_date: endDate,
-                work_type: workType
+                work_type: workType,
+                work_result: workResult
             });
 
             if (response.success) {

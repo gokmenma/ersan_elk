@@ -253,7 +253,7 @@ try {
     $evetHayirList = '"Evet,Hayır"';
     $varYokList = '"Var,Yok"';
     $personelSinifiList = '"Beyaz Yaka,Mavi Yaka"';
-    $maasDurumuList = '"Brüt,Net"';
+    $maasDurumuList = '"Brüt,Net,Prim Usülü"';
     $aktifList = '"1,0"';
 
     // Veri Doğrulama (Data Validation) - 100 satır için uygula

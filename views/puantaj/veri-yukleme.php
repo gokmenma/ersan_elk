@@ -268,8 +268,9 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             <thead>
                                 <tr class="table-light">
                                     <th>Tarih</th>
+                                    <th>Ekip Kodu</th>
+                                    <th>Personel</th>
                                     <th>İş Emri Tipi</th>
-                                    <th>Ekip (Personel)</th>
                                     <th>İş Emri Sonucu</th>
                                     <th>Sonuçlanmış</th>
                                     <th>Açık Olanlar</th>
@@ -1001,8 +1002,9 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 },
                 columns: [
                     { data: 'tarih' },
-                    { data: 'is_emri_tipi' },
+                    { data: 'ekip_kodu', defaultContent: '-' },
                     { data: 'personel_adi' },
+                    { data: 'is_emri_tipi' },
                     { data: 'is_emri_sonucu' },
                     { data: 'sonuclanmis' },
                     { data: 'acik_olanlar' },
@@ -1130,17 +1132,27 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             var personelId = $('select[name="ekip_kodu"]').val();
             var workType = $('select[name="work_type"]').val();
 
+            // DataTable sütun filtrelerini DOM input'larından al
+            var columnFilters = {};
+            $('#puantajTable thead tr.search-input-row input').each(function () {
+                var searchValue = $(this).val();
+                var colIdx = $(this).attr('data-col-idx');
+                if (searchValue && colIdx) {
+                    columnFilters['col_' + colIdx] = searchValue;
+                }
+            });
+
             $('#statsModal .modal-title').text('İş Emri Tipi Bazlı İstatistikler');
             $('#statsModal').modal('show');
             $('#statsModalBody').html('<div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">İstatistikler hazırlanıyor...</p></div>');
 
-            $.get('views/puantaj/modal_puantaj_istatistik.php', {
+            $.get('views/puantaj/modal_puantaj_istatistik.php', $.extend({
                 start_date: startDate,
                 end_date: endDate,
                 personel_id: personelId,
                 work_type: workType,
                 work_result: $('select[name="work_result"]').val()
-            }, function (html) {
+            }, columnFilters), function (html) {
                 $('#statsModalBody').html(html);
             });
         });
@@ -1563,9 +1575,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     $('#onlineIcmalResult').html('<div class="alert alert-danger">Bağlantı hatası oluştu.</div>').show();
                 }
             });
-        });
-
-        // Modal kapanınca sonuç alanlarını temizle
+        });  // Modal kapanınca sonuç alanlarını temizle
         $('#importOnlinePuantajModal').on('hidden.bs.modal', function () {
             $('#onlinePuantajResult').hide().html('');
         });

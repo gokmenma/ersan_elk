@@ -15,6 +15,10 @@
                 <p class="text-sm text-slate-500">Nöbetlerinizi görüntüleyin ve yönetin</p>
             </div>
             <div class="flex items-center gap-2">
+                <button onclick="openYeniTalepModal()"
+                    class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-primary">add</span>
+                </button>
                 <button onclick="openTaleplerModal()"
                     class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center relative">
                     <span class="material-symbols-outlined text-amber-600">swap_horiz</span>
@@ -296,6 +300,63 @@
     </div>
 </div>
 
+<!-- Yeni Nöbet Talebi Modal -->
+<div id="yeni-talep-modal" class="modal-overlay">
+    <div class="modal-content p-6 pt-3 max-h-[85vh] overflow-y-auto">
+        <div class="modal-handle"></div>
+
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary text-2xl">event_upcoming</span>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Nöbet Talep Et</h3>
+            </div>
+            <button onclick="Modal.close('yeni-talep-modal')"
+                class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <span class="material-symbols-outlined text-slate-600">close</span>
+            </button>
+        </div>
+
+        <form id="yeni-talep-form" class="flex flex-col gap-4">
+            <div>
+                <label class="form-label">Müsait Günler</label>
+                <div id="musait-gunler-container" class="grid grid-cols-4 gap-2 max-h-[200px] overflow-y-auto p-1">
+                    <!-- Günler buraya yüklenecek -->
+                </div>
+                <input type="hidden" name="tarih" id="selected-talep-tarih" required>
+            </div>
+
+            <div>
+                <label class="form-label">Not (Opsiyonel)</label>
+                <textarea name="aciklama" class="form-input min-h-[80px]"
+                    placeholder="Eklemek istediğiniz bir not var mı?"></textarea>
+            </div>
+
+            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/30 rounded-xl p-4">
+                <div class="flex items-start gap-3">
+                    <span class="material-symbols-outlined text-blue-600">info</span>
+                    <div>
+                        <p class="text-sm font-medium text-blue-800 dark:text-blue-300">Bilgi</p>
+                        <p class="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                            Seçtiğiniz tarihte boşta olan nöbet için talep oluşturulacaktır. Yönetici onayından sonra
+                            nöbet size atanır.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-2">
+                <button type="button" onclick="Modal.close('yeni-talep-modal')"
+                    class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
+                    İptal
+                </button>
+                <button type="submit" class="flex-1 btn-primary py-3">
+                    Talebi Gönder
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
     // State
     let currentView = 'calendar';
@@ -324,6 +385,11 @@
         document.getElementById('mazeret-form').addEventListener('submit', async function (e) {
             e.preventDefault();
             await submitMazeretBildirimi(this);
+        });
+
+        document.getElementById('yeni-talep-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            await submitYeniNobetTalebi(this);
         });
     });
 
@@ -481,16 +547,21 @@
 
         // Bu ayın günleri
         const today = new Date();
+        today.setHours(0, 0, 0, 0); // Bugünün gece yarısını al
+
         for (let day = 1; day <= lastDay.getDate(); day++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const nobet = nobetlerData.find(n => n.nobet_tarihi === dateStr);
             const date = new Date(year, month, day);
-            const isToday = date.toDateString() === today.toDateString();
+            date.setHours(0, 0, 0, 0);
+            const isToday = date.getTime() === today.getTime();
+            const isPast = date < today;
             const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
             let dayClass = 'bg-slate-50 dark:bg-slate-800';
             let textClass = 'text-slate-600 dark:text-slate-400';
             let hasNobet = false;
+            let opacityClass = '';
 
             if (isToday) {
                 dayClass = 'bg-primary/10 ring-2 ring-primary';
@@ -499,15 +570,23 @@
 
             if (nobet) {
                 hasNobet = true;
-                dayClass = isWeekend ? 'bg-purple-500' : 'bg-blue-500';
-                textClass = 'text-white font-bold';
+                if (isPast) {
+                    // Geçmiş nöbetler için pasif/soluk renkler
+                    dayClass = isWeekend ? 'bg-purple-200 dark:bg-purple-900/40' : 'bg-blue-200 dark:bg-blue-900/40';
+                    textClass = isWeekend ? 'text-purple-400 dark:text-purple-600' : 'text-blue-400 dark:text-blue-600';
+                    opacityClass = 'opacity-60';
+                } else {
+                    // Gelecek nöbetler için normal renkler
+                    dayClass = isWeekend ? 'bg-purple-500' : 'bg-blue-500';
+                    textClass = 'text-white font-bold';
+                }
             }
 
             html += `
                 <div onclick="${hasNobet ? `showNobetDetay('${nobet?.id}')` : ''}" 
-                     class="aspect-square p-1 rounded-lg ${dayClass} flex flex-col items-center justify-center cursor-pointer transition-transform active:scale-95">
+                     class="aspect-square p-1 rounded-lg ${dayClass} ${opacityClass} flex flex-col items-center justify-center cursor-pointer transition-transform active:scale-95">
                     <span class="text-sm ${textClass}">${day}</span>
-                    ${hasNobet ? '<span class="w-1.5 h-1.5 bg-white rounded-full mt-0.5"></span>' : ''}
+                    ${hasNobet ? `<span class="w-1.5 h-1.5 ${isPast ? 'bg-slate-400' : 'bg-white'} rounded-full mt-0.5"></span>` : ''}
                 </div>
             `;
         }
@@ -537,30 +616,47 @@
             new Date(a.nobet_tarihi) - new Date(b.nobet_tarihi)
         );
 
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
         container.innerHTML = sorted.map(nobet => {
             const date = new Date(nobet.nobet_tarihi);
+            date.setHours(0, 0, 0, 0);
             const gunAdi = gunler[date.getDay()];
             const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-            const isPast = date < new Date();
+            const isPast = date < today;
+
+            // Geçmiş nöbetler için pasif stiller
+            const cardOpacity = isPast ? 'opacity-60' : '';
+            const bgClass = isPast 
+                ? (isWeekend ? 'bg-purple-100/50 dark:bg-purple-900/20' : 'bg-blue-100/50 dark:bg-blue-900/20')
+                : (isWeekend ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-blue-100 dark:bg-blue-900/30');
+            const textClass = isPast
+                ? (isWeekend ? 'text-purple-400' : 'text-blue-400')
+                : (isWeekend ? 'text-purple-600' : 'text-blue-600');
+            const subTextClass = isPast
+                ? (isWeekend ? 'text-purple-300' : 'text-blue-300')
+                : (isWeekend ? 'text-purple-500' : 'text-blue-500');
+            const titleClass = isPast ? 'text-slate-500 dark:text-slate-500' : 'text-slate-900 dark:text-white';
 
             return `
-                <div class="card p-4" onclick="showNobetDetay('${nobet.id}')">
+                <div class="card p-4 ${cardOpacity}" onclick="showNobetDetay('${nobet.id}')">
                     <div class="flex items-center gap-4">
-                        <div class="w-14 h-14 rounded-xl ${isWeekend ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-blue-100 dark:bg-blue-900/30'} flex flex-col items-center justify-center flex-shrink-0">
-                            <span class="text-lg font-bold ${isWeekend ? 'text-purple-600' : 'text-blue-600'}">${date.getDate()}</span>
-                            <span class="text-[10px] ${isWeekend ? 'text-purple-500' : 'text-blue-500'}">${aylar[date.getMonth()].substring(0, 3)}</span>
+                        <div class="w-14 h-14 rounded-xl ${bgClass} flex flex-col items-center justify-center flex-shrink-0">
+                            <span class="text-lg font-bold ${textClass}">${date.getDate()}</span>
+                            <span class="text-[10px] ${subTextClass}">${aylar[date.getMonth()].substring(0, 3)}</span>
                         </div>
                         <div class="flex-1">
-                            <p class="font-bold text-slate-900 dark:text-white">${gunAdi}</p>
+                            <p class="font-bold ${titleClass}">${gunAdi}</p>
                             <p class="text-sm text-slate-500">${nobet.baslangic_saati?.substring(0, 5) || '18:00'} - ${nobet.bitis_saati?.substring(0, 5) || '08:00'}</p>
                             <div class="flex items-center gap-2 mt-1">
-                                <span class="badge ${isWeekend ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}">
+                                <span class="badge ${isPast ? 'bg-slate-200/50 text-slate-400 dark:bg-slate-700/30 dark:text-slate-500' : (isWeekend ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400')}">
                                     ${isWeekend ? 'Hafta Sonu' : 'Hafta İçi'}
                                 </span>
-                                ${isPast ? '<span class="badge bg-slate-100 text-slate-500">Geçmiş</span>' : ''}
+                                ${isPast ? '<span class="badge bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400">Geçmiş</span>' : ''}
                             </div>
                         </div>
-                        <span class="material-symbols-outlined text-slate-400">chevron_right</span>
+                        <span class="material-symbols-outlined ${isPast ? 'text-slate-300' : 'text-slate-400'}">chevron_right</span>
                     </div>
                 </div>
             `;
@@ -848,9 +944,10 @@
             const response = await API.request('onaylaNobetDegisimTalebi', { talep_id: talepId });
 
             if (response.success) {
-                Toast.show('Talep onaylandı', 'success');
+                Toast.show('Talep onaylandı.Yönetici onayını bekliyor.', 'success');
                 loadTalepler();
-                renderTalepler();
+                loadNobetler();
+                Modal.close('talepler-modal');
             } else {
                 Toast.show(response.message || 'Bir hata oluştu', 'error');
             }
@@ -876,6 +973,69 @@
                 Toast.show('Talep reddedildi', 'success');
                 loadTalepler();
                 renderTalepler();
+            } else {
+                Toast.show(response.message || 'Bir hata oluştu', 'error');
+            }
+        } catch (error) {
+            Toast.show('Bir hata oluştu', 'error');
+        }
+    }
+
+    // ============ YENİ NÖBET TALEBİ ============
+    async function openYeniTalepModal() {
+        const container = document.getElementById('musait-gunler-container');
+        container.innerHTML = '<div class="col-span-4 py-8 text-center"><div class="shimmer w-full h-10 rounded-lg"></div></div>';
+
+        Modal.open('yeni-talep-modal');
+
+        try {
+            const response = await API.request('getMusaitNobetGunleri', {
+                yil: currentDate.getFullYear(),
+                ay: currentDate.getMonth() + 1
+            });
+
+            if (response.success && response.data.length > 0) {
+                container.innerHTML = response.data.map(d => `
+                    <button type="button" onclick="selectTalepTarih('${d.tarih}', this)" 
+                        class="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent transition-all hover:bg-primary/5">
+                        <span class="text-xs text-slate-500">${d.gun_adi.substring(0, 3)}</span>
+                        <span class="text-lg font-bold text-slate-900 dark:text-white">${d.gun}</span>
+                    </button>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="col-span-4 py-8 text-center text-slate-500 text-sm">Bu ay için müsait nöbet günü bulunamadı.</div>';
+            }
+        } catch (error) {
+            container.innerHTML = '<div class="col-span-4 py-8 text-center text-red-500 text-sm">Veriler yüklenemedi.</div>';
+        }
+    }
+
+    function selectTalepTarih(tarih, element) {
+        document.querySelectorAll('#musait-gunler-container button').forEach(btn => {
+            btn.classList.remove('border-primary', 'bg-primary/5');
+            btn.classList.add('border-transparent');
+        });
+
+        element.classList.remove('border-transparent');
+        element.classList.add('border-primary', 'bg-primary/5');
+        document.getElementById('selected-talep-tarih').value = tarih;
+    }
+
+    async function submitYeniNobetTalebi(form) {
+        const formData = Form.serialize(form);
+
+        if (!formData.tarih) {
+            Toast.show('Lütfen bir tarih seçiniz', 'error');
+            return;
+        }
+
+        try {
+            const response = await API.request('createYeniNobetTalebi', formData);
+
+            if (response.success) {
+                Toast.show(response.message, 'success');
+                Modal.close('yeni-talep-modal');
+                form.reset();
             } else {
                 Toast.show(response.message || 'Bir hata oluştu', 'error');
             }

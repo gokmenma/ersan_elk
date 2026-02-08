@@ -234,9 +234,6 @@ $title = "Saha Personel Takibi";
                                         </tr>
                                     </thead>
                                     <tbody id="calismaRaporuBody">
-                                        <tr>
-                                            <td colspan="6" class="text-center text-muted">Yükleniyor...</td>
-                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -277,9 +274,6 @@ $title = "Saha Personel Takibi";
                                         </tr>
                                     </thead>
                                     <tbody id="gecKalanlarBody">
-                                        <tr>
-                                            <td colspan="4" class="text-center text-muted">Yükleniyor...</td>
-                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -639,7 +633,7 @@ $title = "Saha Personel Takibi";
                 body: 'action=istekTumKonum'
             });
             const res = await response.json();
-            
+
             if (res.success && res.data.eklenen > 0) {
                 // Sadece yeni istek eklendiyse ufak bir uyarı verebiliriz (isteğe bağlı)
                 console.log(res.message);
@@ -799,12 +793,13 @@ $title = "Saha Personel Takibi";
                 });
                 tbody.innerHTML = html;
             } else {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Bu tarih aralığında veri bulunamadı</td></tr>';
+                tbody.innerHTML = ''; // DataTables will show "EmptyTable" message
             }
 
             // DataTable'ı başlat
+            var options = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
             $('#calismaRaporuTable').DataTable({
-                ...getDatatableOptions(), // Genel ayarları al
+                ...options, // Genel ayarları al
                 order: [[2, 'desc']], // Varsayılan: Toplam saate göre sırala
                 pageLength: 25,
                 destroy: true // Varsa üzerine yaz
@@ -812,7 +807,7 @@ $title = "Saha Personel Takibi";
 
         } catch (error) {
             console.error('Çalışma raporu yüklenirken hata:', error);
-            document.getElementById('calismaRaporuBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Yüklenirken hata oluştu</td></tr>';
+            document.getElementById('calismaRaporuBody').innerHTML = '';
         }
     }
 
@@ -861,7 +856,7 @@ $title = "Saha Personel Takibi";
             }
 
             // Geç kalan sayısını güncelle
-            if (result.success && result.data) {
+            if (result.success && Array.isArray(result.data)) {
                 document.getElementById('stat-gec-kalan').textContent = result.data.length;
             }
 
@@ -877,12 +872,13 @@ $title = "Saha Personel Takibi";
                 });
                 tbody.innerHTML = html;
             } else {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-success"><i class="bx bx-check-circle me-1"></i> Bugün geç kalan personel bulunmuyor</td></tr>';
+                tbody.innerHTML = '';
             }
 
             // DataTable'ı başlat
+            var options = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
             $('#gecKalanlarTable').DataTable({
-                ...getDatatableOptions(), // Genel ayarları al
+                ...options, // Genel ayarları al
                 order: [[2, 'desc']], // Varsayılan: Gecikmeye göre
                 pageLength: 25,
                 destroy: true
@@ -890,7 +886,7 @@ $title = "Saha Personel Takibi";
 
         } catch (error) {
             console.error('Geç kalanlar yüklenirken hata:', error);
-            document.getElementById('gecKalanlarBody').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Yüklenirken hata oluştu</td></tr>';
+            document.getElementById('gecKalanlarBody').innerHTML = '';
         }
     }
 

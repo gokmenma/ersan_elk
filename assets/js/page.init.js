@@ -18,7 +18,7 @@ if ($(".select2").length > 0) {
     $(this).select2({
       dropdownParent: $(this).parent(),
       tags: true,
-      language: "tr"
+      language: "tr",
     });
   });
 }
@@ -32,7 +32,7 @@ if ($(".flatpickr").length > 0) {
       placeholder: "gg.aa.yyyy ss:dd",
       showMaskOnHover: false,
       showMaskOnFocus: false,
-      regex: "[0-9.: ]" // rakam, nokta, iki nokta ve boşluk
+      regex: "[0-9.: ]", // rakam, nokta, iki nokta ve boşluk
     });
   });
 }
@@ -52,9 +52,9 @@ document.addEventListener("DOMContentLoaded", function () {
         blocks: {
           num: {
             mask: Number,
-            thousandsSeparator: "."
-          }
-        }
+            thousandsSeparator: ".",
+          },
+        },
       });
     });
   }
@@ -65,12 +65,12 @@ document.addEventListener("DOMContentLoaded", function () {
       var dynamicMask = IMask(input, {
         mask: [
           {
-            mask: "+{90}(000)000 00 00"
+            mask: "+{90}(000)000 00 00",
           },
           {
-            mask: /^\S*@?\S*$/
-          }
-        ]
+            mask: /^\S*@?\S*$/,
+          },
+        ],
       });
     });
   }
@@ -135,7 +135,7 @@ $.validator.addMethod(
     // Günün, ilgili ay için geçerli bir gün olup olmadığını kontrol et
     return day > 0 && day <= monthLength[month - 1];
   },
-  "Lütfen gg.aa.yyyy formatında geçerli bir tarih giriniz."
+  "Lütfen gg.aa.yyyy formatında geçerli bir tarih giriniz.",
 );
 
 Toastify.defaults = {
@@ -144,11 +144,12 @@ Toastify.defaults = {
   className: "toastr",
   newWindow: true,
   style: {
-    background: "#000"
+    background: "#000",
+    borderRadius: "6px",
   },
-  avatar: "", // 
+  avatar: "", //
   close: true,
   gravity: "toastify-top",
   position: "center",
-  stopOnFocus: true
+  stopOnFocus: true,
 };

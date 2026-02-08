@@ -257,10 +257,29 @@ use App\Helper\Form;
                                     }
                                     $('#ekip_kodu_id').val(data.ekip_kodu_id).trigger('change');
 
-                                    $('#baslangic_tarihi').val(data.baslangic_tarihi);
-                                    $('#bitis_tarihi').val(data.bitis_tarihi || '');
+                                    // Tarihleri modal kapsamındaki inputlara set et
+                                    var $modal = $('#modalEkipGecmisiEkle');
+                                    var $baslangic = $modal.find('[name="baslangic_tarihi"]');
+                                    var $bitis = $modal.find('[name="bitis_tarihi"]');
 
-                                    $('#modalEkipGecmisiEkle').modal('show');
+                                    // Flatpickr değerlerini güncelle
+                                    if ($baslangic[0] && $baslangic[0]._flatpickr) {
+                                        $baslangic[0]._flatpickr.setDate(data.baslangic_tarihi);
+                                    } else {
+                                        $baslangic.val(data.baslangic_tarihi);
+                                    }
+
+                                    if ($bitis[0] && $bitis[0]._flatpickr) {
+                                        if (data.bitis_tarihi) {
+                                            $bitis[0]._flatpickr.setDate(data.bitis_tarihi);
+                                        } else {
+                                            $bitis[0]._flatpickr.clear();
+                                        }
+                                    } else {
+                                        $bitis.val(data.bitis_tarihi || '');
+                                    }
+
+                                    $modal.modal('show');
                                 } else {
                                     Swal.fire('Hata', response.message, 'error');
                                 }
@@ -352,6 +371,13 @@ use App\Helper\Form;
                     $('#ekip_gecmisi_id').val('');
                     $('#ekip_gecmisi_action').val('ekip-gecmisi-ekle');
                     $('#formEkipGecmisiEkle')[0].reset();
+                    
+                    // Flatpickr alanlarını temizle
+                    $(this).find('.flatpickr').each(function() {
+                        if (this._flatpickr) {
+                            this._flatpickr.clear();
+                        }
+                    });
                 });
             }
 

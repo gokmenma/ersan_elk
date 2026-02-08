@@ -29,8 +29,29 @@
                     </div>
                 </div>
 
+                <!-- Hareket Detayları -->
+                <h6 class="mb-3 border-bottom pb-2 text-primary"><i data-feather="repeat" class="me-1"></i> Zimmet
+                    Hareketleri (Detay)</h6>
+                <div class="table-responsive mb-4">
+                    <table class="table table-sm table-hover table-bordered border-primary-subtle">
+                        <thead class="table-primary fw-bold">
+                            <tr>
+                                <th>İşlem Tipi</th>
+                                <th class="text-center">Miktar</th>
+                                <th>Tarih</th>
+                                <th>Açıklama / İş Emri</th>
+                                <th>Kaynak</th>
+                            </tr>
+                        </thead>
+                        <tbody id="zimmetHareketBody">
+                            <!-- JS ile doldurulacak -->
+                        </tbody>
+                    </table>
+                </div>
+
                 <!-- Geçmiş Tablosu -->
-                <h6 class="mb-3 border-bottom pb-2"><i data-feather="clock" class="me-1"></i> Zimmet Geçmişi</h6>
+                <h6 class="mb-3 border-bottom pb-2"><i data-feather="clock" class="me-1"></i> Personel Demirbaş Geçmişi
+                </h6>
                 <div class="table-responsive">
                     <table class="table table-sm table-hover table-bordered table-striped">
                         <thead class="table-light">
@@ -48,6 +69,7 @@
                         </tbody>
                     </table>
                 </div>
+
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>

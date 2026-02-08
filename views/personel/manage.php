@@ -44,6 +44,8 @@ $allPersonel = array_map(function ($item) use ($id, &$selectedOption) {
     }
     return $item;
 }, $allPersonel);
+
+$activeTab = $_GET['tab'] ?? 'home';
 ?>
 <div class="container-fluid">
 
@@ -142,8 +144,8 @@ $allPersonel = array_map(function ($item) use ($id, &$selectedOption) {
                                                     <hr class="dropdown-divider">
                                                 </li>
                                                 <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'izinler' ? 'active' : ''; ?>"
-                                                        href="javascript:void(0);" data-target="#izinler">İzin/Rapor <i
-                                                            class="bx bx-calendar-event ms-2"></i></a></li>
+                                                        href="javascript:void(0);" data-target="#izinler">İzin/Rapor/Eksik
+                                                        Gün <i class="bx bx-calendar-event ms-2"></i></a></li>
                                                 <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'zimmetler' ? 'active' : ''; ?>"
                                                         href="javascript:void(0);" data-target="#zimmetler">Zimmetler <i
                                                             class="bx bx-devices ms-2"></i></a></li>
@@ -177,7 +179,6 @@ $allPersonel = array_map(function ($item) use ($id, &$selectedOption) {
                 <div class="card-body">
 
                     <!-- Nav tabs (Desktop Only) -->
-                    <?php $activeTab = $_GET['tab'] ?? 'home'; ?>
                     <ul class="nav nav-tabs d-none d-md-flex" role="tablist" id="desktopTabs">
                         <li class="nav-item">
                             <a class="nav-link <?php echo $activeTab === 'home' ? 'active' : ''; ?>"
@@ -205,7 +206,7 @@ $allPersonel = array_map(function ($item) use ($id, &$selectedOption) {
                         </li>
                         <?php if ($id > 0): ?>
                             <li class="nav-item"><a class="nav-link <?php echo $activeTab === 'izinler' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#izinler" role="tab">İzin/Rapor</a></li>
+                                    data-bs-toggle="tab" href="#izinler" role="tab">İzin/Rapor/Eksik Gün</a></li>
                             <li class="nav-item"><a
                                     class="nav-link <?php echo $activeTab === 'zimmetler' ? 'active' : ''; ?>"
                                     data-bs-toggle="tab" href="#zimmetler" role="tab">Zimmetler</a></li>
@@ -481,6 +482,9 @@ $allPersonel = array_map(function ($item) use ($id, &$selectedOption) {
                 altInput: true,
                 altFormat: "d.m.Y",
                 locale: "tr",
+                onChange: function (selectedDates, dateStr, instance) {
+                    $(instance.element).trigger('change');
+                }
             });
         }
 
@@ -511,8 +515,14 @@ $allPersonel = array_map(function ($item) use ($id, &$selectedOption) {
         // Personel seçimi değiştiğinde yönlendir
         $('#personel_select').on('change', function () {
             var selectedId = $(this).val();
+            var activeTab = $('.nav-link.active').attr('href');
+            if (activeTab) {
+                activeTab = activeTab.replace('#', '');
+            } else {
+                activeTab = 'home';
+            }
             if (selectedId) {
-                window.location.href = 'index?p=personel/manage&id=' + selectedId;
+                window.location.href = 'index?p=personel/manage&id=' + selectedId + '&tab=' + activeTab;
             }
         });
 

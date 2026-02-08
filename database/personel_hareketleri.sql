@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS `personel_hareketleri` (
     `konum_hassasiyeti` DECIMAL(10, 2) NULL COMMENT 'GPS doğruluk (metre cinsinden)',
     `cihaz_bilgisi` VARCHAR(500) NULL COMMENT 'Tarayıcı/cihaz user agent',
     `ip_adresi` VARCHAR(45) NULL COMMENT 'İstemci IP adresi',
+    `aciklama` VARCHAR(255) NULL COMMENT 'İşlem açıklaması (otomatik sonlandırma vb)',
     `firma_id` INT NULL COMMENT 'Firma ID (çoklu firma desteği)',
     `silinme_tarihi` DATETIME NULL DEFAULT NULL COMMENT 'Soft delete',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

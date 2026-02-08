@@ -10,12 +10,14 @@ use App\Model\PersonelModel;
 use App\Model\EndeksOkumaModel;
 use App\Model\TanimlamalarModel;
 use App\Model\SystemLogModel;
+use App\Model\DemirbasZimmetModel; // Yeni eklendi
 
 // Set header to JSON
 // header('Content-Type: application/json');
 
 $Puantaj = new PuantajModel();
 $Tanimlamalar = new TanimlamalarModel();
+$Zimmet = new DemirbasZimmetModel(); // Yeni eklendi
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'puantaj-excel-kaydet') {
 
@@ -86,8 +88,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $skippedCount = 0;
         $skippedRows = []; // Atlanan satırların detayları
         $workTypeCache = []; // Aynı yükleme sırasında yeni eklenen türleri takip etmek için cache
+        $pendingMovements = []; // Otomatik demirbaş işlemleri için kuyruk
 
         // Process rows
+
         for ($i = $headerRowIndex + 1; $i < count($rows); $i++) {
             $row = $rows[$i];
             $excelRowNum = $i + 1; // Excel satır numarası (1-indexed)
@@ -152,8 +156,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $normalizedEkip = str_replace(['İ', 'I', 'Ş', 'Ğ', 'Ü', 'Ö', 'Ç'], ['%', '%', '%', '%', '%', '%', '%'], $ekip);
 
                 // 1. Find team definition ID in tanimlamalar
-                $stmtDef = $Puantaj->db->prepare("SELECT id FROM tanimlamalar WHERE (tur_adi = ? OR tur_adi LIKE ?) AND silinme_tarihi IS NULL LIMIT 1");
-                $stmtDef->execute([$ekip, $normalizedEkip]);
+                // We use a more flexible matching to handle both "EKİP-XX" and "ER-SAN ELEKTRİK EKİP-XX"
+                // Also ensuring we only find teams for the current company
+                $teamNo = 0;
+                if (preg_match('/(?:EK[İI]P-?\s?)(\d+)/ui', $ekip, $m)) {
+                    $teamNo = $m[1];
+                }
+
+                $stmtDef = $Puantaj->db->prepare("
+                    SELECT id FROM tanimlamalar 
+                    WHERE (tur_adi = ? OR tur_adi LIKE ? OR tur_adi LIKE ?) 
+                    AND grup = 'ekip_kodu' 
+                    AND firma_id = ? 
+                    AND silinme_tarihi IS NULL 
+                    LIMIT 1
+                ");
+                $stmtDef->execute([
+                    $ekip,
+                    $normalizedEkip,
+                    $teamNo > 0 ? "%EK[İI]P-$teamNo" : "---NONE---",
+                    $_SESSION['firma_id']
+                ]);
                 $defId = $stmtDef->fetchColumn();
 
                 if ($defId) {
@@ -169,7 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         JOIN personel_ekip_gecmisi pg ON p.id = pg.personel_id
                         WHERE pg.ekip_kodu_id = ? 
                         AND pg.baslangic_tarihi <= ?
-                        AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= ?)
+                        AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi = '' OR pg.bitis_tarihi >= ?)
                         AND p.silinme_tarihi IS NULL
                         AND pg.firma_id = ?
                         LIMIT 1
@@ -221,7 +244,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             // Insert
             $firmaId = $_SESSION['firma_id'] ?? 0;
 
-
             $puantajData = [
                 'islem_id' => $islemId,
                 'personel_id' => $personelId,
@@ -237,8 +259,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             if ($result) {
                 $insertedCount++;
+                // İşlemleri biriktir (iki aşamalı işleme için)
+                $pendingMovements[] = [
+                    'personel_id' => $personelId,
+                    'is_emri_sonucu' => $isEmriSonucu,
+                    'tarih' => $uploadDate,
+                    'islem_id' => $islemId,
+                    'miktar' => $sonuclanmis
+                ];
             }
         }
+
+        // İKİ AŞAMALI DEMİRBAŞ İŞLEME (Senkronizasyon Sorununu Çözer)
+        if (!empty($pendingMovements)) {
+            // 1. Aşama: Önce tüm satırların ZİMMETLERİNİ işle
+            foreach ($pendingMovements as $pm) {
+                $Zimmet->checkAndProcessAutomaticZimmet($pm['personel_id'], $pm['is_emri_sonucu'], $pm['tarih'], $pm['islem_id'], $pm['miktar'], 'zimmet');
+            }
+
+            // 2. Aşama: Sonra tüm satırların İADELERİNİ işle
+            foreach ($pendingMovements as $pm) {
+                $Zimmet->checkAndProcessAutomaticZimmet($pm['personel_id'], $pm['is_emri_sonucu'], $pm['tarih'], $pm['islem_id'], $pm['miktar'], 'iade');
+            }
+        }
+
+
+
 
         $response['status'] = 'success';
         $response['inserted_count'] = $insertedCount;
@@ -469,8 +515,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $personelId = 0;
             if ($teamNo > 0) {
                 // 1. Find team definition ID in tanimlamalar
-                $stmtDef = $EndeksOkuma->db->prepare("SELECT id FROM tanimlamalar WHERE (tur_adi LIKE ? OR tur_adi LIKE ?) AND silinme_tarihi IS NULL LIMIT 1");
-                $stmtDef->execute(["%EKİP-$teamNo", "%EKIP-$teamNo"]);
+                $stmtDef = $EndeksOkuma->db->prepare("
+                    SELECT id FROM tanimlamalar 
+                    WHERE (tur_adi LIKE ? OR tur_adi LIKE ?) 
+                    AND grup = 'ekip_kodu' 
+                    AND firma_id = ? 
+                    AND silinme_tarihi IS NULL 
+                    LIMIT 1
+                ");
+                $stmtDef->execute(["%EKİP-$teamNo", "%EKIP-$teamNo", $_SESSION['firma_id']]);
                 $defId = $stmtDef->fetchColumn();
 
                 if ($defId) {
@@ -486,7 +539,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         JOIN personel_ekip_gecmisi pg ON p.id = pg.personel_id
                         WHERE pg.ekip_kodu_id = ? 
                         AND pg.baslangic_tarihi <= ?
-                        AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= ?)
+                        AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi = '' OR pg.bitis_tarihi >= ?)
                         AND p.silinme_tarihi IS NULL
                         AND pg.firma_id = ?
                         LIMIT 1
@@ -507,7 +560,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 continue;
             }
 
-            $stmt = $EndeksOkuma->db->prepare("INSERT INTO endeks_okuma (personel_id, ekip_kodu_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $EndeksOkuma->db->prepare("INSERT INTO endeks_okuma (personel_id, ekip_kodu_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $result = $stmt->execute([$personelId, $defId, $firmaId, $bolge, $kullanici_adi, $sarfiyat, $ort_sarfiyat, $tahakkuk, $ort_tahakkuk, $okunan_gun, $okunan_abone, $ort_okunan_abone, $performans, $uploadDate]);
             if ($result)
                 $insertedCount++;
@@ -861,8 +914,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     foreach ($result['data'] as $record) {
         $formattedData[] = [
             'tarih' => \App\Helper\Date::dmY($record->tarih),
-            'is_emri_tipi' => $record->is_emri_tipi ?? '',
+            'ekip_kodu' => $record->ekip_kodu_adi ?? ($record->ekip_kodu ?? '-'),
             'personel_adi' => $record->personel_adi ?: '<span class="text-muted">' . htmlspecialchars($record->ekip_kodu ?? '') . '</span>',
+            'is_emri_tipi' => $record->is_emri_tipi ?? '',
             'is_emri_sonucu' => $record->is_emri_sonucu ?? '',
             'sonuclanmis' => $record->sonuclanmis ?? 0,
             'acik_olanlar' => $record->acik_olanlar ?? 0,
@@ -1076,7 +1130,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     $veri['acik_olanlar'],
                     $veri['tarih']
                 ]);
+                $yeniKayitId = $Puantaj->db->lastInsertId();
                 $yeniKayit++;
+
+                // Otomatik Demirbaş İşlemi (Miktar bazlı: sonuclanmis iş sayısı kadar)
+                $Zimmet->checkAndProcessAutomaticZimmet($personelId, $veri['is_emri_sonucu'], $veri['tarih'], $veri['islem_id'], $veri['sonuclanmis']);
             }
         }
 

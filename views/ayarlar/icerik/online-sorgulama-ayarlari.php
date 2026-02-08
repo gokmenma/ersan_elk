@@ -16,7 +16,7 @@ $online_sorgulama_puantaj_saat = $allSettings['online_sorgulama_puantaj_saat'] ?
 $online_sorgulama_firma_baslangic = $allSettings['online_sorgulama_firma_baslangic'] ?? ($_SESSION['firma_kodu'] ?? '17');
 $online_sorgulama_firma_bitis = $allSettings['online_sorgulama_firma_bitis'] ?? ($_SESSION['firma_kodu'] ?? '17');
 
-// API Ayarları (henüz verilmedi ama ileride kullanılacak)
+// API Ayarları
 $online_sorgulama_api_url = $allSettings['online_sorgulama_api_url'] ?? '';
 $online_sorgulama_api_kullanici = $allSettings['online_sorgulama_api_kullanici'] ?? '';
 $online_sorgulama_api_sifre = $allSettings['online_sorgulama_api_sifre'] ?? '';
@@ -88,6 +88,7 @@ for ($saat = 0; $saat < 24; $saat++) {
             </div>
         </div>
     </div>
+
     <!-- ENDEKS OKUMA ZAMANLAMA -->
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-light">
@@ -110,9 +111,6 @@ for ($saat = 0; $saat < 24; $saat++) {
                     <div class="form-text">Her gün bu saatte Endeks Okuma sorgulanacak</div>
                 </div>
                 <div class="col-md-6 mb-3">
-
-
-
                     <?php echo Form::FormSelect2(
                         "online_sorgulama_endeks_son_calistirma",
                         $saatSecenekleri,
@@ -157,9 +155,6 @@ for ($saat = 0; $saat < 24; $saat++) {
                     <div class="form-text">Her gün bu saatte Kesme/Açma İşlemleri sorgulanacak</div>
                 </div>
                 <div class="col-md-6 mb-3">
-
-
-
                     <?php echo Form::FormSelect2(
                         "online_sorgulama_puantaj_son_calistirma",
                         $saatSecenekleri,
@@ -171,105 +166,98 @@ for ($saat = 0; $saat < 24; $saat++) {
                         "form-control select2"
                     ); ?>
                 </div>
-
-
-
-
-
-
-                <div class="row mt-2">
-                    <div class="col-md-12">
-                        <button type="button" id="btnManuelPuantajSorgula" class="btn btn-outline-primary btn-sm">
-                            <i data-feather="play" class="me-1"></i> Manuel Sorgula (Test)
-                        </button>
-                    </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-md-12">
+                    <button type="button" id="btnManuelPuantajSorgula" class="btn btn-outline-primary btn-sm">
+                        <i data-feather="play" class="me-1"></i> Manuel Sorgula (Test)
+                    </button>
                 </div>
             </div>
         </div>
+    </div>
 
-
-
-        <!-- API AYARLARI (Gelecekte kullanılacak) -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light">
-                <h5 class="mb-0 text-primary"><i data-feather="link" class="me-2"></i>API Bağlantı Ayarları</h5>
+    <!-- API AYARLARI -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0 text-primary"><i data-feather="link" class="me-2"></i>API Bağlantı Ayarları</h5>
+        </div>
+        <div class="card-body p-4">
+            <div class="alert alert-warning">
+                <i data-feather="info" class="me-2"></i>
+                API bağlantı bilgileri henüz sağlanmadığı için şu an test verileri kullanılmaktadır.
+                API hazır olduğunda bu alanları doldurun.
             </div>
-            <div class="card-body p-4">
-                <div class="alert alert-warning">
-                    <i data-feather="info" class="me-2"></i>
-                    API bağlantı bilgileri henüz sağlanmadığı için şu an test verileri kullanılmaktadır.
-                    API hazır olduğunda bu alanları doldurun.
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <?php echo Form::FormFloatInput(
+                        "url",
+                        "online_sorgulama_api_url",
+                        $online_sorgulama_api_url,
+                        "",
+                        "API URL",
+                        "link",
+                        "form-control"
+                    ); ?>
+                    <div class="form-text">Örn:
+                        http://10.185.0.52:9090/webBase/faces/jsfPage/report/gelir/su/Isemri...</div>
                 </div>
-                <div class="row">
-                    <div class="col-md-12 mb-3">
-                        <?php echo Form::FormFloatInput(
-                            "url",
-                            "online_sorgulama_api_url",
-                            $online_sorgulama_api_url,
-                            "",
-                            "API URL",
-                            "link",
-                            "form-control"
-                        ); ?>
-                        <div class="form-text">Örn:
-                            http://10.185.0.52:9090/webBase/faces/jsfPage/report/gelir/su/Isemri...</div>
-                    </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <?php echo Form::FormFloatInput(
+                        "text",
+                        "online_sorgulama_api_kullanici",
+                        $online_sorgulama_api_kullanici,
+                        "",
+                        "API Kullanıcı Adı",
+                        "user",
+                        "form-control"
+                    ); ?>
                 </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <?php echo Form::FormFloatInput(
-                            "text",
-                            "online_sorgulama_api_kullanici",
-                            $online_sorgulama_api_kullanici,
-                            "",
-                            "API Kullanıcı Adı",
-                            "user",
-                            "form-control"
-                        ); ?>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <?php echo Form::FormFloatInput(
-                            "password",
-                            "online_sorgulama_api_sifre_yeni",
-                            "",
-                            "",
-                            "API Şifresi (Değiştirmek için doldurun)",
-                            "key",
-                            "form-control"
-                        ); ?>
-                    </div>
+                <div class="col-md-6 mb-3">
+                    <?php echo Form::FormFloatInput(
+                        "password",
+                        "online_sorgulama_api_sifre_yeni",
+                        "",
+                        "",
+                        "API Şifresi (Değiştirmek için doldurun)",
+                        "key",
+                        "form-control"
+                    ); ?>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- CRON BİLGİSİ -->
-        <div class="card shadow-sm mb-4 border-info">
-            <div class="card-header bg-info bg-opacity-10">
-                <h5 class="mb-0 text-info"><i data-feather="terminal" class="me-2"></i>Cron Job Kurulumu</h5>
-            </div>
-            <div class="card-body p-4">
-                <p>Otomatik sorgulama için sunucunuzda aşağıdaki cron job'u eklemeniz gerekmektedir:</p>
-                <div class="bg-dark text-light p-3 rounded mb-3">
-                    <code class="text-warning">
-                    # Her 15 dakikada bir cron kontrolü yapar<br>
-                    */15 * * * * php <?php echo dirname(__DIR__, 2); ?>/cron/online_sorgulama_cron.php >> <?php echo dirname(__DIR__, 2); ?>/cron/logs/cron.log 2>&1
-                </code>
-                </div>
-                <p class="mb-0 text-muted">
-                    <i data-feather="info" class="me-1"></i>
-                    Cron her 15 dakikada bir çalışır ve ayarlanan saatlere denk geldiğinde sorgulama yapar.
-                </p>
-            </div>
+    <!-- CRON BİLGİSİ -->
+    <div class="card shadow-sm mb-4 border-info">
+        <div class="card-header bg-info bg-opacity-10">
+            <h5 class="mb-0 text-info"><i data-feather="terminal" class="me-2"></i>Cron Job Kurulumu</h5>
         </div>
+        <div class="card-body p-4">
+            <p>Otomatik sorgulama için sunucunuzda aşağıdaki cron job'u eklemeniz gerekmektedir:</p>
+            <div class="bg-dark text-light p-3 rounded mb-3">
+                <code class="text-warning">
+                # Her 15 dakikada bir cron kontrolü yapar<br>
+                */15 * * * * php <?php echo dirname(__DIR__, 2); ?>/cron/online_sorgulama_cron.php >> <?php echo dirname(__DIR__, 2); ?>/cron/logs/cron.log 2>&1
+            </code>
+            </div>
+            <p class="mb-0 text-muted">
+                <i data-feather="info" class="me-1"></i>
+                Cron her 15 dakikada bir çalışır ve ayarlanan saatlere denk geldiğinde sorgulama yapar.
+            </p>
+        </div>
+    </div>
 
-        <div class="row mt-4 mb-3">
-            <div class="col-md-12 text-end">
-                <button type="button" id="saveOnlineSorgulamaAyarlariButton"
-                    class="btn btn-success waves-effect btn-label waves-light">
-                    <i data-feather="save" class="label-icon me-1"></i> Ayarları Kaydet
-                </button>
-            </div>
+    <div class="row mt-4 mb-3">
+        <div class="col-md-12 text-end">
+            <button type="button" id="saveOnlineSorgulamaAyarlariButton"
+                class="btn btn-success waves-effect btn-label waves-light">
+                <i data-feather="save" class="label-icon me-1"></i> Ayarları Kaydet
+            </button>
         </div>
+    </div>
 </form>
 
 <script>

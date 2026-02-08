@@ -31,7 +31,9 @@ class PersonelIzinleriModel extends Model
                     io.onay_tarihi,
                     io.aciklama as onay_aciklama,
                     u.adi_soyadi as onaylayan_adi_soyadi,
-                    t.tur_adi as izin_tipi_adi
+                    t.tur_adi as izin_tipi_adi,
+                    t.yetkili_onayina_tabi,
+                    t.ucretli_mi
                 FROM $this->table as pi
                 LEFT JOIN izin_onaylari as io ON io.izin_id = pi.id
                 LEFT JOIN users as u ON u.id = io.onaylayan_id

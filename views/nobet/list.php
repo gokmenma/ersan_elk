@@ -162,27 +162,60 @@ $title = 'Nöbet Planlama';
                     <h5>Personel Havuzu</h5>
                     <div class="subtitle">Sürükle ve bırak ile nöbet ata</div>
                 </div>
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-light" data-bs-toggle="dropdown" id="dept-filter-btn"
-                        title="Departman Filtresi">
-                        <i class="bx bx-filter-alt"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" id="dept-filter-dropdown"
-                        style="font-size: 13px; min-width: 200px;">
-                        <li>
-                            <h6 class="dropdown-header">Departman Seçin</h6>
-                        </li>
-                        <li><a class="dropdown-item active" href="javascript:void(0)" data-dept="all">Tüm
-                                Departmanlar</a></li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <?php foreach ($departments as $dept): ?>
-                            <li><a class="dropdown-item" href="javascript:void(0)"
-                                    data-dept="<?php echo htmlspecialchars($dept); ?>"><?php echo htmlspecialchars($dept); ?></a>
+                <div class="d-flex gap-1">
+                    <!-- Sıralama Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-light" data-bs-toggle="dropdown" id="personel-sort-btn"
+                            title="Sıralama">
+                            <i class="bx bx-sort"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" id="personel-sort-dropdown"
+                            style="font-size: 13px; min-width: 200px;">
+                            <li>
+                                <h6 class="dropdown-header">Sıralama Seçin</h6>
                             </li>
-                        <?php endforeach; ?>
-                    </ul>
+                            <li><a class="dropdown-item" href="javascript:void(0)" data-sort="az"><i
+                                        class="bx bx-sort-a-z me-2"></i>A'dan Z'ye</a></li>
+                            <li><a class="dropdown-item" href="javascript:void(0)" data-sort="za"><i
+                                        class="bx bx-sort-z-a me-2"></i>Z'den A'ya</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item" href="javascript:void(0)" data-sort="count_low"><i
+                                        class="bx bx-trending-up me-2"></i>Nöbet Sayısına göre (En Düşük)</a></li>
+                            <li><a class="dropdown-item" href="javascript:void(0)" data-sort="count_high"><i
+                                        class="bx bx-trending-down me-2"></i>Nöbet Sayısına göre (En Yüksek)</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item" href="javascript:void(0)" data-sort="dept"><i
+                                        class="bx bx-buildings me-2"></i>Departmana Göre</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- Departman Filtre Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-light" data-bs-toggle="dropdown" id="dept-filter-btn"
+                            title="Departman Filtresi">
+                            <i class="bx bx-filter-alt"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" id="dept-filter-dropdown"
+                            style="font-size: 13px; min-width: 200px;">
+                            <li>
+                                <h6 class="dropdown-header">Departman Seçin</h6>
+                            </li>
+                            <li><a class="dropdown-item active" href="javascript:void(0)" data-dept="all">Tüm
+                                    Departmanlar</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <?php foreach ($departments as $dept): ?>
+                                <li><a class="dropdown-item" href="javascript:void(0)"
+                                        data-dept="<?php echo htmlspecialchars($dept); ?>"><?php echo htmlspecialchars($dept); ?></a>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
@@ -200,10 +233,11 @@ $title = 'Nöbet Planlama';
                     ?>
                     <div class="personel-item fc-event"
                         data-id="<?php echo \App\Helper\Security::encrypt($personel->id); ?>"
+                        data-raw-id="<?php echo $personel->id; ?>"
                         data-name="<?php echo htmlspecialchars($personel->adi_soyadi); ?>"
                         data-departman="<?php echo htmlspecialchars($deptName); ?>" data-color="<?php echo $rowColor; ?>"
                         style="--dept-color: <?php echo $rowColor; ?>">
-                        <div class="d-flex justify-content-between align-items-start">
+                        <div class="d-flex justify-content-between align-items-start w-100">
                             <div class="personel-name">
                                 <?php echo htmlspecialchars($personel->adi_soyadi); ?>
                             </div>
@@ -211,9 +245,6 @@ $title = 'Nöbet Planlama';
                         </div>
                         <div class="personel-dept">
                             <?php echo htmlspecialchars($personel->departman ?? 'Departman Belirtilmemiş'); ?>
-                            <?php if ($personel->ekip_adi): ?>
-                                • <?php echo $personel->ekip_adi; ?>
-                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -238,9 +269,7 @@ $title = 'Nöbet Planlama';
                 <div class="d-flex align-items-center gap-2">
                     <div class="view-buttons">
                         <button class="btn active" data-view="dayGridMonth">Ay</button>
-                        <button class="btn" data-view="timeGridWeek">Hafta</button>
-                        <button class="btn" data-view="timeGridDay">Gün</button>
-                        <button class="btn me-1" data-view="listMonth">Liste</button>
+                        <button class="btn" data-view="multiMonthYear">Yıl</button>
                     </div>
                     <button class="btn btn-soft-primary"
                         style="background: rgba(85, 110, 230, 0.1); color: #556ee6; border: none; font-weight: 600; display: flex; align-items: center; gap: 5px; height: 38px; padding: 0 15px; border-radius: 8px;"
@@ -288,68 +317,67 @@ $title = 'Nöbet Planlama';
 
 
 
-<!-- Nöbet Detay Modal -->
+<!-- Nöbet Detay Modal (Bilgi Kartı Tasarımı) -->
 <div class="modal fade nobet-modal" id="nobetDetailModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="bx bx-info-circle"></i>
-                    Nöbet Detayı
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+            <div class="modal-header border-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title d-flex align-items-center" style="font-weight: 700; color: #495057;">
+                    <i class="bx bxs-info-circle me-2 text-primary"></i>
+                    Giriş Kaydı Detayı
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <div class="text-center mb-4">
-                    <img id="modal-personel-img" src="" class="rounded-circle shadow-sm" width="80" height="80"
-                        style="object-fit: cover; border: 3px solid #f8f9fa;">
-                    <h5 class="mt-3 mb-1" id="modal-personel-name" style="font-weight: 700; color: #1a1d21;"></h5>
-                    <p class="text-muted small" id="modal-personel-dept"></p>
+            <div class="modal-body p-4">
+                <!-- Üst Kısım: Personel Bilgisi -->
+                <div class="nobet-detail-card-header d-flex align-items-center mb-4">
+                    <img id="modal-personel-img" src="" class="rounded-circle shadow-sm me-3" width="64" height="64"
+                        style="object-fit: cover; border: 3px solid #fff;">
+                    <div>
+                        <h5 class="mb-0" id="modal-personel-name" style="font-weight: 700; color: #212529;"></h5>
+                        <p class="mb-0 text-muted small" id="modal-personel-dept"></p>
+                    </div>
+                    <div class="ms-auto text-end">
+                        <span id="modal-durum-badge" class="badge rounded-pill px-3 py-2"></span>
+                    </div>
                 </div>
 
-                <div class="row g-3">
-                    <div class="col-6">
-                        <div class="nobet-info-card">
-                            <div class="nobet-info-label">Tarih</div>
-                            <div class="nobet-info-value" id="modal-tarih"></div>
-                        </div>
+                <!-- Orta Kısım: Büyük Tarih ve Saat -->
+                <div class="text-center py-2 mb-4">
+                    <div class="modal-time-title mb-1">NÖBET ZAMAN DİLİMİ</div>
+                    <h2 class="modal-date-large mb-0" id="modal-tarih-text"></h2>
+                    <h4 class="modal-time-sub mt-1" id="modal-saat-text"></h4>
+                </div>
+
+                <!-- Alt Kısım: Detay Grid (ForgeUI Style) -->
+                <div class="row text-center border-top pt-4 mx-0">
+                    <div class="col-4 border-end px-1">
+                        <div class="modal-info-label">TİP</div>
+                        <div id="modal-tip-text" class="modal-info-value"></div>
                     </div>
-                    <div class="col-6">
-                        <div class="nobet-info-card">
-                            <div class="nobet-info-label">Saat</div>
-                            <div class="nobet-info-value" id="modal-saat"></div>
-                        </div>
+                    <div class="col-4 border-end px-1">
+                        <div class="modal-info-label">İLETİŞİM</div>
+                        <div id="modal-telefon-text" class="modal-info-value"></div>
                     </div>
-                    <div class="col-6">
-                        <div class="nobet-info-card">
-                            <div class="nobet-info-label">Durum</div>
-                            <div class="nobet-info-value" id="modal-durum"></div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="nobet-info-card">
-                            <div class="nobet-info-label">Nöbet Tipi</div>
-                            <div class="nobet-info-value" id="modal-tip"></div>
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="nobet-info-card">
-                            <div class="nobet-info-label">Telefon</div>
-                            <div class="nobet-info-value" id="modal-telefon"></div>
-                        </div>
+                    <div class="col-4 px-1">
+                        <div class="modal-info-label">BÖLGE</div>
+                        <div id="modal-bolge-text" class="modal-info-value"></div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-danger" id="btn-delete-nobet">
-                    <i class="bx bx-trash"></i>Sil
+            <div class="modal-footer border-0 pt-0 justify-content-between pb-4">
+                <button type="button" class="btn btn-danger px-4 fw-bold" id="btn-delete-nobet"
+                    style="border-radius: 12px; height: 45px;">
+                    <i class="bx bx-trash me-1"></i>Sil
                 </button>
-                <button type="button" class="btn btn-warning" id="btn-edit-nobet" style="color:#fff;">
-                    <i class="bx bx-edit"></i>Düzenle
-                </button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="bx bx-x"></i>Kapat
-                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-light px-4 fw-bold" data-bs-dismiss="modal"
+                        style="border-radius: 12px; height: 45px; background: #f8f9fa; color: #495057;">Kapat</button>
+                    <button type="button" class="btn btn-primary px-4 fw-bold" id="btn-edit-nobet"
+                        style="border-radius: 12px; height: 45px;">
+                        <i class="bx bx-edit me-1"></i>Düzenle
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -359,12 +387,12 @@ $title = 'Nöbet Planlama';
 <div class="modal fade nobet-modal" id="nobetFormModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="bx bx-plus-circle" id="form-modal-icon"></i>
+            <div class="modal-header bg-primary text-white border-0">
+                <h5 class="modal-title text-white">
+                    <i class="bx bx-plus-circle me-2" id="form-modal-icon"></i>
                     <span id="form-modal-title">Nöbet Ekle</span>
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="nobet-form">
                 <div class="modal-body">
@@ -412,11 +440,12 @@ $title = 'Nöbet Planlama';
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bx bx-x"></i>İptal
+                    <button type="button" class="btn btn-secondary waves-effect btn-label waves-light float-start"
+                        data-bs-dismiss="modal">
+                        <i class="bx bx-x label-icon"></i>İptal
                     </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bx bx-save"></i>Kaydet
+                    <button type="submit" class="btn btn-primary waves-effect btn-label waves-light ms-auto">
+                        <i class="bx bx-save label-icon"></i>Kaydet
                     </button>
                 </div>
             </form>
@@ -425,9 +454,9 @@ $title = 'Nöbet Planlama';
 </div>
 
 
-<!-- Nöbet Bildirim Modalı -->
+<!-- Nöbet Bildirim Modalı (Geliştirilmiş) -->
 <div class="modal fade nobet-modal" id="nobetBildirimModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header" style="background: #556ee6;">
                 <h5 class="modal-title text-white">
@@ -437,24 +466,64 @@ $title = 'Nöbet Planlama';
             </div>
             <form id="nobet-bildirim-form">
                 <div class="modal-body">
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">Bildirim Kapsamı</label>
-                        <div class="d-flex gap-2">
-                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_aylik" value="aylik"
-                                checked>
-                            <label class="btn btn-outline-primary flex-grow-1" for="turu_aylik">Aylık</label>
-
-                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_haftalik"
-                                value="haftalik">
-                            <label class="btn btn-outline-primary flex-grow-1" for="turu_haftalik">Haftalık</label>
-
-                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_kisi" value="kisi">
-                            <label class="btn btn-outline-primary flex-grow-1" for="turu_kisi">Kişiye Özel</label>
+                    <!-- Bildirim İstatistikleri -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="border rounded-3 p-3 text-center bg-light">
+                                <div class="text-muted small">Toplam Nöbet</div>
+                                <div class="fs-4 fw-bold text-dark" id="bildirim-stat-total">0</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded-3 p-3 text-center bg-success bg-opacity-10">
+                                <div class="text-muted small">Bildirim Gönderildi</div>
+                                <div class="fs-4 fw-bold text-success" id="bildirim-stat-sent">0</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded-3 p-3 text-center bg-warning bg-opacity-10">
+                                <div class="text-muted small">Bekleyen</div>
+                                <div class="fs-4 fw-bold text-warning" id="bildirim-stat-pending">0</div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Aylık Seçimi -->
-                    <div class="bildirim-area" id="area-aylik">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Bildirim Kapsamı</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_bekleyen"
+                                value="bekleyen" checked>
+                            <label class="btn btn-outline-warning flex-grow-1" for="turu_bekleyen">
+                                <i class="bx bx-bell-plus me-1"></i>Henüz Bildirilmeyenler
+                            </label>
+
+                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_aylik" value="aylik">
+                            <label class="btn btn-outline-primary flex-grow-1" for="turu_aylik">
+                                <i class="bx bx-calendar me-1"></i>Aylık (Tümü)
+                            </label>
+
+                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_haftalik"
+                                value="haftalik">
+                            <label class="btn btn-outline-primary flex-grow-1" for="turu_haftalik">
+                                <i class="bx bx-calendar-week me-1"></i>Haftalık
+                            </label>
+
+                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_kisi" value="kisi">
+                            <label class="btn btn-outline-primary flex-grow-1" for="turu_kisi">
+                                <i class="bx bx-user me-1"></i>Kişiye Özel
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Bekleyen Seçimi (Varsayılan) -->
+                    <div class="bildirim-area" id="area-bekleyen">
+                        <div class="alert alert-warning d-flex align-items-center" role="alert">
+                            <i class="bx bx-info-circle fs-4 me-2"></i>
+                            <div>
+                                Henüz bildirim gönderilmemiş <span id="bekleyen-count" class="fw-bold">0</span>
+                                personele bildirim gönderilecek.
+                            </div>
+                        </div>
                         <div class="mb-3">
                             <?php
                             $monthsNames = [1 => 'Ocak', 2 => 'Şubat', 3 => 'Mart', 4 => 'Nisan', 5 => 'Mayıs', 6 => 'Haziran', 7 => 'Temmuz', 8 => 'Ağustos', 9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık'];
@@ -467,7 +536,21 @@ $title = 'Nöbet Planlama';
                                 $y = (int) date('Y', $targetDate);
                                 $monthOptions["$y-$m"] = "{$monthsNames[$m]} $y";
                             }
-                            echo \App\Helper\Form::FormSelect2('bildirim_ayi', $monthOptions, "$currentY-$currentM", 'Bildirim Ayı Seçin', 'calendar', 'key', '', 'form-control select2-modal', true);
+                            echo \App\Helper\Form::FormSelect2('bekleyen_ay', $monthOptions, "$currentY-$currentM", 'Ay Seçin', 'calendar', 'key', '', 'form-control select2 bildirim-ay-select', true);
+                            ?>
+                        </div>
+                    </div>
+
+                    <!-- Aylık Seçimi -->
+                    <div class="bildirim-area" id="area-aylik" style="display:none;">
+                        <div class="alert alert-info d-flex align-items-center" role="alert">
+                            <i class="bx bx-info-circle fs-4 me-2"></i>
+                            <div>Seçili aydaki <strong>tüm personellere</strong> bildirim gönderilecek (daha önce
+                                bildirim almış olsalar bile).</div>
+                        </div>
+                        <div class="mb-3">
+                            <?php
+                            echo \App\Helper\Form::FormSelect2('bildirim_ayi', $monthOptions, "$currentY-$currentM", 'Bildirim Ayı Seçin', 'calendar', 'key', '', 'form-control select2-modal bildirim-ay-select', true);
                             ?>
                         </div>
                     </div>
@@ -503,19 +586,23 @@ $title = 'Nöbet Planlama';
                     </div>
 
                     <div class="mb-3">
-                        <?php echo \App\Helper\Form::FormFloatTextarea('mesaj', '', 'Bildirime eklenecek özel not...', 'Ek Mesaj (Opsiyonel)', 'message-square-detail', 'form-control', false, '80px'); ?>
+                        <?php echo \App\Helper\Form::FormFloatTextarea('mesaj', '', 'Bildirime eklenecek özel not...', 'Ek Mesaj (Opsiyonel)', 'file-text', 'form-control', false, '80px'); ?>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="submit" class="btn btn-primary px-4">
-                        <i class="bx bx-paper-plane me-1"></i> Bildirim Gönder
+                    <button type="button" class="btn btn-secondary waves-effect btn-label waves-light float-start"
+                        data-bs-dismiss="modal">
+                        <i class="bx bx-x label-icon"></i>İptal
+                    </button>
+                    <button type="submit" class="btn btn-primary waves-effect btn-label waves-light ms-auto">
+                        <i class="bx bx-paper-plane label-icon"></i>Bildirim Gönder
                     </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
 
 
 <!-- FullCalendar -->
@@ -570,6 +657,7 @@ $title = 'Nöbet Planlama';
                 right: ''
             },
             editable: true,
+            eventDurationEditable: false,
             droppable: true,
             selectable: true,
             dayMaxEvents: 4,
@@ -645,6 +733,12 @@ $title = 'Nöbet Planlama';
                 const eventDate = new Date(info.event.start); eventDate.setHours(0, 0, 0, 0);
                 const isPast = eventDate < today;
 
+                // Tooltip Ekle
+                info.el.setAttribute('data-bs-toggle', 'tooltip');
+                info.el.setAttribute('data-bs-placement', 'top');
+                info.el.setAttribute('data-bs-title', info.event.title + ' | ' + formatDate(info.event.startStr));
+                new bootstrap.Tooltip(info.el);
+
                 if (isPast) {
                     info.el.classList.add('fc-event-past');
                     info.event.setProp('editable', false);
@@ -691,6 +785,14 @@ $title = 'Nöbet Planlama';
 
                     info.el.appendChild(statusContainer);
                 }
+            },
+
+            // Tooltip temizliği
+            eventWillUnmount: function (info) {
+                const tooltip = bootstrap.Tooltip.getInstance(info.el);
+                if (tooltip) {
+                    tooltip.dispose();
+                }
             }
         });
 
@@ -701,12 +803,16 @@ $title = 'Nöbet Planlama';
         // ============================================
         function updateCalendarTitle() {
             const view = calendar.view;
-            const date = view.currentStart;
-            const months = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN',
-                'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
             const titleEl = document.getElementById('calendar-title');
             if (titleEl) {
-                titleEl.textContent = months[date.getMonth()] + ' ' + date.getFullYear();
+                if (view.type === 'multiMonthYear') {
+                    titleEl.textContent = view.currentStart.getFullYear();
+                } else {
+                    const date = view.currentStart;
+                    const months = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN',
+                        'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
+                    titleEl.textContent = months[date.getMonth()] + ' ' + date.getFullYear();
+                }
             }
         }
 
@@ -794,20 +900,101 @@ $title = 'Nöbet Planlama';
         searchInput.addEventListener('input', filterPersonel);
 
         // ============================================
+        // PERSONEL SIRALAMA
+        // ============================================
+        let currentSort = 'az';
+        const sortDropdownItems = document.querySelectorAll('#personel-sort-dropdown .dropdown-item');
+
+        sortDropdownItems.forEach(item => {
+            item.addEventListener('click', function () {
+                sortDropdownItems.forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+                currentSort = this.dataset.sort;
+
+                // Buton rengini güncelle
+                const sortBtn = document.getElementById('personel-sort-btn');
+                if (currentSort === 'az') {
+                    sortBtn.classList.replace('btn-primary', 'btn-outline-light');
+                } else {
+                    sortBtn.classList.replace('btn-outline-light', 'btn-primary');
+                }
+
+                sortPersonel();
+            });
+        });
+
+        function sortPersonel() {
+            const container = document.getElementById('personel-container');
+            const items = Array.from(container.querySelectorAll('.personel-item'));
+
+            items.sort((a, b) => {
+                let valA, valB;
+
+                switch (currentSort) {
+                    case 'az':
+                        valA = a.dataset.name.toLowerCase();
+                        valB = b.dataset.name.toLowerCase();
+                        return valA.localeCompare(valB, 'tr');
+                    case 'za':
+                        valA = a.dataset.name.toLowerCase();
+                        valB = b.dataset.name.toLowerCase();
+                        return valB.localeCompare(valA, 'tr');
+                    case 'count_low':
+                        valA = parseInt(a.querySelector('.nobet-count').textContent) || 0;
+                        valB = parseInt(b.querySelector('.nobet-count').textContent) || 0;
+                        return valA - valB;
+                    case 'count_high':
+                        valA = parseInt(a.querySelector('.nobet-count').textContent) || 0;
+                        valB = parseInt(b.querySelector('.nobet-count').textContent) || 0;
+                        return valB - valA;
+                    case 'dept':
+                        valA = a.dataset.departman.toLowerCase();
+                        valB = b.dataset.departman.toLowerCase();
+                        if (valA === valB) {
+                            return a.dataset.name.toLowerCase().localeCompare(b.dataset.name.toLowerCase(), 'tr');
+                        }
+                        return valA.localeCompare(valB, 'tr');
+                    default:
+                        return 0;
+                }
+            });
+
+            // Re-append items in sorted order
+            items.forEach(item => container.appendChild(item));
+        }
+
+        // ============================================
         // MODAL FONKSİYONLARI
         // ============================================
         function showNobetDetail(event) {
             currentNobetId = event.id;
             const props = event.extendedProps;
 
+            // Personel Bilgileri
             document.getElementById('modal-personel-img').src = props.resim || 'assets/images/users/user-dummy-img.jpg';
             document.getElementById('modal-personel-name').textContent = event.title;
             document.getElementById('modal-personel-dept').textContent = props.departman || 'Departman belirtilmemiş';
-            document.getElementById('modal-tarih').textContent = formatDate(event.startStr);
-            document.getElementById('modal-saat').textContent = '18:00 - 08:00';
-            document.getElementById('modal-durum').innerHTML = getDurumBadge(props.durum);
-            document.getElementById('modal-tip').textContent = getNobetTipiText(props.nobet_tipi);
-            document.getElementById('modal-telefon').textContent = props.telefon || '-';
+
+            // Zaman Bilgileri
+            document.getElementById('modal-tarih-text').textContent = formatDate(event.startStr);
+            document.getElementById('modal-saat-text').textContent = (props.baslangic_saati || '18:00').substring(0, 5) + ' - ' + (props.bitis_saati || '08:00').substring(0, 5);
+
+            // Detaylar
+            document.getElementById('modal-tip-text').textContent = getNobetTipiText(props.nobet_tipi);
+            document.getElementById('modal-telefon-text').textContent = props.telefon || '-';
+            document.getElementById('modal-bolge-text').textContent = props.ekip_bolge || '-';
+
+            // Durum Badge
+            const badge = document.getElementById('modal-durum-badge');
+            badge.textContent = getDurumText(props.durum);
+
+            // Renk Belirleme
+            badge.className = 'badge rounded-pill px-3 py-2 ';
+            switch (props.durum) {
+                case 'mazeret_bildirildi': badge.classList.add('bg-danger-subtle', 'text-danger'); break;
+                case 'devir_alindi': badge.classList.add('bg-success-subtle', 'text-success'); break;
+                default: badge.classList.add('bg-primary-subtle', 'text-primary');
+            }
 
             detailModal.show();
         }
@@ -925,77 +1112,83 @@ $title = 'Nöbet Planlama';
         });
 
         // Nöbet silme
-        document.getElementById('btn-delete-nobet').addEventListener('click', function () {
-            if (!currentNobetId) return;
+        const btnDeleteNobet = document.getElementById('btn-delete-nobet');
+        if (btnDeleteNobet) {
+            btnDeleteNobet.addEventListener('click', function () {
+                if (!currentNobetId) return;
 
-            Swal.fire({
-                title: 'Emin misiniz?',
-                text: 'Bu nöbet kaydı silinecek!',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Evet, sil!',
-                cancelButtonText: 'İptal'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch('views/nobet/api.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({
-                            action: 'delete-nobet',
-                            nobet_id: currentNobetId
+                Swal.fire({
+                    title: 'Emin misiniz?',
+                    text: 'Bu nöbet kaydı silinecek!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Evet, sil!',
+                    cancelButtonText: 'İptal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch('views/nobet/api.php', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: new URLSearchParams({
+                                action: 'delete-nobet',
+                                nobet_id: currentNobetId
+                            })
                         })
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.status === 'success') {
-                                showToast('success', data.message);
-                                detailModal.hide();
-                                calendar.refetchEvents();
-                            } else {
-                                showToast('error', data.message);
-                            }
-                        });
-                }
-            });
-        });
-
-        // Düzenleme butonu
-        document.getElementById('btn-edit-nobet').addEventListener('click', function () {
-            detailModal.hide();
-
-            // Nöbet bilgilerini al ve formu doldur
-            fetch('views/nobet/api.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    action: 'get-nobet-detay',
-                    nobet_id: currentNobetId
-                })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        const nobet = data.data;
-                        document.getElementById('form-nobet-id').value = nobet.id;
-                        document.getElementById('form-personel').value = nobet.personel_id;
-                        document.getElementById('form-tip').value = nobet.nobet_tipi;
-                        document.getElementById('form-baslangic').value = nobet.baslangic_saati;
-                        document.getElementById('form-bitis').value = nobet.bitis_saati;
-                        document.getElementById('form-aciklama').value = nobet.aciklama || '';
-
-                        flatpickr("#form-tarih", {
-                            locale: "tr",
-                            dateFormat: "d.m.Y",
-                            defaultDate: nobet.nobet_tarihi
-                        });
-
-                        document.querySelector('#nobetFormModal .modal-title').innerHTML = '<i class="bx bx-edit me-2"></i>Nöbet Düzenle';
-                        formModal.show();
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.status === 'success') {
+                                    showToast('success', data.message);
+                                    detailModal.hide();
+                                    calendar.refetchEvents();
+                                } else {
+                                    showToast('error', data.message);
+                                }
+                            });
                     }
                 });
-        });
+            });
+        }
+
+        // Düzenleme butonu
+        const btnEditNobet = document.getElementById('btn-edit-nobet');
+        if (btnEditNobet) {
+            btnEditNobet.addEventListener('click', function () {
+                detailModal.hide();
+
+                // Nöbet bilgilerini al ve formu doldur
+                fetch('views/nobet/api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        action: 'get-nobet-detay',
+                        nobet_id: currentNobetId
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            const nobet = data.data;
+                            document.getElementById('form-nobet-id').value = nobet.id;
+                            document.getElementById('form-personel').value = nobet.personel_id;
+                            document.getElementById('form-tip').value = nobet.nobet_tipi;
+                            document.getElementById('form-baslangic').value = nobet.baslangic_saati;
+                            document.getElementById('form-bitis').value = nobet.bitis_saati;
+                            document.getElementById('form-aciklama').value = nobet.aciklama || '';
+
+                            flatpickr("#form-tarih", {
+                                locale: "tr",
+                                dateFormat: "d.m.Y",
+                                defaultDate: nobet.nobet_tarihi
+                            });
+
+                            document.querySelector('#nobetFormModal .modal-title').innerHTML = '<i class="bx bx-edit me-2"></i>Nöbet Düzenle';
+                            formModal.show();
+                        }
+                    });
+            });
+        }
 
         // ============================================
         // YARDIMCI FONKSİYONLAR
@@ -1005,16 +1198,27 @@ $title = 'Nöbet Planlama';
         // ============================================
 
         // Bildirim Türü Değişimi
-        document.querySelectorAll('input[name="bildirim_turu"]').forEach(radio => {
-            radio.addEventListener('change', function () {
-                document.querySelectorAll('.bildirim-area').forEach(area => area.style.display = 'none');
-                const targetArea = document.getElementById('area-' + this.value);
-                if (targetArea) targetArea.style.display = 'block';
-            });
+        $(document).on('change', 'input[name="bildirim_turu"]', function () {
+            const val = $(this).val();
+            $('.bildirim-area').hide();
+            $('#area-' + val).show();
         });
 
-        // Modal açıldığında Select2 ve Flatpickr'ı başlat
-        document.getElementById('nobetBildirimModal').addEventListener('shown.bs.modal', function () {
+        // Label tıklamalarını da yakalayalım (bazı durumlarda change geç tetiklenebilir)
+        $(document).on('click', '#nobetBildirimModal label.btn', function () {
+            const targetId = $(this).attr('for');
+            if (targetId && targetId.startsWith('turu_')) {
+                setTimeout(() => {
+                    const val = $('#' + targetId).val();
+                    $('.bildirim-area').hide();
+                    $('#area-' + val).show();
+                }, 50);
+            }
+        });
+
+        // Modal olaylarını tek bir yerde toplayalım
+        $('#nobetBildirimModal').on('shown.bs.modal', function () {
+            // Select2 ve Flatpickr başlat
             $('.select2-modal').select2({
                 dropdownParent: $('#nobetBildirimModal'),
                 width: '100%'
@@ -1024,46 +1228,85 @@ $title = 'Nöbet Planlama';
                 locale: "tr",
                 dateFormat: "Y-m-d"
             });
+
+            // Doğru alanı göster (Açılışta)
+            const val = $('input[name="bildirim_turu"]:checked').val() || 'bekleyen';
+            $('.bildirim-area').hide();
+            $('#area-' + val).show();
+
+            // İstatistikleri yükle
+            loadBildirimStats();
         });
 
-        // Bildirim Gönderimi
-        document.getElementById('nobet-bildirim-form').addEventListener('submit', function (e) {
+        // Bildirim istatistiklerini yükle
+        function loadBildirimStats(ay = null) {
+            const currentDate = calendar ? calendar.getDate() : new Date();
+            const monthYear = ay || `${currentDate.getFullYear()}-${currentDate.getMonth() + 1}`;
+
+            $.ajax({
+                url: 'views/nobet/api.php',
+                type: 'POST',
+                data: {
+                    action: 'get-bildirim-stats',
+                    ay: monthYear
+                },
+                dataType: 'json',
+                success: function (data) {
+                    if (data.success) {
+                        $('#bildirim-stat-total').text(data.total || 0);
+                        $('#bildirim-stat-sent').text(data.sent || 0);
+                        $('#bildirim-stat-pending').text(data.pending || 0);
+                        $('#bekleyen-count').text(data.pending || 0);
+                    }
+                },
+                error: function (err) {
+                    console.error('Bildirim stats hatası:', err);
+                }
+            });
+        }
+
+        // Ay seçimi değiştiğinde istatistikleri güncelle
+        $(document).on('change', '.bildirim-ay-select', function () {
+            loadBildirimStats($(this).val());
+        });
+
+        // Bildirim Gönderimi (jQuery ile)
+        $(document).on('submit', '#nobet-bildirim-form', function (e) {
             e.preventDefault();
-            const btn = this.querySelector('button[type="submit"]');
-            const originalHtml = btn.innerHTML;
+            const $form = $(this);
+            const $btn = $form.find('button[type="submit"]');
+            const originalHtml = $btn.html();
 
-            btn.disabled = true;
-            btn.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i> Gönderiliyor...';
+            $btn.prop('disabled', true).html('<i class="bx bx-loader-alt bx-spin me-1"></i> Gönderiliyor...');
 
-            const formData = new FormData(this);
-            formData.append('action', 'send-bulk-notifications');
-
-            fetch('views/nobet/api.php', {
-                method: 'POST',
-                body: new URLSearchParams(formData)
-            })
-                .then(response => response.json())
-                .then(data => {
+            $.ajax({
+                url: 'views/nobet/api.php',
+                type: 'POST',
+                data: $form.serialize() + '&action=send-bulk-notifications',
+                dataType: 'json',
+                success: function (data) {
                     if (data.status === 'success') {
                         showToast('success', data.message);
-                        bootstrap.Modal.getInstance(document.getElementById('nobetBildirimModal')).hide();
-                        this.reset();
+                        $('#nobetBildirimModal').modal('hide');
+                        $form[0].reset();
                         // Varsayılan alana geri dön
-                        document.getElementById('turu_aylik').checked = true;
-                        document.querySelectorAll('.bildirim-area').forEach(area => area.style.display = 'none');
-                        document.getElementById('area-aylik').style.display = 'block';
+                        $('#turu_bekleyen').prop('checked', true);
+                        $('.bildirim-area').hide();
+                        $('#area-bekleyen').show();
+                        // Takvimi yenile
+                        if (calendar) calendar.refetchEvents();
                     } else {
                         showToast('error', data.message);
                     }
-                })
-                .catch(error => {
-                    console.error('Bildirim hatası:', error);
+                },
+                error: function (err) {
+                    console.error('Bildirim hatası:', err);
                     showToast('error', 'Bildirim gönderilirken bir hata oluştu');
-                })
-                .finally(() => {
-                    btn.disabled = false;
-                    btn.innerHTML = originalHtml;
-                });
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).html(originalHtml);
+                }
+            });
         });
 
         // ============================================
@@ -1112,6 +1355,9 @@ $title = 'Nöbet Planlama';
             let weekendCount = 0;
             let todayPerson = '-';
 
+            // Personel bazlı nöbet sayılarını tutacak obje
+            const personelCounts = {};
+
             events.forEach(event => {
                 const eventDate = new Date(event.start);
                 const dayOfWeek = eventDate.getDay();
@@ -1123,11 +1369,39 @@ $title = 'Nöbet Planlama';
                 if (event.start.startsWith(today)) {
                     todayPerson = event.title;
                 }
+
+                // Personel bazlı sayacı artır
+                if (event.extendedProps && event.extendedProps.raw_personel_id) {
+                    const pIdStr = event.extendedProps.raw_personel_id;
+                    personelCounts[pIdStr] = (personelCounts[pIdStr] || 0) + 1;
+                }
             });
 
             document.getElementById('stat-total').textContent = totalMonth;
             document.getElementById('stat-today').textContent = todayPerson;
             document.getElementById('stat-weekend').textContent = weekendCount;
+
+            // Personel listesindeki badge'leri güncelle
+            document.querySelectorAll('.personel-item').forEach(item => {
+                const pId = item.dataset.rawId;
+                const count = personelCounts[pId] || 0;
+                const badge = item.querySelector('.nobet-count');
+                if (badge) {
+                    badge.textContent = count;
+                    if (count > 0) {
+                        badge.classList.add('bg-primary');
+                        badge.classList.remove('bg-light');
+                    } else {
+                        badge.classList.remove('bg-primary');
+                        badge.classList.add('bg-light');
+                    }
+                }
+            });
+
+            // Eğer nöbet sayısına göre sıralama seçiliyse listeyi tekrar sırala
+            if (currentSort === 'count_low' || currentSort === 'count_high') {
+                sortPersonel();
+            }
         }
 
         function formatDate(dateStr) {
@@ -1148,6 +1422,17 @@ $title = 'Nöbet Planlama';
                 'iptal': '<span class="badge bg-danger">İptal</span>'
             };
             return badges[durum] || '<span class="badge bg-secondary">Bilinmiyor</span>';
+        }
+
+        function getDurumText(durum) {
+            const texts = {
+                'planli': 'Planlı',
+                'devir_alindi': 'Devir Alındı',
+                'tamamlandi': 'Tamamlandı',
+                'iptal': 'İptal',
+                'mazeret_bildirildi': 'Mazeret Bildirildi'
+            };
+            return texts[durum] || 'Bilinmiyor';
         }
 
         function getNobetTipiText(tip) {
@@ -1185,6 +1470,8 @@ $title = 'Nöbet Planlama';
 
         function loadDegisimTalepleri() {
             const tbody = document.getElementById('degisim-tbody');
+            if (!tbody) return; // Element yoksa çık
+
             tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">
                 <i class="bx bx-loader-alt bx-spin bx-lg"></i>
                 <p class="mb-0 mt-2">Yükleniyor...</p>
@@ -1228,15 +1515,19 @@ $title = 'Nöbet Planlama';
                         });
 
                         tbody.innerHTML = html;
-                        document.getElementById('degisim-badge').textContent = bekleyenCount;
-                        document.getElementById('stat-pending').textContent = bekleyenCount;
+                        const degisimBadge = document.getElementById('degisim-badge');
+                        if (degisimBadge) degisimBadge.textContent = bekleyenCount;
+                        const statPending = document.getElementById('stat-pending');
+                        if (statPending) statPending.textContent = bekleyenCount;
                     } else {
                         tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">
                         <i class="bx bx-check-circle bx-lg text-success"></i>
                         <p class="mb-0 mt-2">Bekleyen değişim talebi yok</p>
                     </td></tr>`;
-                        document.getElementById('degisim-badge').textContent = '0';
-                        document.getElementById('stat-pending').textContent = '0';
+                        const degisimBadge2 = document.getElementById('degisim-badge');
+                        if (degisimBadge2) degisimBadge2.textContent = '0';
+                        const statPending2 = document.getElementById('stat-pending');
+                        if (statPending2) statPending2.textContent = '0';
                     }
                 })
                 .catch(error => {
@@ -1250,6 +1541,8 @@ $title = 'Nöbet Planlama';
 
         function loadMazeretBildirimleri() {
             const tbody = document.getElementById('mazeret-tbody');
+            if (!tbody) return; // Element yoksa çık
+
             tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">
                 <i class="bx bx-loader-alt bx-spin bx-lg"></i>
                 <p class="mb-0 mt-2">Yükleniyor...</p>
@@ -1285,13 +1578,15 @@ $title = 'Nöbet Planlama';
                         });
 
                         tbody.innerHTML = html;
-                        document.getElementById('mazeret-badge').textContent = data.data.length;
+                        const mazeretBadge = document.getElementById('mazeret-badge');
+                        if (mazeretBadge) mazeretBadge.textContent = data.data.length;
                     } else {
                         tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">
                         <i class="bx bx-check-circle bx-lg text-success"></i>
                         <p class="mb-0 mt-2">Mazeret bildirimi yok</p>
                     </td></tr>`;
-                        document.getElementById('mazeret-badge').textContent = '0';
+                        const mazeretBadge2 = document.getElementById('mazeret-badge');
+                        if (mazeretBadge2) mazeretBadge2.textContent = '0';
                     }
                 })
                 .catch(error => {

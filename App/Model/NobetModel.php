@@ -699,11 +699,15 @@ class NobetModel extends Model
     /**
      * Tüm değişim taleplerini getir (Yönetici görünümü)
      */
-    public function getAllDegisimTalepleri($ay = null, $yil = null)
+    public function getAllDegisimTalepleri($ay = null, $yil = null, $onlyPending = false)
     {
         $firma_id = $_SESSION['firma_id'] ?? null;
         $params = [':firma_id' => $firma_id];
         $where = "WHERE n.firma_id = :firma_id";
+
+        if ($onlyPending) {
+            $where .= " AND dt.durum IN ('beklemede', 'personel_onayladi')";
+        }
 
         if ($ay && $yil) {
             $where .= " AND MONTH(n.nobet_tarihi) = :ay AND YEAR(n.nobet_tarihi) = :yil";
@@ -733,17 +737,20 @@ class NobetModel extends Model
     /**
      * Mazeret bildirilmiş nöbetleri getir (Yönetici görünümü)
      */
-    public function getMazeretBildirimleri($ay = null, $yil = null)
+    public function getMazeretBildirimleri($ay = null, $yil = null, $isGecmis = false)
     {
         $firma_id = $_SESSION['firma_id'] ?? null;
         $params = [':firma_id' => $firma_id];
-        $where = "WHERE n.firma_id = :firma_id AND n.durum = 'mazeret_bildirildi'";
+
+        $durum = $isGecmis ? 'devir_alindi' : 'mazeret_bildirildi';
+        $where = "WHERE n.firma_id = :firma_id AND n.durum = :durum";
+        $params[':durum'] = $durum;
 
         if ($ay && $yil) {
             $where .= " AND MONTH(n.nobet_tarihi) = :ay AND YEAR(n.nobet_tarihi) = :yil";
             $params[':ay'] = $ay;
             $params[':yil'] = $yil;
-        } else {
+        } elseif (!$isGecmis) {
             $where .= " AND n.nobet_tarihi >= CURDATE()";
         }
 
@@ -779,27 +786,133 @@ class NobetModel extends Model
             'reddedilen' => 0
         ];
 
-        // Onaylananlar
+        // Onaylananlar (Değişimler)
         $sql = "SELECT COUNT(*) FROM nobet_degisim_talepleri dt
-                LEFT JOIN nobetler n ON dt.nobet_id = n.id
-                WHERE n.firma_id = :firma_id 
-                AND dt.durum = 'onaylandi'
-                AND dt.amir_onay_tarihi BETWEEN :bas AND :bit";
+            LEFT JOIN nobetler n ON dt.nobet_id = n.id
+            WHERE n.firma_id = :firma_id 
+            AND dt.durum = 'onaylandi'
+            AND dt.amir_onay_tarihi BETWEEN :bas AND :bit";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['firma_id' => $firma_id, 'bas' => $bas_tarih, 'bit' => $bit_tarih]);
         $stats['onaylanan'] = $stmt->fetchColumn();
 
-        // Reddedilenler
+        // Onaylananlar (Yeni Talepler)
+        $sqlYeni = "SELECT COUNT(*) FROM personel_talepleri pt
+                JOIN personel p ON pt.personel_id = p.id
+                WHERE p.firma_id = :firma_id 
+                AND pt.kategori = 'nobet_talebi'
+                AND pt.durum = 'cozuldu'
+                AND pt.cozum_tarihi BETWEEN :bas AND :bit";
+        $stmtYeni = $this->db->prepare($sqlYeni);
+        $stmtYeni->execute(['firma_id' => $firma_id, 'bas' => $bas_tarih . ' 00:00:00', 'bit' => $bit_tarih . ' 23:59:59']);
+        $stats['onaylanan'] += $stmtYeni->fetchColumn();
+
+        // Reddedilenler (Değişimler)
         $sql = "SELECT COUNT(*) FROM nobet_degisim_talepleri dt
-                LEFT JOIN nobetler n ON dt.nobet_id = n.id
-                WHERE n.firma_id = :firma_id 
-                AND dt.durum = 'reddedildi'
-                AND dt.amir_onay_tarihi BETWEEN :bas AND :bit";
+            LEFT JOIN nobetler n ON dt.nobet_id = n.id
+            WHERE n.firma_id = :firma_id 
+            AND dt.durum = 'reddedildi'
+            AND dt.amir_onay_tarihi BETWEEN :bas AND :bit";
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['firma_id' => $firma_id, 'bas' => $bas_tarih, 'bit' => $bit_tarih]);
         $stats['reddedilen'] = $stmt->fetchColumn();
 
+        // Reddedilenler (Yeni Talepler)
+        $sqlYeniRed = "SELECT COUNT(*) FROM personel_talepleri pt
+                   JOIN personel p ON pt.personel_id = p.id
+                   WHERE p.firma_id = :firma_id 
+                   AND pt.kategori = 'nobet_talebi'
+                   AND pt.durum = 'reddedildi'
+                   AND pt.cozum_tarihi BETWEEN :bas AND :bit";
+        $stmtYeniRed = $this->db->prepare($sqlYeniRed);
+        $stmtYeniRed->execute(['firma_id' => $firma_id, 'bas' => $bas_tarih . ' 00:00:00', 'bit' => $bit_tarih . ' 23:59:59']);
+        $stats['reddedilen'] += $stmtYeniRed->fetchColumn();
+
         return $stats;
     }
-}
 
+    // =====================================================
+    // BİLDİRİM YÖNETİMİ (TOPLU)
+    // =====================================================
+
+    /**
+     * Henüz bildirim gönderilmemiş nöbetleri getirir
+     * @param string $baslangic Başlangıç tarihi (Y-m-d)
+     * @param string $bitis Bitiş tarihi (Y-m-d)
+     * @return array
+     */
+    public function getUnnotifiedNobetler($baslangic, $bitis)
+    {
+        $sql = "SELECT n.*, p.adi_soyadi, p.departman, p.resim_yolu, p.cep_telefonu,
+                t.tur_adi as ekip_adi, t.ekip_bolge
+                FROM {$this->table} n
+                LEFT JOIN personel p ON n.personel_id = p.id
+                LEFT JOIN tanimlamalar t ON p.ekip_no = t.id
+                WHERE n.firma_id = :firma_id 
+                AND n.silinme_tarihi IS NULL
+                AND n.nobet_tarihi BETWEEN :baslangic AND :bitis
+                AND (n.bildirim_gonderildi = 0 OR n.bildirim_gonderildi IS NULL)
+                ORDER BY n.nobet_tarihi ASC, n.baslangic_saati ASC";
+
+        $query = $this->db->prepare($sql);
+        $query->execute([
+            'firma_id' => $_SESSION['firma_id'],
+            'baslangic' => $baslangic,
+            'bitis' => $bitis
+        ]);
+
+        return $query->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Belirtilen nöbetleri bildirim gönderildi olarak işaretler
+     * @param array $nobetIds Nöbet ID'leri
+     * @return bool
+     */
+    public function markAsNotified($nobetIds)
+    {
+        if (empty($nobetIds)) {
+            return true;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($nobetIds), '?'));
+        $sql = "UPDATE {$this->table} 
+                SET bildirim_gonderildi = 1, bildirim_tarihi = NOW() 
+                WHERE id IN ($placeholders)";
+
+        $query = $this->db->prepare($sql);
+        return $query->execute($nobetIds);
+    }
+
+    /**
+     * Bildirim istatistiklerini getirir
+     * @param string $baslangic Başlangıç tarihi (Y-m-d)
+     * @param string $bitis Bitiş tarihi (Y-m-d)
+     * @return array
+     */
+    public function getBildirimStats($baslangic, $bitis)
+    {
+        $sql = "SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN bildirim_gonderildi = 1 THEN 1 ELSE 0 END) as sent,
+                SUM(CASE WHEN bildirim_gonderildi = 0 OR bildirim_gonderildi IS NULL THEN 1 ELSE 0 END) as pending
+                FROM {$this->table}
+                WHERE firma_id = :firma_id 
+                AND silinme_tarihi IS NULL
+                AND nobet_tarihi BETWEEN :baslangic AND :bitis";
+
+        $query = $this->db->prepare($sql);
+        $query->execute([
+            'firma_id' => $_SESSION['firma_id'],
+            'baslangic' => $baslangic,
+            'bitis' => $bitis
+        ]);
+
+        $result = $query->fetch(PDO::FETCH_ASSOC);
+        return [
+            'total' => (int) ($result['total'] ?? 0),
+            'sent' => (int) ($result['sent'] ?? 0),
+            'pending' => (int) ($result['pending'] ?? 0)
+        ];
+    }
+}

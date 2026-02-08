@@ -123,7 +123,7 @@ $onay_durumlari = [
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0 text-primary"><i class="bx bx-calendar-event me-2"></i>İzin Bilgileri</h5>
                 <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                    data-bs-target="#modalIzinEkle"><i class="bx bx-plus"></i> Yeni İzin Ekle</button>
+                    data-bs-target="#modalIzinEkle"><i class="bx bx-plus"></i> Yeni Ekle</button>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -176,23 +176,39 @@ $onay_durumlari = [
                                         </td>
                                         <td>
                                             <div class="btn-group" role="group">
-                                                <?php if (($izin->son_durum ?? 'Beklemede') == 'Beklemede'): ?>
-                                                    <button type="button" class="btn btn-sm btn-success btn-izin-onayla"
+                                                <?php 
+                                                $durum = $izin->son_durum ?? 'Beklemede';
+                                                $onayaTabi = ($izin->yetkili_onayina_tabi ?? 0) == 1;
+                                                $isKilitli = $onayaTabi && $durum == 'Onaylandı';
+                                                
+                                                if (!$isKilitli): ?>
+                                                    <?php if ($durum == 'Beklemede'): ?>
+                                                        <button type="button" class="btn btn-sm btn-success btn-izin-onayla"
+                                                            data-id="<?= $izin->id ?>"
+                                                            data-personel="<?= htmlspecialchars($personel->adi_soyadi ?? '') ?>"
+                                                            data-tur="<?= htmlspecialchars($izin->izin_tipi_adi ?? $izin->izin_tipi ?? '') ?>"
+                                                            data-gun="<?= htmlspecialchars($izin->sure ?? '-') ?>" title="Onayla">
+                                                            <i class="bx bx-check"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-danger btn-izin-reddet"
+                                                            data-id="<?= $izin->id ?>"
+                                                            data-personel="<?= htmlspecialchars($personel->adi_soyadi ?? '') ?>"
+                                                            title="Reddet">
+                                                            <i class="bx bx-x"></i>
+                                                        </button>
+                                                    <?php endif; ?>
+                                                    
+                                                    <button type="button" class="btn btn-sm btn-warning btn-izin-duzenle"
                                                         data-id="<?= $izin->id ?>"
-                                                        data-personel="<?= htmlspecialchars($personel->adi_soyadi ?? '') ?>"
-                                                        data-tur="<?= htmlspecialchars($izin->izin_tipi_adi ?? $izin->izin_tipi ?? '') ?>"
-                                                        data-gun="<?= htmlspecialchars($izin->sure ?? '-') ?>" title="Onayla">
-                                                        <i class="bx bx-check"></i>
+                                                        data-json='<?= htmlspecialchars(json_encode($izin), ENT_QUOTES, 'UTF-8') ?>'
+                                                        title="Düzenle">
+                                                        <i class="bx bx-edit-alt"></i>
                                                     </button>
-                                                    <button type="button" class="btn btn-sm btn-danger btn-izin-reddet"
-                                                        data-id="<?= $izin->id ?>"
-                                                        data-personel="<?= htmlspecialchars($personel->adi_soyadi ?? '') ?>"
-                                                        title="Reddet">
-                                                        <i class="bx bx-x"></i>
-                                                    </button>
+
                                                     <button type="button" class="btn btn-sm btn-outline-danger btn-izin-sil"
                                                         data-id="<?= $izin->id ?>"
-                                                        data-durum="<?= htmlspecialchars($izin->son_durum ?? 'Beklemede') ?>"
+                                                        data-durum="<?= htmlspecialchars($durum) ?>"
+                                                        data-onaya-tabi="<?= $onayaTabi ? 1 : 0 ?>"
                                                         title="Sil">
                                                         <i class="bx bx-trash"></i>
                                                     </button>
@@ -220,7 +236,11 @@ $onay_durumlari = [
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modalIzinEkleLabel">Yeni İzin Ekle</h5>
+                <div>
+                    <h5 class="modal-title mb-0" id="modalIzinEkleLabel">Yeni Ekle</h5>
+                    <small class="text-muted"><i
+                            class="bx bx-user me-1"></i><?= isset($personel) ? htmlspecialchars($personel->adi_soyadi) : '' ?></small>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
             </div>
             <div class="modal-body">
@@ -256,6 +276,7 @@ $onay_durumlari = [
                     </div>
                 <?php endif; ?>
                 <form id="formIzinEkle">
+                    <input type="hidden" name="id" id="izin_id" value="0">
                     <input type="hidden" name="personel_id" id="personel_id" value="<?= $id ?? 0 ?>">
 
                     <h6 class="mb-3 text-primary border-bottom pb-2">İzin Bilgileri</h6>
@@ -276,20 +297,17 @@ $onay_durumlari = [
                     </div>
 
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <?= Form::FormSelect2("izin_tipi", $izin_turleri, 'Yıllık İzin', "İzin Türü", "archive") ?>
-                        </div>
-                        <div class="col-md-6">
-                            <?= Form::FormFloatInput("text", "personel_adi", isset($personel) ? $personel->adi_soyadi : '', "Personel", "Personel", "user", "form-control", false, null, "off", true) ?>
                         </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-4">
-                            <?= Form::FormFloatInput("text", "baslangic_tarihi", "", "", "İzin Başlangıç", "calendar", "form-control flatpickr") ?>
+                            <?= Form::FormFloatInput("text", "baslangic_tarihi", "", "", "Başlangıç Tarihi", "calendar", "form-control flatpickr") ?>
                         </div>
                         <div class="col-md-4">
-                            <?= Form::FormFloatInput("text", "bitis_tarihi", "", "", "İzin Bitiş", "calendar", "form-control flatpickr") ?>
+                            <?= Form::FormFloatInput("text", "bitis_tarihi", "", "", "Bitiş Tarihi", "calendar", "form-control flatpickr") ?>
                         </div>
                         <div class="col-md-4">
                             <?= Form::FormFloatInput("number", "sure", "", "0,00", "İzinli Gün", "clock", "form-control", false, null, "off", false, 'step="0.5"') ?>
@@ -305,7 +323,7 @@ $onay_durumlari = [
 
 
 
-                    <div class="row mb-3">
+                    <div class="row mb-3" id="izin_durum_row">
                         <div class="col-md-4">
                             <?= Form::FormSelect2("izin_durumu", $izin_durumlari, 'Gerceklesti', "İzin Durumu", "check-circle") ?>
                         </div>
@@ -319,24 +337,26 @@ $onay_durumlari = [
 
                     <!-- Burayı şimdilik kapatıyoruz, tekrar açma -->
 
-                    <h6 class="mb-3 text-primary border-bottom pb-2">Onaylayan</h6>
+                    <div id="onaylayan_section">
+                        <h6 class="mb-3 text-primary border-bottom pb-2">Onaylayan</h6>
 
-                    <div class="row mb-3">
-                        <!-- <div class="col-md-6">
-                            <div class="input-group" style="height: 58px;">
-                                <span class="input-group-text"><i class="bx bx-search"></i></span>
-                                <div class="form-floating form-floating-custom flex-grow-1">
-                                    <input type="text" class="form-control" id="onaylayan_ara"
-                                        placeholder="Onaylayan Personel Ara"
-                                        style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
-                                    <label for="onaylayan_ara">Onaylayan Personel Ara</label>
+                        <div class="row mb-3">
+                            <!-- <div class="col-md-6">
+                                <div class="input-group" style="height: 58px;">
+                                    <span class="input-group-text"><i class="bx bx-search"></i></span>
+                                    <div class="form-floating form-floating-custom flex-grow-1">
+                                        <input type="text" class="form-control" id="onaylayan_ara"
+                                            placeholder="Onaylayan Personel Ara"
+                                            style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
+                                        <label for="onaylayan_ara">Onaylayan Personel Ara</label>
+                                    </div>
+                                    <input type="hidden" id="onaylayan_id" name="onaylayan_id">
                                 </div>
-                                <input type="hidden" id="onaylayan_id" name="onaylayan_id">
+                            </div> -->
+                            <input type="hidden" id="onaylayan_id" name="onaylayan_id">
+                            <div class="col-md-6">
+                                <?= Form::FormSelect2("onay_durumu", $onay_durumlari, 'Beklemede', "Onay Durumu", "info") ?>
                             </div>
-                        </div> -->
-                        <input type="hidden" id="onaylayan_id" name="onaylayan_id">
-                        <div class="col-md-6">
-                            <?= Form::FormSelect2("onay_durumu", $onay_durumlari, 'Beklemede', "Onay Durumu", "info") ?>
                         </div>
                     </div>
 
@@ -454,6 +474,7 @@ $onay_durumlari = [
     var currentUserId = <?= json_encode($_SESSION['user_id'] ?? 0) ?>;
 
     $(document).ready(function () {
+        // Onay durumu değişikliği
         $(document).off('change select2:select', '#onay_durumu').on('change select2:select', '#onay_durumu', function () {
             var durum = $(this).val();
             var form = $(this).closest('form');
@@ -491,6 +512,88 @@ $onay_durumlari = [
                 }
                 onaylayanIdInput.val('');
             }
+        });
+
+        // İzin türü değişikliği - Rapor seçildiğinde otomatik onay ve alanları gizle
+        $(document).off('change select2:select', '#izin_tipi').on('change select2:select', '#izin_tipi', function () {
+            handleIzinTuruChange();
+        });
+
+        // Select2 olmadan da çalışması için
+        $(document).off('change', '#izin_tipi').on('change', '#izin_tipi', function () {
+            handleIzinTuruChange();
+        });
+
+        function handleIzinTuruChange() {
+            var selectedId = $('#izin_tipi').val();
+            var selectedText = $('#izin_tipi option:selected').text().toLowerCase();
+
+            // Rapor kontrolü - 'rapor' kelimesi içeriyorsa
+            var isRapor = selectedText.includes('rapor') || selectedText.includes('hastalık');
+
+            if (isRapor) {
+                // Rapor seçildi - alanları gizle
+                $('#izin_durum_row').hide();
+                $('#onaylayan_section').hide();
+
+                // Otomatik onay yap
+                $('#onay_durumu').val('Onaylandı').trigger('change');
+
+                // Otomatik değerler ata
+                var now = new Date();
+                var year = now.getFullYear();
+                var month = String(now.getMonth() + 1).padStart(2, '0');
+                var day = String(now.getDate()).padStart(2, '0');
+                var hours = String(now.getHours()).padStart(2, '0');
+                var minutes = String(now.getMinutes()).padStart(2, '0');
+                var formattedDate = year + '-' + month + '-' + day + ' ' + hours + ':' + minutes;
+
+                $('[name="onay_aciklama"]').val('Rapor - Otomatik onaylandı');
+                $('[name="onay_tarihi"]').val(formattedDate);
+                if ($('[name="onay_tarihi"]')[0] && $('[name="onay_tarihi"]')[0]._flatpickr) {
+                    $('[name="onay_tarihi"]')[0]._flatpickr.setDate(formattedDate);
+                }
+                $('#onaylayan_id').val(currentUserId);
+            } else {
+                // Normal izin - alanları göster
+                $('#izin_durum_row').show();
+                $('#onaylayan_section').show();
+            }
+        }
+
+        // Tarih string'ini Date objesine çevir (dd.mm.yyyy veya yyyy-mm-dd formatını destekler)
+        function parseTarih(tarihStr) {
+            if (!tarihStr) return null;
+
+            // dd.mm.yyyy formatı
+            if (tarihStr.includes('.')) {
+                var parts = tarihStr.split('.');
+                if (parts.length === 3) {
+                    return new Date(parts[2], parts[1] - 1, parts[0]);
+                }
+            }
+            // yyyy-mm-dd formatı
+            if (tarihStr.includes('-')) {
+                var parts = tarihStr.split('-');
+                if (parts.length === 3) {
+                    return new Date(parts[0], parts[1] - 1, parts[2]);
+                }
+            }
+            return new Date(tarihStr);
+        }
+
+
+
+        // Modal açıldığında form sıfırla ve ilk durumu ayarla
+        $('#modalIzinEkle').on('show.bs.modal', function () {
+            // Alanları göster (varsayılan durum)
+            $('#izin_durum_row').show();
+            $('#onaylayan_section').show();
+
+            // İzin türü değişikliğini kontrol et
+            setTimeout(function () {
+                handleIzinTuruChange();
+            }, 100);
         });
     });
 </script>

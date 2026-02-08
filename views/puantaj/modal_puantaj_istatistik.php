@@ -28,7 +28,7 @@ $sqlStart = \App\Helper\Date::convertExcelDate($startDate, 'Y-m-d') ?: $startDat
 $sqlEnd = \App\Helper\Date::convertExcelDate($endDate, 'Y-m-d') ?: $endDate;
 
 // Common WHERE clause - normalizasyon sonrası COALESCE kullanılıyor
-$where = " WHERE t.firma_id = ? AND t.tarih >= ? AND t.tarih <= ?";
+$where = " WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih >= ? AND t.tarih <= ?";
 $params = [$firmaId, $sqlStart, $sqlEnd];
 
 if ($personelId) {
@@ -50,6 +50,33 @@ if ($workResult) {
     $params[] = $workResult;
 }
 
+// DataTable sütun filtrelerini işle (yeni sıralama: 0-Tarih, 1-EkipKodu, 2-Personel, 3-İşEmriTipi, 4-İşEmriSonucu, 5-Sonuçlanmış, 6-AçıkOlanlar)
+$colFilterMap = [
+    0 => 'DATE_FORMAT(t.tarih, "%d.%m.%Y")',
+    1 => 'ek.tur_adi',
+    2 => 'p.adi_soyadi',
+    3 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
+    4 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
+    5 => 't.sonuclanmis',
+    6 => 't.acik_olanlar'
+];
+
+foreach ($colFilterMap as $colIndex => $colField) {
+    $colKey = 'col_' . $colIndex;
+    if (!empty($_GET[$colKey])) {
+        $where .= " AND $colField LIKE ?";
+        $params[] = '%' . $_GET[$colKey] . '%';
+    }
+}
+
+// Ekip kodu filtresi için ek LEFT JOIN gerekli
+$needsEkipJoin = !empty($_GET['col_1']);
+$ekipJoin = $needsEkipJoin ? "LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id" : "";
+
+// Personel filtresi için ek LEFT JOIN gerekli  
+$needsPersonelJoin = !empty($_GET['col_2']);
+$personelJoin = $needsPersonelJoin ? "LEFT JOIN personel p ON t.personel_id = p.id" : "";
+
 // 1. Query for statistics by work type - COALESCE ile hem yeni hem eski alanlardan
 $sqlType = "SELECT COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi, 
                COUNT(*) as kayit_sayisi, 
@@ -57,6 +84,8 @@ $sqlType = "SELECT COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi,
                SUM(t.acik_olanlar) as toplam_acik
         FROM yapilan_isler t
         LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+        $ekipJoin
+        $personelJoin
         $where
         GROUP BY COALESCE(tn.tur_adi, t.is_emri_tipi) ORDER BY kayit_sayisi DESC";
 
@@ -72,6 +101,8 @@ $sqlResult = "SELECT COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_so
                SUM(t.acik_olanlar) as toplam_acik
         FROM yapilan_isler t
         LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+        $ekipJoin
+        $personelJoin
         $where
         GROUP BY COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), COALESCE(tn.tur_adi, t.is_emri_tipi) 
         ORDER BY kayit_sayisi DESC";
@@ -82,6 +113,27 @@ $statsResult = $stmtResult->fetchAll(PDO::FETCH_OBJ);
 
 $grandTotalType = ['kayit' => 0, 'sonuclanmis' => 0, 'acik' => 0];
 $grandTotalResult = ['kayit' => 0, 'sonuclanmis' => 0, 'acik' => 0];
+?>
+
+<?php 
+// Sütun indekslerini Türkçe başlıklara eşle
+$columnNames = [
+    0 => 'Tarih',
+    1 => 'Ekip Kodu',
+    2 => 'Personel',
+    3 => 'İş Emri Tipi',
+    4 => 'İş Emri Sonucu',
+    5 => 'Sonuçlanmış',
+    6 => 'Açık Olanlar'
+];
+
+// Aktif sütun filtrelerini topla
+$activeFilters = [];
+for ($i = 0; $i <= 6; $i++) {
+    if (!empty($_GET['col_' . $i])) {
+        $activeFilters[] = $columnNames[$i] . ' = ' . htmlspecialchars($_GET['col_' . $i]);
+    }
+}
 ?>
 
 <div class="mb-3 d-flex justify-content-between align-items-center">
@@ -95,6 +147,13 @@ $grandTotalResult = ['kayit' => 0, 'sonuclanmis' => 0, 'acik' => 0];
 </div>
 
 <div id="puantajStatsExportArea">
+    <?php if (!empty($activeFilters)): ?>
+    <div class="alert alert-info py-2 mb-3">
+        <i class="bx bx-filter-alt me-1"></i>
+        <strong>Uygulanan Filtreler:</strong> <?= implode(' | ', $activeFilters) ?>
+    </div>
+    <?php endif; ?>
+    
     <h6 class="text-primary mb-2"><i class="bx bx-list-ul me-1"></i> İş Emri Tipi Bazlı Özet</h6>
     <div class="table-responsive mb-4">
         <table class="table table-sm table-bordered table-striped mb-0" id="puantajTypeTable">

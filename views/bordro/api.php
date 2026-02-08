@@ -360,8 +360,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'diger' => 'Diğer Ek Ödeme'
                 ];
 
-                // Detaylı kesinti ve ek ödemeleri çek
-                $kesintilerDetay = $BordroPersonel->getDonemKesintileriDetay($bp->personel_id, $bp->donem_id);
+                // Detaylı ek ödemeleri çek
                 $ekOdemelerDetay = $BordroPersonel->getDonemEkOdemeleriDetay($bp->personel_id, $bp->donem_id);
 
                 // Toplamları hesapla
@@ -472,13 +471,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<table class="table table-sm mb-0">';
                 $html .= '<tbody>';
 
-                if (empty($kesintilerDetay)) {
+                // Onaylanmış kesintileri çek ve daha detaylı grupla (özellikle ücretsiz izinler için)
+                $kesintiKayitlari = $BordroPersonel->getDonemKesintileriListe($bp->personel_id, $bp->donem_id);
+                $kesintilerGruplanmis = [];
+
+                foreach ($kesintiKayitlari as $k) {
+                    $etiket = $kesintiTurEtiketleri[$k->tur] ?? ucfirst($k->tur);
+
+                    // Ücretsiz izin ise alt türü (Devamsızlık, Mazeret vs.) ve gün sayısını açıklamadan çek
+                    if ($k->tur === 'izin_kesinti' && preg_match('/\[Ücretsiz İzin\]\s*(.*?)\s*\((\d+)\s*gün/', $k->aciklama, $matches)) {
+                        $altTur = trim($matches[1]);
+                        $gunSayisi = intval($matches[2]);
+                        $etiket = "Ücretsiz İzin ($altTur x $gunSayisi)";
+                    }
+
+                    if (!isset($kesintilerGruplanmis[$etiket])) {
+                        $kesintilerGruplanmis[$etiket] = (object) [
+                            'etiket' => $etiket,
+                            'toplam_tutar' => 0,
+                            'adet' => 0
+                        ];
+                    }
+                    $kesintilerGruplanmis[$etiket]->toplam_tutar += floatval($k->tutar);
+                    $kesintilerGruplanmis[$etiket]->adet++;
+                }
+
+                // Gruplanmış listeyi tutara göre azalan sırala
+                uasort($kesintilerGruplanmis, function ($a, $b) {
+                    return $b->toplam_tutar <=> $a->toplam_tutar;
+                });
+
+                if (empty($kesintilerGruplanmis)) {
                     $html .= '<tr><td class="text-center text-muted py-3" colspan="2"><i class="bx bx-check-circle me-1"></i>Kesinti yok</td></tr>';
                 } else {
-                    foreach ($kesintilerDetay as $kesinti) {
-                        $turEtiket = $kesintiTurEtiketleri[$kesinti->tur] ?? ucfirst($kesinti->tur);
+                    foreach ($kesintilerGruplanmis as $kesinti) {
                         $adetStr = $kesinti->adet > 1 ? ' <small class="text-muted">(' . $kesinti->adet . ' adet)</small>' : '';
-                        $html .= '<tr><td class="ps-3">' . htmlspecialchars($turEtiket) . $adetStr . '</td><td class="text-end pe-3 text-danger">-' . number_format($kesinti->toplam_tutar, 2, ',', '.') . ' ₺</td></tr>';
+                        $html .= '<tr><td class="ps-3">' . htmlspecialchars($kesinti->etiket) . $adetStr . '</td><td class="text-end pe-3 text-danger">-' . number_format($kesinti->toplam_tutar, 2, ',', '.') . ' ₺</td></tr>';
                     }
                 }
 
@@ -586,7 +614,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '</div>';
 
                 // Ödeme Dağılımı
-                $eldenOdeme = ($bp->net_maas ?? 0) - ($bp->banka_odemesi ?? 0) - ($bp->sodexo_odemesi ?? 0) - ($bp->diger_odeme ?? 0);
+                $eldenOdeme = $bp->elden_odeme ?? max(0, ($bp->net_maas ?? 0) - ($bp->banka_odemesi ?? 0) - ($bp->sodexo_odemesi ?? 0) - ($bp->diger_odeme ?? 0));
                 if ($bp->banka_odemesi > 0 || $bp->sodexo_odemesi > 0 || $bp->diger_odeme > 0 || $eldenOdeme > 0) {
                     $html .= '<div class="row mt-4">';
                     $html .= '<div class="col-12">';

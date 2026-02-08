@@ -45,10 +45,11 @@ try {
             throw new Exception('Başlangıç ve bitiş tarihleri zorunludur.');
         }
 
+        $id = $_POST['id'] ?? 0;
         $PersonelIzinleriModel = new PersonelIzinleriModel();
 
         $izinData = [
-            'id' => 0,
+            'id' => $id,
             'personel_id' => $personel_id,
 
             'izin_tipi_id' => $izin_tipi,
@@ -104,15 +105,16 @@ try {
             throw new Exception('İzin kaydı bulunamadı.');
         }
 
-        // Onay durumlarını kontrol et
-        $stmt = $db->prepare("SELECT onay_durumu FROM izin_onaylari WHERE izin_id = :izin_id");
-        $stmt->execute([':izin_id' => $id]);
-        $onaylar = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+        // Yetkili onayına tabi olup olmadığını kontrol et
+        $stmt = $db->prepare("SELECT pi.onay_durumu, t.yetkili_onayina_tabi 
+                             FROM personel_izinleri pi 
+                             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id 
+                             WHERE pi.id = :id");
+        $stmt->execute([':id' => $id]);
+        $izin = $stmt->fetch(\PDO::FETCH_OBJ);
 
-        foreach ($onaylar as $durum) {
-            if ($durum !== 'Beklemede') {
-                throw new Exception('Sadece beklemede olan izinler silinebilir. İşlem görmüş kayıtlar silinemez.');
-            }
+        if ($izin && $izin->yetkili_onayina_tabi == 1 && $izin->onay_durumu == 'Onaylandı') {
+            throw new Exception('Yetkili onayından geçmiş kayıtlar silinemez.');
         }
 
         $db->beginTransaction();

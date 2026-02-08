@@ -224,7 +224,27 @@ $ek_odeme_turleri = [
                 </div>
                 <div class="card-body">
                     <?php if ($selectedDonem): ?>
-                        <div class="alert alert-primary d-flex align-items-center mb-4" role="alert">
+                        <?php
+                        // Dönem toplamlarını hesapla
+                        $toplamMaasTutari = 0;
+                        $toplamNetMaas = 0;
+                        $toplamBanka = 0;
+                        $toplamSodexo = 0;
+                        $toplamElden = 0;
+                        $toplamEkOdeme = 0;
+                        $toplamKesinti = 0;
+                        foreach ($personeller as $p) {
+                            $toplamMaasTutari += floatval($p->maas_tutari ?? 0);
+                            $toplamNetMaas += floatval($p->net_maas ?? 0);
+                            $toplamBanka += floatval($p->banka_odemesi ?? 0);
+                            $toplamSodexo += floatval($p->sodexo_odemesi ?? 0);
+                            $eldenP = $p->elden_odeme ?? (($p->net_maas ?? 0) - ($p->banka_odemesi ?? 0) - ($p->sodexo_odemesi ?? 0) - ($p->diger_odeme ?? 0));
+                            $toplamElden += max(0, floatval($eldenP));
+                            $toplamEkOdeme += floatval($p->guncel_toplam_ek_odeme ?? 0);
+                            $toplamKesinti += floatval($p->guncel_toplam_kesinti ?? 0);
+                        }
+                        ?>
+                        <div class="alert alert-primary d-flex align-items-center mb-3" role="alert">
                             <i class="bx bx-info-circle me-2 fs-4"></i>
                             <div class="d-flex align-items-center flex-wrap w-100">
                                 <div class="flex-grow-1">
@@ -245,6 +265,115 @@ $ek_odeme_turleri = [
                             </div>
                         </div>
 
+                        <!-- Dönem Toplamları Kartları -->
+                        <div class="row g-2 mb-4">
+                            <div class="col-xl col-md-4 col-6">
+                                <div class="card border shadow-none rounded-3 mb-0">
+                                    <div class="card-body text-center p-2">
+                                        <div class="avatar-xs mx-auto mb-1 rounded bg-light d-flex align-items-center justify-content-center"
+                                            style="width: 32px; height: 32px;">
+                                            <i class="bx bx-money fs-5 text-dark"></i>
+                                        </div>
+                                        <p class="text-muted mb-0 small text-uppercase fw-semibold"
+                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">Maaş Tutarı</p>
+                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;">
+                                            <?= number_format($toplamMaasTutari, 2, ',', '.') ?> ₺
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl col-md-4 col-6">
+                                <div class="card border shadow-none rounded-3 mb-0">
+                                    <div class="card-body text-center p-2">
+                                        <div class="avatar-xs mx-auto mb-1 rounded bg-light d-flex align-items-center justify-content-center"
+                                            style="width: 32px; height: 32px;">
+                                            <i class="bx bx-plus-circle fs-5 text-dark"></i>
+                                        </div>
+                                        <p class="text-muted mb-0 small text-uppercase fw-semibold"
+                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">Top. Ek Ödeme</p>
+                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;">
+                                            <?= number_format($toplamEkOdeme, 2, ',', '.') ?> ₺
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl col-md-4 col-6">
+                                <div class="card border shadow-none rounded-3 mb-0">
+                                    <div class="card-body text-center p-2">
+                                        <div class="avatar-xs mx-auto mb-1 rounded bg-light d-flex align-items-center justify-content-center"
+                                            style="width: 32px; height: 32px;">
+                                            <i class="bx bx-minus-circle fs-5 text-dark"></i>
+                                        </div>
+                                        <p class="text-muted mb-0 small text-uppercase fw-semibold"
+                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">Top. Kesinti</p>
+                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;">
+                                            <?= number_format($toplamKesinti, 2, ',', '.') ?> ₺
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl col-md-4 col-6">
+                                <div class="card border shadow-none rounded-3 mb-0">
+                                    <div class="card-body text-center p-2">
+                                        <div class="avatar-xs mx-auto mb-1 rounded bg-light d-flex align-items-center justify-content-center"
+                                            style="width: 32px; height: 32px;">
+                                            <i class="bx bx-wallet fs-5 text-dark"></i>
+                                        </div>
+                                        <p class="text-muted mb-0 small text-uppercase fw-semibold"
+                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">Net Maaş</p>
+                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;">
+                                            <?= number_format($toplamNetMaas, 2, ',', '.') ?> ₺
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl col-md-4 col-6">
+                                <div class="card border shadow-none rounded-3 mb-0">
+                                    <div class="card-body text-center p-2">
+                                        <div class="avatar-xs mx-auto mb-1 rounded bg-light d-flex align-items-center justify-content-center"
+                                            style="width: 32px; height: 32px;">
+                                            <i class="bx bxs-bank fs-5 text-dark"></i>
+                                        </div>
+                                        <p class="text-muted mb-0 small text-uppercase fw-semibold"
+                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">Banka</p>
+                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;">
+                                            <?= number_format($toplamBanka, 2, ',', '.') ?> ₺
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl col-md-4 col-6">
+                                <div class="card border shadow-none rounded-3 mb-0">
+                                    <div class="card-body text-center p-2">
+                                        <div class="avatar-xs mx-auto mb-1 rounded bg-light d-flex align-items-center justify-content-center"
+                                            style="width: 32px; height: 32px;">
+                                            <i class="bx bx-food-menu fs-5 text-dark"></i>
+                                        </div>
+                                        <p class="text-muted mb-0 small text-uppercase fw-semibold"
+                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">Sodexo</p>
+                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;">
+                                            <?= number_format($toplamSodexo, 2, ',', '.') ?> ₺
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl col-md-4 col-6">
+                                <div class="card border shadow-none rounded-3 mb-0">
+                                    <div class="card-body text-center p-2">
+                                        <div class="avatar-xs mx-auto mb-1 rounded bg-light d-flex align-items-center justify-content-center"
+                                            style="width: 32px; height: 32px;">
+                                            <i class="bx bx-wallet fs-5 text-dark"></i>
+                                        </div>
+                                        <p class="text-muted mb-0 small text-uppercase fw-semibold"
+                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">Elden</p>
+                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;">
+                                            <?= number_format($toplamElden, 2, ',', '.') ?> ₺
+                                        </h6>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table id="bordroTable" class="table datatable table-hover table-bordered nowrap w-100">
                                 <thead class="table-light">
@@ -257,6 +386,7 @@ $ek_odeme_turleri = [
                                         <th style="width: 20px;">TC Kimlik No</th>
                                         <th>Personel</th>
                                         <th class="text-center">Çalışma Günü</th>
+                                        <th class="text-end">Maaş Tutarı</th>
                                         <th class="text-end">Top. Ek Ödeme</th>
                                         <th class="text-end">Top. Kesinti</th>
                                         <th class="text-end">Net Maaş</th>
@@ -270,7 +400,7 @@ $ek_odeme_turleri = [
                                 <tbody>
                                     <?php if (empty($personeller)): ?>
                                         <tr>
-                                            <td colspan="12" class="text-center text-muted py-4">
+                                            <td colspan="13" class="text-center text-muted py-4">
                                                 <i class="bx bx-user-x fs-1 d-block mb-2"></i>
                                                 Bu döneme henüz personel eklenmemiş.<br>
                                                 <small>"Personelleri Güncelle" butonuna tıklayarak personelleri
@@ -282,22 +412,40 @@ $ek_odeme_turleri = [
                                             $enc_id = Security::encrypt($personel->personel_id);
                                             ?>
                                             <?php
-                                            $eldenOdeme = ($personel->net_maas ?? 0) - ($personel->banka_odemesi ?? 0) - ($personel->sodexo_odemesi ?? 0) - ($personel->diger_odeme ?? 0);
+                                            // Elden ödeme artık model'de hesaplanıp kaydediliyor
+                                            // Ancak görüntüleme için yedek hesaplama yap (negatif çıkmaması için max(0,...) eklendi)
+                                            $eldenOdeme = $personel->elden_odeme ?? max(0, ($personel->net_maas ?? 0) - ($personel->banka_odemesi ?? 0) - ($personel->sodexo_odemesi ?? 0) - ($personel->diger_odeme ?? 0));
 
                                             // İzin gün sayılarını hesapla
                                             $ucretsizIzinGunu = 0;
                                             $ucretliIzinGunu = 0;
+                                            $calismaGunu = 30;
                                             if (!empty($personel->hesaplama_detay)) {
                                                 $detay = json_decode($personel->hesaplama_detay, true);
-                                                if (isset($detay['matrahlar']['ucretsiz_izin_kesinti']) && isset($detay['matrahlar']['brut_maas']) && $detay['matrahlar']['brut_maas'] > 0) {
+
+                                                // Fiili çalışma gününü doğrudan JSON'dan al (varsa)
+                                                if (isset($detay['matrahlar']['fiili_calisma_gunu'])) {
+                                                    $calismaGunu = intval($detay['matrahlar']['fiili_calisma_gunu']);
+                                                }
+
+                                                // Ücretsiz izin günü
+                                                if (isset($detay['matrahlar']['ucretsiz_izin_gunu'])) {
+                                                    $ucretsizIzinGunu = intval($detay['matrahlar']['ucretsiz_izin_gunu']);
+                                                } elseif (isset($detay['matrahlar']['ucretsiz_izin_kesinti']) && isset($detay['matrahlar']['brut_maas']) && $detay['matrahlar']['brut_maas'] > 0) {
                                                     $gunlukUcret = $detay['matrahlar']['brut_maas'] / 30;
                                                     $ucretsizIzinGunu = round($detay['matrahlar']['ucretsiz_izin_kesinti'] / $gunlukUcret);
                                                 }
+
+                                                // Ücretli izin günü
                                                 if (isset($detay['matrahlar']['ucretli_izin_gunu'])) {
                                                     $ucretliIzinGunu = intval($detay['matrahlar']['ucretli_izin_gunu']);
                                                 }
+
+                                                // Fiili çalışma günü yoksa hesapla
+                                                if (!isset($detay['matrahlar']['fiili_calisma_gunu'])) {
+                                                    $calismaGunu = 30 - $ucretsizIzinGunu - $ucretliIzinGunu;
+                                                }
                                             }
-                                            $calismaGunu = 30 - $ucretsizIzinGunu - $ucretliIzinGunu;
                                             ?>
                                             <tr data-id="<?= $personel->id ?>">
                                                 <td>
@@ -327,6 +475,9 @@ $ek_odeme_turleri = [
                                                     <?php if ($ucretliIzinGunu > 0): ?>
                                                         <small class="d-block text-info">(-<?= $ucretliIzinGunu ?> ü.li izin)</small>
                                                     <?php endif; ?>
+                                                </td>
+                                                <td class="text-end text-dark fw-medium">
+                                                    <?= $personel->maas_tutari ? number_format($personel->maas_tutari, 2, ',', '.') . ' ₺' : '-' ?>
                                                 </td>
                                                 <td class="text-end text-success">
                                                     <?php

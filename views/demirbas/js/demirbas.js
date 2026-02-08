@@ -49,9 +49,14 @@ function updateButtonVisibility() {
     $("#btnYeniDemirbas").show();
     $("#btnZimmetVer").hide();
     $("#importExcelLi").show();
-  } else {
+  } else if (activeTab === "zimmet-tab") {
     $("#btnYeniDemirbas").hide();
     $("#btnZimmetVer").show();
+    $("#importExcelLi").hide();
+  } else {
+    // zimmet-ayarlari-tab
+    $("#btnYeniDemirbas").hide();
+    $("#btnZimmetVer").hide();
     $("#importExcelLi").hide();
   }
 }
@@ -93,22 +98,78 @@ function initSelect2() {
       width: "100%",
     });
   }
+
+  // Otomatik Zimmet Ayarları Select2'leri
+  if ($("#otomatik_zimmet_is_emri").length) {
+    $("#otomatik_zimmet_is_emri").select2({
+      dropdownParent: $("#demirbasModal"),
+      placeholder: "Seçiniz (Yok)",
+      allowClear: true,
+      width: "100%",
+    });
+  }
+
+  if ($("#otomatik_iade_is_emri").length) {
+    $("#otomatik_iade_is_emri").select2({
+      dropdownParent: $("#demirbasModal"),
+      placeholder: "Seçiniz (Yok)",
+      allowClear: true,
+      width: "100%",
+    });
+  }
+}
+
+// ============== İŞ EMRİ SONUÇLARINI GETİR ==============
+function fetchIsEmriSonuclari(callback) {
+  fetch(zimmetUrl + "?action=is-emri-sonuclari")
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.status === "success") {
+        const options = data.data;
+        const selects = ["#otomatik_zimmet_is_emri", "#otomatik_iade_is_emri"];
+
+        selects.forEach((selector) => {
+          const $select = $(selector);
+          if ($select.length) {
+            // Mevcut seçili değeri sakla
+            const currentVal = $select.val();
+
+            // Seçenekleri temizle ve yeniden doldur
+            $select.empty();
+            options.forEach((opt) => {
+              const selected = opt.id === currentVal ? "selected" : "";
+              $select.append(
+                new Option(opt.text, opt.id, false, opt.id === currentVal),
+              );
+            });
+
+            // Tekrar tetikle
+            if (currentVal) {
+              $select.val(currentVal).trigger("change.select2");
+            }
+          }
+        });
+
+        if (typeof callback === "function") callback();
+      }
+    })
+    .catch((err) => console.error("İş emri sonuçları yüklenemedi:", err));
 }
 
 // ============== TAB DEĞİŞİKLİĞİNDE ==============
-$('button[data-bs-toggle="tab"]').on("shown.bs.tab", function (e) {
-  // Aktif sekmeyi URL'e kaydet
-  let targetId = e.target.id;
-  let tabName = targetId === "zimmet-tab" ? "zimmet" : "demirbas";
+// Sadece ana sayfadaki bu iki butona tıklandığında URL parametresini değiştir
+$(document).on("click", "#demirbas-tab, #zimmet-tab", function () {
+  const tabName = this.id === "zimmet-tab" ? "zimmet" : "demirbas";
 
-  // Buton görünürlüğünü güncelle
-  updateButtonVisibility();
-
+  // URL'i güncelle
   const url = new URL(window.location);
   url.searchParams.set("tab", tabName);
   window.history.replaceState({}, "", url);
 
-  if (targetId === "zimmet-tab") {
+  // Buton görünürlüğünü güncelle
+  updateButtonVisibility();
+
+  if (this.id === "zimmet-tab") {
     loadZimmetList();
   }
 });
@@ -215,35 +276,51 @@ $(document).on("click", ".duzenle", function (e) {
   let id = $(this).data("id");
   $("#demirbas_id").val(id);
 
+  // Modal içindeki tab'ı ilk sekmeye sıfırla
+  $("#demirbasModalTabs a:first").tab("show");
+
   var formData = new FormData();
   formData.append("action", "demirbas-getir");
   formData.append("demirbas_id", id);
 
-  fetch(zimmetUrl, {
-    method: "POST",
-    body: formData,
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.status === "success") {
-        var d = data.data;
-        for (var key in d) {
-          if ($("#" + key).length) {
-            if (key === "edinme_tutari" && d[key]) {
-              // Para formatı
-              $("#" + key).val(
-                parseFloat(d[key]).toLocaleString("tr-TR", {
-                  minimumFractionDigits: 2,
-                }),
-              );
-            } else {
-              $("#" + key).val(d[key]);
+  // Seçenekleri önce yükle, sonra verileri bas
+  fetchIsEmriSonuclari(() => {
+    fetch(zimmetUrl, {
+      method: "POST",
+      body: formData,
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.status === "success") {
+          var d = data.data;
+          for (var key in d) {
+            if ($("#" + key).length) {
+              if (key === "edinme_tutari" && d[key]) {
+                // Para formatı
+                $("#" + key).val(
+                  parseFloat(d[key]).toLocaleString("tr-TR", {
+                    minimumFractionDigits: 2,
+                  }),
+                );
+              } else if (
+                key === "kategori_id" ||
+                key === "durum" ||
+                key === "otomatik_zimmet_is_emri" ||
+                key === "otomatik_iade_is_emri"
+              ) {
+                // Select2 alanları için
+                $("#" + key)
+                  .val(d[key])
+                  .trigger("change");
+              } else {
+                $("#" + key).val(d[key]);
+              }
             }
           }
+          $("#demirbasModal").modal("show");
         }
-        $("#demirbasModal").modal("show");
-      }
-    });
+      });
+  });
 });
 
 // Demirbaş Sil
@@ -286,9 +363,14 @@ $(document).on("click", ".demirbas-sil", function (e) {
 function resetDemirbasForm() {
   $("#demirbasForm")[0].reset();
   $("#demirbas_id").val(0);
-  $("#kategori_id").val("");
-  $("#durum").val("aktif");
+  $("#kategori_id").val("").trigger("change");
+  $("#durum").val("aktif").trigger("change");
   $("#miktar").val(1);
+  // Otomatik zimmet ayarları
+  $("#otomatik_zimmet_is_emri").val("").trigger("change");
+  $("#otomatik_iade_is_emri").val("").trigger("change");
+  // Modal içindeki tab'ı ilk sekmeye sıfırla
+  $("#demirbasModalTabs a:first").tab("show");
 }
 
 // Modal kapatıldığında formu sıfırla
@@ -302,6 +384,11 @@ $(".modal").on("shown.bs.modal", function () {
     feather.replace();
   }
   initSelect2();
+
+  // Eğer demirbasModal ise seçenekleri bir kez daha tazele (opsiyonel ama garanti)
+  if ($(this).attr("id") === "demirbasModal") {
+    fetchIsEmriSonuclari();
+  }
 });
 
 // ============== ZİMMET İŞLEMLERİ ==============
@@ -546,6 +633,7 @@ $(document).on("click", ".zimmet-detay", function (e) {
       if (data.status === "success") {
         let d = data.data;
         let gecmis = data.gecmis;
+        let hareketler = data.hareketler;
 
         // Üst bilgi kartını doldur
         $("#detay_demirbas_adi").text(d.demirbas_detay.demirbas_adi || "-");
@@ -556,10 +644,31 @@ $(document).on("click", ".zimmet-detay", function (e) {
         $("#detay_durum_badge").html(d.durum_badge);
         $("#detay_personel").text(d.personel_detay.adi_soyadi || "-");
 
-        // Geçmiş tablosunu doldur
+        // 1. HAREKET DETAYLARI TABLOSUNU DOLDUR
+        let hBody = $("#zimmetHareketBody");
+        hBody.empty();
+        if (hareketler && hareketler.length > 0) {
+          hareketler.forEach((h) => {
+            let row = `
+              <tr>
+                <td>${h.hareket_badge}</td>
+                <td class="text-center fw-bold">${h.miktar}</td>
+                <td>${h.tarih_format}</td>
+                <td class="small">${h.aciklama || ""}</td>
+                <td>${h.kaynak_badge}</td>
+              </tr>
+            `;
+            hBody.append(row);
+          });
+        } else {
+          hBody.append(
+            '<tr><td colspan="5" class="text-center text-muted">Hareket kaydı bulunamadı.</td></tr>',
+          );
+        }
+
+        // 2. GEÇMİŞ TABLOSUNU DOLDUR
         let tbody = $("#zimmetGecmisBody");
         tbody.empty();
-
         if (gecmis && gecmis.length > 0) {
           gecmis.forEach((item) => {
             let row = `

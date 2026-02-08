@@ -8,7 +8,7 @@ use App\Model\PersonelModel;
 $PuantajModel = new PuantajModel();
 $PersonelModel = new PersonelModel();
 
-$startDate = Date::firstDayOfThisMonth();
+$startDate = Date::dmY(date('Y-m-d', strtotime('-30 days')));
 $endDate = Date::today();
 $ekip_no = $personel->ekip_no ?? '';
 
@@ -40,16 +40,16 @@ foreach ($workResults as $wr) {
                     <input type="hidden" name="ekip_kodu" value="<?php echo $id; ?>">
                     <div class="row g-2">
                         <div class="col-md-2">
-                                 <?php echo Form::FormFloatInput(
-                                     type: 'text',
-                                     name: 'start_date',
-                                     value: $startDate,
-                                     placeholder: '',
-                                     label: "Başlangıç Tarihi",
-                                     icon: "calendar",
-                                     class: "form-control flatpickr"
-                                 ); ?>
-                           </div>
+                            <?php echo Form::FormFloatInput(
+                                type: 'text',
+                                name: 'start_date',
+                                value: $startDate,
+                                placeholder: '',
+                                label: "Başlangıç Tarihi",
+                                icon: "calendar",
+                                class: "form-control flatpickr"
+                            ); ?>
+                        </div>
                         <div class="col-md-2">
                             <?php echo Form::FormFloatInput(
                                 type: 'text',
@@ -97,13 +97,13 @@ foreach ($workResults as $wr) {
 
 <ul class="nav nav-tabs nav-tabs-custom nav-success mb-3" role="tablist" id="puantajTabs">
     <li class="nav-item">
-        <a class="nav-link active" data-bs-toggle="tab" href="#okuma" role="tab" data-tab-name="okuma"
+        <a class="nav-link" data-bs-toggle="tab" href="#okuma" role="tab" data-tab-name="okuma"
             data-no-url-update="true">
             Okuma İşlemleri
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" data-bs-toggle="tab" href="#yapilan_isler" role="tab" data-tab-name="yapilan_isler"
+        <a class="nav-link active" data-bs-toggle="tab" href="#yapilan_isler" role="tab" data-tab-name="yapilan_isler"
             data-no-url-update="true">
             Yapılan İşler
         </a>
@@ -111,7 +111,7 @@ foreach ($workResults as $wr) {
 </ul>
 
 <div class="tab-content">
-    <div class="tab-pane active" id="okuma" role="tabpanel">
+    <div class="tab-pane" id="okuma" role="tabpanel">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h4 class="card-title mb-0">Endeks Okuma Raporu</h4>
@@ -148,7 +148,7 @@ foreach ($workResults as $wr) {
             </div>
         </div>
     </div>
-    <div class="tab-pane" id="yapilan_isler" role="tabpanel">
+    <div class="tab-pane active" id="yapilan_isler" role="tabpanel">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h4 class="card-title mb-0">İş Listesi</h4>
@@ -282,7 +282,9 @@ foreach ($workResults as $wr) {
         }
 
         // Initial load
-        loadTabContent('okuma');
+        loadTabContent('yapilan_isler');
+        $('#workTypeFilterContainer').show();
+        $('#workResultFilterContainer').show();
 
         // T ab click event
         $('#puantajTabs a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {

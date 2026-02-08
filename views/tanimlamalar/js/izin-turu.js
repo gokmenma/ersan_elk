@@ -10,6 +10,7 @@ $(document).on("click", "#actionEkle", function () {
   // Varsayılan değerler
   $("#ucretli_mi").prop("checked", true);
   $("#personel_gorebilir").prop("checked", true);
+  $("#yetkili_onayina_tabi").prop("checked", false);
   $("#renk").val("bg-primary/10 text-primary");
   $("#ikon").val("event");
 });
@@ -22,10 +23,16 @@ $(document).on("click", "#actionKaydet", function () {
       izin_turu: {
         required: true,
       },
+      kisa_kod: {
+        required: true,
+      },
     },
     messages: {
       izin_turu: {
         required: "İzin Türü boş bırakılamaz",
+      },
+      kisa_kod: {
+        required: "Kısa Kod boş bırakılamaz",
       },
     },
     errorElement: "span",
@@ -49,6 +56,10 @@ $(document).on("click", "#actionKaydet", function () {
   formData.set(
     "personel_gorebilir",
     $("#personel_gorebilir").is(":checked") ? 1 : 0,
+  );
+  formData.set(
+    "yetkili_onayina_tabi",
+    $("#yetkili_onayina_tabi").is(":checked") ? 1 : 0,
   );
 
   fetch(url, {
@@ -103,6 +114,7 @@ $(document).on("click", ".duzenle", function (e) {
         $("#izin_turu_id").val(id);
 
         $("#izin_turu").val(data.data.tur_adi);
+        $("#kisa_kod").val(data.data.kisa_kod);
         $("#aciklama").val(data.data.aciklama);
 
         // Checkboxları ayarla
@@ -110,6 +122,10 @@ $(document).on("click", ".duzenle", function (e) {
         $("#personel_gorebilir").prop(
           "checked",
           data.data.personel_gorebilir == 1,
+        );
+        $("#yetkili_onayina_tabi").prop(
+          "checked",
+          data.data.yetkili_onayina_tabi == 1,
         );
 
         // Renk ve İkon

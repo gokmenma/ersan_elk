@@ -30,8 +30,8 @@ class Helper
         if (is_numeric($value) && !is_string($value))
             return $value;
 
-        // Para birimi ve boşlukları temizle
-        $value = str_replace(['₺', ' ', '$', '€'], '', $value);
+        // Para birimi, boşluklar ve diğer karakterleri temizle
+        $value = str_replace(['₺', ' ', '$', '€', 'TL', 'try', 'TRY'], '', $value);
 
         // Sadece rakam, nokta, virgül ve eksi kalsın
         $value = preg_replace('/[^\d.,-]/', '', $value);
@@ -41,22 +41,24 @@ class Helper
 
         if ($dotPos !== false && $commaPos !== false) {
             if ($commaPos > $dotPos) {
-                // TR formatı: 1.234,56
+                // TR formatı: 1.234.567,89
                 $value = str_replace('.', '', $value);
                 $value = str_replace(',', '.', $value);
             } else {
-                // US formatı: 1,234.56
+                // US formatı: 1,234,567.89
                 $value = str_replace(',', '', $value);
             }
         } elseif ($commaPos !== false) {
-            // Sadece virgül var
-            if (preg_match('/,\d{3}$/', $value)) {
+            // Sadece virgül var. TR'de bu her zaman decimaldir (örn: 1000,50)
+            // ANCAK bazen binlik ayracı olarak kullanılmış olabilir (örn: 1,000)
+            if (preg_match('/^\d{1,3}(,\d{3})+$/', $value)) {
                 $value = str_replace(',', '', $value);
             } else {
                 $value = str_replace(',', '.', $value);
             }
         } elseif ($dotPos !== false) {
-            // Sadece nokta var
+            // Sadece nokta var. TR'de bu binlik ayracıdır (örn: 1.000)
+            // US'de decimaldir (örn: 1000.50)
             if (preg_match('/\.\d{3}$/', $value)) {
                 $value = str_replace('.', '', $value);
             }

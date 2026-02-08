@@ -743,16 +743,19 @@ class BordroPersonelModel extends Model
             $tarih = date('d.m.Y', strtotime($avans->talep_tarihi));
             $aciklamaPattern = "[Avans] $tarih - %";
 
-            // Bu avans için zaten kesinti var mı kontrol et
+
+            // Bu avans için zaten kesinti var mı kontrol et (silinmiş olanlar dahil)
+            // NOT: silinme_tarihi kontrolü YAPILMIYOR çünkü silinmiş kesintiler de sayılmalı.
+            // Bu sayede kullanıcı bir kesintiyi sildiğinde, maaş hesaplamasında tekrar oluşturulmaz.
             $mevcutKontrol = $this->db->prepare("
                 SELECT id FROM personel_kesintileri
                 WHERE personel_id = ? AND donem_id = ? AND tur = 'avans' 
-                AND aciklama LIKE ? AND silinme_tarihi IS NULL
+                AND aciklama LIKE ?
             ");
             $mevcutKontrol->execute([$personel_id, $donem_id, $aciklamaPattern]);
 
             if ($mevcutKontrol->fetch()) {
-                // Mevcut kesinti var, yeniden oluşturma (durumu korumak için)
+                // Mevcut kesinti var (veya silinmiş), yeniden oluşturma
                 $toplamAvans += $tutar;
                 continue;
             }
@@ -794,11 +797,9 @@ class BordroPersonelModel extends Model
         ];
 
         // Günlük ücreti hesapla (brüt maaş / 30)
+        // NOT: Prim Usülü gibi maaş türlerinde brüt maaş 0 olabilir
+        // Bu durumda kesinti hesaplanmaz ama izin gün sayısı yine de döndürülmeli
         $gunlukUcret = $brutMaas / 30;
-
-        if ($gunlukUcret <= 0) {
-            return $sonuc;
-        }
 
         // NOT: Mevcut kayıtları silmiyoruz, her izin türü için kontrol edip güncelliyoruz
         // Bu sayede onay durumu korunuyor
@@ -914,34 +915,42 @@ class BordroPersonelModel extends Model
         }
 
         // Her izin türü için ayrı kesinti kaydı oluştur veya güncelle
-        foreach ($izinGruplari as $turAdi => $gunSayisi) {
-            $kesinti = round($gunlukUcret * $gunSayisi, 2);
-            $aciklama = "[Ücretsiz İzin] $turAdi ($gunSayisi gün x " . number_format($gunlukUcret, 2, ',', '.') . " ₺)";
-            $aciklamaPattern = "[Ücretsiz İzin] $turAdi (%";
+        // Sadece günlük ücret > 0 ise kesinti kaydı oluştur (Prim Usülü için atla)
+        if ($gunlukUcret > 0) {
+            foreach ($izinGruplari as $turAdi => $gunSayisi) {
+                $kesinti = round($gunlukUcret * $gunSayisi, 2);
+                $aciklama = "[Ücretsiz İzin] $turAdi ($gunSayisi gün x " . number_format($gunlukUcret, 2, ',', '.') . " ₺)";
+                $aciklamaPattern = "[Ücretsiz İzin] $turAdi (%";
 
-            // Bu izin türü için mevcut kesinti var mı kontrol et
-            $mevcutKontrol = $this->db->prepare("
-                SELECT id FROM personel_kesintileri
+                // Bu izin türü için mevcut kesinti var mı kontrol et (silinmiş olanlar dahil)
+                // NOT: Silinmiş kayıtları da kontrol ediyoruz çünkü kullanıcı bir kesintiyi sildiğinde
+                // maaş hesaplamasında tekrar oluşturulmasını istemiyoruz.
+                $mevcutKontrol = $this->db->prepare("
+                SELECT id, silinme_tarihi FROM personel_kesintileri
                 WHERE personel_id = ? AND donem_id = ? AND tur = 'izin_kesinti' 
-                AND aciklama LIKE ? AND silinme_tarihi IS NULL
+                AND aciklama LIKE ?
             ");
-            $mevcutKontrol->execute([$personel_id, $donem_id, $aciklamaPattern]);
-            $mevcut = $mevcutKontrol->fetch(PDO::FETCH_OBJ);
+                $mevcutKontrol->execute([$personel_id, $donem_id, $aciklamaPattern]);
+                $mevcut = $mevcutKontrol->fetch(PDO::FETCH_OBJ);
 
-            if ($mevcut) {
-                // Mevcut kayıt var, sadece tutarı ve açıklamayı güncelle (durumu koru)
-                $updateSql = $this->db->prepare("
+                if ($mevcut) {
+                    // Eğer kayıt silinmişse, yeniden oluşturma (kullanıcı bilinçli olarak silmiş)
+                    if ($mevcut->silinme_tarihi !== null && $mevcut->silinme_tarihi !== '' && $mevcut->silinme_tarihi !== '0000-00-00 00:00:00') {
+                        continue; // Silinmiş kayıt, atla
+                    }
+                    // Mevcut kayıt var ve silinmemiş, sadece tutarı ve açıklamayı güncelle (durumu koru)
+                    $updateSql = $this->db->prepare("
                     UPDATE personel_kesintileri 
                     SET tutar = ?, aciklama = ?, updated_at = NOW()
                     WHERE id = ?
                 ");
-                $updateSql->execute([$kesinti, $aciklama, $mevcut->id]);
-            } else {
-                // Mevcut kayıt yok, yeni oluştur
-                $this->addKesinti($personel_id, $donem_id, $aciklama, $kesinti, 'izin_kesinti', 'onaylandi');
+                    $updateSql->execute([$kesinti, $aciklama, $mevcut->id]);
+                } else {
+                    // Mevcut kayıt yok, yeni oluştur
+                    $this->addKesinti($personel_id, $donem_id, $aciklama, $kesinti, 'izin_kesinti', 'onaylandi');
+                }
             }
-        }
-
+        } // if ($gunlukUcret > 0)
         $sonuc['toplam_gun'] = $toplamIzinGunu;
         $sonuc['toplam_kesinti'] = $toplamKesinti;
         $sonuc['izin_detaylari'] = $izinDetaylari;
@@ -1071,16 +1080,22 @@ class BordroPersonelModel extends Model
         if ($tutar > 0) {
             $aciklama = "[BES] Bireysel Emeklilik Kesintisi (%$oran)";
 
-            // Mevcut BES kesintisi var mı kontrol et
+            // Mevcut BES kesintisi var mı kontrol et (silinmiş olanlar dahil)
+            // NOT: Silinmiş kayıtları da kontrol ediyoruz çünkü kullanıcı bir kesintiyi sildiğinde
+            // maaş hesaplamasında tekrar oluşturulmasını istemiyoruz.
             $mevcutKontrol = $this->db->prepare("
-                SELECT id FROM personel_kesintileri
-                WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[BES]%' AND silinme_tarihi IS NULL
+                SELECT id, silinme_tarihi FROM personel_kesintileri
+                WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[BES]%'
             ");
             $mevcutKontrol->execute([$personel_id, $donem_id]);
             $mevcut = $mevcutKontrol->fetch(PDO::FETCH_OBJ);
 
             if ($mevcut) {
-                // Mevcut kayıt var, sadece tutarı güncelle (durumu koru)
+                // Eğer kayıt silinmişse, yeniden oluşturma (kullanıcı bilinçli olarak silmiş)
+                if ($mevcut->silinme_tarihi !== null && $mevcut->silinme_tarihi !== '' && $mevcut->silinme_tarihi !== '0000-00-00 00:00:00') {
+                    return; // Silinmiş kayıt, atla
+                }
+                // Mevcut kayıt var ve silinmemiş, sadece tutarı güncelle (durumu koru)
                 $updateSql = $this->db->prepare("
                     UPDATE personel_kesintileri 
                     SET tutar = ?, aciklama = ?, updated_at = NOW()
@@ -1152,8 +1167,12 @@ class BordroPersonelModel extends Model
 
         // Maaş durumu kontrolü (Net ise vergisiz/sigortasız, Prim Usülü ise özel hesaplama)
         $maasDurumuRaw = $kayit->maas_durumu ?? 'brüt';
-        $maasDurumu = mb_strtolower($maasDurumuRaw, 'UTF-8');
-        $isNetMaas = ($maasDurumu === 'net');
+        $maasDurumu = mb_strtolower(trim($maasDurumuRaw), 'UTF-8');
+
+        // Net maaş kontrolü - esnek karşılaştırma
+        // "Net", "NET", "net", "Net Maaş", "net maaş" gibi tüm varyasyonları yakala
+        $isNetMaas = (stripos($maasDurumuRaw, 'net') !== false);
+
         // Prim Usülü için esnek karşılaştırma (Türkçe karakter encoding sorunları için)
         $isPrimUsulu = (stripos($maasDurumuRaw, 'Prim') !== false || stripos($maasDurumu, 'prim') !== false);
 
@@ -1527,18 +1546,26 @@ class BordroPersonelModel extends Model
         $damgaVergisiMatrahi = $calisanBrutMaas + $brutEkOdemeler;
         $damgaVergisi = $damgaVergisiMatrahi * $damgaVergisiOrani;
 
-        // Net Maaş Hesabı
-        // Net = Brüt - Ücretsiz İzin - Yasal Kesintiler + Net Ek Ödemeler + Brüt Ek Ödemeler - Diğer Kesintiler
-        // NOT: Brüt ek ödemeler de personele ödenir (vergileri ayrıca hesaplanmıştır)
-        $netMaas = $brutMaas
-            - $ucretsizIzinKesinti
-            - $sgkIsci - $issizlikIsci - $gelirVergisi - $damgaVergisi
-            + $netEkOdemeler
-            + $brutEkOdemeler
-            - $digerKesintiler;
-
         // Toplam ek ödemeler (gösterim için)
         $toplamEkOdeme = $brutEkOdemeler + $netEkOdemeler;
+
+        // Net Maaş Hesabı
+        if ($isNetMaas || $isPrimUsulu) {
+            // ========== NET VE PRİM USULÜ İÇİN BASİT HESAPLAMA ==========
+            // Net Maaş = Maaş Tutarı + Toplam Ek Ödemeler - Toplam Kesintiler
+            // Yasal kesintiler (SGK, Gelir Vergisi, Damga Vergisi) bu tipler için hesaplanmaz
+            $netMaas = $brutMaas + $toplamEkOdeme - $toplamKesinti;
+        } else {
+            // ========== BRÜT MAAŞ İÇİN TAM HESAPLAMA ==========
+            // Net = Brüt - Ücretsiz İzin - Yasal Kesintiler + Net Ek Ödemeler + Brüt Ek Ödemeler - Diğer Kesintiler
+            // NOT: Brüt ek ödemeler de personele ödenir (vergileri ayrıca hesaplanmıştır)
+            $netMaas = $brutMaas
+                - $ucretsizIzinKesinti
+                - $sgkIsci - $issizlikIsci - $gelirVergisi - $damgaVergisi
+                + $netEkOdemeler
+                + $brutEkOdemeler
+                - $digerKesintiler;
+        }
 
         // İşveren Maliyetleri (çalışılan brüt üzerinden)
         $sgkIsveren = $sgkMatrahi * $sgkIsverenOrani;
@@ -1546,51 +1573,138 @@ class BordroPersonelModel extends Model
         $toplamMaliyet = $calisanBrutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler;
 
         // ========== ÖDEME DAĞILIMI HESAPLAMA ==========
-        // Sodexo = Personel tablosundaki sodexo tutarı
-        $sodexoOdemesi = floatval($kayit->sodexo ?? 0);
+        // Fiili çalışma günü (30 günden ücretsiz ve ücretli izinler düşülmüş)
+        $fiiliCalismaGunu = 30 - $ucretsizIzinGunu - $ucretliIzinGunu;
+        if ($fiiliCalismaGunu < 0) {
+            $fiiliCalismaGunu = 0;
+        }
+
+        // Sodexo tutarını fiili çalışma gününe göre oranla (30 gün üzerinden)
+        $aylikSodexo = floatval($kayit->sodexo ?? 0);
+        $sodexoOdemesi = ($aylikSodexo / 30) * $fiiliCalismaGunu;
+
+
+        // İcra kesintisini bul (kesintilerden)
+        $icraKesintisi = 0;
+        foreach ($kesintiler as $kesinti) {
+            if ($kesinti->tur === 'icra') {
+                $icraKesintisi += floatval($kesinti->tutar);
+            }
+        }
 
         if ($isPrimUsulu) {
             // Prim Usülü hesaplama
-            // Toplam prim = Net ek ödemeler + Brüt ek ödemeler (primler)
+            // Ödeme sıralaması:
+            // 1. Önce Sodexo (çalışma gününe göre oranlanır - zaten yukarıda hesaplandı)
+            // 2. Sonra Banka = Minimum asgari ücret neti (çalışma gününe oranlı)
+            // 3. Sonra İcra kesintisi (elden ödemeden düşülür)
+            // 4. En son Elden ödeme = Net maaş - Banka - Sodexo - İcra
+
             $toplamPrim = $netMaas; // Net maaş zaten prim toplamını içeriyor
 
             // Asgari ücret net tutarını al
-            $asgariUcretNet = $parametreModel->getGenelAyar('asgari_ucret_net', $donemTarihi) ?? 26050.00;
+            $asgariUcretNet = $parametreModel->getGenelAyar('asgari_ucret_net', $donemTarihi) ?? 28075.00;
 
-            if ($toplamPrim > $asgariUcretNet) {
-                // Prim asgari ücret neti aştı
-                // Önce asgari ücret netten sodexo düş
-                $sodexoDusenNet = max(0, $asgariUcretNet - $sodexoOdemesi);
-
-                // Kalan tutarı bankaya yatır
-                $bankaOdemesi = $sodexoDusenNet;
-
-                // Asgari ücret üstü tutarı
-                $asgariUstTutar = $toplamPrim - $asgariUcretNet;
-
-                // Elden ödeme = Asgari üstü tutar
-                $eldenOdeme = $asgariUstTutar;
+            // Bankaya yatacak minimum tutar (asgari ücretin çalışma gününe oranı)
+            if ($fiiliCalismaGunu >= 30) {
+                $bankaYatacakMinimum = $asgariUcretNet;
             } else {
-                // Prim asgari ücret altında, normal dağılım
-                $bankaIcinMaksimum = max(0, $toplamPrim - $sodexoOdemesi);
-                $bankaOdemesi = $bankaIcinMaksimum;
-                $eldenOdeme = 0;
+                $gunlukAsgariUcret = $asgariUcretNet / 30;
+                $bankaYatacakMinimum = $gunlukAsgariUcret * $fiiliCalismaGunu;
             }
+
+            // 1. Önce Sodexo düşülür (zaten hesaplandı)
+            // 2. Bankaya yatacak tutar = Minimum asgari ücret tutarı
+            // Ancak net maaş - sodexo'dan büyük olamaz
+            $bankaIcinMaksimum = max(0, $toplamPrim - $sodexoOdemesi);
+            $bankaOdemesi = min($bankaYatacakMinimum, $bankaIcinMaksimum);
+
+            // Banka tutarı minimum asgari ücretin altına düşmemeli (yeterli bakiye varsa)
+            if ($bankaOdemesi < $bankaYatacakMinimum && $bankaIcinMaksimum >= $bankaYatacakMinimum) {
+                $bankaOdemesi = $bankaYatacakMinimum;
+            }
+
+            // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra (icra elden'den düşülür)
+            $eldenOdeme = max(0, $toplamPrim - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi);
+        } elseif ($isNetMaas) {
+            // ========== NET MAAŞ HESAPLAMA ==========
+            // Ödeme sıralaması:
+            // 1. Önce Sodexo hesaplanır (çalışma gününe göre oranlanır)
+            // 2. Sonra Bankaya yatacak tutar = Asgari ücret neti (günlük oranlı) - Bu tutar minimum garantidir
+            // 3. Sonra İcra kesintisi (elden ödemeden düşülür, bankadan değil)
+            // 4. En son Elden ödeme = Net maaş - Banka - Sodexo - İcra
+
+            // Asgari ücret net tutarını al
+            $asgariUcretNet = $parametreModel->getGenelAyar('asgari_ucret_net', $donemTarihi) ?? 28075.00;
+
+            // Net maaşı günlük oranla (eksik gün varsa)
+            if ($fiiliCalismaGunu < 30 && $fiiliCalismaGunu > 0) {
+                // Net maaşı günlük oranla
+                $gunlukNetMaas = $brutMaas / 30; // brutMaas = net maaş (net durumda)
+                $oranliNetMaas = $gunlukNetMaas * $fiiliCalismaGunu;
+
+                // Net maaşı güncelle (ek ödemeler ve kesintiler dahil)
+                $netMaas = $oranliNetMaas + $netEkOdemeler + $brutEkOdemeler - $digerKesintiler;
+            }
+
+            // Bankaya yatacak minimum tutar (asgari ücret netinden günlük oranlı)
+            // Bu tutar asla asgari ücretin çalışma gününe oranının altına düşmemeli
+            if ($fiiliCalismaGunu >= 30) {
+                // Tam maaş - Asgari ücret neti bankaya
+                $bankaYatacakMinimum = $asgariUcretNet;
+            } else {
+                // Eksik gün - Asgari ücretin günlüğü × çalışma günü
+                $gunlukAsgariUcret = $asgariUcretNet / 30;
+                $bankaYatacakMinimum = $gunlukAsgariUcret * $fiiliCalismaGunu;
+            }
+
+            // 1. Önce Sodexo düşülür (zaten yukarıda hesaplandı)
+            // 2. Bankaya yatacak tutar = Minimum banka tutarı (icra kesintisi bankadan düşülmez!)
+            $bankaYatacakBrut = $bankaYatacakMinimum;
+            $bankaOdemesi = $bankaYatacakMinimum;
+
+            // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra (icra elden ödeme'den düşülür)
+            $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi);
         } else {
-            // Normal hesaplama (Brüt veya Net)
-            // Banka = Personelin maas_tutari değeri, ancak net maaştan büyük olamaz
-            $bankaOdemesiTalep = floatval($kayit->maas_tutari ?? 0);
-            // Net maaş - sodexo çıktıktan sonra bankaya yatacak maksimum tutar
+            // Normal hesaplama (Brüt)
+            // Ödeme sıralaması:
+            // 1. Önce Sodexo (çalışma gününe göre oranlanır - zaten yukarıda hesaplandı)
+            // 2. Sonra Banka = Minimum asgari ücret neti (çalışma gününe oranlı) - Bu tutar minimum garantidir
+            // 3. Sonra İcra kesintisi (elden ödemeden düşülür, bankadan değil)
+            // 4. En son Elden ödeme = Net maaş - Banka - Sodexo - İcra
+
+            // Asgari ücret net tutarını al (brüt hesaplama için de gerekli)
+            $asgariUcretNet = $parametreModel->getGenelAyar('asgari_ucret_net', $donemTarihi) ?? 28075.00;
+
+            // Bankaya yatacak minimum tutar (asgari ücretin çalışma gününe oranı)
+            if ($fiiliCalismaGunu >= 30) {
+                $bankaYatacakMinimum = $asgariUcretNet;
+            } else {
+                $gunlukAsgariUcret = $asgariUcretNet / 30;
+                $bankaYatacakMinimum = $gunlukAsgariUcret * $fiiliCalismaGunu;
+            }
+
+            // 1. Önce Sodexo düşülür (zaten hesaplandı)
+            // 2. Bankaya yatacak tutar = Minimum asgari ücret tutarı
+            // Ancak net maaş - sodexo'dan büyük olamaz
             $bankaIcinMaksimum = max(0, $netMaas - $sodexoOdemesi);
-            // Banka ödemesi, talep edilen tutar ile maksimum tutardan küçük olanı
-            $bankaOdemesi = min($bankaOdemesiTalep, $bankaIcinMaksimum);
-            // Elden = Net Maaş - Banka - Sodexo (negatif olamaz)
-            $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi);
+            $bankaOdemesi = min($bankaYatacakMinimum, $bankaIcinMaksimum);
+
+            // Banka tutarı minimum asgari ücretin altına düşmemeli (yeterli bakiye varsa)
+            if ($bankaOdemesi < $bankaYatacakMinimum && $bankaIcinMaksimum >= $bankaYatacakMinimum) {
+                $bankaOdemesi = $bankaYatacakMinimum;
+            }
+
+            // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra (icra elden'den düşülür)
+            $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi);
         }
 
         // Hesaplama Snapshot (JSON)
         $hesaplamaDetay = [
             'hesaplama_tarihi' => date('Y-m-d H:i:s'),
+            'maas_durumu' => $maasDurumuRaw,
+            'is_net_maas' => $isNetMaas,
+            'is_prim_usulu' => $isPrimUsulu,
             'donem' => [
                 'id' => $kayit->donem_id,
                 'baslangic' => $donemTarihi,
@@ -1603,19 +1717,28 @@ class BordroPersonelModel extends Model
                 'sgk_isveren_orani' => $sgkIsverenOrani * 100,
                 'issizlik_isveren_orani' => $issizlikIsverenOrani * 100,
                 'damga_vergisi_orani' => $damgaVergisiOrani * 100,
-                'calisma_gunu_sayisi' => $calismaGunuSayisi
+                'calisma_gunu_sayisi' => $calismaGunuSayisi,
+                'asgari_ucret_net' => $isNetMaas || $isPrimUsulu ? ($asgariUcretNet ?? 0) : 0
             ],
             'matrahlar' => [
                 'brut_maas' => round($brutMaas, 2),
                 'ucretsiz_izin_kesinti' => round($ucretsizIzinKesinti, 2),
                 'ucretsiz_izin_gunu' => $ucretsizIzinGunu,
                 'ucretli_izin_gunu' => $ucretliIzinGunu,
+                'fiili_calisma_gunu' => $fiiliCalismaGunu,
                 'calisan_brut_maas' => round($calisanBrutMaas, 2),
                 'sgk_matrahi' => round($sgkMatrahi, 2),
                 'gelir_vergisi_matrahi' => round($gelirVergisiMatrahi, 2),
                 'damga_vergisi_matrahi' => round($damgaVergisiMatrahi, 2),
                 'onceki_kumulatif' => round($kumulatifMatrah, 2),
                 'yeni_kumulatif' => round($yeniKumulatifMatrah, 2)
+            ],
+            'odeme_dagilimi' => [
+                'icra_kesintisi' => round($icraKesintisi, 2),
+                'banka_brut' => isset($bankaYatacakBrut) ? round($bankaYatacakBrut, 2) : 0,
+                'banka_net' => round($bankaOdemesi, 2),
+                'sodexo' => round($sodexoOdemesi, 2),
+                'elden' => round($eldenOdeme, 2)
             ],
             'ek_odemeler' => $ekOdemeDetaylari,
             'kesintiler' => $kesintiDetaylari,
@@ -1736,13 +1859,15 @@ class BordroPersonelModel extends Model
 
     /**
      * Personelin dönemdeki onay bekleyen kesinti sayısını ve toplam tutarını getirir
+     * Silinmiş kesintiler hariç tutulur
      */
     public function getOnayBekleyenKesintiler($personel_id, $donem_id)
     {
         $sql = $this->db->prepare("
             SELECT COUNT(*) as adet, COALESCE(SUM(tutar), 0) as toplam_tutar
             FROM personel_kesintileri
-            WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
+            WHERE personel_id = ? AND donem_id = ? 
+              AND silinme_tarihi IS NULL
               AND durum = 'beklemede'
         ");
         $sql->execute([$personel_id, $donem_id]);
