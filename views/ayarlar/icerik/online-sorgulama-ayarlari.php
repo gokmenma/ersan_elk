@@ -16,10 +16,15 @@ $online_sorgulama_puantaj_saat = $allSettings['online_sorgulama_puantaj_saat'] ?
 $online_sorgulama_firma_baslangic = $allSettings['online_sorgulama_firma_baslangic'] ?? ($_SESSION['firma_kodu'] ?? '17');
 $online_sorgulama_firma_bitis = $allSettings['online_sorgulama_firma_bitis'] ?? ($_SESSION['firma_kodu'] ?? '17');
 
-// API Ayarları
-$online_sorgulama_api_url = $allSettings['online_sorgulama_api_url'] ?? '';
-$online_sorgulama_api_kullanici = $allSettings['online_sorgulama_api_kullanici'] ?? '';
-$online_sorgulama_api_sifre = $allSettings['online_sorgulama_api_sifre'] ?? '';
+// Endeks Okuma API Ayarları
+$api_endeks_url = $allSettings['api_endeks_url'] ?? 'https://yonetim.maraskaski.gov.tr/api/api_okuma_secure.php?action=getData';
+$api_endeks_kullanici = $allSettings['api_endeks_kullanici'] ?? '';
+$api_endeks_sifre = $allSettings['api_endeks_sifre'] ?? 'sk_live_DSOSTjHN195B4NUpEaB9NdYtW7xQ8EVjZD2p2ssW';
+
+// Kesme/Açma API Ayarları
+$api_puantaj_url = $allSettings['api_puantaj_url'] ?? 'https://yonetim.maraskaski.gov.tr/api/api_isemri_secure.php?action=getIsEmri';
+$api_puantaj_kullanici = $allSettings['api_puantaj_kullanici'] ?? '';
+$api_puantaj_sifre = $allSettings['api_puantaj_sifre'] ?? 'sk_live_DSOSTjHN195B4NUpEaB9NdYtW7xQ8EVjZD2p2ssW';
 
 // Son çalışma zamanları
 $online_sorgulama_endeks_son_calistirma = $allSettings['online_sorgulama_endeks_son_calistirma'] ?? '08:15';
@@ -177,51 +182,68 @@ for ($saat = 0; $saat < 24; $saat++) {
         </div>
     </div>
 
-    <!-- API AYARLARI -->
+    <!-- ENDEKS API AYARLARI -->
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-light">
-            <h5 class="mb-0 text-primary"><i data-feather="link" class="me-2"></i>API Bağlantı Ayarları</h5>
+            <h5 class="mb-0 text-primary"><i data-feather="link" class="me-2"></i>Endeks Okuma API Ayarları</h5>
         </div>
         <div class="card-body p-4">
-            <div class="alert alert-warning">
-                <i data-feather="info" class="me-2"></i>
-                API bağlantı bilgileri henüz sağlanmadığı için şu an test verileri kullanılmaktadır.
-                API hazır olduğunda bu alanları doldurun.
-            </div>
             <div class="row">
                 <div class="col-md-12 mb-3">
                     <?php echo Form::FormFloatInput(
                         "url",
-                        "online_sorgulama_api_url",
-                        $online_sorgulama_api_url,
+                        "api_endeks_url",
+                        $api_endeks_url,
                         "",
-                        "API URL",
+                        "Endeks API URL",
                         "link",
                         "form-control"
                     ); ?>
-                    <div class="form-text">Örn:
-                        http://10.185.0.52:9090/webBase/faces/jsfPage/report/gelir/su/Isemri...</div>
                 </div>
             </div>
             <div class="row">
-                <div class="col-md-6 mb-3">
+                <div class="col-md-12 mb-3">
                     <?php echo Form::FormFloatInput(
-                        "text",
-                        "online_sorgulama_api_kullanici",
-                        $online_sorgulama_api_kullanici,
+                        "password",
+                        "api_endeks_sifre_yeni",
                         "",
-                        "API Kullanıcı Adı",
-                        "user",
+                        "",
+                        "Endeks API Key / Şifre (Değiştirmek için doldurun)",
+                        "key",
                         "form-control"
                     ); ?>
                 </div>
-                <div class="col-md-6 mb-3">
+            </div>
+        </div>
+    </div>
+
+    <!-- KESME/AÇMA API AYARLARI -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0 text-primary"><i data-feather="link" class="me-2"></i>Kesme/Açma API Ayarları</h5>
+        </div>
+        <div class="card-body p-4">
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <?php echo Form::FormFloatInput(
+                        "url",
+                        "api_puantaj_url",
+                        $api_puantaj_url,
+                        "",
+                        "Kesme/Açma API URL",
+                        "link",
+                        "form-control"
+                    ); ?>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12 mb-3">
                     <?php echo Form::FormFloatInput(
                         "password",
-                        "online_sorgulama_api_sifre_yeni",
+                        "api_puantaj_sifre_yeni",
                         "",
                         "",
-                        "API Şifresi (Değiştirmek için doldurun)",
+                        "Kesme/Açma API Key / Şifre (Değiştirmek için doldurun)",
                         "key",
                         "form-control"
                     ); ?>
@@ -231,9 +253,9 @@ for ($saat = 0; $saat < 24; $saat++) {
     </div>
 
     <!-- CRON BİLGİSİ -->
-    <div class="card shadow-sm mb-4 border-info">
-        <div class="card-header bg-info bg-opacity-10">
-            <h5 class="mb-0 text-info"><i data-feather="terminal" class="me-2"></i>Cron Job Kurulumu</h5>
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0 text-primary"><i data-feather="terminal" class="me-2"></i>Cron Job Kurulumu</h5>
         </div>
         <div class="card-body p-4">
             <p>Otomatik sorgulama için sunucunuzda aşağıdaki cron job'u eklemeniz gerekmektedir:</p>

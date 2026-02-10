@@ -41,9 +41,18 @@ switch ($action) {
         }
 
         // Boş şifre alanlarının mevcut şifreyi silmesini engelle
-        $passwordKeys = ['smtp_sifre_yeni', 'sms_api_sifre_yeni', 'online_sorgulama_api_sifre_yeni'];
-        foreach ($passwordKeys as $passKey) {
-            if (isset($settingsToUpdate[$passKey]) && empty(trim($settingsToUpdate[$passKey]))) {
+        $passwordKeys = [
+            'smtp_sifre_yeni' => 'smtp_sifre',
+            'sms_api_sifre_yeni' => 'sms_api_sifre',
+            'online_sorgulama_api_sifre_yeni' => 'online_sorgulama_api_sifre',
+            'api_endeks_sifre_yeni' => 'api_endeks_sifre',
+            'api_puantaj_sifre_yeni' => 'api_puantaj_sifre'
+        ];
+        foreach ($passwordKeys as $passKey => $dbKey) {
+            if (isset($settingsToUpdate[$passKey])) {
+                if (!empty(trim($settingsToUpdate[$passKey]))) {
+                    $settingsToUpdate[$dbKey] = $settingsToUpdate[$passKey];
+                }
                 unset($settingsToUpdate[$passKey]);
             }
         }

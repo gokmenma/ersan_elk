@@ -82,7 +82,7 @@ use App\Service\Gate;
 
         .table-puantaj .is-sunday {
             background-color: #f9f4f4 !important;
-            color: #f3cacaff !important;
+            color: #f46a6a !important;
         }
 
         .table-puantaj th.is-sunday {
@@ -322,12 +322,84 @@ use App\Service\Gate;
 
         /* Dark mode uyumu */
         [data-bs-theme="dark"] .view-buttons {
-            background: #32394e;
+            background: #191e22 !important;
+            border: 1px solid #32394e !important;
+        }
+
+        [data-bs-theme="dark"] .view-buttons .nav-link {
+            color: #74788d !important;
+        }
+
+        [data-bs-theme="dark"] .view-buttons .nav-link:hover {
+            color: #eff2f7 !important;
         }
 
         [data-bs-theme="dark"] .view-buttons .nav-link.active {
-            background: #3b445e !important;
+            background: #282f36 !important;
             color: #eff2f7 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        [data-bs-theme="dark"] .sticky-col {
+            background-color: #282f36 !important;
+            border-color: #32394e !important;
+            color: #eff2f7 !important;
+        }
+
+        [data-bs-theme="dark"] .puantaj-table-wrapper {
+            background: #191e22 !important;
+        }
+
+        [data-bs-theme="dark"] .table-puantaj thead tr,
+        [data-bs-theme="dark"] .table-puantaj thead th {
+            background-color: #282f36 !important;
+            border-color: #32394e !important;
+            color: #eff2f7 !important;
+            box-shadow: none !important;
+        }
+
+        [data-bs-theme="dark"] .table-puantaj .day-cell {
+            background-color: #191e22 !important;
+            border-color: #32394e !important;
+        }
+
+        [data-bs-theme="dark"] .table-puantaj .personel-info {
+            background-color: #282f36 !important;
+            border-color: #32394e !important;
+            color: #eff2f7 !important;
+        }
+
+        [data-bs-theme="dark"] .table-puantaj .is-sunday {
+            background-color: rgba(244, 106, 106, 0.05) !important;
+            color: #f46a6a !important;
+        }
+
+        [data-bs-theme="dark"] .table-puantaj th.is-sunday {
+            background-color: rgba(244, 106, 106, 0.1) !important;
+            color: #f46a6a !important;
+        }
+
+        [data-bs-theme="dark"] .puantaj-table-header,
+        [data-bs-theme="dark"] .card-izin-turleri {
+            background-color: #282f36 !important;
+            border-bottom-color: #32394e !important;
+        }
+
+        [data-bs-theme="dark"] #puantaj-full-container {
+            background: #191e22 !important;
+        }
+
+        [data-bs-theme="dark"] .bg-soft-success {
+            background-color: rgba(16, 185, 129, 0.1) !important;
+        }
+
+        [data-bs-theme="dark"] .bg-soft-info {
+            background-color: rgba(59, 130, 246, 0.1) !important;
+        }
+
+        [data-bs-theme="dark"] .action-button-container {
+            background-color: #191e22 !important;
+            border-color: #32394e !important;
         }
 
         /* Sticky Header Improvements */
@@ -398,7 +470,11 @@ use App\Service\Gate;
 
         /* Thead satırına arka plan ver - border-spacing boşluğunu kapat */
         .table-puantaj thead tr {
-            background-color: #f7f7f7ff;
+            background-color: #f7f7f7;
+        }
+
+        [data-bs-theme="dark"] .table-puantaj thead tr {
+            background-color: #282f36 !important;
         }
 
         .table-puantaj thead th {
@@ -415,6 +491,10 @@ use App\Service\Gate;
         .table-puantaj thead th.sticky-col {
             z-index: 60;
             background-color: #f8f9fa !important;
+        }
+
+        [data-bs-theme="dark"] .table-puantaj thead th.sticky-col {
+            background-color: #282f36 !important;
         }
     </style>
 
@@ -456,38 +536,39 @@ use App\Service\Gate;
                         <div class="col-lg-6 col-md-12 mt-lg-0 mt-3">
                             <div class="d-flex align-items-center justify-content-lg-end gap-2">
 
-                                <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                                <div
+                                    class="action-button-container d-flex align-items-center border rounded shadow-sm p-1 gap-1">
                                     <button type="button"
-                                        class="btn btn-link btn-sm text-dark text-decoration-none px-2 d-flex align-items-center"
+                                        class="btn btn-link btn-sm text-decoration-none px-2 d-flex align-items-center"
                                         id="btn-fullscreen">
-                                        <i class="mdi mdi-fullscreen fs-5"></i>Tam Ekran <span
+                                        <i class="mdi mdi-fullscreen fs-5 me-1"></i>Tam Ekran <span
                                             class="d-none d-xl-inline ms-1"></span>
                                     </button>
 
                                     <div class="vr mx-1 my-1" style="height: 30px;"></div>
 
-                                    <?php if(Gate::allows("puantaj_sgk_rapor_islemleri")): ?>
-                                    <div class="dropdown">
-                                        <button type="button"
-                                            class="btn btn-link btn-sm text-info text-decoration-none dropdown-toggle px-2 d-flex align-items-center"
-                                            data-bs-toggle="dropdown">
-                                            <i class="mdi mdi-hospital-building fs-5"></i> <span
-                                                class="d-none d-xl-inline ms-1">SGK</span> <i
-                                                class="mdi mdi-chevron-down ms-1"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end shadow border-0">
-                                            <li><a class="dropdown-item py-2" href="javascript:void(0);"
-                                                    id="btn-sgk-onaylanmis-raporlar">
-                                                    <i class="mdi mdi-check-circle text-success me-2"></i> Onaylanmış
-                                                    Raporlar</a></li>
-                                            <li><a class="dropdown-item py-2" href="javascript:void(0);"
-                                                    id="btn-sgk-onay-bekleyen-raporlar">
-                                                    <i class="mdi mdi-clock-outline text-warning me-2"></i> Bekleyen
-                                                    Raporlar</a></li>
-                                        </ul>
-                                    </div>
+                                    <?php if (Gate::allows("puantaj_sgk_rapor_islemleri")): ?>
+                                        <div class="dropdown">
+                                            <button type="button"
+                                                class="btn btn-link btn-sm text-info text-decoration-none dropdown-toggle px-2 d-flex align-items-center"
+                                                data-bs-toggle="dropdown">
+                                                <i class="mdi mdi-hospital-building fs-5"></i> <span
+                                                    class="d-none d-xl-inline ms-1">SGK</span> <i
+                                                    class="mdi mdi-chevron-down ms-1"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                                                <li><a class="dropdown-item py-2" href="javascript:void(0);"
+                                                        id="btn-sgk-onaylanmis-raporlar">
+                                                        <i class="mdi mdi-check-circle text-success me-2"></i> Onaylanmış
+                                                        Raporlar</a></li>
+                                                <li><a class="dropdown-item py-2" href="javascript:void(0);"
+                                                        id="btn-sgk-onay-bekleyen-raporlar">
+                                                        <i class="mdi mdi-clock-outline text-warning me-2"></i> Bekleyen
+                                                        Raporlar</a></li>
+                                            </ul>
+                                        </div>
 
-                                    <div class="vr mx-1 my-1" style="height: 30px;"></div>
+                                        <div class="vr mx-1 my-1" style="height: 30px;"></div>
 
                                     <?php endif; ?>
 

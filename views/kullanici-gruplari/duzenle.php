@@ -1,6 +1,6 @@
 <style>
-<?php require_once "style.css";
-?>
+    <?php require_once "style.css";
+    ?>
 </style>
 
 <?php
@@ -20,7 +20,7 @@ $role = $UserRoles->find($role_id);
 
 <?php
 $maintitle = "Ana Sayfa";
-$title = "Yetki Yönetimi ". ($role ? " - ( " . $role->role_name . " )" : "");
+$title = "Yetki Yönetimi " . ($role ? " - ( " . $role->role_name . " )" : "");
 ?>
 <?php include 'layouts/breadcrumb.php'; ?>
 <div class="row">
@@ -38,20 +38,29 @@ $title = "Yetki Yönetimi ". ($role ? " - ( " . $role->role_name . " )" : "");
                         <span class="text-muted ms-3 d-none d-sm-inline">(<span id="requiredCount">0</span>
                             zorunlu)</span>
                     </div>
-                    <div>
-                        <a href="index?p=kullanici-gruplari/list" class="btn btn-outline-secondary">
-                            <i class=" bx bx-left-arrow-alt font-size-16 align-middle me-2"></i> Listeye Dön
+                    <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                        <a href="index?p=kullanici-gruplari/list"
+                            class="btn btn-link btn-sm text-secondary text-decoration-none px-2 d-flex align-items-center"
+                            title="Listeye Dön">
+                            <i class="mdi mdi-arrow-left fs-5 me-1"></i> Geri
                         </a>
-                        <button id="resetChanges" class="btn btn-outline-danger">
-                            <i class="bx bxs-eraser"></i> Sıfırla
+                        <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                        <button id="resetChanges"
+                            class="btn btn-link btn-sm text-danger text-decoration-none px-2 d-flex align-items-center"
+                            title="Sıfırla">
+                            <i class="mdi mdi-eraser-variant fs-5 me-1"></i> Sıfırla
                         </button>
-                        <button id="selectAllPermissions" class="btn btn-outline-primary">
-                            <i class="bx bx-check-double font-size-16 align-middle me-2"></i> Tümünü Seç
+                        <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                        <button id="selectAllPermissions"
+                            class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center"
+                            title="Tümünü Seç">
+                            <i class="mdi mdi-check-all fs-5 me-1"></i> Tümünü Seç
                         </button>
-                        <button id="savePermissions" class="btn btn-primary text-white me-2">
-                            <i class=" bx bxs-save me-1"></i> Kaydet
+                        <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                        <button id="savePermissions"
+                            class="btn btn-primary btn-sm px-4 fw-bold shadow-primary pulsate-on-change">
+                            <i class="mdi mdi-content-save-outline me-1"></i> Kaydet
                         </button>
-
                     </div>
                 </div>
             </div>
@@ -70,23 +79,24 @@ $title = "Yetki Yönetimi ". ($role ? " - ( " . $role->role_name . " )" : "");
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
-                    <div class="col-md-10">
+                    <div class="col-md-9">
 
                         <div class="filter-chips mb-2 mb-md-0 d-flex flex-wrap gap-1" id="filterChips">
 
                         </div>
                     </div>
-                    <div class="col-md-2 d-flex justify-content-end">
+                    <div class="col-md-3 d-flex justify-content-end">
 
-                        <div class="align-items-center gap-1">
-                            <button class="btn btn-sm btn-outline-primary mb-3" id="selectHighlighted">
-                                <i class="ti ti-check"></i> Arama Sonuçlarını Seç
-                            </button>
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="showTreeView">
-                                <label class="form-check-label" for="showTreeView">Ağaç Görünümü</label>
+                            <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 mb-3">
+                                <button class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center" id="selectHighlighted">
+                                    <i class="mdi mdi-checkbox-multiple-marked-outline fs-5 me-1"></i> Arama Sonuçlarını Seç
+                                </button>
+                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                                <div class="form-check form-switch ms-1">
+                                    <input class="form-check-input" type="checkbox" id="showTreeView">
+                                    <label class="form-check-label small fw-bold ms-1" for="showTreeView" style="font-size: 11px;">AĞAÇ GÖRÜNÜMÜ</label>
+                                </div>
                             </div>
-                        </div>
                     </div>
                 </div>
 

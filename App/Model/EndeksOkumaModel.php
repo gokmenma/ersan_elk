@@ -106,24 +106,22 @@ class EndeksOkumaModel extends Model
                 t.bolge LIKE :search OR
                 t.kullanici_adi LIKE :search OR
                 p.adi_soyadi LIKE :search OR
+                t.defter LIKE :search OR
+                t.sayac_durum LIKE :search OR
                 DATE_FORMAT(t.tarih, '%d.%m.%Y') LIKE :search
             )";
             $params['search'] = $searchValue;
         }
 
-        // Sütun bazlı arama
+        // Sütun bazlı arama (Yeni tablo yapısına göre güncellendi)
         $colSearchMap = [
-            0 => 't.bolge',
-            1 => 'p.adi_soyadi',
-            2 => 't.sarfiyat',
-            3 => 't.ort_sarfiyat_gunluk',
-            4 => 't.tahakkuk',
-            5 => 't.ort_tahakkuk_gunluk',
-            6 => 't.okunan_gun_sayisi',
-            7 => 't.okunan_abone_sayisi',
-            8 => 't.ort_okunan_abone_sayisi_gunluk',
-            9 => 't.okuma_performansi',
-            10 => 'DATE_FORMAT(t.tarih, "%d.%m.%Y")'
+            0 => 't.tarih',
+            1 => 't.defter',
+            2 => 't.bolge',
+            3 => 'def.tur_adi', // Ekip No
+            4 => 'p.adi_soyadi',
+            5 => 't.okunan_abone_sayisi',
+            6 => 't.sayac_durum'
         ];
 
         if (isset($request['columns']) && is_array($request['columns'])) {
@@ -138,28 +136,24 @@ class EndeksOkumaModel extends Model
         }
 
         // Filtrelenmiş kayıt sayısı
-        $filteredQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t LEFT JOIN personel p ON t.personel_id = p.id WHERE $baseWhere $searchWhere");
+        $filteredQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t LEFT JOIN personel p ON t.personel_id = p.id LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id WHERE $baseWhere $searchWhere");
         foreach ($params as $key => $val) {
             $filteredQuery->bindValue(":$key", $val);
         }
         $filteredQuery->execute();
         $recordsFiltered = $filteredQuery->fetchColumn();
 
-        // Sıralama
+        // Sıralama (Yeni tablo yapısına göre güncellendi)
         $orderColumn = 't.tarih';
         $orderDir = 'DESC';
         $colMap = [
-            0 => 't.bolge',
-            1 => 'p.adi_soyadi',
-            2 => 't.sarfiyat',
-            3 => 't.ort_sarfiyat_gunluk',
-            4 => 't.tahakkuk',
-            5 => 't.ort_tahakkuk_gunluk',
-            6 => 't.okunan_gun_sayisi',
-            7 => 't.okunan_abone_sayisi',
-            8 => 't.ort_okunan_abone_sayisi_gunluk',
-            9 => 't.okuma_performansi',
-            10 => 't.tarih'
+            0 => 't.tarih',
+            1 => 't.defter',
+            2 => 't.bolge',
+            3 => 'def.tur_adi',
+            4 => 'p.adi_soyadi',
+            5 => 't.okunan_abone_sayisi',
+            6 => 't.sayac_durum'
         ];
         if (isset($request['order'][0])) {
             $orderColIdx = $request['order'][0]['column'];
@@ -169,10 +163,11 @@ class EndeksOkumaModel extends Model
             }
         }
 
-        // Veri çekme
-        $sql = "SELECT t.*, p.adi_soyadi as personel_adi 
+        // Veri çekme (Ekip adı için tanimlamalar joinlendi)
+        $sql = "SELECT t.*, p.adi_soyadi as personel_adi, def.tur_adi as ekip_kodu_adi 
                 FROM {$this->table} t 
                 LEFT JOIN personel p ON t.personel_id = p.id 
+                LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
                 WHERE $baseWhere $searchWhere 
                 ORDER BY $orderColumn $orderDir 
                 LIMIT :start, :length";

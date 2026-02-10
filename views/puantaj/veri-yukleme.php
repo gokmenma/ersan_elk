@@ -184,19 +184,25 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="card-title">Endeks Okuma Raporu</h4>
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
-                            <button type="button" class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center" id="btnShowStats">
+                            <button type="button"
+                                class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
+                                id="btnShowStats">
                                 <i class="mdi mdi-chart-box-outline fs-5 me-1"></i> İstatistikler
                             </button>
                             <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button" id="btnExportEndeksExcel" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
+                            <button type="button" id="btnExportEndeksExcel"
+                                class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
                                 <i class="mdi mdi-file-excel fs-5 me-1"></i> Excele Aktar
                             </button>
                             <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button" class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#importOnlineIcmalRaporuModal">
+                            <button type="button"
+                                class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center"
+                                data-bs-toggle="modal" data-bs-target="#importOnlineIcmalRaporuModal">
                                 <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Online Sorgula
                             </button>
                             <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button" class="btn btn-success px-3 fw-bold shadow-success" data-bs-toggle="modal" data-bs-target="#importEndeksModal">
+                            <button type="button" class="btn btn-success px-3 fw-bold shadow-success"
+                                data-bs-toggle="modal" data-bs-target="#importEndeksModal">
                                 <i class="mdi mdi-upload me-1"></i> Dosya Yükle
                             </button>
                         </div>
@@ -205,17 +211,13 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         <table id="endeksTable" class="table table-bordered dt-responsive nowrap w-100">
                             <thead>
                                 <tr class="table-light">
-                                    <th>Bölgesi</th>
-                                    <th>Personel Adı</th>
-                                    <th>Sarfiyat</th>
-                                    <th>Ort. Sarfiyat (Günlük)</th>
-                                    <th>Tahakkuk</th>
-                                    <th>Ort. Tahakkuk (Günlük)</th>
-                                    <th>Okunan Gün</th>
-                                    <th>Okunan Abone</th>
-                                    <th>Ort. Okunan Abone</th>
-                                    <th>Okuma Perf. (%)</th>
                                     <th>Tarih</th>
+                                    <th>Defter</th>
+                                    <th>Bölgesi</th>
+                                    <th>Ekip No</th>
+                                    <th>Personel</th>
+                                    <th>Abone Sayısı</th>
+                                    <th>Sayaç Durumu</th>
                                     <th>İşlem</th>
                                 </tr>
                             </thead>
@@ -232,19 +234,25 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="card-title">İş Listesi</h4>
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
-                            <button type="button" class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center" id="btnShowPuantajStats">
+                            <button type="button"
+                                class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
+                                id="btnShowPuantajStats">
                                 <i class="mdi mdi-chart-box-outline fs-5 me-1"></i> İstatistikler
                             </button>
                             <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button" id="btnExportPuantajExcel" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
+                            <button type="button" id="btnExportPuantajExcel"
+                                class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
                                 <i class="mdi mdi-file-excel fs-5 me-1"></i> Excele Aktar
                             </button>
                             <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button" class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#importOnlinePuantajModal">
+                            <button type="button"
+                                class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center"
+                                data-bs-toggle="modal" data-bs-target="#importOnlinePuantajModal">
                                 <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Online Sorgula
                             </button>
                             <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button" class="btn btn-success px-3 fw-bold shadow-success" data-bs-toggle="modal" data-bs-target="#importPuantajModal">
+                            <button type="button" class="btn btn-success px-3 fw-bold shadow-success"
+                                data-bs-toggle="modal" data-bs-target="#importPuantajModal">
                                 <i class="mdi mdi-upload me-1"></i> Excel Yükle
                             </button>
                         </div>
@@ -276,11 +284,14 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="card-title">Kaçak Kontrol Listesi</h4>
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
-                            <button type="button" class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center" id="btnNewKacak">
+                            <button type="button"
+                                class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
+                                id="btnNewKacak">
                                 <i class="mdi mdi-plus-circle fs-5 me-1"></i> Yeni Ekle
                             </button>
                             <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button" class="btn btn-success px-3 fw-bold shadow-success" data-bs-toggle="modal" data-bs-target="#importKacakModal">
+                            <button type="button" class="btn btn-success px-3 fw-bold shadow-success"
+                                data-bs-toggle="modal" data-bs-target="#importKacakModal">
                                 <i class="mdi mdi-upload me-1"></i> Excel Yükle
                             </button>
                         </div>
@@ -598,7 +609,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <?php echo Form::FormFloatInput(
                                     type: 'text',
                                     name: 'baslangic_tarihi',
-                                    value: Date::today(),
+                                    value: Date::firstDayOfThisMonth(),
                                     placeholder: '',
                                     label: "Başlangıç Tarihi",
                                     icon: "calendar",
@@ -689,7 +700,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <?php echo Form::FormFloatInput(
                                     type: 'text',
                                     name: 'baslangic_tarihi',
-                                    value: Date::today(),
+                                    value: Date::firstDayOfThisMonth(),
                                     placeholder: '',
                                     label: "Başlangıç Tarihi",
                                     icon: "calendar",
@@ -942,17 +953,13 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     }
                 },
                 columns: [
-                    { data: 'bolge' },
-                    { data: 'personel_adi' },
-                    { data: 'sarfiyat' },
-                    { data: 'ort_sarfiyat_gunluk' },
-                    { data: 'tahakkuk' },
-                    { data: 'ort_tahakkuk_gunluk' },
-                    { data: 'okunan_gun_sayisi' },
-                    { data: 'okunan_abone_sayisi' },
-                    { data: 'ort_okunan_abone_sayisi_gunluk' },
-                    { data: 'okuma_performansi' },
                     { data: 'tarih' },
+                    { data: 'defter' },
+                    { data: 'bolge' },
+                    { data: 'ekip_no' },
+                    { data: 'personel_adi' },
+                    { data: 'okunan_abone_sayisi' },
+                    { data: 'sayac_durum' },
                     {
                         data: 'id',
                         render: function (data, type, row) {
@@ -961,7 +968,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         orderable: false
                     }
                 ],
-                order: [[10, 'desc']]
+                order: [[0, 'desc']]
             }));
         }
 
@@ -1473,17 +1480,45 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         var resultHtml = '';
                         if (res.status === 'success') {
                             resultHtml = '<div class="alert alert-success">';
-                            resultHtml += '<strong><i class="bx bx-check-circle me-2"></i>Sorgu Başarılı!</strong><br>';
+                            resultHtml += '<strong><i class="bx bx-check-circle me-2"></i>Sorgu Başarılı! (Toplam ' + (res.toplam_api_kayit || 0) + ' kayıt)</strong><br>';
                             resultHtml += '<span class="fs-5">' + res.yeni_kayit + ' adet yeni kayıt eklendi.</span>';
                             if (res.guncellenen_kayit > 0) {
                                 resultHtml += '<br><span class="text-warning">' + res.guncellenen_kayit + ' adet kayıt güncellendi.</span>';
                             }
+                            if (res.atlan_kayit_bos > 0) {
+                                resultHtml += '<br><small class="text-secondary">' + res.atlan_kayit_bos + ' adet kayıt sonuçlanmadığı (0) için atlandı.</small>';
+                            }
                             if (res.mevcut_kayitlar && res.mevcut_kayitlar.length > 0) {
-                                resultHtml += '<hr><strong>Daha önce çekilmiş kayıtlar:</strong><ul class="mb-0">';
-                                res.mevcut_kayitlar.forEach(function (item) {
-                                    resultHtml += '<li>İşlem ID: ' + item.islem_id + ' - ' + item.ekip_kodu + ' - ' + item.is_emri_tipi + '</li>';
-                                });
-                                resultHtml += '</ul>';
+                                resultHtml += '<hr><strong>Daha önce çekilmiş kayıtlar:</strong>';
+                                if (res.mevcut_kayitlar.length > 5) {
+                                    resultHtml += '<div class="d-flex align-items-center justify-content-between mt-1">';
+                                    resultHtml += '<span>' + res.mevcut_kayitlar.length + ' adet kayıt daha önce işlendiği için atlandı.</span>';
+                                    resultHtml += '<button type="button" class="btn btn-sm btn-outline-info fw-bold" onclick=\'exportToCsv(this, ' + JSON.stringify(res.mevcut_kayitlar) + ', {"islem_id":"İşlem ID","tarih":"Tarih","ekip_kodu":"Ekip Kodu","is_emri_tipi":"İş Emri Tipi","is_emri_sonucu":"İş Emri Sonucu"}, "mevcut_kayitlar")\' style="font-size: 11px;"><i class="mdi mdi-file-excel me-1"></i>Excel Olarak İndir</button>';
+                                    resultHtml += '</div>';
+                                } else {
+                                    resultHtml += '<ul class="mb-0 mt-1 small">';
+                                    res.mevcut_kayitlar.forEach(function (item) {
+                                        resultHtml += '<li>İşlem ID: ' + item.islem_id + ' - ' + item.ekip_kodu + ' - ' + item.is_emri_tipi + '</li>';
+                                    });
+                                    resultHtml += '</ul>';
+                                }
+                            }
+
+                            if (res.atlanAn_kayitlar && res.atlanAn_kayitlar.length > 0) {
+                                resultHtml += '<hr><div class="alert alert-warning mb-0 p-2"><strong>⚠️ Eşleşmeyen Ekipler (' + res.atlanAn_kayitlar.length + '):</strong><br>';
+                                if (res.atlanAn_kayitlar.length > 5) {
+                                    resultHtml += '<div class="d-flex align-items-center justify-content-between mt-1">';
+                                    resultHtml += '<span>' + res.atlanAn_kayitlar.length + ' adet kayıt ekip kodu uyuşmadığı için atlandı.</span>';
+                                    resultHtml += '<button type="button" class="btn btn-sm btn-outline-dark fw-bold" onclick=\'exportToCsv(this, ' + JSON.stringify(res.atlanAn_kayitlar) + ', {"tarih":"Tarih","ekip_kodu":"Ekip Kodu","is_emri_tipi":"İş Emri Tipi","is_emri_sonucu":"İş Emri Sonucu"}, "eslesmeyen_ekipler")\' style="font-size: 11px;"><i class="mdi mdi-file-excel me-1"></i>Excel Olarak İndir</button>';
+                                    resultHtml += '</div>';
+                                } else {
+                                    resultHtml += '<small>Sistemde tanımlı olmadığı için atlanan ekipler:</small><ul class="mb-0 mt-1 small" style="max-height:100px; overflow-y:auto;">';
+                                    res.atlanAn_kayitlar.forEach(function (item) {
+                                        resultHtml += '<li>' + item.ekip_kodu + ' (' + item.is_emri_tipi + ')</li>';
+                                    });
+                                    resultHtml += '</ul>';
+                                }
+                                resultHtml += '</div>';
                             }
                             resultHtml += '</div>';
                             // Tabloyu güncelle
@@ -1524,8 +1559,10 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 success: function (response) {
                     $('#onlineIcmalSpinner').hide();
                     $('#btnOnlineIcmalSorgula').prop('disabled', false);
+                    console.log("Raw Response:", response);
                     try {
                         var res = JSON.parse(response);
+                        console.log("Online İcmal API Yanıtı:", res);
                         var resultHtml = '';
                         if (res.status === 'success') {
                             resultHtml = '<div class="alert alert-success">';
@@ -1535,11 +1572,36 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 resultHtml += '<br><span class="text-warning">' + res.guncellenen_kayit + ' adet kayıt güncellendi.</span>';
                             }
                             if (res.mevcut_kayitlar && res.mevcut_kayitlar.length > 0) {
-                                resultHtml += '<hr><strong>Daha önce çekilmiş kayıtlar:</strong><ul class="mb-0">';
-                                res.mevcut_kayitlar.forEach(function (item) {
-                                    resultHtml += '<li>İşlem ID: ' + item.islem_id + ' - ' + item.kullanici_adi + ' - ' + item.bolge + '</li>';
-                                });
-                                resultHtml += '</ul>';
+                                resultHtml += '<hr><strong>Daha önce çekilmiş kayıtlar:</strong>';
+                                if (res.mevcut_kayitlar.length > 5) {
+                                    resultHtml += '<div class="d-flex align-items-center justify-content-between mt-1">';
+                                    resultHtml += '<span>' + res.mevcut_kayitlar.length + ' adet kayıt daha önce işlendiği için atlandı.</span>';
+                                    resultHtml += '<button type="button" class="btn btn-sm btn-outline-info fw-bold" onclick=\'exportToCsv(this, ' + JSON.stringify(res.mevcut_kayitlar) + ', {"islem_id":"İşlem ID","kullanici_adi":"Okuyucu Adı","bolge":"Bölge"}, "mevcut_kayitlar")\' style="font-size: 11px;"><i class="mdi mdi-file-excel me-1"></i>Excel Olarak İndir</button>';
+                                    resultHtml += '</div>';
+                                } else {
+                                    resultHtml += '<ul class="mb-0 mt-1 small">';
+                                    res.mevcut_kayitlar.forEach(function (item) {
+                                        resultHtml += '<li>İşlem ID: ' + item.islem_id + ' - ' + item.kullanici_adi + ' - ' + item.bolge + '</li>';
+                                    });
+                                    resultHtml += '</ul>';
+                                }
+                            }
+
+                            if (res.atlanAn_kayitlar && res.atlanAn_kayitlar.length > 0) {
+                                resultHtml += '<hr><div class="alert alert-warning mb-0 p-2"><strong>⚠️ Eşleşmeyen Ekipler (' + res.atlanAn_kayitlar.length + '):</strong><br>';
+                                if (res.atlanAn_kayitlar.length > 5) {
+                                    resultHtml += '<div class="d-flex align-items-center justify-content-between mt-1">';
+                                    resultHtml += '<span>' + res.atlanAn_kayitlar.length + ' adet kayıt ekip kodu uyuşmadığı için atlandı.</span>';
+                                    resultHtml += '<button type="button" class="btn btn-sm btn-outline-dark fw-bold" onclick=\'exportToCsv(this, ' + JSON.stringify(res.atlanAn_kayitlar) + ', {"kullanici_adi":"Okuyucu Adı","bolge":"Bölge","okuyucu_no":"Okuyucu No"}, "eslesmeyen_ekipler")\' style="font-size: 11px;"><i class="mdi mdi-file-excel me-1"></i>Excel Olarak İndir</button>';
+                                    resultHtml += '</div>';
+                                } else {
+                                    resultHtml += '<small>Sistemde tanımlı olmadığı için atlanan ekipler:</small><ul class="mb-0 mt-1 small" style="max-height:100px; overflow-y:auto;">';
+                                    res.atlanAn_kayitlar.forEach(function (item) {
+                                        resultHtml += '<li>' + item.kullanici_adi + ' (' + item.bolge + ')</li>';
+                                    });
+                                    resultHtml += '</ul>';
+                                }
+                                resultHtml += '</div>';
                             }
                             resultHtml += '</div>';
                             // Tabloyu güncelle
@@ -1552,7 +1614,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         }
                         $('#onlineIcmalResult').html(resultHtml).show();
                     } catch (err) {
-                        $('#onlineIcmalResult').html('<div class="alert alert-danger">Sunucudan geçersiz yanıt alındı.</div>').show();
+                $('#onlineIcmalResult').html('<div class="alert alert-danger">Sunucudan geçersiz yanıt alındı.</div>').show();
                     }
                 },
                 error: function () {
@@ -1569,6 +1631,27 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             $('#onlineIcmalResult').hide().html('');
         });
     });
+
+    function exportToCsv(btn, data, Mapping, filename) {
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+        // Header
+        csvContent += Object.values(Mapping).join(";") + "\r\n";
+        // Body
+        data.forEach(function (row) {
+            let rowData = [];
+            Object.keys(Mapping).forEach(key => {
+                rowData.push(row[key] || '');
+            });
+            csvContent += rowData.join(";") + "\r\n";
+        });
+        var encodedUri = encodeURI(csvContent);
+        var link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", filename + ".csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
 </script>
 
 <style>
