@@ -1,0 +1,18 @@
+[2026-02-12 11:37:05] === Kesme/Açma Cron başlatıldı ===
+[2026-02-12 11:37:05] Ayarlar firma_id=1 ile yüklendi. Toplam 35 ayar.
+[2026-02-12 11:37:05] Online sorgulama aktif. (Değer: '1')
+[2026-02-12 11:37:05] Kontrol: Şimdiki saat (yuvarlanmış): 11:30
+[2026-02-12 11:37:05] Kesme/Açma saatleri: 02:00, 03:00, 08:00, 11:36
+[2026-02-12 11:37:05] Kesme/Açma sorgulama saati değil, atlanıyor.
+[2026-02-12 11:37:05] Kesme/Açma Cron tamamlandı. Süre: 37.44ms
+[2026-02-12 11:37:05] ========================================
+
+[2026-02-12 11:37:23] === Kesme/Açma Cron başlatıldı ===
+[2026-02-12 11:37:23] Ayarlar firma_id=1 ile yüklendi. Toplam 35 ayar.
+[2026-02-12 11:37:23] Online sorgulama aktif. (Değer: '1')
+[2026-02-12 11:37:23] Kontrol: Şimdiki saat (yuvarlanmış): 11:30
+[2026-02-12 11:37:23] Kesme/Açma saatleri: 02:00, 03:00, 08:00, 11:37
+[2026-02-12 11:37:23] Kesme/Açma sorgulama saati değil, atlanıyor.
+[2026-02-12 11:37:23] Kesme/Açma Cron tamamlandı. Süre: 46.7ms
+[2026-02-12 11:37:23] ========================================
+

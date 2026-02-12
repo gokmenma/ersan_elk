@@ -1,0 +1,50 @@
+[2026-02-12 09:14:03] === Endeks Okuma Cron başlatıldı ===
+[2026-02-12 09:14:03] Online sorgulama devre dışı. Çıkılıyor.
+[2026-02-12 09:14:57] === Endeks Okuma Cron başlatıldı ===
+[2026-02-12 09:14:57] Online sorgulama devre dışı. Çıkılıyor.
+[2026-02-12 09:22:19] === Endeks Okuma Cron başlatıldı ===
+[2026-02-12 09:22:19] Firma ID alınamadı: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'ersan_personel.firma' doesn't exist
+[2026-02-12 09:22:19] Ayarlar firma_id= ile yüklendi. Toplam 1 ayar.
+[2026-02-12 09:22:19] Online sorgulama devre dışı. (Değer: '0') Çıkılıyor.
+[2026-02-12 09:27:48] === Endeks Okuma Cron başlatıldı ===
+[2026-02-12 09:27:48] Ayarlar firma_id=1 ile yüklendi. Toplam 34 ayar.
+[2026-02-12 09:27:48] Online sorgulama aktif. (Değer: '1')
+[2026-02-12 09:27:48] Kontrol: Şimdiki saat (yuvarlanmış): 09:15
+[2026-02-12 09:27:48] Endeks saatleri: 08:00, 09:00, 11:00, 19:00
+[2026-02-12 09:27:48] Endeks sorgulama saati değil, atlanıyor.
+[2026-02-12 09:27:48] Endeks Cron tamamlandı. Süre: 30.94ms
+[2026-02-12 09:27:48] ========================================
+
+[2026-02-12 09:30:07] === Endeks Okuma Cron başlatıldı ===
+[2026-02-12 09:30:07] Ayarlar firma_id=1 ile yüklendi. Toplam 34 ayar.
+[2026-02-12 09:30:07] Online sorgulama aktif. (Değer: '1')
+[2026-02-12 09:30:07] Kontrol: Şimdiki saat (yuvarlanmış): 09:30
+[2026-02-12 09:30:07] Endeks saatleri: 08:00, 09:00, 11:00, 19:00
+[2026-02-12 09:30:07] Endeks sorgulama saati değil, atlanıyor.
+[2026-02-12 09:30:07] Endeks Cron tamamlandı. Süre: 44.34ms
+[2026-02-12 09:30:07] ========================================
+
+[2026-02-12 09:30:25] === Endeks Okuma Cron başlatıldı ===
+[2026-02-12 09:30:25] Ayarlar firma_id=1 ile yüklendi. Toplam 34 ayar.
+[2026-02-12 09:30:25] Online sorgulama aktif. (Değer: '1')
+[2026-02-12 09:30:25] Kontrol: Şimdiki saat (yuvarlanmış): 09:30
+[2026-02-12 09:30:25] Endeks saatleri: 08:00, 09:00, 11:00, 11:30
+[2026-02-12 09:30:25] Endeks sorgulama saati değil, atlanıyor.
+[2026-02-12 09:30:25] Endeks Cron tamamlandı. Süre: 35.68ms
+[2026-02-12 09:30:25] ========================================
+
+[2026-02-12 09:30:53] === Endeks Okuma Cron başlatıldı ===
+[2026-02-12 09:30:53] Ayarlar firma_id=1 ile yüklendi. Toplam 34 ayar.
+[2026-02-12 09:30:53] Online sorgulama aktif. (Değer: '1')
+[2026-02-12 09:30:53] Kontrol: Şimdiki saat (yuvarlanmış): 09:30
+[2026-02-12 09:30:53] Endeks saatleri: 08:00, 09:30, 11:00, 11:30
+[2026-02-12 09:30:53] Endeks sorgulama zamanı geldi! (Saat: 09:30)
+[2026-02-12 09:30:53] Endeks sorgulama başlatılıyor...
+[2026-02-12 09:30:53] API sorgusu yapılıyor: Tarih=12/02/2026
+[2026-02-12 09:30:53] API'den 182 kayıt geldi.
+[2026-02-12 09:30:53] 179 yeni kayıt eklendi.
+[2026-02-12 09:30:53] 3 kayıt atlandı (ekip eşleşmedi).
+[2026-02-12 09:30:53] Endeks sorgulama tamamlandı: {"yeni_kayit":179,"guncellenen_kayit":0,"atlanAn":3,"toplam_api":182}
+[2026-02-12 09:30:53] Endeks Cron tamamlandı. Süre: 4776.46ms
+[2026-02-12 09:30:53] ========================================
+

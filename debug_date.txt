@@ -69970,3 +69970,549 @@ Result (String Match j.n.Y): 2026-02-01
 Input: 10.02.2026 Type: string
 Result (String Match j.n.Y): 2026-02-10
 ----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
+Input: 12-FEB-26 Type: string
+Result (String DateTime): 2026-02-12
+----------------
