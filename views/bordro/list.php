@@ -171,9 +171,9 @@ $ek_odeme_turleri = [
                                         Güncelle</span>
                                 </button>
                                 <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                                 <div class="dropdown">
-                                    <button class="btn btn-link btn-sm px-3 fw-bold dropdown-toggle"
-                                        type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <div class="dropdown">
+                                    <button class="btn btn-link btn-sm px-3 fw-bold dropdown-toggle" type="button"
+                                        data-bs-toggle="dropdown" aria-expanded="false">
                                         <i class="mdi mdi-menu me-1"></i> İşlemler
                                         <i class="mdi mdi-chevron-down"></i>
                                     </button>
@@ -229,7 +229,7 @@ $ek_odeme_turleri = [
                                     <i class="mdi mdi-calculator fs-5 me-1"></i> <span class="d-none d-xl-inline">Maaş
                                         Hesapla</span>
                                 </button>
-                               
+
                             <?php endif; ?>
                         </div>
                     </div>
@@ -238,149 +238,224 @@ $ek_odeme_turleri = [
                     <?php if ($selectedDonem): ?>
                         <?php
                         // Dönem toplamlarını hesapla
-                        $toplamMaasTutari = 0;
-                        $toplamNetMaas = 0;
+                        $toplamAlacagi = 0;
+                        $toplamIcra = 0;
                         $toplamBanka = 0;
                         $toplamSodexo = 0;
                         $toplamElden = 0;
-                        $toplamEkOdeme = 0;
-                        $toplamKesinti = 0;
+
                         foreach ($personeller as $p) {
-                            $toplamMaasTutari += floatval($p->maas_tutari ?? 0);
-                            $toplamNetMaas += floatval($p->net_maas ?? 0);
+                            // Prim Usülü personellerde ek ödeme/prim maaş tutarı olarak gösteriliyor
+                            $hesaplananEkOdeme = $p->guncel_toplam_ek_odeme;
+                            if (!empty($p->hesaplama_detay)) {
+                                $detayEkOdeme = json_decode($p->hesaplama_detay, true);
+                                if (isset($detayEkOdeme['ek_odemeler']) && is_array($detayEkOdeme['ek_odemeler'])) {
+                                    $hesaplananEkOdeme = 0;
+                                    foreach ($detayEkOdeme['ek_odemeler'] as $eo) {
+                                        $hesaplananEkOdeme += floatval($eo['net_etki'] ?? $eo['tutar'] ?? 0);
+                                    }
+                                }
+                            }
+
+                            $isPrimUsulu = ($p->maas_durumu ?? '') == 'Prim Usülü';
+                            $displayMaas = $isPrimUsulu ? $hesaplananEkOdeme : $p->maas_tutari;
+
+                            $toplamAlacagi += $displayMaas;
                             $toplamBanka += floatval($p->banka_odemesi ?? 0);
                             $toplamSodexo += floatval($p->sodexo_odemesi ?? 0);
+
+                            // Elden hesaplama
                             $eldenP = $p->elden_odeme ?? (($p->net_maas ?? 0) - ($p->banka_odemesi ?? 0) - ($p->sodexo_odemesi ?? 0) - ($p->diger_odeme ?? 0));
                             $toplamElden += max(0, floatval($eldenP));
-                            $toplamEkOdeme += floatval($p->guncel_toplam_ek_odeme ?? 0);
-                            $toplamKesinti += floatval($p->guncel_toplam_kesinti ?? 0);
+
+                            // İcra hesaplama
+                            if (!empty($p->hesaplama_detay)) {
+                                $detay = json_decode($p->hesaplama_detay, true);
+                                $toplamIcra += $detay['odeme_dagilimi']['icra_kesintisi'] ?? 0;
+                            }
+                        }
+
+                        // En son hesaplama tarihini bul
+                        $latestCalculation = null;
+                        foreach ($personeller as $p) {
+                            if ($p->hesaplama_tarihi) {
+                                if (!$latestCalculation || $p->hesaplama_tarihi > $latestCalculation) {
+                                    $latestCalculation = $p->hesaplama_tarihi;
+                                }
+                            }
                         }
                         ?>
-                        <div class="alert alert-primary d-flex align-items-center mb-3" role="alert">
-                            <i class="bx bx-info-circle me-2 fs-4"></i>
-                            <div class="d-flex align-items-center flex-wrap w-100">
-                                <div class="flex-grow-1">
-                                    <strong id="displayDonemAdi"><?= htmlspecialchars($selectedDonem->donem_adi) ?></strong>
-                                    <?php if (!$donemKapali): ?>
-                                        <button type="button" class="btn btn-sm btn-link p-0 ms-1 text-primary"
-                                            id="btnEditDonemAdi" title="Dönem Adını Güncelle">
-                                            <i class="bx bx-edit-alt"></i>
-                                        </button>
-                                    <?php endif; ?>
-                                    dönemine ait
-                                    <strong><?= count($personeller) ?></strong> personel listeleniyor.
-                                    <span class="ms-2 text-muted">
-                                        (<?= date('d.m.Y', strtotime($selectedDonem->baslangic_tarihi)) ?> -
-                                        <?= date('d.m.Y', strtotime($selectedDonem->bitis_tarihi)) ?>)
-                                    </span>
+
+
+                        <!-- Üst Bilgi Çubuğu (Dashboard Stili) -->
+                        <div class="card border-0 shadow-sm mb-4 bordro-info-bar"
+                            style="border-radius: 20px; background: rgba(231, 111, 81, 0.03); border: 1px solid rgba(231, 111, 81, 0.1) !important;">
+                            <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-white rounded-3 shadow-sm p-2 me-3 d-flex align-items-center justify-content-center"
+                                        style="width: 45px; height: 45px;">
+                                        <i class="bx bx-calendar-event fs-3" style="color: #E76F51;"></i>
+                                    </div>
+                                    <div>
+                                        <div class="d-flex align-items-center">
+                                            <h5 class="mb-0 fw-bold bordro-text-heading" id="displayDonemAdi">
+                                                <?= htmlspecialchars($selectedDonem->donem_adi) ?>
+                                            </h5>
+                                            <?php if (!$donemKapali): ?>
+                                                <button type="button" class="btn btn-sm btn-link p-0 ms-2 text-muted"
+                                                    id="btnEditDonemAdi" title="Dönem Adını Güncelle">
+                                                    <i class="bx bx-edit-alt fs-6"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
+                                        <small class="text-muted fw-medium">
+                                            <i class="bx bx-time-five me-1"></i>
+                                            <?= date('d.m.Y', strtotime($selectedDonem->baslangic_tarihi)) ?> -
+                                            <?= date('d.m.Y', strtotime($selectedDonem->bitis_tarihi)) ?>
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="d-none d-md-flex align-items-center gap-3">
+                                    <div class="text-end me-2">
+                                        <p class="text-muted mb-0 small fw-bold">TOPLAM PERSONEL</p>
+                                        <h5 class="mb-0 fw-bold bordro-text-heading"><?= count($personeller) ?> <span
+                                                class="small text-muted fw-normal">Kişi</span></h5>
+                                    </div>
+                                    <div class="vr text-muted opacity-25" style="height: 35px;"></div>
+                                    <div class="d-flex align-items-start gap-2">
+                                        <span
+                                            class="badge shadow-sm border rounded-pill px-3 py-2 fw-bold d-flex align-items-center"
+                                            style="background: var(--bs-card-bg); color: var(--bs-body-color) !important;">
+                                            <span class="rounded-circle me-2"
+                                                style="width: 8px; height: 8px; background: <?= $donemKapali ? '#f43f5e' : '#10b981' ?>;"></span>
+                                            <?= $donemKapali ? 'KAPALI' : 'AÇIK' ?>
+                                        </span>
+                                        <?php if ($latestCalculation): ?>
+                                            <div class="d-flex flex-column align-items-center">
+                                                <span
+                                                    class="badge shadow-sm border rounded-pill px-3 py-2 fw-bold d-flex align-items-center"
+                                                    style="background: var(--bs-card-bg); color: var(--bs-body-color) !important;">
+                                                    <span class="rounded-circle me-2"
+                                                        style="width: 8px; height: 8px; background: #10b981;"></span>
+                                                    HESAPLANDI
+                                                </span>
+                                                <div class="text-muted mt-1"
+                                                    style="font-size: 9px; font-weight: 600; opacity: 0.8;">
+                                                    <i
+                                                        class="bx bx-check-double me-1"></i><?= date('d.m.Y H:i', strtotime($latestCalculation)) ?>
+                                                </div>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Dönem Toplamları Kartları -->
-                        <div class="row g-2 mb-4">
-                            <div class="col-xl col-md-4 col-6">
-                                <div class="card border shadow-none rounded-3 mb-0">
-                                    <div class="card-body text-center p-2">
-                                        <div class="avatar-xs mx-auto mb-1 rounded bg-light d-flex align-items-center justify-content-center"
-                                            style="width: 32px; height: 32px;">
-                                            <i class="bx bx-money fs-5 text-dark"></i>
+                        <!-- Dönem Toplamları Kartları (Dashboard Stili) -->
+                        <div class="row g-3 mb-4">
+                            <!-- Toplam Alacağı -->
+                            <div class="col-xl col-md-4">
+                                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                                    style="--card-color: #E76F51; border-bottom: 3px solid var(--card-color) !important;">
+                                    <div class="card-body p-3">
+                                        <div class="icon-label-container">
+                                            <div class="icon-box" style="background: rgba(231, 111, 81, 0.1);">
+                                                <i class="bx bx-receipt fs-4" style="color: #E76F51;"></i>
+                                            </div>
+                                            <span class="text-muted small fw-bold"
+                                                style="font-size: 0.65rem;">HAKEDİŞ</span>
                                         </div>
-                                        <p class="text-muted mb-0 small text-uppercase fw-semibold"
-                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">Maaş Tutarı</p>
-                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;">
-                                            <?= number_format($toplamMaasTutari, 2, ',', '.') ?> ₺
-                                        </h6>
+                                        <p class="text-muted mb-1 small fw-bold"
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM ALACAĞI</p>
+                                        <h4 class="mb-0 fw-bold bordro-text-heading">
+                                            <?= number_format($toplamAlacagi, 2, ',', '.') ?> <span
+                                                style="font-size: 0.85rem; font-weight: 600;">₺</span>
+                                        </h4>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-xl col-md-4 col-6">
-                                <div class="card border shadow-none rounded-3 mb-0">
-                                    <div class="card-body text-center p-2">
-                                        <div class="avatar-xs mx-auto mb-1 rounded bg-light d-flex align-items-center justify-content-center"
-                                            style="width: 32px; height: 32px;">
-                                            <i class="bx bx-plus-circle fs-5 text-dark"></i>
+
+                            <!-- İcra Kesintisi -->
+                            <div class="col-xl col-md-4">
+                                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                                    style="--card-color: #f43f5e; border-bottom: 3px solid var(--card-color) !important;">
+                                    <div class="card-body p-3">
+                                        <div class="icon-label-container">
+                                            <div class="icon-box" style="background: rgba(244, 63, 94, 0.1);">
+                                                <i class="bx bx-minus-circle fs-4 text-danger"></i>
+                                            </div>
+                                            <span class="text-muted small fw-bold"
+                                                style="font-size: 0.65rem;">KESİNTİ</span>
                                         </div>
-                                        <p class="text-muted mb-0 small text-uppercase fw-semibold"
-                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">Top. Ek Ödeme</p>
-                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;">
-                                            <?= number_format($toplamEkOdeme, 2, ',', '.') ?> ₺
-                                        </h6>
+                                        <p class="text-muted mb-1 small fw-bold"
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">İCRA KESİNTİSİ</p>
+                                        <h4 class="mb-0 fw-bold bordro-text-heading">
+                                            <?= number_format($toplamIcra, 2, ',', '.') ?> <span
+                                                style="font-size: 0.85rem; font-weight: 600;">₺</span>
+                                        </h4>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-xl col-md-4 col-6">
-                                <div class="card border shadow-none rounded-3 mb-0">
-                                    <div class="card-body text-center p-2">
-                                        <div class="avatar-xs mx-auto mb-1 rounded bg-light d-flex align-items-center justify-content-center"
-                                            style="width: 32px; height: 32px;">
-                                            <i class="bx bx-minus-circle fs-5 text-dark"></i>
+
+                            <!-- Banka -->
+                            <div class="col-xl col-md-4">
+                                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                                    style="--card-color: #0ea5e9; border-bottom: 3px solid var(--card-color) !important;">
+                                    <div class="card-body p-3">
+                                        <div class="icon-label-container">
+                                            <div class="icon-box" style="background: rgba(14, 165, 233, 0.1);">
+                                                <i class="bx bxs-bank fs-4 text-info"></i>
+                                            </div>
+                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">RESMİ</span>
                                         </div>
-                                        <p class="text-muted mb-0 small text-uppercase fw-semibold"
-                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">Top. Kesinti</p>
-                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;">
-                                            <?= number_format($toplamKesinti, 2, ',', '.') ?> ₺
-                                        </h6>
+                                        <p class="text-muted mb-1 small fw-bold"
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">BANKA ÖDEMESİ</p>
+                                        <h4 class="mb-0 fw-bold bordro-text-heading">
+                                            <?= number_format($toplamBanka, 2, ',', '.') ?> <span
+                                                style="font-size: 0.85rem; font-weight: 600;">₺</span>
+                                        </h4>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-xl col-md-4 col-6">
-                                <div class="card border shadow-none rounded-3 mb-0">
-                                    <div class="card-body text-center p-2">
-                                        <div class="avatar-xs mx-auto mb-1 rounded bg-light d-flex align-items-center justify-content-center"
-                                            style="width: 32px; height: 32px;">
-                                            <i class="bx bx-wallet fs-5 text-dark"></i>
+
+                            <!-- Sodexo -->
+                            <div class="col-xl col-md-4">
+                                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                                    style="--card-color: #8b5cf6; border-bottom: 3px solid var(--card-color) !important;">
+                                    <div class="card-body p-3">
+                                        <div class="icon-label-container">
+                                            <div class="icon-box" style="background: rgba(139, 92, 246, 0.1);">
+                                                <i class="bx bx-food-menu fs-4" style="color: #8b5cf6;"></i>
+                                            </div>
+                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">YEMEK</span>
                                         </div>
-                                        <p class="text-muted mb-0 small text-uppercase fw-semibold"
-                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">Net Maaş</p>
-                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;">
-                                            <?= number_format($toplamNetMaas, 2, ',', '.') ?> ₺
-                                        </h6>
+                                        <p class="text-muted mb-1 small fw-bold"
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">SODEXO</p>
+                                        <h4 class="mb-0 fw-bold bordro-text-heading">
+                                            <span id="total-sodexo"><?= number_format($toplamSodexo, 2, ',', '.') ?></span>
+                                            <span style="font-size: 0.85rem; font-weight: 600;">₺</span>
+                                        </h4>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-xl col-md-4 col-6">
-                                <div class="card border shadow-none rounded-3 mb-0">
-                                    <div class="card-body text-center p-2">
-                                        <div class="avatar-xs mx-auto mb-1 rounded bg-light d-flex align-items-center justify-content-center"
-                                            style="width: 32px; height: 32px;">
-                                            <i class="bx bxs-bank fs-5 text-dark"></i>
+
+                            <!-- Elden -->
+                            <div class="col-xl col-md-4">
+                                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                                    style="--card-color: #f59e0b; border-bottom: 3px solid var(--card-color) !important;">
+                                    <div class="card-body p-3">
+                                        <div class="icon-label-container">
+                                            <div class="icon-box" style="background: rgba(245, 158, 11, 0.1);">
+                                                <i class="bx bx-wallet-alt fs-4 text-warning"></i>
+                                            </div>
+                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">NAKİT</span>
                                         </div>
-                                        <p class="text-muted mb-0 small text-uppercase fw-semibold"
-                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">Banka</p>
-                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;">
-                                            <?= number_format($toplamBanka, 2, ',', '.') ?> ₺
-                                        </h6>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl col-md-4 col-6">
-                                <div class="card border shadow-none rounded-3 mb-0">
-                                    <div class="card-body text-center p-2">
-                                        <div class="avatar-xs mx-auto mb-1 rounded bg-light d-flex align-items-center justify-content-center"
-                                            style="width: 32px; height: 32px;">
-                                            <i class="bx bx-food-menu fs-5 text-dark"></i>
-                                        </div>
-                                        <p class="text-muted mb-0 small text-uppercase fw-semibold"
-                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">Sodexo</p>
-                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;">
-                                            <?= number_format($toplamSodexo, 2, ',', '.') ?> ₺
-                                        </h6>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl col-md-4 col-6">
-                                <div class="card border shadow-none rounded-3 mb-0">
-                                    <div class="card-body text-center p-2">
-                                        <div class="avatar-xs mx-auto mb-1 rounded bg-light d-flex align-items-center justify-content-center"
-                                            style="width: 32px; height: 32px;">
-                                            <i class="bx bx-wallet fs-5 text-dark"></i>
-                                        </div>
-                                        <p class="text-muted mb-0 small text-uppercase fw-semibold"
-                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">Elden</p>
-                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.85rem;">
-                                            <?= number_format($toplamElden, 2, ',', '.') ?> ₺
-                                        </h6>
+                                        <p class="text-muted mb-1 small fw-bold"
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">ELDEN ÖDEME</p>
+                                        <h4 class="mb-0 fw-bold bordro-text-heading">
+                                            <span id="total-elden"><?= number_format($toplamElden, 2, ',', '.') ?></span>
+                                            <span style="font-size: 0.85rem; font-weight: 600;">₺</span>
+                                        </h4>
                                     </div>
                                 </div>
                             </div>
@@ -395,17 +470,14 @@ $ek_odeme_turleri = [
                                                 <input type="checkbox" class="form-check-input" id="selectAll">
                                             </div>
                                         </th>
-                                        <th style="width: 20px;">TC Kimlik No</th>
+                                        <th class="text-center" style="width: 80px;">Birim</th>
                                         <th>Personel</th>
-                                        <th class="text-center">Çalışma Günü</th>
-                                        <th class="text-end">Maaş Tutarı</th>
-                                        <th class="text-end">Top. Ek Ödeme</th>
-                                        <th class="text-end">Top. Kesinti</th>
-                                        <th class="text-end">Net Maaş</th>
+                                        <th class="text-center">Gün</th>
+                                        <th class="text-end">Toplam Alacağı</th>
+                                        <th class="text-end">İcra Kesintisi</th>
                                         <th class="text-end">Banka</th>
                                         <th class="text-end">Sodexo</th>
                                         <th class="text-end">Elden</th>
-                                        <th class="text-center">Durum</th>
                                         <th class="text-center">İşlemler</th>
                                     </tr>
                                 </thead>
@@ -424,6 +496,30 @@ $ek_odeme_turleri = [
                                             $enc_id = Security::encrypt($personel->personel_id);
                                             ?>
                                             <?php
+                                            // Hesaplanmış ek ödeme toplamını al (gün bazlı hesaplamalar dahil)
+                                            $hesaplananEkOdeme = $personel->guncel_toplam_ek_odeme;
+                                            if (!empty($personel->hesaplama_detay)) {
+                                                $detayEkOdeme = json_decode($personel->hesaplama_detay, true);
+                                                if (isset($detayEkOdeme['ek_odemeler']) && is_array($detayEkOdeme['ek_odemeler'])) {
+                                                    $hesaplananEkOdeme = 0;
+                                                    foreach ($detayEkOdeme['ek_odemeler'] as $eo) {
+                                                        $hesaplananEkOdeme += floatval($eo['net_etki'] ?? $eo['tutar'] ?? 0);
+                                                    }
+                                                }
+                                            }
+
+                                            $isPrimUsulu = ($personel->maas_durumu ?? '') == 'Prim Usülü';
+                                            $displayMaas = ($personel->net_maas > 0) ? $personel->net_maas : ($isPrimUsulu ? $hesaplananEkOdeme : $personel->maas_tutari);
+                                            $displayEkOdeme = $isPrimUsulu ? 0 : $hesaplananEkOdeme;
+
+                                            // İcra kesintisini al
+                                            $icraKesintisi = 0;
+                                            if (!empty($personel->hesaplama_detay)) {
+                                                $detay = json_decode($personel->hesaplama_detay, true);
+                                                $icraKesintisi = $detay['odeme_dagilimi']['icra_kesintisi'] ?? 0;
+                                            }
+                                            ?>
+                                            <?php
                                             // Elden ödeme artık model'de hesaplanıp kaydediliyor
                                             // Ancak görüntüleme için yedek hesaplama yap (negatif çıkmaması için max(0,...) eklendi)
                                             $eldenOdeme = $personel->elden_odeme ?? max(0, ($personel->net_maas ?? 0) - ($personel->banka_odemesi ?? 0) - ($personel->sodexo_odemesi ?? 0) - ($personel->diger_odeme ?? 0));
@@ -435,7 +531,7 @@ $ek_odeme_turleri = [
                                             if (!empty($personel->hesaplama_detay)) {
                                                 $detay = json_decode($personel->hesaplama_detay, true);
 
-                                                // Fiili çalışma gününü doğrudan JSON'dan al (varsa)
+                                                // Fiili çalışma gununu doğrudan JSON'dan al (varsa)
                                                 if (isset($detay['matrahlar']['fiili_calisma_gunu'])) {
                                                     $calismaGunu = intval($detay['matrahlar']['fiili_calisma_gunu']);
                                                 }
@@ -466,77 +562,96 @@ $ek_odeme_turleri = [
                                                             value="<?= $personel->id ?>">
                                                     </div>
                                                 </td>
-                                                <td><?= htmlspecialchars($personel->tc_kimlik_no ?? '-') ?></td>
+                                                <td class="text-center">
+                                                    <?php
+                                                    $deptName = $personel->departman ?? '-';
+                                                    $deptUp = mb_convert_case($deptName, MB_CASE_UPPER, "UTF-8");
+                                                    $dInfo = ['code' => '??', 'color' => '#6c757d'];
+
+                                                    if (strpos($deptUp, 'OKUMA') !== false)
+                                                        $dInfo = ['code' => 'EO', 'color' => '#0ea5e9'];
+                                                    elseif (strpos($deptUp, 'KESME') !== false)
+                                                        $dInfo = ['code' => 'KA', 'color' => '#f43f5e'];
+                                                    elseif (strpos($deptUp, 'SAYAÇ') !== false || strpos($deptUp, 'DEGİŞ') !== false)
+                                                        $dInfo = ['code' => 'ST', 'color' => '#10b981'];
+                                                    elseif (strpos($deptUp, 'KAÇAK') !== false)
+                                                        $dInfo = ['code' => 'KÇ', 'color' => '#8b5cf6'];
+                                                    else {
+                                                        $words = explode(' ', $deptUp);
+                                                        if (count($words) >= 2) {
+                                                            $dInfo['code'] = mb_substr($words[0], 0, 1) . mb_substr($words[1], 0, 1);
+                                                        } else {
+                                                            $dInfo['code'] = mb_substr($deptUp, 0, 2);
+                                                        }
+                                                    }
+                                                    ?>
+                                                    <div class="dept-badge" style="--dept-color: <?= $dInfo['color'] ?>;"
+                                                        data-bs-toggle="tooltip" title="<?= htmlspecialchars($deptName) ?>">
+                                                        <?= $dInfo['code'] ?>
+                                                    </div>
+                                                    <span class="d-none"><?= $dInfo['code'] ?>
+                                                        <?= htmlspecialchars($deptName) ?></span>
+                                                </td>
                                                 <td>
                                                     <div class="d-flex align-items-center">
                                                         <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
                                                             alt="" class="rounded-circle avatar-sm me-2">
-                                                        <span class="fw-medium">
-                                                            <a target="_blank"
-                                                                href="index?p=personel/manage&id=<?= $enc_id ?>"><?= htmlspecialchars($personel->adi_soyadi) ?></a></span>
+                                                        <div>
+                                                            <div class="fw-medium">
+                                                                <a target="_blank"
+                                                                    href="index?p=personel/manage&id=<?= $enc_id ?>"><?= htmlspecialchars($personel->adi_soyadi) ?></a>
+                                                            </div>
+                                                            <small class="text-muted"
+                                                                style="font-size: 10px; letter-spacing: 0.5px;">TC:
+                                                                <?= htmlspecialchars($personel->tc_kimlik_no ?? '-') ?></small>
+                                                        </div>
                                                     </div>
                                                 </td>
+                                                <td class="text-center fw-bold text-secondary">
+                                                    <?= $calismaGunu ?>
+                                                </td>
 
-                                                <td
-                                                    class="text-center <?= ($ucretsizIzinGunu > 0 || $ucretliIzinGunu > 0) ? 'text-warning fw-bold' : 'text-secondary' ?>">
-                                                    <?= $calismaGunu ?> gün
-                                                    <?php if ($ucretsizIzinGunu > 0): ?>
-                                                        <small class="d-block text-danger">(-<?= $ucretsizIzinGunu ?> ü.siz
-                                                            izin)</small>
+                                                <td class="text-end text-dark fw-bold">
+                                                    <span class="cursor-pointer btn-detail text-primary"
+                                                        data-id="<?= $personel->id ?>" title="Bordro Detayını Gör">
+                                                        <?= $displayMaas > 0 ? number_format($displayMaas, 2, ',', '.') . ' ₺' : '-' ?>
+                                                    </span>
+                                                </td>
+                                                <td class="text-end text-danger fw-medium">
+                                                    <?php if ($icraKesintisi > 0): ?>
+                                                        <span class="btn-icra-detail cursor-pointer text-decoration-underline"
+                                                            data-id="<?= $personel->id ?>" title="İcra Detaylarını Gör">
+                                                            <?= number_format($icraKesintisi, 2, ',', '.') . ' ₺' ?>
+                                                        </span>
+                                                    <?php else: ?>
+                                                        -
                                                     <?php endif; ?>
-                                                    <?php if ($ucretliIzinGunu > 0): ?>
-                                                        <small class="d-block text-info">(-<?= $ucretliIzinGunu ?> ü.li izin)</small>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td class="text-end text-dark fw-medium">
-                                                    <?= $personel->maas_tutari ? number_format($personel->maas_tutari, 2, ',', '.') . ' ₺' : '-' ?>
-                                                </td>
-                                                <td class="text-end text-success">
-                                                    <?php
-                                                    // Hesaplanmış ek ödeme toplamını al (gün bazlı hesaplamalar dahil)
-                                                    $hesaplananEkOdeme = $personel->guncel_toplam_ek_odeme;
-                                                    if (!empty($personel->hesaplama_detay)) {
-                                                        $detayEkOdeme = json_decode($personel->hesaplama_detay, true);
-                                                        if (isset($detayEkOdeme['ek_odemeler']) && is_array($detayEkOdeme['ek_odemeler'])) {
-                                                            $hesaplananEkOdeme = 0;
-                                                            foreach ($detayEkOdeme['ek_odemeler'] as $eo) {
-                                                                $hesaplananEkOdeme += floatval($eo['net_etki'] ?? $eo['tutar'] ?? 0);
-                                                            }
-                                                        }
-                                                    }
-                                                    ?>
-                                                    <?= $hesaplananEkOdeme > 0 ? number_format($hesaplananEkOdeme, 2, ',', '.') . ' ₺' : '-' ?>
-                                                    <i class="mdi mdi-format-list-bulleted ms-1 text-primary cursor-pointer btn-detail-ekodeme"
-                                                        data-id="<?= $personel->personel_id ?>"
-                                                        data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"
-                                                        title="Detayları Gör"></i>
-                                                </td>
-                                                <td class="text-end text-danger">
-                                                    <?= $personel->guncel_toplam_kesinti > 0 ? number_format($personel->guncel_toplam_kesinti, 2, ',', '.') . ' ₺' : '-' ?>
-                                                    <i class="mdi mdi-format-list-bulleted ms-1 text-danger cursor-pointer btn-detail-kesinti"
-                                                        data-id="<?= $personel->personel_id ?>"
-                                                        data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"
-                                                        title="Detayları Gör"></i>
-                                                </td>
-                                                <td class="text-end fw-bold text-success">
-                                                    <?= $personel->net_maas ? number_format($personel->net_maas, 2, ',', '.') . ' ₺' : '-' ?>
                                                 </td>
                                                 <td class="text-end text-primary">
                                                     <?= $personel->banka_odemesi ? number_format($personel->banka_odemesi, 2, ',', '.') . ' ₺' : '-' ?>
                                                 </td>
-                                                <td class="text-end text-info">
-                                                    <?= $personel->sodexo_odemesi ? number_format($personel->sodexo_odemesi, 2, ',', '.') . ' ₺' : '-' ?>
+                                                <td class="text-end text-info td-sodexo" style="width: 150px;">
+                                                    <div class="sodexo-wrapper d-flex align-items-center justify-content-end gap-2">
+                                                        <span class="sodexo-value fw-bold">
+                                                            <?= $personel->sodexo_odemesi > 0 ? number_format($personel->sodexo_odemesi, 2, ',', '.') . ' ₺' : '-' ?>
+                                                        </span>
+                                                        <input type="text"
+                                                            class="form-control form-control-sm text-end update-sodexo money d-none"
+                                                            style="width: 100px;" data-id="<?= $personel->id ?>"
+                                                            data-net="<?= number_format($personel->net_maas ?? 0, 2, '.', '') ?>"
+                                                            data-banka="<?= number_format($personel->banka_odemesi ?? 0, 2, '.', '') ?>"
+                                                            data-diger="<?= number_format($personel->diger_odeme ?? 0, 2, '.', '') ?>"
+                                                            data-icra="<?= number_format($icraKesintisi, 2, '.', '') ?>"
+                                                            data-current-val="<?= $personel->sodexo_odemesi ?? 0 ?>"
+                                                            value="<?= Helper::formattedMoney($personel->sodexo_odemesi ?? 0) ?>">
+                                                        <a href="javascript:void(0);" class="btn-edit-sodexo-inline text-muted"
+                                                            title="Düzenle">
+                                                            <i data-feather="edit-3" style="width: 14px; height: 14px;"></i>
+                                                        </a>
+                                                    </div>
                                                 </td>
-                                                <td class="text-end text-warning fw-bold">
+                                                <td class="text-end text-warning fw-bold td-elden">
                                                     <?= $eldenOdeme > 0 ? number_format($eldenOdeme, 2, ',', '.') . ' ₺' : '-' ?>
-                                                </td>
-                                                <td style="width: 60px;" class="text-center text-wrap">
-                                                    <?php if ($personel->hesaplama_tarihi): ?>
-                                                        <span class="badge bg-success">Hesaplandı</span>
-                                                        <small><?= $personel->hesaplama_tarihi ?></small>
-                                                    <?php else: ?>
-                                                        <span class="badge bg-warning">Bekliyor</span>
-                                                    <?php endif; ?>
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="dropdown">
@@ -1053,6 +1168,29 @@ $ek_odeme_turleri = [
                 </div>
                 <div class="modal-body" id="bordroDetailContent">
                     <!-- İçerik AJAX ile yüklenecek -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- İcra Detay Modal -->
+    <div class="modal fade" id="modalIcraDetay" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bx bx-file me-2"></i>İcra Kesintisi Detayları</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger bg-danger bg-opacity-10 text-danger border-0 mb-3">
+                        <i class="bx bx-user me-1"></i> <strong id="icra_detay_personel_ad"></strong>
+                    </div>
+                    <div id="icra_detay_content">
+                        <!-- İçerik AJAX ile yüklenecek -->
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>

@@ -59,18 +59,24 @@ try {
         exit(0);
     }
 
-    // Zamanları al
-    $puantajSaat = $allSettings['online_sorgulama_puantaj_saat'] ?? '08:00';
-    $endeksSaat = $allSettings['online_sorgulama_endeks_saat'] ?? '08:30';
+    // Zamanları al (virgülle ayrılmış çoklu saatler destekleniyor)
+    $puantajSaatStr = $allSettings['online_sorgulama_puantaj_saat'] ?? '08:00';
+    $endeksSaatStr = $allSettings['online_sorgulama_endeks_saat'] ?? '08:30';
     $firmaBaslangic = $allSettings['online_sorgulama_firma_baslangic'] ?? 17;
     $firmaBitis = $allSettings['online_sorgulama_firma_bitis'] ?? 17;
+
+    // Çoklu saatleri diziye çevir
+    $puantajSaatler = array_filter(array_map('trim', explode(',', $puantajSaatStr)));
+    $endeksSaatler = array_filter(array_map('trim', explode(',', $endeksSaatStr)));
 
     // Şu anki saat (15 dakikalık dilimlere yuvarla)
     $simdikiDakika = (int)date('i');
     $yuvarlanmisDakika = floor($simdikiDakika / 15) * 15;
     $simdikiSaat = date('H') . ':' . str_pad($yuvarlanmisDakika, 2, '0', STR_PAD_LEFT);
 
-    cronLog("Kontrol: Şimdiki saat (yuvarlanmış): $simdikiSaat, Puantaj saati: $puantajSaat, Endeks saati: $endeksSaat");
+    cronLog("Kontrol: Şimdiki saat (yuvarlanmış): $simdikiSaat");
+    cronLog("Puantaj saatleri: " . implode(', ', $puantajSaatler));
+    cronLog("Endeks saatleri: " . implode(', ', $endeksSaatler));
 
     // Firma ID'sini al (ilk firmadan)
     $firmaId = 0;
@@ -89,15 +95,19 @@ try {
 
     $bugun = date('Y-m-d');
 
-    // Puantaj sorgulama zamanı mı?
-    if ($simdikiSaat === $puantajSaat) {
-        cronLog("Puantaj sorgulama zamanı geldi!");
+    // Son çalıştırma log'unu al (her saat için ayrı kontrol yapılır)
+    // Format: "2026-02-12 08:00,2026-02-12 12:00" gibi virgülle ayrılmış zaman damgaları
+    $puantajSonCalistirmaLog = $allSettings['online_sorgulama_puantaj_son_calistirma_log'] ?? '';
+    $endeksSonCalistirmaLog = $allSettings['online_sorgulama_endeks_son_calistirma_log'] ?? '';
+
+    // Puantaj sorgulama - çoklu saatleri kontrol et
+    if (in_array($simdikiSaat, $puantajSaatler)) {
+        cronLog("Puantaj sorgulama zamanı geldi! (Saat: $simdikiSaat)");
         
-        // Son çalıştırma kontrolü - aynı gün, aynı saat diliminde tekrar çalışmasın
-        $sonCalistirma = $allSettings['online_sorgulama_puantaj_son_calistirma'] ?? '';
-        $bugunSaatDilimi = date('Y-m-d') . ' ' . $simdikiSaat;
+        // Bu saat + bugün için zaten çalıştırılmış mı?
+        $bugunSaatKey = $bugun . ' ' . $simdikiSaat;
         
-        if (strpos($sonCalistirma, $bugunSaatDilimi) === false) {
+        if (strpos($puantajSonCalistirmaLog, $bugunSaatKey) === false) {
             cronLog("Puantaj sorgulama başlatılıyor...");
             
             $sonuc = sorgulamaPuantaj($firmaBaslangic, $firmaBitis, $bugun, $firmaId);
@@ -105,21 +115,29 @@ try {
             // Son çalıştırma zamanını güncelle
             $Settings->upsertSetting('online_sorgulama_puantaj_son_calistirma', date('d.m.Y H:i:s'));
             
+            // Log'a bu saati ekle (gün değişince sıfırlanır)
+            $logParts = array_filter(explode(',', $puantajSonCalistirmaLog));
+            // Sadece bugüne ait olanları tut
+            $logParts = array_filter($logParts, function($item) use ($bugun) {
+                return strpos(trim($item), $bugun) === 0;
+            });
+            $logParts[] = $bugunSaatKey;
+            $Settings->upsertSetting('online_sorgulama_puantaj_son_calistirma_log', implode(',', $logParts));
+            
             cronLog("Puantaj sorgulama tamamlandı: " . json_encode($sonuc));
         } else {
-            cronLog("Puantaj sorgulama bu saat için zaten çalıştırılmış.");
+            cronLog("Puantaj sorgulama bu saat ($simdikiSaat) için bugün zaten çalıştırılmış.");
         }
     }
 
-    // Endeks sorgulama zamanı mı?
-    if ($simdikiSaat === $endeksSaat) {
-        cronLog("Endeks sorgulama zamanı geldi!");
+    // Endeks sorgulama - çoklu saatleri kontrol et
+    if (in_array($simdikiSaat, $endeksSaatler)) {
+        cronLog("Endeks sorgulama zamanı geldi! (Saat: $simdikiSaat)");
         
-        // Son çalıştırma kontrolü - aynı gün, aynı saat diliminde tekrar çalışmasın
-        $sonCalistirma = $allSettings['online_sorgulama_endeks_son_calistirma'] ?? '';
-        $bugunSaatDilimi = date('Y-m-d') . ' ' . $simdikiSaat;
+        // Bu saat + bugün için zaten çalıştırılmış mı?
+        $bugunSaatKey = $bugun . ' ' . $simdikiSaat;
         
-        if (strpos($sonCalistirma, $bugunSaatDilimi) === false) {
+        if (strpos($endeksSonCalistirmaLog, $bugunSaatKey) === false) {
             cronLog("Endeks sorgulama başlatılıyor...");
             
             $sonuc = sorgulamaEndeks($firmaBaslangic, $firmaBitis, $bugun, $firmaId);
@@ -127,9 +145,18 @@ try {
             // Son çalıştırma zamanını güncelle
             $Settings->upsertSetting('online_sorgulama_endeks_son_calistirma', date('d.m.Y H:i:s'));
             
+            // Log'a bu saati ekle (gün değişince sıfırlanır)
+            $logParts = array_filter(explode(',', $endeksSonCalistirmaLog));
+            // Sadece bugüne ait olanları tut
+            $logParts = array_filter($logParts, function($item) use ($bugun) {
+                return strpos(trim($item), $bugun) === 0;
+            });
+            $logParts[] = $bugunSaatKey;
+            $Settings->upsertSetting('online_sorgulama_endeks_son_calistirma_log', implode(',', $logParts));
+            
             cronLog("Endeks sorgulama tamamlandı: " . json_encode($sonuc));
         } else {
-            cronLog("Endeks sorgulama bu saat için zaten çalıştırılmış.");
+            cronLog("Endeks sorgulama bu saat ($simdikiSaat) için bugün zaten çalıştırılmış.");
         }
     }
 

@@ -188,4 +188,21 @@ class EndeksOkumaModel extends Model
             "data" => $data
         ];
     }
+
+    public function getDailyStats()
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $bugun = date('Y-m-d');
+
+        $sql = "SELECT SUM(okunan_abone_sayisi) as toplam 
+                FROM $this->table 
+                WHERE firma_id = ? 
+                AND tarih = ? 
+                AND silinme_tarihi IS NULL";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId, $bugun]);
+        $result = $stmt->fetch(PDO::FETCH_OBJ);
+        return $result->toplam ?? 0;
+    }
 }

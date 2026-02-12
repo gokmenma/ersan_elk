@@ -12,34 +12,44 @@ use App\Service\Gate;
 use App\Helper\Alert;
 use App\Helper\Helper;
 use App\Model\PermissionsModel;
+use App\Model\PuantajModel;
+use App\Model\EndeksOkumaModel;
 
 $personelModel = new PersonelModel();
 $avansModel = new AvansModel();
 $izinModel = new PersonelIzinleriModel();
 $talepModel = new TalepModel();
 $systemLogModel = new SystemLogModel();
+$puantajModel = new PuantajModel();
+$endeksOkumaModel = new EndeksOkumaModel();
 
 if (Gate::allows("ana_sayfa")) {
 
     // Dashboard Ayarlarını Çerezden Oku
+    $extraStats = $personelModel->getAdvancedDashboardStats();
+    $dailyWorkStats = $puantajModel->getDailyStats();
+    $dailyReadingTotal = $endeksOkumaModel->getDailyStats();
     $saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['dashboard_settings'], true) : [];
-    
+
     if (!function_exists('getWidgetWidth')) {
-        function getWidgetWidth($id, $default) {
+        function getWidgetWidth($id, $default)
+        {
             global $saved_settings;
             return $saved_settings[$id]['width'] ?? $default;
         }
     }
 
     if (!function_exists('getWidgetHeight')) {
-        function getWidgetHeight($id, $default) {
+        function getWidgetHeight($id, $default)
+        {
             global $saved_settings;
             return $saved_settings[$id]['height'] ?? $default;
         }
     }
 
     if (!function_exists('getWidthControl')) {
-        function getWidthControl() {
+        function getWidthControl()
+        {
             return '
             <div class="dropdown ms-1 d-inline-block">
                 <button class="btn btn-link btn-sm p-0 text-muted" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Boyutları Ayarla">
@@ -173,77 +183,268 @@ if (Gate::allows("ana_sayfa")) {
     $widgets = [];
 
     ob_start(); ?>
-    <div class="col-md-3 widget-item" id="widget-aktif-personel">
-        <div class="summary-card animate-card" style="--delay: 0.1s">
-            <div class="card-header-flex">
-                <h5 class="card-title"><i class='bx bx-grid-vertical drag-handle me-1'></i> Aktif Personel</h5>
-                <div class="trend-badge up">
-                    <i class='bx bx-trending-up'></i> +2.5%
+    <div class="col-md-2 widget-item" id="widget-toplam-personel">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            style="--card-color: #4e73df; border-bottom: 3px solid var(--card-color) !important; --delay: 0.1s">
+            <div class="card-body p-3">
+                <div class="icon-label-container">
+                    <div class="icon-box" style="background: rgba(78, 115, 223, 0.1);">
+                        <i class="bx bx-group fs-4" style="color: #4e73df;"></i>
+                    </div>
+                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">PERSONEL</span>
                 </div>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM PERSONEL</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading">
+                    <?php echo $istatistik->toplam_personel ?? 0; ?>
+                    <span class="trend-badge up ms-1">+5.4%</span>
+                </h4>
+                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Tüm zamanların toplamı</div>
             </div>
-            <div class="main-value"><?php echo $istatistik->aktif_personel ?? 0; ?></div>
-            <div class="trend-description">
-                Sistemde aktif çalışıyor <i class='bx bx-trending-up'></i>
-            </div>
-            <div class="sub-text">Son 30 gün verilerine göre</div>
-        </div>
-    </div>
-    <?php $widgets['widget-aktif-personel'] = ob_get_clean();
-
-    ob_start(); ?>
-    <div class="col-md-3 widget-item" id="widget-pasif-personel">
-        <div class="summary-card animate-card" style="--delay: 0.2s">
-            <div class="card-header-flex">
-                <h5 class="card-title"><i class='bx bx-grid-vertical drag-handle me-1'></i> Pasif Personel</h5>
-                <div class="trend-badge down">
-                    <i class='bx bx-trending-down'></i> -1.2%
-                </div>
-            </div>
-            <div class="main-value"><?php echo $istatistik->pasif_personel ?? 0; ?></div>
-            <div class="trend-description">
-                İşten ayrılan/pasif <i class='bx bx-trending-down'></i>
-            </div>
-            <div class="sub-text">Toplam pasif kayıt sayısı</div>
-        </div>
-    </div>
-    <?php $widgets['widget-pasif-personel'] = ob_get_clean();
-
-    ob_start(); ?>
-    <div class="col-md-3 widget-item" id="widget-toplam-personel">
-        <div class="summary-card animate-card" style="--delay: 0.3s">
-            <div class="card-header-flex">
-                <h5 class="card-title"><i class='bx bx-grid-vertical drag-handle me-1'></i> Toplam Personel</h5>
-                <div class="trend-badge up">
-                    <i class='bx bx-trending-up'></i> +5.4%
-                </div>
-            </div>
-            <div class="main-value"><?php echo $istatistik->toplam_personel ?? 0; ?></div>
-            <div class="trend-description">
-                Genel personel havuzu <i class='bx bx-trending-up'></i>
-            </div>
-            <div class="sub-text">Tüm zamanların toplamı</div>
         </div>
     </div>
     <?php $widgets['widget-toplam-personel'] = ob_get_clean();
 
     ob_start(); ?>
-    <div class="col-md-3 widget-item" id="widget-bekleyen-talepler">
-        <div class="summary-card animate-card" style="--delay: 0.4s">
-            <div class="card-header-flex">
-                <h5 class="card-title"><i class='bx bx-grid-vertical drag-handle me-1'></i> Bekleyen Talepler</h5>
-                <div class="trend-badge <?php echo $personel_talep_sayisi > 10 ? 'down' : 'up'; ?>">
-                    <i class='bx <?php echo $personel_talep_sayisi > 10 ? 'bx-trending-up' : 'bx-trending-down'; ?>'></i>
-                    <?php echo $personel_talep_sayisi > 0 ? 'Dikkat' : 'Stabil'; ?>
+    <div class="col-md-2 widget-item" id="widget-aktif-personel">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            style="--card-color: #1cc88a; border-bottom: 3px solid var(--card-color) !important; --delay: 0.2s">
+            <div class="card-body p-3">
+                <div class="icon-label-container">
+                    <div class="icon-box" style="background: rgba(28, 200, 138, 0.1);">
+                        <i class="bx bx-user-check fs-4" style="color: #1cc88a;"></i>
+                    </div>
+                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">AKTİF</span>
                 </div>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">AKTİF PERSONEL</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading">
+                    <?php echo $istatistik->aktif_personel ?? 0; ?>
+                    <span class="trend-badge up ms-1">+2.5%</span>
+                </h4>
+                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Sistemde aktif çalışıyor</div>
             </div>
-            <div class="main-value"><?php echo $personel_talep_sayisi ?? 0; ?></div>
-            <div class="trend-description">
-                Onay bekleyen işlemler <i class='bx bx-time-five'></i>
+        </div>
+    </div>
+    <?php $widgets['widget-aktif-personel'] = ob_get_clean();
+
+    ob_start(); ?>
+    <div class="col-md-2 widget-item" id="widget-pasif-personel">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            style="--card-color: #858796; border-bottom: 3px solid var(--card-color) !important; --delay: 0.3s">
+            <div class="card-body p-3">
+                <div class="icon-label-container">
+                    <div class="icon-box" style="background: rgba(133, 135, 150, 0.1);">
+                        <i class="bx bx-user-x fs-4" style="color: #858796;"></i>
+                    </div>
+                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">PASİF</span>
+                </div>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">PASİF PERSONEL</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading">
+                    <?php echo $istatistik->pasif_personel ?? 0; ?>
+                    <span class="trend-badge down ms-1">-1.2%</span>
+                </h4>
+                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">İşten ayrılan/pasif</div>
             </div>
-            <div class="sub-text">İzin, avans ve diğer talepler</div>
+        </div>
+    </div>
+    <?php $widgets['widget-pasif-personel'] = ob_get_clean();
+
+    ob_start(); ?>
+    <div class="col-md-2 widget-item" id="widget-sahadaki-personel">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            style="--card-color: #4e73df; border-bottom: 3px solid var(--card-color) !important; --delay: 0.4s">
+            <div class="card-body p-3">
+                <div class="icon-label-container">
+                    <div class="icon-box" style="background: rgba(78, 115, 223, 0.1);">
+                        <i class="bx bx-user-voice fs-4" style="color: #4e73df;"></i>
+                    </div>
+                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">SAHA</span>
+                </div>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">SAHADAKİ PERSONEL</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading">
+                    <?php echo $extraStats->sahadaki_personel ?? 0; ?>
+                </h4>
+                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün sahada olan/aktif</div>
+            </div>
+        </div>
+    </div>
+    <?php $widgets['widget-sahadaki-personel'] = ob_get_clean();
+
+    ob_start(); ?>
+    <div class="col-md-2 widget-item" id="widget-izinli-personel">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            style="--card-color: #f6c23e; border-bottom: 3px solid var(--card-color) !important; --delay: 0.5s">
+            <div class="card-body p-3">
+                <div class="icon-label-container">
+                    <div class="icon-box" style="background: rgba(246, 194, 62, 0.1);">
+                        <i class="bx bx-calendar-minus fs-4" style="color: #f6c23e;"></i>
+                    </div>
+                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İZİN</span>
+                </div>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">İZİNLİ PERSONEL</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading">
+                    <?php echo $extraStats->izinli_personel ?? 0; ?>
+                </h4>
+                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün izinli olanlar</div>
+            </div>
+        </div>
+    </div>
+    <?php $widgets['widget-izinli-personel'] = ob_get_clean();
+
+    ob_start(); ?>
+    <div class="col-md-2 widget-item" id="widget-bekleyen-talepler">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            style="--card-color: #f6c23e; border-bottom: 3px solid var(--card-color) !important; --delay: 0.6s">
+            <div class="card-body p-3">
+                <div class="icon-label-container">
+                    <div class="icon-box" style="background: rgba(246, 194, 62, 0.1);">
+                        <i class="bx bx-time-five fs-4" style="color: #f6c23e;"></i>
+                    </div>
+                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">TALEP</span>
+                </div>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">BEKLEYEN TALEPLER</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading">
+                    <?php echo $personel_talep_sayisi ?? 0; ?>
+                    <span class="trend-badge <?php echo $personel_talep_sayisi > 0 ? 'down' : 'up'; ?> ms-1">
+                        <?php echo $personel_talep_sayisi > 0 ? 'Dikkat' : 'Stabil'; ?>
+                    </span>
+                </h4>
+                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Onay bekleyen işlemler</div>
+            </div>
         </div>
     </div>
     <?php $widgets['widget-bekleyen-talepler'] = ob_get_clean();
+
+    ob_start(); ?>
+    <div class="col-12 d-none d-md-block" style="height: 0; margin: 0; padding: 0;"></div>
+    <?php $widgets['widget-row-break'] = ob_get_clean();
+
+    ob_start(); ?>
+    <div class="col-md-2 widget-item" id="widget-gunluk-muhurleme">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            style="--card-color: #858796; border-bottom: 3px solid var(--card-color) !important; --delay: 0.7s">
+            <div class="card-body p-3">
+                <div class="icon-label-container">
+                    <div class="icon-box" style="background: rgba(133, 135, 150, 0.1);">
+                        <i class="bx bx-shield fs-4" style="color: #858796;"></i>
+                    </div>
+                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
+                </div>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK MÜHÜRLEME</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading">
+                    <?php echo $dailyWorkStats->muhurleme ?? 0; ?>
+                </h4>
+                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün yapılan mühürleme</div>
+            </div>
+        </div>
+    </div>
+    <?php $widgets['widget-gunluk-muhurleme'] = ob_get_clean();
+
+    ob_start(); ?>
+    <div class="col-md-2 widget-item" id="widget-sahadaki-arac">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            style="--card-color: #5a5c69; border-bottom: 3px solid var(--card-color) !important; --delay: 0.8s">
+            <div class="card-body p-3">
+                <div class="icon-label-container">
+                    <div class="icon-box" style="background: rgba(90, 92, 105, 0.1);">
+                        <i class="bx bx-car fs-4" style="color: #5a5c69;"></i>
+                    </div>
+                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">ARAÇ</span>
+                </div>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">SAHADAKİ ARAÇ</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading">
+                    <?php echo $extraStats->sahadaki_arac ?? 0; ?>
+                </h4>
+                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Aktif kullanılan araçlar</div>
+            </div>
+        </div>
+    </div>
+    <?php $widgets['widget-sahadaki-arac'] = ob_get_clean();
+
+    ob_start(); ?>
+    <div class="col-md-2 widget-item" id="widget-gunluk-kesme-acma">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            style="--card-color: #e74a3b; border-bottom: 3px solid var(--card-color) !important; --delay: 0.9s">
+            <div class="card-body p-3">
+                <div class="icon-label-container">
+                    <div class="icon-box" style="background: rgba(231, 74, 59, 0.1);">
+                        <i class="bx bx-cut fs-4" style="color: #e74a3b;"></i>
+                    </div>
+                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
+                </div>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK KESME AÇMA</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading">
+                    <?php echo $dailyWorkStats->kesme_acma ?? 0; ?>
+                </h4>
+                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün yapılan kesme/açma</div>
+            </div>
+        </div>
+    </div>
+    <?php $widgets['widget-gunluk-kesme-acma'] = ob_get_clean();
+
+    ob_start(); ?>
+    <div class="col-md-2 widget-item" id="widget-gunluk-endeks-okuma">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            style="--card-color: #36b9cc; border-bottom: 3px solid var(--card-color) !important; --delay: 1.0s">
+            <div class="card-body p-3">
+                <div class="icon-label-container">
+                    <div class="icon-box" style="background: rgba(54, 185, 204, 0.1);">
+                        <i class="bx bx-tachometer fs-4" style="color: #36b9cc;"></i>
+                    </div>
+                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
+                </div>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK ENDEKS OKUMA
+                </p>
+                <h4 class="mb-0 fw-bold bordro-text-heading">
+                    <?php echo $dailyReadingTotal ?? 0; ?>
+                </h4>
+                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün okunan endeksler</div>
+            </div>
+        </div>
+    </div>
+    <?php $widgets['widget-gunluk-endeks-okuma'] = ob_get_clean();
+
+    ob_start(); ?>
+    <div class="col-md-2 widget-item" id="widget-gunluk-sayac-degisimi">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            style="--card-color: #1cc88a; border-bottom: 3px solid var(--card-color) !important; --delay: 1.1s">
+            <div class="card-body p-3">
+                <div class="icon-label-container">
+                    <div class="icon-box" style="background: rgba(28, 200, 138, 0.1);">
+                        <i class="bx bx-refresh fs-4" style="color: #1cc88a;"></i>
+                    </div>
+                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
+                </div>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK SAYAÇ DEĞİŞİMİ
+                </p>
+                <h4 class="mb-0 fw-bold bordro-text-heading">
+                    <?php echo $dailyWorkStats->sayac_degisimi ?? 0; ?>
+                </h4>
+                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün yapılan sayaç değişimi</div>
+            </div>
+        </div>
+    </div>
+    <?php $widgets['widget-gunluk-sayac-degisimi'] = ob_get_clean();
+
+    ob_start(); ?>
+    <div class="col-md-2 widget-item" id="widget-servisteki-arac">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            style="--card-color: #b7b9cc; border-bottom: 3px solid var(--card-color) !important; --delay: 1.2s">
+            <div class="card-body p-3">
+                <div class="icon-label-container">
+                    <div class="icon-box" style="background: rgba(183, 185, 204, 0.1);">
+                        <i class="bx bx-wrench fs-4" style="color: #b7b9cc;"></i>
+                    </div>
+                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">ARAÇ</span>
+                </div>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">SERVİSTEKİ ARAÇ</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading">
+                    <?php echo $extraStats->servisteki_arac ?? 0; ?>
+                </h4>
+                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Serviste/Pasif araçlar</div>
+            </div>
+        </div>
+    </div>
+    <?php $widgets['widget-servisteki-arac'] = ob_get_clean();
 
     ob_start(); ?>
     <div class="<?php echo getWidgetWidth('widget-bildirimler', 'col-12'); ?> widget-item" id="widget-bildirimler">
@@ -252,7 +453,8 @@ if (Gate::allows("ana_sayfa")) {
                 <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Görev ve Bildirimler</h5>
                 <?php echo getWidthControl(); ?>
             </div>
-            <div class="card-body" style="height: <?php echo getWidgetHeight('widget-bildirimler', 'auto'); ?>; overflow-y: auto;">
+            <div class="card-body"
+                style="height: <?php echo getWidgetHeight('widget-bildirimler', 'auto'); ?>; overflow-y: auto;">
                 <div class="table-responsive">
                     <table class="table table-centered table-nowrap mb-0">
                         <thead class="table-light">
@@ -313,7 +515,8 @@ if (Gate::allows("ana_sayfa")) {
                 <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Arıza/İzin/Avans Talepleri</h5>
                 <?php echo getWidthControl(); ?>
             </div>
-            <div class="card-body" style="height: <?php echo getWidgetHeight('widget-talepler', 'auto'); ?>; overflow-y: auto;">
+            <div class="card-body"
+                style="height: <?php echo getWidgetHeight('widget-talepler', 'auto'); ?>; overflow-y: auto;">
                 <div class="table-responsive">
                     <table class="table table-centered table-nowrap mb-0">
                         <thead class="table-light">
@@ -453,7 +656,8 @@ if (Gate::allows("ana_sayfa")) {
                 <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Şu Anda İzinde Olan Personeller</h5>
                 <?php echo getWidthControl(); ?>
             </div>
-            <div class="card-body" style="height: <?php echo getWidgetHeight('widget-izindekiler', 'auto'); ?>; overflow-y: auto;">
+            <div class="card-body"
+                style="height: <?php echo getWidgetHeight('widget-izindekiler', 'auto'); ?>; overflow-y: auto;">
                 <div class="table-responsive">
                     <table class="table table-centered table-nowrap mb-0">
                         <thead class="table-light">
@@ -517,7 +721,8 @@ if (Gate::allows("ana_sayfa")) {
     <?php $widgets['widget-izindekiler'] = ob_get_clean();
 
     ob_start(); ?>
-    <div class="<?php echo getWidgetWidth('widget-is-turu-istatistikleri', 'col-md-6'); ?> widget-item" id="widget-is-turu-istatistikleri">
+    <div class="<?php echo getWidgetWidth('widget-is-turu-istatistikleri', 'col-md-6'); ?> widget-item"
+        id="widget-is-turu-istatistikleri">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> İş Türü İstatistikleri</h5>
@@ -535,7 +740,8 @@ if (Gate::allows("ana_sayfa")) {
                     <?php echo getWidthControl(); ?>
                 </div>
             </div>
-            <div class="card-body" style="height: <?php echo getWidgetHeight('widget-is-turu-istatistikleri', 'auto'); ?>; overflow-y: auto;">
+            <div class="card-body"
+                style="height: <?php echo getWidgetHeight('widget-is-turu-istatistikleri', 'auto'); ?>; overflow-y: auto;">
                 <div id="work-type-stats-chart" style="min-height: 400px; height: 100%;"></div>
             </div>
         </div>
@@ -543,7 +749,8 @@ if (Gate::allows("ana_sayfa")) {
     <?php $widgets['widget-is-turu-istatistikleri'] = ob_get_clean();
 
     ob_start(); ?>
-    <div class="<?php echo getWidgetWidth('widget-is-emri-sonucu-istatistikleri', 'col-md-6'); ?> widget-item" id="widget-is-emri-sonucu-istatistikleri">
+    <div class="<?php echo getWidgetWidth('widget-is-emri-sonucu-istatistikleri', 'col-md-6'); ?> widget-item"
+        id="widget-is-emri-sonucu-istatistikleri">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> İş Emri Sonuç İstatistikleri</h5>
@@ -572,7 +779,8 @@ if (Gate::allows("ana_sayfa")) {
                     <?php echo getWidthControl(); ?>
                 </div>
             </div>
-            <div class="card-body" style="height: <?php echo getWidgetHeight('widget-is-emri-sonucu-istatistikleri', 'auto'); ?>; overflow-y: auto;">
+            <div class="card-body"
+                style="height: <?php echo getWidgetHeight('widget-is-emri-sonucu-istatistikleri', 'auto'); ?>; overflow-y: auto;">
                 <div id="work-result-stats-chart" style="min-height: 400px; height: 100%;"></div>
             </div>
         </div>
@@ -608,70 +816,146 @@ if (Gate::allows("ana_sayfa")) {
             </div>
             <div class="d-flex gap-2">
                 <div class="dropdown">
-                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-weight: 500;">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                        aria-expanded="false" style="font-weight: 500;">
                         <i class="bx bx-show me-1"></i> Kart Görünürlüğü
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" style="min-width: 280px; z-index: 1060;">
-                        <li><h6 class="dropdown-header fw-bold">Gösterilecek Kartları Seçin</h6></li>
-                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <h6 class="dropdown-header fw-bold">Gösterilecek Kartları Seçin</h6>
+                        </li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
                         <li>
                             <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-aktif-personel" checked>
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-aktif-personel" checked>
                                 Aktif Personel
                             </label>
                         </li>
                         <li>
                             <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-pasif-personel" checked>
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-pasif-personel" checked>
                                 Pasif Personel
                             </label>
                         </li>
                         <li>
                             <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-toplam-personel" checked>
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-toplam-personel" checked>
                                 Toplam Personel
                             </label>
                         </li>
                         <li>
                             <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-bekleyen-talepler" checked>
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-bekleyen-talepler" checked>
                                 Bekleyen Talepler
                             </label>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
                         <li>
                             <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-bildirimler" checked>
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-bildirimler" checked>
                                 Görev ve Bildirimler
                             </label>
                         </li>
                         <li>
                             <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-talepler" checked>
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-talepler" checked>
                                 Arıza/İzin/Avans Talepleri
                             </label>
                         </li>
                         <li>
                             <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-izindekiler" checked>
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-izindekiler" checked>
                                 İzinde Olan Personeller
                             </label>
                         </li>
                         <li>
                             <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-is-turu-istatistikleri" checked>
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-is-turu-istatistikleri" checked>
                                 İş Türü İstatistikleri
                             </label>
                         </li>
                         <li>
                             <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-is-emri-sonucu-istatistikleri" checked>
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-is-emri-sonucu-istatistikleri" checked>
                                 İş Emri Sonuç İstatistikleri
+                            </label>
+                        </li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-sahadaki-personel" checked>
+                                Sahadaki Personel
+                            </label>
+                        </li>
+                        <li>
+                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-izinli-personel" checked>
+                                İzinli Personel
+                            </label>
+                        </li>
+                        <li>
+                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-gunluk-kesme-acma" checked>
+                                Günlük Kesme Açma
+                            </label>
+                        </li>
+                        <li>
+                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-gunluk-endeks-okuma" checked>
+                                Günlük Endeks Okuma
+                            </label>
+                        </li>
+                        <li>
+                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-gunluk-sayac-degisimi" checked>
+                                Günlük Sayaç Değişimi
+                            </label>
+                        </li>
+                        <li>
+                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-gunluk-muhurleme" checked>
+                                Günlük Mühürleme
+                            </label>
+                        </li>
+                        <li>
+                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-sahadaki-arac" checked>
+                                Sahadaki Araç
+                            </label>
+                        </li>
+                        <li>
+                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-servisteki-arac" checked>
+                                Servisteki Araç
                             </label>
                         </li>
                     </ul>
                 </div>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-reset-dashboard" style="font-weight: 500;">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-reset-dashboard"
+                    style="font-weight: 500;">
                     <i class="bx bx-reset me-1"></i> Varsayılan Yerleşime Dön
                 </button>
             </div>
@@ -1110,120 +1394,7 @@ if (Gate::allows("ana_sayfa")) {
             transform: rotate(90deg);
         }
 
-        /* Summary Cards Shadcn Style */
-        .summary-card {
-            background: linear-gradient(to top, rgba(var(--bs-primary-rgb), 0.04) 0%, rgba(var(--bs-primary-rgb), 0.1) 100%);
-            border-radius: 16px;
-            padding: 24px;
-            border: 1px solid rgba(var(--bs-primary-rgb), 0.09);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: hidden;
-        }
 
-        .summary-card::before {
-            content: "";
-            position: absolute;
-            top: -20%;
-            right: -10%;
-            width: 140px;
-            height: 140px;
-            background: rgba(var(--bs-primary-rgb), 0.03);
-            border-radius: 50%;
-            z-index: 0;
-        }
-
-        .animate-card {
-            opacity: 0;
-            animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-            animation-delay: var(--delay);
-        }
-
-        @keyframes slideUpFade {
-            0% {
-                opacity: 0;
-                transform: translateY(12px) scale(0.99);
-            }
-
-            100% {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-
-        .summary-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            border-color: rgba(var(--bs-primary-rgb), 0.3);
-        }
-
-        .summary-card .card-header-flex {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 8px;
-        }
-
-        .summary-card .card-title {
-            color: #64748b;
-            font-size: 0.9rem;
-            font-weight: 600;
-            margin: 0;
-            letter-spacing: 0.02em;
-            display: flex;
-            align-items: center;
-            z-index: 1;
-        }
-
-        .summary-card .trend-badge {
-            padding: 4px 10px;
-            border-radius: 8px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            background: rgba(var(--bs-primary-rgb), 0.1);
-            border: 1px solid rgba(var(--bs-primary-rgb), 0.05);
-            z-index: 1;
-        }
-
-        .summary-card .trend-badge.up {
-            color: #10b981;
-        }
-
-        .summary-card .trend-badge.down {
-            color: #ef4444;
-        }
-
-        .summary-card .main-value {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: #0f172a;
-            margin: 10px 0 5px 0;
-            letter-spacing: -0.02em;
-            z-index: 1;
-        }
-
-        .summary-card .trend-description {
-            font-size: 0.875rem;
-            color: #64748b;
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            z-index: 1;
-        }
-
-        .summary-card .sub-text {
-            font-size: 0.75rem;
-            color: #94a3b8;
-            z-index: 1;
-        }
 
         /* Sortable Styles */
         .widget-item {
@@ -1258,33 +1429,6 @@ if (Gate::allows("ana_sayfa")) {
             background: rgba(241, 245, 249, 0.5) !important;
             border-radius: 12px;
             margin-bottom: 24px;
-        }
-
-        /* Dark Mode Adjustments */
-        [data-bs-theme="dark"] .summary-card {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            border-color: #334155;
-        }
-
-        [data-bs-theme="dark"] .summary-card .card-title {
-            color: #f8fafc;
-        }
-
-        [data-bs-theme="dark"] .summary-card .main-value {
-            color: #f8fafc;
-        }
-
-        [data-bs-theme="dark"] .summary-card .trend-badge {
-            background: #1e293b;
-            border-color: #334155;
-        }
-
-        [data-bs-theme="dark"] .summary-card .trend-description {
-            color: #94a3b8;
-        }
-
-        [data-bs-theme="dark"] .summary-card .sub-text {
-            color: #64748b;
         }
 
         [data-bs-theme="dark"] .modal-detay-card {
@@ -1422,7 +1566,7 @@ if (Gate::allows("ana_sayfa")) {
 
     <script src="https://code.jquery.com/ui/1.14.1/jquery-ui.js"></script>
     <script>
-        // Number Count                       er F           unction
+        // Number Cou            nt                      er F           unction
         function animateValue(obj, start, end, duration) {
             let startTimestamp = null;
             const step = (timestamp) => {
@@ -1639,7 +1783,7 @@ if (Gate::allows("ana_sayfa")) {
                 const visibility = localStorage.getItem('dashboard_widget_visibility');
                 if (visibility) {
                     const visibleWidgets = JSON.parse(visibility);
-                    $('#dashboard-widgets .widget-item').each(function() {
+                    $('#dashboard-widgets .widget-item').each(function () {
                         const id = $(this).attr('id');
                         const isVisible = visibleWidgets[id] !== false;
                         $(this).toggle(isVisible);
@@ -1651,7 +1795,7 @@ if (Gate::allows("ana_sayfa")) {
             // Save widget visibility to localStorage
             function saveWidgetVisibility() {
                 const visibility = {};
-                $('input.widget-toggle').each(function() {
+                $('input.widget-toggle').each(function () {
                     const widgetId = $(this).data('widget');
                     visibility[widgetId] = $(this).is(':checked');
                 });
@@ -1659,7 +1803,7 @@ if (Gate::allows("ana_sayfa")) {
             }
 
             // Toggle widget visibility
-            $(document).on('change', '.widget-toggle', function() {
+            $(document).on('change', '.widget-toggle', function () {
                 const widgetId = $(this).data('widget');
                 const isChecked = $(this).is(':checked');
                 $(`#${widgetId}`).fadeToggle(300);
@@ -1674,7 +1818,7 @@ if (Gate::allows("ana_sayfa")) {
                 const html = document.documentElement;
                 const isDarkMode = html.getAttribute('data-bs-theme') === 'dark';
                 const themeMode = html.getAttribute('data-theme-mode') || 'default';
-                
+
                 // Color Palette Map
                 const colors = {
                     'red': '#f46a6a',
@@ -2005,24 +2149,24 @@ if (Gate::allows("ana_sayfa")) {
             function saveDashboardConfig() {
                 const order = dashboard.sortable("toArray");
                 const settings = {};
-                $("#dashboard-widgets .widget-item").each(function() {
+                $("#dashboard-widgets .widget-item").each(function () {
                     const id = $(this).attr('id');
-                    
+
                     // Width
                     const classes = $(this).attr('class').split(' ');
                     const widthClass = classes.find(c => c.startsWith('col-'));
-                    
+
                     // Height
                     const height = $(this).find('.card-body').css('height');
-                    
+
                     if (id) {
-                        settings[id] = { 
+                        settings[id] = {
                             width: widthClass,
                             height: height
                         };
                     }
                 });
-                
+
                 const cookieOptions = "; path=/; max-age=" + (60 * 60 * 24 * 30);
                 document.cookie = "dashboard_order=" + JSON.stringify(order) + cookieOptions;
                 document.cookie = "dashboard_settings=" + JSON.stringify(settings) + cookieOptions;
@@ -2042,19 +2186,19 @@ if (Gate::allows("ana_sayfa")) {
             });
 
             // Card Resize Logic (Width)
-            $(document).on('click', '.btn-resize-width', function(e) {
+            $(document).on('click', '.btn-resize-width', function (e) {
                 e.preventDefault();
                 const newWidth = $(this).data('width');
                 const widget = $(this).closest('.widget-item');
-                
+
                 // Remove existing col- classes
                 const classes = widget.attr('class').split(' ');
                 const newClasses = classes.filter(c => !c.startsWith('col-'));
                 newClasses.push(newWidth);
-                
+
                 widget.attr('class', newClasses.join(' '));
                 saveDashboardConfig();
-                
+
                 // Trigger window resize to let charts adjust
                 setTimeout(() => {
                     window.dispatchEvent(new Event('resize'));
@@ -2062,15 +2206,15 @@ if (Gate::allows("ana_sayfa")) {
             });
 
             // Card Resize Logic (Height)
-            $(document).on('click', '.btn-resize-height', function(e) {
+            $(document).on('click', '.btn-resize-height', function (e) {
                 e.preventDefault();
                 const newHeight = $(this).data('height');
                 const widget = $(this).closest('.widget-item');
                 const cardBody = widget.find('.card-body');
-                
+
                 cardBody.css('height', newHeight);
                 saveDashboardConfig();
-                
+
                 // Trigger window resize to let charts adjust
                 setTimeout(() => {
                     window.dispatchEvent(new Event('resize'));
@@ -2078,7 +2222,7 @@ if (Gate::allows("ana_sayfa")) {
             });
 
             // Reset Dashboard Logic
-            $('#btn-reset-dashboard').on('click', function() {
+            $('#btn-reset-dashboard').on('click', function () {
                 Swal.fire({
                     title: 'Emin misiniz?',
                     text: "Tüm kart yerleşimleri ve genişlikleri varsayılan ayarlara dönecektir.",

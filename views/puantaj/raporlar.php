@@ -88,12 +88,14 @@ foreach ($regionList as $r) {
                                         <?php echo Form::FormSelect2("region", $regionOptions, $region, "Bölge Seçiniz", "grid", "key", "", "form-select select2"); ?>
                                     </div>
                                     <div class="col-md-2 d-flex align-items-end">
-                                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 w-100">
+                                        <div
+                                            class="action-button-container d-flex align-items-center border rounded shadow-sm p-1 gap-1 w-100">
                                             <button type="submit" class="btn btn-primary btn-sm flex-grow-1 fw-bold">
                                                 <i class="mdi mdi-magnify me-1"></i> Sorgula
                                             </button>
                                             <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-                                            <button type="button" class="btn btn-link btn-sm text-secondary text-decoration-none px-2"
+                                            <button type="button"
+                                                class="btn btn-link btn-sm text-secondary text-decoration-none px-2"
                                                 id="btnClearFilters">
                                                 <i class="mdi mdi-filter-remove"></i>
                                             </button>
@@ -146,7 +148,7 @@ foreach ($regionList as $r) {
                 </a>
             </li>
         </ul>
-        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+        <div class="action-button-container d-flex align-items-center border rounded shadow-sm p-1 gap-1">
             <button type="button"
                 class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
                 id="btnFullScreen">
@@ -620,6 +622,38 @@ foreach ($personelList as $p) {
         width: 100% !important;
     }
 
+    [data-bs-theme="dark"] .fullscreen-mode {
+        background: #191e22 !important;
+    }
+
+    [data-bs-theme="dark"] .action-button-container {
+        background-color: #282f36 !important;
+        border-color: #32394e !important;
+    }
+
+    [data-bs-theme="dark"] .report-legend {
+        background: #282f36 !important;
+        border-color: #32394e !important;
+    }
+
+    [data-bs-theme="dark"] .legend-item {
+        border-color: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    [data-bs-theme="dark"] .legend-code {
+        background: rgba(255, 255, 255, 0.05) !important;
+        color: #adb5bd !important;
+    }
+
+    [data-bs-theme="dark"] .filter-summary-badge {
+        background: #32394e !important;
+        border-color: #3b445e !important;
+    }
+
+    [data-bs-theme="dark"] .filter-summary-badge .badge-label {
+        background: rgba(0, 0, 0, 0.2) !important;
+    }
+
     .fullscreen-mode>.col-12 {
         flex: 1;
         display: flex;
@@ -691,17 +725,45 @@ foreach ($personelList as $p) {
 
     #raporTabs.nav-tabs-custom {
         border-bottom: none !important;
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+
+    #raporTabs.nav-tabs-custom .nav-item {
+        margin-bottom: 0 !important;
     }
 
     #raporTabs.nav-tabs-custom .nav-link {
         border: none !important;
         text-decoration: none !important;
         box-shadow: none !important;
+        padding: 8px 16px;
+        color: var(--bs-body-color, #74788d);
+        font-weight: 500;
+        transition: all 0.2s ease;
+        border-radius: 8px !important;
+        background-color: transparent;
     }
 
-    #raporTabs.nav-tabs-custom .nav-link::after,
-    #raporTabs.nav-tabs-custom .nav-link::before {
-        display: none !important;
+    #raporTabs.nav-tabs-custom .nav-link:hover {
+        background-color: rgba(var(--bs-primary-rgb, 85, 110, 230), 0.05);
+        color: var(--bs-primary);
+    }
+
+    #raporTabs.nav-tabs-custom .nav-link.active {
+        color: #fff !important;
+        background-color: #2a3042 !important;
+        /* Dason dark style background */
+        border: none !important;
+    }
+
+    [data-bs-theme="dark"] #raporTabs.nav-tabs-custom .nav-link.active {
+        background-color: var(--bs-primary, #1c84ee) !important;
+    }
+
+    [data-bs-theme="dark"] #raporTabs.nav-tabs-custom .nav-link {
+        color: #adb5bd !important;
     }
 
     .accordion-button:not(.collapsed) #filterSummary {

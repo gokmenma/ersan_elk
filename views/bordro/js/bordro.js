@@ -471,6 +471,42 @@ $(document).ready(function () {
     });
   });
 
+  // İcra Detay Görüntüle
+  $(document).on("click", ".btn-icra-detail", function () {
+    const id = $(this).data("id");
+
+    $.ajax({
+      url: "views/bordro/api.php",
+      type: "POST",
+      data: {
+        action: "get-icra-detail",
+        id: id,
+      },
+      dataType: "json",
+      success: function (response) {
+        if (response.status === "success") {
+          $("#icra_detay_personel_ad").text(response.personel_ad);
+          $("#icra_detay_content").html(response.html);
+          showModal("modalIcraDetay");
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Hata!",
+            text: response.message,
+          });
+        }
+      },
+      error: function (xhr, status, error) {
+        console.error("İcra detay getirme hatası:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Sistem Hatası",
+          text: "Detaylar yüklenirken bir hata oluştu.",
+        });
+      },
+    });
+  });
+
   // Dönem Durum Switch'i (Açık/Kapalı)
   $("#switchDonemDurum").on("change", function () {
     const isChecked = $(this).prop("checked");
@@ -697,6 +733,152 @@ $(document).ready(function () {
       },
     });
   });
+  // Satırda Sodexo Düzenleme İkonu
+  $(document).on("click", ".btn-edit-sodexo-inline", function () {
+    const parent = $(this).closest(".sodexo-wrapper");
+    const span = parent.find(".sodexo-value");
+    const input = parent.find(".update-sodexo");
+    const icon = $(this);
+
+    span.addClass("d-none");
+    icon.addClass("d-none");
+    input.removeClass("d-none").focus();
+  });
+
+  // Input odağını kaybettiğinde eski haline dön
+  $(document).on("blur", ".update-sodexo", function () {
+    const input = $(this);
+    const parent = input.closest(".sodexo-wrapper");
+    const span = parent.find(".sodexo-value");
+    const icon = parent.find(".btn-edit-sodexo-inline");
+
+    // Eğer değer değişmediyse veya değişim işlemi devam ediyorsa/bittiyse gizle
+    // Not: change event'i blur'dan önce tetiklenir
+    setTimeout(() => {
+      input.addClass("d-none");
+      span.removeClass("d-none");
+      icon.removeClass("d-none");
+    }, 200);
+  });
+
+  // Satırda Sodexo Güncelleme
+  $(document).on("change", ".update-sodexo", function () {
+    const input = $(this);
+    const id = input.data("id");
+    const net = parseFloat(input.data("net")) || 0;
+    const banka = parseFloat(input.data("banka")) || 0;
+    const diger = parseFloat(input.data("diger")) || 0;
+    const icra = parseFloat(input.data("icra")) || 0;
+    const parent = input.closest(".sodexo-wrapper");
+    const span = parent.find(".sodexo-value");
+    const oldSodexo = parseFloat(input.attr("data-current-val")) || 0;
+
+    // IMask değerinden sayıya çevir
+    let val = input.val();
+    val = val.replace("₺", "").replace(/\./g, "").replace(",", ".");
+    const sodexo = parseFloat(val) || 0;
+
+    const elden = Math.max(0, net - banka - sodexo - icra - diger);
+
+    // Üst sınır kontrolü (%25)
+    const maxSodexo = net * 0.25;
+    if (sodexo > maxSodexo) {
+      Swal.fire({
+        icon: "warning",
+        title: "Üst Sınır Uyarısı",
+        text: `Sodexo tutarı toplam alacağın %25'ini (${formatMoney(maxSodexo)} ₺) geçemez!`,
+      });
+      // Değeri geri al
+      span.text(formatMoney(oldSodexo) + " ₺");
+      input.val(formatMoney(oldSodexo));
+      return;
+    }
+
+    const diff = sodexo - oldSodexo;
+
+    $.ajax({
+      url: "views/bordro/api.php",
+      type: "POST",
+      data: {
+        action: "odeme-dagit",
+        id: id,
+        banka_odemesi: banka,
+        sodexo_odemesi: sodexo,
+        diger_odeme: diger,
+      },
+      dataType: "json",
+      success: function (response) {
+        if (response.status === "success") {
+          // Toastify ile bildirim ver
+          Toastify({
+            text: "Sodexo tutarı güncellendi. Bordroyu tekrar hesaplamanız gerekmektedir.",
+            duration: 3000, // Mesaj biraz daha uzun olduğu için süreyi azıcık artırdım
+            gravity: "top",
+            position: "center",
+            style: {
+              background: "#000",
+              borderRadius: "6px",
+            },
+          }).showToast();
+
+          // Span ve Input değerlerini güncelle
+          span.text(formatMoney(sodexo) + " ₺");
+          input.attr("data-current-val", sodexo);
+
+          // Elden hücresini güncelle
+          const eldenTd = input.closest("tr").find(".td-elden");
+          eldenTd.text(formatMoney(elden) + " ₺");
+
+          // Özet kartlarını güncelle (Sodexo artarsa Elden aynı oranda azalır)
+          const totalSodexoElem = $("#total-sodexo");
+          const totalEldenElem = $("#total-elden");
+
+          if (totalSodexoElem.length && totalEldenElem.length) {
+            let currentTotalSodexo =
+              parseFloat(
+                totalSodexoElem.text().replace(/\./g, "").replace(",", "."),
+              ) || 0;
+            let currentTotalElden =
+              parseFloat(
+                totalEldenElem.text().replace(/\./g, "").replace(",", "."),
+              ) || 0;
+
+            const newTotalSodexo = currentTotalSodexo + diff;
+            const newTotalElden = currentTotalElden - diff; // Sodexo artışı eldeni azaltır
+
+            totalSodexoElem.text(formatMoney(newTotalSodexo));
+            totalEldenElem.text(formatMoney(Math.max(0, newTotalElden)));
+          }
+
+          // Inputu gizle, span'ı göster
+          input.addClass("d-none");
+          span.removeClass("d-none");
+          parent.find(".btn-edit-sodexo-inline").removeClass("d-none");
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Hata!",
+            text: response.message,
+          });
+        }
+      },
+      error: function () {
+        Swal.fire({
+          icon: "error",
+          title: "Hata!",
+          text: "Bir hata oluştu.",
+        });
+      },
+    });
+  });
+
+  // Enter tuşuna basıldığında inputu kapat
+  $(document).on("keypress", ".update-sodexo", function (e) {
+    if (e.which == 13) {
+      $(this).blur();
+    }
+  });
+
   // Personel Gelir Ekle Butonu
   $(document).on("click", ".btn-gelir-ekle, .btn-detail-ekodeme", function () {
     console.log("Gelir Ekle/Detay tıklandı");

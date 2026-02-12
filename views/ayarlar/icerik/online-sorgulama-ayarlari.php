@@ -13,6 +13,10 @@ $allSettings = $Settings->getAllSettingsAsKeyValue($firma_id);
 $online_sorgulama_aktif = ($allSettings['online_sorgulama_aktif'] ?? '0') === '1';
 $online_sorgulama_endeks_saat = $allSettings['online_sorgulama_endeks_saat'] ?? '08:00';
 $online_sorgulama_puantaj_saat = $allSettings['online_sorgulama_puantaj_saat'] ?? '08:30';
+
+// Çoklu saat değerlerini diziye çevir
+$endeks_saatleri = array_filter(array_map('trim', explode(',', $online_sorgulama_endeks_saat)));
+$puantaj_saatleri = array_filter(array_map('trim', explode(',', $online_sorgulama_puantaj_saat)));
 $online_sorgulama_firma_baslangic = $allSettings['online_sorgulama_firma_baslangic'] ?? ($_SESSION['firma_kodu'] ?? '17');
 $online_sorgulama_firma_bitis = $allSettings['online_sorgulama_firma_bitis'] ?? ($_SESSION['firma_kodu'] ?? '17');
 
@@ -30,13 +34,11 @@ $api_puantaj_sifre = $allSettings['api_puantaj_sifre'] ?? 'sk_live_DSOSTjHN195B4
 $online_sorgulama_endeks_son_calistirma = $allSettings['online_sorgulama_endeks_son_calistirma'] ?? '08:15';
 $online_sorgulama_puantaj_son_calistirma = $allSettings['online_sorgulama_puantaj_son_calistirma'] ?? '08:45';
 
-// Saat seçenekleri oluştur (15 dakika aralıklarla)
+// Saat seçenekleri oluştur (tam saat aralıklarla - cron 15 dk'da bir çalışsa bile sadece tam saatlerde tetiklenir)
 $saatSecenekleri = [];
 for ($saat = 0; $saat < 24; $saat++) {
-    for ($dakika = 0; $dakika < 60; $dakika += 15) {
-        $saatStr = sprintf('%02d:%02d', $saat, $dakika);
-        $saatSecenekleri[$saatStr] = $saatStr;
-    }
+    $saatStr = sprintf('%02d:00', $saat);
+    $saatSecenekleri[$saatStr] = $saatStr;
 }
 
 ?>
@@ -103,29 +105,20 @@ for ($saat = 0; $saat < 24; $saat++) {
         <div class="card-body p-4">
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <?php echo Form::FormSelect2(
-                        "online_sorgulama_endeks_saat",
+                    <?php echo Form::FormMultipleSelect2(
+                        "online_sorgulama_endeks_saat_select",
                         $saatSecenekleri,
-                        $online_sorgulama_endeks_saat,
-                        "Sorgulama Saati",
-                        "clock",
-                        '',
-                        "",
-                        "form-control select2"
+                        $endeks_saatleri,
+                        "Sorgulama Saatleri (En fazla 4)",
+                        "clock"
                     ); ?>
-                    <div class="form-text">Her gün bu saatte Endeks Okuma sorgulanacak</div>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <?php echo Form::FormSelect2(
-                        "online_sorgulama_endeks_son_calistirma",
-                        $saatSecenekleri,
-                        $online_sorgulama_endeks_son_calistirma,
-                        "Son Çalıştırma Saati",
-                        "clock",
-                        '',
-                        "",
-                        "form-control select2"
-                    ); ?>
+                    <input type="hidden" name="online_sorgulama_endeks_saat" id="online_sorgulama_endeks_saat"
+                        value="<?php echo htmlspecialchars($online_sorgulama_endeks_saat); ?>">
+                    <div class="form-text">
+                        <i data-feather="info" style="width:14px;height:14px" class="me-1"></i>
+                        En fazla <strong>4 saat</strong> seçilebilir, saatler arasında en az <strong>1 saat</strong>
+                        fark olmalıdır.
+                    </div>
                 </div>
             </div>
             <div class="row mt-2">
@@ -147,29 +140,20 @@ for ($saat = 0; $saat < 24; $saat++) {
         <div class="card-body p-4">
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <?php echo Form::FormSelect2(
-                        "online_sorgulama_puantaj_saat",
+                    <?php echo Form::FormMultipleSelect2(
+                        "online_sorgulama_puantaj_saat_select",
                         $saatSecenekleri,
-                        $online_sorgulama_puantaj_saat,
-                        "Sorgulama Saati",
-                        "clock",
-                        '',
-                        "",
-                        "form-control select2"
+                        $puantaj_saatleri,
+                        "Sorgulama Saatleri (En fazla 4)",
+                        "clock"
                     ); ?>
-                    <div class="form-text">Her gün bu saatte Kesme/Açma İşlemleri sorgulanacak</div>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <?php echo Form::FormSelect2(
-                        "online_sorgulama_puantaj_son_calistirma",
-                        $saatSecenekleri,
-                        $online_sorgulama_puantaj_son_calistirma,
-                        "Son Çalıştırma Saati",
-                        "clock",
-                        '',
-                        "",
-                        "form-control select2"
-                    ); ?>
+                    <input type="hidden" name="online_sorgulama_puantaj_saat" id="online_sorgulama_puantaj_saat"
+                        value="<?php echo htmlspecialchars($online_sorgulama_puantaj_saat); ?>">
+                    <div class="form-text">
+                        <i data-feather="info" style="width:14px;height:14px" class="me-1"></i>
+                        En fazla <strong>4 saat</strong> seçilebilir, saatler arasında en az <strong>1 saat</strong>
+                        fark olmalıdır.
+                    </div>
                 </div>
             </div>
             <div class="row mt-2">
@@ -267,7 +251,8 @@ for ($saat = 0; $saat < 24; $saat++) {
             </div>
             <p class="mb-0 text-muted">
                 <i data-feather="info" class="me-1"></i>
-                Cron her 15 dakikada bir çalışır ve ayarlanan saatlere denk geldiğinde sorgulama yapar.
+                Cron her 15 dakikada bir çalışır ve yukarıda ayarlanan saatlere denk geldiğinde sorgulama yapar.
+                Her sorgulama türü için günde en fazla <strong>4 farklı saat</strong> belirlenebilir.
             </p>
         </div>
     </div>
@@ -293,9 +278,115 @@ for ($saat = 0; $saat < 24; $saat++) {
         const btnManuelPuantajSorgula = document.getElementById('btnManuelPuantajSorgula');
         const btnManuelEndeksSorgula = document.getElementById('btnManuelEndeksSorgula');
 
-        // Kaydetme
+        // ========== Çoklu Saat Seçimi İşlevleri (Select2) ==========
+
+        /**
+         * Saatin dakika cinsinden değerini döndürür
+         */
+        function saatToDakika(saat) {
+            const [h, m] = saat.split(':').map(Number);
+            return h * 60 + (m || 0);
+        }
+
+        /**
+         * Seçilen saatler arasında en az 60 dakika (1 saat) fark olup olmadığını kontrol eder
+         */
+        function saatlerGecerliMi(saatler) {
+            if (saatler.length <= 1) return { gecerli: true };
+            const dakikalar = saatler.map(saatToDakika).sort((a, b) => a - b);
+            for (let i = 1; i < dakikalar.length; i++) {
+                const fark = dakikalar[i] - dakikalar[i - 1];
+                if (fark < 60) {
+                    const s1 = saatler.find(s => saatToDakika(s) === dakikalar[i - 1]);
+                    const s2 = saatler.find(s => saatToDakika(s) === dakikalar[i]);
+                    return {
+                        gecerli: false,
+                        mesaj: `${s1} ile ${s2} arasında en az 1 saat olmalıdır (şu an ${fark} dakika).`
+                    };
+                }
+            }
+            return { gecerli: true };
+        }
+
+        /**
+         * Select2 çoklu seçim için event handler ve hidden input senkronizasyonu
+         */
+        function setupSelect2Handler(selectId, hiddenId) {
+            const $select = $('#' + selectId);
+            const hiddenEl = document.getElementById(hiddenId);
+            if (!$select.length || !hiddenEl) return;
+
+            // Select2 başlat (zaten init olmuş olabilir, kontrol et)
+            if (!$select.hasClass('select2-hidden-accessible')) {
+                $select.select2({
+                    placeholder: 'Saat seçiniz...',
+                    allowClear: true,
+                    maximumSelectionLength: 4
+                });
+            }
+
+            // Select2 change event
+            $select.on('change', function () {
+                const secilen = $(this).val() || [];
+
+                // Minimum 1 saat fark kontrolü
+                if (secilen.length > 1) {
+                    const sonuc = saatlerGecerliMi(secilen);
+                    if (!sonuc.gecerli) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Saat Aralığı Hatası',
+                            text: sonuc.mesaj,
+                            confirmButtonText: 'Tamam'
+                        });
+                        // Son eklenen saati kaldır
+                        const previousVal = hiddenEl.value ? hiddenEl.value.split(',').filter(v => v) : [];
+                        $select.val(previousVal).trigger('change.select2');
+                        return;
+                    }
+                }
+
+                // Geçerli, hidden input'u güncelle
+                hiddenEl.value = secilen.join(',');
+            });
+        }
+
+        // Select2 handler'ları başlat
+        setupSelect2Handler('online_sorgulama_endeks_saat_select', 'online_sorgulama_endeks_saat');
+        setupSelect2Handler('online_sorgulama_puantaj_saat_select', 'online_sorgulama_puantaj_saat');
+
+        // ========== Kaydetme ==========
         if (saveButton) {
             saveButton.addEventListener('click', function () {
+                // Kaydetmeden önce validasyon
+                const endeksSaatler = document.getElementById('online_sorgulama_endeks_saat').value;
+                const puantajSaatler = document.getElementById('online_sorgulama_puantaj_saat').value;
+
+                if (endeksSaatler) {
+                    const arr = endeksSaatler.split(',');
+                    if (arr.length > 4) {
+                        Swal.fire('Hata', 'Endeks Okuma için en fazla 4 saat seçebilirsiniz.', 'error');
+                        return;
+                    }
+                    const sonuc = saatlerGecerliMi(arr);
+                    if (!sonuc.gecerli) {
+                        Swal.fire('Hata', 'Endeks Okuma: ' + sonuc.mesaj, 'error');
+                        return;
+                    }
+                }
+                if (puantajSaatler) {
+                    const arr = puantajSaatler.split(',');
+                    if (arr.length > 4) {
+                        Swal.fire('Hata', 'Kesme/Açma için en fazla 4 saat seçebilirsiniz.', 'error');
+                        return;
+                    }
+                    const sonuc = saatlerGecerliMi(arr);
+                    if (!sonuc.gecerli) {
+                        Swal.fire('Hata', 'Kesme/Açma: ' + sonuc.mesaj, 'error');
+                        return;
+                    }
+                }
+
                 const btn = this;
                 btn.disabled = true;
                 btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Kaydediliyor...';
@@ -325,7 +416,7 @@ for ($saat = 0; $saat < 24; $saat++) {
             });
         }
 
-        // Manuel Puantaj Sorgulama
+        // ========== Manuel Puantaj Sorgulama ==========
         if (btnManuelPuantajSorgula) {
             btnManuelPuantajSorgula.addEventListener('click', function () {
                 const btn = this;
@@ -372,7 +463,7 @@ for ($saat = 0; $saat < 24; $saat++) {
             });
         }
 
-        // Manuel Endeks Sorgulama
+        // ========== Manuel Endeks Sorgulama ==========
         if (btnManuelEndeksSorgula) {
             btnManuelEndeksSorgula.addEventListener('click', function () {
                 const btn = this;

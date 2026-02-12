@@ -90,8 +90,20 @@ class PersonelKesintileriModel extends Model
     public function olusturDonemKesintisi($surekliKesinti, $donem_id, $tutar)
     {
         // Bu dönem için zaten kayıt var mı kontrol et
-        if ($this->donemdeKaynakKayitVarMi($surekliKesinti->id, $donem_id)) {
-            return false; // Zaten mevcut
+        $sql = $this->db->prepare("
+            SELECT id, durum FROM {$this->table} 
+            WHERE ana_kesinti_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
+        ");
+        $sql->execute([$surekliKesinti->id, $donem_id]);
+        $mevcut = $sql->fetch(PDO::FETCH_OBJ);
+
+        if ($mevcut) {
+            // Eğer kayıt varsa ve beklemedeyse onaylandıya çek
+            if ($mevcut->durum === 'beklemede') {
+                $update = $this->db->prepare("UPDATE {$this->table} SET durum = 'onaylandi', tutar = ?, updated_at = NOW() WHERE id = ?");
+                $update->execute([$tutar, $mevcut->id]);
+            }
+            return true; // Mevcut olduğu için true dönüyoruz (işlem tamam gibi)
         }
 
         $data = [
@@ -106,7 +118,8 @@ class PersonelKesintileriModel extends Model
             'parametre_id' => $surekliKesinti->parametre_id,
             'icra_id' => $surekliKesinti->icra_id,
             'ana_kesinti_id' => $surekliKesinti->id, // Ana kayıt referansı
-            'aktif' => 1
+            'aktif' => 1,
+            'durum' => 'onaylandi'
         ];
 
         return $this->saveWithAttr($data);

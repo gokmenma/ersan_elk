@@ -1477,6 +1477,10 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     $('#btnOnlinePuantajSorgula').prop('disabled', false);
                     try {
                         var res = JSON.parse(response);
+
+                        // API'den dönen ham veriyi konsola bas
+                        console.log("Kesme/Açma API Ham Veri:", res.api_raw_data);
+
                         var resultHtml = '';
                         if (res.status === 'success') {
                             resultHtml = '<div class="alert alert-success">';
@@ -1614,7 +1618,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         }
                         $('#onlineIcmalResult').html(resultHtml).show();
                     } catch (err) {
-                $('#onlineIcmalResult').html('<div class="alert alert-danger">Sunucudan geçersiz yanıt alındı.</div>').show();
+                        $('#onlineIcmalResult').html('<div class="alert alert-danger">Sunucudan geçersiz yanıt alındı.</div>').show();
                     }
                 },
                 error: function () {

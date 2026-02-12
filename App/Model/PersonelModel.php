@@ -523,4 +523,53 @@ class PersonelModel extends Model
             'firma_id' => $_SESSION['firma_id']
         ]);
     }
+
+    public function getAdvancedDashboardStats()
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $bugun = date('Y-m-d');
+
+        // Sahadaki Personel Sayısı (Bugün iş yapmış olanlar)
+        $sqlSahadaki = "SELECT COUNT(DISTINCT p_id) as sahadaki FROM (
+            SELECT personel_id as p_id FROM yapilan_isler WHERE tarih = :bugun AND firma_id = :firma_id AND silinme_tarihi IS NULL
+            UNION
+            SELECT personel_id as p_id FROM endeks_okuma WHERE tarih = :bugun AND firma_id = :firma_id AND silinme_tarihi IS NULL
+        ) as sahadakiler";
+        $stmtS = $this->db->prepare($sqlSahadaki);
+        $stmtS->execute(['bugun' => $bugun, 'firma_id' => $firmaId]);
+        $sahadakiCount = $stmtS->fetch(PDO::FETCH_OBJ)->sahadaki ?? 0;
+
+        // İzinli Personel Sayısı
+        $sqlIzinli = "SELECT COUNT(*) as izinli FROM personel_izinleri pi
+                      JOIN personel p ON pi.personel_id = p.id
+                      WHERE pi.baslangic_tarihi <= :bugun AND pi.bitis_tarihi >= :bugun 
+                      AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = :firma_id AND pi.silinme_tarihi IS NULL";
+        $stmtI = $this->db->prepare($sqlIzinli);
+        $stmtI->execute(['bugun' => $bugun, 'firma_id' => $firmaId]);
+        $izinliRecord = $stmtI->fetch(PDO::FETCH_OBJ);
+        $izinliCount = $izinliRecord ? $izinliRecord->izinli : 0;
+
+        // Sahadaki Araç Sayısı (Aktif olanlar)
+        $sqlAracSaha = "SELECT COUNT(*) as sahadaki_arac FROM araclar 
+                        WHERE aktif_mi = 1 AND firma_id = :firma_id AND silinme_tarihi IS NULL";
+        $stmtA = $this->db->prepare($sqlAracSaha);
+        $stmtA->execute(['firma_id' => $firmaId]);
+        $sahadakiAracRecord = $stmtA->fetch(PDO::FETCH_OBJ);
+        $sahadakiAracCount = $sahadakiAracRecord ? $sahadakiAracRecord->sahadaki_arac : 0;
+
+        // Servisteki Araç Sayısı (Pasif olanlar)
+        $sqlAracServis = "SELECT COUNT(*) as servisteki_arac FROM araclar 
+                          WHERE aktif_mi = 0 AND firma_id = :firma_id AND silinme_tarihi IS NULL";
+        $stmtAS = $this->db->prepare($sqlAracServis);
+        $stmtAS->execute(['firma_id' => $firmaId]);
+        $servistekiAracRecord = $stmtAS->fetch(PDO::FETCH_OBJ);
+        $servistekiAracCount = $servistekiAracRecord ? $servistekiAracRecord->servisteki_arac : 0;
+
+        return (object) [
+            'sahadaki_personel' => $sahadakiCount,
+            'izinli_personel' => $izinliCount,
+            'sahadaki_arac' => $sahadakiAracCount,
+            'servisteki_arac' => $servistekiAracCount
+        ];
+    }
 }

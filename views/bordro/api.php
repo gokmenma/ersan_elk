@@ -324,7 +324,72 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $SystemLog->logAction($userId, 'Maaş Hesaplama', "$hesaplananSayisi personelin maaşı hesaplandı.");
                 break;
 
-            // Bordro Detayı Getir
+            // İcra Kesinti Detayı
+            case 'get-icra-detail':
+                $id = intval($_POST['id'] ?? 0);
+                if ($id <= 0) {
+                    throw new Exception('Geçersiz kayıt ID.');
+                }
+
+                $bp = $BordroPersonel->find($id);
+                if (!$bp) {
+                    throw new Exception('Kayıt bulunamadı.');
+                }
+
+                $kesintiler = $BordroPersonel->getDonemKesintileriListe($bp->personel_id, $bp->donem_id);
+
+                $html = '<div class="table-responsive">
+                    <table class="table table-sm table-hover table-bordered mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>İcra Dairesi / Dosya No</th>
+                                <th>Açıklama</th>
+                                <th class="text-end" style="width: 120px;">Tutar</th>
+                            </tr>
+                        </thead>
+                        <tbody>';
+
+                $toplam = 0;
+                $icraSayisi = 0;
+                foreach ($kesintiler as $k) {
+                    if ($k->tur === 'icra') {
+                        $tutar = floatval($k->tutar);
+                        $toplam += $tutar;
+                        $icraSayisi++;
+                        $html .= '<tr>
+                            <td>' . htmlspecialchars(($k->icra_dairesi ?? '') . ' ' . ($k->dosya_no ?? '')) . '</td>
+                            <td>' . htmlspecialchars($k->aciklama ?? '-') . '</td>
+                            <td class="text-end fw-bold text-danger">' . number_format($tutar, 2, ',', '.') . ' ₺</td>
+                        </tr>';
+                    }
+                }
+
+                if ($icraSayisi === 0) {
+                    $html .= '<tr><td colspan="3" class="text-center text-muted">İcra kesintisi bulunamadı.</td></tr>';
+                }
+
+                $html .= '</tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <th colspan="2" class="text-end">Toplam:</th>
+                                <th class="text-end text-danger">' . number_format($toplam, 2, ',', '.') . ' ₺</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>';
+
+                // Personel adını al
+                $Personel = new PersonelModel();
+                $personelData = $Personel->find($bp->personel_id);
+
+                echo json_encode([
+                    'status' => 'success',
+                    'html' => $html,
+                    'personel_ad' => $personelData ? $personelData->adi_soyadi : '-'
+                ]);
+                break;
+
+            // Kesinti ve ek ödeme türü etiketleri
             case 'get-detail':
                 $id = intval($_POST['id'] ?? 0);
 
@@ -776,16 +841,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $net = floatval($data->net_maas ?? 0);
-                $elden = $net - $banka - $sodexo - $diger;
 
-                if ($elden < 0) {
-                    throw new Exception('Ödeme toplamı net maaşı aşamaz!');
+                // İcra kesintisini JSON'dan al
+                $icra = 0;
+                $sqlDetay = $BordroPersonel->getDb()->prepare("SELECT hesaplama_detay FROM bordro_personel WHERE id = ?");
+                $sqlDetay->execute([$id]);
+                $detayRow = $sqlDetay->fetch(PDO::FETCH_OBJ);
+                if ($detayRow && !empty($detayRow->hesaplama_detay)) {
+                    $detayJson = json_decode($detayRow->hesaplama_detay, true);
+                    $icra = floatval($detayJson['odeme_dagilimi']['icra_kesintisi'] ?? 0);
                 }
+
+                // Üst sınır kontrolü (%25)
+                $maxSodexo = $net * 0.25;
+                if ($sodexo > $maxSodexo + 0.01) { // Küçük kuruş farklarını tolore etmek için
+                    throw new Exception('Sodexo tutarı toplam alacağın %25\'ini geçemez!');
+                }
+
+                $elden = max(0, $net - $banka - $sodexo - $icra - $diger);
 
                 // Güncelle
                 $sql = $BordroPersonel->getDb()->prepare("
                     UPDATE bordro_personel 
-                    SET banka_odemesi = ?, sodexo_odemesi = ?, diger_odeme = ?, elden_odeme = ?
+                    SET banka_odemesi = ?, sodexo_odemesi = ?, diger_odeme = ?, elden_odeme = ?, sodexo_manuel = 1
                     WHERE id = ?
                 ");
                 $sql->execute([$banka, $sodexo, $diger, $elden, $id]);

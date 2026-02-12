@@ -26,7 +26,7 @@ class BordroPersonelModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT bp.*, p.adi_soyadi, p.tc_kimlik_no, p.departman, p.gorev, 
-                   p.ise_giris_tarihi, p.isten_cikis_tarihi, p.maas_tutari,
+                   p.ise_giris_tarihi, p.isten_cikis_tarihi, p.maas_tutari, p.maas_durumu,
                    p.cep_telefonu, p.resim_yolu, bp.hesaplama_detay,
                    (SELECT COALESCE(SUM(tutar), 0) FROM personel_kesintileri WHERE personel_id = bp.personel_id AND donem_id = bp.donem_id AND silinme_tarihi IS NULL AND durum = 'onaylandi') as guncel_toplam_kesinti,
                    (SELECT COALESCE(SUM(tutar), 0) FROM personel_ek_odemeler WHERE personel_id = bp.personel_id AND donem_id = bp.donem_id AND silinme_tarihi IS NULL AND durum = 'onaylandi') as guncel_toplam_ek_odeme
@@ -320,13 +320,13 @@ class BordroPersonelModel extends Model
      * @param string $tur Kesinti türü
      * @param string $durum Onay durumu (beklemede, onaylandi, reddedildi) - varsayılan: beklemede
      */
-    public function addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur = 'diger', $durum = 'beklemede')
+    public function addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur = 'diger', $durum = 'beklemede', $icra_id = null)
     {
         $sql = $this->db->prepare("
-            INSERT INTO personel_kesintileri (personel_id, donem_id, aciklama, tutar, tur, durum, olusturma_tarihi)
-            VALUES (?, ?, ?, ?, ?, ?, NOW())
+            INSERT INTO personel_kesintileri (personel_id, donem_id, aciklama, tutar, tur, durum, icra_id, olusturma_tarihi)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
         ");
-        return $sql->execute([$personel_id, $donem_id, $aciklama, $tutar, $tur, $durum]);
+        return $sql->execute([$personel_id, $donem_id, $aciklama, $tutar, $tur, $durum, $icra_id]);
     }
 
     /**
@@ -771,6 +771,66 @@ class BordroPersonelModel extends Model
     }
 
     /**
+     * Personelin aktif icra dosyalarını dönem için kesinti olarak oluşturur
+     */
+    public function olusturIcraKesintileri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
+    {
+        // İcra parametresini bul
+        $paramModel = new BordroParametreModel();
+        $param = $paramModel->getByKod('icra', $bitis_tarihi);
+        $paramId = $param ? $param->id : null;
+
+        // Aktif icra dosyalarını getir
+        // NOT: baslangic_tarihi<=bitis_tarihi kontrolünü kaldırdık veya esnettik
+        // Çünkü bazen kullanıcı icrayı geç giriyor ama o ayın bordrosuna yansısın istiyor.
+        // Eğer durum 'devam_ediyor' ise bu icra aktiftir.
+        $sql = $this->db->prepare("
+            SELECT id, icra_dairesi, dosya_no, aylik_kesinti_tutari, baslangic_tarihi
+            FROM personel_icralari
+            WHERE personel_id = ? 
+            AND durum = 'devam_ediyor'
+            AND silinme_tarihi IS NULL
+            AND (baslangic_tarihi IS NULL OR baslangic_tarihi <= ?)
+        ");
+        $sql->execute([$personel_id, $bitis_tarihi]);
+        $icralar = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        $olusturulanSayisi = 0;
+
+        foreach ($icralar as $icra) {
+            $tutar = floatval($icra->aylik_kesinti_tutari);
+            if ($tutar <= 0)
+                continue;
+
+            $aciklama = "[İcra] " . $icra->icra_dairesi . " (" . $icra->dosya_no . ")";
+
+            // Bu icra dosyası için bu dönemde zaten bir kesinti var mı kontrol et
+            $mevcutKontrol = $this->db->prepare("
+                SELECT id, durum FROM personel_kesintileri
+                WHERE personel_id = ? AND donem_id = ? AND tur = 'icra' AND icra_id = ? AND silinme_tarihi IS NULL
+            ");
+            $mevcutKontrol->execute([$personel_id, $donem_id, $icra->id]);
+            $mevcut = $mevcutKontrol->fetch(PDO::FETCH_OBJ);
+
+            if (!$mevcut) {
+                // Kayıt yok, oluştur
+                $sqlAdd = $this->db->prepare("
+                    INSERT INTO personel_kesintileri (personel_id, donem_id, aciklama, tutar, tur, durum, icra_id, parametre_id, olusturma_tarihi)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ");
+                $sqlAdd->execute([$personel_id, $donem_id, $aciklama, $tutar, 'icra', 'onaylandi', $icra->id, $paramId]);
+                $olusturulanSayisi++;
+            } else {
+                // Kayıt var, tutarı ve açıklamasını güncelle (status onaylandi kalsın)
+                $this->db->prepare("UPDATE personel_kesintileri SET tutar = ?, aciklama = ?, durum = 'onaylandi', parametre_id = ? WHERE id = ?")
+                    ->execute([$tutar, $aciklama, $paramId, $mevcut->id]);
+            }
+        }
+
+        return $olusturulanSayisi;
+    }
+
+    /**
      * Personelin ücretsiz izin kesintilerini dönem için otomatik oluşturur
      * Bordro hesaplaması yapılmadan önce çağrılmalıdır
      * 
@@ -1211,6 +1271,10 @@ class BordroPersonelModel extends Model
         // Dönem içindeki onaylanmış avansları bulup kesinti olarak ekle
         $this->olusturAvansKesintileri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
+        // ========== İCRA KESİNTİLERİ ==========
+        // Aktif icra dosyalarını bulup kesinti olarak ekle
+        $this->olusturIcraKesintileri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+
         // ========== ÜCRETSİZ İZİN KESİNTİLERİ ==========
         // Dönem içindeki onaylanmış ücretsiz izinleri bulup kesinti olarak ekle
         // Günlük ücret = Brüt maaş / 30, Kesinti = Günlük ücret × Ücretsiz izin gün sayısı
@@ -1470,20 +1534,35 @@ class BordroPersonelModel extends Model
         // Ücretsiz izin kesintilerini ayrı tut (yasal kesinti hesabı için)
         $ucretsizIzinKesinti = 0;
         $digerKesintiler = 0;
+        $toplamKesinti = 0;
+        $oranliKesintiler = []; // Net üzerinden oranlı kesintiler (İcra vb.)
 
         foreach ($kesintiler as $kesinti) {
             $tutar = floatval($kesinti->tutar);
             $parametre = $parametreModel->getByKod($kesinti->tur, $donemTarihi);
+            $hesaplamaTipi = $kesinti->hesaplama_tipi ?? 'sabit';
 
             $detay = [
                 'kod' => $kesinti->tur,
                 'etiket' => $parametre ? $parametre->etiket : $kesinti->tur,
                 'tutar' => $tutar,
-                'aciklama' => $kesinti->aciklama ?? null
+                'aciklama' => $kesinti->aciklama ?? null,
+                'hesaplama_tipi' => $hesaplamaTipi,
+                'oran' => floatval($kesinti->oran ?? 0)
             ];
 
+            // Eğer oran_net ise şimdilik hakedişi bekleyeceğiz
+            if ($hesaplamaTipi === 'oran_net') {
+                $oranliKesintiler[] = [
+                    'kesinti' => $kesinti,
+                    'detay_index' => count($kesintiDetaylari)
+                ];
+                $kesintiDetaylari[] = $detay;
+                continue;
+            }
+
             // Eğer aylık gün bazlı kesinti ise tutarı yeniden hesapla
-            if ($parametre && $parametre->hesaplama_tipi === 'aylik_gun_kesinti') {
+            if ($parametre && $hesaplamaTipi === 'aylik_gun_kesinti') {
                 $gunSayisi = 0;
                 if ($parametre->gun_sayisi_otomatik) {
                     $gunSayisi = $this->getCalismaGunuSayisi($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
@@ -1549,22 +1628,56 @@ class BordroPersonelModel extends Model
         // Toplam ek ödemeler (gösterim için)
         $toplamEkOdeme = $brutEkOdemeler + $netEkOdemeler;
 
+        // ========== ORANLI KESİNTİLERİN HESAPLANMASI (NET ÜZERİNDEN) ==========
+        // Oranlı kesintiler için temel net hakediş (icra vb. öncesi)
+        if ($isNetMaas || $isPrimUsulu) {
+            $hakedisNet = $brutMaas + $toplamEkOdeme - $ucretsizIzinKesinti;
+        } else {
+            $hakedisNet = $brutMaas
+                - $ucretsizIzinKesinti
+                - $sgkIsci - $issizlikIsci - $gelirVergisi - $damgaVergisi
+                + $netEkOdemeler
+                + $brutEkOdemeler;
+        }
+
+        foreach ($oranliKesintiler as $item) {
+            $kesinti = $item['kesinti'];
+            $index = $item['detay_index'];
+            $oran = floatval($kesinti->oran ?? 0);
+
+            $tutar = round($hakedisNet * ($oran / 100), 2);
+
+            // Sonuçları güncelle
+            $toplamKesinti += $tutar;
+            $digerKesintiler += $tutar;
+
+            $kesintiDetaylari[$index]['tutar'] = $tutar;
+            // Veritabanındaki tutarı da güncellemek gerekebilir ama şimdilik sadece hesaplamada kullanıyoruz
+        }
+
+        // İcra kesintisini bul (hesaplanmış detaylardan)
+        $icraKesintisi = 0;
+        foreach ($kesintiDetaylari as $kd) {
+            if ($kd['kod'] === 'icra') {
+                $icraKesintisi += floatval($kd['tutar']);
+            }
+        }
+
         // Net Maaş Hesabı
         if ($isNetMaas || $isPrimUsulu) {
             // ========== NET VE PRİM USULÜ İÇİN BASİT HESAPLAMA ==========
-            // Net Maaş = Maaş Tutarı + Toplam Ek Ödemeler - Toplam Kesintiler
-            // Yasal kesintiler (SGK, Gelir Vergisi, Damga Vergisi) bu tipler için hesaplanmaz
-            $netMaas = $brutMaas + $toplamEkOdeme - $toplamKesinti;
+            // Net Maaş = Maaş Tutarı + Toplam Ek Ödemeler - (Toplam Kesintiler - İcra)
+            // İcra kesintisi net hakedişten sonra elden ödemeden düşülür
+            $netMaas = $brutMaas + $toplamEkOdeme - ($toplamKesinti - $icraKesintisi);
         } else {
             // ========== BRÜT MAAŞ İÇİN TAM HESAPLAMA ==========
-            // Net = Brüt - Ücretsiz İzin - Yasal Kesintiler + Net Ek Ödemeler + Brüt Ek Ödemeler - Diğer Kesintiler
-            // NOT: Brüt ek ödemeler de personele ödenir (vergileri ayrıca hesaplanmıştır)
+            // Net = Brüt - Ücretsiz İzin - Yasal Kesintiler + Net Ek Ödemeler + Brüt Ek Ödemeler - (Diğer Kesintiler - İcra)
             $netMaas = $brutMaas
                 - $ucretsizIzinKesinti
                 - $sgkIsci - $issizlikIsci - $gelirVergisi - $damgaVergisi
                 + $netEkOdemeler
                 + $brutEkOdemeler
-                - $digerKesintiler;
+                - ($digerKesintiler - $icraKesintisi);
         }
 
         // İşveren Maliyetleri (çalışılan brüt üzerinden)
@@ -1580,16 +1693,12 @@ class BordroPersonelModel extends Model
         }
 
         // Sodexo tutarını fiili çalışma gününe göre oranla (30 gün üzerinden)
-        $aylikSodexo = floatval($kayit->sodexo ?? 0);
-        $sodexoOdemesi = ($aylikSodexo / 30) * $fiiliCalismaGunu;
-
-
-        // İcra kesintisini bul (kesintilerden)
-        $icraKesintisi = 0;
-        foreach ($kesintiler as $kesinti) {
-            if ($kesinti->tur === 'icra') {
-                $icraKesintisi += floatval($kesinti->tutar);
-            }
+        // Eğer manuel olarak güncellenmişse veriyi olduğu gibi al
+        if (isset($kayit->sodexo_manuel) && $kayit->sodexo_manuel == 1) {
+            $sodexoOdemesi = floatval($kayit->sodexo_odemesi ?? 0);
+        } else {
+            $aylikSodexo = floatval($kayit->sodexo ?? 0);
+            $sodexoOdemesi = ($aylikSodexo / 30) * $fiiliCalismaGunu;
         }
 
         if ($isPrimUsulu) {
@@ -1617,15 +1726,18 @@ class BordroPersonelModel extends Model
             // 2. Bankaya yatacak tutar = Minimum asgari ücret tutarı
             // Ancak net maaş - sodexo'dan büyük olamaz
             $bankaIcinMaksimum = max(0, $toplamPrim - $sodexoOdemesi);
-            $bankaOdemesi = min($bankaYatacakMinimum, $bankaIcinMaksimum);
+            $bankaBaz = min($bankaYatacakMinimum, $bankaIcinMaksimum);
 
             // Banka tutarı minimum asgari ücretin altına düşmemeli (yeterli bakiye varsa)
-            if ($bankaOdemesi < $bankaYatacakMinimum && $bankaIcinMaksimum >= $bankaYatacakMinimum) {
-                $bankaOdemesi = $bankaYatacakMinimum;
+            if ($bankaBaz < $bankaYatacakMinimum && $bankaIcinMaksimum >= $bankaYatacakMinimum) {
+                $bankaBaz = $bankaYatacakMinimum;
             }
 
-            // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra (icra elden'den düşülür)
-            $eldenOdeme = max(0, $toplamPrim - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi);
+            // USER REQ: İcra tutarını bankadan düş
+            $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
+
+            // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra - Diğer Ödeme
+            $eldenOdeme = max(0, $toplamPrim - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
         } elseif ($isNetMaas) {
             // ========== NET MAAŞ HESAPLAMA ==========
             // Ödeme sıralaması:
@@ -1643,8 +1755,8 @@ class BordroPersonelModel extends Model
                 $gunlukNetMaas = $brutMaas / 30; // brutMaas = net maaş (net durumda)
                 $oranliNetMaas = $gunlukNetMaas * $fiiliCalismaGunu;
 
-                // Net maaşı güncelle (ek ödemeler ve kesintiler dahil)
-                $netMaas = $oranliNetMaas + $netEkOdemeler + $brutEkOdemeler - $digerKesintiler;
+                // Net maaşı güncelle (ek ödemeler ve kesintiler dahil - İcra hariç)
+                $netMaas = $oranliNetMaas + $netEkOdemeler + $brutEkOdemeler - ($digerKesintiler - $icraKesintisi);
             }
 
             // Bankaya yatacak minimum tutar (asgari ücret netinden günlük oranlı)
@@ -1660,11 +1772,20 @@ class BordroPersonelModel extends Model
 
             // 1. Önce Sodexo düşülür (zaten yukarıda hesaplandı)
             // 2. Bankaya yatacak tutar = Minimum banka tutarı (icra kesintisi bankadan düşülmez!)
-            $bankaYatacakBrut = $bankaYatacakMinimum;
-            $bankaOdemesi = $bankaYatacakMinimum;
+            // Ancak net maaş - sodexo'dan büyük olamaz
+            $bankaIcinMaksimum = max(0, $netMaas - $sodexoOdemesi);
+            $bankaBaz = min($bankaYatacakMinimum, $bankaIcinMaksimum);
 
-            // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra (icra elden ödeme'den düşülür)
-            $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi);
+            // Banka tutarı minimum asgari ücretın altına düşmemeli (yeterli bakiye varsa)
+            if ($bankaBaz < $bankaYatacakMinimum && $bankaIcinMaksimum >= $bankaYatacakMinimum) {
+                $bankaBaz = $bankaYatacakMinimum;
+            }
+
+            // USER REQ: İcra tutarını bankadan düş
+            $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
+
+            // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra - Diğer Ödeme
+            $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
         } else {
             // Normal hesaplama (Brüt)
             // Ödeme sıralaması:
@@ -1688,15 +1809,18 @@ class BordroPersonelModel extends Model
             // 2. Bankaya yatacak tutar = Minimum asgari ücret tutarı
             // Ancak net maaş - sodexo'dan büyük olamaz
             $bankaIcinMaksimum = max(0, $netMaas - $sodexoOdemesi);
-            $bankaOdemesi = min($bankaYatacakMinimum, $bankaIcinMaksimum);
+            $bankaBaz = min($bankaYatacakMinimum, $bankaIcinMaksimum);
 
             // Banka tutarı minimum asgari ücretin altına düşmemeli (yeterli bakiye varsa)
-            if ($bankaOdemesi < $bankaYatacakMinimum && $bankaIcinMaksimum >= $bankaYatacakMinimum) {
-                $bankaOdemesi = $bankaYatacakMinimum;
+            if ($bankaBaz < $bankaYatacakMinimum && $bankaIcinMaksimum >= $bankaYatacakMinimum) {
+                $bankaBaz = $bankaYatacakMinimum;
             }
 
-            // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra (icra elden'den düşülür)
-            $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi);
+            // USER REQ: İcra tutarını bankadan düş
+            $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
+
+            // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra - Diğer Ödeme
+            $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
         }
 
         // Hesaplama Snapshot (JSON)

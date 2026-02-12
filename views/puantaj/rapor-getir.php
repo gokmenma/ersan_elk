@@ -339,12 +339,13 @@ if (!empty($workTypeCols)) {
         color: var(--bs-primary, #556ee6) !important;
     }
 
-    /* Pazar günü (tatil) arka plan rengi - zebra efektinden öncelikli */
+    /* Pazar günü (tatil) arka plan rengi */
     .sunday-cell,
     .sunday-cell.day-bg-alt,
     td.sunday-cell,
     th.sunday-cell {
-        background-color: #EA7B7B !important;
+        background-color: rgba(244, 106, 106, 0.1) !important;
+        color: #f46a6a !important;
     }
 
     .vertical-text {
@@ -365,33 +366,34 @@ if (!empty($workTypeCols)) {
         font-size: 12px;
         width: 100%;
         table-layout: auto;
-        background-color: #fff;
+        background-color: var(--bs-card-bg, #fff);
+        color: var(--bs-body-color, #333);
     }
 
     #raporTable th,
     #raporTable td {
         vertical-align: middle !important;
         text-align: center !important;
-        border: 1px solid #eee !important;
-        border-bottom: 1px solid #e0e0e0 !important;
+        border: 1px solid var(--bs-border-color, #eee) !important;
+        border-bottom: 1px solid var(--bs-border-color, #e0e0e0) !important;
         padding: 6px 8px !important;
         line-height: normal !important;
         white-space: nowrap;
     }
 
     .day-separator {
-        border-right: 2px solid #555 !important;
+        border-right: 2px solid var(--bs-border-color, #555) !important;
     }
 
     .day-bg-alt {
-        background-color: #f9f9f9 !important;
+        background-color: rgba(0, 0, 0, 0.02) !important;
     }
 
     #raporTable thead th {
-        background-color: #f8f9fa !important;
+        background-color: var(--bs-card-bg, #f8f9fa) !important;
         font-weight: 600;
         font-size: 11px;
-        color: #333;
+        color: var(--bs-heading-color, #333);
         position: sticky;
         z-index: 20;
     }
@@ -433,61 +435,119 @@ if (!empty($workTypeCols)) {
         z-index: 21;
     }
 
-    .sticky-col-1 {
+    .sticky-col-1,
+    .sticky-col-2,
+    .sticky-col-3,
+    .kacakkontrol-name-col {
         position: sticky;
-        left: 0;
         z-index: 10;
-        background-color: #fff !important;
-        border-left: 1px solid #ccc !important;
+        background-color: var(--bs-card-bg, #fff) !important;
+        color: var(--bs-body-color, #333) !important;
+    }
+
+    .sticky-col-1 {
+        left: 0;
+        border-left: 1px solid var(--bs-border-color, #ccc) !important;
     }
 
     .sticky-col-2 {
-        position: sticky;
         left: 51px;
-        z-index: 10;
-        background-color: #fff !important;
     }
 
     .sticky-col-3 {
-        position: sticky;
         left: 172px;
-        z-index: 10;
-        background-color: #fff !important;
-    }
-
-    #raporTable thead .sticky-col-1,
-    #raporTable thead .sticky-col-2,
-    #raporTable thead .sticky-col-3 {
-        z-index: 30;
-    }
-
-    .table-responsive {
-        border: 1px solid #dee2e6;
-        border-radius: 4px;
-        overflow: auto;
-        max-width: 100%;
-        background: #fff;
-        max-height: calc(100vh - 350px);
     }
 
     .kacakkontrol-name-col {
-        position: sticky;
         left: 51px;
-        z-index: 10;
-        background-color: #fff !important;
         width: 340px !important;
         min-width: 340px !important;
         max-width: 340px !important;
     }
 
-    #raporTable td a {
-        transition: all 0.2s ease;
-        display: inline-block;
+    #raporTable thead .sticky-col-1,
+    #raporTable thead .sticky-col-2,
+    #raporTable thead .sticky-col-3,
+    #raporTable thead .kacakkontrol-name-col {
+        z-index: 35;
+        background-color: var(--bs-card-bg, #f8f9fa) !important;
     }
 
-    #raporTable td a:hover {
-        transform: translateY(-1px);
-        filter: brightness(0.85);
+    .table-responsive {
+        border: 1px solid var(--bs-border-color, #dee2e6);
+        border-radius: 4px;
+        overflow: auto;
+        max-width: 100%;
+        background: var(--bs-card-bg, #fff);
+        max-height: calc(100vh - 350px);
+    }
+
+    /* Dark Mode Overrides - Aggressive Targeting */
+    html[data-bs-theme="dark"] #raporTable,
+    html[data-theme-mode="dark"] #raporTable,
+    [data-bs-theme="dark"] #raporTable,
+    [data-theme-mode="dark"] #raporTable {
+        background-color: #191e22 !important;
+        color: #eff2f7 !important;
+    }
+
+    html[data-bs-theme="dark"] #raporTable th,
+    html[data-theme-mode="dark"] #raporTable th,
+    html[data-bs-theme="dark"] #raporTable td,
+    html[data-theme-mode="dark"] #raporTable td,
+    [data-bs-theme="dark"] #raporTable th,
+    [data-theme-mode="dark"] #raporTable th,
+    [data-bs-theme="dark"] #raporTable td,
+    [data-theme-mode="dark"] #raporTable td {
+        border-color: #32394e !important;
+    }
+
+    html[data-bs-theme="dark"] #raporTable thead th,
+    html[data-theme-mode="dark"] #raporTable thead th,
+    html[data-bs-theme="dark"] #raporTable tfoot td,
+    html[data-theme-mode="dark"] #raporTable tfoot td,
+    [data-bs-theme="dark"] #raporTable thead th,
+    [data-theme-mode="dark"] #raporTable thead th,
+    [data-bs-theme="dark"] #raporTable tfoot td,
+    [data-theme-mode="dark"] #raporTable tfoot td {
+        background-color: #282f36 !important;
+        color: #eff2f7 !important;
+    }
+
+    html[data-bs-theme="dark"] .sticky-col-1,
+    html[data-theme-mode="dark"] .sticky-col-1,
+    html[data-bs-theme="dark"] .sticky-col-2,
+    html[data-theme-mode="dark"] .sticky-col-2,
+    html[data-bs-theme="dark"] .sticky-col-3,
+    html[data-theme-mode="dark"] .sticky-col-3,
+    html[data-bs-theme="dark"] .kacakkontrol-name-col,
+    html[data-theme-mode="dark"] .kacakkontrol-name-col,
+    [data-bs-theme="dark"] .sticky-col-1,
+    [data-theme-mode="dark"] .sticky-col-1,
+    [data-bs-theme="dark"] .sticky-col-2,
+    [data-theme-mode="dark"] .sticky-col-2,
+    [data-bs-theme="dark"] .sticky-col-3,
+    [data-theme-mode="dark"] .sticky-col-3,
+    [data-bs-theme="dark"] .kacakkontrol-name-col,
+    [data-theme-mode="dark"] .kacakkontrol-name-col {
+        background-color: #282f36 !important;
+        color: #eff2f7 !important;
+    }
+
+    html[data-bs-theme="dark"] #raporTable .sunday-cell,
+    html[data-theme-mode="dark"] #raporTable .sunday-cell,
+    [data-bs-theme="dark"] #raporTable .sunday-cell,
+    [data-theme-mode="dark"] #raporTable .sunday-cell {
+        background-color: rgba(244, 106, 106, 0.15) !important;
+        color: #f46a6a !important;
+    }
+
+    html[data-bs-theme="dark"] .table-responsive,
+    html[data-theme-mode="dark"] .table-responsive,
+    [data-bs-theme="dark"] .table-responsive,
+    [data-theme-mode="dark"] .table-responsive {
+        border-color: #32394e !important;
+        background: #191e22 !important;
     }
 </style>
 

@@ -58,7 +58,7 @@ switch ($action) {
         }
 
         // Ayar olmayan alanları temizle
-        $excludeKeys = ['action', 'firma_id', 'user_id', 'config_id'];
+        $excludeKeys = ['action', 'firma_id', 'user_id', 'config_id', 'online_sorgulama_endeks_saat_select', 'online_sorgulama_puantaj_saat_select'];
         foreach ($excludeKeys as $key) {
             unset($settingsToUpdate[$key]);
         }
