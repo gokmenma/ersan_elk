@@ -248,9 +248,9 @@ for ($saat = 0; $saat < 24; $saat++) {
             <?php 
             $basePath = realpath(dirname(__DIR__, 2)); 
             // Windows-style path'leri Linux formatına çevir (eğer lazımsa, genellikle PHP ikisini de anlar ama temiz görünmesi için)
-            $endeksPath = str_replace('\\', '/', $basePath . '/views/cron/endeks_okuma_cron.php');
-            $kesmePath = str_replace('\\', '/', $basePath . '/views/cron/kesme_acma_cron.php');
-            $logPath = str_replace('\\', '/', $basePath . '/views/cron/logs/cron.log');
+            $endeksPath = str_replace('\\', '/', $basePath . '/cron/endeks_okuma_cron.php');
+            $kesmePath = str_replace('\\', '/', $basePath . '/cron/kesme_acma_cron.php');
+            $logPath = str_replace('\\', '/', $basePath . '/cron/logs/cron.log');
             ?>
             <h6 class="text-primary mt-3 mb-2"><i data-feather="activity" class="me-1"
                     style="width:16px;height:16px"></i> 1. Endeks Okuma Cron</h6>
