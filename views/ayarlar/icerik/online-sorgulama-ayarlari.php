@@ -245,11 +245,18 @@ for ($saat = 0; $saat < 24; $saat++) {
             <p>Otomatik sorgulama için sunucunuzda aşağıdaki <strong>2 ayrı</strong> cron job'u eklemeniz gerekmektedir:
             </p>
 
+            <?php 
+            $basePath = realpath(dirname(__DIR__, 2)); 
+            // Windows-style path'leri Linux formatına çevir (eğer lazımsa, genellikle PHP ikisini de anlar ama temiz görünmesi için)
+            $endeksPath = str_replace('\\', '/', $basePath . '/views/cron/endeks_okuma_cron.php');
+            $kesmePath = str_replace('\\', '/', $basePath . '/views/cron/kesme_acma_cron.php');
+            $logPath = str_replace('\\', '/', $basePath . '/views/cron/logs/cron.log');
+            ?>
             <h6 class="text-primary mt-3 mb-2"><i data-feather="activity" class="me-1"
                     style="width:16px;height:16px"></i> 1. Endeks Okuma Cron</h6>
             <div class="bg-dark text-light p-3 rounded mb-3">
                 <code class="text-warning" style="word-break:break-all;">
-                */15 * * * * /usr/local/bin/php -q /home/mbeyazil/repositories/ersan_elk/views/cron/endeks_okuma_cron.php >> /home/mbeyazil/repositories/ersan_elk/views/cron/logs/cron.log 2>&1
+                */15 * * * * /usr/local/bin/php -q <?= $endeksPath ?> >> <?= $logPath ?> 2>&1
                 </code>
             </div>
 
@@ -257,7 +264,7 @@ for ($saat = 0; $saat < 24; $saat++) {
                     style="width:16px;height:16px"></i> 2. Kesme/Açma Cron</h6>
             <div class="bg-dark text-light p-3 rounded mb-3">
                 <code class="text-warning" style="word-break:break-all;">
-                */15 * * * * /usr/local/bin/php -q /home/mbeyazil/repositories/ersan_elk/views/cron/kesme_acma_cron.php >> /home/mbeyazil/repositories/ersan_elk/views/cron/logs/cron.log 2>&1
+                */15 * * * * /usr/local/bin/php -q <?= $kesmePath ?> >> <?= $logPath ?> 2>&1
                 </code>
             </div>
 

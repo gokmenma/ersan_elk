@@ -5,8 +5,7 @@
  * Bu dosya her 15 dakikada bir çalıştırılmalıdır.
  * Ayarlarda belirlenen saatlerde Kesme/Açma sorgulamalarını yapar.
  * 
- * Cron kurulumu (Linux):
- * /usr/local/bin/php -q /home/mbeyazil/repositories/ersan_elk/views/cron/kesme_acma_cron.php >> /home/mbeyazil/repositories/ersan_elk/views/cron/logs/cron.log 2>&1
+ * Cron kurulumu için "Online Sorgulama Ayarları" sayfasındaki güncel komutu kullanın.
  */
 
 // Gerekli dosyaları yükle
