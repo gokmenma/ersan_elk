@@ -242,16 +242,28 @@ for ($saat = 0; $saat < 24; $saat++) {
             <h5 class="mb-0 text-primary"><i data-feather="terminal" class="me-2"></i>Cron Job Kurulumu</h5>
         </div>
         <div class="card-body p-4">
-            <p>Otomatik sorgulama için sunucunuzda aşağıdaki cron job'u eklemeniz gerekmektedir:</p>
+            <p>Otomatik sorgulama için sunucunuzda aşağıdaki <strong>2 ayrı</strong> cron job'u eklemeniz gerekmektedir:
+            </p>
+
+            <h6 class="text-primary mt-3 mb-2"><i data-feather="activity" class="me-1"
+                    style="width:16px;height:16px"></i> 1. Endeks Okuma Cron</h6>
             <div class="bg-dark text-light p-3 rounded mb-3">
-                <code class="text-warning">
-                # Her 15 dakikada bir cron kontrolü yapar<br>
-                */15 * * * * php <?php echo dirname(__DIR__, 2); ?>/cron/online_sorgulama_cron.php >> <?php echo dirname(__DIR__, 2); ?>/cron/logs/cron.log 2>&1
-            </code>
+                <code class="text-warning" style="word-break:break-all;">
+                */15 * * * * /usr/local/bin/php -q /home/mbeyazil/repositories/ersan_elk/views/cron/endeks_okuma_cron.php >> /home/mbeyazil/repositories/ersan_elk/views/cron/logs/cron.log 2>&1
+                </code>
             </div>
+
+            <h6 class="text-success mt-3 mb-2"><i data-feather="scissors" class="me-1"
+                    style="width:16px;height:16px"></i> 2. Kesme/Açma Cron</h6>
+            <div class="bg-dark text-light p-3 rounded mb-3">
+                <code class="text-warning" style="word-break:break-all;">
+                */15 * * * * /usr/local/bin/php -q /home/mbeyazil/repositories/ersan_elk/views/cron/kesme_acma_cron.php >> /home/mbeyazil/repositories/ersan_elk/views/cron/logs/cron.log 2>&1
+                </code>
+            </div>
+
             <p class="mb-0 text-muted">
                 <i data-feather="info" class="me-1"></i>
-                Cron her 15 dakikada bir çalışır ve yukarıda ayarlanan saatlere denk geldiğinde sorgulama yapar.
+                Her iki cron da 15 dakikada bir çalışır ve yukarıda ayarlanan saatlere denk geldiğinde sorgulama yapar.
                 Her sorgulama türü için günde en fazla <strong>4 farklı saat</strong> belirlenebilir.
             </p>
         </div>

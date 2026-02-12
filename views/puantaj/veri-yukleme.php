@@ -700,7 +700,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <?php echo Form::FormFloatInput(
                                     type: 'text',
                                     name: 'baslangic_tarihi',
-                                    value: Date::firstDayOfThisMonth(),
+                                    value: Date::today(),
                                     placeholder: '',
                                     label: "Başlangıç Tarihi",
                                     icon: "calendar",

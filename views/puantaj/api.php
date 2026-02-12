@@ -1063,41 +1063,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $interval = new DateInterval('P1D');
         $daterange = new DatePeriod($begin, $interval, $end);
 
+        // PHP zaman aşımını uzat (çok günlük sorgularda)
+        set_time_limit(300);
+
         foreach ($daterange as $date) {
             $currentDateAPI = $date->format('d/m/Y');
 
-            $offset = 0;
-            $limit = 100;
-            $hasMore = true;
+            try {
+                $offset = 0;
+                $limit = 100;
+                $hasMore = true;
 
-            while ($hasMore) {
-                // Günlük bazda sorgu yapıyoruz
-                $apiResponse = $KesmeAcmaSvc->getData($currentDateAPI, $currentDateAPI, $limit, $offset);
+                while ($hasMore) {
+                    // Günlük bazda sorgu yapıyoruz
+                    $apiResponse = $KesmeAcmaSvc->getData($currentDateAPI, $currentDateAPI, $limit, $offset);
 
-                if (!($apiResponse['success'] ?? false)) {
-                    break; // Bu gün için hata varsa veya veri yoksa diğer güne geç
-                }
-
-                $batchData = $apiResponse['data']['data'] ?? [];
-                if (empty($batchData)) {
-                    $hasMore = false;
-                } else {
-                    // Her kayda hangi güne ait olduğunu enjekte ediyoruz
-                    foreach ($batchData as &$item) {
-                        if (!isset($item['TARIH'])) {
-                            $item['TARIH'] = $date->format('Y-m-d');
-                        }
+                    if (!($apiResponse['success'] ?? false)) {
+                        break; // Bu gün için hata varsa veya veri yoksa diğer güne geç
                     }
-                    $apiData = array_merge($apiData, $batchData);
-                    if (count($batchData) < $limit) {
+
+                    $batchData = $apiResponse['data']['data'] ?? [];
+                    if (empty($batchData)) {
                         $hasMore = false;
                     } else {
-                        $offset += $limit;
+                        // Her kayda hangi güne ait olduğunu enjekte ediyoruz
+                        foreach ($batchData as &$item) {
+                            if (!isset($item['TARIH'])) {
+                                $item['TARIH'] = $date->format('Y-m-d');
+                            }
+                        }
+                        $apiData = array_merge($apiData, $batchData);
+                        if (count($batchData) < $limit) {
+                            $hasMore = false;
+                        } else {
+                            $offset += $limit;
+                        }
                     }
-                }
 
-                if ($offset >= 1000)
-                    break; // Bir gün için 1000 kayıt güvenlik sınırı
+                    if ($offset >= 1000)
+                        break; // Bir gün için 1000 kayıt güvenlik sınırı
+                }
+            } catch (Exception $e) {
+                // Bu günün hatası diğer günleri engellemesin, devam et
+                continue;
             }
         }
 
@@ -1280,88 +1288,176 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $EndeksOkuma = new EndeksOkumaModel();
         $apiService = new EndeskOkumaService();
 
-        // API'den verileri çek
-        $apiResponse = $apiService->getData($baslangicTarihiAPI, $bitisTarihiAPI, 1000, 0);
+        // Tarih aralığını günlere bölerek tek tek çekiyoruz (API birleştirme yapmasın diye)
+        $apiData = [];
+        $begin = new DateTime($baslangicTarihiDB);
+        $end = new DateTime($bitisTarihiDB);
+        $end->modify('+1 day'); // Bitiş gününü dahil et
 
-        if (!$apiResponse['success']) {
-            throw new Exception("API'den veri alınamadı: " . ($apiResponse['message'] ?? 'Bilinmeyen hata'));
+        $interval = new DateInterval('P1D');
+        $daterange = new DatePeriod($begin, $interval, $end);
+
+        // PHP zaman aşımını uzat (çok günlük sorgularda)
+        set_time_limit(300);
+
+        foreach ($daterange as $date) {
+            $currentDateAPI = $date->format('d/m/Y');
+
+            try {
+                $offset = 0;
+                $limit = 100;
+                $hasMore = true;
+
+                while ($hasMore) {
+                    $apiResponse = $apiService->getData($currentDateAPI, $currentDateAPI, $limit, $offset);
+
+                    if (!($apiResponse['success'] ?? false)) {
+                        break; // Bu gün için hata varsa diğer güne geç
+                    }
+
+                    $batchData = $apiResponse['data']['data'] ?? [];
+                    if (empty($batchData)) {
+                        $hasMore = false;
+                    } else {
+                        // Her kayda hangi güne ait olduğunu enjekte ediyoruz
+                        foreach ($batchData as &$item) {
+                            if (!isset($item['OKUMATARIHI']) || empty($item['OKUMATARIHI'])) {
+                                $item['OKUMATARIHI'] = $date->format('Y-m-d');
+                            }
+                        }
+                        $apiData = array_merge($apiData, $batchData);
+                        if (count($batchData) < $limit) {
+                            $hasMore = false;
+                        } else {
+                            $offset += $limit;
+                        }
+                    }
+
+                    if ($offset >= 1000)
+                        break; // Bir gün için güvenlik sınırı
+                }
+            } catch (Exception $e) {
+                // Bu günün hatası diğer günleri engellemesin, devam et
+                continue;
+            }
         }
-
-        $apiData = $apiResponse['data']['data'] ?? [];
 
         $yeniKayit = 0;
         $guncellenenKayit = 0;
         $mevcutKayitlar = [];
-        $atlanAnKayitlar = []; // Ekip kodu bulunamayanlar
+        $atlanAnKayitlar = [];
 
+        // ========== PERFORMANS OPTİMİZASYONU ==========
+        // 1. Tüm islem_id'leri önceden hesapla
+        $processedData = [];
         foreach ($apiData as $veri) {
-            // Tarihi normalize et (ID oluştururken tutarlılık için)
             $normDate = \App\Helper\Date::convertExcelDate($veri['OKUMATARIHI'], 'Y-m-d') ?: $veri['OKUMATARIHI'];
-
-            // Unique ID oluştur (Normalize edilmiş tarih kullanılarak)
             $rawIdString = $normDate . '|' . $veri['BOLGE'] . '|' . ($veri['DEFTER'] ?? '') . '|' . $veri['OKUYUCUNO'] . '|' . $veri['ABONE_SAYISI'];
             $islemId = md5($rawIdString);
+            $processedData[] = [
+                'islem_id' => $islemId,
+                'norm_date' => $normDate,
+                'veri' => $veri
+            ];
+        }
 
-            // Daha önce aynı islem_id ile kayıt var mı kontrol et
-            $checkStmt = $EndeksOkuma->db->prepare("SELECT id, islem_id, kullanici_adi, bolge, tarih, okunan_abone_sayisi FROM endeks_okuma WHERE islem_id = ? AND silinme_tarihi IS NULL");
-            $checkStmt->execute([$islemId]);
-            $mevcutKayit = $checkStmt->fetch(PDO::FETCH_ASSOC);
+        // 2. Mevcut kayıtları toplu çek (tek sorgu)
+        $allIslemIds = array_column($processedData, 'islem_id');
+        $existingRecords = [];
+        if (!empty($allIslemIds)) {
+            $chunks = array_chunk($allIslemIds, 500);
+            foreach ($chunks as $chunk) {
+                $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+                $stmt = $EndeksOkuma->db->prepare("SELECT id, islem_id, kullanici_adi, bolge, tarih, okunan_abone_sayisi FROM endeks_okuma WHERE islem_id IN ($placeholders) AND silinme_tarihi IS NULL");
+                $stmt->execute($chunk);
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $existingRecords[$row['islem_id']] = $row;
+                }
+            }
+        }
 
-            if ($mevcutKayit) {
-                // Mevcut kayıt varsa güncelle (Defter ve Sayaç Durum eklendi)
-                $updateStmt = $EndeksOkuma->db->prepare("UPDATE endeks_okuma SET bolge = ?, kullanici_adi = ?, okunan_abone_sayisi = ?, tarih = ?, defter = ?, sayac_durum = ? WHERE islem_id = ?");
-                $updateStmt->execute([
-                    $veri['BOLGE'],
-                    $veri['OKUYUCUADI'],
-                    $veri['ABONE_SAYISI'],
-                    $normDate,
-                    $veri['DEFTER'] ?? '',
-                    $veri['SAYACDURUM'] ?? '',
-                    $islemId
-                ]);
+        // 3. Personel ve ekip verilerini toplu yükle (lookup tabloları)
+        $stmtAllPersonel = $EndeksOkuma->db->prepare("SELECT id, adi_soyadi, ekip_no FROM personel WHERE silinme_tarihi IS NULL");
+        $stmtAllPersonel->execute();
+        $personelByName = [];
+        $personelByEkip = [];
+        while ($p = $stmtAllPersonel->fetch(PDO::FETCH_ASSOC)) {
+            $personelByName[$p['adi_soyadi']] = $p;
+            if ($p['ekip_no'] > 0) {
+                $personelByEkip[$p['ekip_no']] = $p['id'];
+            }
+        }
+
+        $stmtAllEkip = $EndeksOkuma->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
+        $stmtAllEkip->execute();
+        $ekipKodlari = [];
+        while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
+            // Ekip numarasını çıkar
+            if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $ek['tur_adi'], $m)) {
+                $ekipKodlari[$m[1]] = $ek['id'];
+            }
+        }
+
+        $stmtAllHist = $EndeksOkuma->db->prepare("SELECT ekip_kodu_id, personel_id, baslangic_tarihi, bitis_tarihi FROM personel_ekip_gecmisi");
+        $stmtAllHist->execute();
+        $ekipGecmisi = [];
+        while ($h = $stmtAllHist->fetch(PDO::FETCH_ASSOC)) {
+            $ekipGecmisi[$h['ekip_kodu_id']][] = $h;
+        }
+
+        // 4. Kayıtları işle: güncelleme ve yeni ekleme listelerini oluştur
+        $updateBatch = [];
+        $insertBatch = [];
+
+        foreach ($processedData as $item) {
+            $islemId = $item['islem_id'];
+            $normDate = $item['norm_date'];
+            $veri = $item['veri'];
+
+            if (isset($existingRecords[$islemId])) {
+                // Güncelleme listesine ekle
+                $updateBatch[] = [
+                    'bolge' => $veri['BOLGE'],
+                    'kullanici_adi' => $veri['OKUYUCUADI'],
+                    'okunan_abone_sayisi' => $veri['ABONE_SAYISI'],
+                    'tarih' => $normDate,
+                    'defter' => $veri['DEFTER'] ?? '',
+                    'sayac_durum' => $veri['SAYACDURUM'] ?? '',
+                    'islem_id' => $islemId
+                ];
                 $guncellenenKayit++;
-                $mevcutKayitlar[] = $mevcutKayit;
+                $mevcutKayitlar[] = $existingRecords[$islemId];
             } else {
-                // Personel eşleştirme (Okuyucu adına göre)
+                // Personel eşleştirme (ön yüklenen verilerden)
                 $personelId = 0;
                 $ekipKoduId = 0;
 
-                // 1. Önce İsme göre ara
-                $stmtPersonel = $EndeksOkuma->db->prepare("SELECT id, ekip_no FROM personel WHERE adi_soyadi = ? AND silinme_tarihi IS NULL LIMIT 1");
-                $stmtPersonel->execute([$veri['OKUYUCUADI']]);
-                $pRow = $stmtPersonel->fetch(PDO::FETCH_ASSOC);
-
-                if ($pRow) {
-                    $personelId = $pRow['id'];
-                    $ekipKoduId = $pRow['ekip_no'];
+                if (isset($personelByName[$veri['OKUYUCUADI']])) {
+                    $personelId = $personelByName[$veri['OKUYUCUADI']]['id'];
+                    $ekipKoduId = $personelByName[$veri['OKUYUCUADI']]['ekip_no'];
                 } else {
-                    // 2. İsimden ekip numarasını yakalamaya çalış (EKİP-XX formatı varsa)
                     if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $veri['OKUYUCUADI'], $m)) {
                         $ekipNo = $m[1];
-                        $stmtDef = $EndeksOkuma->db->prepare("SELECT id FROM tanimlamalar WHERE (tur_adi LIKE ? OR tur_adi LIKE ?) AND grup = 'ekip_kodu' AND silinme_tarihi IS NULL LIMIT 1");
-                        $stmtDef->execute(["%EKİP-$ekipNo", "%EKIP-$ekipNo"]);
-                        $ekipKoduId = $stmtDef->fetchColumn() ?: 0;
+                        $ekipKoduId = $ekipKodlari[$ekipNo] ?? 0;
 
                         if ($ekipKoduId) {
-                            // 1. Önce o tarihteki ekip geçmişinden personeli bulmaya çalış
-                            $stmtHist = $EndeksOkuma->db->prepare("SELECT personel_id FROM personel_ekip_gecmisi 
-                                                                 WHERE ekip_kodu_id = ? AND baslangic_tarihi <= ? 
-                                                                 AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?) 
-                                                                 LIMIT 1");
-                            $stmtHist->execute([$ekipKoduId, $normDate, $normDate]);
-                            $personelId = $stmtHist->fetchColumn();
-
-                            // 2. Bulunamazsa mevcut personel tablosundaki ekip_no'ya bak
+                            // Ekip geçmişinden personeli bul
+                            if (isset($ekipGecmisi[$ekipKoduId])) {
+                                foreach ($ekipGecmisi[$ekipKoduId] as $hist) {
+                                    if ($hist['baslangic_tarihi'] <= $normDate && ($hist['bitis_tarihi'] === null || $hist['bitis_tarihi'] >= $normDate)) {
+                                        $personelId = $hist['personel_id'];
+                                        break;
+                                    }
+                                }
+                            }
+                            // Bulunamazsa mevcut personelden bak
                             if (!$personelId) {
-                                $stmtPersonel2 = $EndeksOkuma->db->prepare("SELECT id FROM personel WHERE ekip_no = ? AND silinme_tarihi IS NULL LIMIT 1");
-                                $stmtPersonel2->execute([$ekipKoduId]);
-                                $personelId = $stmtPersonel2->fetchColumn() ?: 0;
+                                $personelId = $personelByEkip[$ekipKoduId] ?? 0;
                             }
                         }
                     }
                 }
 
-                // Eğer ekipKoduId hala 0 ise (Eşleşme sağlanamadıysa) bu kaydı atla
                 if ($ekipKoduId === 0) {
                     $atlanAnKayitlar[] = [
                         'kullanici_adi' => $veri['OKUYUCUADI'],
@@ -1371,29 +1467,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     continue;
                 }
 
-                // Yeni kayıt ekle (Defter ve Sayaç Durum eklendi)
-                $insertStmt = $EndeksOkuma->db->prepare("INSERT INTO endeks_okuma (islem_id, personel_id, ekip_kodu_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih, defter, sayac_durum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $insertStmt->execute([
+                $insertBatch[] = [
                     $islemId,
                     $personelId,
                     $ekipKoduId,
                     $firmaId,
                     $veri['BOLGE'],
                     $veri['OKUYUCUADI'],
-                    0, // sarfiyat API'de yok
-                    0, // ort_sarfiyat_gunluk API'de yok
-                    0, // tahakkuk API'de yok
-                    0, // ort_tahakkuk_gunluk API'de yok
-                    1, // okunan_gun_sayisi (varsayılan 1)
+                    0,
+                    0,
+                    0,
+                    0,
+                    1,
                     $veri['ABONE_SAYISI'],
-                    $veri['ABONE_SAYISI'], // ort_okunan_abone
-                    100, // okuma_performansi (varsayılan 100)
+                    $veri['ABONE_SAYISI'],
+                    100,
                     $normDate,
                     $veri['DEFTER'] ?? '',
                     $veri['SAYACDURUM'] ?? ''
-                ]);
+                ];
                 $yeniKayit++;
             }
+        }
+
+        // 5. Toplu UPDATE (chunk halinde)
+        if (!empty($updateBatch)) {
+            $updateStmt = $EndeksOkuma->db->prepare("UPDATE endeks_okuma SET bolge = ?, kullanici_adi = ?, okunan_abone_sayisi = ?, tarih = ?, defter = ?, sayac_durum = ? WHERE islem_id = ?");
+            $EndeksOkuma->db->beginTransaction();
+            foreach ($updateBatch as $row) {
+                $updateStmt->execute(array_values($row));
+            }
+            $EndeksOkuma->db->commit();
+        }
+
+        // 6. Toplu INSERT (chunk halinde, her 50 kayıtta bir)
+        if (!empty($insertBatch)) {
+            $EndeksOkuma->db->beginTransaction();
+            $insertChunks = array_chunk($insertBatch, 50);
+            foreach ($insertChunks as $chunk) {
+                $valuesPart = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'));
+                $sql = "INSERT INTO endeks_okuma (islem_id, personel_id, ekip_kodu_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih, defter, sayac_durum) VALUES $valuesPart";
+                $params = [];
+                foreach ($chunk as $row) {
+                    $params = array_merge($params, $row);
+                }
+                $stmt = $EndeksOkuma->db->prepare($sql);
+                $stmt->execute($params);
+            }
+            $EndeksOkuma->db->commit();
         }
 
         // Log kaydet
@@ -1406,7 +1527,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $response['guncellenen_kayit'] = $guncellenenKayit;
         $response['mevcut_kayitlar'] = $mevcutKayitlar;
         $response['atlanAn_kayitlar'] = $atlanAnKayitlar;
-        $response['api_raw_data'] = $apiData; // Hata ayıklama için eklendi
+        $response['toplam_api_kayit'] = count($apiData);
+        $response['api_raw_data'] = $apiData;
         $response['message'] = "$yeniKayit adet yeni kayıt eklendi.";
 
     } catch (Exception $e) {
