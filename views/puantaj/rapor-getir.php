@@ -4,6 +4,7 @@ use App\Model\TanimlamalarModel;
 use App\Model\EndeksOkumaModel;
 use App\Model\PuantajModel;
 use App\Model\PersonelModel;
+use App\Model\FirmaModel;
 
 if (!isset($Tanimlamalar))
     $Tanimlamalar = new TanimlamalarModel();
@@ -13,6 +14,11 @@ if (!isset($Puantaj))
     $Puantaj = new PuantajModel();
 if (!isset($Personel))
     $Personel = new PersonelModel();
+if (!isset($Firma))
+    $Firma = new FirmaModel();
+
+$firma = $Firma->getFirma($_SESSION['firma_id'] ?? 0);
+$firmaAdi = $firma->firma_adi ?? '';
 
 $year = $year ?? $_GET['year'] ?? date('Y');
 $month = $month ?? $_GET['month'] ?? date('m');
@@ -65,6 +71,49 @@ if (!function_exists('getShortCode')) {
     }
 }
 
+if (!function_exists('shortenTeamName')) {
+    function shortenTeamName($teamName, $firmaAdi)
+    {
+        if (empty($firmaAdi))
+            return $teamName;
+
+        // Şirket unvan eklerini temizle (LTD, ŞTİ, vb.)
+        $firmaClean = preg_replace('/\s+(LTD|ŞTİ|LİMİTED|ŞİRKETİ|A\.Ş\.|ANONİM|TİCARET|SANAYİ).*$/ui', '', $firmaAdi);
+
+        $short = $teamName;
+        // 1. Temizlenmiş firma adı ile tam eşleşme kontrolü (vaka duyarsız)
+        if (mb_stripos($teamName, $firmaClean) === 0) {
+            $short = trim(mb_substr($teamName, mb_strlen($firmaClean)));
+        } else {
+            // 2. Normalleştirilmiş eşleşme (ER-SAN vs ERSAN gibi durumlar için)
+            $firmaNormalized = preg_replace('/[^A-ZÇĞİIÖŞÜ]/u', '', mb_strtoupper($firmaClean, 'UTF-8'));
+            $teamNormalized = preg_replace('/[^A-ZÇĞİIÖŞÜ]/u', '', mb_strtoupper($teamName, 'UTF-8'));
+
+            if (mb_stripos($teamNormalized, $firmaNormalized) === 0) {
+                $ekipPos = mb_stripos($teamName, 'EKİP');
+                if ($ekipPos === false)
+                    $ekipPos = mb_stripos($teamName, 'EKIP');
+
+                if ($ekipPos !== false) {
+                    $short = trim(mb_substr($teamName, $ekipPos));
+                }
+            }
+        }
+
+        // 3. Fallback: Eğer hala çok uzunsa ve içinde EKİP geçiyorsa direkt oradan al
+        if (mb_strlen($short) > 15) {
+            $ekipPos = mb_stripos($short, 'EKİP');
+            if ($ekipPos === false)
+                $ekipPos = mb_stripos($short, 'EKIP');
+            if ($ekipPos !== false) {
+                $short = trim(mb_substr($short, $ekipPos));
+            }
+        }
+
+        return $short ?: $teamName;
+    }
+}
+
 $workTypeCols = [];
 if ($activeTab !== 'okuma' && !empty($workTypes)) {
     foreach ($workTypes as $ut) {
@@ -108,8 +157,7 @@ for ($d = 1; $d <= $daysInMonth; $d++) {
     if (date('w', $timestamp) == 0) {
         $sundayDays[] = $d;
     }
-}
-?>
+} ?>
 <?php
 // --- DATA PRE-PROCESSING ---
 $allSummaryPersonels = ($activeTab !== 'kacakkontrol') ? array_keys($summary ?? []) : [];
@@ -677,7 +725,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                         <td class="sticky-col-1"><?= $sira++ ?></td>
                         <?php if ($activeTab !== 'kacakkontrol'): ?>
                             <td class="sticky-col-2">
-                                <?= $team->tur_adi ?>
+                                <?= shortenTeamName($team->tur_adi, $firmaAdi) ?>
                             </td>
                         <?php endif; ?>
                         <td
@@ -810,7 +858,8 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                         <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> table-info action-grand-total-cell <?= ($idx === $subColCount) ? 'day-separator' : '' ?>"
                             data-wt-code="<?= $wt['code'] ?>" data-day="genel-total"><?= $footActTotal ?: '' ?></td>
                     <?php endforeach; ?>
-                    <td class="table-warning fw-bold action-types-grand-total"><?= $allActionTypesGrandTotal ?: '' ?></td>
+                    <td class="table-warning fw-bold action-types-grand-total"><?= $allActionTypesGrandTotal ?: '' ?>
+                    </td>
                     <td colspan="2"></td>
                 </tr>
             <?php endif; ?>

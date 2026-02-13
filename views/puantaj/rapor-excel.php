@@ -7,6 +7,7 @@ use App\Model\TanimlamalarModel;
 use App\Model\EndeksOkumaModel;
 use App\Model\PuantajModel;
 use App\Model\PersonelModel;
+use App\Model\FirmaModel;
 use App\Helper\Date;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -18,6 +19,10 @@ $Tanimlamalar = new TanimlamalarModel();
 $EndeksOkuma = new EndeksOkumaModel();
 $Puantaj = new PuantajModel();
 $Personel = new PersonelModel();
+$Firma = new FirmaModel();
+
+$firma = $Firma->getFirma($_SESSION['firma_id'] ?? 0);
+$firmaAdi = $firma->firma_adi ?? '';
 
 $year = $_GET['year'] ?? date('Y');
 $month = $_GET['month'] ?? date('m');
@@ -68,6 +73,47 @@ function getShortCode($text)
             $code .= mb_substr($word, 0, 1, 'UTF-8');
     }
     return $code ?: mb_substr($text, 0, 2, 'UTF-8');
+}
+
+function shortenTeamName($teamName, $firmaAdi)
+{
+    if (empty($firmaAdi))
+        return $teamName;
+
+    // Şirket unvan eklerini temizle (LTD, ŞTİ, vb.)
+    $firmaClean = preg_replace('/\s+(LTD|ŞTİ|LİMİTED|ŞİRKETİ|A\.Ş\.|ANONİM|TİCARET|SANAYİ).*$/ui', '', $firmaAdi);
+
+    $short = $teamName;
+    // 1. Temizlenmiş firma adı ile tam eşleşme kontrolü (vaka duyarsız)
+    if (mb_stripos($teamName, $firmaClean) === 0) {
+        $short = trim(mb_substr($teamName, mb_strlen($firmaClean)));
+    } else {
+        // 2. Normalleştirilmiş eşleşme (ER-SAN vs ERSAN gibi durumlar için)
+        $firmaNormalized = preg_replace('/[^A-ZÇĞİIÖŞÜ]/u', '', mb_strtoupper($firmaClean, 'UTF-8'));
+        $teamNormalized = preg_replace('/[^A-ZÇĞİIÖŞÜ]/u', '', mb_strtoupper($teamName, 'UTF-8'));
+
+        if (mb_stripos($teamNormalized, $firmaNormalized) === 0) {
+            $ekipPos = mb_stripos($teamName, 'EKİP');
+            if ($ekipPos === false)
+                $ekipPos = mb_stripos($teamName, 'EKIP');
+
+            if ($ekipPos !== false) {
+                $short = trim(mb_substr($teamName, $ekipPos));
+            }
+        }
+    }
+
+    // 3. Fallback: Eğer hala çok uzunsa ve içinde EKİP geçiyorsa direkt oradan al
+    if (mb_strlen($short) > 15) {
+        $ekipPos = mb_stripos($short, 'EKİP');
+        if ($ekipPos === false)
+            $ekipPos = mb_stripos($short, 'EKIP');
+        if ($ekipPos !== false) {
+            $short = trim(mb_substr($short, $ekipPos));
+        }
+    }
+
+    return $short ?: $teamName;
 }
 
 $workTypeCols = [];
@@ -417,7 +463,7 @@ foreach ($regions as $regionName) {
         $personelTotal = 0;
 
         $sheet->setCellValue('A' . $row, $sira++);
-        $sheet->setCellValue('B' . $row, $team->tur_adi);
+        $sheet->setCellValue('B' . $row, shortenTeamName($team->tur_adi, $firmaAdi));
         if ($activeTab !== 'kacakkontrol')
             $sheet->setCellValue('C' . $row, $personel->adi_soyadi);
 
@@ -490,7 +536,7 @@ foreach ($regionGrouped as $regionName => $teamsInRegion) {
         $tId = $tData['tId'];
         $personelTotal = 0;
         $sheet->setCellValue('A' . $row, $sira++);
-        $sheet->setCellValue('B' . $row, $team->tur_adi);
+        $sheet->setCellValue('B' . $row, shortenTeamName($team->tur_adi, $firmaAdi));
         if ($activeTab !== 'kacakkontrol')
             $sheet->setCellValue('C' . $row, $personel->adi_soyadi);
         $colIdx = $daysColStartIdx;
