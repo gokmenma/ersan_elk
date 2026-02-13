@@ -150,6 +150,14 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                                 </div>
                                 <div class="col-md-3 d-flex align-items-center justify-content-end">
                                     <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                                        
+                                          <button type="button"
+                                            class="btn btn-link btn-sm text-dark text-decoration-none px-2 d-flex align-items-center"
+                                            id="btnTamEkran">
+                                            <i class="mdi mdi-fullscreen fs-5 me-1"></i>
+                                            <span class="d-none d-xl-inline"></span>
+                                        </button>
+                                        <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
                                         <button type="button"
                                             class="btn btn-link btn-sm text-secondary text-decoration-none px-2"
                                             id="btnTemizle" title="Temizle">
@@ -163,6 +171,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                                             <span class="d-none d-xl-inline">Excel</span>
                                         </button>
                                         <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                                      
                                         <button type="button" class="btn d-flex align-items-center" id="btnRaporGetir">
                                             <i class="mdi mdi-file-chart fs-5 me-1"></i>
                                             <span class="d-none d-xl-inline">Raporu Getir</span>
@@ -395,7 +404,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         vertical-align: middle !important;
         text-align: center !important;
         border: 1px solid var(--bs-border-color, #eee) !important;
-        padding: 6px 8px !important;
+        padding: 4px 4px !important;
         white-space: nowrap;
     }
 
@@ -414,17 +423,63 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     }
 
     [data-bs-theme="dark"] #comparisonTable thead th {
-        background: #2a3042 !important; /* Keep original dark for better contrast in dark mode */
+        background: #2a3042 !important;
+        /* Keep original dark for better contrast in dark mode */
         color: #eff2f7 !important;
         border-color: #32394e !important;
     }
 
 
 
-    /* THEAD 2. satır: top offset = 31px (approx height of first row) */
+    /* THEAD 2. satır (Arama ve Alt Başlık Satırı): top offset = height of first row */
     #comparisonTable thead tr:nth-child(2) th {
-        top: 32px;
+        top: 28px;
+        /* Precision adjustment */
         z-index: 19;
+    }
+
+    .column-search {
+        height: 34px !important;
+        font-size: 11px !important;
+        padding: 4px 10px !important;
+        background-color: #ffffff !important;
+        border: 1px solid #e9ecef !important;
+        border-radius: 6px !important;
+        /* As seen in the reference */
+        width: 100% !important;
+        transition: all 0.2s ease;
+        color: #495057;
+        margin: 0 !important;
+    }
+
+    .column-search::placeholder {
+        color: #adb5bd;
+        text-transform: none;
+        font-weight: 400;
+    }
+
+    .column-search:focus {
+        border-color: var(--bs-primary) !important;
+        box-shadow: 0 0 0 0.15rem rgba(var(--bs-primary-rgb), 0.15) !important;
+        outline: none;
+        background-color: #fff !important;
+    }
+
+    .search-row th {
+        background-color: #f8f9fa !important;
+        padding: 0 !important;
+        /* Key fix to fill cell */
+        border-top: none !important;
+    }
+
+    [data-bs-theme="dark"] .column-search {
+        background-color: #2e3548 !important;
+        border-color: #32394e !important;
+        color: #eff2f7 !important;
+    }
+
+    [data-bs-theme="dark"] .search-row th {
+        background-color: #2a3042 !important;
     }
 
     /* Fixed columns */
@@ -522,6 +577,11 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
     .gidilen-cell {
         background-color: rgba(244, 106, 106, 0.08) !important;
+    }
+
+    #comparisonTable td {
+        padding: 4px 6px !important;
+        /* "ias" padding (small) */
     }
 
     /* Row hover */
@@ -771,6 +831,13 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             $('#baslangicDonem').val(formatDonem(start));
             $('#bitisDonem').val(formatDonem(now));
             $('.quick-period').removeClass('active-period');
+
+            // Arama filtrelerini de sıfırla
+            _searchFilters = { ilce_tipi: '', bolge: '', defter: '' };
+            if (_tableData && _tableData.length > 0) {
+                renderTable(_tableData, _tableDonemler, true);
+            }
+
             updateFilterSummary();
         });
 
@@ -844,13 +911,17 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         let _sortDirection = 'asc';
 
         // ======= TABLO OLUŞTURMA =======
-        function renderTable(data, donemler, keepSort) {
+        let _searchFilters = { ilce_tipi: '', bolge: '', defter: '' };
+        let _searchTimeout;
+
+        function renderTable(data, donemler, keep) {
             _tableData = data;
             _tableDonemler = donemler;
 
-            if (!keepSort) {
+            if (keep !== true) {
                 _sortColumn = null;
                 _sortDirection = 'asc';
+                _searchFilters = { ilce_tipi: '', bolge: '', defter: '' };
             }
 
             if (!data || data.length === 0) {
@@ -858,8 +929,16 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 return;
             }
 
-            // Apply sort if active
-            let sortedData = [...data];
+            // Arama filtrelerini uygula
+            let filteredData = data.filter(function (item) {
+                const ilceMatch = !_searchFilters.ilce_tipi || (item.ilce_tipi || '').toLowerCase().includes(_searchFilters.ilce_tipi.toLowerCase());
+                const bolgeMatch = !_searchFilters.bolge || (item.bolge || '').toLowerCase().includes(_searchFilters.bolge.toLowerCase());
+                const defterMatch = !_searchFilters.defter || (item.defter || '').toString().toLowerCase().includes(_searchFilters.defter.toLowerCase());
+                return ilceMatch && bolgeMatch && defterMatch;
+            });
+
+            // Sıralamayı uygula
+            let sortedData = [...filteredData];
             if (_sortColumn) {
                 sortedData.sort(function (a, b) {
                     let valA, valB;
@@ -917,9 +996,9 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
             // Row 1: Fixed col headers + Period group headers
             html += '<tr>';
-            html += `<th rowspan="2" class="fix-col-1 sortable-header" data-sort-col="ilce_tipi">İlçe Tipi${sortIcon('ilce_tipi')}</th>`;
-            html += `<th rowspan="2" class="fix-col-2 sortable-header" data-sort-col="bolge">Bölge${sortIcon('bolge')}</th>`;
-            html += `<th rowspan="2" class="fix-col-3 sortable-header" data-sort-col="defter">Defter${sortIcon('defter')}</th>`;
+            html += `<th class="fix-col-1 sortable-header" data-sort-col="ilce_tipi">İlçe Tipi${sortIcon('ilce_tipi')}</th>`;
+            html += `<th class="fix-col-2 sortable-header" data-sort-col="bolge">Bölge${sortIcon('bolge')}</th>`;
+            html += `<th class="fix-col-3 sortable-header" data-sort-col="defter">Defter${sortIcon('defter')}</th>`;
             donemler.forEach(function (donem, idx) {
                 const isLast = idx === donemler.length - 1;
                 const formatted = donem.substring(0, 4) + '/' + donem.substring(4);
@@ -927,8 +1006,12 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             });
             html += '</tr>';
 
-            // Row 2: Sub-headers (sortable)
-            html += '<tr>';
+            // Row 2: Search Inputs for fixed cols + Sub-headers (sortable)
+            html += '<tr class="search-row">';
+            html += `<th class="fix-col-1"><input type="text" class="form-control column-search" id="search_ilce_tipi" data-col="ilce_tipi" value="${_searchFilters.ilce_tipi || ''}" placeholder="İLÇE TİPİ"></th>`;
+            html += `<th class="fix-col-2"><input type="text" class="form-control column-search" id="search_bolge" data-col="bolge" value="${_searchFilters.bolge || ''}" placeholder="BÖLGE"></th>`;
+            html += `<th class="fix-col-3"><input type="text" class="form-control column-search" id="search_defter" data-col="defter" value="${_searchFilters.defter || ''}" placeholder="DEFTER"></th>`;
+
             donemler.forEach(function (donem, idx) {
                 const isLast = idx === donemler.length - 1;
                 html += `<th class="sub-header sub-header-abone sortable-header" data-sort-col="${donem}_abone">Abone${sortIcon(donem + '_abone')}</th>`;
@@ -1022,6 +1105,34 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 renderTable(_tableData, _tableDonemler, true);
             });
         }
+
+        // ======= ARAMA EVENT HANDLER =======
+        $(document).on('input', '.column-search', function () {
+            const col = $(this).data('col');
+            const val = $(this).val();
+            const id = $(this).attr('id');
+            const pos = this.selectionStart;
+
+            _searchFilters[col] = val;
+
+            clearTimeout(_searchTimeout);
+            _searchTimeout = setTimeout(function () {
+                renderTable(_tableData, _tableDonemler, true);
+
+                // Focusu geri al
+                if (id) {
+                    const input = document.getElementById(id);
+                    if (input) {
+                        input.focus();
+                        input.setSelectionRange(pos, pos);
+                    }
+                }
+            }, 400);
+        });
+
+        $(document).on('click', '.column-search', function (e) {
+            e.stopPropagation(); // Sıralama işlemini tetiklemesin
+        });
 
         // ======= EXCEL İNDİR =======
         $('#btnExcelIndir').on('click', function () {

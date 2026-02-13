@@ -392,7 +392,7 @@ class TanimlamalarModel extends Model
 
     public function getIsTurleriByRaporTuru($raporTuru)
     {
-        $sql = "SELECT * FROM $this->table WHERE grup = 'is_turu' AND rapor_sekmesi = ? AND silinme_tarihi IS NULL ORDER BY id ASC";
+        $sql = "SELECT * FROM $this->table WHERE grup = 'is_turu' AND rapor_sekmesi = ? AND is_turu_ucret > 0 AND silinme_tarihi IS NULL ORDER BY id ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$raporTuru]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
