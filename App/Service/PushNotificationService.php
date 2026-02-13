@@ -131,11 +131,16 @@ class PushNotificationService
                 $content .= "<p>{$body}</p>";
 
                 if ($url) {
-                    // Base URL'i dinamik almaya çalışalım, yoksa varsayılanı kullanalım
-                    $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]";
-                    // Eğer url relative ise base url ekle
-                    if (strpos($url, 'http') === false) {
-                        $fullUrl = $baseUrl . '/' . ltrim($url, '/');
+                    // .env'den personel base URL'ini alalım
+                    $personAppBase = $_ENV['PERSON_APP_BASE'] ?? $_SERVER['HTTP_HOST'];
+
+                    // Eğer url sadece parametrelerle başlıyorsa (?page= gibi)
+                    if (strpos($url, '?') === 0) {
+                        $fullUrl = "https://" . $personAppBase . "/index.php" . $url;
+                    }
+                    // Eğer url relative path ise
+                    elseif (strpos($url, 'http') === false) {
+                        $fullUrl = "https://" . $personAppBase . "/" . ltrim($url, '/');
                     } else {
                         $fullUrl = $url;
                     }

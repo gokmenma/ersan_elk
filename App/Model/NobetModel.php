@@ -548,7 +548,7 @@ class NobetModel extends Model
             $payload = [
                 'title' => '📅 Nöbet Ataması',
                 'body' => "{$tarihFormatli} ({$gun}) tarihine nöbet atandınız.",
-                'url' => 'views/personel-pwa/index?page=nobet'
+                'url' => '?page=nobet'
             ];
 
             // Bildirim logla
@@ -581,7 +581,7 @@ class NobetModel extends Model
                 $payload = [
                     'title' => "⏰ Nöbet Hatırlatma",
                     'body' => "{$tarihFormatli} saat {$saatFormatli}'de nöbetiniz başlayacak.",
-                    'url' => 'views/personel-pwa/index?page=nobet'
+                    'url' => '?page=nobet'
                 ];
 
                 if ($pushService->sendToPersonel($nobet->personel_id, $payload)) {
@@ -614,7 +614,7 @@ class NobetModel extends Model
             $payload = [
                 'title' => '🔄 Nöbet Değişim Talebi',
                 'body' => "{$talep_eden_adi}, {$tarihFormatli} tarihli nöbetini sizinle değiştirmek istiyor.",
-                'url' => 'views/personel-pwa/index?page=nobet'
+                'url' => '?page=nobet'
             ];
 
             $this->logBildirim($personel_id, 'degisim_talebi', $payload);
@@ -644,13 +644,13 @@ class NobetModel extends Model
                 $payload = [
                     'title' => '✅ Değişim Talebi Onaylandı',
                     'body' => "{$tarihFormatli} tarihli nöbet değişim talebiniz onaylandı.",
-                    'url' => 'views/personel-pwa/index?page=nobet'
+                    'url' => '?page=nobet'
                 ];
             } else {
                 $payload = [
                     'title' => '❌ Değişim Talebi Reddedildi',
                     'body' => "{$tarihFormatli} tarihli nöbet değişim talebiniz reddedildi.",
-                    'url' => 'views/personel-pwa/index?page=nobet'
+                    'url' => '?page=nobet'
                 ];
             }
 
