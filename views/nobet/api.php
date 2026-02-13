@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $payload = [
                             'title' => $bildirimBaslik,
                             'body' => $bildirimMesaj . " " . ($ekMesaj ?: "Uygulama üzerinden kontrol edebilirsiniz."),
-                            'url' => 'index?p=personel-pwa/pages/nobet'
+                            'url' => 'views/personel-pwa/index?page=nobet'
                         ];
 
                         if ($pushService->sendToPersonel($pId, $payload)) {

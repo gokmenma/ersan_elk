@@ -73,7 +73,7 @@ if (!empty($genelAyarlar)) {
         }
     }
     usort($donemler, function ($a, $b) {
-        return strcmp($b, $a);
+        return strcmp((string) $b, (string) $a);
     });
 }
 $seciliDonem = isset($_GET['genel_donem']) ? $_GET['genel_donem'] : (!empty($donemler) ? $donemler[0] : null);

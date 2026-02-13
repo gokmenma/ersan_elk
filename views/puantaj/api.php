@@ -1702,13 +1702,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
         // Sıralama: İlçe Tipi > Bölge > Defter
         usort($resultData, function ($a, $b) {
-            $cmp = strcmp($a['ilce_tipi'], $b['ilce_tipi']);
+            $cmp = strcmp((string) ($a['ilce_tipi'] ?? ''), (string) ($b['ilce_tipi'] ?? ''));
             if ($cmp !== 0)
                 return $cmp;
-            $cmp = strcmp($a['bolge'], $b['bolge']);
+            $cmp = strcmp((string) ($a['bolge'] ?? ''), (string) ($b['bolge'] ?? ''));
             if ($cmp !== 0)
                 return $cmp;
-            return strcmp($a['defter'], $b['defter']);
+            return strcmp((string) ($a['defter'] ?? ''), (string) ($b['defter'] ?? ''));
         });
 
         // Seed'i sıfırla

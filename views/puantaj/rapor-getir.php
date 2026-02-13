@@ -293,7 +293,7 @@ if (true) { // Always use unified logic for all standard tabs
         if (!empty($regionGrouped[$rName])) {
             $teams = $regionGrouped[$rName];
             usort($teams, function ($a, $b) {
-                return strcoll($a['personel']->adi_soyadi, $b['personel']->adi_soyadi);
+                return strcoll((string) ($a['personel']->adi_soyadi ?? ''), (string) ($b['personel']->adi_soyadi ?? ''));
             });
             $tableData[] = [
                 'region' => $rName,
@@ -306,7 +306,7 @@ if (true) { // Always use unified logic for all standard tabs
     // Remaining (Tanımsızlar)
     foreach ($regionGrouped as $rName => $teams) {
         usort($teams, function ($a, $b) {
-            return strcoll($a['personel']->adi_soyadi, $b['personel']->adi_soyadi);
+            return strcoll((string) ($a['personel']->adi_soyadi ?? ''), (string) ($b['personel']->adi_soyadi ?? ''));
         });
         $tableData[] = [
             'region' => $rName,

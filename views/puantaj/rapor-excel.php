@@ -449,7 +449,7 @@ foreach ($regions as $regionName) {
         continue;
     $teamsInRegion = $regionGrouped[$regionName];
     usort($teamsInRegion, function ($a, $b) {
-        return strcoll($a['personel']->adi_soyadi, $b['personel']->adi_soyadi);
+        return strcoll((string) ($a['personel']->adi_soyadi ?? ''), (string) ($b['personel']->adi_soyadi ?? ''));
     });
 
     $regionStartRow = $row;
