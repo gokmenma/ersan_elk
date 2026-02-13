@@ -335,6 +335,20 @@ $activeTab = $_GET['tab'] ?? 'home';
                             padding-top: 5px;
                         }
                     }
+
+                    /* Global Feather Icon Fix */
+                    svg.feather,
+                    [data-feather] {
+                        width: 18px !important;
+                        height: 18px !important;
+                        stroke: currentColor;
+                        stroke-width: 2;
+                        stroke-linecap: round;
+                        stroke-linejoin: round;
+                        fill: none;
+                        display: inline-block;
+                        vertical-align: middle;
+                    }
                 </style>
                 <div class="tab-content p-3 text-muted" id="personelTabContent">
                     <form id="personelForm" enctype="multipart/form-data">
@@ -509,7 +523,6 @@ $activeTab = $_GET['tab'] ?? 'home';
             });
         }
 
-        /**DataTable varsa init yap */
         if ($(container).find(".datatable").length > 0) {
             $(container).find(".datatable").each(function () {
                 if (!$.fn.DataTable.isDataTable(this)) {
@@ -518,7 +531,12 @@ $activeTab = $_GET['tab'] ?? 'home';
             });
         }
 
-        feather.replace();
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+            // More aggressive replace for AJAX content
+            setTimeout(function() { feather.replace(); }, 50);
+            setTimeout(function() { feather.replace(); }, 300);
+        }
     }
 
     document.addEventListener("DOMContentLoaded", function () {

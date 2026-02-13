@@ -143,6 +143,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             }
 
+            // İşe giriş tarihi kontrolü (Mevcut ekip atamaları varsa)
+            if ($personel_id > 0 && !empty($data['ise_giris_tarihi'])) {
+                $earliestEkipDate = $Personel->getEarliestEkipAssignmentDate($personel_id);
+                if ($earliestEkipDate && $data['ise_giris_tarihi'] > $earliestEkipDate) {
+                    $formattedEarliest = Date::dmY($earliestEkipDate);
+                    throw new Exception("İşe giriş tarihi, personelin mevcut ekip atamalarının en eskisi olan {$formattedEarliest} tarihinden sonra olamaz. Öncelikle ekip geçmişindeki tarihleri düzeltmelisiniz.");
+                }
+            }
 
             //echo json_encode($data); exit();
 
@@ -166,7 +174,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $oldData = $Personel->find($personel_id);
             }
 
-            $Personel->saveWithAttr($data);
+            $res = $Personel->saveWithAttr($data);
+            $currentPid = ($personel_id > 0) ? $personel_id : Security::decrypt($res);
+
+            // İşten çıkış tarihi varsa aktif ekip atamalarını kapat
+            if (!empty($data['isten_cikis_tarihi']) && $data['isten_cikis_tarihi'] != '0000-00-00') {
+                $Personel->closeActiveEkipAssignments($currentPid, $data['isten_cikis_tarihi']);
+            }
 
             if ($personel_id > 0) {
                 // Güncelleme Logu
@@ -548,6 +562,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     $val = isset($row[$index]) ? trim($row[$index]) : null;
 
+                    // Boş gelen veriyi veritabanına gönderme (mevcut veriyi temizlememesi için)
+                    if ($val === '' || $val === null) {
+                        continue;
+                    }
+
                     // Tarih düzeltme
                     if (in_array($dbCol, ['dogum_tarihi', 'ise_giris_tarihi', 'isten_cikis_tarihi']) && !empty($val)) {
                         $val = Date::convertExcelDate($val);
@@ -592,16 +611,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $newData[$dbCol] = $val;
                 }
 
-                // Firma ID Kontrolü ve Varsayılan Atama
-                if (empty($newData['firma_id'])) {
+                // Firma ID Kontrolü ve Varsayılan Atama (Sadece yeni kayıtlarda boş ise varsayılan ata)
+                if (!$isUpdate && empty($newData['firma_id'])) {
                     if ($defaultFirmaId) {
                         $newData['firma_id'] = $defaultFirmaId;
                     }
                 }
 
-                // Varsayılan değerler
-                if (!isset($newData['aktif_mi']))
+                // Varsayılan değerler (Sadece yeni kayıtlarda)
+                if (!$isUpdate && !isset($newData['aktif_mi']))
                     $newData['aktif_mi'] = 1;
+
+                // İşe giriş tarihi kontrolü (Güncelleme ise ve mevcut ekip atamaları varsa)
+                if ($isUpdate && !empty($newData['ise_giris_tarihi'])) {
+                    $earliestEkipDate = $Personel->getEarliestEkipAssignmentDate($existingId);
+                    if ($earliestEkipDate && $newData['ise_giris_tarihi'] > $earliestEkipDate) {
+                        $formattedEarliest = Date::dmY($earliestEkipDate);
+                        $errorDetails[] = "Satır $rowNum ($name): İşe giriş tarihi ({$newData['ise_giris_tarihi']}), mevcut ekip atamalarından ({$formattedEarliest}) daha sonra olamaz.";
+                        continue;
+                    }
+                }
 
                 // Ekip kodu işlemleri
                 $ekipKodString = $newData['ekip_no'] ?? null;
@@ -616,7 +645,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $tanimData = [
                             'id' => 0,
                             'grup' => 'ekip_kodu',
-                            'ekip_bolge' => $newData['ekip_bolge'],
+                            'ekip_bolge' => $newData['ekip_bolge'] ?? null,
                             'tur_adi' => $ekipKodString,
                             'aciklama' => "Personel Yükleme sırasında otomatik tanımlandı",
                             'firma_id' => $_SESSION['firma_id']
@@ -628,8 +657,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Personel verisine ID'yi ata
                     $newData['ekip_no'] = $ekipId;
 
+                    // Personel aktif mi? (Takım kontrolü için lazım)
+                    $isNowAktif = false;
+                    if (isset($newData['aktif_mi'])) {
+                        $isNowAktif = ($newData['aktif_mi'] == 1);
+                    } elseif ($isUpdate) {
+                        $isNowAktif = ($existing[0]->aktif_mi == 1);
+                    } else {
+                        $isNowAktif = true; // Yeni kayıtta belirtilmemişse varsayılan aktiftir
+                    }
+
                     // Bu ekip ID'sine sahip başka aktif personel var mı?
-                    if ($newData['aktif_mi'] == 1) {
+                    if ($isNowAktif) {
                         // Güncelleme ise mevcut ID'yi hariç tutarak kontrol et
                         $mevcutPersonel = $Personel->getAktifPersonelByEkipNo($ekipId, $existingId);
                         if ($mevcutPersonel) {
@@ -646,7 +685,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 try {
                     $PersonelNew = new PersonelModel();
-                    $PersonelNew->saveWithAttr($newData);
+                    $res = $PersonelNew->saveWithAttr($newData);
+
+                    // İşten çıkış tarihi varsa aktif ekip atamalarını kapat
+                    if (!empty($newData['isten_cikis_tarihi']) && $newData['isten_cikis_tarihi'] != '0000-00-00') {
+                        $currentPid = $isUpdate ? $existingId : Security::decrypt($res);
+                        $PersonelNew->closeActiveEkipAssignments($currentPid, $newData['isten_cikis_tarihi']);
+                    }
 
                     if ($isUpdate) {
                         $updatedCount++;
@@ -798,6 +843,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'firma_id' => $_SESSION['firma_id']
             ];
 
+            // Personelin işe giriş tarihini kontrol et
+            $personelInfo = $Personel->find($saveData['personel_id']);
+            if ($personelInfo && !empty($personelInfo->ise_giris_tarihi) && $personelInfo->ise_giris_tarihi != '0000-00-00') {
+                if ($saveData['baslangic_tarihi'] < $personelInfo->ise_giris_tarihi) {
+                    $formattedIseGiris = Date::dmY($personelInfo->ise_giris_tarihi);
+                    throw new Exception("Ekip başlangıç tarihi, personelin işe giriş tarihinden ({$formattedIseGiris}) önce olamaz.");
+                }
+            }
+
+            // Tarih Çakışması Kontrolü (Bireysel)
+            if ($Personel->hasEkipOverlap($saveData['personel_id'], $saveData['ekip_kodu_id'], $saveData['baslangic_tarihi'], $saveData['bitis_tarihi'])) {
+                throw new Exception("Seçilen tarih aralığı bu personel için mevcut bir ekip atamasıyla çakışıyor. Lütfen tarihleri kontrol edin.");
+            }
+
+            // Tarih Çakışması Kontrolü (Global - Ekip Kodu Başkasında mı?)
+            $cakisanPersonel = $Personel->isEkipKoduAvailable($saveData['ekip_kodu_id'], $saveData['baslangic_tarihi'], $saveData['bitis_tarihi']);
+            if ($cakisanPersonel) {
+                throw new Exception("Seçilen tarih aralığında bu ekip kodu zaten '{$cakisanPersonel->adi_soyadi}' isimli personele tanımlıdır. Aynı tarihte bir ekip kodu birden fazla personele tanımlanamaz.");
+            }
+
             $Personel->addEkipGecmisi($saveData);
             echo json_encode(['status' => 'success', 'message' => 'Ekip geçmişi başarıyla eklendi.']);
         } catch (Exception $e) {
@@ -874,6 +939,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'baslangic_tarihi' => Date::Ymd($data['baslangic_tarihi'], 'Y-m-d'),
                 'bitis_tarihi' => !empty($data['bitis_tarihi']) ? Date::Ymd($data['bitis_tarihi'], 'Y-m-d') : null
             ];
+
+            // Mevcut kaydı bul (personel_id için)
+            $oldGecmis = $Personel->getSingleEkipGecmisi($saveData['id']);
+            if (!$oldGecmis) {
+                throw new Exception("Kayıt bulunamadı.");
+            }
+
+            // Personelin işe giriş tarihini kontrol et
+            $personelInfo = $Personel->find($oldGecmis->personel_id);
+            if ($personelInfo && !empty($personelInfo->ise_giris_tarihi) && $personelInfo->ise_giris_tarihi != '0000-00-00') {
+                if ($saveData['baslangic_tarihi'] < $personelInfo->ise_giris_tarihi) {
+                    $formattedIseGiris = Date::dmY($personelInfo->ise_giris_tarihi);
+                    throw new Exception("Ekip başlangıç tarihi, personelin işe giriş tarihinden ({$formattedIseGiris}) önce olamaz.");
+                }
+            }
+
+            // Tarih Çakışması Kontrolü (Bireysel)
+            if ($Personel->hasEkipOverlap($oldGecmis->personel_id, $saveData['ekip_kodu_id'], $saveData['baslangic_tarihi'], $saveData['bitis_tarihi'], $saveData['id'])) {
+                throw new Exception("Seçilen tarih aralığı bu personel için mevcut bir ekip atamasıyla çakışıyor. Lütfen tarihleri kontrol edin.");
+            }
+
+            // Tarih Çakışması Kontrolü (Global - Ekip Kodu Başkasında mı?)
+            $cakisanPersonel = $Personel->isEkipKoduAvailable($saveData['ekip_kodu_id'], $saveData['baslangic_tarihi'], $saveData['bitis_tarihi'], $saveData['id']);
+            if ($cakisanPersonel) {
+                throw new Exception("Seçilen tarih aralığında bu ekip kodu zaten '{$cakisanPersonel->adi_soyadi}' isimli personele tanımlıdır. Aynı tarihte bir ekip kodu birden fazla personele tanımlanamaz.");
+            }
 
             $Personel->updateEkipGecmisi($saveData);
             echo json_encode(['status' => 'success', 'message' => 'Ekip geçmişi başarıyla güncellendi.']);

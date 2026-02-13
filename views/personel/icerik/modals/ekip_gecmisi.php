@@ -85,9 +85,7 @@ use App\Helper\Form;
 
                             $tbody.empty();
 
-                            if (response.data.length === 0) {
-                                $tbody.append('<tr><td colspan="5" class="text-center p-3 text-muted">Henüz ekip geçmişi kaydı bulunmuyor.</td></tr>');
-                            } else {
+                            if (response.data && response.data.length > 0) {
                                 var bugun = new Date().toISOString().split('T')[0];
                                 var newestActiveEkip = null;
 
@@ -128,6 +126,7 @@ use App\Helper\Form;
                                     $('small.text-muted:contains("Ekip No:") b').text(newestActiveEkip);
                                 }
                             }
+
                             if (typeof window.invalidateAllTabs === 'function') {
                                 window.invalidateAllTabs();
                             }
@@ -150,11 +149,18 @@ use App\Helper\Form;
             function initDataTable() {
                 if ($.fn.DataTable && !$.fn.DataTable.isDataTable('#tblEkipGecmisi')) {
                     var dtOptions = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
+
+                    // Derin birleştirme yapalım ki language ayarları kaybolmasın
+                    var languageOptions = Object.assign({}, dtOptions.language || {}, {
+                        url: 'assets/js/tr.json'
+                    });
+
                     var customOptions = {
-                        language: { url: 'assets/js/tr.json' },
+                        language: languageOptions,
                         order: [[1, 'desc']],
                         pageLength: 5
                     };
+
                     $('#tblEkipGecmisi').DataTable(Object.assign({}, dtOptions, customOptions));
                 }
             }
@@ -371,9 +377,9 @@ use App\Helper\Form;
                     $('#ekip_gecmisi_id').val('');
                     $('#ekip_gecmisi_action').val('ekip-gecmisi-ekle');
                     $('#formEkipGecmisiEkle')[0].reset();
-                    
+
                     // Flatpickr alanlarını temizle
-                    $(this).find('.flatpickr').each(function() {
+                    $(this).find('.flatpickr').each(function () {
                         if (this._flatpickr) {
                             this._flatpickr.clear();
                         }

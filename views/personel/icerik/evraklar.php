@@ -410,16 +410,9 @@ $evrakTurleri = [
                             if (response.status === 'success') {
                                 row.fadeOut(300, function () {
                                     $(this).remove();
-                                    // Eğer tablo boşaldıysa mesaj göster
-                                    if ($('#tblEvraklar tbody tr').length === 0) {
-                                        $('#tblEvraklar tbody').html(
-                                            '<tr id="noEvrakRow">' +
-                                            '<td colspan="6" class="text-center py-4">' +
-                                            '<i data-feather="folder" class="display-6 text-muted d-block mb-2 mx-auto" style="width: 48px; height: 48px;"></i>' +
-                                            '<span class="text-muted">Bu personele henüz evrak yüklenmemiş.</span>' +
-                                            '</td></tr>'
-                                        );
-                                        feather.replace();
+                                    // DataTables kullanılıyorsa, tabloyu yenilemek veya row silmek daha iyidir
+                                    if ($.fn.DataTable.isDataTable('#tblEvraklar')) {
+                                        $('#tblEvraklar').DataTable().row(row).remove().draw(false);
                                     }
                                 });
                                 Swal.fire('Silindi!', response.message, 'success');

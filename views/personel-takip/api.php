@@ -419,12 +419,13 @@ try {
         // Geç kalanları getir
         case 'getGecKalanlar':
             $limit_saat = $_POST['limit_saat'] ?? '08:30';
+            $tarih_req = $_POST['tarih'] ?? date('Y-m-d');
             $firma_id = $_SESSION['firma_id'] ?? null;
 
-            $personeller = $HareketModel->getTumPersonelDurumu($firma_id);
+            $personeller = $HareketModel->getTumPersonelDurumu($firma_id, $tarih_req);
 
             $gec_kalanlar = [];
-            $gun = date('Y-m-d');
+            $gun = $tarih_req;
 
             try {
                 // Limit zamanını güvenli oluştur

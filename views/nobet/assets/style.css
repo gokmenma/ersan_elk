@@ -6,80 +6,147 @@
        STAT KARTLARI (1. Görsel Referans - Modern Card)
        ============================================ */
 .stat-card {
-  background: #fff;
-  border: 1px solid #f1f1f1;
+  background-color: var(--bs-card-bg, #fff) !important;
   border-radius: 12px;
-  padding: 16px 20px;
+  border: 1px solid var(--bs-border-color, #f1f1f1) !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
   height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
-.stat-card .stat-header {
+/* Minimal "Smoke/Glow" Effect */
+.stat-card::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(
+    to top,
+    var(--card-color, #3b82f6) 0%,
+    transparent 100%
+  );
+  opacity: 0.12;
+  filter: blur(20px);
+  z-index: 0;
+  pointer-events: none;
+  transition: all 0.5s ease;
+  transform: translateY(15px);
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.04);
+  border-color: var(--card-color, #3b82f6) !important;
+}
+
+.stat-card:hover::after {
+  opacity: 0.25;
+  transform: translateY(0);
+  height: 80px;
+}
+
+.stat-card .card-body {
+  padding: 0.75rem 1rem !important;
+  position: relative;
+  z-index: 1;
+  flex: 1;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+  flex-direction: column;
 }
 
-.stat-card .stat-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: #71717a;
-  margin: 0;
+.stat-card .icon-label-container {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
 }
 
-.stat-card .stat-trend {
-  padding: 2px 6px;
-  border-radius: 99px;
+.stat-card .icon-box {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--card-rgb, 59, 130, 246), 0.08);
+  transition: all 0.4s ease;
+}
+
+.stat-card:hover .icon-box {
+  transform: scale(1.1) rotate(5deg);
+  background: rgba(var(--card-rgb, 59, 130, 246), 0.12);
+}
+
+.stat-card .stat-label-main {
   font-size: 10px;
-  font-weight: 600;
-  background: #f4f4f5;
-  color: #18181b;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.stat-card .stat-trend.up {
-  background: #f0fdf4;
-  color: #166534;
-}
-
-.stat-card .stat-trend.down {
-  background: #fef2f2;
-  color: #991b1b;
+  font-weight: 700;
+  color: #71717a;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+  opacity: 0.8;
 }
 
 .stat-card .stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: #09090b;
-  line-height: 1.2;
-  margin-bottom: 4px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #18181b;
+  margin-bottom: 0px;
+  line-height: 1;
+  letter-spacing: -0.5px;
 }
 
 .stat-card .stat-sub {
-  font-size: 11px;
+  font-size: 10px;
   color: #a1a1aa;
+  font-weight: 500;
   margin: 0;
+  display: none; /* Metni gizle, sadece rakam ve başlık kalsın */
 }
 
-.stat-card .stat-icon {
+/* Trend Badge Fixes */
+.stat-card .stat-trend {
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  z-index: 2;
+}
+
+.stat-card .stat-trend.up {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.stat-card .stat-trend.down {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.stat-card .stat-trend.neutral {
+  color: #71717a;
+  background: rgba(113, 113, 122, 0.08);
+}
+
+/* Remove old decoration */
+.stat-card::before {
   display: none;
-  /* Modern tasarımda ikonu header içine veya trend yanına alabiliriz */
 }
 
 /* Ana Container */
 .nobet-container {
   display: flex;
   gap: 20px;
-  min-height: calc(100vh - 280px);
+  height: calc(100vh - 200px);
+  overflow: hidden;
 }
 
 /* ============================================
@@ -94,9 +161,9 @@
 
 .personel-pool-card {
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  /* overflow: hidden; */ /* Dropdown'ların kesilmemesi için kaldırıldı */
+  border: 1px solid #f1f1f1;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -134,7 +201,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 8px 8px;
-  max-height: calc(100vh - 250px);
+  height: 0; /* flex-grow'un doğru çalışması ve scroll çıkması için */
   background: #fff;
 }
 
@@ -158,19 +225,69 @@
   align-items: flex-start;
   text-align: left;
   gap: 2px;
-  padding: 10px 12px;
+  padding: 12px;
+  margin-bottom: 8px;
   background: #fff;
-  border: 1px solid var(--dept-color, #6b7280);
-  border-left: 3px solid var(--dept-color, #6b7280);
-  /* margin: 6px 12px; */
+  border: 1px solid #f1f1f1;
+  border-left: 4px solid var(--dept-color, #6b7280);
   cursor: grab;
-  transition: all 0.2s ease;
-  border-radius: 6px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 10px;
 }
 
 .personel-item:hover {
-  background-color: #f8f9fa;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+  background-color: #fff;
+  border-color: var(--dept-color, #6b7280);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.04);
+  transform: translateX(4px);
+}
+
+/* Sürükleme esnasındaki görünüm (FullCalendar & Universal Drag Ghost) */
+.fc-drag-mirror,
+.fc-event-dragging,
+.personel-item.fc-event-dragging,
+.fc-event.fc-event-dragging,
+[class*="fc-event"].fc-event-dragging {
+  z-index: 2147483647 !important;
+  opacity: 1 !important;
+  background: var(--dept-color, #3b82f6) !important;
+  color: #fff !important;
+  padding: 10px 18px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.5) !important;
+  width: auto !important;
+  min-width: 160px !important;
+  pointer-events: none !important;
+  display: block !important;
+  visibility: visible !important;
+  position: absolute !important;
+  /* Fareyi anlık takip etmesi için animasyonları kapatıyoruz */
+  transition: none !important;
+  transform: none !important;
+}
+
+/* Sürükleme anında sadece ismi göster - TÜM DURUMLARDA */
+.fc-drag-mirror .personel-name,
+.fc-event-dragging .personel-name,
+.personel-item.fc-event-dragging .personel-name,
+.fc-event.fc-event-dragging .personel-name {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: #fff !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  text-align: center !important;
+  margin: 0 !important;
+}
+
+/* Sürükleme anında diğer her şeyi kesin gizle */
+.fc-drag-mirror .personel-dept,
+.fc-drag-mirror .nobet-count,
+.fc-event-dragging .personel-dept,
+.fc-event-dragging .nobet-count,
+.fc-event-dragging .personel-item .personel-dept {
+  display: none !important;
 }
 
 .personel-item .personel-name {
@@ -236,12 +353,19 @@
 .calendar-panel {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-panel > .row.mb-4 {
+  margin-bottom: 0.75rem !important;
 }
 
 .calendar-card {
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1px solid #f1f1f1;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   overflow: hidden;
   height: 100%;
   display: flex;
@@ -317,7 +441,9 @@
 
 /* FullCalendar - Takvim içi toolbar gizle */
 #nobet-calendar {
+  flex: 1;
   padding: 0 16px 16px 16px;
+  min-height: 0; /* flex-grow'un doğru çalışması için */
 }
 
 .fc .fc-toolbar {
@@ -566,6 +692,8 @@
 @media (max-width: 1200px) {
   .nobet-container {
     flex-direction: column;
+    height: auto;
+    overflow: visible;
   }
 
   .personel-pool {
@@ -574,7 +702,8 @@
   }
 
   .personel-list {
-    max-height: 200px;
+    max-height: 300px;
+    height: auto;
   }
 }
 
@@ -737,20 +866,32 @@
   border-bottom: 1px solid #32394e !important;
 }
 
-[data-bs-theme="dark"] .stat-card .stat-value,
-[data-bs-theme="dark"] .stat-card .stat-label,
-[data-bs-theme="dark"] .personel-name,
-[data-bs-theme="dark"] .calendar-title,
-[data-bs-theme="dark"] .modal-title,
-[data-bs-theme="dark"] .modal-date-large,
-[data-bs-theme="dark"] .pool-header h5,
-[data-bs-theme="dark"] .modal-info-value {
+[data-bs-theme="dark"] .stat-card {
+  background: #282f36 !important;
+  border-color: #32394e !important;
+}
+
+[data-bs-theme="dark"] .stat-card::before {
+  opacity: 0.1;
+}
+
+[data-bs-theme="dark"] .stat-card .stat-value {
   color: #eff2f7 !important;
 }
 
-[data-bs-theme="dark"] .stat-card .stat-trend {
+[data-bs-theme="dark"] .stat-card .stat-label-main,
+[data-bs-theme="dark"] .stat-card .stat-sub {
+  color: #adb5bd !important;
+}
+
+[data-bs-theme="dark"] .stat-card .icon-box {
+  background: rgba(255, 255, 255, 0.05) !important;
+  box-shadow: none;
+}
+
+[data-bs-theme="dark"] .stat-card .stat-trend.neutral {
   background: #32394e;
-  color: #eff2f7;
+  color: #adb5bd;
 }
 
 [data-bs-theme="dark"] .stat-card .stat-trend.up {
@@ -761,6 +902,15 @@
 [data-bs-theme="dark"] .stat-card .stat-trend.down {
   background: rgba(248, 113, 113, 0.1);
   color: #f87171;
+}
+
+[data-bs-theme="dark"] .personel-name,
+[data-bs-theme="dark"] .calendar-title,
+[data-bs-theme="dark"] .modal-title,
+[data-bs-theme="dark"] .modal-date-large,
+[data-bs-theme="dark"] .pool-header h5,
+[data-bs-theme="dark"] .modal-info-value {
+  color: #eff2f7 !important;
 }
 
 [data-bs-theme="dark"] .pool-header,

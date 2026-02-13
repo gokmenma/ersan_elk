@@ -721,8 +721,9 @@ $(document).ready(function () {
   }
   // Tarih Hesaplama ve Kontrol
   function calculateDuration() {
-    var startDateVal = $('[name="baslangic_tarihi"]').val();
-    var endDateVal = $('[name="bitis_tarihi"]').val();
+    var modal = $("#modalIzinEkle");
+    var startDateVal = modal.find('[name="baslangic_tarihi"]').val();
+    var endDateVal = modal.find('[name="bitis_tarihi"]').val();
 
     if (!startDateVal || !endDateVal) return;
 
@@ -751,13 +752,14 @@ $(document).ready(function () {
 
       if (dayDiff < 0) dayDiff = 0;
 
-      $('[name="sure"]').val(dayDiff);
+      modal.find('[name="sure"]').val(dayDiff);
 
       // Yıllık İzin Kontrolü
-      var izinTuru = $('[name="izin_tipi"] option:selected').text();
+      var izinTuruSelect = modal.find('[name="izin_tipi"]');
+      var izinTuru = izinTuruSelect.find("option:selected").text();
       // Eğer select2 ise ve text gelmiyorsa container'dan almayı dene
-      if (!izinTuru && $('[name="izin_tipi"]').data("select2")) {
-        izinTuru = $('[name="izin_tipi"]').select2("data")[0].text;
+      if (!izinTuru && izinTuruSelect.data("select2")) {
+        izinTuru = izinTuruSelect.select2("data")[0].text;
       }
 
       if (izinTuru && izinTuru.includes("Yıllık İzin")) {
@@ -821,38 +823,49 @@ $(document).ready(function () {
 
   // Tarih senkronizasyonu (Başlangıç değişince bitişi aynı yap)
   $(document)
-    .off("change.izin_sync input.izin_sync", "#baslangic_tarihi")
-    .on("change.izin_sync input.izin_sync", "#baslangic_tarihi", function () {
-      var startVal = $(this).val();
+    .off("change.izin_sync input.izin_sync", "#modalIzinEkle #baslangic_tarihi")
+    .on(
+      "change.izin_sync input.izin_sync",
+      "#modalIzinEkle #baslangic_tarihi",
+      function () {
+        var startVal = $(this).val();
 
-      if (startVal) {
-        var endInput = $("#bitis_tarihi");
-        if (endInput.length > 0) {
-          if (endInput[0]._flatpickr) {
-            endInput[0]._flatpickr.set("minDate", startVal);
+        if (startVal) {
+          var endInput = $("#bitis_tarihi");
+          if (endInput.length > 0) {
+            if (endInput[0]._flatpickr) {
+              endInput[0]._flatpickr.set("minDate", startVal);
 
-            var currentEnd = endInput.val();
-            // Eğer bitiş tarihi boşsa VEYA başlangıçtan küçükse güncelle
-            if (!currentEnd || parseDate(currentEnd) < parseDate(startVal)) {
-              endInput[0]._flatpickr.setDate(startVal, true);
-            }
-          } else {
-            var currentEnd = endInput.val();
-            if (!currentEnd || parseDate(currentEnd) < parseDate(startVal)) {
-              endInput.val(startVal).trigger("change");
+              var currentEnd = endInput.val();
+              // Eğer bitiş tarihi boşsa VEYA başlangıçtan küçükse güncelle
+              if (!currentEnd || parseDate(currentEnd) < parseDate(startVal)) {
+                endInput[0]._flatpickr.setDate(startVal, true);
+              }
+            } else {
+              var currentEnd = endInput.val();
+              if (!currentEnd || parseDate(currentEnd) < parseDate(startVal)) {
+                endInput.val(startVal).trigger("change");
+              }
             }
           }
         }
-      }
-      calculateDuration();
-    });
+        calculateDuration();
+      },
+    );
 
   // Bitiş tarihi veya izin tipi değiştiğinde süreyi hesapla
   $(document)
-    .off("change.izin_calc", "#bitis_tarihi, [name='izin_tipi']")
-    .on("change.izin_calc", "#bitis_tarihi, [name='izin_tipi']", function () {
-      calculateDuration();
-    });
+    .off(
+      "change.izin_calc",
+      "#modalIzinEkle #bitis_tarihi, #modalIzinEkle [name='izin_tipi']",
+    )
+    .on(
+      "change.izin_calc",
+      "#modalIzinEkle #bitis_tarihi, #modalIzinEkle [name='izin_tipi']",
+      function () {
+        calculateDuration();
+      },
+    );
 
   function parseDate(str) {
     if (!str) return null;

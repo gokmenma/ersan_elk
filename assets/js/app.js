@@ -1,3 +1,26 @@
+/**
+ * Global Toast bildirim fonksiyonu (Toastify.js kullanır)
+ * @param {string} message - Gösterilecek mesaj
+ * @param {string} type - success, error, warning, info
+ */
+function showToast(message, type = "success") {
+  const bgColors = {
+    success: "linear-gradient(to right, #00b09b, #96c93d)",
+    error: "linear-gradient(to right, #ff5f6d, #ffc371)",
+    warning: "linear-gradient(to right, #f1b44c, #f1d04b)",
+    info: "linear-gradient(to right, #2ab57d, #4ba6ef)",
+  };
+
+  Toastify({
+    text: message,
+    duration: 3000,
+    gravity: "top",
+    position: "center",
+    backgroundColor: bgColors[type] || bgColors.success,
+    stopOnFocus: true,
+  }).showToast();
+}
+
 function confirmAndDelete(url, formData, buttonElement, tableId) {
   swal
     .fire({
@@ -18,16 +41,10 @@ function confirmAndDelete(url, formData, buttonElement, tableId) {
         })
           .then((response) => response.json())
           .then((data) => {
-            const title = data.status == "success" ? "Başarılı" : "Hata";
             const table = $(`#${tableId}`).DataTable();
             table.row(buttonElement.closest("tr")).remove().draw(false);
 
-            swal.fire({
-              title: title,
-              text: data.message,
-              icon: data.status,
-              confirmButtonText: "Tamam",
-            });
+            showToast(data.message, data.status);
           });
       }
     });

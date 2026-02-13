@@ -1,10 +1,87 @@
 $(document).ready(function () {
-  // İcra Modal Aç
+  // Feather ikonlarını kesin olarak render eden fonksiyon
+  function syncFeather() {
+    if (typeof feather !== "undefined") {
+      feather.replace();
+    }
+  }
+
+  // Personel ID alırken daha spesifik olalım (Çakışmaları önlemek için)
+  function getPersonelId() {
+    return (
+      $("#personelForm #personel_id").val() ||
+      $('input[name="personel_id"]').first().val()
+    );
+  }
+
+  // İcra Modal Aç (Yeni Ekle)
   $(document).on("click", "#btnOpenIcraModal", function () {
+    $("#icraModalTitle").html(
+      '<i data-feather="plus-circle" class="icon-sm me-2"></i>Yeni İcra Dosyası Ekle',
+    );
+    $("#formPersonelIcraEkle")[0].reset();
+    $("#icra_id_hidden").val("");
+    $("#icra_durum").val("devam_ediyor");
     $("#modalPersonelIcraEkle").modal("show");
+    setTimeout(syncFeather, 50);
+    /**select2 */
+    $("#icra_durum").select2({
+      theme: "bootstrap-5",
+      dropdownParent: $("#modalPersonelIcraEkle"),
+    });
   });
 
-  // İcra Kaydet
+  // İcra Düzenle Modal Aç
+  $(document).on("click", ".btn-icra-duzenle", function () {
+    var id = $(this).data("id");
+    $("#icraModalTitle").html(
+      '<i data-feather="edit-3" class="icon-sm me-2"></i>İcra Dosyasını Düzenle',
+    );
+
+    $.ajax({
+      url: "views/personel/ajax/kesinti-islemleri.php",
+      type: "GET",
+      data: {
+        action: "get_icra",
+        id: id,
+        personel_id: getPersonelId(),
+      },
+      dataType: "json",
+      success: function (response) {
+        if (response) {
+          $("#icra_id_hidden").val(response.id);
+          // Helper'ın oluşturduğu id'leri (input name ile aynı) kullanıyoruz
+          $("#icra_sira").val(response.sira);
+          $("#icra_dairesi").val(response.icra_dairesi);
+          $("#icra_dosya_no").val(response.dosya_no);
+          $("#icra_toplam_borc").val(response.toplam_borc);
+          $("#icra_aylik_kesinti").val(response.aylik_kesinti_tutari);
+          $("#icra_baslangic").val(response.baslangic_tarihi);
+          $("#icra_durum").val(response.durum).trigger("change");
+          $("#icra_aciklama").val(response.aciklama);
+
+          // Flatpickr kontrolü
+          var baslangicInput = $("#icra_baslangic");
+          if (
+            baslangicInput.hasClass("flatpickr-input") &&
+            baslangicInput[0]._flatpickr
+          ) {
+            baslangicInput[0]._flatpickr.setDate(response.baslangic_tarihi);
+          }
+
+          $("#modalPersonelIcraEkle").modal("show");
+          setTimeout(syncFeather, 50);
+        } else {
+          Swal.fire("Hata", "İcra bilgileri alınamadı", "error");
+        }
+      },
+      error: function () {
+        Swal.fire("Hata", "Veri çekme sırasında bir hata oluştu.", "error");
+      },
+    });
+  });
+
+  // İcra Kaydet/Güncelle
   $(document).on("click", "#btnPersonelIcraKaydet", function () {
     var form = $("#formPersonelIcraEkle");
     if (form[0].checkValidity() === false) {
@@ -12,7 +89,10 @@ $(document).ready(function () {
       return;
     }
 
-    var data = form.serialize() + "&action=save_icra";
+    var icraId = $("#icra_id_hidden").val();
+    var action = icraId ? "update_icra" : "save_icra";
+    // Serialize ederken personel_id'nin doğru olduğundan emin olalım
+    var data = form.serialize() + "&action=" + action;
 
     $.ajax({
       url: "views/personel/ajax/kesinti-islemleri.php",
@@ -24,14 +104,16 @@ $(document).ready(function () {
           $("#modalPersonelIcraEkle").modal("hide");
           form[0].reset();
           refreshIcraTab();
-          // Eğer Kesintiler tabı açıksa oradaki icra listesini de güncellemek gerekebilir ama şu anlık gerek yok
-          Swal.fire("Başarılı", "İcra dosyası kaydedildi.", "success");
+          showToast(
+            icraId ? "Kayıt güncellendi." : "Kayıt oluşturuldu.",
+            "success",
+          );
         } else {
-          Swal.fire("Hata", response.error || "Bir hata oluştu", "error");
+          showToast(response.error || "İşlem başarısız", "error");
         }
       },
       error: function () {
-        Swal.fire("Hata", "Bir hata oluştu.", "error");
+        showToast("Sunucu hatası oluştu.", "error");
       },
     });
   });
@@ -41,11 +123,16 @@ $(document).ready(function () {
     var id = $(this).data("id");
     Swal.fire({
       title: "Emin misiniz?",
-      text: "Bu icra dosyası silinecek!",
+      text: "Bu icra dosyası ve tüm geçmişi silinecektir!",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Evet, sil",
-      cancelButtonText: "İptal",
+      confirmButtonText: "Evet, Sil",
+      cancelButtonText: "Vazgeç",
+      customClass: {
+        confirmButton: "btn btn-danger px-4 me-2",
+        cancelButton: "btn btn-light px-4",
+      },
+      buttonsStyling: false,
     }).then((result) => {
       if (result.isConfirmed) {
         $.ajax({
@@ -54,35 +141,155 @@ $(document).ready(function () {
           data: {
             action: "delete_icra",
             id: id,
-            personel_id: $('input[name="personel_id"]').val(),
+            personel_id: getPersonelId(),
           },
           dataType: "json",
           success: function (response) {
             if (response.success) {
               refreshIcraTab();
-              Swal.fire("Silindi!", "Kayıt silindi.", "success");
+              showToast("Dosya silinmiştir.", "success");
             } else {
-              Swal.fire("Hata", response.error || "Bir hata oluştu", "error");
+              showToast(response.error || "Silme başarısız", "error");
             }
           },
           error: function () {
-            Swal.fire("Hata", "Silme işlemi başarısız.", "error");
+            showToast("Sistem hatası.", "error");
           },
         });
       }
     });
   });
 
+  // İcra Kesinti Detay Modal
+  var currentIcraId = null;
+
+  $(document).on("click", ".btn-icra-kesinti-detay", function () {
+    var icraId = $(this).data("id");
+    var icraDairesi = $(this).data("icra-dairesi");
+    var dosyaNo = $(this).data("dosya-no");
+    var toplamBorc = parseFloat($(this).data("toplam-borc")) || 0;
+
+    currentIcraId = icraId;
+
+    $("#icraDetayDairesi").text(icraDairesi);
+    $("#icraDetayDosyaNo").text(dosyaNo);
+    $("#icraDetayToplamBorc").text(
+      toplamBorc.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " TL",
+    );
+
+    $("#icraKesintileriBody").html(
+      '<tr><td colspan="6" class="text-center py-5 text-muted"><div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>Yükleniyor...</td></tr>',
+    );
+
+    $("#modalIcraKesintileri").modal("show");
+    setTimeout(syncFeather, 100);
+
+    $.ajax({
+      url: "views/personel/ajax/kesinti-islemleri.php",
+      type: "GET",
+      data: {
+        action: "get_icra_kesintileri",
+        icra_id: icraId,
+        personel_id: getPersonelId(),
+      },
+      dataType: "json",
+      success: function (response) {
+        if (response.error) {
+          $("#icraKesintileriBody").html(
+            '<tr><td colspan="6" class="text-center py-3 text-danger">' +
+              response.error +
+              "</td></tr>",
+          );
+          return;
+        }
+
+        var kesintiler = response.kesintiler || [];
+        var html = "";
+        var tKesilen = 0;
+
+        if (kesintiler.length === 0) {
+          html =
+            '<tr><td colspan="6" class="text-center py-5 text-muted">Bu dosyaya ait kesinti kaydı bulunamadı.</td></tr>';
+        } else {
+          for (var idx = 0; idx < kesintiler.length; idx++) {
+            var k = kesintiler[idx];
+            var tutar = parseFloat(k.tutar) || 0;
+            tKesilen += tutar;
+
+            var dBadge =
+              k.durum === "onaylandi"
+                ? '<span class="badge bg-success-subtle text-success border border-success-subtle">Onaylı</span>'
+                : '<span class="badge bg-warning-subtle text-warning border border-warning-subtle">Beklemede</span>';
+
+            html += "<tr>";
+            html += '<td class="text-center">' + (idx + 1) + "</td>";
+            html += "<td>" + (k.donem_adi || "-") + "</td>";
+            html += "<td>" + (k.aciklama || "-") + "</td>";
+            html +=
+              '<td class="text-end fw-bold text-dark">' +
+              tutar.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) +
+              " TL</td>";
+            html += '<td class="text-center">' + dBadge + "</td>";
+            html +=
+              "<td>" +
+              (k.olusturma_tarihi
+                ? new Date(k.olusturma_tarihi).toLocaleDateString("tr-TR")
+                : "-") +
+              "</td>";
+            html += "</tr>";
+          }
+        }
+
+        $("#icraKesintileriBody").html(html);
+        setTimeout(syncFeather, 50);
+
+        $("#icraDetayToplamKesilen").text(
+          tKesilen.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) +
+            " TL",
+        );
+        var kalan = toplamBorc - tKesilen;
+        $("#icraDetayKalanTutar")
+          .text(
+            kalan.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " TL",
+          )
+          .removeClass("text-danger text-success")
+          .addClass(kalan > 0 ? "text-danger" : "text-success");
+      },
+      error: function () {
+        $("#icraKesintileriBody").html(
+          '<tr><td colspan="6" class="text-center text-danger py-3">Bağlantı hatası!</td></tr>',
+        );
+      },
+    });
+  });
+
+  $(document).on("click", "#btnIcraListYazdir", function () {
+    $("#modalIcraListeYazdir").modal("show");
+  });
+
+  $(document).on("click", "#btnIcraKesintileriExcel", function () {
+    if (!currentIcraId) return;
+    window.location.href =
+      "views/personel/ajax/kesinti-islemleri.php?action=export_icra_kesintileri&icra_id=" +
+      currentIcraId +
+      "&personel_id=" +
+      getPersonelId();
+  });
+
   function refreshIcraTab() {
-    var targetPane = $("#icralar");
-    var url = targetPane.attr("data-url");
+    var target = $("#icralar");
+    var url = target.attr("data-url");
     if (url) {
       $.get(url, function (html) {
-        targetPane.html(html);
+        target.html(html);
         if (typeof initPlugins === "function") {
-          initPlugins(targetPane[0]);
+          initPlugins(target[0]);
+        } else {
+          setTimeout(syncFeather, 50);
         }
       });
     }
   }
+
+  setTimeout(syncFeather, 100);
 });

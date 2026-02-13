@@ -609,7 +609,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <?php echo Form::FormFloatInput(
                                     type: 'text',
                                     name: 'baslangic_tarihi',
-                                    value: Date::firstDayOfThisMonth(),
+                                    value: Date::today(),
                                     placeholder: '',
                                     label: "Başlangıç Tarihi",
                                     icon: "calendar",
@@ -911,7 +911,22 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             $('select[name="work_type"]').val('').trigger('change');
             $('select[name="work_result"]').val('').trigger('change');
 
-            // Storage'ı da güncelle (saveFiltersToStorage mevcut UI değerlerini alıp kaydedeceği için ekip_kodu boş gidecek, tarihler/tab kalacak)
+            // Tarihleri varsayılana çek (Ayın ilk günü ve bugün)
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            const today = now;
+
+            const formatDate = (date) => {
+                const d = date.getDate().toString().padStart(2, '0');
+                const m = (date.getMonth() + 1).toString().padStart(2, '0');
+                const y = date.getFullYear();
+                return `${d}.${m}.${y}`;
+            };
+
+            $('input[name="start_date"]').val(formatDate(firstDay));
+            $('input[name="end_date"]').val(formatDate(today));
+
+            // Storage'ı da güncelle
             saveFiltersToStorage();
 
             // Formu gönder

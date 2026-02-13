@@ -1402,12 +1402,14 @@ if (Gate::allows("ana_sayfa")) {
         }
 
         .card-header,
-        .card-header-flex {
+        .card-header-flex,
+        .bordro-summary-card {
             cursor: grab;
         }
 
         .card-header:active,
-        .card-header-flex:active {
+        .card-header-flex:active,
+        .bordro-summary-card:active {
             cursor: grabbing;
         }
 
@@ -2174,7 +2176,7 @@ if (Gate::allows("ana_sayfa")) {
 
             // Dashboard Sortable Logic
             dashboard.sortable({
-                handle: ".card-header, .card-header-flex",
+                handle: ".card-header, .card-header-flex, .bordro-summary-card",
                 placeholder: "ui-sortable-placeholder",
                 start: function (e, ui) {
                     const classes = ui.item.attr('class');

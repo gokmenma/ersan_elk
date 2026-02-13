@@ -149,15 +149,48 @@ try {
         case 'save_icra':
             $data = [
                 'personel_id' => $personel_id,
-                'dosya_no' => $_POST['dosya_no'],
+                'sira' => intval($_POST['icra_sira'] ?? 1),
+                'dosya_no' => $_POST['icra_dosya_no'],
                 'icra_dairesi' => $_POST['icra_dairesi'],
-                'toplam_borc' => $_POST['toplam_borc'],
-                'aylik_kesinti_tutari' => $_POST['aylik_kesinti_tutari'],
-                'baslangic_tarihi' => $_POST['baslangic_tarihi'],
-                'durum' => 'devam_ediyor'
+                'toplam_borc' => $_POST['icra_toplam_borc'],
+                'aylik_kesinti_tutari' => $_POST['icra_aylik_kesinti'],
+                'baslangic_tarihi' => $_POST['icra_baslangic'],
+                'durum' => $_POST['icra_durum'] ?? 'bekliyor',
+                'aciklama' => $_POST['icra_aciklama'] ?? ''
             ];
             $icraModel->saveWithAttr($data);
             echo json_encode(['success' => true]);
+            break;
+
+        case 'update_icra':
+            $id = intval($_POST['id'] ?? 0);
+            if (!$id) {
+                echo json_encode(['error' => 'İcra ID gerekli']);
+                break;
+            }
+            $data = [
+                'id' => $id,
+                'sira' => intval($_POST['icra_sira'] ?? 1),
+                'dosya_no' => $_POST['icra_dosya_no'],
+                'icra_dairesi' => $_POST['icra_dairesi'],
+                'toplam_borc' => $_POST['icra_toplam_borc'],
+                'aylik_kesinti_tutari' => $_POST['icra_aylik_kesinti'],
+                'baslangic_tarihi' => $_POST['icra_baslangic'],
+                'durum' => $_POST['icra_durum'] ?? 'bekliyor',
+                'aciklama' => $_POST['icra_aciklama'] ?? ''
+            ];
+            $icraModel->saveWithAttr($data);
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'get_icra':
+            $id = intval($_REQUEST['id'] ?? 0);
+            if (!$id) {
+                echo json_encode(['error' => 'İcra ID gerekli']);
+                break;
+            }
+            $icra = $icraModel->find($id);
+            echo json_encode($icra);
             break;
 
         case 'delete_kesinti':
@@ -187,6 +220,147 @@ try {
             $icraModel->softDelete($id);
             echo json_encode(['success' => true]);
             break;
+
+        case 'get_icra_kesintileri':
+            $icra_id = intval($_REQUEST['icra_id'] ?? 0);
+            if (!$icra_id) {
+                echo json_encode(['error' => 'İcra ID gerekli']);
+                break;
+            }
+            $icra = $icraModel->find($icra_id);
+            $kesintiler = $icraModel->getIcraKesintileri($icra_id);
+            echo json_encode([
+                'icra' => $icra,
+                'kesintiler' => $kesintiler
+            ]);
+            break;
+
+        case 'export_icra_kesintileri':
+            $icra_id = intval($_REQUEST['icra_id'] ?? 0);
+            if (!$icra_id) {
+                echo json_encode(['error' => 'İcra ID gerekli']);
+                break;
+            }
+
+            $icra = $icraModel->find($icra_id);
+            $kesintiler = $icraModel->getIcraKesintileri($icra_id);
+
+            // PhpSpreadsheet kontrolü
+            $phpSpreadsheetPath = dirname(__DIR__, 3) . '/vendor/autoload.php';
+            if (!file_exists($phpSpreadsheetPath)) {
+                // Fallback: CSV olarak export et
+                header('Content-Type: text/csv; charset=utf-8');
+                header('Content-Disposition: attachment; filename="icra_kesintileri_' . $icra_id . '.csv"');
+                echo "\xEF\xBB\xBF"; // UTF-8 BOM
+                $output = fopen('php://output', 'w');
+                fputcsv($output, ['Sıra', 'Dönem', 'Açıklama', 'Tutar', 'Durum', 'Tarih'], ';');
+                $sira = 1;
+                foreach ($kesintiler as $k) {
+                    fputcsv($output, [
+                        $sira++,
+                        $k->donem_adi ?? '-',
+                        $k->aciklama,
+                        number_format($k->tutar, 2, ',', '.'),
+                        $k->durum == 'onaylandi' ? 'Onaylandı' : ($k->durum == 'beklemede' ? 'Beklemede' : $k->durum),
+                        date('d.m.Y', strtotime($k->olusturma_tarihi))
+                    ], ';');
+                }
+                fclose($output);
+                exit;
+            }
+
+            require_once $phpSpreadsheetPath;
+
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('İcra Kesintileri');
+
+            // Başlık bilgileri
+            $sheet->setCellValue('A1', 'İcra Dairesi:');
+            $sheet->setCellValue('B1', $icra->icra_dairesi ?? '');
+            $sheet->setCellValue('A2', 'Dosya No:');
+            $sheet->setCellValue('B2', $icra->dosya_no ?? '');
+            $sheet->setCellValue('A3', 'Toplam Borç:');
+            $sheet->setCellValue('B3', floatval($icra->toplam_borc ?? 0));
+            $sheet->getStyle('B3')->getNumberFormat()->setFormatCode('#,##0.00" TL"');
+
+            // Tablo başlıkları
+            $headerRow = 5;
+            $headers = ['Sıra', 'Dönem', 'Açıklama', 'Tutar (TL)', 'Durum', 'Tarih'];
+            foreach ($headers as $col => $header) {
+                $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col + 1) . $headerRow;
+                $sheet->setCellValue($cell, $header);
+            }
+
+            // Başlık stili
+            $headerRange = 'A' . $headerRow . ':F' . $headerRow;
+            $sheet->getStyle($headerRange)->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E2BD61']],
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+            ]);
+
+            // Info satır stili
+            $sheet->getStyle('A1:A3')->getFont()->setBold(true);
+
+            // Veriler
+            $row = $headerRow + 1;
+            $sira = 1;
+            $toplamKesilen = 0;
+            foreach ($kesintiler as $k) {
+                $sheet->setCellValue('A' . $row, $sira++);
+                $sheet->setCellValue('B' . $row, $k->donem_adi ?? '-');
+                $sheet->setCellValue('C' . $row, $k->aciklama);
+                $sheet->setCellValue('D' . $row, floatval($k->tutar));
+                $durumText = $k->durum == 'onaylandi' ? 'Onaylandı' : ($k->durum == 'beklemede' ? 'Beklemede' : $k->durum);
+                $sheet->setCellValue('E' . $row, $durumText);
+                $sheet->setCellValue('F' . $row, date('d.m.Y', strtotime($k->olusturma_tarihi)));
+                $toplamKesilen += floatval($k->tutar);
+
+                // Satır border
+                $sheet->getStyle('A' . $row . ':F' . $row)->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+                $row++;
+            }
+
+            // Toplam satırı
+            $sheet->setCellValue('C' . $row, 'Toplam Kesilen:');
+            $sheet->setCellValue('D' . $row, $toplamKesilen);
+            $sheet->getStyle('C' . $row . ':D' . $row)->getFont()->setBold(true);
+            $sheet->getStyle('D' . $row)->getNumberFormat()->setFormatCode('#,##0.00');
+
+            $row++;
+            $kalanTutar = floatval($icra->toplam_borc ?? 0) - $toplamKesilen;
+            $sheet->setCellValue('C' . $row, 'Kalan Tutar:');
+            $sheet->setCellValue('D' . $row, $kalanTutar);
+            $sheet->getStyle('C' . $row . ':D' . $row)->getFont()->setBold(true);
+            $sheet->getStyle('D' . $row)->getNumberFormat()->setFormatCode('#,##0.00');
+            if ($kalanTutar > 0) {
+                $sheet->getStyle('D' . $row)->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF0000'));
+            } else {
+                $sheet->getStyle('D' . $row)->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('008000'));
+            }
+
+            // Tutar formatı
+            $sheet->getStyle('D' . ($headerRow + 1) . ':D' . ($row - 2))->getNumberFormat()->setFormatCode('#,##0.00');
+
+            // Sütun genişlikleri
+            $sheet->getColumnDimension('A')->setWidth(8);
+            $sheet->getColumnDimension('B')->setWidth(20);
+            $sheet->getColumnDimension('C')->setWidth(40);
+            $sheet->getColumnDimension('D')->setWidth(15);
+            $sheet->getColumnDimension('E')->setWidth(15);
+            $sheet->getColumnDimension('F')->setWidth(15);
+
+            // Dosyayı gönder
+            $dosyaAdi = 'icra_kesintileri_' . preg_replace('/[^a-zA-Z0-9_]/', '_', $icra->dosya_no ?? $icra_id) . '.xlsx';
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment; filename="' . $dosyaAdi . '"');
+            header('Cache-Control: max-age=0');
+
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save('php://output');
+            exit;
 
         default:
             echo json_encode(['error' => 'Invalid action']);

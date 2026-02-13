@@ -115,7 +115,7 @@ class EndeksOkumaModel extends Model
 
         // Sütun bazlı arama (Yeni tablo yapısına göre güncellendi)
         $colSearchMap = [
-            0 => 't.tarih',
+            0 => 'DATE_FORMAT(t.tarih, "%d.%m.%Y")',
             1 => 't.defter',
             2 => 't.bolge',
             3 => 'def.tur_adi', // Ekip No

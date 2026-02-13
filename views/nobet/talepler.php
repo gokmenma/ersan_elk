@@ -8,7 +8,7 @@ use App\Model\PersonelModel;
 use App\Helper\Form;
 
 $Personel = new PersonelModel();
-$personeller = $Personel->all();
+$personeller = $Personel->all(true);
 ?>
 <link rel="stylesheet" href="views/nobet/assets/style.css?v=<?php echo filemtime('views/nobet/assets/style.css'); ?>">
 

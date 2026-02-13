@@ -288,6 +288,36 @@ use App\Service\Gate;
             max-width: 220px !important;
         }
 
+        .sticky-col-right-1 {
+            position: sticky;
+            right: 80px;
+            background-color: #f8f9fa !important;
+            z-index: 20;
+            border: 1px solid #ced4da !important;
+            width: 80px !important;
+            min-width: 80px !important;
+            max-width: 80px !important;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .sticky-col-right-2 {
+            position: sticky;
+            right: 0;
+            background-color: #f8f9fa !important;
+            z-index: 20;
+            border: 1px solid #ced4da !important;
+            width: 80px !important;
+            min-width: 80px !important;
+            max-width: 80px !important;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
         /* Nöbet'ten gelen Pill-Tab Stili */
         .view-buttons {
             display: flex;
@@ -340,7 +370,9 @@ use App\Service\Gate;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
         }
 
-        [data-bs-theme="dark"] .sticky-col {
+        [data-bs-theme="dark"] .sticky-col,
+        [data-bs-theme="dark"] .sticky-col-right-1,
+        [data-bs-theme="dark"] .sticky-col-right-2 {
             background-color: #282f36 !important;
             border-color: #32394e !important;
             color: #eff2f7 !important;
@@ -487,14 +519,54 @@ use App\Service\Gate;
             box-shadow: 0 1px 0 0 #fff;
         }
 
-        /* Header'daki sol kolonun z-index'i en yüksek olmalı */
-        .table-puantaj thead th.sticky-col {
+        /* Header'daki sol ve sağ kolonun z-index'i en yüksek olmalı */
+        .table-puantaj thead th.sticky-col,
+        .table-puantaj thead th.sticky-col-right-1,
+        .table-puantaj thead th.sticky-col-right-2 {
             z-index: 60;
             background-color: #f8f9fa !important;
         }
 
-        [data-bs-theme="dark"] .table-puantaj thead th.sticky-col {
+        [data-bs-theme="dark"] .table-puantaj thead th.sticky-col,
+        [data-bs-theme="dark"] .table-puantaj thead th.sticky-col-right-1,
+        [data-bs-theme="dark"] .table-puantaj thead th.sticky-col-right-2 {
             background-color: #282f36 !important;
+        }
+
+        /* Puantaj Preloader */
+        .puantaj-preloader {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.82);
+            display: none;
+            z-index: 1060;
+            border-radius: 4px;
+            backdrop-filter: blur(3px);
+        }
+
+        [data-bs-theme="dark"] .puantaj-preloader {
+            background: rgba(25, 30, 34, 0.85);
+        }
+
+        .puantaj-preloader .loader-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+            text-align: center;
+            min-width: 250px;
+        }
+
+        [data-bs-theme="dark"] .puantaj-preloader .loader-content {
+            background: #2a3042;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
         }
     </style>
 
@@ -643,6 +715,16 @@ use App\Service\Gate;
             <div class="col-12">
                 <div class="card">
                     <div class="card-body p-0 position-relative">
+                        <!-- Preloader - Tablonun Genelinde Çıkması İçin Buraya Taşındı -->
+                        <div class="puantaj-preloader" id="puantaj-loader">
+                            <div class="loader-content">
+                                <div class="spinner-border text-primary m-1" role="status">
+                                    <span class="sr-only">Yükleniyor...</span>
+                                </div>
+                                <h5 class="mt-2 mb-0">Veriler Hazırlanıyor...</h5>
+                                <p class="text-muted small mb-0">Lütfen bekleyiniz...</p>
+                            </div>
+                        </div>
 
                         <div class="table-responsive puantaj-table-wrapper">
                             <table class="table table-puantaj mb-0" id="puantaj-table">
@@ -654,14 +736,6 @@ use App\Service\Gate;
                                 </thead>
                                 <tbody id="table-body">
                                     <!-- Personeller ve veriler dinamik gelecek -->
-                                    <div class="puantaj-preloader" id="puantaj-loader">
-                                        <div class="text-center">
-                                            <div class="spinner-border text-primary m-1" role="status">
-                                                <span class="sr-only">Yükleniyor...</span>
-                                            </div>
-                                            <h5 class="mt-2">Veriler Hazırlanıyor...</h5>
-                                        </div>
-                                    </div>
                                 </tbody>
                             </table>
                         </div>

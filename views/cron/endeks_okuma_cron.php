@@ -20,7 +20,9 @@ use App\Model\EndeksOkumaModel;
 use App\Model\PuantajModel;
 use App\Model\TanimlamalarModel;
 use App\Model\SystemLogModel;
+use App\Helper\Security;
 use App\Service\EndeskOkumaService;
+use App\Service\MailGonderService;
 
 // CLI modunda mı çalışıyor?
 $isCli = (php_sapi_name() === 'cli');
@@ -149,6 +151,37 @@ try {
             $Settings->upsertSetting('online_sorgulama_endeks_son_calistirma_log', implode(',', $logParts));
 
             cronLog("Endeks sorgulama tamamlandı: " . json_encode($sonuc));
+
+            // Mail gönderimi
+            try {
+                $mailIcerik = "<h3>Endeks Okuma Cron Sonucu</h3>";
+                $mailIcerik .= "<p><b>Tarih:</b> " . date('d.m.Y H:i:s') . "</p>";
+                $mailIcerik .= "<p><b>Sorgulanan Tarih:</b> " . $bugun . "</p>";
+                $mailIcerik .= "<ul>";
+                $mailIcerik .= "<li><b>Yeni Kayıt:</b> " . $sonuc['yeni_kayit'] . "</li>";
+                $mailIcerik .= "<li><b>Güncellenen Kayıt:</b> " . $sonuc['guncellenen_kayit'] . "</li>";
+                $mailIcerik .= "<li><b>Toplam API Kaydı:</b> " . $sonuc['toplam_api'] . "</li>";
+                $mailIcerik .= "<li><b>Eşleşmeyen/Atlanan Kayıt:</b> " . $sonuc['atlanAn'] . "</li>";
+                $mailIcerik .= "</ul>";
+
+                if (!empty($sonuc['atlanAnListesi'])) {
+                    $mailIcerik .= "<h4>Eşleşmeyen Ekip Listesi:</h4>";
+                    $mailIcerik .= "<ul>";
+                    foreach ($sonuc['atlanAnListesi'] as $item) {
+                        $mailIcerik .= "<li>" . Security::escape($item) . "</li>";
+                    }
+                    $mailIcerik .= "</ul>";
+                }
+
+                MailGonderService::gonder(
+                    ['beyzade83@gmail.com'],
+                    'Endeks Okuma Cron Özeti - ' . $bugun,
+                    $mailIcerik
+                );
+                cronLog("Sonuç maili gönderildi: beyzade83@gmail.com");
+            } catch (Exception $e) {
+                cronLog("Mail gönderim hatası: " . $e->getMessage());
+            }
         } else {
             cronLog("Endeks sorgulama bu saat ($simdikiSaat) için bugün zaten çalıştırılmış.");
         }
@@ -178,6 +211,7 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
     $guncellenenKayit = 0;
     $mevcutKayitlar = 0;
     $atlanAnKayitlar = 0;
+    $atlanAnListesi = [];
 
     try {
         $apiService = new EndeskOkumaService();
@@ -342,6 +376,7 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
 
                 if ($ekipKoduId === 0) {
                     $atlanAnKayitlar++;
+                    $atlanAnListesi[] = $veri['OKUYUCUADI'] . " (Bölge: " . $veri['BOLGE'] . ")";
                     continue;
                 }
 
@@ -412,6 +447,7 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         'yeni_kayit' => $yeniKayit,
         'guncellenen_kayit' => $guncellenenKayit,
         'atlanAn' => $atlanAnKayitlar,
+        'atlanAnListesi' => array_unique($atlanAnListesi),
         'toplam_api' => count($apiData ?? [])
     ];
 }

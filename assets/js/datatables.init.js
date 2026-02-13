@@ -62,12 +62,38 @@ function getDatatableOptions() {
           const th = $('<th class="search">').append(input);
           $searchRow.append(th);
 
+          // Tarih sütunu için flatpickr ekle
+          if (title === "Tarih") {
+            $(input).addClass("flatpickr-datatable");
+            $(input).flatpickr({
+              locale: "tr",
+              dateFormat: "d.m.Y",
+              allowInput: true,
+              onChange: function (selectedDates, dateStr) {
+                let colIdx = $(input).attr("data-col-idx");
+                let table = $(input).closest("table").DataTable();
+                if (table.settings()[0].oFeatures.bServerSide) {
+                  table.column(colIdx).search(dateStr).draw();
+                } else {
+                  table.draw();
+                }
+              },
+            });
+          }
+
           // Türkçe arama için: column.search() yerine data attribute kullanıyoruz
           $(input).attr("data-col-idx", column.index());
-          $(input).on("input", function () {
+          $(input).on("input change", function (event) {
             let val = $(this).val();
             let colIdx = $(this).attr("data-col-idx");
             let table = $(this).closest("table").DataTable();
+
+            // Eğer flatpickr ise onChange zaten tetikliyor, input'u ignore edebiliriz ama change lazım olabilir
+            if (
+              $(this).hasClass("flatpickr-datatable") &&
+              event.type === "input"
+            )
+              return;
 
             // Eğer serverSide ise, DataTables'ın kendi arama mekanizmasını tetikle
             if (table.settings()[0].oFeatures.bServerSide) {
@@ -114,6 +140,10 @@ function getDatatableOptions() {
             }
           }
         });
+      }
+
+      if (typeof feather !== "undefined") {
+        feather.replace();
       }
     },
   };

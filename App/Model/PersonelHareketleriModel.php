@@ -86,10 +86,10 @@ class PersonelHareketleriModel extends Model
                      AND DATE(zaman) = :tarih
                      AND silinme_tarihi IS NULL
                      LIMIT 1";
-        
+
         $checkStmt = $this->db->prepare($checkSql);
         $checkStmt->execute([':personel_id' => $personel_id, ':tarih' => $tarih]);
-        
+
         if ($checkStmt->fetch()) {
             return true; // Zaten sonlandırılmış
         }
@@ -350,19 +350,23 @@ class PersonelHareketleriModel extends Model
      * @param int|null $firma_id
      * @return array
      */
-    public function getTumPersonelDurumu($firma_id = null)
+    public function getTumPersonelDurumu($firma_id = null, $tarih = null)
     {
+        if (!$tarih) {
+            $tarih = date('Y-m-d');
+        }
+
         $sql = "SELECT 
                     p.id as personel_id,
                     p.adi_soyadi,
                     p.resim_yolu as foto,
                     (SELECT ph.zaman FROM personel_hareketleri ph 
                      WHERE ph.personel_id = p.id AND ph.islem_tipi = 'BASLA' 
-                     AND DATE(ph.zaman) = CURDATE() AND ph.silinme_tarihi IS NULL
-                     ORDER BY ph.zaman DESC LIMIT 1) as son_baslama,
+                     AND DATE(ph.zaman) = :tarih AND ph.silinme_tarihi IS NULL
+                     ORDER BY ph.zaman ASC LIMIT 1) as son_baslama,
                     (SELECT ph.zaman FROM personel_hareketleri ph 
                      WHERE ph.personel_id = p.id AND ph.islem_tipi = 'BITIR' 
-                     AND DATE(ph.zaman) = CURDATE() AND ph.silinme_tarihi IS NULL
+                     AND DATE(ph.zaman) = :tarih2 AND ph.silinme_tarihi IS NULL
                      ORDER BY ph.zaman DESC LIMIT 1) as son_bitis,
                     (SELECT ph.konum_enlem FROM personel_hareketleri ph 
                      WHERE ph.personel_id = p.id AND ph.silinme_tarihi IS NULL
@@ -375,19 +379,17 @@ class PersonelHareketleriModel extends Model
                 AND p.aktif_mi = 1
                 AND p.saha_takibi = 1";
 
+        $params = [':tarih' => $tarih, ':tarih2' => $tarih];
+
         if ($firma_id) {
             $sql .= " AND p.firma_id = :firma_id";
+            $params[':firma_id'] = $firma_id;
         }
 
         $sql .= " ORDER BY p.adi_soyadi ASC";
 
         $stmt = $this->db->prepare($sql);
-
-        if ($firma_id) {
-            $stmt->execute([':firma_id' => $firma_id]);
-        } else {
-            $stmt->execute();
-        }
+        $stmt->execute($params);
 
         $personeller = $stmt->fetchAll(PDO::FETCH_OBJ);
 

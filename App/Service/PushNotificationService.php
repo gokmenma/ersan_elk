@@ -106,7 +106,7 @@ class PushNotificationService
 
         // Eğer push bildirimi gönderilemediyse mail at
         if (!$pushSent) {
-            $this->sendEmailFallback($personelId, $payload);
+            return $this->sendEmailFallback($personelId, $payload);
         }
 
         return $pushSent;
@@ -145,14 +145,16 @@ class PushNotificationService
 
                 $content .= "<br><p>Saygılarımızla,<br>Ersan Elektrik</p>";
 
-                \App\Service\MailGonderService::gonder(
+                return \App\Service\MailGonderService::gonder(
                     $personel->email_adresi,
                     $subject,
                     $content
                 );
             }
+            return false;
         } catch (\Exception $e) {
             error_log("Email fallback error: " . $e->getMessage());
+            return false;
         }
     }
 }

@@ -127,7 +127,7 @@ switch ($tab) {
         break;
     case 'icralar':
         $PersonelIcralariModel = new PersonelIcralariModel();
-        $icralar = $PersonelIcralariModel->getPersonelIcralari($id);
+        $icralar = $PersonelIcralariModel->getPersonelIcralariWithKesintiler($id);
         include_once __DIR__ . "/icerik/icralar.php";
         break;
 

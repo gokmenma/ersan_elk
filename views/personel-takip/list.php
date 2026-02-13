@@ -5,7 +5,9 @@
  */
 
 use App\Helper\Helper;
+use App\Helper\Form;
 use App\Service\Gate;
+use App\Helper\Date;
 
 // Yetki kontrolü
 // if (Gate::canWithMessage("personel_takip")) {
@@ -21,91 +23,79 @@ $title = "Saha Personel Takibi";
     <?php include 'layouts/breadcrumb.php'; ?>
 
     <!-- Özet Kartları -->
-    <div class="row">
+    <div class="row g-3 mb-4">
         <div class="col-xl-3 col-md-6">
-            <div class="card card-h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <span class="text-muted mb-3 lh-1 d-block text-truncate">Şu An Görevde</span>
-                            <h4 class="mb-0">
-                                <span class="counter-value" id="stat-gorevde">0</span>
-                            </h4>
+            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
+                <div class="card-body p-3">
+                    <div class="icon-label-container">
+                        <div class="icon-box" style="background: rgba(52, 195, 143, 0.1);">
+                            <i class="bx bx-run fs-4 text-success"></i>
                         </div>
-                        <div class="flex-shrink-0 text-end">
-                            <div class="avatar-sm">
-                                <span class="avatar-title bg-soft-success text-success rounded-circle fs-3">
-                                    <i class="bx bx-run"></i>
-                                </span>
-                            </div>
-                        </div>
+                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">SAHA</span>
                     </div>
+                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">ŞU AN GÖREVDE
+                    </p>
+                    <h4 class="mb-0 fw-bold bordro-text-heading">
+                        <span class="counter-value" id="stat-gorevde">0</span>
+                    </h4>
                 </div>
             </div>
         </div>
 
         <div class="col-xl-3 col-md-6">
-            <div class="card card-h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <span class="text-muted mb-3 lh-1 d-block text-truncate">Görevi Tamamladı</span>
-                            <h4 class="mb-0">
-                                <span class="counter-value" id="stat-tamamladi">0</span>
-                            </h4>
+            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important;">
+                <div class="card-body p-3">
+                    <div class="icon-label-container">
+                        <div class="icon-box" style="background: rgba(85, 110, 230, 0.1);">
+                            <i class="bx bx-check-circle fs-4 text-primary"></i>
                         </div>
-                        <div class="flex-shrink-0 text-end">
-                            <div class="avatar-sm">
-                                <span class="avatar-title bg-soft-primary text-primary rounded-circle fs-3">
-                                    <i class="bx bx-check-circle"></i>
-                                </span>
-                            </div>
-                        </div>
+                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">BAŞARI</span>
                     </div>
+                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GÖREVİ
+                        TAMAMLADI</p>
+                    <h4 class="mb-0 fw-bold bordro-text-heading">
+                        <span class="counter-value" id="stat-tamamladi">0</span>
+                    </h4>
                 </div>
             </div>
         </div>
 
         <div class="col-xl-3 col-md-6">
-            <div class="card card-h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <span class="text-muted mb-3 lh-1 d-block text-truncate">Henüz Başlamadı</span>
-                            <h4 class="mb-0">
-                                <span class="counter-value" id="stat-baslamadi">0</span>
-                            </h4>
+            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important;">
+                <div class="card-body p-3">
+                    <div class="icon-label-container">
+                        <div class="icon-box" style="background: rgba(241, 180, 76, 0.1);">
+                            <i class="bx bx-time fs-4 text-warning"></i>
                         </div>
-                        <div class="flex-shrink-0 text-end">
-                            <div class="avatar-sm">
-                                <span class="avatar-title bg-soft-warning text-warning rounded-circle fs-3">
-                                    <i class="bx bx-time"></i>
-                                </span>
-                            </div>
-                        </div>
+                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">BEKLEYEN</span>
                     </div>
+                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">HENÜZ
+                        BAŞLAMADI</p>
+                    <h4 class="mb-0 fw-bold bordro-text-heading">
+                        <span class="counter-value" id="stat-baslamadi">0</span>
+                    </h4>
                 </div>
             </div>
         </div>
 
         <div class="col-xl-3 col-md-6">
-            <div class="card card-h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <span class="text-muted mb-3 lh-1 d-block text-truncate">Geç Kalanlar</span>
-                            <h4 class="mb-0">
-                                <span class="counter-value text-danger" id="stat-gec-kalan">0</span>
-                            </h4>
+            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important;">
+                <div class="card-body p-3">
+                    <div class="icon-label-container">
+                        <div class="icon-box" style="background: rgba(244, 106, 106, 0.1);">
+                            <i class="bx bx-alarm-exclamation fs-4 text-danger"></i>
                         </div>
-                        <div class="flex-shrink-0 text-end">
-                            <div class="avatar-sm">
-                                <span class="avatar-title bg-soft-danger text-danger rounded-circle fs-3">
-                                    <i class="bx bx-alarm-exclamation"></i>
-                                </span>
-                            </div>
-                        </div>
+                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">GECİKME</span>
                     </div>
+                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GEÇ KALANLAR
+                    </p>
+                    <h4 class="mb-0 fw-bold bordro-text-heading">
+                        <span class="counter-value text-danger" id="stat-gec-kalan">0</span>
+                    </h4>
                 </div>
             </div>
         </div>
@@ -212,21 +202,24 @@ $title = "Saha Personel Takibi";
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h5 class="mb-0">Haftalık Çalışma Süreleri</h5>
                                 <div class="d-flex gap-2 align-items-center">
-                                    <input type="date" class="form-control form-control-sm" id="raporBaslangic"
-                                        style="width: 150px;">
-                                    <span>-</span>
-                                    <input type="date" class="form-control form-control-sm" id="raporBitis"
-                                        style="width: 150px;">
-                                    <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                                    <div style="width: 160px;">
+                                        <?= Form::FormFloatInput("text", "raporBaslangic", Date::dmY('-7 days'), "", "Başlangıç", "calendar", 'form-control flatpickr') ?>
+                                    </div>
+                                    <div style="width: 160px;">
+                                        <?= Form::FormFloatInput("text", "raporBitis", Date::today(), "", "Bitiş", "calendar", 'form-control flatpickr') ?>
+                                    </div>
+                                    <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1"
+                                        style="height: 56px; width: 160px;">
                                         <button type="button"
-                                            class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center"
-                                            onclick="raporExcelIndir()">
-                                            <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel
+                                            class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center w-50 h-100"
+                                            onclick="raporExcelIndir()" title="Excel İndir">
+                                            <i class="bx bxs-file-export fs-4"></i>
                                         </button>
                                         <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                                        <button type="button" class="btn btn-primary btn-sm px-3 fw-bold shadow-primary"
-                                            onclick="loadCalismaRaporu()">
-                                            <i class="mdi mdi-filter-variant me-1"></i> Filtrele
+                                        <button type="button"
+                                            class="btn btn-primary btn-sm px-2 fw-bold shadow-primary w-50 h-100"
+                                            onclick="loadCalismaRaporu()" title="Filtrele">
+                                            <i class="bx bx-filter-alt"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -253,19 +246,26 @@ $title = "Saha Personel Takibi";
                         <!-- GEÇ KALANLAR TAB -->
                         <div class="tab-pane fade" id="tabGecKalanlar" role="tabpanel">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="mb-0">
+                                <h5 class="mb-0" id="gecKalanlarBaslik">
                                     <i class="bx bx-alarm-exclamation text-danger me-1"></i>
-                                    Bugün Geç Kalan Personeller
+                                    Geç Kalan Personeller
                                 </h5>
                                 <div class="d-flex gap-2 align-items-center">
-                                    <label class="form-label mb-0 me-2">Başlama Saati Limiti:</label>
-                                    <input type="time" class="form-control form-control-sm" id="gecKalmaSaati"
-                                        value="08:30" style="width: 120px;">
-                                    <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
-                                        <button type="button" class="btn btn-primary btn-sm px-3 fw-bold shadow-primary"
-                                            onclick="loadGecKalanlar()">
-                                            <i class="mdi mdi-filter-variant me-1"></i> Filtrele
-                                        </button>
+                                    <div style="width: 160px;">
+                                        <?= Form::FormFloatInput("text", "gecKalmaTarih", Date::today(), "", "Tarih", "calendar", 'form-control flatpickr', ) ?>
+                                    </div>
+                                    <div style="width: 160px;">
+                                        <?= Form::FormFloatInput("time", "gecKalmaSaati", "08:30", "", "Limit Saati", "bx bx-time") ?>
+                                    </div>
+                                    <div style="width: 160px;" class="ms-2">
+                                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1"
+                                            style="height: 56px;">
+                                            <button type="button"
+                                                class="btn btn-primary w-100 h-100 fw-bold shadow-primary d-flex align-items-center justify-content-center"
+                                                onclick="loadGecKalanlar()">
+                                                <i class="bx bx-filter-alt me-1"></i> Filtrele
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -324,20 +324,20 @@ $title = "Saha Personel Takibi";
                     </div>
                 </div>
 
-                <!-- Tarih Filtresi -->
-                <div class="row mb-3">
+                <div class="row g-2 mb-3 align-items-end">
                     <div class="col-md-5">
-                        <label class="form-label">Başlangıç Tarihi</label>
-                        <input type="date" class="form-control" id="gecmisBaslangic">
+                        <?= Form::FormFloatInput("text", "gecmisBaslangic", Date::dmY('-7 days'), "", "Başlangıç Tarihi", "calendar", 'form-control flatpickr') ?>
                     </div>
                     <div class="col-md-5">
-                        <label class="form-label">Bitiş Tarihi</label>
-                        <input type="date" class="form-control" id="gecmisBitis">
+                        <?= Form::FormFloatInput("text", "gecmisBitis", Date::today(), "", "Bitiş Tarihi", "calendar", 'form-control flatpickr') ?>
                     </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="button" class="btn btn-primary w-100" onclick="filtreGecmis()">
-                            <i class="bx bx-filter-alt"></i>
-                        </button>
+                    <div class="col-md-2">
+                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1"
+                            style="height: 56px;">
+                            <button type="button" class="btn btn-primary w-100 h-100 fw-bold" onclick="filtreGecmis()">
+                                <i class="bx bx-filter-alt"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -370,16 +370,8 @@ $title = "Saha Personel Takibi";
 
 <style>
     .avatar-sm {
-        width: 48px;
-        height: 48px;
-    }
-
-    .avatar-title {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        height: 100%;
+        width: 40px;
+        height: 40px;
     }
 
     .avatar-xs {
@@ -387,62 +379,8 @@ $title = "Saha Personel Takibi";
         height: 32px;
     }
 
-    .card-h-100 {
-        height: calc(100% - 24px);
-    }
-
-    .btn-soft-primary {
-        background-color: rgba(85, 110, 230, 0.1);
-        color: #556ee6;
-    }
-
-    .btn-soft-primary:hover {
-        background-color: #556ee6;
-        color: #fff;
-    }
-
-    .btn-soft-success {
-        background-color: rgba(52, 195, 143, 0.1);
-        color: #34c38f;
-    }
-
-    .btn-soft-success:hover {
-        background-color: #34c38f;
-        color: #fff;
-    }
-
-    .btn-soft-info {
-        background-color: rgba(80, 165, 241, 0.1);
-        color: #50a5f1;
-    }
-
-    .btn-soft-info:hover {
-        background-color: #50a5f1;
-        color: #fff;
-    }
-
     #personelTakipTable tbody tr:hover {
-        background-color: rgba(85, 110, 230, 0.05);
-    }
-
-    .bg-soft-success {
-        background-color: rgba(52, 195, 143, 0.18) !important;
-    }
-
-    .bg-soft-primary {
-        background-color: rgba(85, 110, 230, 0.18) !important;
-    }
-
-    .bg-soft-warning {
-        background-color: rgba(241, 180, 76, 0.18) !important;
-    }
-
-    .bg-soft-danger {
-        background-color: rgba(244, 106, 106, 0.18) !important;
-    }
-
-    .bg-soft-info {
-        background-color: rgba(80, 165, 241, 0.18) !important;
+        background-color: rgba(var(--bs-primary-rgb), 0.05);
     }
 
     /* Leaflet popup styles */
@@ -480,14 +418,22 @@ $title = "Saha Personel Takibi";
         // Personel listesini yükle
         loadPersonelDurumlari();
 
+        const formatDate = (date) => {
+            const d = new Date(date);
+            return String(d.getDate()).padStart(2, '0') + '.' +
+                String(d.getMonth() + 1).padStart(2, '0') + '.' +
+                d.getFullYear();
+        };
+
         // Varsayılan tarih aralıkları
         var today = new Date();
         var weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-        document.getElementById('gecmisBaslangic').value = weekAgo.toISOString().split('T')[0];
-        document.getElementById('gecmisBitis').value = today.toISOString().split('T')[0];
-        document.getElementById('raporBaslangic').value = weekAgo.toISOString().split('T')[0];
-        document.getElementById('raporBitis').value = today.toISOString().split('T')[0];
+        document.getElementById('gecmisBaslangic').value = formatDate(weekAgo);
+        document.getElementById('gecmisBitis').value = formatDate(today);
+        document.getElementById('raporBaslangic').value = formatDate(weekAgo);
+        document.getElementById('raporBitis').value = formatDate(today);
+        document.getElementById('gecKalmaTarih').value = formatDate(today);
 
         // Her 60 saniyede otomatik yenile
         setInterval(function () {
@@ -774,8 +720,20 @@ $title = "Saha Personel Takibi";
 
     // ============ ÇALIŞMA RAPORU FONKSİYONLARI ============
     async function loadCalismaRaporu() {
-        const baslangic = document.getElementById('raporBaslangic').value;
-        const bitis = document.getElementById('raporBitis').value;
+        const baslangicRaw = document.getElementById('raporBaslangic').value;
+        const bitisRaw = document.getElementById('raporBitis').value;
+
+        // API için YYYY-MM-DD formatına çevir
+        const normalizeToISO = (str) => {
+            if (str && str.includes('.')) {
+                const p = str.split('.');
+                return `${p[2]}-${p[1]}-${p[0]}`;
+            }
+            return str;
+        };
+
+        const baslangic = normalizeToISO(baslangicRaw);
+        const bitis = normalizeToISO(bitisRaw);
 
         try {
             const response = await fetch('views/personel-takip/api.php', {
@@ -826,8 +784,11 @@ $title = "Saha Personel Takibi";
     }
 
     function raporExcelIndir() {
-        const baslangic = document.getElementById('raporBaslangic').value;
-        const bitis = document.getElementById('raporBitis').value;
+        const baslangicRaw = document.getElementById('raporBaslangic').value;
+        const bitisRaw = document.getElementById('raporBitis').value;
+
+        const baslangic = (baslangicRaw && baslangicRaw.includes('.')) ? baslangicRaw.split('.').reverse().join('-') : baslangicRaw;
+        const bitis = (bitisRaw && bitisRaw.includes('.')) ? bitisRaw.split('.').reverse().join('-') : bitisRaw;
 
         // Tabloyu Excel olarak indir
         var table = document.getElementById('calismaRaporuTable');
@@ -852,12 +813,24 @@ $title = "Saha Personel Takibi";
     // ============ GEÇ KALANLAR FONKSİYONLARI ============
     async function loadGecKalanlar() {
         const gecKalmaSaati = document.getElementById('gecKalmaSaati').value;
+        const gecKalmaTarihRaw = document.getElementById('gecKalmaTarih').value;
+
+        // API için YYYY-MM-DD formatına çevir
+        const normalizeToISO = (str) => {
+            if (str && str.includes('.')) {
+                const p = str.split('.');
+                return `${p[2]}-${p[1]}-${p[0]}`;
+            }
+            return str;
+        };
+
+        const gecKalmaTarih = normalizeToISO(gecKalmaTarihRaw);
 
         try {
             const response = await fetch('views/personel-takip/api.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=getGecKalanlar&limit_saat=' + gecKalmaSaati
+                body: 'action=getGecKalanlar&limit_saat=' + gecKalmaSaati + '&tarih=' + gecKalmaTarih
             });
             const result = await response.json();
 
@@ -869,8 +842,14 @@ $title = "Saha Personel Takibi";
                 $('#gecKalanlarBody').empty();
             }
 
-            // Geç kalan sayısını güncelle
-            if (result.success && Array.isArray(result.data)) {
+            // Başlık tarihini güncelle
+            document.getElementById('gecKalanlarBaslik').innerHTML = '<i class="bx bx-alarm-exclamation text-danger me-1"></i> ' + (gecKalmaTarihRaw.includes('.') ? gecKalmaTarihRaw : gecKalmaTarih) + ' Geç Kalanlar';
+
+            // Geç kalan sayısını güncelle (Sadece bugün ise)
+            const today = new Date();
+            const todayStr = String(today.getDate()).padStart(2, '0') + '.' + String(today.getMonth() + 1).padStart(2, '0') + '.' + today.getFullYear();
+
+            if (gecKalmaTarihRaw === todayStr && result.success && Array.isArray(result.data)) {
                 document.getElementById('stat-gec-kalan').textContent = result.data.length;
             }
 
@@ -921,8 +900,19 @@ $title = "Saha Personel Takibi";
     async function loadGecmis() {
         if (!currentPersonelId) return;
 
-        const baslangic = document.getElementById('gecmisBaslangic').value;
-        const bitis = document.getElementById('gecmisBitis').value;
+        const baslangicRaw = document.getElementById('gecmisBaslangic').value;
+        const bitisRaw = document.getElementById('gecmisBitis').value;
+
+        const normalizeToISO = (str) => {
+            if (str && str.includes('.')) {
+                const p = str.split('.');
+                return `${p[2]}-${p[1]}-${p[0]}`;
+            }
+            return str;
+        };
+
+        const baslangic = normalizeToISO(baslangicRaw);
+        const bitis = normalizeToISO(bitisRaw);
 
         try {
             const response = await fetch('views/personel-takip/api.php', {
@@ -987,6 +977,9 @@ $title = "Saha Personel Takibi";
             btn.disabled = false;
         }, 1000);
     }
+
+
+
 </script>
 
 <?php // } ?>

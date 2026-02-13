@@ -74,11 +74,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $pushService = new \App\Service\PushNotificationService();
-                $nobetIdsToUpdate = [];
+                $successPersonelIds = [];
 
                 foreach ($nobetler as $nobet) {
                     $pId = is_object($nobet) ? $nobet->personel_id : $nobet['personel_id'];
-                    $nobetId = is_object($nobet) ? $nobet->id : ($nobet['id'] ?? 0);
 
                     if (!in_array($pId, $processedPersonelIds)) {
                         $payload = [
@@ -89,22 +88,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                         if ($pushService->sendToPersonel($pId, $payload)) {
                             $sentCount++;
+                            $successPersonelIds[] = $pId;
                         }
                         $processedPersonelIds[] = $pId;
                     }
+                }
 
-                    // Bildirim gönderildi olarak işaretle
-                    if ($nobetId > 0) {
+                // Sadece başarılı gönderilen personellerin nöbetlerini işaretle
+                $nobetIdsToUpdate = [];
+                foreach ($nobetler as $nobet) {
+                    $pId = is_object($nobet) ? $nobet->personel_id : $nobet['personel_id'];
+                    $nobetId = is_object($nobet) ? $nobet->id : ($nobet['id'] ?? 0);
+
+                    if (in_array($pId, $successPersonelIds) && $nobetId > 0) {
                         $nobetIdsToUpdate[] = $nobetId;
                     }
                 }
 
-                // Nöbetleri bildirim gönderildi olarak güncelle
                 if (!empty($nobetIdsToUpdate)) {
                     $Nobet->markAsNotified($nobetIdsToUpdate);
                 }
 
-                echo json_encode(['success' => true, 'status' => 'success', 'message' => "$sentCount personele bildirim gönderildi."]);
+                $responseMsg = "$sentCount personele bildirim gönderildi.";
+                if ($sentCount == 0 && !empty($nobetler)) {
+                    $responseMsg = "Bildirim gönderilecek yeni nöbet bulunamadı veya gönderimler başarısız oldu.";
+                }
+
+                echo json_encode(['success' => true, 'status' => 'success', 'message' => $responseMsg]);
                 break;
 
             case 'get-bildirim-stats':
@@ -131,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // Departmanları Dinamik Olarak Personel Verilerinden Çek
                 $PersonelModel = new \App\Model\PersonelModel();
-                $allPersonel = $PersonelModel->all();
+                $allPersonel = $PersonelModel->all(true);
                 $uniqueDepts = array_filter(array_unique(array_column($allPersonel, 'departman')));
 
                 $colors = [
@@ -196,8 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $events[] = [
                         'id' => Security::encrypt($nobet->id),
                         'title' => $nobet->adi_soyadi,
-                        'start' => $nobet->nobet_tarihi . 'T' . $nobet->baslangic_saati,
-                        'end' => $nobet->nobet_tarihi . 'T' . $nobet->bitis_saati,
+                        'start' => $nobet->nobet_tarihi,
                         'allDay' => true,
                         'backgroundColor' => $color,
                         'borderColor' => $borderColor,
@@ -211,6 +220,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             'telefon' => $nobet->cep_telefonu,
                             'durum' => $nobet->durum,
                             'nobet_tipi' => $nobet->nobet_tipi,
+                            'baslangic_saati' => $nobet->baslangic_saati,
+                            'bitis_saati' => $nobet->bitis_saati,
                             'aciklama' => $nobet->aciklama,
                             'resim' => $nobet->resim_yolu ?? 'assets/images/users/user-dummy-img.jpg',
                             'has_talep' => $nobet->has_talep > 0
@@ -470,7 +481,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             case 'get-personel-list':
                 $departman = $_POST['departman'] ?? null;
 
-                $personeller = $Personel->all();
+                $personeller = $Personel->all(true);
 
                 // Departmana göre filtrele
                 // Departman Renk Haritası Oluştur

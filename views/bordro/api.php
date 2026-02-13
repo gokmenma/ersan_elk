@@ -311,6 +311,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $warningDetails = "<ul class='text-start mb-0 ps-3' style='list-style:none;'>" . implode('', $detaylar) . "</ul>";
                 }
 
+                // İcra uyarılarını işle
+                if (!empty($BordroPersonel->icra_uyarilari)) {
+                    $icraWarningText = "Bazı personellerin icra kesintileri tamamlandı. Bekleyen icraları başlatabilirsiniz.";
+                    if ($warning) {
+                        $warning .= "<br><br>" . $icraWarningText;
+                    } else {
+                        $warning = $icraWarningText;
+                    }
+
+                    $icraDetaylar = [];
+                    foreach ($BordroPersonel->icra_uyarilari as $u) {
+                        $pAdi = "Personel";
+                        // İsmi bul
+                        foreach ($onayBekleyenPersoneller as $obp) {
+                            if ($obp['personel_id'] == $u['personel_id']) {
+                                $pAdi = $obp['adi_soyadi'];
+                                break;
+                            }
+                        }
+                        if ($pAdi == "Personel") {
+                            $pd = $Personel->find($u['personel_id']);
+                            $pAdi = $pd ? $pd->adi_soyadi : "Personel #" . $u['personel_id'];
+                        }
+
+                        $encryptedId = Security::encrypt($u['personel_id']);
+                        $personelLink = "index.php?p=personel%2Fmanage&id=" . urlencode($encryptedId) . "&tab=icralar";
+                        $icraDetaylar[] = "<li><i class='text-success me-2' data-feather='check-circle' style='width:14px;height:14px;'></i><a href='" . $personelLink . "' class='text-primary fw-bold'>" . htmlspecialchars($pAdi) . "</a> icra dosyası (" . htmlspecialchars($u['dosya_no']) . ") tamamlanmıştır. Sıradaki icra kesintisine başlayınız.</li>";
+                    }
+
+                    $icraWarningDetails = "<ul class='text-start mb-0 ps-3' style='list-style:none;'>" . implode('', $icraDetaylar) . "</ul>";
+                    if ($warningDetails) {
+                        $warningDetails .= "<hr class='my-2'>" . $icraWarningDetails;
+                    } else {
+                        $warningDetails = $icraWarningDetails;
+                    }
+                }
+
                 echo json_encode([
                     'status' => 'success',
                     'message' => $message,
@@ -318,7 +355,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'warning_details' => $warningDetails,
                     'onay_bekleyen_adet' => $toplamOnayBekleyen,
                     'onay_bekleyen_tutar' => $toplamOnayBekleyenTutar,
-                    'onay_bekleyen_personeller' => $onayBekleyenPersoneller
+                    'onay_bekleyen_personeller' => $onayBekleyenPersoneller,
+                    'icra_uyarilari' => $BordroPersonel->icra_uyarilari
                 ]);
 
                 $SystemLog->logAction($userId, 'Maaş Hesaplama', "$hesaplananSayisi personelin maaşı hesaplandı.");

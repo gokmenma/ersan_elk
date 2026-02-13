@@ -28,7 +28,7 @@ class PersonelModel extends Model
     }
 
     /**Tüm aktif personelleri getirir */
-    public function all()
+    public function all($activeOnly = false)
     {
         $sql = "SELECT p.*, t.tur_adi as ekip_adi, f.firma_adi,
                 CASE WHEN ps.id IS NOT NULL THEN 1 ELSE 0 END as bildirim_abonesi
@@ -36,8 +36,13 @@ class PersonelModel extends Model
                 LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
                 LEFT JOIN tanimlamalar t ON p.ekip_no = t.id
                 LEFT JOIN firmalar f ON p.firma_id = f.id
-                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL
-                GROUP BY p.id";
+                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL";
+
+        if ($activeOnly) {
+            $sql .= " AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00')";
+        }
+
+        $sql .= " GROUP BY p.id";
 
         $query = $this->db->prepare($sql);
         $query->execute([
@@ -522,6 +527,109 @@ class PersonelModel extends Model
             'id' => $id,
             'firma_id' => $_SESSION['firma_id']
         ]);
+    }
+
+    /**
+     * Personelin açıkta kalan (bitiş tarihi olmayan) ekip atamalarını kapatır
+     */
+    public function closeActiveEkipAssignments($personel_id, $endDate)
+    {
+        if (empty($endDate))
+            return false;
+
+        $sql = "UPDATE personel_ekip_gecmisi SET bitis_tarihi = :bitis_tarihi 
+                WHERE personel_id = :personel_id AND bitis_tarihi IS NULL AND firma_id = :firma_id";
+        $query = $this->db->prepare($sql);
+        return $query->execute([
+            'bitis_tarihi' => $endDate,
+            'personel_id' => $personel_id,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+    }
+
+    /**
+     * Personelin belirli bir ekip kodu için tarih çakışması olup olmadığını kontrol eder
+     */
+    public function hasEkipOverlap($personel_id, $ekip_kodu_id, $startDate, $endDate, $exclude_id = null)
+    {
+        $sql = "SELECT COUNT(*) FROM personel_ekip_gecmisi 
+                WHERE personel_id = :personel_id 
+                AND ekip_kodu_id = :ekip_kodu_id 
+                AND (
+                    (:start_date <= bitis_tarihi OR bitis_tarihi IS NULL)
+                    AND 
+                    (baslangic_tarihi <= :end_date OR :end_date_null IS NULL)
+                )
+                AND firma_id = :firma_id";
+
+        if ($exclude_id) {
+            $sql .= " AND id != :exclude_id";
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $params = [
+            'personel_id' => $personel_id,
+            'ekip_kodu_id' => $ekip_kodu_id,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'end_date_null' => $endDate,
+            'firma_id' => $_SESSION['firma_id']
+        ];
+        if ($exclude_id) {
+            $params['exclude_id'] = $exclude_id;
+        }
+
+        $stmt->execute($params);
+        return $stmt->fetchColumn() > 0;
+    }
+
+    /**
+     * Belirli bir ekip kodunun başka bir personel tarafından o tarihlerde kullanılıp kullanılmadığını kontrol eder
+     */
+    public function isEkipKoduAvailable($ekip_kodu_id, $startDate, $endDate, $exclude_gecmis_id = null)
+    {
+        $sql = "SELECT p.adi_soyadi FROM personel_ekip_gecmisi pg
+                JOIN personel p ON pg.personel_id = p.id
+                WHERE pg.ekip_kodu_id = :ekip_kodu_id 
+                AND (
+                    (:start_date <= pg.bitis_tarihi OR pg.bitis_tarihi IS NULL)
+                    AND 
+                    (pg.baslangic_tarihi <= :end_date OR :end_date_null IS NULL)
+                )
+                AND pg.firma_id = :firma_id";
+
+        if ($exclude_gecmis_id) {
+            $sql .= " AND pg.id != :exclude_id";
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $params = [
+            'ekip_kodu_id' => $ekip_kodu_id,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'end_date_null' => $endDate,
+            'firma_id' => $_SESSION['firma_id']
+        ];
+        if ($exclude_gecmis_id) {
+            $params['exclude_id'] = $exclude_gecmis_id;
+        }
+
+        $stmt->execute($params);
+        return $stmt->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Personelin en eski ekip atama tarihini getirir
+     */
+    public function getEarliestEkipAssignmentDate($personel_id)
+    {
+        $sql = "SELECT MIN(baslangic_tarihi) as earliest_date 
+                FROM personel_ekip_gecmisi 
+                WHERE personel_id = ? AND firma_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$personel_id, $_SESSION['firma_id']]);
+        $res = $stmt->fetch(PDO::FETCH_OBJ);
+        return $res ? $res->earliest_date : null;
     }
 
     public function getAdvancedDashboardStats()

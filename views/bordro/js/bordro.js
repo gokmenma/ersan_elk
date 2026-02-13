@@ -62,30 +62,18 @@ $(document).ready(function () {
           },
           success: function (response) {
             if (response.status === "success") {
-              Swal.fire({
-                icon: "success",
-                title: "Başarılı!",
-                text: response.message,
-                confirmButtonText: "Tamam",
-              }).then(() => {
+              showToast(response.message, "success");
+              setTimeout(() => {
                 // Yılı koruyarak sayfayı yenile
                 const yil = $("#yilSelect").val();
                 window.location.href = "index.php?p=bordro/list&yil=" + yil;
-              });
+              }, 1000);
             } else {
-              Swal.fire({
-                icon: "error",
-                title: "Hata!",
-                text: response.message,
-              });
+              showToast(response.message, "error");
             }
           },
           error: function () {
-            Swal.fire({
-              icon: "error",
-              title: "Hata!",
-              text: "Bir hata oluştu.",
-            });
+            showToast("Bir hata oluştu.", "error");
           },
         });
       }
@@ -117,31 +105,18 @@ $(document).ready(function () {
       success: function (response) {
         console.log("Response:", response);
         if (response.status === "success") {
-          Swal.fire({
-            icon: "success",
-            title: "Başarılı!",
-            text: response.message,
-            confirmButtonText: "Tamam",
-          }).then(() => {
+          showToast(response.message, "success");
+          setTimeout(() => {
             window.location.href =
               "index.php?p=bordro/list&donem=" + response.donem_id;
-          });
+          }, 1000);
         } else {
-          Swal.fire({
-            icon: "error",
-            title: "Hata!",
-            text: response.message,
-          });
+          showToast(response.message, "error");
         }
       },
       error: function (xhr, status, error) {
         console.log("AJAX Error:", status, error);
-        console.log("Response:", xhr.responseText);
-        Swal.fire({
-          icon: "error",
-          title: "Hata!",
-          text: "Bir hata oluştu: " + error,
-        });
+        showToast("Bir hata oluştu: " + error, "error");
       },
       complete: function () {
         $('#formYeniDonem button[type="submit"]')
@@ -203,11 +178,7 @@ $(document).ready(function () {
         }
       },
       error: function () {
-        Swal.fire({
-          icon: "error",
-          title: "Hata!",
-          text: "Bir hata oluştu.",
-        });
+        showToast("Bir hata oluştu.", "error");
       },
       complete: function () {
         $('#formDonemGuncelle button[type="submit"]')
@@ -250,20 +221,12 @@ $(document).ready(function () {
       dataType: "json",
       success: function (response) {
         if (response.status === "success") {
-          Swal.fire({
-            icon: "success",
-            title: "Başarılı!",
-            text: response.message,
-            confirmButtonText: "Tamam",
-          }).then(() => {
+          showToast(response.message, "success");
+          setTimeout(() => {
             location.reload();
-          });
+          }, 1000);
         } else {
-          Swal.fire({
-            icon: "error",
-            title: "Hata!",
-            text: response.message,
-          });
+          showToast(response.message, "error");
         }
       },
       error: function () {
@@ -337,28 +300,39 @@ $(document).ready(function () {
       dataType: "json",
       success: function (response) {
         if (response.status === "success") {
-          // Onay bekleyen kesinti varsa uyarı göster
+          // Onay bekleyen kesinti veya icra uyarısı varsa göster
           if (response.warning) {
             var detailsHtml = response.warning_details
-              ? '<div class="mt-3 mb-2"><strong>Onay Bekleyen Personeller:</strong></div>' +
-                response.warning_details
+              ? '<div class="mt-3 mb-2 text-start px-2"><strong>Uyarı Detayları:</strong></div>' +
+                '<div class="border rounded p-3 bg-light text-start shadow-sm mx-2">' +
+                response.warning_details +
+                "</div>"
               : "";
 
             Swal.fire({
               icon: "warning",
-              title: "Maaş Hesaplandı - Dikkat!",
+              title: "Maaş Hesaplandı - Uyarılar",
               html:
                 '<p class="mb-3">' +
                 response.message +
                 "</p>" +
-                '<div class="alert alert-warning text-start mb-2">' +
-                '<i class="bx bx-error-circle me-2"></i>' +
+                '<div class="alert alert-warning text-start mb-2 mx-1">' +
+                '<p class="mb-0 small">' +
                 response.warning +
+                "</p>" +
                 "</div>" +
                 detailsHtml +
-                '<p class="text-muted small mt-3">Kesintileri onaylamak için ilgili personelin "Kesintiler" sekmesine gidin.</p>',
-              confirmButtonText: "Tamam",
-              width: "500px",
+                '<p class="text-muted small mt-3">Detaylar için ilgili personelin yönetim sayfasını ziyaret edebilirsiniz.</p>',
+              confirmButtonText: "Sistemi Yenile",
+              width: "650px",
+              customClass: {
+                htmlContainer: "px-0",
+              },
+              didOpen: () => {
+                if (typeof feather !== "undefined") {
+                  feather.replace();
+                }
+              },
             }).then(() => {
               location.reload();
             });
@@ -420,19 +394,9 @@ $(document).ready(function () {
               row.fadeOut(300, function () {
                 $(this).remove();
               });
-              Swal.fire({
-                icon: "success",
-                title: "Başarılı!",
-                text: response.message,
-                timer: 1500,
-                showConfirmButton: false,
-              });
+              showToast(response.message, "success");
             } else {
-              Swal.fire({
-                icon: "error",
-                title: "Hata!",
-                text: response.message,
-              });
+              showToast(response.message, "error");
             }
           },
         });

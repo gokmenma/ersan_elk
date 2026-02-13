@@ -668,6 +668,11 @@ try {
         $personeller->execute([$firma_id]);
         $personel_list = $personeller->fetchAll(PDO::FETCH_OBJ);
 
+        // Ücretsiz izin türlerini getir
+        $ucretsizIdsStmt = $Tanimlamalar->db->prepare("SELECT id FROM tanimlamalar WHERE grup = 'izin_turu' AND (ucretli_mi = 0 OR ucretli_mi IS NULL) AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL");
+        $ucretsizIdsStmt->execute([$firma_id]);
+        $ucretsizIds = $ucretsizIdsStmt->fetchAll(PDO::FETCH_COLUMN);
+
         // PHPSpreadsheet
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -694,7 +699,12 @@ try {
             $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(2 + $d);
             $sheet->setCellValue($col . '1', $d);
         }
-        $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(2 + $daysCount);
+        $toplamCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(3 + $daysCount);
+        $fiiliCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(4 + $daysCount);
+        $sheet->setCellValue($toplamCol . '1', 'Toplam Ç.G.');
+        $sheet->setCellValue($fiiliCol . '1', 'Fiili Ç.G.');
+
+        $lastCol = $fiiliCol;
         $sheet->getStyle('A1:' . $lastCol . '1')->applyFromArray($headerStyle);
 
         // Column Widths
@@ -704,6 +714,8 @@ try {
             $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(2 + $d);
             $sheet->getColumnDimension($col)->setWidth(4);
         }
+        $sheet->getColumnDimension($toplamCol)->setWidth(12);
+        $sheet->getColumnDimension($fiiliCol)->setWidth(12);
 
         // Fill Data
         $row = 2;
@@ -714,7 +726,7 @@ try {
 
             // Fetch entries for this personnel
             $izin_stmt = $PersonelIzinleri->db->prepare("
-                SELECT pi.baslangic_tarihi, pi.bitis_tarihi, t.kisa_kod, t.renk 
+                SELECT pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id, t.kisa_kod, t.renk 
                 FROM personel_izinleri pi
                 JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
                 WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL 
@@ -750,7 +762,8 @@ try {
 
                         $dayData[date('j', $cur)] = [
                             'code' => $izin->kisa_kod,
-                            'color' => $hexColor
+                            'color' => $hexColor,
+                            'tip_id' => $izin->izin_tipi_id
                         ];
                     }
                     $cur = strtotime("+1 day", $cur);
@@ -796,6 +809,32 @@ try {
 
                 $sheet->getStyle($cell)->applyFromArray($currentStyle);
             }
+
+            // Totals
+            $unpaidCount = 0;
+            foreach ($dayData as $dEntry) {
+                if (in_array($dEntry['tip_id'], $ucretsizIds)) {
+                    $unpaidCount++;
+                }
+            }
+            $allEntriesCount = count($dayData);
+
+            $toplamCalismaGunu = $daysCount - $unpaidCount;
+            $fiiliCalismaGunu = $daysCount - $allEntriesCount;
+
+            $sheet->setCellValue($toplamCol . $row, $toplamCalismaGunu);
+            $sheet->setCellValue($fiiliCol . $row, $fiiliCalismaGunu);
+
+            // Center totals
+            $sheet->getStyle($toplamCol . $row . ':' . $fiiliCol . $row)->applyFromArray([
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                    'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                ],
+                'font' => ['bold' => true],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+            ]);
+
             $row++;
         }
 

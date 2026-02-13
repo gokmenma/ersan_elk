@@ -12,7 +12,7 @@ $settingsData = $Settings->getAllSettingsAsKeyValue($_SESSION['firma_id'] ?? nul
 $canEditPast = ($settingsData['nobet_gecmis_islem'] ?? '0') === '1';
 $hasSettingPermission = Gate::allows("nobet_onceki_gunlerde_islem_yapabilir");
 
-$personeller = $Personel->all();
+$personeller = $Personel->all(true);
 
 // Departmanları doğrudan personel listesinden dinamik olarak al
 $deptList = [];
@@ -209,63 +209,75 @@ $title = 'Nöbet Planlama';
         <!-- İstatistik Kartları - Modern Dashboard Tasarımı -->
         <div class="row mb-4 g-3">
             <div class="col-xl-3 col-md-6">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <div class="stat-label">
-                            <i class="bx bx-calendar-check mt-1"></i>
-                            Bu Ay Toplam Nöbet
+                <div class="stat-card"
+                    style="--card-color: #3b82f6; --card-rgb: 59, 130, 246; border-bottom: 3px solid var(--card-color) !important;">
+                    <div class="card-body">
+                        <div class="icon-label-container">
+                            <div class="icon-box">
+                                <i class="bx bx-calendar-check fs-4" style="color: var(--card-color);"></i>
+                            </div>
+                            <div class="stat-trend up">
+                                <i class="bx bx-trending-up"></i> +12%
+                            </div>
                         </div>
-                        <div class="stat-trend up">
-                            <i class="bx bx-trending-up"></i> +12%
-                        </div>
+                        <p class="stat-label-main">TOPLAM NÖBET</p>
+                        <h4 class="stat-value" id="stat-total">0</h4>
+                        <p class="stat-sub">Aylık planlama özeti</p>
                     </div>
-                    <div class="stat-value" id="stat-total">0</div>
-                    <div class="stat-sub">Aylık planlama özeti</div>
                 </div>
             </div>
             <div class="col-xl-3 col-md-6">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <div class="stat-label">
-                            <i class="bx bx-user-check mt-1"></i>
-                            Bugün Nöbetçi
+                <div class="stat-card"
+                    style="--card-color: #10b981; --card-rgb: 16, 185, 129; border-bottom: 3px solid var(--card-color) !important;">
+                    <div class="card-body">
+                        <div class="icon-label-container">
+                            <div class="icon-box">
+                                <i class="bx bx-user-check fs-4" style="color: var(--card-color);"></i>
+                            </div>
+                            <div class="stat-trend neutral">
+                                <i class="bx bx-minus"></i> Stabil
+                            </div>
                         </div>
-                        <div class="stat-trend">
-                            <i class="bx bx-minus"></i> Stabil
-                        </div>
+                        <p class="stat-label-main">BUGÜN NÖBETÇİ</p>
+                        <h4 class="stat-value" id="stat-today">-</h4>
+                        <p class="stat-sub">Güncel görevli personel</p>
                     </div>
-                    <div class="stat-value" id="stat-today">-</div>
-                    <div class="stat-sub">Güncel görevli personel</div>
                 </div>
             </div>
             <div class="col-xl-3 col-md-6">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <div class="stat-label">
-                            <i class="bx bx-transfer-alt mt-1"></i>
-                            Bekleyen Talepler
+                <div class="stat-card"
+                    style="--card-color: #f59e0b; --card-rgb: 245, 158, 11; border-bottom: 3px solid var(--card-color) !important;">
+                    <div class="card-body">
+                        <div class="icon-label-container">
+                            <div class="icon-box">
+                                <i class="bx bx-transfer-alt fs-4" style="color: var(--card-color);"></i>
+                            </div>
+                            <div class="stat-trend down">
+                                <i class="bx bx-trending-down"></i> -8%
+                            </div>
                         </div>
-                        <div class="stat-trend down">
-                            <i class="bx bx-trending-down"></i> -8%
-                        </div>
+                        <p class="stat-label-main">BEKLEYEN TALEPLER</p>
+                        <h4 class="stat-value" id="stat-pending">0</h4>
+                        <p class="stat-sub">Onay bekleyen değişimler</p>
                     </div>
-                    <div class="stat-value" id="stat-pending">0</div>
-                    <div class="stat-sub">Onay bekleyen değişimler</div>
                 </div>
             </div>
             <div class="col-xl-3 col-md-6">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <div class="stat-label">
-                            <i class="bx bx-calendar-week mt-1"></i>
-                            Hafta Sonu Nöbet
+                <div class="stat-card"
+                    style="--card-color: #8b5cf6; --card-rgb: 139, 92, 246; border-bottom: 3px solid var(--card-color) !important;">
+                    <div class="card-body">
+                        <div class="icon-label-container">
+                            <div class="icon-box">
+                                <i class="bx bx-calendar-week fs-4" style="color: var(--card-color);"></i>
+                            </div>
+                            <div class="stat-trend up">
+                                <i class="bx bx-trending-up"></i> +4%
+                            </div>
                         </div>
-                        <div class="stat-trend up">
-                            <i class="bx bx-trending-up"></i> +4%
-                        </div>
+                        <p class="stat-label-main">HAFTA SONU NÖBET</p>
+                        <h4 class="stat-value" id="stat-weekend">0</h4>
+                        <p class="stat-sub">Tatil günü mesaileri</p>
                     </div>
-                    <div class="stat-value" id="stat-weekend">0</div>
-                    <div class="stat-sub">Tatil günü mesaileri</div>
                 </div>
             </div>
         </div>
@@ -455,7 +467,8 @@ $title = 'Nöbet Planlama';
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm px-4 fw-bold" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-secondary btn-sm px-4 fw-bold"
+                        data-bs-dismiss="modal">İptal</button>
                     <button type="submit" class="btn btn-primary btn-sm px-4 fw-bold">Kaydet</button>
                 </div>
             </form>
@@ -499,9 +512,11 @@ $title = 'Nöbet Planlama';
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label fw-bold mb-3" style="font-size: 13px; color: #71717a;">BİLDİRİM KAPSAMI</label>
+                        <label class="form-label fw-bold mb-3" style="font-size: 13px; color: #71717a;">BİLDİRİM
+                            KAPSAMI</label>
                         <div class="d-flex flex-wrap gap-2">
-                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_bekleyen" value="bekleyen" checked>
+                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_bekleyen"
+                                value="bekleyen" checked>
                             <label class="btn btn-outline-warning btn-sm flex-grow-1 py-2" for="turu_bekleyen">
                                 <i class="bx bx-bell-plus me-1"></i>Henüz Bildirilmeyenler
                             </label>
@@ -511,7 +526,8 @@ $title = 'Nöbet Planlama';
                                 <i class="bx bx-calendar me-1"></i>Aylık (Tümü)
                             </label>
 
-                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_haftalik" value="haftalik">
+                            <input type="radio" class="btn-check" name="bildirim_turu" id="turu_haftalik"
+                                value="haftalik">
                             <label class="btn btn-outline-primary btn-sm flex-grow-1 py-2" for="turu_haftalik">
                                 <i class="bx bx-calendar-week me-1"></i>Haftalık
                             </label>
@@ -525,7 +541,8 @@ $title = 'Nöbet Planlama';
 
                     <!-- Bekleyen Seçimi (Varsayılan) -->
                     <div class="bildirim-area" id="area-bekleyen">
-                        <div class="alert alert-warning border-0 bg-warning bg-opacity-10 d-flex align-items-center rounded-4" role="alert">
+                        <div class="alert alert-warning border-0 bg-warning bg-opacity-10 d-flex align-items-center rounded-4"
+                            role="alert">
                             <i class="bx bx-info-circle fs-4 me-3"></i>
                             <div class="small">
                                 Henüz bildirim gönderilmemiş <span id="bekleyen-count" class="fw-bold">0</span>
@@ -551,9 +568,11 @@ $title = 'Nöbet Planlama';
 
                     <!-- Aylık Seçimi -->
                     <div class="bildirim-area" id="area-aylik" style="display:none;">
-                        <div class="alert alert-info border-0 bg-info bg-opacity-10 d-flex align-items-center rounded-4" role="alert">
+                        <div class="alert alert-info border-0 bg-info bg-opacity-10 d-flex align-items-center rounded-4"
+                            role="alert">
                             <i class="bx bx-info-circle fs-4 me-3"></i>
-                            <div class="small">Seçili aydaki <strong>tüm personellere</strong> bildirim gönderilecek (daha önce bildirim almış olsalar bile).</div>
+                            <div class="small">Seçili aydaki <strong>tüm personellere</strong> bildirim gönderilecek
+                                (daha önce bildirim almış olsalar bile).</div>
                         </div>
                         <div class="mb-3">
                             <?php
@@ -597,7 +616,8 @@ $title = 'Nöbet Planlama';
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm px-4 fw-bold" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-secondary btn-sm px-4 fw-bold"
+                        data-bs-dismiss="modal">İptal</button>
                     <button type="submit" class="btn btn-primary btn-sm px-4 fw-bold">Bildirim Gönder</button>
                 </div>
             </form>
@@ -700,8 +720,14 @@ $title = 'Nöbet Planlama';
             eventDurationEditable: false,
             droppable: true,
             selectable: true,
+            selectAllow: function (selectInfo) {
+                // Sadece tek gün seçimine izin ver (end - start = 1 gün)
+                const diffTime = Math.abs(selectInfo.end - selectInfo.start);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return diffDays <= 1;
+            },
             dayMaxEvents: 4,
-            height: 'auto',
+            height: '100%',
 
             // Etkinlikleri yükle
             events: function (info, successCallback, failureCallback) {
@@ -809,7 +835,8 @@ $title = 'Nöbet Planlama';
                     info.event.setProp('editable', false);
                 } else {
                     info.el.classList.remove('fc-event-past');
-                    info.event.setProp('editable', true);
+                    info.event.setProp('startEditable', true);
+                    info.event.setProp('durationEditable', false);
                 }
 
                 // Silme butonu (Gelecek nöbetler veya ayar açıksa geçmiş nöbetler için)

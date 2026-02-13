@@ -4,6 +4,7 @@ $(document).ready(function () {
   let unsavedChanges = {}; // { 'personelId-date': { typeId, name, color, shortCode } }
   let definitionsMap = {}; // { shortCode: { id, name, color, shortCode } }
   let personnelMap = {}; // { nameOrTc: personObj }
+  let ucretsizIzinIds = new Set();
   let excelReplacedPersonnel = new Set(); // Excel'den yüklenen personellerin ID'leri
 
   // Initial Load from LocalStorage or default
@@ -137,9 +138,11 @@ $(document).ready(function () {
   function loadDefinitions() {
     $.post(API_URL, { action: "get-definitions" }, function (res) {
       if (res.status === "success") {
-        const render = (list, containerId) => {
+        ucretsizIzinIds.clear();
+        const render = (list, containerId, isUcretsiz = false) => {
           let html = "";
           list.forEach((item) => {
+            if (isUcretsiz) ucretsizIzinIds.add(item.id.toString());
             const style = getStyleFromTailwind(item.renk);
             const shortCode = getShortCode(item);
             html += `
@@ -184,8 +187,8 @@ $(document).ready(function () {
             },
           });
         };
-        if (res.data.ucretli) render(res.data.ucretli, "ucretli-list");
-        if (res.data.ucretsiz) render(res.data.ucretsiz, "ucretsiz-list");
+        if (res.data.ucretli) render(res.data.ucretli, "ucretli-list", false);
+        if (res.data.ucretsiz) render(res.data.ucretsiz, "ucretsiz-list", true);
 
         // İzin türleri yüklendikten sonra sticky yüksekliği güncelle
         setTimeout(updateStickyHeights, 100);
@@ -199,7 +202,9 @@ $(document).ready(function () {
     const yil = $("#select-yil").val();
     const daysCount = getDaysInMonth(ay, yil);
 
-    $("#puantaj-loader").fadeIn(200);
+    // Tabloyu temizle ve yükleniyor göster
+    $("#table-body").empty();
+    $("#puantaj-loader").fadeIn(100);
 
     // Header
     let headerHtml = '<th class="sticky-col">Personel</th>';
@@ -209,6 +214,8 @@ $(document).ready(function () {
       const sundayClass = isSunday ? "is-sunday" : "";
       headerHtml += `<th class="${sundayClass}">${d}</th>`;
     }
+    headerHtml += '<th class="sticky-col-right-1">Toplam Ç.G.</th>';
+    headerHtml += '<th class="sticky-col-right-2">Fiili Ç.G.</th>';
     $("#table-header").html(headerHtml);
 
     // Body with data
@@ -217,46 +224,64 @@ $(document).ready(function () {
       { action: "get-calendar-data", ay, yil },
       function (res) {
         if (res.status === "success") {
-          let bodyHtml = "";
-          personnelMap = {}; // Clear previous personnel map
-          if (res.data && Array.isArray(res.data)) {
-            res.data.forEach((p) => {
-              // Map personnel for Excel import
-              if (p.adi_soyadi) personnelMap[turkceKucukHarf(p.adi_soyadi)] = p;
-              if (p.tc_kimlik_no) personnelMap[p.tc_kimlik_no] = p;
+          try {
+            let bodyHtml = "";
+            personnelMap = {}; // Clear previous personnel map
+            if (res.data && Array.isArray(res.data)) {
+              if (res.data.length === 0) {
+                $("#table-body").html(
+                  '<tr><td colspan="40" class="text-center py-5 text-muted">Bu kriterlere uygun personel bulunamadı.</td></tr>',
+                );
+              } else {
+                res.data.forEach((p) => {
+                  // Map personnel for Excel import
+                  if (p.adi_soyadi)
+                    personnelMap[turkceKucukHarf(p.adi_soyadi)] = p;
+                  if (p.tc_kimlik_no) personnelMap[p.tc_kimlik_no] = p;
 
-              bodyHtml += `<tr>
+                  bodyHtml += `<tr>
                         <td class="personel-info sticky-col" title="${p.adi_soyadi}">
                             <div class="d-flex align-items-center">
                                 <a href="?p=personel/manage&id=${p.encrypt_id}" class="text-truncate-name text-primary fw-bold" style="text-decoration: none;">${p.adi_soyadi}</a>
                             </div>
                         </td>`;
 
-              for (let d = 1; d <= daysCount; d++) {
-                const dateObj = new Date(yil, ay - 1, d);
-                const isSunday = dateObj.getDay() === 0;
-                const sundayClass = isSunday ? "is-sunday" : "";
+                  let unpaidCount = 0;
+                  let allCount = 0;
 
-                const dateStr = `${yil}-${ay}-${d.toString().padStart(2, "0")}`;
-                const key = `${p.id}-${dateStr}`;
-                const unsaved = unsavedChanges[key];
+                  for (let d = 1; d <= daysCount; d++) {
+                    const dateObj = new Date(yil, ay - 1, d);
+                    const isSunday = dateObj.getDay() === 0;
+                    const sundayClass = isSunday ? "is-sunday" : "";
 
-                // Excel'den yüklenen personel için mevcut kayıtları gizle, sadece unsaved göster
-                const isExcelReplaced = excelReplacedPersonnel.has(
-                  p.id.toString(),
-                );
-                const entries = isExcelReplaced ? [] : p.entries[dateStr] || [];
+                    const dateStr = `${yil}-${ay}-${d.toString().padStart(2, "0")}`;
+                    const key = `${p.id}-${dateStr}`;
+                    const unsaved = unsavedChanges[key];
 
-                let cellContent = "";
-                let cellStyle = "";
-                let hasEntryClass = "";
+                    // Excel'den yüklenen personel için mevcut kayıtları gizle, sadece unsaved göster
+                    const isExcelReplaced = excelReplacedPersonnel.has(
+                      p.id.toString(),
+                    );
+                    const entries = isExcelReplaced
+                      ? []
+                      : p.entries[dateStr] || [];
 
-                // Önce unsavedChanges kontrol et (Excel'den yüklenen dahil)
-                if (unsaved) {
-                  const unsavedStyle = getStyleFromTailwind(unsaved.color);
-                  cellStyle = `background-color: ${unsavedStyle.bg} !important; color: ${unsavedStyle.color} !important; border: 1px solid ${unsavedStyle.color}33 !important;`;
-                  hasEntryClass = "has-entry unsaved";
-                  cellContent = `
+                    let cellContent = "";
+                    let cellStyle = "";
+                    let hasEntryClass = "";
+
+                    // Önce unsavedChanges kontrol et (Excel'den yüklenen dahil)
+                    if (unsaved) {
+                      const unsavedStyle = getStyleFromTailwind(unsaved.color);
+                      const typeId = (
+                        unsaved.type_id || unsaved.typeId
+                      )?.toString();
+                      allCount++;
+                      if (ucretsizIzinIds.has(typeId)) unpaidCount++;
+
+                      cellStyle = `background-color: ${unsavedStyle.bg} !important; color: ${unsavedStyle.color} !important; border: 1px solid ${unsavedStyle.color}33 !important;`;
+                      hasEntryClass = "has-entry unsaved";
+                      cellContent = `
                                 <div class="cell-content draggable-izin" 
                                      data-bs-toggle="tooltip" 
                                      title="${unsaved.name}" 
@@ -268,14 +293,18 @@ $(document).ready(function () {
                                     ${unsaved.shortCode}
                                     <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
                                 </div>`;
-                } else if (entries.length > 0) {
-                  const entry = entries[0];
-                  const styleObj = getStyleFromTailwind(entry.color);
-                  cellStyle = `background-color: ${styleObj.bg} !important; color: ${styleObj.color} !important; border: 1px solid ${styleObj.color}33 !important;`;
-                  hasEntryClass = "has-entry";
-                  const shortCode = getShortCode(entry);
+                    } else if (entries.length > 0) {
+                      const entry = entries[0];
+                      const styleObj = getStyleFromTailwind(entry.color);
+                      const typeId = entry.tip_id?.toString();
+                      allCount++;
+                      if (ucretsizIzinIds.has(typeId)) unpaidCount++;
 
-                  cellContent = `
+                      cellStyle = `background-color: ${styleObj.bg} !important; color: ${styleObj.color} !important; border: 1px solid ${styleObj.color}33 !important;`;
+                      hasEntryClass = "has-entry";
+                      const shortCode = getShortCode(entry);
+
+                      cellContent = `
                                 <div class="cell-content draggable-izin" 
                                      data-bs-toggle="tooltip" 
                                      title="${entry.name}" 
@@ -287,21 +316,31 @@ $(document).ready(function () {
                                     ${shortCode}
                                     <span class="btn-delete-cell" onclick="deleteEntry(${entry.id}, event)">×</span>
                                 </div>`;
-                }
+                    }
 
-                bodyHtml += `<td class="day-cell ${hasEntryClass} ${sundayClass}" 
+                    bodyHtml += `<td class="day-cell ${hasEntryClass} ${sundayClass}" 
                                          style="${cellStyle}"
                                          data-personel-id="${p.id}" 
                                          data-date="${dateStr}">
                                         ${cellContent}
                                     </td>`;
+                  }
+
+                  const toplamCalisma = daysCount - unpaidCount;
+                  const fiiliCalisma = daysCount - allCount;
+                  bodyHtml += `<td class="sticky-col-right-1 toplam-calisma-gunu">${toplamCalisma}</td>`;
+                  bodyHtml += `<td class="sticky-col-right-2 fiili-calisma-gunu">${fiiliCalisma}</td>`;
+                  bodyHtml += "</tr>";
+                });
+                $("#table-body").html(bodyHtml);
+                initTableEvents();
+                initTooltips();
+                applyFilter();
               }
-              bodyHtml += "</tr>";
-            });
-            $("#table-body").html(bodyHtml);
-            initTableEvents();
-            initTooltips();
-            applyFilter();
+            }
+          } catch (e) {
+            console.error("Tablo oluşturulurken hata:", e);
+            showToast("Veriler işlenirken hata oluştu.", "error");
           }
         } else {
           showToast(res.message || "Veriler yüklenemedi.", "error");
@@ -320,16 +359,63 @@ $(document).ready(function () {
 
   // Table Interaction Events
   function initTableEvents() {
-    // Selection disabled as per user request
-    $(".day-cell").off("mousedown mouseenter mouseup");
+    // Selection and range extension disabled as per user request
+    $(".day-cell").off("mousedown mouseenter mouseup mousemove");
 
-    // Drop Logic for cells (Drag & Drop now just selects the cell)
+    // Table cell click event for single day addition
+    $(".day-cell")
+      .off("click")
+      .on("click", function (e) {
+        if (!selectedType) return;
+
+        const cell = this;
+        const pId = cell.dataset.personelId;
+        const date = cell.dataset.date;
+        const key = `${pId}-${date}`;
+
+        // Add to unsaved changes
+        unsavedChanges[key] = {
+          personel_id: pId,
+          date: date,
+          type_id: selectedType.id,
+          name: selectedType.name,
+          color: selectedType.color,
+          shortCode: selectedType.shortCode,
+        };
+
+        // Render locally
+        const style = getStyleFromTailwind(selectedType.color);
+        $(cell)
+          .attr(
+            "style",
+            `background-color: ${style.bg} !important; color: ${style.color} !important; border: 1px solid ${style.color}33 !important;`,
+          )
+          .addClass("has-entry unsaved");
+
+        $(cell).html(`
+          <div class="cell-content draggable-izin" 
+               data-bs-toggle="tooltip" 
+               title="${selectedType.name}" 
+               data-id="${selectedType.id}" 
+               data-shortcode="${selectedType.shortCode}"
+               data-name="${selectedType.name}"
+               data-color="${selectedType.color}"
+               style="font-weight: 700;">
+              ${selectedType.shortCode}
+              <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
+          </div>`);
+
+        initTooltips();
+        updateRowTotals(pId);
+      });
+
+    // Drop Logic for cells
     $(".day-cell").each(function () {
       const cell = this;
       new Sortable(cell, {
         group: {
           name: "izinSharing",
-          pull: "clone",
+          pull: false, // Prevents extending/cloning from one day to another
           put: true,
         },
         sort: false,
@@ -385,103 +471,58 @@ $(document).ready(function () {
                             <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
                         </div>`);
           initTooltips();
-
+          updateRowTotals(pId);
           evt.item.remove();
         },
       });
     });
   }
 
+  function updateRowTotals(pId) {
+    const $row = $(`td[data-personel-id="${pId}"]`).first().closest("tr");
+    if (!$row.length) return;
+
+    const ay = $("#select-ay").val();
+    const yil = $("#select-yil").val();
+    const daysCount = getDaysInMonth(ay, yil);
+
+    let unpaidCount = 0;
+    let allCount = 0;
+
+    $row.find(".day-cell").each(function () {
+      const $cell = $(this);
+      const $content = $cell.find(".cell-content");
+      if ($content.length) {
+        allCount++;
+        const typeId = $content.data("id")?.toString();
+        if (typeId && ucretsizIzinIds.has(typeId)) {
+          unpaidCount++;
+        }
+      }
+    });
+
+    $row.find(".toplam-calisma-gunu").text(daysCount - unpaidCount);
+    $row.find(".fiili-calisma-gunu").text(daysCount - allCount);
+  }
+
   window.removeUnsaved = function (key, e) {
+    const $cell = $(e.target).closest(".day-cell");
+    const pId = $cell.data("personel-id");
+
     if (e) e.stopPropagation();
     delete unsavedChanges[key];
 
     // UI'yı anlık temizle (Tabloyu yenilemeden)
-    const $cell = $(e.target).closest(".day-cell");
     $cell.empty().removeClass("has-entry unsaved").attr("style", "");
 
     // Tooltip varsa temizle
     $(".tooltip").remove();
+
+    updateRowTotals(pId);
   };
 
   function clearSelection() {
     $(".day-cell").removeClass("selected");
-    selectedCells.clear();
-  }
-
-  /**
-   * Ardışık aynı türden günleri gruplandırır
-   * Örnek: 5,6,7 Ocak aynı izin türü -> tek kayıt (baslangic: 5, bitis: 7)
-   */
-  function groupConsecutiveEntries(entries) {
-    // Personel ve tür bazında grupla
-    const grouped = {};
-
-    entries.forEach((entry) => {
-      const key = `${entry.personel_id}-${entry.type_id}`;
-      if (!grouped[key]) {
-        grouped[key] = {
-          personel_id: entry.personel_id,
-          type_id: entry.type_id,
-          name: entry.name,
-          color: entry.color,
-          dates: [],
-        };
-      }
-      grouped[key].dates.push(entry.date);
-    });
-
-    // Her grup için tarihleri sırala ve ardışık aralıklar oluştur
-    const result = [];
-
-    Object.values(grouped).forEach((group) => {
-      // Tarihleri sırala
-      const sortedDates = group.dates
-        .map((d) => new Date(d))
-        .sort((a, b) => a - b);
-
-      if (sortedDates.length === 0) return;
-
-      let rangeStart = sortedDates[0];
-      let rangeEnd = sortedDates[0];
-
-      for (let i = 1; i < sortedDates.length; i++) {
-        const current = sortedDates[i];
-        const prev = sortedDates[i - 1];
-
-        // Bir günlük fark var mı kontrol et
-        const diffDays = Math.round((current - prev) / (1000 * 60 * 60 * 24));
-
-        if (diffDays === 1) {
-          // Ardışık, aralığı genişlet
-          rangeEnd = current;
-        } else {
-          // Ardışık değil, mevcut aralığı kaydet ve yenisini başlat
-          result.push({
-            personel_id: group.personel_id,
-            type_id: group.type_id,
-            name: group.name,
-            color: group.color,
-            baslangic_tarihi: formatDateISO(rangeStart),
-            bitis_tarihi: formatDateISO(rangeEnd),
-          });
-          rangeStart = current;
-          rangeEnd = current;
-        }
-      }
-
-      // Son aralığı kaydet
-      result.push({
-        personel_id: group.personel_id,
-        type_id: group.type_id,
-        name: group.name,
-        color: group.color,
-        baslangic_tarihi: formatDateISO(rangeStart),
-        bitis_tarihi: formatDateISO(rangeEnd),
-      });
-    });
-
-    return result;
   }
 
   /**
@@ -503,14 +544,14 @@ $(document).ready(function () {
         return;
       }
 
-      // Ardışık günleri grupla
+      // Değişiklikleri kaydet (Grup yapmadan, tekil gün olarak gönderiyoruz)
       const rawData = Object.values(unsavedChanges);
-      const groupedData = groupConsecutiveEntries(rawData);
+      const groupedData = rawData;
 
       // Excel'den yüklenen personel ID'lerini de gönder (mevcut kayıtları silmek için)
       const excelPersonnelIds = Array.from(excelReplacedPersonnel);
 
-      console.log("Gruplanmış veriler:", groupedData);
+      console.log("Kaydedilecek veriler:", groupedData);
       console.log("Excel personelleri:", excelPersonnelIds);
       saveBulkEntries(groupedData, excelPersonnelIds);
     });
@@ -681,8 +722,10 @@ $(document).ready(function () {
     }).then((result) => {
       if (result.isConfirmed) {
         // UI'yı anlık temizle (Optimistic Update)
+        const pId = $cell.data("personel-id");
         $cell.empty().removeClass("has-entry unsaved").attr("style", "");
         $(".tooltip").remove();
+        updateRowTotals(pId);
 
         // Pace başlasın ama loader'ı tüm sayfaya koyma
         if (typeof Pace !== "undefined") Pace.restart();
@@ -806,7 +849,7 @@ $(document).ready(function () {
         if (result.isConfirmed) {
           // Kaydet ve sonra sayfaya git
           const rawData = Object.values(unsavedChanges);
-          const groupedData = groupConsecutiveEntries(rawData);
+          const groupedData = rawData;
 
           showToast("Kayıtlar kaydediliyor...", "info");
 
