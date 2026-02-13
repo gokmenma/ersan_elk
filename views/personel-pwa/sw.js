@@ -126,7 +126,7 @@ self.addEventListener("push", (event) => {
   const title = data.title || "Ersan | Personel Yönetim";
   const options = {
     body: data.body || "Yeni bildiriminiz var",
-    icon: "./assets/icons/icon-192.png",  // Her zaman varsayılan logo
+    icon: "./assets/icons/icon-192.png", // Her zaman varsayılan logo
     badge: "./assets/icons/badge-72.png",
     vibrate: [100, 50, 100],
     data: {
@@ -140,7 +140,7 @@ self.addEventListener("push", (event) => {
   };
 
   // Resim varsa ekle - Android Chrome'da büyük resim olarak görünür
-  if (data.image && data.image.startsWith('http')) {
+  if (data.image && data.image.startsWith("http")) {
     options.image = data.image;
     console.log("Push Notification Image:", data.image);
   }
@@ -153,23 +153,38 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
   if (event.action === "explore" || !event.action) {
-    const urlToOpen = event.notification.data.url || "index.php";
+    let urlToOpen = event.notification.data.url || "index.php";
+
+    // Eğer URL sadece parametrelerle başlıyorsa (?page= gibi), başına index.php ekle
+    if (urlToOpen.startsWith("?")) {
+      urlToOpen = "index.php" + urlToOpen;
+    }
+
+    // URL'yi absolute hale getir (SW'nin bulunduğu dizine göre)
+    const absoluteUrl = new URL(
+      urlToOpen,
+      self.location.origin + self.location.pathname,
+    ).href;
 
     event.waitUntil(
-      clients.matchAll({ type: "window" }).then((windowClients) => {
-        // Eğer açık bir pencere varsa ona odaklan
-        for (let i = 0; i < windowClients.length; i++) {
-          const client = windowClients[i];
-          // URL kontrolü tam eşleşme yerine içeriyor mu diye bakabiliriz
-          if ("focus" in client) {
-            return client.focus().then((c) => c.navigate(urlToOpen));
+      clients
+        .matchAll({ type: "window", includeUncontrolled: true })
+        .then((windowClients) => {
+          // Eğer açık bir pencere varsa ona odaklan ve navigate et
+          for (let i = 0; i < windowClients.length; i++) {
+            const client = windowClients[i];
+            if (
+              client.url.includes(self.location.origin) &&
+              "focus" in client
+            ) {
+              return client.focus().then((c) => c.navigate(absoluteUrl));
+            }
           }
-        }
-        // Yoksa yeni pencere aç
-        if (clients.openWindow) {
-          return clients.openWindow(urlToOpen);
-        }
-      }),
+          // Yoksa yeni pencere aç
+          if (clients.openWindow) {
+            return clients.openWindow(absoluteUrl);
+          }
+        }),
     );
   }
 });
