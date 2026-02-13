@@ -14,14 +14,37 @@ $(document).ready(function () {
   table = $("#demirbasTable").DataTable(demirbasOptions);
 
   // Zimmet tablosu DataTable
-  let zimmetOptions = getDatatableOptions();
-  zimmetOptions.columnDefs = [{ orderable: false, targets: -1 }];
-  zimmetOptions.order = [[0, "desc"]];
-  // Özelleştirilmiş boş tablo mesajı
-  zimmetOptions.language.emptyTable =
-    '<div class="text-center text-muted py-4"><i class="bx bx-transfer display-4 d-block mb-2"></i>Henüz zimmet kaydı bulunmamaktadır.</div>';
-
-  zimmetTable = $("#zimmetTable").DataTable(zimmetOptions);
+  zimmetTable = $("#zimmetTable").DataTable({
+    ...getDatatableOptions(),
+    serverSide: true,
+    ajax: {
+      url: zimmetUrl,
+      type: "POST",
+      data: function (d) {
+        d.action = "zimmet-listesi";
+      },
+    },
+    columns: [
+      { data: "id", className: "text-center" },
+      { data: "kategori_adi" },
+      { data: "demirbas_adi" },
+      { data: "marka_model" },
+      { data: "personel_adi" },
+      { data: "teslim_miktar", className: "text-center" },
+      { data: "teslim_tarihi" },
+      { data: "durum", className: "text-center" },
+      { data: "islemler", className: "text-center", orderable: false },
+    ],
+    order: [[0, "desc"]],
+    createdRow: function (row, data, dataIndex) {
+      $(row).attr("data-id", data.enc_id);
+    },
+    language: {
+      ...getDatatableOptions().language,
+      emptyTable:
+        '<div class="text-center text-muted py-4"><i class="bx bx-transfer display-4 d-block mb-2"></i>Henüz zimmet kaydı bulunmamaktadır.</div>',
+    },
+  });
 
   // Select2 başlat
   initSelect2();
@@ -176,21 +199,7 @@ $(document).on("click", "#demirbas-tab, #zimmet-tab", function () {
 
 // ============== ZİMMET LİSTESİ YÜKLE ==============
 function loadZimmetList() {
-  fetch(zimmetUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: "action=zimmet-listesi",
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.status === "success") {
-        zimmetTable.clear();
-        data.rows.forEach((row) => {
-          zimmetTable.row.add($(row)).draw(false);
-        });
-      }
-    })
-    .catch((err) => console.error("Zimmet listesi yüklenemedi:", err));
+  zimmetTable.ajax.reload(null, false);
 }
 
 // ============== DEMİRBAŞ İŞLEMLERİ ==============

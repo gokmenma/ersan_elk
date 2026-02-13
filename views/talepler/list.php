@@ -54,6 +54,7 @@ $izinTurleri = [
     'diger' => 'Diğer'
 ];
 ?>
+<link rel="stylesheet" href="views/talepler/assets/style.css?v=<?= filemtime(__DIR__ . '/assets/style.css') ?>">
 
 <div class="container-fluid">
     <?php
@@ -63,116 +64,121 @@ $izinTurleri = [
     <?php include 'layouts/breadcrumb.php'; ?>
 
     <!-- Özet Kartları -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card widget-flat border-start border-success border-3">
+    <div class="row mb-4 g-3">
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card"
+                style="--card-color: #10b981; --card-rgb: 16, 185, 129; border-bottom: 3px solid var(--card-color) !important;">
                 <div class="card-body">
-                    <div class="float-end">
-                        <span class="badge badge-success font-size-24 opacity-75">
-                            <i class='bx bx-money'></i>
-                        </span>
+                    <div class="icon-label-container">
+                        <div class="icon-box">
+                            <i class='bx bx-money fs-4' style="color: var(--card-color);"></i>
+                        </div>
+                        <div class="stat-trend neutral">
+                            <i class='bx bx-hourglass'></i> Beklemede
+                        </div>
                     </div>
-                    <h6 class="text-muted mt-0">Avans Talepleri</h6>
-                    <h3 class="mt-2 mb-0">
-                        <?= $avansCount ?>
-                    </h3>
-                    <p class="text-muted mb-0 small">Bekleyen</p>
+                    <p class="stat-label-main">AVANS TALEPLERİ</p>
+                    <h4 class="stat-value"><?= $avansCount ?></h4>
+                    <p class="stat-sub">Bekleyen finansal talepler</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card widget-flat border-start border-primary border-3">
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card"
+                style="--card-color: #3b82f6; --card-rgb: 59, 130, 246; border-bottom: 3px solid var(--card-color) !important;">
                 <div class="card-body">
-                    <div class="float-end">
-                        <span class="badge badge-primary font-size-24 opacity-75">
-                            <i class='bx bx-calendar-check'></i>
-                        </span>
+                    <div class="icon-label-container">
+                        <div class="icon-box">
+                            <i class='bx bx-calendar-check fs-4' style="color: var(--card-color);"></i>
+                        </div>
+                        <div class="stat-trend neutral">
+                            <i class='bx bx-time'></i> Planlı
+                        </div>
                     </div>
-                    <h6 class="text-muted mt-0">İzin Talepleri</h6>
-                    <h3 class="mt-2 mb-0">
-                        <?= $izinCount ?>
-                    </h3>
-                    <p class="text-muted mb-0 small">Bekleyen</p>
+                    <p class="stat-label-main">İZİN TALEPLERİ</p>
+                    <h4 class="stat-value"><?= $izinCount ?></h4>
+                    <p class="stat-sub">Bekleyen izin onayları</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card widget-flat border-start border-info border-3">
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card"
+                style="--card-color: #06b6d4; --card-rgb: 6, 182, 212; border-bottom: 3px solid var(--card-color) !important;">
                 <div class="card-body">
-                    <div class="float-end">
-                        <span class="badge badge-info font-size-24 opacity-75">
-                            <i class='bx bx-message-square-detail'></i>
-                        </span>
+                    <div class="icon-label-container">
+                        <div class="icon-box">
+                            <i class='bx bx-message-square-detail fs-4' style="color: var(--card-color);"></i>
+                        </div>
+                        <div class="stat-trend neutral">
+                            <i class='bx bx-info-circle'></i> Genel
+                        </div>
                     </div>
-                    <h6 class="text-muted mt-0">Genel Talepler</h6>
-                    <h3 class="mt-2 mb-0">
-                        <?= $talepCount ?>
-                    </h3>
-                    <p class="text-muted mb-0 small">Bekleyen</p>
+                    <p class="stat-label-main">GENEL TALEPLER</p>
+                    <h4 class="stat-value"><?= $talepCount ?></h4>
+                    <p class="stat-sub">Diğer destek talepleri</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card widget-flat border-start border-warning border-3">
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card"
+                style="--card-color: #f59e0b; --card-rgb: 245, 158, 11; border-bottom: 3px solid var(--card-color) !important;">
                 <div class="card-body">
-                    <div class="float-end">
-                        <span class="badge badge-warning font-size-24 opacity-75">
-                            <i class='bx bx-bell'></i>
-                        </span>
+                    <div class="icon-label-container">
+                        <div class="icon-box">
+                            <i class='bx bx-bell fs-4' style="color: var(--card-color);"></i>
+                        </div>
+                        <div class="stat-trend down">
+                            <i class='bx bx-error-circle'></i> Acil
+                        </div>
                     </div>
-                    <h6 class="text-muted mt-0">Toplam Bekleyen</h6>
-                    <h3 class="mt-2 mb-0">
-                        <?= $toplamCount ?>
-                    </h3>
-                    <p class="text-muted mb-0 small">Tüm talepler</p>
+                    <p class="stat-label-main">TOPLAM BEKLEYEN</p>
+                    <h4 class="stat-value"><?= $toplamCount ?></h4>
+                    <p class="stat-sub">İşlem bekleyen tüm talepler</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tab Navigation -->
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <ul class="nav nav-tabs card-header-tabs" role="tablist">
+    <div class="card border-0 shadow-sm">
+        <div
+            class="card-header bg-transparent border-bottom-0 pb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <ul class="nav nav-tabs nav-tabs-custom" id="talepTabs" role="tablist">
                 <li class="nav-item">
                     <a class="nav-link active" data-bs-toggle="tab" href="#tabAvans" role="tab">
-                        <i class="bx bx-money me-1"></i> Avans
+                        <i class="bx bx-money"></i> Avans
                         <?php if (!$showApproved && $avansCount > 0): ?>
-                            <span class="badge bg-success ms-1">
-                                <?= $avansCount ?>
-                            </span>
+                            <span class="badge bg-success"><?= $avansCount ?></span>
                         <?php endif; ?>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" data-bs-toggle="tab" href="#tabIzin" role="tab">
-                        <i class="bx bx-calendar-check me-1"></i> İzin
+                        <i class="bx bx-calendar-check"></i> İzin
                         <?php if (!$showApproved && $izinCount > 0): ?>
-                            <span class="badge bg-primary ms-1">
-                                <?= $izinCount ?>
-                            </span>
+                            <span class="badge bg-primary"><?= $izinCount ?></span>
                         <?php endif; ?>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" data-bs-toggle="tab" href="#tabTalepler" role="tab">
-                        <i class="bx bx-message-square-detail me-1"></i> Talepler
+                        <i class="bx bx-message-square-detail"></i> Talepler
                         <?php if (!$showApproved && $talepCount > 0): ?>
-                            <span class="badge bg-info ms-1">
-                                <?= $talepCount ?>
-                            </span>
+                            <span class="badge bg-info"><?= $talepCount ?></span>
                         <?php endif; ?>
                     </a>
                 </li>
             </ul>
-            <div class="btn-group">
-                <a href="index?p=talepler/list" class="btn btn-<?= $showApproved ? 'outline-' : '' ?>warning btn-sm">
-                    <i class="bx bx-time me-1"></i>Bekleyenler
-                </a>
-                <a href="index?p=talepler/list&show=approved"
-                    class="btn btn-<?= $showApproved ? '' : 'outline-' ?>success btn-sm">
-                    <i class="bx bx-check-circle me-1"></i>Onaylananlar
-                </a>
+            <div class="mb-2">
+                <div class="btn-group btn-group-sm rounded-pill p-1 bg-light">
+                    <a href="index?p=talepler/list"
+                        class="btn rounded-pill px-3 <?= !$showApproved ? 'btn-warning border-0 shadow-sm' : 'text-muted' ?>">
+                        <i class="bx bx-time me-1"></i>Bekleyenler
+                    </a>
+                    <a href="index?p=talepler/list&show=approved"
+                        class="btn rounded-pill px-3 <?= $showApproved ? 'btn-success border-0 shadow-sm' : 'text-muted' ?>">
+                        <i class="bx bx-check-circle me-1"></i>Onaylananlar
+                    </a>
+                </div>
             </div>
         </div>
         <div class="card-body">
@@ -196,8 +202,8 @@ $izinTurleri = [
                         </div>
                     <?php else: ?>
                         <div class="table-responsive">
-                            <table class="table table-hover table-bordered datatable" id="avansTable">
-                                <thead class="table-light">
+                            <table class="table table-premium align-middle w-100" id="avansTable">
+                                <thead>
                                     <tr>
                                         <th>Personel</th>
                                         <th>Talep Türü</th>
@@ -228,7 +234,8 @@ $izinTurleri = [
                                                 </div>
                                             </td>
                                             <td>
-                                                <span class="badge bg-success"><i class="bx bx-money me-1"></i>Avans</span>
+                                                <span class="badge-premium badge-premium-success"><i
+                                                        class="bx bx-money me-1"></i>Avans</span>
                                             </td>
                                             <td>
                                                 <span class="text-success">
@@ -241,18 +248,20 @@ $izinTurleri = [
                                             </td>
                                             <td>
                                                 <?php
-                                                $durumClass = 'bg-warning';
+                                                $durumType = 'warning';
                                                 $durumText = ucfirst($avans->durum);
                                                 if ($avans->durum == 'onaylandi') {
-                                                    $durumClass = 'bg-success';
+                                                    $durumType = 'success';
                                                     $durumText = 'Onaylandı';
                                                 }
                                                 if ($avans->durum == 'reddedildi') {
-                                                    $durumClass = 'bg-danger';
+                                                    $durumType = 'danger';
                                                     $durumText = 'Reddedildi';
                                                 }
                                                 ?>
-                                                <span class="badge <?= $durumClass ?>">
+                                                <span class="badge-premium badge-premium-<?= $durumType ?>">
+                                                    <i
+                                                        class="bx bx-<?= $durumType == 'success' ? 'check-circle' : ($durumType == 'danger' ? 'x-circle' : 'time-five') ?>"></i>
                                                     <?= $durumText ?>
                                                 </span>
                                             </td>
@@ -301,8 +310,8 @@ $izinTurleri = [
                         </div>
                     <?php else: ?>
                         <div class="table-responsive">
-                            <table class="table table-hover table-bordered datatable" id="izinTable">
-                                <thead class="table-light">
+                            <table class="table table-premium align-middle w-100" id="izinTable">
+                                <thead>
                                     <tr>
                                         <th>Personel</th>
                                         <th>Talep Türü</th>
@@ -336,11 +345,11 @@ $izinTurleri = [
                                                 </div>
                                             </td>
                                             <td>
-                                                <span class="badge bg-primary"><i
+                                                <span class="badge-premium badge-premium-info"><i
                                                         class="bx bx-calendar-check me-1"></i>İzin</span>
                                             </td>
                                             <td>
-                                                <span class="badge bg-info">
+                                                <span class="badge-premium badge-premium-info">
                                                     <?= $izinTuruLabel ?>
                                                 </span>
                                             </td>
@@ -349,22 +358,24 @@ $izinTurleri = [
                                                 <?= date('d.m.Y', strtotime($izin->bitis_tarihi)) ?>
                                             </td>
                                             <td>
-                                                <span class="badge bg-secondary">
+                                                <span class="badge-premium badge-premium-secondary">
                                                     <?= $gunSayisi ?> Gün
                                                 </span>
                                             </td>
                                             <td>
                                                 <?php
-                                                $durumClass = 'bg-warning';
+                                                $durumType = 'warning';
                                                 $durumText = ucfirst($izin->onay_durumu);
                                                 if ($izin->onay_durumu == 'Onaylandı') {
-                                                    $durumClass = 'bg-success';
+                                                    $durumType = 'success';
                                                 }
                                                 if ($izin->onay_durumu == 'Reddedildi') {
-                                                    $durumClass = 'bg-danger';
+                                                    $durumType = 'danger';
                                                 }
                                                 ?>
-                                                <span class="badge <?= $durumClass ?>">
+                                                <span class="badge-premium badge-premium-<?= $durumType ?>">
+                                                    <i
+                                                        class="bx bx-<?= $durumType == 'success' ? 'check-circle' : ($durumType == 'danger' ? 'x-circle' : 'time-five') ?>"></i>
                                                     <?= $durumText ?>
                                                 </span>
                                             </td>
@@ -411,8 +422,8 @@ $izinTurleri = [
                         </div>
                     <?php else: ?>
                         <div class="table-responsive">
-                            <table class="table table-hover table-bordered datatable" id="taleplerTable">
-                                <thead class="table-light">
+                            <table class="table table-premium align-middle w-100" id="taleplerTable">
+                                <thead>
                                     <tr>
                                         <th>Personel</th>
                                         <th>Talep Türü</th>
@@ -427,20 +438,20 @@ $izinTurleri = [
                                 </thead>
                                 <tbody>
                                     <?php foreach ($talepler as $talep):
-                                        $durumBadge = 'bg-warning';
+                                        $durumType = 'warning';
                                         if ($talep->durum == 'islemde')
-                                            $durumBadge = 'bg-info';
+                                            $durumType = 'info';
                                         if ($talep->durum == 'cozuldu')
-                                            $durumBadge = 'bg-success';
+                                            $durumType = 'success';
 
-                                        $oncelikBadge = 'bg-secondary';
+                                        $oncelikType = 'secondary';
                                         if (isset($talep->oncelik)) {
                                             if ($talep->oncelik == 'yuksek')
-                                                $oncelikBadge = 'bg-danger';
+                                                $oncelikType = 'danger';
                                             if ($talep->oncelik == 'orta')
-                                                $oncelikBadge = 'bg-warning';
+                                                $oncelikType = 'warning';
                                             if ($talep->oncelik == 'dusuk')
-                                                $oncelikBadge = 'bg-success';
+                                                $oncelikType = 'success';
                                         }
                                         ?>
                                         <tr data-id="<?= $talep->id ?>" data-tip="talep">
@@ -459,19 +470,23 @@ $izinTurleri = [
                                                 </div>
                                             </td>
                                             <td>
-                                                <span class="badge bg-warning text-dark"><i
+                                                <span class="badge-premium badge-premium-warning text-dark"><i
                                                         class="bx bx-message-square-detail me-1"></i>Talep</span>
                                             </td>
                                             <td>
                                                 <?= htmlspecialchars($talep->baslik ?? '-') ?>
                                             </td>
                                             <td>
-                                                <span class="badge <?= $durumBadge ?>">
+                                                <span class="badge-premium badge-premium-<?= $durumType ?>">
+                                                    <i
+                                                        class="bx bx-<?= $durumType == 'success' ? 'check-circle' : ($durumType == 'info' ? 'play-circle' : 'time-five') ?>"></i>
                                                     <?= ucfirst($talep->durum) ?>
                                                 </span>
                                             </td>
                                             <td>
-                                                <span class="badge <?= $oncelikBadge ?>">
+                                                <span class="badge-premium badge-premium-<?= $oncelikType ?>">
+                                                    <i
+                                                        class="bx bx-<?= $oncelikType == 'danger' ? 'error' : ($oncelikType == 'warning' ? 'error-circle' : ($oncelikType == 'success' ? 'check-double' : 'info-circle')) ?>"></i>
                                                     <?= ucfirst($talep->oncelik ?? 'Normal') ?>
                                                 </span>
                                             </td>
@@ -705,44 +720,35 @@ $izinTurleri = [
 
 <style>
     .avatar-sm {
-        width: 40px;
-        height: 40px;
+        width: 32px;
+        height: 32px;
         object-fit: cover;
-    }
-
-    .nav-tabs .nav-link {
-        color: #6c757d;
-        border: none;
-        padding: 0.75rem 1.5rem;
-    }
-
-    .nav-tabs .nav-link.active {
-        color: #556ee6;
-        background: transparent;
-        border-bottom: 2px solid #556ee6;
-    }
-
-    .nav-tabs .nav-link:hover:not(.active) {
-        border-color: transparent;
-        color: #556ee6;
-    }
-
-    .widget-flat {
-        transition: transform 0.2s ease;
-    }
-
-    .widget-flat:hover {
-        transform: translateY(-2px);
-    }
-
-    .btn-group .btn {
-        padding: 0.25rem 0.5rem;
     }
 </style>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const API_URL = 'views/talepler/api.php';
+
+        // DataTable Başlatma Fonksiyonu (Nöbet modülündeki gibi)
+        function initDataTable(id) {
+            const selector = '#' + id;
+            if ($.fn.dataTable && $.fn.dataTable.isDataTable(selector)) {
+                $(selector).DataTable().destroy();
+            }
+            $(selector + ' thead tr:not(:first-child)').remove();
+
+            $(selector).DataTable(typeof getDatatableOptions === 'function' ? getDatatableOptions() : {
+                language: {
+                    url: 'assets/libs/datatables.net-bs4/tr.json'
+                }
+            });
+        }
+
+        // Tabloları Manuel Başlat
+        if (document.getElementById('avansTable')) initDataTable('avansTable');
+        if (document.getElementById('izinTable')) initDataTable('izinTable');
+        if (document.getElementById('taleplerTable')) initDataTable('taleplerTable');
 
         // Avans Onayla
         document.querySelectorAll('.btn-avans-onayla').forEach(btn => {
@@ -1031,17 +1037,23 @@ $izinTurleri = [
             if (tip === 'avans') {
                 html += '<tr><td class="text-muted" width="40%">Talep Tarihi:</td><td>' + formatDate(data.talep_tarihi) + '</td></tr>';
                 html += '<tr><td class="text-muted">Tutar:</td><td class="fs-5 fw-bold text-success">' + formatMoney(data.tutar) + '</td></tr>';
-                html += '<tr><td class="text-muted">Durum:</td><td><span class="badge bg-' + (data.durum == 'onaylandi' ? 'success' : (data.durum == 'reddedildi' ? 'danger' : 'warning')) + '">' + ucfirst(data.durum) + '</span></td></tr>';
+                var aDurum = data.durum == 'onaylandi' ? 'success' : (data.durum == 'reddedildi' ? 'danger' : 'warning');
+                var aIcon = aDurum == 'success' ? 'check-circle' : (aDurum == 'danger' ? 'x-circle' : 'time-five');
+                html += '<tr><td class="text-muted">Durum:</td><td><span class="badge-premium badge-premium-' + aDurum + '"><i class="bx bx-' + aIcon + '"></i> ' + ucfirst(data.durum) + '</span></td></tr>';
             } else if (tip === 'izin') {
                 html += '<tr><td class="text-muted" width="40%">Talep Tarihi:</td><td>' + formatDate(data.talep_tarihi) + '</td></tr>';
-                html += '<tr><td class="text-muted">İzin Türü:</td><td><span class="badge bg-primary">' + ucfirst(data.izin_tipi) + '</span></td></tr>';
+                html += '<tr><td class="text-muted">İzin Türü:</td><td><span class="badge-premium badge-premium-info"><i class="bx bx-calendar"></i> ' + ucfirst(data.izin_tipi) + '</span></td></tr>';
                 html += '<tr><td class="text-muted">Başlangıç:</td><td>' + formatDateOnly(data.baslangic_tarihi) + '</td></tr>';
                 html += '<tr><td class="text-muted">Bitiş:</td><td>' + formatDateOnly(data.bitis_tarihi) + '</td></tr>';
-                html += '<tr><td class="text-muted">Durum:</td><td><span class="badge bg-' + (data.onay_durumu == 'Onaylandı' ? 'success' : (data.onay_durumu == 'Reddedildi' ? 'danger' : 'warning')) + '">' + data.onay_durumu + '</span></td></tr>';
+                var iDurum = data.onay_durumu == 'Onaylandı' ? 'success' : (data.onay_durumu == 'Reddedildi' ? 'danger' : 'warning');
+                var iIcon = iDurum == 'success' ? 'check-circle' : (iDurum == 'danger' ? 'x-circle' : 'time-five');
+                html += '<tr><td class="text-muted">Durum:</td><td><span class="badge-premium badge-premium-' + iDurum + '"><i class="bx bx-' + iIcon + '"></i> ' + data.onay_durumu + '</span></td></tr>';
             } else if (tip === 'talep') {
                 html += '<tr><td class="text-muted" width="40%">Oluşturma Tarihi:</td><td>' + formatDate(data.olusturma_tarihi) + '</td></tr>';
                 html += '<tr><td class="text-muted">Başlık:</td><td><strong>' + data.baslik + '</strong></td></tr>';
-                html += '<tr><td class="text-muted">Durum:</td><td><span class="badge bg-' + (data.durum == 'cozuldu' ? 'success' : (data.durum == 'islemde' ? 'info' : 'warning')) + '">' + ucfirst(data.durum) + '</span></td></tr>';
+                var tDurum = data.durum == 'cozuldu' ? 'success' : (data.durum == 'islemde' ? 'info' : 'warning');
+                var tIcon = tDurum == 'success' ? 'check-circle' : (tDurum == 'info' ? 'play-circle' : 'time-five');
+                html += '<tr><td class="text-muted">Durum:</td><td><span class="badge-premium badge-premium-' + tDurum + '"><i class="bx bx-' + tIcon + '"></i> ' + ucfirst(data.durum) + '</span></td></tr>';
                 if (data.aciklama) {
                     html += '<tr><td class="text-muted">Açıklama:</td><td>' + data.aciklama + '</td></tr>';
                 }

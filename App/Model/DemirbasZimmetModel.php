@@ -328,6 +328,123 @@ class DemirbasZimmetModel extends Model
         $query->execute($params);
         return $query->fetchAll(PDO::FETCH_OBJ);
     }
+
+    /**
+     * DataTables server-side listesi için verileri getirir
+     */
+    public function getDatatableList($request)
+    {
+        $start = $request['start'] ?? 0;
+        $length = $request['length'] ?? 10;
+        $search = $request['search']['value'] ?? null;
+        $orderCol = $request['order'][0]['column'] ?? null;
+        $orderDir = $request['order'][0]['dir'] ?? 'DESC';
+
+        $baseSql = "SELECT 
+                        z.*,
+                        d.demirbas_no,
+                        d.demirbas_adi,
+                        d.marka,
+                        d.model,
+                        d.seri_no,
+                        k.kategori_adi,
+                        p.adi_soyadi AS personel_adi,
+                        p.cep_telefonu AS personel_telefon
+                    FROM {$this->table} z
+                    LEFT JOIN demirbas d ON z.demirbas_id = d.id
+                    LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+                    LEFT JOIN personel p ON z.personel_id = p.id
+                    WHERE z.silinme_tarihi IS NULL";
+
+        $params = [];
+
+        // Global Arama
+        $searchWhere = "";
+        if (!empty($search)) {
+            $searchWhere .= " AND (d.demirbas_no LIKE :search 
+                            OR d.demirbas_adi LIKE :search 
+                            OR p.adi_soyadi LIKE :search 
+                            OR k.kategori_adi LIKE :search
+                            OR d.marka LIKE :search
+                            OR d.model LIKE :search
+                            OR z.id LIKE :search)";
+            $params['search'] = "%$search%";
+        }
+
+        // Sütun Bazlı Arama
+        $colSearchMap = [
+            0 => 'z.id',
+            1 => 'k.kategori_adi',
+            2 => 'd.demirbas_adi',
+            3 => 'CONCAT_WS(" ", d.marka, d.model)',
+            4 => 'p.adi_soyadi',
+            5 => 'z.teslim_miktar',
+            6 => 'DATE_FORMAT(z.teslim_tarihi, "%d.%m.%Y")',
+            7 => 'z.durum'
+        ];
+
+        if (isset($request['columns']) && is_array($request['columns'])) {
+            foreach ($request['columns'] as $colIdx => $col) {
+                if (!empty($col['search']['value']) && isset($colSearchMap[$colIdx])) {
+                    $searchVal = "%" . $col['search']['value'] . "%";
+                    $paramKey = "col_search_" . $colIdx;
+                    $searchWhere .= " AND {$colSearchMap[$colIdx]} LIKE :$paramKey";
+                    $params[$paramKey] = $searchVal;
+                }
+            }
+        }
+
+        // Toplam kayıt sayısı (filtresiz)
+        $totalSql = "SELECT COUNT(*) FROM {$this->table} WHERE silinme_tarihi IS NULL";
+        $totalRecords = $this->db->query($totalSql)->fetchColumn();
+
+        // Filtrelenmiş kayıt sayısı
+        $filterSql = "SELECT COUNT(*) FROM ({$baseSql} {$searchWhere}) AS temp";
+        $stmtFilter = $this->db->prepare($filterSql);
+        foreach ($params as $key => $val) {
+            $stmtFilter->bindValue($key, $val);
+        }
+        $stmtFilter->execute();
+        $recordsFiltered = $stmtFilter->fetchColumn();
+
+        // Sıralama
+        $colMapOrder = [
+            0 => 'z.id',
+            1 => 'k.kategori_adi',
+            2 => 'd.demirbas_adi',
+            3 => 'd.marka',
+            4 => 'p.adi_soyadi',
+            5 => 'z.teslim_miktar',
+            6 => 'z.teslim_tarihi',
+            7 => 'z.durum'
+        ];
+
+        $orderSql = "";
+        if ($orderCol !== null && isset($colMapOrder[$orderCol])) {
+            $orderSql = " ORDER BY " . $colMapOrder[$orderCol] . " " . ($orderDir === 'asc' ? 'ASC' : 'DESC');
+        } else {
+            $orderSql = " ORDER BY z.kayit_tarihi DESC";
+        }
+
+        // Limit
+        $limitSql = " LIMIT :start, :length";
+
+        $finalSql = $baseSql . $searchWhere . $orderSql . $limitSql;
+        $stmt = $this->db->prepare($finalSql);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue($key, $val);
+        }
+        $stmt->bindValue('start', (int) $start, PDO::PARAM_INT);
+        $stmt->bindValue('length', (int) $length, PDO::PARAM_INT);
+        $stmt->execute();
+        $data = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        return [
+            "recordsTotal" => intval($totalRecords),
+            "recordsFiltered" => intval($recordsFiltered),
+            "data" => $data
+        ];
+    }
     /**
      * Zimmet iade işlemi (Kısmi iade destekli)
      */

@@ -1160,7 +1160,7 @@ $ek_odeme_turleri = [
 
     <!-- Bordro Detay Modal -->
     <div class="modal fade" id="bordroDetailModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
                     <h5 class="modal-title"><i class="bx bx-show me-2"></i>Bordro Detayı</h5>

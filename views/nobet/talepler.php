@@ -22,63 +22,75 @@ $title = 'Talepler & Mazeretler';
 <!-- İstatistik Kartları -->
 <div class="row mb-4 g-3">
     <div class="col-xl-3 col-md-6">
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-label">
-                    <i class="bx bx-transfer-alt mt-1"></i>
-                    Bekleyen Değişim
+        <div class="stat-card"
+            style="--card-color: #f59e0b; --card-rgb: 245, 158, 11; border-bottom: 3px solid var(--card-color) !important;">
+            <div class="card-body">
+                <div class="icon-label-container">
+                    <div class="icon-box">
+                        <i class='bx bx-transfer-alt fs-4' style="color: var(--card-color);"></i>
+                    </div>
+                    <div class="stat-trend neutral">
+                        <i class='bx bx-hourglass'></i> Beklemede
+                    </div>
                 </div>
-                <div class="stat-trend">
-                    <i class="bx bx-hourglass"></i> Beklemede
-                </div>
+                <p class="stat-label-main">BEKLEYEN DEĞİŞİM</p>
+                <h4 class="stat-value" id="stat-degisim-bekleyen">0</h4>
+                <p class="stat-sub">Onay bekleyen değişim talepleri</p>
             </div>
-            <div class="stat-value" id="stat-degisim-bekleyen">0</div>
-            <div class="stat-sub">Onay bekleyen değişim talepleri</div>
         </div>
     </div>
     <div class="col-xl-3 col-md-6">
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-label">
-                    <i class="bx bx-error-circle mt-1"></i>
-                    Mazeret Bildirimi
+        <div class="stat-card"
+            style="--card-color: #ef4444; --card-rgb: 239, 68, 68; border-bottom: 3px solid var(--card-color) !important;">
+            <div class="card-body">
+                <div class="icon-label-container">
+                    <div class="icon-box">
+                        <i class='bx bx-error-circle fs-4' style="color: var(--card-color);"></i>
+                    </div>
+                    <div class="stat-trend down">
+                        <i class='bx bx-time-five'></i> Acil
+                    </div>
                 </div>
-                <div class="stat-trend down">
-                    <i class="bx bx-time-five"></i> Acil
-                </div>
+                <p class="stat-label-main">MAZERET BİLDİRİMİ</p>
+                <h4 class="stat-value" id="stat-mazeret-bekleyen">0</h4>
+                <p class="stat-sub">İşlem bekleyen mazeretler</p>
             </div>
-            <div class="stat-value" id="stat-mazeret-bekleyen">0</div>
-            <div class="stat-sub">İşlem bekleyen mazeretler</div>
         </div>
     </div>
     <div class="col-xl-3 col-md-6">
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-label">
-                    <i class="bx bx-check-circle mt-1"></i>
-                    Bu Ay Onaylanan
+        <div class="stat-card"
+            style="--card-color: #10b981; --card-rgb: 16, 185, 129; border-bottom: 3px solid var(--card-color) !important;">
+            <div class="card-body">
+                <div class="icon-label-container">
+                    <div class="icon-box">
+                        <i class='bx bx-check-circle fs-4' style="color: var(--card-color);"></i>
+                    </div>
+                    <div class="stat-trend up">
+                        <i class='bx bx-trending-up'></i> +15%
+                    </div>
                 </div>
-                <div class="stat-trend up">
-                    <i class="bx bx-trending-up"></i> +15%
-                </div>
+                <p class="stat-label-main">BU AY ONAYLANAN</p>
+                <h4 class="stat-value" id="stat-onaylanan">0</h4>
+                <p class="stat-sub">Başarıyla tamamlanan</p>
             </div>
-            <div class="stat-value" id="stat-onaylanan">0</div>
-            <div class="stat-sub">Başarıyla tamamlanan</div>
         </div>
     </div>
     <div class="col-xl-3 col-md-6">
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-label">
-                    <i class="bx bx-x-circle mt-1"></i>
-                    Bu Ay Reddedilen
+        <div class="stat-card"
+            style="--card-color: #64748b; --card-rgb: 100, 116, 139; border-bottom: 3px solid var(--card-color) !important;">
+            <div class="card-body">
+                <div class="icon-label-container">
+                    <div class="icon-box">
+                        <i class='bx bx-x-circle fs-4' style="color: var(--card-color);"></i>
+                    </div>
+                    <div class="stat-trend neutral">
+                        <i class='bx bx-minus'></i> Stabil
+                    </div>
                 </div>
-                <div class="stat-trend">
-                    <i class="bx bx-minus"></i> Stabil
-                </div>
+                <p class="stat-label-main">BU AY REDDEDİLEN</p>
+                <h4 class="stat-value" id="stat-reddedilen">0</h4>
+                <p class="stat-sub">Reddedilen talepler</p>
             </div>
-            <div class="stat-value" id="stat-reddedilen">0</div>
-            <div class="stat-sub">Reddedilen talepler</div>
         </div>
     </div>
 </div>
@@ -86,80 +98,69 @@ $title = 'Talepler & Mazeretler';
 <!-- Ana İçerik -->
 <div class="row">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-white border-bottom py-3">
-                <h5 class="mb-0 text-primary fw-bold">
-                    <i class="bx bx-transfer-alt me-2"></i>Talepler & Mazeretler
+        <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden;">
+            <div class="card-header bg-white border-0 py-4 px-4 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-dark fw-extrabold" style="letter-spacing: -0.02em;">
+                    <i class="bx bx-transfer-alt me-2 text-primary"></i>Talepler & Mazeretler
                 </h5>
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width: 150px;">
+                        <?php
+                        $aylar = [1 => 'Ocak', 2 => 'Şubat', 3 => 'Mart', 4 => 'Nisan', 5 => 'Mayıs', 6 => 'Haziran', 7 => 'Temmuz', 8 => 'Ağustos', 9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık'];
+                        echo Form::FormSelect2('filter-ay', $aylar, date('n'), '', 'calendar');
+                        ?>
+                    </div>
+                    <div style="width: 110px;">
+                        <?php
+                        $yillar = [];
+                        for ($y = date('Y'); $y >= 2024; $y--) {
+                            $yillar[$y] = $y;
+                        }
+                        echo Form::FormSelect2('filter-yil', $yillar, date('Y'), '', 'calendar');
+                        ?>
+                    </div>
+                    <div class="btn-group gap-2">
+                        <button class="btn btn-primary btn-sm px-3 rounded-pill" onclick="loadTaleplerVeMazeretler()">
+                            <i class="bx bx-refresh"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
+            <div class="card-body px-4 pt-0">
                 <!-- Tabs and Filters -->
-                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
-                    <ul class="nav nav-tabs nav-tabs-custom border-bottom-0 mb-0" id="talepTabs" role="tablist">
+                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom">
+                    <ul class="nav nav-tabs nav-tabs-custom mb-0" id="talepTabs" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active" id="degisim-tab" data-bs-toggle="tab"
                                 data-bs-target="#degisim-talepler" type="button" role="tab">
-                                <i class="bx bx-transfer me-1"></i>Değişim Talepleri
-                                <span class="badge bg-warning ms-1" id="degisim-badge">0</span>
+                                <span>Değişim Talepleri</span>
+                                <span class="badge bg-warning-subtle text-warning" id="degisim-badge">0</span>
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="mazeret-tab" data-bs-toggle="tab"
                                 data-bs-target="#mazeret-bildirimleri" type="button" role="tab">
-                                <i class="bx bx-error-circle me-1"></i>Mazeret Bildirimleri
-                                <span class="badge bg-danger ms-1" id="mazeret-badge">0</span>
+                                <span>Mazeretler</span>
+                                <span class="badge bg-danger-subtle text-danger" id="mazeret-badge">0</span>
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="nobet-talep-tab" data-bs-toggle="tab"
                                 data-bs-target="#nobet-talepleri" type="button" role="tab">
-                                <i class="bx bx-calendar-plus me-1"></i>Nöbet Talepleri
-                                <span class="badge bg-info ms-1" id="nobet-talep-badge">0</span>
+                                <span>Talep ve İstekler</span>
+                                <span class="badge bg-info-subtle text-info" id="nobet-talep-badge">0</span>
                             </button>
                         </li>
                     </ul>
 
                     <div class="d-flex align-items-center gap-2">
-                        <div style="width: 140px;">
-                            <?php
-                            $aylar = [
-                                1 => 'Ocak',
-                                2 => 'Şubat',
-                                3 => 'Mart',
-                                4 => 'Nisan',
-                                5 => 'Mayıs',
-                                6 => 'Haziran',
-                                7 => 'Temmuz',
-                                8 => 'Ağustos',
-                                9 => 'Eylül',
-                                10 => 'Ekim',
-                                11 => 'Kasım',
-                                12 => 'Aralık'
-                            ];
-                            echo Form::FormSelect2('filter-ay', $aylar, date('n'), 'Ay', 'calendar');
-                            ?>
-                        </div>
-                        <div style="width: 140px;">
-                            <?php
-                            $yillar = [];
-                            for ($y = date('Y'); $y >= 2024; $y--) {
-                                $yillar[$y] = $y;
-                            }
-                            echo Form::FormSelect2('filter-yil', $yillar, date('Y'), 'Yıl', 'calendar');
-                            ?>
-                        </div>
-                        <div class="btn-group btn-group-sm gap-2">
-                            <button class="btn btn-outline-info" id="btn-toggle-gecmis" onclick="toggleGecmis()"
-                                title="Geçmiş İşlemler">
-                                <i class="bx bx-history"></i> Geçmiş
-                            </button>
-                            <button class="btn btn-outline-success" onclick="exportToExcel()" title="Excele Aktar">
-                                <i class="bx bx-spreadsheet"></i> Excele Aktar
-                            </button>
-                            <button class="btn btn-outline-primary" onclick="loadTaleplerVeMazeretler()" title="Yenile">
-                                <i class="bx bx-refresh"></i>
-                            </button>
-                        </div>
+                        <button class="btn btn-outline-info btn-sm rounded-pill px-3" id="btn-toggle-gecmis"
+                            onclick="toggleGecmis()">
+                            <i class="bx bx-history"></i> Geçmiş İşlemler
+                        </button>
+                        <button class="btn btn-success btn-sm rounded-pill px-3" onclick="exportToExcel()">
+                            <i class="bx bx-spreadsheet"></i> Excel
+                        </button>
                     </div>
                 </div>
 
@@ -167,8 +168,8 @@ $title = 'Talepler & Mazeretler';
                     <!-- Değişim Talepleri Tab -->
                     <div class="tab-pane fade show active" id="degisim-talepler" role="tabpanel">
                         <div class="table-responsive">
-                            <table class="table table-hover align-middle" id="degisim-table" style="width: 100%;">
-                                <thead class="table-light">
+                            <table class="table table-premium align-middle" id="degisim-table" style="width: 100%;">
+                                <thead>
                                     <tr>
                                         <th>Talep Eden</th>
                                         <th>Talep Edilen</th>
@@ -194,8 +195,8 @@ $title = 'Talepler & Mazeretler';
                     <!-- Mazeret Bildirimleri Tab -->
                     <div class="tab-pane fade" id="mazeret-bildirimleri" role="tabpanel">
                         <div class="table-responsive">
-                            <table class="table table-hover align-middle" id="mazeret-table" style="width: 100%;">
-                                <thead class="table-light">
+                            <table class="table table-premium align-middle" id="mazeret-table" style="width: 100%;">
+                                <thead>
                                     <tr>
                                         <th>Personel</th>
                                         <th>Nöbet Tarihi</th>
@@ -220,8 +221,8 @@ $title = 'Talepler & Mazeretler';
                     <!-- Nöbet Talepleri Tab -->
                     <div class="tab-pane fade" id="nobet-talepleri" role="tabpanel">
                         <div class="table-responsive">
-                            <table class="table table-hover align-middle" id="nobet-talep-table" style="width: 100%;">
-                                <thead class="table-light">
+                            <table class="table table-premium align-middle" id="nobet-talep-table" style="width: 100%;">
+                                <thead>
                                     <tr>
                                         <th>Personel</th>
                                         <th>Talep Edilen Tarih</th>
@@ -353,10 +354,6 @@ $title = 'Talepler & Mazeretler';
         };
 
         function loadDegisimTalepleri(ay, yil) {
-            if ($.fn.dataTable && $.fn.dataTable.isDataTable('#degisim-table')) {
-                $('#degisim-table').DataTable().destroy();
-            }
-            $('#degisim-table thead tr:not(:first-child)').remove();
             const tbody = $('#degisim-tbody');
             tbody.html('<tr><td colspan="7" class="text-center text-muted py-4"><i class="bx bx-loader-alt bx-spin bx-lg"></i><p class="mb-0 mt-2">Yükleniyor...</p></td></tr>');
 
@@ -369,6 +366,11 @@ $title = 'Talepler & Mazeretler';
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: params
             }).then(r => r.json()).then(data => {
+                if ($.fn.dataTable && $.fn.dataTable.isDataTable('#degisim-table')) {
+                    $('#degisim-table').DataTable().destroy();
+                }
+                $('#degisim-table thead tr:not(:first-child)').remove();
+                
                 if (data.success && data.data.length > 0) {
                     let html = '';
                     let bekleyenCount = 0;
@@ -389,13 +391,14 @@ $title = 'Talepler & Mazeretler';
                         </tr>`;
                     });
                     tbody.html(html);
-                    if (typeof getDatatableOptions === 'function') $('#degisim-table').DataTable(getDatatableOptions());
+                    $('#degisim-table').DataTable(typeof getDatatableOptions === 'function' ? getDatatableOptions() : {});
                     if (!showHistory) {
                         document.getElementById('degisim-badge').textContent = bekleyenCount;
                         document.getElementById('stat-degisim-bekleyen').textContent = bekleyenCount;
                     }
                 } else {
-                    tbody.html(`<tr><td colspan="7" class="text-center text-muted py-4"><i class="bx bx-check-circle bx-lg text-success"></i><p class="mb-0 mt-2">${showHistory ? 'Geçmiş kayıt bulunamadı' : 'Bekleyen değişim talebi yok'}</p></td></tr>`);
+                    tbody.empty();
+                    $('#degisim-table').DataTable(typeof getDatatableOptions === 'function' ? getDatatableOptions() : {});
                     if (!showHistory) {
                         document.getElementById('degisim-badge').textContent = '0';
                         document.getElementById('stat-degisim-bekleyen').textContent = '0';
@@ -405,10 +408,6 @@ $title = 'Talepler & Mazeretler';
         }
 
         function loadMazeretBildirimleri(ay, yil) {
-            if ($.fn.dataTable && $.fn.dataTable.isDataTable('#mazeret-table')) {
-                $('#mazeret-table').DataTable().destroy();
-            }
-            $('#mazeret-table thead tr:not(:first-child)').remove();
             const tbody = $('#mazeret-tbody');
             tbody.html('<tr><td colspan="6" class="text-center text-muted py-4"><i class="bx bx-loader-alt bx-spin bx-lg"></i><p class="mb-0 mt-2">Yükleniyor...</p></td></tr>');
 
@@ -421,6 +420,11 @@ $title = 'Talepler & Mazeretler';
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: params
             }).then(r => r.json()).then(data => {
+                if ($.fn.dataTable && $.fn.dataTable.isDataTable('#mazeret-table')) {
+                    $('#mazeret-table').DataTable().destroy();
+                }
+                $('#mazeret-table thead tr:not(:first-child)').remove();
+
                 if (data.success && data.data.length > 0) {
                     let html = '';
                     data.data.forEach(m => {
@@ -438,13 +442,14 @@ $title = 'Talepler & Mazeretler';
                         </tr>`;
                     });
                     tbody.html(html);
-                    if (typeof getDatatableOptions === 'function') $('#mazeret-table').DataTable(getDatatableOptions());
+                    $('#mazeret-table').DataTable(typeof getDatatableOptions === 'function' ? getDatatableOptions() : {});
                     if (!showHistory) {
                         document.getElementById('mazeret-badge').textContent = data.data.length;
                         document.getElementById('stat-mazeret-bekleyen').textContent = data.data.length;
                     }
                 } else {
-                    tbody.html(`<tr><td colspan="6" class="text-center text-muted py-4"><i class="bx bx-check-circle bx-lg text-success"></i><p class="mb-0 mt-2">${showHistory ? 'Geçmiş mazeret bulunamadı' : 'Mazeret bildirimi yok'}</p></td></tr>`);
+                    tbody.empty();
+                    $('#mazeret-table').DataTable(typeof getDatatableOptions === 'function' ? getDatatableOptions() : {});
                     if (!showHistory) {
                         document.getElementById('mazeret-badge').textContent = '0';
                         document.getElementById('stat-mazeret-bekleyen').textContent = '0';
@@ -454,10 +459,6 @@ $title = 'Talepler & Mazeretler';
         }
 
         function loadPersonelNobetTalepleri(ay, yil) {
-            if ($.fn.dataTable && $.fn.dataTable.isDataTable('#nobet-talep-table')) {
-                $('#nobet-talep-table').DataTable().destroy();
-            }
-            $('#nobet-talep-table thead tr:not(:first-child)').remove();
             const tbody = $('#nobet-talep-tbody');
             tbody.html('<tr><td colspan="6" class="text-center text-muted py-4"><i class="bx bx-loader-alt bx-spin bx-lg"></i><p class="mb-0 mt-2">Yükleniyor...</p></td></tr>');
 
@@ -470,6 +471,11 @@ $title = 'Talepler & Mazeretler';
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: params
             }).then(r => r.json()).then(data => {
+                if ($.fn.dataTable && $.fn.dataTable.isDataTable('#nobet-talep-table')) {
+                    $('#nobet-talep-table').DataTable().destroy();
+                }
+                $('#nobet-talep-table thead tr:not(:first-child)').remove();
+
                 if (data.success && data.data.length > 0) {
                     let html = '';
                     data.data.forEach(t => {
@@ -487,12 +493,13 @@ $title = 'Talepler & Mazeretler';
                         </tr>`;
                     });
                     tbody.html(html);
-                    if (typeof getDatatableOptions === 'function') $('#nobet-talep-table').DataTable(getDatatableOptions());
+                    $('#nobet-talep-table').DataTable(typeof getDatatableOptions === 'function' ? getDatatableOptions() : {});
                     if (!showHistory) {
                         document.getElementById('nobet-talep-badge').textContent = data.data.length;
                     }
                 } else {
-                    tbody.html(`<tr><td colspan="6" class="text-center text-muted py-4"><i class="bx bx-check-circle bx-lg text-success"></i><p class="mb-0 mt-2">${showHistory ? 'Geçmiş talep bulunamadı' : 'Bekleyen nöbet talebi yok'}</p></td></tr>`);
+                    tbody.empty();
+                    $('#nobet-talep-table').DataTable(typeof getDatatableOptions === 'function' ? getDatatableOptions() : {});
                     if (!showHistory) {
                         document.getElementById('nobet-talep-badge').textContent = '0';
                     }
@@ -518,23 +525,23 @@ $title = 'Talepler & Mazeretler';
 
         function getDegisimDurumBadge(durum) {
             const badges = {
-                'beklemede': '<span class="badge bg-secondary">Personel Onayı Bekleniyor</span>',
-                'personel_onayladi': '<span class="badge bg-warning">Yönetici Onayı Bekleniyor</span>',
-                'onaylandi': '<span class="badge bg-success">Onaylandı</span>',
-                'reddedildi': '<span class="badge bg-danger">Reddedildi</span>',
-                'iptal': '<span class="badge bg-dark">İptal</span>'
+                'beklemede': '<span class="badge-premium badge-premium-secondary"><i class="bx bx-time-five"></i> Personel Onayı Bekleniyor</span>',
+                'personel_onayladi': '<span class="badge-premium badge-premium-warning"><i class="bx bx-hourglass"></i> Yönetici Onayı Bekleniyor</span>',
+                'onaylandi': '<span class="badge-premium badge-premium-success"><i class="bx bx-check-circle"></i> Onaylandı</span>',
+                'reddedildi': '<span class="badge-premium badge-premium-danger"><i class="bx bx-x-circle"></i> Reddedildi</span>',
+                'iptal': '<span class="badge-premium badge-premium-secondary">İptal</span>'
             };
-            return badges[durum] || '<span class="badge bg-secondary">Bilinmiyor</span>';
+            return badges[durum] || `<span class="badge-premium badge-premium-secondary">${durum}</span>`;
         }
 
         function getTalepDurumBadge(durum) {
             const badges = {
-                'beklemede': '<span class="badge bg-warning">Beklemede</span>',
-                'cozuldu': '<span class="badge bg-success">Onaylandı</span>',
-                'reddedildi': '<span class="badge bg-danger">Reddedildi</span>',
-                'iptal': '<span class="badge bg-dark">İptal</span>'
+                'beklemede': '<span class="badge-premium badge-premium-warning"><i class="bx bx-time-five"></i> Beklemede</span>',
+                'cozuldu': '<span class="badge-premium badge-premium-success"><i class="bx bx-check-circle"></i> Onaylandı</span>',
+                'reddedildi': '<span class="badge-premium badge-premium-danger"><i class="bx bx-x-circle"></i> Reddedildi</span>',
+                'iptal': '<span class="badge-premium badge-premium-secondary">İptal</span>'
             };
-            return badges[durum] || `<span class="badge bg-secondary">${durum}</span>`;
+            return badges[durum] || `<span class="badge-premium badge-premium-secondary">${durum}</span>`;
         }
 
         function formatDateShort(dateStr) {

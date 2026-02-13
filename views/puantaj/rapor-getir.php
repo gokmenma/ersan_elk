@@ -443,44 +443,56 @@ if (!empty($workTypeCols)) {
         font-size: 11px;
         color: var(--bs-heading-color, #333);
         position: sticky;
-        z-index: 20;
+        z-index: 100;
     }
 
     #raporTable thead tr:nth-child(1) th {
         top: 0;
-        z-index: 25;
+        z-index: 105;
         height: 40px;
     }
 
     #raporTable thead tr:nth-child(2) th {
         top: 40px;
-        z-index: 24;
+        z-index: 104;
         height: 40px;
     }
 
     #raporTable thead tr:nth-child(3) th {
         top: 80px;
-        z-index: 23;
+        z-index: 103;
         height: 65px;
     }
 
     #raporTable tfoot td {
         position: sticky;
-        z-index: 20;
+        z-index: 110;
+        /* Headers and sticky columns use 100+, footer needs to be high */
         background-color: #f8f9fa !important;
         height: 40px;
+        min-height: 40px;
+        max-height: 40px;
         padding: 0 8px !important;
-        border-top: 1px solid #dee2e6 !important;
+        border-top: 2px solid #dee2e6 !important;
+        box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05);
+        /* Subtle shadow to distinguish footer */
     }
 
     #raporTable tfoot tr.tfoot-general td {
         bottom: 0;
-        z-index: 22;
+        z-index: 112;
     }
 
     #raporTable tfoot tr.tfoot-action td {
         bottom: 40px;
-        z-index: 21;
+        z-index: 111;
+    }
+
+    /* First column in footer needs to be sticky on the left too */
+    #raporTable tfoot td.sticky-col-1 {
+        left: 0;
+        z-index: 160;
+        /* Higher than normal footer cells */
     }
 
     .sticky-col-1,
@@ -488,7 +500,7 @@ if (!empty($workTypeCols)) {
     .sticky-col-3,
     .kacakkontrol-name-col {
         position: sticky;
-        z-index: 10;
+        z-index: 80;
         background-color: var(--bs-card-bg, #fff) !important;
         color: var(--bs-body-color, #333) !important;
     }
@@ -517,7 +529,7 @@ if (!empty($workTypeCols)) {
     #raporTable thead .sticky-col-2,
     #raporTable thead .sticky-col-3,
     #raporTable thead .kacakkontrol-name-col {
-        z-index: 35;
+        z-index: 150;
         background-color: var(--bs-card-bg, #f8f9fa) !important;
     }
 
@@ -527,7 +539,9 @@ if (!empty($workTypeCols)) {
         overflow: auto;
         max-width: 100%;
         background: var(--bs-card-bg, #fff);
-        max-height: calc(100vh - 350px);
+        /* Height is now managed dynamically by adjustTableHeight() in raporlar.php */
+        min-height: 300px;
+        position: relative;
     }
 
     /* Dark Mode Overrides - Aggressive Targeting */
@@ -832,7 +846,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             <?php if ($hasSubCols): ?>
                 <tr class="tfoot-action">
                     <td colspan="<?= ($activeTab === 'kacakkontrol') ? '2' : '3' ?>"
-                        class="text-end text-muted sticky-col-1" style="font-size: 10px; left: 0; z-index: 25;">
+                        class="text-end text-muted sticky-col-1" style="font-size: 10px; left: 0; z-index: 165;">
                         İŞLEM BAZINDA GÜNLÜK TOPLAMLAR</td>
                     <?php for ($d = 1; $d <= $daysInMonth; $d++):
                         $isSunday = in_array($d, $sundayDays); ?>
@@ -865,7 +879,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             <?php endif; ?>
             <tr class="tfoot-general">
                 <td colspan="<?= ($activeTab === 'kacakkontrol') ? '2' : '3' ?>" class="text-end sticky-col-1"
-                    style="left: 0; z-index: 26; width: 390px; min-width: 390px; max-width: 390px;">
+                    style="left: 0; z-index: 166; width: 390px; min-width: 390px; max-width: 390px;">
                     GÜNLÜK TOPLAMLAR</td>
                 <?php for ($d = 1; $d <= $daysInMonth; $d++):
                     $isSunday = in_array($d, $sundayDays); ?>

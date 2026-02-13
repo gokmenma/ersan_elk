@@ -83,25 +83,43 @@ function getDatatableOptions() {
 
           // Türkçe arama için: column.search() yerine data attribute kullanıyoruz
           $(input).attr("data-col-idx", column.index());
+
+          let searchTimeout;
           $(input).on("input change", function (event) {
             let val = $(this).val();
+            let lastVal = $(this).data("last-search-val") || "";
+
+            // Eğer değer değişmediyse ve event "change" (blur) ise işlem yapma
+            if (val === lastVal && event.type === "change") {
+              return;
+            }
+
+            $(this).data("last-search-val", val);
+
             let colIdx = $(this).attr("data-col-idx");
             let table = $(this).closest("table").DataTable();
 
-            // Eğer flatpickr ise onChange zaten tetikliyor, input'u ignore edebiliriz ama change lazım olabilir
+            // Eğer flatpickr ise onChange zaten tetikliyor, input'u ignore edebiliriz
             if (
               $(this).hasClass("flatpickr-datatable") &&
               event.type === "input"
             )
               return;
 
-            // Eğer serverSide ise, DataTables'ın kendi arama mekanizmasını tetikle
-            if (table.settings()[0].oFeatures.bServerSide) {
-              table.column(colIdx).search(val).draw();
-            } else {
-              // Client-side ise sadece draw() yeterli (custom filter çalışır)
-              table.draw();
-            }
+            clearTimeout(searchTimeout);
+
+            // Gecikmeli arama (debounce) - especially useful for input event
+            let delay = event.type === "input" ? 300 : 0;
+
+            searchTimeout = setTimeout(function () {
+              // Eğer serverSide ise, DataTables'ın kendi arama mekanizmasını tetikle
+              if (table.settings()[0].oFeatures.bServerSide) {
+                table.column(colIdx).search(val).draw();
+              } else {
+                // Client-side ise sadece draw() yeterli (custom filter çalışır)
+                table.draw();
+              }
+            }, delay);
           });
 
           // Sütunun gerçekten görünür olup olmadığını kontrol et

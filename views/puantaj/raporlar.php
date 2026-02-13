@@ -251,6 +251,9 @@ foreach ($regionList as $r) {
                     updateUrl();
                     saveFiltersToStorage();
 
+                    // Trigger height adjustment after content is loaded
+                    setTimeout(adjustTableHeight, 100);
+
                     // Show help info if it's kacak tab
                     if (currentTab === 'kacakkontrol') {
                         $('#kacakHelpInfo').show();
@@ -307,6 +310,33 @@ foreach ($regionList as $r) {
             if (currentRegion) url.searchParams.set('region', currentRegion); else url.searchParams.delete('region');
             window.history.pushState({}, '', url);
         }
+
+        function adjustTableHeight() {
+            const $tableResp = $('.table-responsive');
+            if ($tableResp.length === 0 || document.fullscreenElement) return;
+
+            const windowHeight = $(window).height();
+            const tableTop = $tableResp.offset().top;
+            const buffer = 45; // Space for the page footer and a bit of margin
+            const availableHeight = windowHeight - tableTop - buffer;
+
+            if (availableHeight > 200) { // Don't make it too small
+                $tableResp.css({
+                    'max-height': availableHeight + 'px',
+                    'height': availableHeight + 'px' // Also set height to force footer to bottom if rows are few
+                });
+            }
+        }
+
+        // Adjust height on window resize
+        $(window).on('resize', function () {
+            adjustTableHeight();
+        });
+
+        // Adjust height when filter accordion is toggled
+        $('#collapseOne').on('shown.bs.collapse hidden.bs.collapse', function () {
+            adjustTableHeight();
+        });
 
         $('#raporTabs .nav-link').on('click', function () {
             $('#raporTabs .nav-link').removeClass('active');
@@ -576,17 +606,7 @@ foreach ($personelList as $p) {
         overflow-x: hidden;
     }
 
-    #raporTable tfoot td:nth-child(1) {
-        position: sticky;
-        left: 0;
-        z-index: 25;
-    }
 
-    .table-responsive {
-        max-height: calc(100vh - 380px);
-        overflow: auto;
-        border: 1px solid #dee2e6;
-    }
 
     .accordion-button:not(.collapsed) {
         background-color: transparent;

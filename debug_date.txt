@@ -102721,3 +102721,1554 @@ Result (String Match j.n.Y): 2026-02-01
 Input: 13.02.2026 Type: string
 Result (String Match j.n.Y): 2026-02-13
 ----------------
+Input: 01.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-01
+----------------
+Input: 13.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-13
+----------------
+Input: 09.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-09
+----------------
+Input: 13.02.2026 Type: string
+Result (String Match j.n.Y): 2026-02-13
+----------------
+Input: 09.02.2026 Type: string
+Result (String Match j.n.Y): 09/02/2026
+----------------
+Input: 13.02.2026 Type: string
+Result (String Match j.n.Y): 13/02/2026
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-09 Type: string
+Result (String Match Y-m-d): 2026-02-09
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-10 Type: string
+Result (String Match Y-m-d): 2026-02-10
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-11 Type: string
+Result (String Match Y-m-d): 2026-02-11
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-12 Type: string
+Result (String Match Y-m-d): 2026-02-12
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------
+Input: 2026-02-13 Type: string
+Result (String Match Y-m-d): 2026-02-13
+----------------

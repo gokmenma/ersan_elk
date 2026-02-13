@@ -15,6 +15,12 @@ $(document).ready(function () {
     tags: true,
     width: "100%",
   });
+
+  $("#rapor_sekmesi").select2({
+    dropdownParent: $("#actionModal"),
+    width: "100%",
+    placeholder: "Rapor Sekmesi Seçiniz",
+  });
 });
 
 $(document).on("click", "#actionKaydet", function () {

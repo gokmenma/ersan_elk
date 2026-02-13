@@ -129,10 +129,10 @@ if ($action == "demirbas-sil") {
 // Zimmet listesini getir
 if ($action == "zimmet-listesi") {
     try {
-        $zimmetler = $Zimmet->getAllWithDetails();
-        $rows = [];
+        $result = $Zimmet->getDatatableList($_POST);
 
-        foreach ($zimmetler as $z) {
+        $data = [];
+        foreach ($result['data'] as $z) {
             $enc_id = Security::encrypt($z->id);
             $teslimTarihi = date('d.m.Y', strtotime($z->teslim_tarihi));
 
@@ -150,35 +150,42 @@ if ($action == "zimmet-listesi") {
                     <span class="mdi mdi-undo font-size-18 text-success me-1"></span> İade Al
                 </a>' : '';
 
-            $rows[] = '<tr data-id="' . $enc_id . '">
-                <td class="text-center">' . $z->id . '</td>
-                <td><span class="badge bg-soft-primary text-primary">' . ($z->kategori_adi ?? '-') . '</span></td>
-                <td>' . ($z->demirbas_adi ?? '-') . '</td>
-                <td>' . ($z->marka ?? '-') . ' ' . ($z->model ?? '') . '</td>
-                <td>' . ($z->personel_adi ?? '-') . '</td>
-                <td class="text-center">' . $z->teslim_miktar . '</td>
-                <td>' . $teslimTarihi . '</td>
-                <td class="text-center">' . $durumBadge . '</td>
-                <td class="text-center">
-                    <div class="dropdown">
-                        <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="bx bx-dots-vertical-rounded font-size-24 text-dark"></i>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-end">
-                            ' . $iadeButton . '
-                            <a href="#" data-id="' . $enc_id . '" class="dropdown-item zimmet-detay">
-                                <span class="mdi mdi-eye font-size-18 text-info me-1"></span> Detay
+            $actions = '<div class="dropdown">
+                            <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bx bx-dots-vertical-rounded font-size-24 text-dark"></i>
                             </a>
-                            <a href="#" class="dropdown-item zimmet-sil" data-id="' . $enc_id . '">
-                                <span class="mdi mdi-delete font-size-18 text-danger me-1"></span> Sil
-                            </a>
-                        </div>
-                    </div>
-                </td>
-            </tr>';
+                            <div class="dropdown-menu dropdown-menu-end">
+                                ' . $iadeButton . '
+                                <a href="#" data-id="' . $enc_id . '" class="dropdown-item zimmet-detay">
+                                    <span class="mdi mdi-eye font-size-18 text-info me-1"></span> Detay
+                                </a>
+                                <a href="#" class="dropdown-item zimmet-sil" data-id="' . $enc_id . '">
+                                    <span class="mdi mdi-delete font-size-18 text-danger me-1"></span> Sil
+                                </a>
+                            </div>
+                        </div>';
+
+            $data[] = [
+                "id" => $z->id,
+                "enc_id" => $enc_id,
+                "kategori_adi" => '<span class="badge bg-soft-primary text-primary">' . ($z->kategori_adi ?? '-') . '</span>',
+                "demirbas_adi" => ($z->demirbas_adi ?? '-'),
+                "marka_model" => ($z->marka ?? '-') . ' ' . ($z->model ?? ''),
+                "personel_adi" => ($z->personel_adi ?? '-'),
+                "teslim_miktar" => '<div class="text-center">' . $z->teslim_miktar . '</div>',
+                "teslim_tarihi" => $teslimTarihi,
+                "durum" => '<div class="text-center">' . $durumBadge . '</div>',
+                "islemler" => '<div class="text-center">' . $actions . '</div>'
+            ];
         }
 
-        jsonResponse("success", "Başarılı", ["rows" => $rows]);
+        echo json_encode([
+            "draw" => intval($_POST['draw'] ?? 0),
+            "recordsTotal" => $result['recordsTotal'],
+            "recordsFiltered" => $result['recordsFiltered'],
+            "data" => $data
+        ]);
+        exit;
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());
     }

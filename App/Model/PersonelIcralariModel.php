@@ -31,7 +31,7 @@ class PersonelIcralariModel extends Model
         $sql = $this->db->prepare("
             SELECT * FROM {$this->table} 
             WHERE personel_id = ? AND durum = 'devam_ediyor' AND silinme_tarihi IS NULL 
-            ORDER BY created_at DESC
+            ORDER BY sira ASC, created_at DESC
         ");
         $sql->execute([$personel_id]);
         return $sql->fetchAll(PDO::FETCH_OBJ);

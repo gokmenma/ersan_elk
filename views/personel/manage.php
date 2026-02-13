@@ -337,8 +337,8 @@ $activeTab = $_GET['tab'] ?? 'home';
                     }
 
                     /* Global Feather Icon Fix */
-                    svg.feather,
-                    [data-feather] {
+                    #personelTabContent svg.feather,
+                    #personelTabContent [data-feather] {
                         width: 18px !important;
                         height: 18px !important;
                         stroke: currentColor;
@@ -534,8 +534,8 @@ $activeTab = $_GET['tab'] ?? 'home';
         if (typeof feather !== 'undefined') {
             feather.replace();
             // More aggressive replace for AJAX content
-            setTimeout(function() { feather.replace(); }, 50);
-            setTimeout(function() { feather.replace(); }, 300);
+            setTimeout(function () { feather.replace(); }, 50);
+            setTimeout(function () { feather.replace(); }, 300);
         }
     }
 

@@ -194,6 +194,7 @@ $isTuruAdlari = $Tanimlamalar->getIsTurleriAdlari();
                         <div class="col-md-12">
                             <?php
                             $raporSekmeleri = [
+                                '' => 'Seçiniz',
                                 'okuma' => 'Endeks Okuma',
                                 'kesme' => 'Kesme/Açma İşlm.',
                                 'sokme_takma' => 'Sayaç Sökme Takma',

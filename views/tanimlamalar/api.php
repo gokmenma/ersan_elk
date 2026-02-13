@@ -197,11 +197,11 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
             "id" => $id,
             "type" => 0, // İş türü için type 0
             "grup" => "is_turu",
-            "is_turu_ucret" => Helper::formattedMoneyToNumber($_POST["is_turu_ucret"]),
-            "is_emri_sonucu" => $_POST["is_emri_sonucu"],
-            "tur_adi" => $_POST["is_turu"],
-            "rapor_sekmesi" => $_POST["rapor_sekmesi"],
-            "aciklama" => $_POST["aciklama"],
+            "is_turu_ucret" => Helper::formattedMoneyToNumber($_POST["is_turu_ucret"] ?? "0"),
+            "is_emri_sonucu" => $_POST["is_emri_sonucu"] ?? "",
+            "tur_adi" => $_POST["is_turu"] ?? "",
+            "rapor_sekmesi" => $_POST["rapor_sekmesi"] ?? "",
+            "aciklama" => $_POST["aciklama"] ?? "",
         ];
 
         if ($id == 0) {
