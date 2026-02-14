@@ -1,3 +1,37 @@
+// Turkish toUpper Helper
+function turkishToUpper(str) {
+  if (!str) return "";
+  var letters = {
+    i: "İ",
+    ş: "Ş",
+    ğ: "Ğ",
+    ü: "Ü",
+    ö: "Ö",
+    ç: "Ç",
+    ı: "I",
+  };
+  return str
+    .replace(/(([iışğüöçı]))/g, function (letter) {
+      return letters[letter];
+    })
+    .toUpperCase();
+}
+
+const monthMap = {
+  OCAK: 1,
+  ŞUBAT: 2,
+  MART: 3,
+  NİSAN: 4,
+  MAYIS: 5,
+  HAZİRAN: 6,
+  TEMMUZ: 7,
+  AĞUSTOS: 8,
+  EYLÜL: 9,
+  EKİM: 10,
+  KASIM: 11,
+  ARALIK: 12,
+};
+
 $(document).ready(function () {
   // Yıl değiştiğinde sayfayı yenile
   $("#yilSelect").on("change", function () {
@@ -128,10 +162,76 @@ $(document).ready(function () {
     return false;
   });
 
+  // Dönem Ay/Yıl Değiştiğinde Bilgileri Güncelle
+  function updateDonemBilgileri() {
+    const ayVal = $("#donem_ay").val();
+    const yilVal = $("#donem_yil").val();
+
+    if (ayVal && yilVal) {
+      const ayAd = $("#donem_ay option:selected").text();
+      const donemAdi = turkishToUpper(ayAd) + " " + yilVal;
+      $("#donem_adi_hidden").val(donemAdi);
+
+      // Başlangıç ve Bitiş tarihlerini hesapla
+      const month = parseInt(ayVal) - 1;
+      const year = parseInt(yilVal);
+
+      const firstDayDate = new Date(year, month, 1);
+      const lastDayDate = new Date(year, month + 1, 0);
+
+      const fDay = String(firstDayDate.getDate()).padStart(2, "0");
+      const fMonth = String(firstDayDate.getMonth() + 1).padStart(2, "0");
+      const fYear = firstDayDate.getFullYear();
+      const firstDay = `${fDay}.${fMonth}.${fYear}`;
+
+      const lDay = String(lastDayDate.getDate()).padStart(2, "0");
+      const lMonth = String(lastDayDate.getMonth() + 1).padStart(2, "0");
+      const lYear = lastDayDate.getFullYear();
+      const lastDay = `${lDay}.${lMonth}.${lYear}`;
+
+      $("#baslangic_tarihi").val(firstDay);
+      $("#bitis_tarihi").val(lastDay);
+    }
+  }
+
+  $(document).on("change", "#donem_ay, #donem_yil", function () {
+    updateDonemBilgileri();
+  });
+
+  // Modal açıldığında ilk hesaplamayı yap
+  $("#yeniDonemModal").on("shown.bs.modal", function () {
+    updateDonemBilgileri();
+  });
+
+  // Düzenleme Modalı İçin Bilgi Güncelleme
+  function updateEditDonemBilgileri() {
+    const ayVal = $("#edit_donem_ay").val();
+    const yilVal = $("#edit_donem_yil").val();
+    if (ayVal && yilVal) {
+      const ayAd = $("#edit_donem_ay option:selected").text();
+      const donemAdi = turkishToUpper(ayAd) + " " + yilVal;
+      $("#edit_donem_adi_hidden").val(donemAdi);
+    }
+  }
+
+  $(document).on("change", "#edit_donem_ay, #edit_donem_yil", function () {
+    updateEditDonemBilgileri();
+  });
+
   // Dönem Adı Düzenle Butonu
   $(document).on("click", "#btnEditDonemAdi, #btnHeaderEditDonem", function () {
     const currentName = $("#displayDonemAdi").text().trim();
-    $("#edit_donem_adi").val(currentName);
+    const parts = currentName.split(" ");
+
+    if (parts.length >= 2) {
+      const year = parts.pop();
+      const monthName = turkishToUpper(parts.join(" "));
+      const monthIndex = monthMap[monthName] || "";
+
+      $("#edit_donem_ay").val(monthIndex).trigger("change.select2");
+      $("#edit_donem_yil").val(year).trigger("change.select2");
+      $("#edit_donem_adi_hidden").val(currentName);
+    }
     showModal("modalDonemGuncelle");
   });
 

@@ -786,20 +786,40 @@ $ek_odeme_turleri = [
                 </div>
                 <form id="formYeniDonem">
                     <div class="modal-body">
-                        <div class="mb-3">
-
-                            <?php
-                            echo Form::FormFloatInput(
-                                type: 'text',
-                                name: "donem_adi",
-                                value: '',
-                                placeholder: "Örn: Ocak 2026",
-                                label: "Dönem Adı",
-                                icon: 'calendar',
-                                required: true
-                            )
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <?php
+                                echo Form::FormSelect2(
+                                    name: 'donem_ay',
+                                    options: \App\Helper\Date::MONTHS,
+                                    selectedValue: date('n'),
+                                    label: 'Ay',
+                                    icon: 'calendar',
+                                    class: 'form-control select2',
+                                    attributes: 'id="donem_ay"'
+                                );
                                 ?>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <?php
+                                $years = [];
+                                $currentYear = date('Y');
+                                for ($i = $currentYear - 1; $i <= $currentYear + 5; $i++) {
+                                    $years[$i] = $i;
+                                }
+                                echo Form::FormSelect2(
+                                    name: 'donem_yil',
+                                    options: $years,
+                                    selectedValue: $currentYear,
+                                    label: 'Yıl',
+                                    icon: 'calendar',
+                                    class: 'form-control select2',
+                                    attributes: 'id="donem_yil"'
+                                );
+                                ?>
+                            </div>
                         </div>
+                        <input type="hidden" name="donem_adi" id="donem_adi_hidden">
                         <div class="row">
                             <div class="col-md-6 mb-3">
 
@@ -1254,20 +1274,40 @@ $ek_odeme_turleri = [
                 <form id="formDonemGuncelle">
                     <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
                     <div class="modal-body">
-                        <div class="mb-3">
-                            <?php
-                            echo Form::FormFloatInput(
-                                type: 'text',
-                                name: "donem_adi",
-                                value: $selectedDonem ? $selectedDonem->donem_adi : '',
-                                placeholder: "Örn: Ocak 2026",
-                                label: "Dönem Adı",
-                                icon: 'calendar',
-                                required: true,
-                                attributes: 'id="edit_donem_adi"'
-                            )
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <?php
+                                echo Form::FormSelect2(
+                                    name: 'edit_donem_ay',
+                                    options: \App\Helper\Date::MONTHS,
+                                    selectedValue: '',
+                                    label: 'Ay',
+                                    icon: 'calendar',
+                                    class: 'form-control select2',
+                                    attributes: 'id="edit_donem_ay"'
+                                );
                                 ?>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <?php
+                                $years = [];
+                                $currentYear = date('Y');
+                                for ($i = $currentYear - 1; $i <= $currentYear + 5; $i++) {
+                                    $years[$i] = $i;
+                                }
+                                echo Form::FormSelect2(
+                                    name: 'edit_donem_yil',
+                                    options: $years,
+                                    selectedValue: '',
+                                    label: 'Yıl',
+                                    icon: 'calendar',
+                                    class: 'form-control select2',
+                                    attributes: 'id="edit_donem_yil"'
+                                );
+                                ?>
+                            </div>
                         </div>
+                        <input type="hidden" name="donem_adi" id="edit_donem_adi_hidden">
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>

@@ -979,6 +979,14 @@ $title = 'Nöbet Planlama';
                     info.el.appendChild(statusContainer);
                 }
 
+                // Nöbet Tipi İkonu (Görünürlüğü artırmak için)
+                if (props.nobet_tipi === 'hafta_sonu' || props.nobet_tipi === 'resmi_tatil') {
+                    const typeBadge = document.createElement('div');
+                    typeBadge.className = 'fc-event-type-badge ' + (props.nobet_tipi === 'hafta_sonu' ? 'weekend' : 'holiday');
+                    typeBadge.innerHTML = props.nobet_tipi === 'hafta_sonu' ? '<i class="bx bx-calendar-star"></i> HS' : '<i class="bx bx-flag"></i> RT';
+                    info.el.appendChild(typeBadge);
+                }
+
                 // Sağ Tık Menüsü Listener
                 info.el.addEventListener('contextmenu', function (e) {
                     e.preventDefault();

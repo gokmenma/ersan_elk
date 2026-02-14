@@ -215,6 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'backgroundColor' => $color,
                         'borderColor' => $borderColor,
                         'textColor' => $textColor,
+                        'classNames' => $nobet->nobet_tipi == 'hafta_sonu' ? 'fc-event-weekend' : ($nobet->nobet_tipi == 'resmi_tatil' ? 'fc-event-holiday' : ''),
                         'extendedProps' => [
                             'personel_id' => Security::encrypt($nobet->personel_id),
                             'raw_personel_id' => $nobet->personel_id,
