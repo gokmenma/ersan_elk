@@ -50,21 +50,22 @@ try {
     $basliklar = [
         'A' => 'TC Kimlik No',
         'B' => 'Personel Ad Soyad',
-        'C' => 'Ekip',
-        'D' => 'Bölge',
-        'E' => 'Çalışma Günü',
-        'F' => 'Brüt Maaş',
-        'G' => 'SGK İşçi',
-        'H' => 'İşsizlik İşçi',
-        'I' => 'Gelir Vergisi',
-        'J' => 'Damga Vergisi',
-        'K' => 'Toplam Ek Ödeme',
-        'L' => 'Toplam Kesinti',
-        'M' => 'Net Maaş',
-        'N' => 'Banka',
-        'O' => 'Sodexo',
-        'P' => 'Diğer',
-        'Q' => 'Elden'
+        'C' => 'Maaş Tipi',
+        'D' => 'Ekip',
+        'E' => 'Bölge',
+        'F' => 'Çalışma Günü',
+        'G' => 'Brüt Maaş',
+        'H' => 'SGK İşçi',
+        'I' => 'İşsizlik İşçi',
+        'J' => 'Gelir Vergisi',
+        'K' => 'Damga Vergisi',
+        'L' => 'Toplam Ek Ödeme',
+        'M' => 'Toplam Kesinti',
+        'N' => 'Net Maaş',
+        'O' => 'Banka',
+        'P' => 'Sodexo',
+        'Q' => 'Diğer',
+        'R' => 'Elden'
     ];
 
     // Başlık stili
@@ -96,7 +97,7 @@ try {
     }
 
     // Başlık satırına stil uygula
-    $sheet->getStyle('A1:Q1')->applyFromArray($baslikStyle);
+    $sheet->getStyle('A1:R1')->applyFromArray($baslikStyle);
 
     // Veri stili
     $dataStyle = [
@@ -143,30 +144,31 @@ try {
 
         $sheet->setCellValueExplicit('A' . $satir, $personel->tc_kimlik_no ?? '', DataType::TYPE_STRING);
         $sheet->setCellValue('B' . $satir, $personel->adi_soyadi);
-        $sheet->setCellValue('C' . $satir, $personel->ekip_adi ?? '');
-        $sheet->setCellValue('D' . $satir, $personel->ekip_bolge ?? '');
-        $sheet->setCellValue('E' . $satir, $calismaGunu);
-        $sheet->setCellValue('F' . $satir, $personel->brut_maas ?? 0);
-        $sheet->setCellValue('G' . $satir, $personel->sgk_isci ?? 0);
-        $sheet->setCellValue('H' . $satir, $personel->issizlik_isci ?? 0);
-        $sheet->setCellValue('I' . $satir, $personel->gelir_vergisi ?? 0);
-        $sheet->setCellValue('J' . $satir, $personel->damga_vergisi ?? 0);
-        $sheet->setCellValue('K' . $satir, $hesaplananEkOdeme);
-        $sheet->setCellValue('L' . $satir, $personel->guncel_toplam_kesinti ?? 0);
-        $sheet->setCellValue('M' . $satir, $personel->net_maas ?? 0);
-        $sheet->setCellValue('N' . $satir, $personel->banka_odemesi ?? 0);
-        $sheet->setCellValue('O' . $satir, $personel->sodexo_odemesi ?? 0);
-        $sheet->setCellValue('P' . $satir, $personel->diger_odeme ?? 0);
-        $sheet->setCellValue('Q' . $satir, $eldenOdeme);
+        $sheet->setCellValue('C' . $satir, $personel->maas_durumu ?? '-');
+        $sheet->setCellValue('D' . $satir, $personel->ekip_adi ?? '');
+        $sheet->setCellValue('E' . $satir, $personel->ekip_bolge ?? '');
+        $sheet->setCellValue('F' . $satir, $calismaGunu);
+        $sheet->setCellValue('G' . $satir, $personel->brut_maas ?? 0);
+        $sheet->setCellValue('H' . $satir, $personel->sgk_isci ?? 0);
+        $sheet->setCellValue('I' . $satir, $personel->issizlik_isci ?? 0);
+        $sheet->setCellValue('J' . $satir, $personel->gelir_vergisi ?? 0);
+        $sheet->setCellValue('K' . $satir, $personel->damga_vergisi ?? 0);
+        $sheet->setCellValue('L' . $satir, $hesaplananEkOdeme);
+        $sheet->setCellValue('M' . $satir, $personel->guncel_toplam_kesinti ?? 0);
+        $sheet->setCellValue('N' . $satir, $personel->net_maas ?? 0);
+        $sheet->setCellValue('O' . $satir, $personel->banka_odemesi ?? 0);
+        $sheet->setCellValue('P' . $satir, $personel->sodexo_odemesi ?? 0);
+        $sheet->setCellValue('Q' . $satir, $personel->diger_odeme ?? 0);
+        $sheet->setCellValue('R' . $satir, $eldenOdeme);
 
         // Sayı formatları
-        $sheet->getStyle('F' . $satir . ':Q' . $satir)->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->getStyle('G' . $satir . ':R' . $satir)->getNumberFormat()->setFormatCode('#,##0.00');
 
         $satir++;
     }
 
     // Tüm tabloya stil uygula
-    $sheet->getStyle('A1:Q' . ($satir - 1))->applyFromArray($dataStyle);
+    $sheet->getStyle('A1:R' . ($satir - 1))->applyFromArray($dataStyle);
 
     // Dosya adı
     $donemAdiSlug = preg_replace('/[^a-zA-Z0-9]/', '_', $donem->donem_adi);

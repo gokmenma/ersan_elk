@@ -1364,9 +1364,24 @@ class BordroPersonelModel extends Model
         // ========== ÜCRETSİZ İZİN KESİNTİLERİ ==========
         // Dönem içindeki onaylanmış ücretsiz izinleri bulup kesinti olarak ekle
         // Günlük ücret = Brüt maaş / 30, Kesinti = Günlük ücret × Ücretsiz izin gün sayısı
-        $ucretsizIzinSonuc = $this->olusturUcretsizIzinKesintileri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, $brutMaas);
-        $ucretsizIzinKesinti = $ucretsizIzinSonuc['toplam_kesinti'] ?? 0;
-        $ucretsizIzinGunu = $ucretsizIzinSonuc['toplam_gun'] ?? 0;
+        // NOT: Prim Usülü çalışanlarda eksik günlerden dolayı maaş kesintisi yapılmaz
+        // Prim bazlı çalışanlarda gelir zaten yapılan işe göre hesaplandığı için gün bazlı kesinti uygulanmaz
+        if ($isPrimUsulu) {
+            // Prim Usülü: Mevcut ücretsiz izin kesintilerini sil (önceki hesaplamalardan kalan)
+            $this->db->prepare("
+                UPDATE personel_kesintileri 
+                SET silinme_tarihi = NOW() 
+                WHERE personel_id = ? AND donem_id = ? AND tur = 'izin_kesinti' AND silinme_tarihi IS NULL
+            ")->execute([$kayit->personel_id, $kayit->donem_id]);
+
+            // İzin gün bilgisini yine de al (fiili çalışma günü için gerekli)
+            $ucretsizIzinKesinti = 0;
+            $ucretsizIzinGunu = $this->getUcretsizIzinGunuDirekt($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+        } else {
+            $ucretsizIzinSonuc = $this->olusturUcretsizIzinKesintileri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, $brutMaas);
+            $ucretsizIzinKesinti = $ucretsizIzinSonuc['toplam_kesinti'] ?? 0;
+            $ucretsizIzinGunu = $ucretsizIzinSonuc['toplam_gun'] ?? 0;
+        }
 
         // ========== ÜCRETLİ İZİN BİLGİSİ ==========
         $ucretliIzinGunu = $this->getUcretliIzinGunu($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
@@ -1717,7 +1732,8 @@ class BordroPersonelModel extends Model
         // ========== ORANLI KESİNTİLERİN HESAPLANMASI (NET ÜZERİNDEN) ==========
         // Oranlı kesintiler için temel net hakediş (icra vb. öncesi)
         if ($isNetMaas || $isPrimUsulu) {
-            $hakedisNet = $brutMaas + $toplamEkOdeme - $ucretsizIzinKesinti;
+            // Prim Usülü: Ücretsiz izin kesintisi yapılmaz, hakediş sadece ek ödemeler/kesintiler ile hesaplanır
+            $hakedisNet = $brutMaas + $toplamEkOdeme - ($isPrimUsulu ? 0 : $ucretsizIzinKesinti);
         } else {
             $hakedisNet = $brutMaas
                 - $ucretsizIzinKesinti
@@ -1754,6 +1770,8 @@ class BordroPersonelModel extends Model
 
         // ========== ÖDEME DAĞILIMI ÖN HAZIRLIK ==========
         // Fiili çalışma günü (30 günden ücretsiz ve ücretli izinler düşülmüş)
+        // NOT: Gün tüm maaş tipleri için düşer (banka/sodexo oranlaması için gerekli)
+        // Prim Usülü'de fark: toplam alacağı gün bazlı düşmez, ama banka/sodexo düşer
         $fiiliCalismaGunu = 30 - $ucretsizIzinGunu - $ucretliIzinGunu;
         if ($fiiliCalismaGunu < 0)
             $fiiliCalismaGunu = 0;

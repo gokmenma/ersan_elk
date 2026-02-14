@@ -473,6 +473,7 @@ $ek_odeme_turleri = [
                                         <th class="text-center" style="width: 80px;">Birim</th>
                                         <th style="min-width: 150px;">Ekip / Bölge</th>
                                         <th>Personel</th>
+                                        <th class="text-center">Maaş Tipi</th>
                                         <th class="text-center">Gün</th>
                                         <th class="text-end">Toplam Alacağı</th>
                                         <th class="text-end">İcra Kesintisi</th>
@@ -647,6 +648,11 @@ $ek_odeme_turleri = [
                                                                 <?= htmlspecialchars($personel->tc_kimlik_no ?? '-') ?></small>
                                                         </div>
                                                     </div>
+                                                </td>
+                                                <td class="text-center" style="font-size: 12px;">
+                                                    <span class="badge bg-light text-dark border fw-medium px-2 py-1">
+                                                        <?= htmlspecialchars($personel->maas_durumu ?? '-') ?>
+                                                    </span>
                                                 </td>
                                                 <td class="text-center fw-bold text-secondary">
                                                     <?= $calismaGunu ?>
