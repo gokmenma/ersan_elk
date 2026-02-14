@@ -87,6 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
 
         $insertedCount = 0;
+        $updatedCount = 0;
         $skippedCount = 0;
         $skippedRows = []; // Atlanan satırların detayları
         $workTypeCache = []; // Aynı yükleme sırasında yeni eklenen türleri takip etmek için cache
@@ -131,22 +132,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
 
             // Generate Unique ID
-            // Using MD5 of key fields + Date to identify this specific record
-            // The user said: "islem_id alanı da eklenecek ve excelden veri yüklenirken eğer islem_kodu daha önce yüklendiyse onu atlaycak"
-            // Since we don't have an ID in Excel, we construct one.
-            $rawString = $uploadDate . '|' . $firma . '|' . $isEmriTipi . '|' . $ekip . '|' . $isEmriSonucu;
+            // API sorgulaması ile aynı formatta islem_id oluşturuyoruz
+            // Format: tarih|ekipKodu|isEmriTipi|isEmriSonucu (firma dahil değil, sıralama API ile aynı)
+            $rawString = $uploadDate . '|' . $ekip . '|' . $isEmriTipi . '|' . $isEmriSonucu;
             $islemId = md5($rawString);
 
-            // Check if exists
-            $exists = $Puantaj->db->prepare("SELECT COUNT(*) FROM yapilan_isler WHERE islem_id = ? AND silinme_tarihi IS NULL");
-            $exists->execute([$islemId]);
-            if ($exists->fetchColumn() > 0) {
-                $skippedCount++;
-                $skippedRows[] = [
-                    'satir' => $excelRowNum,
-                    'ekip' => $ekip,
-                    'neden' => 'Bu kayıt daha önce yüklenmiş (duplicate)'
-                ];
+            // Check if exists - varsa güncelle (UPSERT mantığı)
+            $existsStmt = $Puantaj->db->prepare("SELECT id, sonuclanmis, acik_olanlar FROM yapilan_isler WHERE islem_id = ? AND silinme_tarihi IS NULL");
+            $existsStmt->execute([$islemId]);
+            $existingRecord = $existsStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($existingRecord) {
+                // Mevcut kayıt varsa sonuclanmis ve acik_olanlar değerlerini güncelle
+                $updateStmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET sonuclanmis = ?, acik_olanlar = ? WHERE id = ?");
+                $updateStmt->execute([$sonuclanmis, $acikOlanlar, $existingRecord['id']]);
+                $updatedCount++;
                 continue;
             }
 
@@ -290,10 +290,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         $response['status'] = 'success';
         $response['inserted_count'] = $insertedCount;
+        $response['updated_count'] = $updatedCount;
         $response['skipped_count'] = $skippedCount;
         $response['skipped_rows'] = $skippedRows;
 
         $message = "İşlem tamamlandı. $insertedCount kayıt eklendi.";
+        if ($updatedCount > 0) {
+            $message .= " $updatedCount kayıt güncellendi.";
+        }
         if ($skippedCount > 0) {
             $message .= " $skippedCount kayıt atlandı.";
         }
@@ -302,7 +306,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // Log Action
         $SystemLog = new SystemLogModel();
         $userId = $_SESSION['user_id'] ?? 0;
-        $SystemLog->logAction($userId, 'Puantaj Yükleme', "Excel'den $insertedCount adet puantaj kaydı yüklendi.");
+        $SystemLog->logAction($userId, 'Puantaj Yükleme', "Excel'den $insertedCount adet puantaj kaydı yüklendi, $updatedCount adet güncellendi.");
 
     } catch (Exception $e) {
         $response['message'] = $e->getMessage();
