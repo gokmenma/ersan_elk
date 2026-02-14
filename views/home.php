@@ -430,11 +430,17 @@ if (Gate::allows("ana_sayfa")) {
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative"
             style="--card-color: #e74a3b; border-bottom: 3px solid var(--card-color) !important; --delay: 0.9s">
             <div class="card-body p-3 pb-2">
-                <div class="icon-label-container">
+                <div class="icon-label-container d-flex justify-content-between align-items-start">
                     <div class="icon-box" style="background: rgba(231, 74, 59, 0.1);">
                         <i class="bx bx-cut fs-4" style="color: #e74a3b;"></i>
                     </div>
-                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
+                    <div class="d-flex align-items-center gap-1">
+                        <a href="javascript:void(0);" class="btn-api-sync text-muted" data-action="online-puantaj-sorgula"
+                            data-bs-toggle="tooltip" title="Online sorgula(API)">
+                            <i class="bx bx-refresh fs-5"></i>
+                        </a>
+                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
+                    </div>
                 </div>
                 <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
                     KESME AÇMA</p>
@@ -468,11 +474,17 @@ if (Gate::allows("ana_sayfa")) {
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative"
             style="--card-color: #36b9cc; border-bottom: 3px solid var(--card-color) !important; --delay: 1.0s">
             <div class="card-body p-3 pb-2">
-                <div class="icon-label-container">
+                <div class="icon-label-container d-flex justify-content-between align-items-start">
                     <div class="icon-box" style="background: rgba(54, 185, 204, 0.1);">
                         <i class="bx bx-tachometer fs-4" style="color: #36b9cc;"></i>
                     </div>
-                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
+                    <div class="d-flex align-items-center gap-1">
+                        <a href="javascript:void(0);" class="btn-api-sync text-muted" data-action="online-icmal-sorgula"
+                            data-bs-toggle="tooltip" title="Online sorgula(API)">
+                            <i class="bx bx-refresh fs-5"></i>
+                        </a>
+                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
+                    </div>
                 </div>
                 <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
                     ENDEKS OKUMA</p>
@@ -1730,11 +1742,95 @@ if (Gate::allows("ana_sayfa")) {
             color: #d1d5db;
             border-color: rgba(108, 117, 125, 0.5);
         }
+
+        @media (max-width: 767.98px) {
+            .widget-item {
+                margin-bottom: 12px;
+            }
+
+            .bordro-summary-card .card-body {
+                display: grid !important;
+                grid-template-columns: 36px 1fr auto;
+                align-items: center;
+                gap: 0 12px;
+                padding: 12px !important;
+            }
+
+            .icon-label-container {
+                display: contents !important;
+            }
+
+            .icon-box {
+                width: 36px !important;
+                height: 36px !important;
+                grid-column: 1 !important;
+                grid-row: 1 / span 2 !important;
+                margin: 0 !important;
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .icon-box i {
+                font-size: 1.1rem !important;
+            }
+
+            /* Target the tag/sync container on the right */
+            .icon-label-container>span,
+            .icon-label-container>div:not(.icon-box) {
+                grid-column: 3 !important;
+                grid-row: 1 / span 2 !important;
+                justify-self: end;
+            }
+
+            .bordro-summary-card .card-body>p {
+                grid-column: 2 !important;
+                grid-row: 1 !important;
+                margin: 0 !important;
+                line-height: 1.2;
+                font-size: 0.65rem !important;
+                text-align: left !important;
+            }
+
+            .bordro-summary-card .card-body>h4 {
+                grid-column: 2 !important;
+                grid-row: 2 !important;
+                margin: 0 !important;
+                line-height: 1.2;
+                font-size: 1.1rem !important;
+                text-align: left !important;
+            }
+
+            .sub-text {
+                grid-column: 1 / span 3 !important;
+                margin-top: 8px !important;
+                padding-top: 6px !important;
+                border-top: 1px dashed rgba(0, 0, 0, 0.1);
+                font-size: 9px !important;
+            }
+
+            .card-footer-actions {
+                grid-column: 1 / span 3 !important;
+                padding-top: 8px !important;
+                margin-top: 6px !important;
+            }
+
+            .btn-xs {
+                padding: 2px 8px !important;
+                font-size: 9px !important;
+            }
+
+            .trend-badge {
+                font-size: 8px !important;
+                padding: 1px 4px !important;
+                vertical-align: middle;
+            }
+        }
     </style>
 
     <script src="https://code.jquery.com/ui/1.14.1/jquery-ui.js"></script>
     <script>
-        // Number Cou            nt                      er F           unction
+        // Number Cou            nt                                 er F           unction
         function animateValue(obj, start, end, duration) {
             let startTimestamp = null;
             const step = (timestamp) => {
@@ -2343,6 +2439,7 @@ if (Gate::allows("ana_sayfa")) {
             // Dashboard Sortable Logic
             dashboard.sortable({
                 handle: ".card-header, .card-header-flex, .bordro-summary-card",
+                cancel: ".btn-api-sync",
                 placeholder: "ui-sortable-placeholder",
                 start: function (e, ui) {
                     const classes = ui.item.attr('class');
@@ -2429,6 +2526,61 @@ if (Gate::allows("ana_sayfa")) {
 
                 const oldValue = parseInt(statValue.text().replace(/[^0-9]/g, '')) || 0;
                 animateValue(statValue[0], oldValue, newValue, 800);
+            });
+
+            // Online API Sync Logic
+            $(document).on('click', '.btn-api-sync', function (e) {
+                e.preventDefault();
+                const $btn = $(this);
+                const $icon = $btn.find('i');
+                const action = $btn.data('action');
+                const today = '<?php echo date('Y-m-d'); ?>';
+                const firmaId = '<?php echo $_SESSION['firma_id'] ?? 17; ?>';
+
+                if ($btn.hasClass('syncing')) return;
+
+                $btn.addClass('syncing');
+                $icon.addClass('bx-spin text-primary');
+
+                $.ajax({
+                    url: 'views/puantaj/api.php',
+                    type: 'POST',
+                    data: {
+                        action: action,
+                        baslangic_tarihi: today,
+                        bitis_tarihi: today,
+                        ilk_firma: firmaId,
+                        son_firma: firmaId
+                    },
+                    success: function (response) {
+                        $btn.removeClass('syncing');
+                        $icon.removeClass('bx-spin text-primary');
+
+                        try {
+                            const res = JSON.parse(response);
+                            if (res.status === 'success') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Sorgulama Başarılı',
+                                    text: (res.yeni_kayit || 0) + ' adet yeni kayıt eklendi.',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire('Hata', res.message || 'Sorgulama sırasında bir hata oluştu.', 'error');
+                            }
+                        } catch (err) {
+                            Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
+                        }
+                    },
+                    error: function () {
+                        $btn.removeClass('syncing');
+                        $icon.removeClass('bx-spin text-primary');
+                        Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
+                    }
+                });
             });
         });
     </script>
