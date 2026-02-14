@@ -14,6 +14,8 @@ use App\Helper\Helper;
 use App\Model\PermissionsModel;
 use App\Model\PuantajModel;
 use App\Model\EndeksOkumaModel;
+use App\Model\NobetModel;
+use App\Model\PersonelHareketleriModel;
 
 $personelModel = new PersonelModel();
 $avansModel = new AvansModel();
@@ -22,8 +24,14 @@ $talepModel = new TalepModel();
 $systemLogModel = new SystemLogModel();
 $puantajModel = new PuantajModel();
 $endeksOkumaModel = new EndeksOkumaModel();
+$nobetModel = new NobetModel();
+$hareketModel = new PersonelHareketleriModel();
 
 if (Gate::allows("ana_sayfa")) {
+
+    $bugun = date('Y-m-d');
+    $nobetciler = $nobetModel->getNobetlerByTarih($bugun);
+    $gec_kalan_sayisi = $hareketModel->getGecKalanlarCount($_SESSION['firma_id'] ?? null);
 
     // Dashboard Ayarlarını Çerezden Oku
     $extraStats = $personelModel->getAdvancedDashboardStats();
@@ -345,6 +353,79 @@ if (Gate::allows("ana_sayfa")) {
     <?php $widgets['widget-bekleyen-talepler'] = ob_get_clean();
 
     ob_start(); ?>
+    <div class="col-md-2 widget-item" id="widget-gec-kalanlar">
+        <a href="index.php?p=personel-takip/list&tab=tabGecKalanlar" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+                style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important; --delay: 0.65s">
+                <div class="card-body p-3 pb-2">
+                    <div class="icon-label-container">
+                        <div class="icon-box" style="background: rgba(244, 106, 106, 0.1);">
+                            <i class="bx bx-alarm-exclamation fs-4" style="color: #f46a6a;"></i>
+                        </div>
+                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">GECİKME</span>
+                    </div>
+                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GEÇ KALANLAR</p>
+                    <h4 class="mb-0 fw-bold bordro-text-heading text-danger">
+                        <?php echo $gec_kalan_sayisi ?? 0; ?>
+                    </h4>
+                    <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün geç kalanlar</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <?php $widgets['widget-gec-kalanlar'] = ob_get_clean();
+
+    ob_start(); ?>
+    <div class="col-md-2 widget-item" id="widget-nobetciler">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important; --delay: 0.75s">
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="icon-label-container">
+                        <div class="icon-box" style="background: rgba(85, 110, 230, 0.1);">
+                            <i class="bx bx-calendar-star fs-4" style="color: #556ee6;"></i>
+                        </div>
+                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">NÖBET</span>
+                    </div>
+                    <a href="index.php?p=nobet/list" class="btn btn-sm btn-soft-primary rounded-pill">
+                        <i class="bx bx-calendar"></i> Takvim
+                    </a>
+                </div>
+                <p class="text-muted mb-2 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">BUGÜNKÜ NÖBETÇİLER</p>
+
+                <?php if (empty($nobetciler)): ?>
+                    <div class="text-center py-2">
+                        <p class="text-muted mb-0 small">Kayıt yok</p>
+                    </div>
+                <?php else: ?>
+                    <div class="nobetci-list" style="max-height: 120px; overflow-y: auto;">
+                        <?php foreach (array_slice($nobetciler, 0, 5) as $nobet): ?>
+                            <div class="d-flex align-items-center mb-2">
+                                <img src="<?php echo !empty($nobet->resim_yolu) ? $nobet->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
+                                    class="rounded-circle avatar-xs me-2" style="width: 28px; height: 28px;">
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <h6 class="mb-0 font-size-12 text-truncate"><?php echo $nobet->adi_soyadi; ?></h6>
+                                    <small class="text-muted font-size-11"><?php echo $nobet->cep_telefonu; ?></small>
+                                </div>
+                                <?php if ($nobet->cep_telefonu): ?>
+                                    <a href="tel:<?php echo $nobet->cep_telefonu; ?>" class="text-success ms-1">
+                                        <i class="bx bx-phone"></i>
+                                    </a>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+
+                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">
+                    <?php echo count($nobetciler); ?> personel nöbetçi
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php $widgets['widget-nobetciler'] = ob_get_clean();
+
+    ob_start(); ?>
     <div class="col-12 mb-3">
         <div class="d-flex justify-content-between align-items-center bg-white p-2 rounded shadow-sm">
             <h5 class="mb-0 text-primary fw-bold"><i class="bx bx-stats me-2"></i> Operasyonel İstatistikler</h5>
@@ -357,11 +438,17 @@ if (Gate::allows("ana_sayfa")) {
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative"
             style="--card-color: #858796; border-bottom: 3px solid var(--card-color) !important; --delay: 0.7s">
             <div class="card-body p-3 pb-2">
-                <div class="icon-label-container">
+                <div class="icon-label-container d-flex justify-content-between align-items-start">
                     <div class="icon-box" style="background: rgba(133, 135, 150, 0.1);">
                         <i class="bx bx-shield fs-4" style="color: #858796;"></i>
                     </div>
-                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
+                    <div class="d-flex align-items-center gap-1">
+                        <a href="javascript:void(0);" class="btn-api-sync text-muted" data-action="online-puantaj-sorgula"
+                            data-bs-toggle="tooltip" title="Online sorgula(API)">
+                            <i class="bx bx-refresh fs-5"></i>
+                        </a>
+                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
+                    </div>
                 </div>
                 <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
                     MÜHÜRLEME</p>
@@ -516,12 +603,18 @@ if (Gate::allows("ana_sayfa")) {
     <div class="col-md-2 widget-item" id="widget-gunluk-sayac-degisimi">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative"
             style="--card-color: #1cc88a; border-bottom: 3px solid var(--card-color) !important; --delay: 1.1s">
-            <div class="card-body p-3">
-                <div class="icon-label-container">
+            <div class="card-body p-3 pb-2">
+                <div class="icon-label-container d-flex justify-content-between align-items-start">
                     <div class="icon-box" style="background: rgba(28, 200, 138, 0.1);">
                         <i class="bx bx-refresh fs-4" style="color: #1cc88a;"></i>
                     </div>
-                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
+                    <div class="d-flex align-items-center gap-1">
+                        <a href="javascript:void(0);" class="btn-api-sync text-muted" data-action="online-puantaj-sorgula"
+                            data-bs-toggle="tooltip" title="Online sorgula(API)">
+                            <i class="bx bx-refresh fs-5"></i>
+                        </a>
+                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
+                    </div>
                 </div>
                 <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
                     SAYAÇ DEĞİŞİMİ</p>
@@ -983,6 +1076,20 @@ if (Gate::allows("ana_sayfa")) {
                                 <input type="checkbox" class="form-check-input widget-toggle me-2"
                                     data-widget="widget-bekleyen-talepler" checked>
                                 Bekleyen Talepler
+                            </label>
+                        </li>
+                        <li>
+                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-gec-kalanlar" checked>
+                                Geç Kalanlar
+                            </label>
+                        </li>
+                        <li>
+                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-nobetciler" checked>
+                                Bugünkü Nöbetçiler
                             </label>
                         </li>
                         <li>

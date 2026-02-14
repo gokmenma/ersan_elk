@@ -192,6 +192,22 @@ if (true) { // Always use unified logic for all standard tabs
                 foreach ($teams as $tId => $data) {
                     if ($filterPersonelId && $pId != $filterPersonelId)
                         continue;
+
+                    // Endeks okuma listesinde ekip kodu 101'den küçük olanları gösterme
+                    if ($activeTab === 'okuma') {
+                        $team = $teamById[$tId] ?? null;
+                        if (!$team)
+                            continue;
+                        if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
+                            $teamNo = (int) $m[1];
+                            if ($teamNo < 101)
+                                continue;
+                        } else {
+                            // Ekip adı beklenen formatta değilse gösterme
+                            continue;
+                        }
+                    }
+
                     $validPairs[$pId . '_' . $tId] = ['pId' => $pId, 'tId' => $tId];
                 }
             }
@@ -208,8 +224,16 @@ if (true) { // Always use unified logic for all standard tabs
         $gorev = $assign->gorev ?? '';
 
         if ($activeTab === 'okuma') {
-            if (in_array('Endeks Okuma', $personelDepts) || in_array('Okuma', $personelDepts))
-                $isValid = true;
+            if (in_array('Endeks Okuma', $personelDepts) || in_array('Okuma', $personelDepts)) {
+                // Endeks okuma listesinde ekip kodu 101'den küçük olanları gösterme
+                $team = $teamById[$assign->ekip_kodu_id] ?? null;
+                if ($team && preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
+                    $teamNo = (int) $m[1];
+                    if ($teamNo >= 101) {
+                        $isValid = true;
+                    }
+                }
+            }
         } elseif ($activeTab === 'kesme') {
             if (in_array('Kesme Açma', $personelDepts) || in_array('Kesme-Açma', $personelDepts))
                 $isValid = true;

@@ -457,4 +457,45 @@ class PersonelHareketleriModel extends Model
 
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
+
+    /**
+     * Belirli bir tarihteki geç kalan personel sayısını getirir
+     * @param int|null $firma_id
+     * @param string|null $tarih
+     * @param string $limit_saat
+     * @return int
+     */
+    public function getGecKalanlarCount($firma_id = null, $tarih = null, $limit_saat = '08:30')
+    {
+        $personeller = $this->getTumPersonelDurumu($firma_id, $tarih);
+        $gec_kalan = 0;
+        $gun = $tarih ?? date('Y-m-d');
+        $now = new \DateTime();
+
+        try {
+            $limit_time = new \DateTime($gun . ' ' . $limit_saat);
+        } catch (\Exception $e) {
+            $limit_time = new \DateTime($gun . ' 08:30');
+            $limit_saat = '08:30';
+        }
+
+        foreach ($personeller as $p) {
+            if ($p->durum === 'aktif') {
+                if (!empty($p->son_baslama) && $p->son_baslama !== '0000-00-00 00:00:00') {
+                    try {
+                        $baslama_dt = new \DateTime($p->son_baslama);
+                        if ($baslama_dt->format('Y-m-d') === $gun && $baslama_dt->format('H:i') > $limit_saat) {
+                            $gec_kalan++;
+                        }
+                    } catch (\Exception $e) {
+                    }
+                }
+            } elseif ($p->durum === 'baslamadi') {
+                if ($now > $limit_time) {
+                    $gec_kalan++;
+                }
+            }
+        }
+        return $gec_kalan;
+    }
 }

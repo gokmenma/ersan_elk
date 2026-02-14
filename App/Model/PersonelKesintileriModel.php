@@ -66,15 +66,14 @@ class PersonelKesintileriModel extends Model
 
     /**
      * Dönem için sürekli kesintiden otomatik oluşturulan kayıt var mı kontrol eder
-     * NOT: silinme_tarihi kontrolü YAPILMIYOR çünkü silinmiş kesintiler de sayılmalı.
-     * Bu sayede kullanıcı bir kesintiyi sildiğinde, maaş hesaplamasında tekrar oluşturulmaz.
+     * Soft-delete yapılan kayıtları dikkate almaz (yeniden oluşturulabilir)
      */
     public function donemdeKaynakKayitVarMi($ana_kesinti_id, $donem_id)
     {
         $sql = $this->db->prepare("
             SELECT COUNT(*) as adet 
             FROM {$this->table} 
-            WHERE ana_kesinti_id = ? AND donem_id = ?
+            WHERE ana_kesinti_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
         ");
         $sql->execute([$ana_kesinti_id, $donem_id]);
         return $sql->fetch(PDO::FETCH_OBJ)->adet > 0;

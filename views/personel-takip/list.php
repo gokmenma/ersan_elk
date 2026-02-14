@@ -443,6 +443,22 @@ $title = "Saha Personel Takibi";
 
         // Sayfa yenilendiğinde aktif olan tabın verisini yükle
         setTimeout(function () {
+            // URL'den tab parametresini oku ve ilgili tabı aç
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab');
+            if (tabParam) {
+                const tabEl = document.querySelector('a[href="#' + tabParam + '"]');
+                if (tabEl) {
+                    const tab = new bootstrap.Tab(tabEl);
+                    tab.show();
+
+                    // Tab yükleme fonksiyonlarını manuel tetikle (bazı tablar show'da tetiklenmiyor olabilir)
+                    if (tabParam === 'tabHarita') initHarita();
+                    else if (tabParam === 'tabRapor') loadCalismaRaporu();
+                    else if (tabParam === 'tabGecKalanlar') loadGecKalanlar();
+                }
+            }
+
             const activeTab = document.querySelector('.nav-tabs .nav-link.active');
             if (activeTab) {
                 const target = activeTab.getAttribute('href');

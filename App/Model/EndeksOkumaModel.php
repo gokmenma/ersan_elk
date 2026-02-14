@@ -17,10 +17,12 @@ class EndeksOkumaModel extends Model
     public function getMonthlySummary($year, $month)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT personel_id, ekip_kodu_id, DAY(tarih) as gun, SUM(okunan_abone_sayisi) as toplam 
-                FROM $this->table 
-                WHERE firma_id = ? AND YEAR(tarih) = ? AND MONTH(tarih) = ? AND silinme_tarihi IS NULL
-                GROUP BY personel_id, ekip_kodu_id, DAY(tarih)";
+        $sql = "SELECT t.personel_id, t.ekip_kodu_id, DAY(t.tarih) as gun, SUM(t.okunan_abone_sayisi) as toplam 
+                FROM $this->table t
+                LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                WHERE t.firma_id = ? AND YEAR(t.tarih) = ? AND MONTH(t.tarih) = ? AND t.silinme_tarihi IS NULL
+                AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?(10[1-9]|1[1-9][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3,})'
+                GROUP BY t.personel_id, t.ekip_kodu_id, DAY(t.tarih)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $year, $month]);
@@ -39,7 +41,9 @@ class EndeksOkumaModel extends Model
         $sql = "SELECT t.*, p.adi_soyadi as personel_adi 
                 FROM $this->table t 
                 LEFT JOIN personel p ON t.personel_id = p.id 
-                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL";
+                LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL
+                AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?(10[1-9]|1[1-9][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3,})'";
         $params = [$firmaId];
 
         if ($startDate) {
@@ -74,7 +78,7 @@ class EndeksOkumaModel extends Model
         $params = ['firma_id' => $firmaId];
 
         // Temel sorgu
-        $baseWhere = "t.firma_id = :firma_id AND t.silinme_tarihi IS NULL";
+        $baseWhere = "t.firma_id = :firma_id AND t.silinme_tarihi IS NULL AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?(10[1-9]|1[1-9][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3,})'";
 
         // Tarih filtreleri
         if ($startDate) {
@@ -91,7 +95,7 @@ class EndeksOkumaModel extends Model
         }
 
         // Toplam kayıt sayısı (filtresiz)
-        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t WHERE $baseWhere");
+        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id WHERE $baseWhere");
         foreach ($params as $key => $val) {
             $totalQuery->bindValue(":$key", $val);
         }

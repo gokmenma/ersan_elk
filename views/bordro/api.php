@@ -460,6 +460,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'ikramiye' => 'İkramiye',
                     'yol' => 'Yol Yardımı',
                     'yemek' => 'Yemek Yardımı',
+                    'hafta_ici_nobet' => 'Hafta İçi Nöbet',
+                    'hafta_sonu_nobet' => 'Hafta Sonu Nöbet',
+                    'resmi_tatil_nobet' => 'Resmi Tatil Nöbeti',
                     'diger' => 'Diğer Ek Ödeme'
                 ];
 
@@ -639,6 +642,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $tumEkOdemeler = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
 
                 foreach ($tumEkOdemeler as $odeme) {
+                    // Adet bilgisini açıklamadan çek (Örn: (30 Adet x 40,00 ₺))
+                    $parsedAdet = 0;
+                    if (preg_match('/\((\d+)\s*Adet/i', $odeme->aciklama ?? '', $adetMatch)) {
+                        $parsedAdet = intval($adetMatch[1]);
+                    }
+
                     if (strpos($odeme->aciklama ?? '', '[Puantaj]') === 0) {
                         // Puantaj ödemesi - ayrı göster
                         $puantajOdemeler[] = $odeme;
@@ -649,10 +658,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         // Diğer ödemeler - grupla
                         $tur = $odeme->tur;
                         if (!isset($ekOdemelerNonPuantaj[$tur])) {
-                            $ekOdemelerNonPuantaj[$tur] = ['toplam' => 0, 'adet' => 0];
+                            $ekOdemelerNonPuantaj[$tur] = ['toplam' => 0, 'adet' => 0, 'kayit_sayisi' => 0];
                         }
                         $ekOdemelerNonPuantaj[$tur]['toplam'] += floatval($odeme->tutar);
-                        $ekOdemelerNonPuantaj[$tur]['adet']++;
+                        $ekOdemelerNonPuantaj[$tur]['adet'] += $parsedAdet;
+                        $ekOdemelerNonPuantaj[$tur]['kayit_sayisi']++;
                     }
                 }
 
@@ -662,15 +672,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Önce normal ek ödemeleri göster
                     foreach ($ekOdemelerNonPuantaj as $tur => $data) {
                         $turEtiket = $ekOdemeTurEtiketleri[$tur] ?? ucfirst($tur);
-                        $adetStr = $data['adet'] > 1 ? ' <small class="text-muted">(' . $data['adet'] . ' adet)</small>' : '';
-                        $html .= '<tr><td class="ps-3">' . htmlspecialchars($turEtiket) . $adetStr . '</td><td class="text-end pe-3 text-success">+' . number_format($data['toplam'], 2, ',', '.') . ' ₺</td></tr>';
+
+                        // Eğer açıklamadan adet gelmediyse ve birden fazla kayıt varsa kayıt sayısını göster
+                        $count = $data['adet'] > 0 ? $data['adet'] : ($data['kayit_sayisi'] > 1 ? $data['kayit_sayisi'] : 0);
+                        $adetStr = $count > 0 ? ' <small class="text-muted fw-normal">(Toplam ' . $count . ' Adet)</small>' : '';
+
+                        $html .= '<tr><td class="ps-3 fw-medium">' . htmlspecialchars($turEtiket) . $adetStr . '</td><td class="text-end pe-3 text-success fw-bold">+' . number_format($data['toplam'], 2, ',', '.') . ' ₺</td></tr>';
                     }
 
                     // Kaçak Kontrol ödemelerini ayrı göster
                     if (!empty($kacakKontrolOdemeler)) {
                         $html .= '<tr><td colspan="2" class="ps-3 pt-2 pb-1"><small class="text-muted fw-medium"><i class="bx bx-search-alt me-1"></i>Kaçak Kontrol Primi</small></td></tr>';
                         foreach ($kacakKontrolOdemeler as $kacak) {
-                            // [Kaçak Kontrol] 300 işlem × 200,00 ₺ = 60.000,00 ₺ - 52.000,00 ₺ (muaf) = 8.000,00 ₺
                             $aciklama = str_replace('[Kaçak Kontrol] ', '', $kacak->aciklama ?? '');
                             $html .= '<tr><td class="ps-4 small">' . htmlspecialchars($aciklama) . '</td><td class="text-end pe-3 text-success">+' . number_format($kacak->tutar, 2, ',', '.') . ' ₺</td></tr>';
                         }
@@ -686,8 +699,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 $toplamPuantajAdet += intval($adetMatch[1]);
                             }
                         }
-                        $adetBadge = $toplamPuantajAdet > 0 ? ' <span class="badge bg-primary bg-opacity-75 rounded-pill ms-1">Toplam ' . number_format($toplamPuantajAdet, 0, ',', '.') . ' Adet</span>' : '';
-                        $html .= '<tr><td colspan="2" class="ps-3 pt-2 pb-1 bg-light"><small class="text-primary fw-bold"><i class="bx bx-briefcase me-1"></i>Puantaj Ödemeleri' . $adetBadge . '</small></td></tr>';
+                        $adetText = $toplamPuantajAdet > 0 ? ' <span class="text-dark fw-normal ms-1 fs-xs">(Toplam ' . number_format($toplamPuantajAdet, 0, ',', '.') . ' Adet)</span>' : '';
+                        $html .= '<tr><td colspan="2" class="ps-3 pt-2 pb-1 bg-light"><small class="text-primary fw-bold"><i class="bx bx-briefcase me-1"></i>Puantaj Ödemeleri' . $adetText . '</small></td></tr>';
                         foreach ($puantajOdemeler as $puantaj) {
                             // [Puantaj] Sonuç (Adet x Birim ₺) formatından temiz açıklama çıkar
                             $aciklama = str_replace('[Puantaj] ', '', $puantaj->aciklama ?? '');
@@ -1123,7 +1136,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $parametre_kodu = trim($_POST['parametre_kodu'] ?? '');
                 $parametre_adi = trim($_POST['parametre_adi'] ?? '');
-                $deger = floatval($_POST['deger'] ?? 0);
+                $deger = floatval(str_replace(['.', ','], ['', '.'], $_POST['deger'] ?? '0'));
                 $gecerlilik_baslangic = $_POST['ayar_gecerlilik_baslangic'] ?? date('Y-m-d');
                 $aciklama = trim($_POST['ayar_aciklama'] ?? '');
 
@@ -1180,7 +1193,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $id = intval($_POST['id'] ?? 0);
                 $parametre_kodu = trim($_POST['parametre_kodu'] ?? '');
                 $parametre_adi = trim($_POST['parametre_adi'] ?? '');
-                $deger = floatval($_POST['deger'] ?? 0);
+                $deger = floatval(str_replace(['.', ','], ['', '.'], $_POST['deger'] ?? '0'));
                 $gecerlilik_baslangic = $_POST['ayar_gecerlilik_baslangic'] ?? date('Y-m-d');
                 $aciklama = trim($_POST['ayar_aciklama'] ?? '');
 

@@ -353,6 +353,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 break;
 
+            case 'update-nobet-tipi':
+                $id = Security::decrypt($_POST['nobet_id']);
+                $tip = $_POST['nobet_tipi'];
+
+                if (!$id || !$tip) {
+                    throw new Exception("Eksik bilgi.");
+                }
+
+                $result = $Nobet->updateNobet($id, ['nobet_tipi' => $tip]);
+                if ($result) {
+                    echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Nöbet tipi güncellendi.']);
+                } else {
+                    throw new Exception("Güncelleme başarısız.");
+                }
+                break;
+
             case 'drop-personel':
                 // Personel havuzundan takvime sürükle-bırak
                 $personel_id = Security::decrypt($_POST['personel_id']);

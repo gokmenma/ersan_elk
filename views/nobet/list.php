@@ -73,6 +73,70 @@ foreach ($uniqueDepts as $dName) {
 }
 ?>
 <link rel="stylesheet" href="views/nobet/assets/style.css?v=<?php echo filemtime('views/nobet/assets/style.css'); ?>">
+<style>
+    .custom-context-menu {
+        display: none;
+        position: fixed;
+        z-index: 10000;
+        background: white;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        border-radius: 10px;
+        padding: 6px 0;
+        min-width: 200px;
+        animation: menuFadeIn 0.2s ease-out;
+    }
+
+    @keyframes menuFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-5px) scale(0.95);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .custom-context-menu .menu-item {
+        padding: 10px 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #374151;
+        transition: all 0.2s;
+    }
+
+    .custom-context-menu .menu-item:hover {
+        background: #f9fafb;
+        color: #4f46e5;
+    }
+
+    .custom-context-menu .menu-item i {
+        font-size: 18px;
+        width: 20px;
+        text-align: center;
+    }
+
+    .custom-context-menu .menu-divider {
+        height: 1px;
+        background: #f1f5f9;
+        margin: 6px 0;
+    }
+
+    .custom-context-menu .menu-header {
+        padding: 6px 16px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+</style>
 
 
 <!-- Sayfa Başlığı -->
@@ -664,6 +728,25 @@ $title = 'Nöbet Planlama';
     </div>
 </div>
 
+<!-- Custom Context Menu -->
+<div id="custom-context-menu" class="custom-context-menu shadow-lg">
+    <div class="menu-header" id="menu-personel-name">PERSONEL ADI</div>
+    <div class="menu-divider"></div>
+    <div class="menu-item menu-item-tip" data-tip="hafta_sonu">
+        <i class="bx bx-calendar-week text-primary"></i>
+        <span>Hafta Sonu Nöbeti Yap</span>
+    </div>
+    <div class="menu-item menu-item-tip" data-tip="standart">
+        <i class="bx bx-calendar text-secondary"></i>
+        <span>Hafta İçi Nöbet Yap</span>
+    </div>
+    <div class="menu-item menu-item-tip" data-tip="resmi_tatil">
+        <i class="bx bx-flag text-warning"></i>
+        <span>Resmi Tatil Nöbeti Yap</span>
+    </div>
+   
+</div>
+
 <!-- FullCalendar -->
 <script src="assets/libs/fullcalendar/index.global.min.js"></script>
 
@@ -881,6 +964,36 @@ $title = 'Nöbet Planlama';
 
                     info.el.appendChild(statusContainer);
                 }
+
+                // Sağ Tık Menüsü Listener
+                info.el.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                    if (isReadOnlyPast) return;
+                    
+                    const x = e.clientX;
+                    const y = e.clientY;
+                    
+                    const contextMenu = document.getElementById('custom-context-menu');
+                    contextMenu.style.display = 'block';
+                    
+                    // Ekran sınırlarını kontrol et
+                    const menuWidth = contextMenu.offsetWidth || 200;
+                    const menuHeight = contextMenu.offsetHeight || 200;
+                    const winWidth = window.innerWidth;
+                    const winHeight = window.innerHeight;
+                    
+                    let finalX = x;
+                    let finalY = y;
+                    
+                    if (x + menuWidth > winWidth) finalX = winWidth - menuWidth - 10;
+                    if (y + menuHeight > winHeight) finalY = winHeight - menuHeight - 10;
+                    
+                    contextMenu.style.left = finalX + 'px';
+                    contextMenu.style.top = finalY + 'px';
+                    contextMenu.dataset.eventId = info.event.id;
+                    
+                    document.getElementById('menu-personel-name').textContent = info.event.title;
+                });
             },
 
             // Tooltip temizliği
@@ -1839,6 +1952,57 @@ $title = 'Nöbet Planlama';
                     loadMazeretBildirimleri();
                 }
             });
+        }
+
+        // Context Menu Handler
+        document.addEventListener('click', function (e) {
+            const contextMenu = document.getElementById('custom-context-menu');
+            if (contextMenu) contextMenu.style.display = 'none';
+        });
+
+        document.querySelectorAll('.menu-item-tip').forEach(item => {
+            item.addEventListener('click', function () {
+                const contextMenu = document.getElementById('custom-context-menu');
+                const eventId = contextMenu.dataset.eventId;
+                const tip = this.dataset.tip;
+
+                if (eventId && tip) {
+                    updateEventTipi(eventId, tip);
+                }
+            });
+        });
+
+        document.getElementById('menu-item-delete').addEventListener('click', function () {
+            const contextMenu = document.getElementById('custom-context-menu');
+            const eventId = contextMenu.dataset.eventId;
+            if (eventId) {
+                deleteNobet(eventId);
+            }
+        });
+
+        function updateEventTipi(id, tip) {
+            fetch('views/nobet/api.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    action: 'update-nobet-tipi',
+                    nobet_id: id,
+                    nobet_tipi: tip
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('success', data.message);
+                        calendar.refetchEvents();
+                    } else {
+                        showToast('error', data.message || 'Bir hata oluştu');
+                    }
+                })
+                .catch(error => {
+                    console.error('Hata:', error);
+                    showToast('error', 'Sunucu ile iletişim kurulamadı');
+                });
         }
 
         // Sayfa yüklendiğinde talepleri yükle

@@ -187,24 +187,28 @@ class BordroPersonelModel extends Model
     public function saveBordroHesaplama($id, $hesaplamaData)
     {
         $sql = $this->db->prepare("
-            UPDATE {$this->table} 
-            SET brut_maas = :brut_maas,
-                sgk_isci = :sgk_isci,
-                issizlik_isci = :issizlik_isci,
-                gelir_vergisi = :gelir_vergisi,
-                damga_vergisi = :damga_vergisi,
-                net_maas = :net_maas,
-                sgk_isveren = :sgk_isveren,
-                issizlik_isveren = :issizlik_isveren,
-                toplam_maliyet = :toplam_maliyet,
-                kumulatif_matrah = :kumulatif_matrah,
-                sodexo_odemesi = :sodexo_odemesi,
-                banka_odemesi = :banka_odemesi,
-                elden_odeme = :elden_odeme,
-                hesaplama_detay = :hesaplama_detay,
-                hesaplama_tarihi = NOW()
-            WHERE id = :id
-        ");
+        UPDATE {$this->table} 
+        SET brut_maas = :brut_maas,
+            sgk_isci = :sgk_isci,
+            issizlik_isci = :issizlik_isci,
+            gelir_vergisi = :gelir_vergisi,
+            damga_vergisi = :damga_vergisi,
+            net_maas = :net_maas,
+            sgk_isveren = :sgk_isveren,
+            issizlik_isveren = :issizlik_isveren,
+            toplam_maliyet = :toplam_maliyet,
+            kesinti_tutar = :kesinti_tutar,
+            prim_tutar = :prim_tutar,
+            fazla_mesai_tutar = :fazla_mesai_tutar,
+            calisan_gun = :calisan_gun,
+            kumulatif_matrah = :kumulatif_matrah,
+            sodexo_odemesi = :sodexo_odemesi,
+            banka_odemesi = :banka_odemesi,
+            elden_odeme = :elden_odeme,
+            hesaplama_detay = :hesaplama_detay,
+            hesaplama_tarihi = NOW()
+        WHERE id = :id
+    ");
 
         $sql->bindParam(':id', $id, PDO::PARAM_INT);
         $sql->bindParam(':brut_maas', $hesaplamaData['brut_maas']);
@@ -216,6 +220,12 @@ class BordroPersonelModel extends Model
         $sql->bindParam(':sgk_isveren', $hesaplamaData['sgk_isveren']);
         $sql->bindParam(':issizlik_isveren', $hesaplamaData['issizlik_isveren']);
         $sql->bindParam(':toplam_maliyet', $hesaplamaData['toplam_maliyet']);
+        $sql->bindParam(':kesinti_tutar', $hesaplamaData['toplam_kesinti']);
+        $sql->bindParam(':prim_tutar', $hesaplamaData['toplam_ek_odeme']);
+        $mesaiTutar = $hesaplamaData['fazla_mesai_tutar'] ?? 0;
+        $sql->bindParam(':fazla_mesai_tutar', $mesaiTutar);
+        $calisanGun = $hesaplamaData['calisan_gun'] ?? 30;
+        $sql->bindParam(':calisan_gun', $calisanGun);
         $kumulatif = $hesaplamaData['kumulatif_matrah'] ?? 0;
         $sql->bindParam(':kumulatif_matrah', $kumulatif);
         $sodexoOdemesi = $hesaplamaData['sodexo_odemesi'] ?? 0;
@@ -611,6 +621,93 @@ class BordroPersonelModel extends Model
                     'aciklama' => $aciklama,
                     'tutar' => $toplamTutar,
                     'tekrar_tipi' => 'tek_sefer',
+                    'durum' => 'onaylandi',
+                    'aktif' => 1,
+                    'created_at' => date('Y-m-d H:i:s')
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Personelin nöbetlerini dönem için ek ödeme olarak oluşturur
+     * 
+     * Nöbet tipleri (nobet_tipi):
+     * - standart: Hafta İçi
+     * - hafta_sonu: Hafta Sonu
+     * - resmi_tatil: Resmi Tatil
+     * - ozel: Özel
+     */
+    public function olusturNobetOdemeleri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
+    {
+        // 1. Önceki nöbet kaynaklı ek ödemeleri temizle (duplicate önlemek için)
+        // [Puantaj] ve [Nöbet] gibi otomatik etiketli olanları siliyoruz (Soft delete yapılmış olsa bile garanti için)
+        $this->db->prepare("
+            DELETE FROM personel_ek_odemeler 
+            WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[Nöbet]%'
+        ")->execute([$personel_id, $donem_id]);
+
+        // 2. Dönem içindeki onaylanmış nöbetleri çek
+        $sql = $this->db->prepare("
+            SELECT nobet_tipi, COUNT(*) as adet
+            FROM nobetler
+            WHERE personel_id = ? 
+            AND nobet_tarihi BETWEEN ? AND ?
+            AND silinme_tarihi IS NULL
+            AND (durum IS NULL OR durum NOT IN ('talep_edildi', 'reddedildi', 'iptal'))
+            GROUP BY nobet_tipi
+        ");
+        $sql->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
+        $nobetGruplari = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        if (empty($nobetGruplari)) {
+            return;
+        }
+
+        // 3. Ücretleri BordroParametreModel'den al
+        $paramModel = new \App\Model\BordroParametreModel();
+
+        $haftaIciParam = $paramModel->getByKod('hafta_ici_nobet', $baslangic_tarihi);
+        $haftaSonuParam = $paramModel->getByKod('hafta_sonu_nobet', $baslangic_tarihi);
+
+        $nobetUcretleri = [
+            'standart' => floatval($haftaIciParam->varsayilan_tutar ?? 0),
+            'hafta_sonu' => floatval($haftaSonuParam->varsayilan_tutar ?? 0),
+            'resmi_tatil' => floatval($haftaSonuParam->varsayilan_tutar ?? 0),
+            'ozel' => floatval($haftaSonuParam->varsayilan_tutar ?? 0)
+        ];
+
+        $PersonelEkOdemelerModel = new \App\Model\PersonelEkOdemelerModel();
+
+        foreach ($nobetGruplari as $nobet) {
+            $tip = $nobet->nobet_tipi ?: 'standart';
+            $adet = intval($nobet->adet);
+            $birimUcret = floatval($nobetUcretleri[$tip] ?? 0);
+
+            if ($adet > 0 && $birimUcret > 0) {
+                $toplamTutar = round($adet * $birimUcret, 2);
+                $tipEtiketi = match ($tip) {
+                    'standart' => 'Hafta İçi',
+                    'hafta_sonu' => 'Hafta Sonu',
+                    'resmi_tatil' => 'Resmi Tatil',
+                    'ozel' => 'Özel',
+                    default => 'Nöbet'
+                };
+
+                $aciklama = "[Nöbet] $tipEtiketi ($adet Adet x " . number_format($birimUcret, 2, ',', '.') . " ₺)";
+
+                $paramId = ($tip === 'standart') ? ($haftaIciParam->id ?? null) : ($haftaSonuParam->id ?? null);
+                $paramKod = ($tip === 'standart') ? 'hafta_ici_nobet' : 'hafta_sonu_nobet';
+
+                $PersonelEkOdemelerModel->saveWithAttr([
+                    'personel_id' => $personel_id,
+                    'donem_id' => $donem_id,
+                    'tur' => $paramKod,
+                    'parametre_id' => $paramId,
+                    'aciklama' => $aciklama,
+                    'tutar' => $toplamTutar,
+                    'tekrar_tipi' => 'tek_sefer',
+                    'durum' => 'onaylandi',
                     'aktif' => 1,
                     'created_at' => date('Y-m-d H:i:s')
                 ]);
@@ -758,13 +855,13 @@ class BordroPersonelModel extends Model
             $aciklamaPattern = "[Avans] $tarih - %";
 
 
-            // Bu avans için zaten kesinti var mı kontrol et (silinmiş olanlar dahil)
-            // NOT: silinme_tarihi kontrolü YAPILMIYOR çünkü silinmiş kesintiler de sayılmalı.
-            // Bu sayede kullanıcı bir kesintiyi sildiğinde, maaş hesaplamasında tekrar oluşturulmaz.
+            // Bu avans için zaten kesinti var mı kontrol et
+            // Soft-delete yapılan kayıtları dikkate alma (yeniden oluşturulacak)
             $mevcutKontrol = $this->db->prepare("
                 SELECT id FROM personel_kesintileri
                 WHERE personel_id = ? AND donem_id = ? AND tur = 'avans' 
                 AND aciklama LIKE ?
+                AND silinme_tarihi IS NULL
             ");
             $mevcutKontrol->execute([$personel_id, $donem_id, $aciklamaPattern]);
 
@@ -1068,28 +1165,24 @@ class BordroPersonelModel extends Model
                 $aciklama = "[Ücretsiz İzin] $turAdi ($gunSayisi gün x " . number_format($gunlukUcret, 2, ',', '.') . " ₺)";
                 $aciklamaPattern = "[Ücretsiz İzin] $turAdi (%";
 
-                // Bu izin türü için mevcut kesinti var mı kontrol et (silinmiş olanlar dahil)
-                // NOT: Silinmiş kayıtları da kontrol ediyoruz çünkü kullanıcı bir kesintiyi sildiğinde
-                // maaş hesaplamasında tekrar oluşturulmasını istemiyoruz.
+                // Bu izin türü için mevcut aktif kesinti var mı kontrol et
+                // Soft-delete yapılan kayıtları dikkate alma (yeniden oluşturulacak)
                 $mevcutKontrol = $this->db->prepare("
-                SELECT id, silinme_tarihi FROM personel_kesintileri
-                WHERE personel_id = ? AND donem_id = ? AND tur = 'izin_kesinti' 
-                AND aciklama LIKE ?
-            ");
+                    SELECT id FROM personel_kesintileri
+                    WHERE personel_id = ? AND donem_id = ? AND tur = 'izin_kesinti' 
+                    AND aciklama LIKE ?
+                    AND silinme_tarihi IS NULL
+                ");
                 $mevcutKontrol->execute([$personel_id, $donem_id, $aciklamaPattern]);
                 $mevcut = $mevcutKontrol->fetch(PDO::FETCH_OBJ);
 
                 if ($mevcut) {
-                    // Eğer kayıt silinmişse, yeniden oluşturma (kullanıcı bilinçli olarak silmiş)
-                    if ($mevcut->silinme_tarihi !== null && $mevcut->silinme_tarihi !== '' && $mevcut->silinme_tarihi !== '0000-00-00 00:00:00') {
-                        continue; // Silinmiş kayıt, atla
-                    }
-                    // Mevcut kayıt var ve silinmemiş, sadece tutarı ve açıklamayı güncelle (durumu koru)
+                    // Mevcut aktif kayıt var, sadece tutarı ve açıklamayı güncelle (durumu koru)
                     $updateSql = $this->db->prepare("
-                    UPDATE personel_kesintileri 
-                    SET tutar = ?, aciklama = ?, updated_at = NOW()
-                    WHERE id = ?
-                ");
+                        UPDATE personel_kesintileri 
+                        SET tutar = ?, aciklama = ?, updated_at = NOW()
+                        WHERE id = ?
+                    ");
                     $updateSql->execute([$kesinti, $aciklama, $mevcut->id]);
                 } else {
                     // Mevcut kayıt yok, yeni oluştur
@@ -1226,22 +1319,18 @@ class BordroPersonelModel extends Model
         if ($tutar > 0) {
             $aciklama = "[BES] Bireysel Emeklilik Kesintisi (%$oran)";
 
-            // Mevcut BES kesintisi var mı kontrol et (silinmiş olanlar dahil)
-            // NOT: Silinmiş kayıtları da kontrol ediyoruz çünkü kullanıcı bir kesintiyi sildiğinde
-            // maaş hesaplamasında tekrar oluşturulmasını istemiyoruz.
+            // Mevcut BES kesintisi var mı kontrol et
+            // Soft-delete yapılan kayıtları dikkate alma (yeniden oluşturulacak)
             $mevcutKontrol = $this->db->prepare("
-                SELECT id, silinme_tarihi FROM personel_kesintileri
+                SELECT id FROM personel_kesintileri
                 WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[BES]%'
+                AND silinme_tarihi IS NULL
             ");
             $mevcutKontrol->execute([$personel_id, $donem_id]);
             $mevcut = $mevcutKontrol->fetch(PDO::FETCH_OBJ);
 
             if ($mevcut) {
-                // Eğer kayıt silinmişse, yeniden oluşturma (kullanıcı bilinçli olarak silmiş)
-                if ($mevcut->silinme_tarihi !== null && $mevcut->silinme_tarihi !== '' && $mevcut->silinme_tarihi !== '0000-00-00 00:00:00') {
-                    return; // Silinmiş kayıt, atla
-                }
-                // Mevcut kayıt var ve silinmemiş, sadece tutarı güncelle (durumu koru)
+                // Mevcut aktif kayıt var, sadece tutarı güncelle (durumu koru)
                 $updateSql = $this->db->prepare("
                     UPDATE personel_kesintileri 
                     SET tutar = ?, aciklama = ?, updated_at = NOW()
@@ -1341,6 +1430,47 @@ class BordroPersonelModel extends Model
         // Net maaş tahmini (sürekli kayıtların oran hesabı için - brütün %70'i)
         $netMaasTahmini = $brutMaas * 0.70;
 
+        // ========== OTOMATİK KESİNTİ/EK ÖDEMELERİ TEMİZLE VE YENİDEN OLUŞTUR ==========
+        // Önce tüm otomatik oluşturulan kayıtları soft-delete yap
+        // Sonra fonksiyonlar güncel verilere göre yeniden oluşturacak
+        // Manuel eklenen kayıtlar (kullanıcının elle eklediği) korunur
+
+        // 1) Otomatik oluşturulan KESİNTİLERİ soft-delete
+        //    - Sürekli kesintiler (ana_kesinti_id NOT NULL)
+        //    - Avans kesintileri (tur = 'avans' ve açıklama [Avans] ile başlayan)
+        //    - İcra kesintileri (tur = 'icra')
+        //    - Ücretsiz izin kesintileri (tur = 'izin_kesinti')
+        //    - BES kesintileri (açıklama [BES] ile başlayan)
+        $this->db->prepare("
+            UPDATE personel_kesintileri 
+            SET silinme_tarihi = NOW() 
+            WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
+            AND (
+                ana_kesinti_id IS NOT NULL
+                OR tur = 'icra'
+                OR tur = 'izin_kesinti'
+                OR tur = 'avans'
+                OR aciklama LIKE '[BES]%'
+            )
+        ")->execute([$kayit->personel_id, $kayit->donem_id]);
+
+        // 2) Otomatik oluşturulan EK ÖDEMELERİ soft-delete  
+        //    - Sürekli ek ödemeler (ana_odeme_id NOT NULL)
+        //    - Puantaj ödemeleri (açıklama [Puantaj] ile başlayan)
+        //    - Nöbet ödemeleri (açıklama [Nöbet] ile başlayan)
+        //    - Kaçak kontrol primleri (açıklama [Kaçak Kontrol] ile başlayan)
+        $this->db->prepare("
+        UPDATE personel_ek_odemeler 
+        SET silinme_tarihi = NOW() 
+        WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
+        AND (
+            ana_odeme_id IS NOT NULL
+            OR aciklama LIKE '[Puantaj]%'
+            OR aciklama LIKE '[Nöbet]%'
+            OR aciklama LIKE '[Kaçak Kontrol]%'
+        )
+    ")->execute([$kayit->personel_id, $kayit->donem_id]);
+
         // ========== SÜREKLİ KESİNTİ VE EK ÖDEMELERİ DÖNEME AKTAR ==========
         // Bu işlem, aktif sürekli kayıtları bordro dönemine tek seferlik olarak ekler
         $this->olusturSurekliKesintiler($kayit->personel_id, $kayit->donem_id, $donem, $brutMaas, $netMaasTahmini);
@@ -1348,6 +1478,10 @@ class BordroPersonelModel extends Model
 
         // Puantaj (Yapılan İşler) Hesaplaması
         $this->olusturPuantajOdemeleri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+
+        // ========== NÖBET ÖDEMELERİ ==========
+        // Dönem içindeki onaylanmış nöbetleri bulup ek ödeme olarak ekle
+        $this->olusturNobetOdemeleri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
         // ========== KAÇAK KONTROL PRİMLERİ ==========
         // Personelin dönem içinde 260'ı aşan kaçak kontrol işlemleri için prim hesapla
@@ -1367,13 +1501,6 @@ class BordroPersonelModel extends Model
         // NOT: Prim Usülü çalışanlarda eksik günlerden dolayı maaş kesintisi yapılmaz
         // Prim bazlı çalışanlarda gelir zaten yapılan işe göre hesaplandığı için gün bazlı kesinti uygulanmaz
         if ($isPrimUsulu) {
-            // Prim Usülü: Mevcut ücretsiz izin kesintilerini sil (önceki hesaplamalardan kalan)
-            $this->db->prepare("
-                UPDATE personel_kesintileri 
-                SET silinme_tarihi = NOW() 
-                WHERE personel_id = ? AND donem_id = ? AND tur = 'izin_kesinti' AND silinme_tarihi IS NULL
-            ")->execute([$kayit->personel_id, $kayit->donem_id]);
-
             // İzin gün bilgisini yine de al (fiili çalışma günü için gerekli)
             $ucretsizIzinKesinti = 0;
             $ucretsizIzinGunu = $this->getUcretsizIzinGunuDirekt($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
@@ -1449,6 +1576,7 @@ class BordroPersonelModel extends Model
         $netEkOdemeler = 0;        // Direct net'e eklenecek
         $vergiliMatrahEkleri = 0;  // Sadece gelir vergisi matrahına eklenecek
         $sgkMatrahEkleri = 0;      // SGK matrahına eklenecek
+        $toplamMesaiTutar = 0;     // Özel olarak mesai tutarını ayır
         $toplamKesinti = 0;        // Net'ten düşülecek kesintiler
 
         // JSON detay için diziler
@@ -1466,6 +1594,10 @@ class BordroPersonelModel extends Model
                 'tutar' => $tutar,
                 'aciklama' => $odeme->aciklama ?? null
             ];
+
+            if ($odeme->tur === 'mesai') {
+                $toplamMesaiTutar += $tutar;
+            }
 
             if (!$parametre) {
                 // Parametre bulunamadıysa varsayılan olarak net ekle
@@ -2065,7 +2197,8 @@ class BordroPersonelModel extends Model
                 'issizlik_isveren_orani' => $issizlikIsverenOrani * 100,
                 'damga_vergisi_orani' => $damgaVergisiOrani * 100,
                 'calisma_gunu_sayisi' => $calismaGunuSayisi,
-                'asgari_ucret_net' => $isNetMaas || $isPrimUsulu ? ($asgariUcretNet ?? 0) : 0
+                'asgari_ucret_net' => $isNetMaas || $isPrimUsulu ? ($asgariUcretNet ?? 0) : 0,
+                'fazla_mesai_tutar' => round($toplamMesaiTutar, 2)
             ],
             'matrahlar' => [
                 'brut_maas' => round($brutMaas, 2),
@@ -2110,6 +2243,8 @@ class BordroPersonelModel extends Model
             'toplam_maliyet' => round($toplamMaliyet, 2),
             'toplam_kesinti' => round($toplamKesinti, 2),
             'toplam_ek_odeme' => round($toplamEkOdeme, 2),
+            'fazla_mesai_tutar' => round($toplamMesaiTutar, 2),
+            'calisan_gun' => 30 - $ucretsizIzinGunu,
             'sodexo_odemesi' => round($sodexoOdemesi, 2),
             'banka_odemesi' => round($bankaOdemesi, 2),
             'elden_odeme' => round($eldenOdeme, 2),

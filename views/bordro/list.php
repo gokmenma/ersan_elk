@@ -486,7 +486,7 @@ $ek_odeme_turleri = [
                                 <tbody>
                                     <?php if (empty($personeller)): ?>
                                         <tr>
-                                            <td colspan="13" class="text-center text-muted py-4">
+                                            <td colspan="12" class="text-center text-muted py-4">
                                                 <i class="bx bx-user-x fs-1 d-block mb-2"></i>
                                                 Bu döneme henüz personel eklenmemiş.<br>
                                                 <small>"Personelleri Güncelle" butonuna tıklayarak personelleri
@@ -597,15 +597,7 @@ $ek_odeme_turleri = [
                                                 <td>
                                                     <?php
                                                     if (!empty($personel->ekip_adi) && $personel->ekip_adi !== "YOK") {
-                                                        $badgeColors = [
-                                                            "bg-primary-subtle text-primary border-primary-subtle",
-                                                            "bg-success-subtle text-success border-success-subtle",
-                                                            "bg-info-subtle text-info border-info-subtle",
-                                                            "bg-warning-subtle text-warning border-warning-subtle",
-                                                            "bg-danger-subtle text-danger border-danger-subtle",
-                                                            "bg-secondary-subtle text-secondary border-secondary-subtle",
-                                                            "bg-dark-subtle text-dark border-dark-subtle",
-                                                        ];
+
 
                                                         $ekipler = explode(',', $personel->ekip_adi);
                                                         echo '<div class="d-flex flex-wrap">';
@@ -617,12 +609,17 @@ $ek_odeme_turleri = [
                                                             if (empty($cleanEkip))
                                                                 continue;
 
-                                                            // Hash function for color consistency
-                                                            $hash = 0;
-                                                            for ($i = 0; $i < strlen($cleanEkip); $i++) {
-                                                                $hash = ord($cleanEkip[$i]) + (($hash << 5) - $hash);
+                                                            // Departmana göre renk belirle
+                                                            $colorClass = "bg-secondary-subtle text-secondary border-secondary-subtle";
+                                                            if (strpos($deptUp, 'OKUMA') !== false) {
+                                                                $colorClass = "bg-primary-subtle text-primary border-primary-subtle";
+                                                            } elseif (strpos($deptUp, 'KESME') !== false) {
+                                                                $colorClass = "bg-danger-subtle text-danger border-danger-subtle";
+                                                            } elseif (strpos($deptUp, 'SAYAÇ') !== false || strpos($deptUp, 'DEGİŞ') !== false) {
+                                                                $colorClass = "bg-success-subtle text-success border-success-subtle";
+                                                            } elseif (strpos($deptUp, 'KAÇAK') !== false) {
+                                                                $colorClass = "bg-info-subtle text-info border-info-subtle";
                                                             }
-                                                            $colorClass = $badgeColors[abs($hash) % count($badgeColors)];
 
                                                             echo '<span class="badge ' . $colorClass . ' font-size-12 px-2 py-1 mb-1 me-1 border">' . htmlspecialchars($cleanEkip) . '</span>';
                                                         }

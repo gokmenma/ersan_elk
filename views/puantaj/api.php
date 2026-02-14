@@ -1546,67 +1546,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
     try {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $baslangicDonem = $_GET['baslangic_donem'] ?? date('Ym', strtotime('-5 months'));
-        $bitisDonem = $_GET['bitis_donem'] ?? date('Ym');
+        // Dönemleri belirle
+        $donemler = [];
+
+        // 1. Başlangıç - Bitiş Aralığını Ekle
+        $baslangicDonem = $_GET['baslangic_donem'] ?? '';
+        $bitisDonem = $_GET['bitis_donem'] ?? '';
+
+        if (!empty($baslangicDonem) && !empty($bitisDonem)) {
+            $currentDonem = $baslangicDonem;
+            while ($currentDonem <= $bitisDonem) {
+                $donemler[] = $currentDonem;
+                $year = (int) substr($currentDonem, 0, 4);
+                $month = (int) substr($currentDonem, 4, 2);
+                $month++;
+                if ($month > 12) {
+                    $month = 1;
+                    $year++;
+                }
+                $currentDonem = $year . str_pad($month, 2, '0', STR_PAD_LEFT);
+                if (count($donemler) > 48)
+                    break; // Güvenlik sınırı
+            }
+        }
+
+        // 2. Özel Seçilen Dönemleri Ekle
+        if (isset($_GET['donemler']) && is_array($_GET['donemler'])) {
+            foreach ($_GET['donemler'] as $d) {
+                if (!empty($d))
+                    $donemler[] = $d;
+            }
+        }
+
+        // 3. Tekilleştir ve Sırala
+        $donemler = array_unique($donemler);
+        sort($donemler);
+
+        if (empty($donemler)) {
+            $donemler = [date('Ym')];
+        }
+
         $ilceTipi = $_GET['ilce_tipi'] ?? '';
         $bolge = $_GET['bolge'] ?? '';
         $defterFilter = $_GET['defter'] ?? '';
 
         $EndeksOkuma = new \App\Model\EndeksOkumaModel();
 
-        // Dönemleri oluştur
-        $donemler = [];
-        $currentDonem = $baslangicDonem;
-        while ($currentDonem <= $bitisDonem) {
-            $donemler[] = $currentDonem;
-            $year = (int) substr($currentDonem, 0, 4);
-            $month = (int) substr($currentDonem, 4, 2);
-            $month++;
-            if ($month > 12) {
-                $month = 1;
-                $year++;
-            }
-            $currentDonem = $year . str_pad($month, 2, '0', STR_PAD_LEFT);
-        }
-
-        if (count($donemler) > 24) {
-            throw new \Exception('En fazla 24 dönem seçilebilir.');
-        }
-
         // Bölge ve Defter bazında group by yaparak verileri çek
+        $placeholders = implode(',', array_fill(0, count($donemler), '?'));
         $groupSql = "SELECT bolge, defter, DATE_FORMAT(tarih, '%Y%m') as donem,
                             SUM(okunan_abone_sayisi) as toplam_okunan,
                             COUNT(*) as kayit_sayisi
                      FROM endeks_okuma
-                     WHERE firma_id = :firma_id
+                     WHERE firma_id = ?
                        AND silinme_tarihi IS NULL
-                       AND DATE_FORMAT(tarih, '%Y%m') >= :baslangic
-                       AND DATE_FORMAT(tarih, '%Y%m') <= :bitis";
+                       AND DATE_FORMAT(tarih, '%Y%m') IN ($placeholders)";
 
-        $params = [
-            'firma_id' => $firmaId,
-            'baslangic' => $baslangicDonem,
-            'bitis' => $bitisDonem
-        ];
+        $queryParams = [$firmaId];
+        $queryParams = array_merge($queryParams, $donemler);
 
         if (!empty($bolge)) {
-            $groupSql .= " AND bolge = :bolge";
-            $params['bolge'] = $bolge;
+            $groupSql .= " AND bolge = ?";
+            $queryParams[] = $bolge;
         }
 
         if (!empty($defterFilter)) {
-            $groupSql .= " AND defter = :defter";
-            $params['defter'] = $defterFilter;
+            $groupSql .= " AND defter = ?";
+            $queryParams[] = $defterFilter;
         }
 
         $groupSql .= " GROUP BY bolge, defter, DATE_FORMAT(tarih, '%Y%m')
                         ORDER BY bolge, defter, donem";
 
         $stmt = $EndeksOkuma->db->prepare($groupSql);
-        foreach ($params as $key => $val) {
-            $stmt->bindValue(":$key", $val);
-        }
-        $stmt->execute();
+        $stmt->execute($queryParams);
         $rawData = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         // Verileri organize et: key = bolge|defter

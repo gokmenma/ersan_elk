@@ -34,6 +34,15 @@ foreach ($defterListRaw as $df) {
     $defterOptions[$df] = $df;
 }
 
+// Mevcut dönemleri çek
+$donemListStmt = $EndeksOkuma->db->prepare("SELECT DISTINCT DATE_FORMAT(tarih, '%Y%m') as donem FROM endeks_okuma WHERE firma_id = ? AND silinme_tarihi IS NULL ORDER BY donem DESC");
+$donemListStmt->execute([$firmaId]);
+$donemListRaw = $donemListStmt->fetchAll(PDO::FETCH_COLUMN);
+$donemOptions = [];
+foreach ($donemListRaw as $d) {
+    $donemOptions[$d] = substr($d, 0, 4) . '/' . substr($d, 4, 2);
+}
+
 // İlçe Tipi - endeks_okuma tablosunda yok, sabit liste
 $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', 'Merkez' => 'Merkez', 'Yakın İlçeler' => 'Yakın İlçeler'];
 ?>
@@ -44,6 +53,53 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     $title = "Abone Dönem Karşılaştırma";
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
+
+    <!-- Flatpickr MonthSelect Plugin Assets -->
+    <link rel="stylesheet" href="assets/libs/flatpickr/plugins/monthSelect/style.css">
+    <script src="assets/libs/flatpickr/plugins/monthSelect/index.js"></script>
+
+    <style>
+        /* MonthSelect premium aesthetic with borders */
+        .flatpickr-monthSelect-months {
+            padding: 5px !important;
+            gap: 4px !important;
+            display: flex !important;
+            justify-content: center !important;
+        }
+
+        .flatpickr-monthSelect-month {
+            color: #334155 !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 8px !important;
+            margin: 0 !important;
+            width: calc(33% - 4px) !important;
+            transition: all 0.2s ease !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            height: 40px !important;
+        }
+
+        .flatpickr-monthSelect-month:hover {
+            background: #f8fafc !important;
+            border-color: var(--bs-primary) !important;
+            color: var(--bs-primary) !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
+        }
+
+        .flatpickr-monthSelect-month.selected {
+            background: var(--bs-primary) !important;
+            color: #fff !important;
+            border-color: var(--bs-primary) !important;
+            box-shadow: 0 4px 6px -1px rgba(var(--bs-primary-rgb), 0.4) !important;
+        }
+
+        .flatpickr-monthSelect-month.today {
+            border-color: #94a3b8 !important;
+            border-width: 1px !important;
+        }
+    </style>
 
     <!-- ======= FİLTRE ACCORDION ======= -->
     <div class="row mb-3">
@@ -73,34 +129,60 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                         data-bs-parent="#filterAccordion">
                         <div class="accordion-body pt-3">
                             <!-- Satır 1: Tarihle İlgili Filtreler (3-3-6) -->
+                            <!-- Satır 1: Tarihle İlgili Filtreler -->
+                            <!-- Satır 1: Tarihle İlgili Filtreler -->
                             <div class="row g-3 mb-3 align-items-center">
-                                <div class="col-md-3">
-                                    <?php echo Form::FormFloatInput(
-                                        type: 'text',
-                                        name: 'baslangicDonem',
-                                        value: $baslangicDonem,
-                                        placeholder: '202509',
-                                        label: 'Başlangıç Dönemi',
-                                        icon: 'calendar',
-                                        maxlength: 6
-                                    ); ?>
+                                <div class="col-md-4">
+                                    <!-- Araba/Aralık Container -->
+                                    <div id="rangeContainer">
+                                        <div class="row g-2">
+                                            <div class="col-6">
+                                                <?php echo Form::FormFloatInput(
+                                                    type: 'text',
+                                                    name: 'baslangicDonem',
+                                                    value: $baslangicDonem,
+                                                    placeholder: '202601',
+                                                    label: 'Başlangıç',
+                                                    icon: 'calendar',
+                                                    maxlength: 6,
+                                                    class: 'form-control month-picker'
+                                                ); ?>
+                                            </div>
+                                            <div class="col-6">
+                                                <?php echo Form::FormFloatInput(
+                                                    type: 'text',
+                                                    name: 'bitisDonem',
+                                                    value: $bitisDonem,
+                                                    placeholder: '202602',
+                                                    label: 'Bitiş',
+                                                    icon: 'calendar',
+                                                    maxlength: 6,
+                                                    class: 'form-control month-picker'
+                                                ); ?>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Manuel Dönem Selection Container (Başta Gizli) -->
+                                    <div id="manualContainer" style="display: none;">
+                                        <?php echo Form::FormMultipleSelect2(
+                                            name: 'filterDonemler',
+                                            options: $donemOptions,
+                                            selectedValues: [],
+                                            label: 'Karşılaştırılacak Dönemleri Seçin',
+                                            icon: 'bx bx-calendar',
+                                            class: 'form-select select2'
+                                        ); ?>
+                                    </div>
                                 </div>
-                                <div class="col-md-3">
-                                    <?php echo Form::FormFloatInput(
-                                        type: 'text',
-                                        name: 'bitisDonem',
-                                        value: $bitisDonem,
-                                        placeholder: '202602',
-                                        label: 'Bitiş Dönemi',
-                                        icon: 'calendar',
-                                        maxlength: 6
-                                    ); ?>
-                                </div>
-                                <div class="col-md-6 d-flex align-items-center">
+
+                                <div class="col-md-8 d-flex align-items-center justify-content-md-end">
                                     <div class="d-flex align-items-center gap-2 flex-wrap">
                                         <span class="fw-semibold text-muted small"><i
                                                 class="bx bx-bolt-circle me-1"></i>Hızlı Seçim:</span>
                                         <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-sm btn-outline-primary quick-period"
+                                                data-type="manuel">Dönem Seçerek</button>
                                             <button type="button" class="btn btn-sm btn-outline-primary quick-period"
                                                 data-months="3">Son 3 Ay</button>
                                             <button type="button" class="btn btn-sm btn-outline-primary quick-period"
@@ -118,7 +200,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
                             <!-- Satır 2: Yerleşim Filtreleri ve Butonlar (3-3-3-3) -->
                             <div class="row g-3 align-items-center">
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <?php echo Form::FormSelect2(
                                         name: 'filterIlceTipi',
                                         options: $ilceTipiOptions,
@@ -128,7 +210,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                                         class: 'form-select select2'
                                     ); ?>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <?php echo Form::FormSelect2(
                                         name: 'filterBolge',
                                         options: $bolgeOptions,
@@ -138,7 +220,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                                         class: 'form-select select2'
                                     ); ?>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <?php echo Form::FormSelect2(
                                         name: 'filterDefter',
                                         options: $defterOptions,
@@ -148,10 +230,10 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                                         class: 'form-select select2'
                                     ); ?>
                                 </div>
-                                <div class="col-md-3 d-flex align-items-center justify-content-end">
+                                <div class="col-md-6 d-flex align-items-center justify-content-end">
                                     <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
-                                        
-                                          <button type="button"
+
+                                        <button type="button"
                                             class="btn btn-link btn-sm text-dark text-decoration-none px-2 d-flex align-items-center"
                                             id="btnTamEkran">
                                             <i class="mdi mdi-fullscreen fs-5 me-1"></i>
@@ -171,7 +253,15 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                                             <span class="d-none d-xl-inline">Excel</span>
                                         </button>
                                         <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-                                      
+                                        <button type="button"
+                                            class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center"
+                                            data-bs-toggle="modal" data-bs-target="#modalManageColumns"
+                                            title="Sütun Seçimi">
+                                            <i class="bx bx-columns fs-5 me-1"></i>
+                                            <span class="d-none d-xl-inline">Sütunlar</span>
+                                        </button>
+                                        <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+
                                         <button type="button" class="btn d-flex align-items-center" id="btnRaporGetir">
                                             <i class="mdi mdi-file-chart fs-5 me-1"></i>
                                             <span class="d-none d-xl-inline">Raporu Getir</span>
@@ -288,6 +378,58 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             </div>
         </div>
     </div>
+
+    <!-- ======= SÜTUN YÖNETİM MODALI ======= -->
+    <div class="modal fade" id="modalManageColumns" tabindex="-1" aria-labelledby="modalManageColumnsLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+                <div class="modal-header bg-light border-bottom-0 pb-1" style="border-radius: 12px 12px 0 0;">
+                    <h5 class="modal-title fw-bold fs-6" id="modalManageColumnsLabel">
+                        <i class="bx bx-columns me-2 text-info"></i>Sütun Görünümü
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <div class="list-group list-group-flush">
+                        <label
+                            class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 border-0 cursor-pointer">
+                            <span class="fw-medium text-dark"><i class="bx bx-user me-2 text-primary"></i>Abone</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input col-toggle" type="checkbox" data-col="abone" checked>
+                            </div>
+                        </label>
+                        <label
+                            class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 border-0 cursor-pointer">
+                            <span class="fw-medium text-dark"><i class="bx bx-show me-2 text-success"></i>Okunan</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input col-toggle" type="checkbox" data-col="okunan" checked>
+                            </div>
+                        </label>
+                        <label
+                            class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 border-0 cursor-pointer">
+                            <span class="fw-medium text-dark"><i class="bx bx-walk me-2 text-info"></i>Gidilen</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input col-toggle" type="checkbox" data-col="gidilen" checked>
+                            </div>
+                        </label>
+                        <label
+                            class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 border-0 cursor-pointer">
+                            <span class="fw-medium text-dark"><i
+                                    class="bx bx-pie-chart-alt-2 me-2 text-warning"></i>Oran %</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input col-toggle" type="checkbox" data-col="oran" checked>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-primary btn-sm w-100 py-2 fw-bold" data-bs-dismiss="modal"
+                        style="border-radius: 8px;">Değişiklikleri Uygula</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -391,12 +533,12 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     }
 
     #comparisonTable {
-        border-collapse: collapse;
+        border-collapse: collapse !important;
         font-size: 12px;
         width: 100%;
         table-layout: auto;
         min-width: 1200px;
-        border: none !important;
+        border: 1px solid var(--bs-border-color, #eee) !important;
     }
 
     #comparisonTable th,
@@ -424,18 +566,19 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
     [data-bs-theme="dark"] #comparisonTable thead th {
         background: #2a3042 !important;
-        /* Keep original dark for better contrast in dark mode */
         color: #eff2f7 !important;
         border-color: #32394e !important;
     }
 
+    /* thead offset adjustments for Consolidated 2-row structure - pixel perfect fix */
+    #comparisonTable thead tr:nth-child(1) th {
+        top: -1px; 
+        z-index: 30;
+    }
 
-
-    /* THEAD 2. satır (Arama ve Alt Başlık Satırı): top offset = height of first row */
     #comparisonTable thead tr:nth-child(2) th {
-        top: 28px;
-        /* Precision adjustment */
-        z-index: 19;
+        top: 29px; /* Correct offset after Row 1 */
+        z-index: 29;
     }
 
     .column-search {
@@ -488,22 +631,22 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         left: 0;
         z-index: 10;
         background-color: var(--bs-card-bg, #fff) !important;
-        min-width: 80px;
-        max-width: 80px;
-    }
-
-    #comparisonTable .fix-col-2 {
-        position: sticky;
-        left: 80px;
-        z-index: 10;
-        background-color: var(--bs-card-bg, #fff) !important;
         min-width: 100px;
         max-width: 100px;
     }
 
+    #comparisonTable .fix-col-2 {
+        position: sticky;
+        left: 100px;
+        z-index: 10;
+        background-color: var(--bs-card-bg, #fff) !important;
+        min-width: 140px;
+        max-width: 140px;
+    }
+
     #comparisonTable .fix-col-3 {
         position: sticky;
-        left: 180px;
+        left: 240px;
         z-index: 10;
         background-color: var(--bs-card-bg, #fff) !important;
         min-width: 100px;
@@ -513,9 +656,17 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     #comparisonTable thead .fix-col-1,
     #comparisonTable thead .fix-col-2,
     #comparisonTable thead .fix-col-3 {
-        z-index: 35 !important;
+        z-index: 40 !important;
+        /* Higher than regular thead th */
         background: linear-gradient(rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1), rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1)), #ffffff !important;
         color: var(--bs-primary, #556ee6) !important;
+    }
+
+    /* Fixed columns in Row 2 (Inputs/Subheaders) also need top offset */
+    #comparisonTable thead tr:nth-child(2) .fix-col-1,
+    #comparisonTable thead tr:nth-child(2) .fix-col-2,
+    #comparisonTable thead tr:nth-child(2) .fix-col-3 {
+        top: 29px !important;
     }
 
     [data-bs-theme="dark"] #comparisonTable thead .fix-col-1,
@@ -523,6 +674,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     [data-bs-theme="dark"] #comparisonTable thead .fix-col-3 {
         background: #2a3042 !important;
         color: #eff2f7 !important;
+        border-color: #32394e !important;
     }
 
 
@@ -730,8 +882,24 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         // Initialize Select2
         $('.select2').select2({
             width: '100%',
-            allowClear: true,
-            placeholder: 'Seçiniz...'
+            allowClear: true
+        });
+
+        // Initialize Flatpickr MonthSelect
+        $(".month-picker").flatpickr({
+            locale: "tr",
+            disableMobile: true,
+            plugins: [
+                new monthSelectPlugin({
+                    shorthand: false, // Long names to avoid 'Ara' confusion
+                    dateFormat: "Ym",
+                    altFormat: "Ym",
+                    theme: "light" // Matches the forced white background
+                })
+            ],
+            onChange: function (selectedDates, dateStr, instance) {
+                updateFilterSummary();
+            }
         });
 
         // Feather icons reinit
@@ -742,15 +910,16 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             let summary = '';
             const baslangic = $('#baslangicDonem').val();
             const bitis = $('#bitisDonem').val();
+            const donemler = $('#filterDonemler').val();
             const ilceTipiText = $('#filterIlceTipi option:selected').text();
             const bolgeText = $('#filterBolge option:selected').text();
             const defterText = $('#filterDefter option:selected').text();
 
-            if (baslangic) {
-                summary += `<div class="filter-summary-badge"><span class="badge-label">Başlangıç:</span><span class="badge-value">${baslangic}</span></div>`;
+            if (baslangic || bitis) {
+                summary += `<div class="filter-summary-badge"><span class="badge-label">Aralık:</span><span class="badge-value">${baslangic || '?'} - ${bitis || '?'}</span></div>`;
             }
-            if (bitis) {
-                summary += `<div class="filter-summary-badge"><span class="badge-label">Bitiş:</span><span class="badge-value">${bitis}</span></div>`;
+            if (donemler && donemler.length > 0) {
+                summary += `<div class="filter-summary-badge"><span class="badge-label">Özel:</span><span class="badge-value">${donemler.join(', ')}</span></div>`;
             }
             if ($('#filterIlceTipi').val()) {
                 summary += `<div class="filter-summary-badge"><span class="badge-label">İlçe:</span><span class="badge-value">${ilceTipiText}</span><button type="button" class="btn-clear-filter" data-filter="filterIlceTipi"><i class="bx bx-x"></i></button></div>`;
@@ -768,8 +937,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         // Initial summary
         updateFilterSummary();
 
-        // Filter change summary update
-        $('#filterIlceTipi, #filterBolge, #filterDefter').on('change', function () {
+        $('#filterIlceTipi, #filterBolge, #filterDefter, #filterDonemler').on('change', function () {
             updateFilterSummary();
         });
 
@@ -785,24 +953,35 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             updateFilterSummary();
         });
 
-        // ======= HIZLI SEÇİM BUTONLARI =======
         $('.quick-period').on('click', function () {
             const months = $(this).data('months');
             const type = $(this).data('type');
             const now = new Date();
 
-            if (type === 'bu-yil') {
-                $('#baslangicDonem').val(now.getFullYear() + '01');
-                $('#bitisDonem').val(formatDonem(now));
-            } else if (type === 'gecen-yil') {
-                const lastYear = now.getFullYear() - 1;
-                $('#baslangicDonem').val(lastYear + '01');
-                $('#bitisDonem').val(lastYear + '12');
-            } else if (months) {
-                const start = new Date(now);
-                start.setMonth(start.getMonth() - (months - 1));
-                $('#baslangicDonem').val(formatDonem(start));
-                $('#bitisDonem').val(formatDonem(now));
+            if (type === 'manuel') {
+                // Manuel seçimi göster, aralığı gizle
+                $('#rangeContainer').hide();
+                $('#manualContainer').fadeIn(300);
+                $('#baslangicDonem, #bitisDonem').val('');
+            } else {
+                // Aralığı göster, manueli gizle
+                $('#manualContainer').hide();
+                $('#rangeContainer').fadeIn(300);
+                $('#filterDonemler').val([]).trigger('change');
+
+                if (type === 'bu-yil') {
+                    $('#baslangicDonem').val(now.getFullYear() + '01');
+                    $('#bitisDonem').val(formatDonem(now));
+                } else if (type === 'gecen-yil') {
+                    const lastYear = now.getFullYear() - 1;
+                    $('#baslangicDonem').val(lastYear + '01');
+                    $('#bitisDonem').val(lastYear + '12');
+                } else if (months) {
+                    const start = new Date(now);
+                    start.setMonth(start.getMonth() - (months - 1));
+                    $('#baslangicDonem').val(formatDonem(start));
+                    $('#bitisDonem').val(formatDonem(now));
+                }
             }
 
             // Highlight active button
@@ -820,16 +999,18 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             loadReport();
         });
 
-        // ======= TEMİZLE =======
         $('#btnTemizle').on('click', function () {
             $('#filterIlceTipi').val('').trigger('change');
             $('#filterBolge').val('').trigger('change');
             $('#filterDefter').val('').trigger('change');
+            $('#filterDonemler').val([]).trigger('change');
+
             const now = new Date();
             const start = new Date(now);
-            start.setMonth(start.getMonth() - 5);
+            start.setMonth(start.getMonth() - 2);
             $('#baslangicDonem').val(formatDonem(start));
             $('#bitisDonem').val(formatDonem(now));
+
             $('.quick-period').removeClass('active-period');
 
             // Arama filtrelerini de sıfırla
@@ -845,19 +1026,21 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         function loadReport() {
             const baslangicDonem = $('#baslangicDonem').val().trim();
             const bitisDonem = $('#bitisDonem').val().trim();
+            const donemler = $('#filterDonemler').val();
             const ilceTipi = $('#filterIlceTipi').val();
             const bolge = $('#filterBolge').val();
             const defterVal = $('#filterDefter').val();
 
-            if (!baslangicDonem || !bitisDonem || baslangicDonem.length < 6 || bitisDonem.length < 6) {
-                Swal.fire('Uyarı', 'Lütfen geçerli dönem aralığı giriniz (YYYYMM formatında).', 'warning');
+            if ((!baslangicDonem || !bitisDonem) && (!donemler || donemler.length === 0)) {
+                Swal.fire('Uyarı', 'Lütfen en az bir dönem veya aralık seçiniz.', 'warning');
                 return;
             }
 
             // Accordion'u kapat
-            var collapse = bootstrap.Collapse.getInstance(document.getElementById('collapseFilter'));
+            var collapseElement = document.getElementById('collapseFilter');
+            var collapse = bootstrap.Collapse.getInstance(collapseElement);
             if (collapse) collapse.hide();
-            else new bootstrap.Collapse(document.getElementById('collapseFilter'), { toggle: false }).hide();
+            else if (collapseElement.classList.contains('show')) new bootstrap.Collapse(collapseElement, { toggle: false }).hide();
 
             $('#loadingSection').show();
             $('#reportSection').hide();
@@ -870,6 +1053,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     action: 'defter-bazli-rapor',
                     baslangic_donem: baslangicDonem,
                     bitis_donem: bitisDonem,
+                    donemler: donemler,
                     ilce_tipi: ilceTipi,
                     bolge: bolge,
                     defter: defterVal
@@ -909,6 +1093,12 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         let _tableDonemler = [];
         let _sortColumn = null; // 'ilce_tipi', 'bolge', 'defter', or '{donem}_{field}'
         let _sortDirection = 'asc';
+        let _visibleColumns = {
+            abone: true,
+            okunan: true,
+            gidilen: true,
+            oran: true
+        };
 
         // ======= TABLO OLUŞTURMA =======
         let _searchFilters = { ilce_tipi: '', bolge: '', defter: '' };
@@ -994,30 +1184,36 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             // ======= THEAD =======
             html += '<thead>';
 
-            // Row 1: Fixed col headers + Period group headers
-            html += '<tr>';
-            html += `<th class="fix-col-1 sortable-header" data-sort-col="ilce_tipi">İlçe Tipi${sortIcon('ilce_tipi')}</th>`;
-            html += `<th class="fix-col-2 sortable-header" data-sort-col="bolge">Bölge${sortIcon('bolge')}</th>`;
-            html += `<th class="fix-col-3 sortable-header" data-sort-col="defter">Defter${sortIcon('defter')}</th>`;
+            // Row 1: Fixed labels + Periods
+            html += '<tr class="main-headers-row">';
+            html += `<th class="fix-col-1 sortable-header" data-sort-col="ilce_tipi">İLÇE TİPİ${sortIcon('ilce_tipi')}</th>`;
+            html += `<th class="fix-col-2 sortable-header" data-sort-col="bolge">BÖLGE${sortIcon('bolge')}</th>`;
+            html += `<th class="fix-col-3 sortable-header" data-sort-col="defter">DEFTER${sortIcon('defter')}</th>`;
+
             donemler.forEach(function (donem, idx) {
+                if (visibleCount === 0) return;
                 const isLast = idx === donemler.length - 1;
                 const formatted = donem.substring(0, 4) + '/' + donem.substring(4);
-                html += `<th colspan="4" class="period-header ${isLast ? 'period-end' : ''}">${formatted}</th>`;
+                html += `<th colspan="${visibleCount}" class="period-header ${isLast ? 'period-end' : ''}">${formatted}</th>`;
             });
             html += '</tr>';
 
-            // Row 2: Search Inputs for fixed cols + Sub-headers (sortable)
-            html += '<tr class="search-row">';
+            // Row 2: Search Inputs + Sub-headers
+            html += '<tr class="sub-headers-row search-row">';
             html += `<th class="fix-col-1"><input type="text" class="form-control column-search" id="search_ilce_tipi" data-col="ilce_tipi" value="${_searchFilters.ilce_tipi || ''}" placeholder="İLÇE TİPİ"></th>`;
             html += `<th class="fix-col-2"><input type="text" class="form-control column-search" id="search_bolge" data-col="bolge" value="${_searchFilters.bolge || ''}" placeholder="BÖLGE"></th>`;
             html += `<th class="fix-col-3"><input type="text" class="form-control column-search" id="search_defter" data-col="defter" value="${_searchFilters.defter || ''}" placeholder="DEFTER"></th>`;
 
             donemler.forEach(function (donem, idx) {
                 const isLast = idx === donemler.length - 1;
-                html += `<th class="sub-header sub-header-abone sortable-header" data-sort-col="${donem}_abone">Abone${sortIcon(donem + '_abone')}</th>`;
-                html += `<th class="sub-header sub-header-okunan sortable-header" data-sort-col="${donem}_okunan">Okunan${sortIcon(donem + '_okunan')}</th>`;
-                html += `<th class="sub-header sub-header-gidilen sortable-header" data-sort-col="${donem}_gidilen">Gidilen${sortIcon(donem + '_gidilen')}</th>`;
-                html += `<th class="sub-header sub-header-oran sortable-header ${isLast ? 'period-end' : ''}" data-sort-col="${donem}_oran">Oran %${sortIcon(donem + '_oran')}</th>`;
+                if (_visibleColumns.abone)
+                    html += `<th class="sub-header sub-header-abone sortable-header" data-sort-col="${donem}_abone">ABONE${sortIcon(donem + '_abone')}</th>`;
+                if (_visibleColumns.okunan)
+                    html += `<th class="sub-header sub-header-okunan sortable-header" data-sort-col="${donem}_okunan">OKUNAN${sortIcon(donem + '_okunan')}</th>`;
+                if (_visibleColumns.gidilen)
+                    html += `<th class="sub-header sub-header-gidilen sortable-header" data-sort-col="${donem}_gidilen">GİDİLEN${sortIcon(donem + '_gidilen')}</th>`;
+                if (_visibleColumns.oran)
+                    html += `<th class="sub-header sub-header-oran sortable-header ${isLast ? 'period-end' : ''}" data-sort-col="${donem}_oran">ORAN %${sortIcon(donem + '_oran')}</th>`;
             });
             html += '</tr>';
 
@@ -1055,10 +1251,14 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     if (oran >= 70) oranClass = 'oran-high';
                     else if (oran >= 50) oranClass = 'oran-medium';
 
-                    html += `<td>${donemData.abone > 0 ? donemData.abone.toLocaleString('tr-TR') : ''}</td>`;
-                    html += `<td>${donemData.okunan > 0 ? donemData.okunan.toLocaleString('tr-TR') : ''}</td>`;
-                    html += `<td class="gidilen-cell">${donemData.gidilen > 0 ? donemData.gidilen.toLocaleString('tr-TR') : ''}</td>`;
-                    html += `<td class="${oranClass} ${isLast ? 'period-end' : ''}">${donemData.abone > 0 ? oran + '%' : ''}</td>`;
+                    if (_visibleColumns.abone)
+                        html += `<td>${donemData.abone > 0 ? donemData.abone.toLocaleString('tr-TR') : ''}</td>`;
+                    if (_visibleColumns.okunan)
+                        html += `<td>${donemData.okunan > 0 ? donemData.okunan.toLocaleString('tr-TR') : ''}</td>`;
+                    if (_visibleColumns.gidilen)
+                        html += `<td class="gidilen-cell">${donemData.gidilen > 0 ? donemData.gidilen.toLocaleString('tr-TR') : ''}</td>`;
+                    if (_visibleColumns.oran)
+                        html += `<td class="${oranClass} ${isLast ? 'period-end' : ''}">${donemData.abone > 0 ? oran + '%' : ''}</td>`;
                 });
 
                 html += '</tr>';
@@ -1081,10 +1281,14 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 if (grandOran >= 70) oranClass = 'oran-high';
                 else if (grandOran >= 50) oranClass = 'oran-medium';
 
-                html += `<th>${totals.abone.toLocaleString('tr-TR')}</th>`;
-                html += `<th>${totals.okunan.toLocaleString('tr-TR')}</th>`;
-                html += `<th class="gidilen-cell">${totals.gidilen.toLocaleString('tr-TR')}</th>`;
-                html += `<th class="${oranClass} ${isLast ? 'period-end' : ''}">${grandOran}%</th>`;
+                if (_visibleColumns.abone)
+                    html += `<th>${totals.abone.toLocaleString('tr-TR')}</th>`;
+                if (_visibleColumns.okunan)
+                    html += `<th>${totals.okunan.toLocaleString('tr-TR')}</th>`;
+                if (_visibleColumns.gidilen)
+                    html += `<th class="gidilen-cell">${totals.gidilen.toLocaleString('tr-TR')}</th>`;
+                if (_visibleColumns.oran)
+                    html += `<th class="${oranClass} ${isLast ? 'period-end' : ''}">${grandOran}%</th>`;
             });
             html += '</tr>';
             html += '</tfoot>';
@@ -1154,7 +1358,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         });
 
         // Enter tuşu ile rapor getir
-        $('#baslangicDonem, #bitisDonem').on('keypress', function (e) {
+        $('#filterDonemler, #baslangicDonem, #bitisDonem').on('keypress', function (e) {
             if (e.which === 13) {
                 loadReport();
             }
@@ -1179,6 +1383,17 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             if (!document.fullscreenElement) {
                 $('#btnTamEkran').html('<i class="mdi mdi-fullscreen me-1"></i>Tam Ekran');
                 $('#reportSection').removeClass('fullscreen-mode');
+            }
+        });
+
+        // ======= SÜTUN YÖNETİMİ =======
+        $(document).on('change', '.col-toggle', function () {
+            const col = $(this).data('col');
+            const isVisible = $(this).is(':checked');
+            _visibleColumns[col] = isVisible;
+
+            if (_tableData && _tableData.length > 0) {
+                renderTable(_tableData, _tableDonemler, true);
             }
         });
 

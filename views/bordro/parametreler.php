@@ -1229,6 +1229,9 @@ $kategoriOptions = [
             const formData = new FormData(this);
             formData.append('action', $('#ayar_id').val() ? 'update-genel-ayar' : 'add-genel-ayar');
 
+            // Money alanını temizle ve sayısal değere çevir
+            formData.set('deger', parseMoney($('input[name="deger"]').val()));
+
             $.ajax({
                 url: 'views/bordro/api.php',
                 type: 'POST',
