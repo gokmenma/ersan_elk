@@ -374,6 +374,24 @@ $title = 'Nöbet Planlama';
                         data-bs-toggle="modal" data-bs-target="#nobetBildirimModal">
                         <i class="bx bx-send"></i> Personele Bildir
                     </button>
+
+                    <!-- Personel Filtrele -->
+                    <div class="dropdown" id="personel-filter-container">
+                        <button class="btn btn-soft-info" type="button" id="personel-filter-btn"
+                            data-bs-toggle="dropdown" aria-expanded="false" title="Personel Filtrele"
+                            style="background: rgba(0, 184, 217, 0.1); color: #00b8d9; border: none; font-weight: 600; display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; padding: 0; border-radius: 8px;">
+                            <i class="bx bx-user fs-4"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" id="personel-filter-list"
+                            style="max-height: 300px; overflow-y: auto;">
+                            <li><a class="dropdown-item active" href="javascript:void(0)" data-personel-id="all">Tüm
+                                    Personeller</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <!-- Personeller JS ile buraya eklenecek -->
+                        </ul>
+                    </div>
                 </div>
 
                 <div class="d-flex align-items-center gap-3">
@@ -773,6 +791,7 @@ $title = 'Nöbet Planlama';
         // ============================================
         let calendar;
         let currentNobetId = null;
+        let selectedFilterPersonelId = 'all'; // Personel filtreleme için
         let canEditPast = <?php echo $canEditPast ? 'true' : 'false'; ?>;
         const detailModal = new bootstrap.Modal(document.getElementById('nobetDetailModal'));
         const formModal = new bootstrap.Modal(document.getElementById('nobetFormModal'));
@@ -840,8 +859,12 @@ $title = 'Nöbet Planlama';
                 })
                     .then(response => response.json())
                     .then(data => {
-                        successCallback(data);
-                        updateStats(data);
+                        let filteredData = data;
+                        if (selectedFilterPersonelId !== 'all') {
+                            filteredData = data.filter(ev => ev.extendedProps.raw_personel_id == selectedFilterPersonelId);
+                        }
+                        successCallback(filteredData);
+                        updateStats(data, filteredData); // Hem ham hem filtrelenmiş veriyi gönder
                     })
                     .catch(error => {
                         console.error('Takvim yükleme hatası:', error);
@@ -1632,16 +1655,15 @@ $title = 'Nöbet Planlama';
             });
         }
 
-        function updateStats(events) {
+        function updateStats(allEvents, filteredEvents) {
             const today = new Date().toISOString().split('T')[0];
-            let totalMonth = events.length;
+
+            // 1. İstatistik Kartlarını Güncelle (Sadece filtrelenmiş veriye göre)
+            let totalCount = filteredEvents.length;
             let weekendCount = 0;
-            let todayPerson = '-';
+            let todayNames = [];
 
-            // Personel bazlı nöbet sayılarını tutacak obje
-            const personelCounts = {};
-
-            events.forEach(event => {
+            filteredEvents.forEach(event => {
                 const eventDate = new Date(event.start);
                 const dayOfWeek = eventDate.getDay();
 
@@ -1650,24 +1672,40 @@ $title = 'Nöbet Planlama';
                 }
 
                 if (event.start.startsWith(today)) {
-                    todayPerson = event.title;
-                }
-
-                // Personel bazlı sayacı artır
-                if (event.extendedProps && event.extendedProps.raw_personel_id) {
-                    const pIdStr = event.extendedProps.raw_personel_id;
-                    personelCounts[pIdStr] = (personelCounts[pIdStr] || 0) + 1;
+                    todayNames.push(event.title);
                 }
             });
 
-            document.getElementById('stat-total').textContent = totalMonth;
-            document.getElementById('stat-today').textContent = todayPerson;
+            const todayText = todayNames.length > 0
+                ? (todayNames.length > 1 ? todayNames.length + ' Personel' : todayNames[0])
+                : '-';
+
+            document.getElementById('stat-total').textContent = totalCount;
+            document.getElementById('stat-today').textContent = todayText;
             document.getElementById('stat-weekend').textContent = weekendCount;
 
-            // Personel listesindeki badge'leri güncelle
+            // 2. Personel Havuzu (Sol Liste) ve Filtre Listesi Verilerini Hazırla
+            const allCounts = {};
+            const monthPersonels = new Map();
+
+            allEvents.forEach(event => {
+                if (event.extendedProps && event.extendedProps.raw_personel_id) {
+                    const pIdStr = event.extendedProps.raw_personel_id;
+                    allCounts[pIdStr] = (allCounts[pIdStr] || 0) + 1;
+
+                    if (!monthPersonels.has(pIdStr)) {
+                        monthPersonels.set(pIdStr, {
+                            name: event.title,
+                            image: event.extendedProps.resim || 'assets/images/users/user-dummy-img.jpg'
+                        });
+                    }
+                }
+            });
+
+            // Sol listedeki badge'leri güncelle
             document.querySelectorAll('.personel-item').forEach(item => {
                 const pId = item.dataset.rawId;
-                const count = personelCounts[pId] || 0;
+                const count = allCounts[pId] || 0;
                 const badge = item.querySelector('.nobet-count');
                 if (badge) {
                     badge.textContent = count;
@@ -1681,10 +1719,60 @@ $title = 'Nöbet Planlama';
                 }
             });
 
+            // Filtre dropdown listesini güncelle
+            updatePersonelFilterList(monthPersonels);
+
             // Eğer nöbet sayısına göre sıralama seçiliyse listeyi tekrar sırala
             if (currentSort === 'count_low' || currentSort === 'count_high') {
                 sortPersonel();
             }
+        }
+
+        function updatePersonelFilterList(personels) {
+            const list = document.getElementById('personel-filter-list');
+            if (!list) return;
+
+            const allItem = `<li><a class="dropdown-item d-flex align-items-center gap-2 ${selectedFilterPersonelId === 'all' ? 'active' : ''}" href="javascript:void(0)" data-personel-id="all">
+                <div class="avatar-xs d-flex align-items-center justify-content-center bg-soft-primary text-primary rounded-circle" style="width:24px; height:24px; font-size:10px;">
+                    <i class="bx bx-group"></i>
+                </div>
+                <span>Tüm Personeller</span>
+            </a></li>`;
+
+            const divider = `<li><hr class="dropdown-divider"></li>`;
+            let itemsHtml = allItem + divider;
+
+            const sorted = Array.from(personels.entries()).sort((a, b) => a[1].name.localeCompare(b[1].name, 'tr'));
+
+            sorted.forEach(([id, data]) => {
+                itemsHtml += `<li><a class="dropdown-item d-flex align-items-center gap-2 ${selectedFilterPersonelId == id ? 'active' : ''}" href="javascript:void(0)" data-personel-id="${id}">
+                    <img src="${data.image}" class="rounded-circle" width="24" height="24" style="object-fit:cover;">
+                    <span>${data.name}</span>
+                </a></li>`;
+            });
+
+            list.innerHTML = itemsHtml;
+
+            list.querySelectorAll('.dropdown-item').forEach(item => {
+                item.addEventListener('click', function () {
+                    selectedFilterPersonelId = this.dataset.personelId;
+                    const btn = document.getElementById('personel-filter-btn');
+
+                    if (selectedFilterPersonelId === 'all') {
+                        btn.innerHTML = '<i class="bx bx-filter fs-4"></i>';
+                        btn.title = 'Personel Filtrele';
+                        btn.style.background = 'rgba(0, 184, 217, 0.1)';
+                        btn.style.color = '#00b8d9';
+                    } else {
+                        const name = this.querySelector('span').textContent;
+                        btn.innerHTML = '<i class="bx bx-user-check fs-4"></i>';
+                        btn.title = 'Filtre: ' + name;
+                        btn.style.background = '#00b8d9';
+                        btn.style.color = '#fff';
+                    }
+                    calendar.refetchEvents();
+                });
+            });
         }
 
         function formatDate(dateStr) {

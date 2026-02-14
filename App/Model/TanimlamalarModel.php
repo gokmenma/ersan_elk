@@ -426,23 +426,23 @@ class TanimlamalarModel extends Model
     }
 
 
-    /**Ekip Kodu silerken personel,puantaj ve endeks_okuma tablolarında kontrol eder */
+    /**Ekip Kodu silerken personel, personel_ekip_gecmisi, yapilan_isler ve endeks_okuma tablolarında kontrol eder */
     public function ekipKoduKullaniliyormu($id)
     {
         $sql = "SELECT 
-                t.id,
-                COUNT(DISTINCT p.id) AS personel_sayisi,
-                COUNT(DISTINCT yi.id) AS is_sayisi,
-                COUNT(DISTINCT eo.id) AS okuma_sayisi
-            FROM tanimlamalar t
-            LEFT JOIN personel p ON p.ekip_no = t.id
-            LEFT JOIN yapilan_isler yi ON yi.personel_id = p.id
-            LEFT JOIN endeks_okuma eo ON eo.personel_id = p.id
-            WHERE t.id = ?
-            GROUP BY t.id";
+                (SELECT COUNT(*) FROM personel_ekip_gecmisi WHERE ekip_kodu_id = ?) as gecmis_sayisi,
+                (SELECT COUNT(*) FROM endeks_okuma WHERE ekip_kodu_id = ? AND silinme_tarihi IS NULL) as okuma_sayisi,
+                (SELECT COUNT(*) FROM yapilan_isler WHERE ekip_kodu_id = ? AND silinme_tarihi IS NULL) as is_sayisi,
+                (SELECT COUNT(*) FROM personel WHERE ekip_no = ? AND silinme_tarihi IS NULL) as personel_sayisi";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$id]);
-        return $stmt->fetch(PDO::FETCH_OBJ);
+        $stmt->execute([$id, $id, $id, $id]);
+        $res = $stmt->fetch(PDO::FETCH_OBJ);
+
+        if (!$res) {
+            return false;
+        }
+
+        return ($res->gecmis_sayisi > 0 || $res->okuma_sayisi > 0 || $res->is_sayisi > 0 || $res->personel_sayisi > 0);
     }
 
     /**İş türü kullanılıyor mu kontrol et */

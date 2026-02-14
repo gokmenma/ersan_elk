@@ -117,10 +117,9 @@ class NobetModel extends Model
                 (firma_id, personel_id, nobet_tarihi, baslangic_saati, bitis_saati, nobet_tipi, aciklama, olusturan_id, olusturma_tarihi)
                 VALUES 
                 (:firma_id, :personel_id, :nobet_tarihi, :baslangic_saati, :bitis_saati, :nobet_tipi, :aciklama, :olusturan_id, NOW())";
-
         $tip = $data['nobet_tipi'] ?? 'standart';
         $gun = date('N', strtotime($data['nobet_tarihi']));
-        if ($tip === 'standart' && ($gun == 6 || $gun == 7)) {
+        if ($tip === 'standart' && $gun == 7) {
             $tip = 'hafta_sonu';
         }
 
@@ -152,7 +151,7 @@ class NobetModel extends Model
 
         $tip = $data['nobet_tipi'] ?? 'standart';
         $gun = date('N', strtotime($data['nobet_tarihi']));
-        if ($tip === 'standart' && ($gun == 6 || $gun == 7)) {
+        if ($tip === 'standart' && $gun == 7) {
             $tip = 'hafta_sonu';
         }
 
@@ -316,7 +315,7 @@ class NobetModel extends Model
         $current = $this->find($id);
         if ($current && ($current->nobet_tipi == 'standart' || $current->nobet_tipi == 'hafta_sonu')) {
             $gun = date('N', strtotime($yeni_tarih));
-            $data['nobet_tipi'] = ($gun == 6 || $gun == 7) ? 'hafta_sonu' : 'standart';
+            $data['nobet_tipi'] = ($gun == 7) ? 'hafta_sonu' : 'standart';
         }
 
         return $this->updateNobet($id, $data);

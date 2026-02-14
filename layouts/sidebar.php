@@ -25,6 +25,47 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
 
         <!--- Sidemenu -->
         <div id="sidebar-menu">
+            <style>
+                .sidebar-search-container {
+                    padding: 10px 20px 15px 20px;
+                }
+
+                .sidebar-search {
+                    background-color: rgba(255, 255, 255, 0.05) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+                    color: #ced4da !important;
+                    border-radius: 8px !important;
+                    padding-left: 38px !important;
+                    height: 38px;
+                    font-size: 13px;
+                    transition: all 0.3s ease;
+                }
+
+                .sidebar-search:focus {
+                    background-color: rgba(255, 255, 255, 0.1) !important;
+                    border-color: rgba(255, 255, 255, 0.2) !important;
+                    box-shadow: none;
+                    color: #fff !important;
+                }
+
+                .sidebar-search-container .search-icon {
+                    position: absolute;
+                    left: 13px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    width: 15px;
+                    height: 15px;
+                    color: #74788d;
+                    pointer-events: none;
+                }
+            </style>
+            <div class="sidebar-search-container">
+                <div class="position-relative">
+                    <input type="text" class="form-control sidebar-search" id="menu-search-input"
+                        placeholder="Menüde ara...">
+                    <i data-feather="search" class="search-icon"></i>
+                </div>
+            </div>
             <!-- Left Menu Start -->
             <ul class="metismenu list-unstyled" id="side-menu">
 
@@ -86,3 +127,73 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
         <!-- Sidebar -->
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+
+        const searchInput = document.getElementById('menu-search-input');
+        if (!searchInput) return;
+
+        searchInput.addEventListener('input', function () {
+            const filter = this.value.toLowerCase().trim();
+            const sideMenu = document.getElementById('side-menu');
+            const allLi = sideMenu.querySelectorAll('li:not(.menu-title)');
+            const titles = sideMenu.querySelectorAll('.menu-title');
+
+            if (filter === '') {
+                allLi.forEach(li => {
+                    li.style.display = '';
+                });
+                titles.forEach(t => t.style.display = '');
+                return;
+            }
+
+            // Önce her şeyi gizle
+            allLi.forEach(li => li.style.display = 'none');
+
+            // Eşleşenleri bul ve göster
+            allLi.forEach(li => {
+                const anchor = li.querySelector('a');
+                if (!anchor) return;
+
+                const text = anchor.textContent.toLowerCase();
+                if (text.includes(filter)) {
+                    li.style.display = '';
+
+                    // Üst menüleri aç ve göster (Parent items)
+                    let parent = li.parentElement.closest('li');
+                    while (parent) {
+                        parent.style.display = '';
+                        parent.classList.add('mm-active');
+                        const subMenu = parent.querySelector('ul.sub-menu');
+                        if (subMenu) {
+                            subMenu.classList.add('mm-show');
+                            subMenu.style.display = 'block';
+                        }
+                        parent = parent.parentElement.closest('li');
+                    }
+
+                    // Eğer bu bir parent menü ise, tüm çocuklarını da gösterelim mi? 
+                    // Genelde sadece eşleşen i göstermek daha temizdir.
+                }
+            });
+
+            // Grup başlıklarını güncelle
+            titles.forEach(title => {
+                let next = title.nextElementSibling;
+                let hasVisible = false;
+                while (next && !next.classList.contains('menu-title')) {
+                    if (next.style.display !== 'none') {
+                        hasVisible = true;
+                        break;
+                    }
+                    next = next.nextElementSibling;
+                }
+                title.style.display = hasVisible ? '' : 'none';
+            });
+        });
+    });
+</script>
