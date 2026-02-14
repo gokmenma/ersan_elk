@@ -572,12 +572,13 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
     /* thead offset adjustments for Consolidated 2-row structure - pixel perfect fix */
     #comparisonTable thead tr:nth-child(1) th {
-        top: -1px; 
+        top: -1px;
         z-index: 30;
     }
 
     #comparisonTable thead tr:nth-child(2) th {
-        top: 29px; /* Correct offset after Row 1 */
+        top: 25px;
+        /* Tightened to remove gap */
         z-index: 29;
     }
 
@@ -666,7 +667,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     #comparisonTable thead tr:nth-child(2) .fix-col-1,
     #comparisonTable thead tr:nth-child(2) .fix-col-2,
     #comparisonTable thead tr:nth-child(2) .fix-col-3 {
-        top: 29px !important;
+        top: 25px !important;
     }
 
     [data-bs-theme="dark"] #comparisonTable thead .fix-col-1,
@@ -1189,6 +1190,8 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             html += `<th class="fix-col-1 sortable-header" data-sort-col="ilce_tipi">İLÇE TİPİ${sortIcon('ilce_tipi')}</th>`;
             html += `<th class="fix-col-2 sortable-header" data-sort-col="bolge">BÖLGE${sortIcon('bolge')}</th>`;
             html += `<th class="fix-col-3 sortable-header" data-sort-col="defter">DEFTER${sortIcon('defter')}</th>`;
+
+            const visibleCount = Object.values(_visibleColumns).filter(v => v).length;
 
             donemler.forEach(function (donem, idx) {
                 if (visibleCount === 0) return;

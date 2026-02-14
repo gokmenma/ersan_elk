@@ -203,6 +203,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $borderColor = '#155724'; // Koyu yeşil çerçeve
                     }
 
+                    if ($nobet->nobet_tipi == 'hafta_sonu') {
+                        $borderColor = '#8b5cf6'; // Mor (Violet-500) çerçeve
+                    }
+
                     $events[] = [
                         'id' => Security::encrypt($nobet->id),
                         'title' => $nobet->adi_soyadi,
@@ -361,8 +365,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception("Eksik bilgi.");
                 }
 
+                $oldNobet = $Nobet->find($id);
+                if (!$oldNobet) {
+                    throw new Exception("Nöbet bulunamadı.");
+                }
+
                 $result = $Nobet->updateNobet($id, ['nobet_tipi' => $tip]);
                 if ($result) {
+                    $tipEtiketleri = [
+                        'standart' => 'Standart',
+                        'hafta_sonu' => 'Hafta Sonu',
+                        'resmi_tatil' => 'Resmi Tatil',
+                        'ozel' => 'Özel'
+                    ];
+                    $eskiTip = $tipEtiketleri[$oldNobet->nobet_tipi] ?? $oldNobet->nobet_tipi;
+                    $yeniTip = $tipEtiketleri[$tip] ?? $tip;
+
+                    $SystemLog->logAction($userId, 'Nöbet Tipi Değişimi', "{$oldNobet->adi_soyadi}'nin {$oldNobet->nobet_tarihi} tarihli nöbet tipi [{$eskiTip}] -> [{$yeniTip}] olarak değiştirildi.");
                     echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Nöbet tipi güncellendi.']);
                 } else {
                     throw new Exception("Güncelleme başarısız.");

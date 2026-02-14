@@ -136,6 +136,20 @@ foreach ($uniqueDepts as $dName) {
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
+
+    .custom-context-menu .menu-item.active {
+        background: #f1f5f9;
+        color: #4f46e5;
+        font-weight: 700;
+    }
+
+    .custom-context-menu .menu-item.active::after {
+        content: '\eb7a';
+        /* Boxicons bx-check icon code */
+        font-family: 'boxicons' !important;
+        margin-left: auto;
+        font-size: 18px;
+    }
 </style>
 
 
@@ -744,7 +758,7 @@ $title = 'Nöbet Planlama';
         <i class="bx bx-flag text-warning"></i>
         <span>Resmi Tatil Nöbeti Yap</span>
     </div>
-   
+
 </div>
 
 <!-- FullCalendar -->
@@ -966,33 +980,43 @@ $title = 'Nöbet Planlama';
                 }
 
                 // Sağ Tık Menüsü Listener
-                info.el.addEventListener('contextmenu', function(e) {
+                info.el.addEventListener('contextmenu', function (e) {
                     e.preventDefault();
                     if (isReadOnlyPast) return;
-                    
+
                     const x = e.clientX;
                     const y = e.clientY;
-                    
+
                     const contextMenu = document.getElementById('custom-context-menu');
                     contextMenu.style.display = 'block';
-                    
+
                     // Ekran sınırlarını kontrol et
                     const menuWidth = contextMenu.offsetWidth || 200;
                     const menuHeight = contextMenu.offsetHeight || 200;
                     const winWidth = window.innerWidth;
                     const winHeight = window.innerHeight;
-                    
+
                     let finalX = x;
                     let finalY = y;
-                    
+
                     if (x + menuWidth > winWidth) finalX = winWidth - menuWidth - 10;
                     if (y + menuHeight > winHeight) finalY = winHeight - menuHeight - 10;
-                    
+
                     contextMenu.style.left = finalX + 'px';
                     contextMenu.style.top = finalY + 'px';
                     contextMenu.dataset.eventId = info.event.id;
-                    
+
                     document.getElementById('menu-personel-name').textContent = info.event.title;
+
+                    // Aktif tipi işaretle
+                    const currentTip = info.event.extendedProps.nobet_tipi;
+                    document.querySelectorAll('.menu-item-tip').forEach(item => {
+                        if (item.dataset.tip === currentTip) {
+                            item.classList.add('active');
+                        } else {
+                            item.classList.remove('active');
+                        }
+                    });
                 });
             },
 
