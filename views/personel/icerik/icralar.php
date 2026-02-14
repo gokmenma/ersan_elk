@@ -260,7 +260,13 @@ if (!empty($icralar)) {
                                             class="text-muted">TL</small></td>
                                     <td>
                                         <div class="badge bg-light text-dark fw-medium">
-                                            <?= number_format($i->aylik_kesinti_tutari, 2, ',', '.') ?> TL
+                                            <?php if (($i->kesinti_tipi ?? 'tutar') === 'tutar'): ?>
+                                                <?= number_format($i->aylik_kesinti_tutari, 2, ',', '.') ?> TL
+                                            <?php elseif ($i->kesinti_tipi === 'net_yuzde'): ?>
+                                                %<?= number_format($i->kesinti_orani, 2, ',', '.') ?> (Net)
+                                            <?php elseif ($i->kesinti_tipi === 'asgari_yuzde'): ?>
+                                                %<?= number_format($i->kesinti_orani, 2, ',', '.') ?> (Asgari)
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                     <td class="text-primary fw-bold"><?= number_format($i->toplam_kesilen, 2, ',', '.') ?>
@@ -411,14 +417,21 @@ if (!empty($icralar)) {
                         <div class="col-md-12 mb-3">
                             <?= Form::FormFloatInput("text", "icra_dosya_no", "", "Dosya No", "Dosya Numarası", "file-text", "form-control shadow-none", true, null, "off", false) ?>
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-12 mb-3">
                             <?= Form::FormFloatInput("number", "icra_toplam_borc", "", "Toplam Borç", "Toplam Borç (TL)", "dollar-sign", "form-control shadow-none", true, null, "off", false, 'step="0.01"') ?>
                         </div>
                         <div class="col-md-6 mb-3">
+                            <?= Form::FormSelect2("icra_kesinti_tipi", [
+                                "tutar" => "Sabit Tutar",
+                                "net_yuzde" => "Net Ücretin Yüzdesi",
+                                "asgari_yuzde" => "Net Asgari Ücretin Yüzdesi"
+                            ], "tutar", "Kesinti Türü", "list", "key", "", "form-select select2 shadow-none", true, 'width:100%') ?>
+                        </div>
+                        <div class="col-md-6 mb-3" id="div_icra_aylik_kesinti">
                             <?= Form::FormFloatInput("number", "icra_aylik_kesinti", "", "Aylık Kesinti", "Aylık Kesinti (TL)", "minus-circle", "form-control shadow-none", true, null, "off", false, 'step="0.01"') ?>
                         </div>
-                        <div class="col-md-12 mb-3">
-                            <?= Form::FormFloatInput("text", "icra_baslangic", "", "Başlangıç Tarihi", "Kesinti Başlangıç Tarihi", "calendar", "form-control flatpickr shadow-none", true, null, "off", false) ?>
+                        <div class="col-md-6 mb-3" id="div_icra_kesinti_orani" style="display:none;">
+                            <?= Form::FormFloatInput("number", "icra_kesinti_orani", "25", "Kesinti Oranı (%)", "Kesinti Oranı (%)", "percent", "form-control shadow-none", false, null, "off", false, 'step="0.01" min="0" max="100"') ?>
                         </div>
                         <div class="col-md-12 mb-3">
                             <?= Form::FormFloatTextarea("icra_aciklama", "", "Açıklama", "Dosya Açıklaması", "edit-3", "form-control shadow-none", false, "80px", 2) ?>
@@ -599,7 +612,14 @@ if (!empty($icralar)) {
                                         <td><?= htmlspecialchars($i->icra_dairesi) ?></td>
                                         <td><?= htmlspecialchars($i->dosya_no) ?></td>
                                         <td class="text-end fw-bold"><?= number_format($i->toplam_borc, 2, ',', '.') ?> TL</td>
-                                        <td class="text-end"><?= number_format($i->aylik_kesinti_tutari, 2, ',', '.') ?> TL</td>
+                                        <td class="text-end"><?php if (($i->kesinti_tipi ?? 'tutar') === 'tutar'): ?>
+                                                <?= number_format($i->aylik_kesinti_tutari, 2, ',', '.') ?> TL
+                                            <?php elseif ($i->kesinti_tipi === 'net_yuzde'): ?>
+                                                %<?= number_format($i->kesinti_orani, 2, ',', '.') ?> (Net)
+                                            <?php elseif ($i->kesinti_tipi === 'asgari_yuzde'): ?>
+                                                %<?= number_format($i->kesinti_orani, 2, ',', '.') ?> (Asgari)
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="text-end text-success fw-bold">
                                             <?= number_format($i->toplam_kesilen, 2, ',', '.') ?> TL
                                         </td>

@@ -22,13 +22,34 @@ $(document).ready(function () {
     $("#formPersonelIcraEkle")[0].reset();
     $("#icra_id_hidden").val("");
     $("#icra_durum").val("devam_ediyor");
+    $("#icra_kesinti_tipi").val("tutar");
+    $("#icra_kesinti_orani").val("25");
     $("#modalPersonelIcraEkle").modal("show");
     setTimeout(syncFeather, 50);
     /**select2 */
-    $("#icra_durum").select2({
+    $("#icra_durum, #icra_kesinti_tipi").select2({
       theme: "bootstrap-5",
       dropdownParent: $("#modalPersonelIcraEkle"),
     });
+
+    // Modal açıldığında varsayılanları tetikle
+    $("#icra_kesinti_tipi").trigger("change");
+  });
+
+  // Kesinti tipi değiştiğinde alanları göster/gizle (Sadece bir kez bağla)
+  $(document).on("change", "#icra_kesinti_tipi", function () {
+    var tip = $(this).val();
+    if (tip === "tutar") {
+      $("#div_icra_aylik_kesinti").show();
+      $("#div_icra_kesinti_orani").hide();
+      $("#icra_aylik_kesinti").attr("required", true);
+      $("#icra_kesinti_orani").removeAttr("required");
+    } else {
+      $("#div_icra_aylik_kesinti").hide();
+      $("#div_icra_kesinti_orani").show();
+      $("#icra_aylik_kesinti").removeAttr("required");
+      $("#icra_kesinti_orani").attr("required", true);
+    }
   });
 
   // İcra Düzenle Modal Aç
@@ -55,19 +76,13 @@ $(document).ready(function () {
           $("#icra_dairesi").val(response.icra_dairesi);
           $("#icra_dosya_no").val(response.dosya_no);
           $("#icra_toplam_borc").val(response.toplam_borc);
+          $("#icra_kesinti_tipi")
+            .val(response.kesinti_tipi || "tutar")
+            .trigger("change");
           $("#icra_aylik_kesinti").val(response.aylik_kesinti_tutari);
-          $("#icra_baslangic").val(response.baslangic_tarihi);
+          $("#icra_kesinti_orani").val(response.kesinti_orani || "25");
           $("#icra_durum").val(response.durum).trigger("change");
           $("#icra_aciklama").val(response.aciklama);
-
-          // Flatpickr kontrolü
-          var baslangicInput = $("#icra_baslangic");
-          if (
-            baslangicInput.hasClass("flatpickr-input") &&
-            baslangicInput[0]._flatpickr
-          ) {
-            baslangicInput[0]._flatpickr.setDate(response.baslangic_tarihi);
-          }
 
           $("#modalPersonelIcraEkle").modal("show");
           setTimeout(syncFeather, 50);

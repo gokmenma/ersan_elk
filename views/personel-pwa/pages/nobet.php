@@ -604,6 +604,12 @@
             let hasNobet = false;
             let opacityClass = '';
 
+            if (isPast) {
+                dayClass = 'bg-slate-100/50 dark:bg-slate-800/50';
+                textClass = 'text-slate-400 dark:text-slate-600';
+                opacityClass = 'opacity-50';
+            }
+
             if (isToday) {
                 dayClass = 'bg-primary/10 ring-2 ring-primary';
                 textClass = 'text-primary font-bold';

@@ -153,8 +153,10 @@ try {
                 'dosya_no' => $_POST['icra_dosya_no'],
                 'icra_dairesi' => $_POST['icra_dairesi'],
                 'toplam_borc' => $_POST['icra_toplam_borc'],
-                'aylik_kesinti_tutari' => $_POST['icra_aylik_kesinti'],
-                'baslangic_tarihi' => $_POST['icra_baslangic'],
+                'aylik_kesinti_tutari' => $_POST['icra_aylik_kesinti'] ?? 0,
+                'kesinti_tipi' => $_POST['icra_kesinti_tipi'] ?? 'tutar',
+                'kesinti_orani' => $_POST['icra_kesinti_orani'] ?? 0,
+                'baslangic_tarihi' => $_POST['icra_baslangic'] ?? null,
                 'durum' => $_POST['icra_durum'] ?? 'bekliyor',
                 'aciklama' => $_POST['icra_aciklama'] ?? ''
             ];
@@ -174,8 +176,10 @@ try {
                 'dosya_no' => $_POST['icra_dosya_no'],
                 'icra_dairesi' => $_POST['icra_dairesi'],
                 'toplam_borc' => $_POST['icra_toplam_borc'],
-                'aylik_kesinti_tutari' => $_POST['icra_aylik_kesinti'],
-                'baslangic_tarihi' => $_POST['icra_baslangic'],
+                'aylik_kesinti_tutari' => $_POST['icra_aylik_kesinti'] ?? 0,
+                'kesinti_tipi' => $_POST['icra_kesinti_tipi'] ?? 'tutar',
+                'kesinti_orani' => $_POST['icra_kesinti_orani'] ?? 0,
+                'baslangic_tarihi' => $_POST['icra_baslangic'] ?? null,
                 'durum' => $_POST['icra_durum'] ?? 'bekliyor',
                 'aciklama' => $_POST['icra_aciklama'] ?? ''
             ];

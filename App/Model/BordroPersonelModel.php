@@ -816,7 +816,7 @@ class BordroPersonelModel extends Model
 
         // Aktif icra dosyalarını SIRA NUMARASINA GÖRE getir (devam_ediyor olanlar)
         $sql = $this->db->prepare("
-            SELECT id, icra_dairesi, dosya_no, aylik_kesinti_tutari, baslangic_tarihi, toplam_borc, sira
+            SELECT id, icra_dairesi, dosya_no, aylik_kesinti_tutari, baslangic_tarihi, toplam_borc, sira, kesinti_tipi, kesinti_orani
             FROM personel_icralari
             WHERE personel_id = ? 
             AND durum = 'devam_ediyor'
@@ -849,28 +849,33 @@ class BordroPersonelModel extends Model
             $icraKalanBorclar[$icra->id] = $kalanBorc;
         }
 
-        // Eğer oran bazlı hesaplama yapılıyorsa (oran_net), sıra mantığı uygulanmayacak
-        // Çünkü gerçek tutar hesaplaMaas içinde hesaplanacak
-        // Burada sadece her icra dosyası için kesinti kaydı oluşturuyoruz
-        // Gerçek tutar dağılımı hesaplaMaas fonksiyonunda yapılacak
-
-        // Sabit tutarlı kesintilerde de sıra mantığı uygulanmalı
-        // Toplam aylık kesinti bütçesini hesapla (sabit modda her icranın aylik_kesinti_tutari'nın toplamı)
-        // Oran modunda ise toplam oran üzerinden hesaplanan tutar hesaplaMaas'da dağıtılır
-
         foreach ($icralar as $icra) {
             $kalanBorc = $icraKalanBorclar[$icra->id];
 
-            // Eğer kalan borç 0 veya negatifse bu icra için kesinti kaydetme
-            // (Ama kayıt varsa 0 olarak güncelle)
+            // Bireysel ayarlar var mı?
+            $bizHTip = $icra->kesinti_tipi ?? 'tutar';
+            $bizOran = floatval($icra->kesinti_orani ?? 0);
+
+            if ($bizHTip === 'net_yuzde') {
+                $finalHTip = 'oran_net';
+                $finalOran = $bizOran;
+            } elseif ($bizHTip === 'asgari_yuzde') {
+                $finalHTip = 'asgari_oran_net';
+                $finalOran = $bizOran;
+            } else {
+                $finalHTip = 'sabit';
+                $finalOran = 0;
+            }
+
+            // Geriye dönük uyumluluk: Eğer icra dosyasında ayar yoksa (veya sabit ise) 
+            // ve küresel bir oran tanımı varsa, küresel olanı kullan? 
+            // Hayır, kullanıcı bireysel ayar istiyorsa onu kullanalım. 
+            // Ancak mevcut icralar 'tutar' olarak kaldı. Sabit modda aylık tutar kullanılır.
+
             $tutar = floatval($icra->aylik_kesinti_tutari);
 
-            // Oran bazlı hesaplamada tutar placeholder olarak kalacak
-            // Gerçek dağıtım hesaplaMaas'ta yapılacak
-            if ($hTip === 'oran_net' || $hTip === 'oran_brut') {
-                // Oran bazlı kesintilerde her icra dosyası için placeholder kayıt oluştur
-                // Tutar 0 olarak kaydedilir, hesaplaMaas fonksiyonunda gerçek tutar hesaplanır
-                $tutar = 0;
+            if ($finalHTip === 'oran_net' || $finalHTip === 'asgari_oran_net') {
+                $tutar = 0; // Placeholder
             } else {
                 // Sabit tutarlı kesintilerde kalan borç kontrolü yap
                 if ($tutar <= 0)
@@ -896,14 +901,14 @@ class BordroPersonelModel extends Model
             if ($mevcut) {
                 // Kayıt var, tutarı ve açıklamasını güncelle
                 $this->db->prepare("UPDATE personel_kesintileri SET tutar = ?, aciklama = ?, durum = 'onaylandi', parametre_id = ?, hesaplama_tipi = ?, oran = ?, updated_at = NOW() WHERE id = ?")
-                    ->execute([$tutar, $aciklama, $paramId, $hTip, $oran, $mevcut->id]);
+                    ->execute([$tutar, $aciklama, $paramId, $finalHTip, $finalOran, $mevcut->id]);
             } else {
                 // Kayıt yok, oluştur
                 $sqlAdd = $this->db->prepare("
                     INSERT INTO personel_kesintileri (personel_id, donem_id, aciklama, tutar, tur, durum, icra_id, parametre_id, hesaplama_tipi, oran, olusturma_tarihi)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ");
-                $sqlAdd->execute([$personel_id, $donem_id, $aciklama, $tutar, 'icra', 'onaylandi', $icra->id, $paramId, $hTip, $oran]);
+                $sqlAdd->execute([$personel_id, $donem_id, $aciklama, $tutar, 'icra', 'onaylandi', $icra->id, $paramId, $finalHTip, $finalOran]);
                 $olusturulanSayisi++;
             }
         }
@@ -1632,8 +1637,8 @@ class BordroPersonelModel extends Model
                 'oran' => floatval($kesinti->oran ?? 0)
             ];
 
-            // Eğer oran_net ise şimdilik hakedişi bekleyeceğiz
-            if ($hesaplamaTipi === 'oran_net') {
+            // İcra veya oran bazlı kesinti ise şimdilik hakedişi bekleyeceğiz (Sıralı dağıtım için)
+            if ($kesinti->tur === 'icra' || $hesaplamaTipi === 'oran_net' || $hesaplamaTipi === 'asgari_oran_net') {
                 $oranliKesintiler[] = [
                     'kesinti' => $kesinti,
                     'detay_index' => count($kesintiDetaylari)
@@ -1747,23 +1752,24 @@ class BordroPersonelModel extends Model
                 ->execute([$tutar, $kesinti->id]);
         }
 
-        // İcra bazlı oranlı kesintileri SIRA NUMARASINA GÖRE DAĞIT
-        if (!empty($icraOranliKesintiler)) {
-            // Tüm icra kesintileri aynı oranı kullanır, toplam kesinti bütçesini hesapla
-            $icraOran = floatval($icraOranliKesintiler[0]['kesinti']->oran ?? 0);
-            $toplamIcraBudget = round($hakedisNet * ($icraOran / 100), 2);
+        // ========== ÖDEME DAĞILIMI ÖN HAZIRLIK ==========
+        // Fiili çalışma günü (30 günden ücretsiz ve ücretli izinler düşülmüş)
+        $fiiliCalismaGunu = 30 - $ucretsizIzinGunu - $ucretliIzinGunu;
+        if ($fiiliCalismaGunu < 0)
+            $fiiliCalismaGunu = 0;
 
-            // İcra dosyalarını sıra numarasına göre sırala
-            // Her bir icra kesintisi için icra dosyasının sıra bilgisini çek
+        // Asgari ücret net tutarını al
+        $asgariUcretNet = $parametreModel->getGenelAyar('asgari_ucret_net', $donemTarihi) ?? 17002.12;
+
+        // İcra bazlı kesintileri SIRA NUMARASINA GÖRE DAĞIT
+        if (!empty($icraOranliKesintiler)) {
+            // 1) İcra dosyası detaylarını topla
             $icraDetaylar = [];
             foreach ($icraOranliKesintiler as $item) {
                 $kesinti = $item['kesinti'];
-
-                // İcra dosyasının sıra numarası ve kalan borcunu getir
-                $sqlIcra = $this->db->prepare("SELECT id, toplam_borc, icra_dairesi, dosya_no, sira FROM personel_icralari WHERE id = ?");
+                $sqlIcra = $this->db->prepare("SELECT id, toplam_borc, icra_dairesi, dosya_no, sira, aylik_kesinti_tutari, kesinti_tipi, kesinti_orani FROM personel_icralari WHERE id = ?");
                 $sqlIcra->execute([$kesinti->icra_id]);
                 $icraData = $sqlIcra->fetch(PDO::FETCH_OBJ);
-
                 if (!$icraData)
                     continue;
 
@@ -1782,12 +1788,43 @@ class BordroPersonelModel extends Model
                 ];
             }
 
-            // Sıra numarasına göre sırala (küçükten büyüğe)
+            // 2) Sıra numarasına göre sırala
             usort($icraDetaylar, function ($a, $b) {
-                return $a['sira'] - $b['sira'];
+                if ($a['sira'] != $b['sira'])
+                    return $a['sira'] - $b['sira'];
+                return $a['icraData']->id - $b['icraData']->id;
             });
 
-            // Toplam bütçeyi sırasıyla icralara dağıt
+            // 3) İlk icranın kuralına göre toplam bütçeyi hesapla
+            $firstKesinti = $icraDetaylar[0]['item']['kesinti'];
+            $firstHTip = $firstKesinti->hesaplama_tipi ?? 'sabit';
+            $firstOran = floatval($firstKesinti->oran ?? 0);
+
+            // Bankaya yatacak baz (asgari ücret bazlı hesaplama için)
+            $bankaYatacakBaz = $asgariUcretNet;
+            if ($fiiliCalismaGunu < 30) {
+                $bankaYatacakBaz = ($asgariUcretNet / 30) * $fiiliCalismaGunu;
+            }
+
+            $toplamIcraBudget = 0;
+            if ($firstHTip === 'asgari_oran_net') {
+                // Net asgari ücretin yüzdesi (bankaya yatacak baz üzerinden)
+                $oranKullan = ($firstOran > 0) ? $firstOran : 25;
+                $toplamIcraBudget = round($bankaYatacakBaz * ($oranKullan / 100), 2);
+            } elseif ($firstHTip === 'oran_net') {
+                // Net ücretin (toplam alacağı) yüzdesi
+                $oranKullan = ($firstOran > 0) ? $firstOran : 25;
+                $toplamIcraBudget = round($hakedisNet * ($oranKullan / 100), 2);
+            } else {
+                // Sabit tutar: tüm icra dosyalarının aylik_kesinti_tutari toplamı
+                foreach ($icraDetaylar as $d) {
+                    $toplamIcraBudget += floatval($d['icraData']->aylik_kesinti_tutari);
+                }
+            }
+
+            // 4) Bütçeyi sırasıyla dağıt
+            //    - 1. icranın kalan borcu >= bütçe → bütçe kadar kes, bütçe biter
+            //    - 1. icranın kalan borcu < bütçe → kalan borcun tamamını kes, artan bütçe 2. icraya geçer
             $kalanBudget = $toplamIcraBudget;
 
             foreach ($icraDetaylar as $detay) {
@@ -1797,14 +1834,11 @@ class BordroPersonelModel extends Model
                 $icraData = $detay['icraData'];
                 $kalanBorc = $detay['kalanBorc'];
 
-                // Bu icra için kesilecek tutar
                 $tutar = 0;
                 if ($kalanBudget > 0 && $kalanBorc > 0) {
-                    // Bütçeden, kalan borç kadar kes (hangisi küçükse o kadar)
                     $tutar = min($kalanBudget, $kalanBorc);
                     $kalanBudget -= $tutar;
                 }
-
                 $tutar = round($tutar, 2);
 
                 // Borç bu kesintiyle bitiyorsa uyarı ekle
@@ -1831,7 +1865,7 @@ class BordroPersonelModel extends Model
                 $digerKesintiler += $tutar;
                 $kesintiDetaylari[$index]['tutar'] = $tutar;
 
-                // Veritabanındaki tutarı da güncelliyoruz
+                // Veritabanındaki tutarı güncelle
                 $this->db->prepare("UPDATE personel_kesintileri SET tutar = ?, updated_at = NOW() WHERE id = ?")
                     ->execute([$tutar, $kesinti->id]);
             }
@@ -1868,11 +1902,6 @@ class BordroPersonelModel extends Model
         $toplamMaliyet = $calisanBrutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler;
 
         // ========== ÖDEME DAĞILIMI HESAPLAMA ==========
-        // Fiili çalışma günü (30 günden ücretsiz ve ücretli izinler düşülmüş)
-        $fiiliCalismaGunu = 30 - $ucretsizIzinGunu - $ucretliIzinGunu;
-        if ($fiiliCalismaGunu < 0) {
-            $fiiliCalismaGunu = 0;
-        }
 
         // Sodexo tutarını fiili çalışma gününe göre oranla (30 gün üzerinden)
         // Eğer manuel olarak güncellenmişse veriyi olduğu gibi al
@@ -1893,8 +1922,6 @@ class BordroPersonelModel extends Model
 
             $toplamPrim = $netMaas; // Net maaş zaten prim toplamını içeriyor
 
-            // Asgari ücret net tutarını al
-            $asgariUcretNet = $parametreModel->getGenelAyar('asgari_ucret_net', $donemTarihi) ?? 28075.00;
 
             // Bankaya yatacak minimum tutar (asgari ücretin çalışma gününe oranı)
             if ($fiiliCalismaGunu >= 30) {
@@ -1928,8 +1955,6 @@ class BordroPersonelModel extends Model
             // 3. Sonra İcra kesintisi (elden ödemeden düşülür, bankadan değil)
             // 4. En son Elden ödeme = Net maaş - Banka - Sodexo - İcra
 
-            // Asgari ücret net tutarını al
-            $asgariUcretNet = $parametreModel->getGenelAyar('asgari_ucret_net', $donemTarihi) ?? 28075.00;
 
             // Net maaşı günlük oranla (eksik gün varsa)
             if ($fiiliCalismaGunu < 30 && $fiiliCalismaGunu > 0) {
@@ -1976,8 +2001,6 @@ class BordroPersonelModel extends Model
             // 3. Sonra İcra kesintisi (elden ödemeden düşülür, bankadan değil)
             // 4. En son Elden ödeme = Net maaş - Banka - Sodexo - İcra
 
-            // Asgari ücret net tutarını al (brüt hesaplama için de gerekli)
-            $asgariUcretNet = $parametreModel->getGenelAyar('asgari_ucret_net', $donemTarihi) ?? 28075.00;
 
             // Bankaya yatacak minimum tutar (asgari ücretin çalışma gününe oranı)
             if ($fiiliCalismaGunu >= 30) {
