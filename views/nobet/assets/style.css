@@ -349,6 +349,76 @@
   margin-top: 5px;
 }
 
+/* Dark Mode - Buttons & View Selectors */
+[data-bs-theme="dark"] .view-buttons {
+  background: #27272a;
+}
+
+[data-bs-theme="dark"] .view-buttons .btn {
+  color: #a1a1aa;
+}
+
+[data-bs-theme="dark"] .view-buttons .btn.active {
+  background: #3f3f46;
+  color: #fafafa;
+}
+
+[data-bs-theme="dark"] .calendar-nav .btn,
+[data-bs-theme="dark"] #calendar-today,
+[data-bs-theme="dark"] #dept-filter-btn,
+[data-bs-theme="dark"] #personel-sort-btn {
+  background: #27272a !important;
+  border-color: #3f3f46 !important;
+  color: #fafafa !important;
+}
+
+[data-bs-theme="dark"] .calendar-nav .btn:hover,
+[data-bs-theme="dark"] #calendar-today:hover,
+[data-bs-theme="dark"] #dept-filter-btn:hover,
+[data-bs-theme="dark"] #personel-sort-btn:hover {
+  background: #3f3f46 !important;
+}
+
+[data-bs-theme="dark"] .calendar-card,
+[data-bs-theme="dark"] .calendar-header,
+[data-bs-theme="dark"] .personel-pool-card,
+[data-bs-theme="dark"] .pool-header,
+[data-bs-theme="dark"] .pool-filters,
+[data-bs-theme="dark"] .personel-list {
+  background: #18181b !important;
+  border-color: #27272a !important;
+}
+
+[data-bs-theme="dark"] .pool-header h5 {
+  color: #fafafa;
+}
+
+[data-bs-theme="dark"] .personel-item {
+  background: #27272a;
+  border-color: #3f3f46;
+}
+
+[data-bs-theme="dark"] .personel-item .personel-name {
+  color: #fafafa;
+}
+
+[data-bs-theme="dark"] .personel-item:hover {
+  background: #323235;
+}
+
+[data-bs-theme="dark"] .fc-col-header-cell {
+  background: #27272a !important;
+  color: #fafafa !important;
+}
+
+[data-bs-theme="dark"] .fc-col-header-cell-cushion {
+  color: #fafafa !important;
+}
+
+[data-bs-theme="dark"] .calendar-title {
+  color: #fafafa !important;
+}
+
 /* Sağ Panel - Takvim */
 .calendar-panel {
   flex: 1;
@@ -1475,60 +1545,6 @@
   margin-left: 6px;
 }
 
-.table-premium {
-  border-collapse: separate;
-  border-spacing: 0 8px;
-}
-
-.table-premium thead th {
-  background-color: transparent !important;
-  border: none !important;
-  color: #71717a;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 12px 16px !important;
-}
-
-.table-premium tbody tr {
-  background-color: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-  transition: all 0.2s ease;
-}
-
-.table-premium tbody tr:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.table-premium tbody td {
-  border: none !important;
-  padding: 16px !important;
-}
-
-.table-premium tbody tr td:first-child {
-  border-top-left-radius: 12px;
-  border-bottom-left-radius: 12px;
-}
-
-.table-premium tbody tr td:last-child {
-  border-top-right-radius: 12px;
-  border-bottom-right-radius: 12px;
-}
-
-[data-bs-theme="dark"] .nav-tabs-custom {
-  border-bottom-color: #2a2a2c;
-}
-
-[data-bs-theme="dark"] .table-premium tbody tr {
-  background-color: #1c1c1e;
-}
-
-[data-bs-theme="dark"] .table-premium thead th {
-  color: #a1a1aa;
-}
-
 /* Premium Badges */
 .badge-premium {
   padding: 6px 12px;
@@ -1589,4 +1605,45 @@
 [data-bs-theme="dark"] .badge-premium-secondary {
   background-color: rgba(82, 82, 91, 0.2) !important;
   color: #d4d4d8 !important;
+}
+
+/* ============================================
+   TABLE-PREMIUM EK STİLLER
+   ============================================ */
+
+/* Personel avatar alanı */
+.table-premium td .avatar-sm {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+}
+
+.table-premium td .avatar-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* DataTables Wrapper - Premium Stil */
+.table-premium_wrapper .dataTables_length,
+.table-premium_wrapper .dataTables_filter,
+div[id$="-table_wrapper"] .dataTables_length,
+div[id$="-table_wrapper"] .dataTables_filter {
+  display: none !important;
+}
+
+div[id$="-table_wrapper"] .dataTables_info {
+  font-size: 12px;
+  color: #71717a;
+  padding: 12px 0 !important;
+  font-weight: 500;
+}
+
+/* Dark Mode - DataTables */
+[data-bs-theme="dark"] div[id$="-table_wrapper"] .dataTables_info {
+  color: #71717a;
+}
+
+[data-bs-theme="dark"] .table-premium .dataTables_empty,
+[data-bs-theme="dark"] .table-premium td[class="dataTables_empty"] {
+  color: #71717a;
 }

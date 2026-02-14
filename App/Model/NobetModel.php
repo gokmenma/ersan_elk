@@ -37,6 +37,7 @@ class NobetModel extends Model
                 WHERE n.firma_id = :firma_id 
                 AND n.silinme_tarihi IS NULL
                 AND n.nobet_tarihi BETWEEN :baslangic AND :bitis
+                AND (n.durum IS NULL OR n.durum NOT IN ('talep_edildi', 'reddedildi'))
                 ORDER BY n.nobet_tarihi ASC, n.baslangic_saati ASC";
 
         $query = $this->db->prepare($sql);
@@ -61,7 +62,8 @@ class NobetModel extends Model
         $sql = "SELECT COUNT(*) FROM {$this->table} 
                 WHERE personel_id = :personel_id 
                 AND nobet_tarihi = :tarih 
-                AND silinme_tarihi IS NULL";
+                AND silinme_tarihi IS NULL
+                AND (durum IS NULL OR durum != 'reddedildi')";
 
         $params = [
             'personel_id' => $personel_id,
@@ -87,7 +89,8 @@ class NobetModel extends Model
                 FROM {$this->table} n
                 LEFT JOIN personel p ON n.personel_id = p.id
                 WHERE n.personel_id = :personel_id 
-                AND n.silinme_tarihi IS NULL";
+                AND n.silinme_tarihi IS NULL
+                AND (n.durum IS NULL OR n.durum NOT IN ('talep_edildi', 'reddedildi'))";
 
         $params = ['personel_id' => $personel_id];
 
@@ -128,6 +131,134 @@ class NobetModel extends Model
         ]);
 
         return $result ? $this->db->lastInsertId() : false;
+    }
+
+    /**
+     * Nöbet talebi ekler (durum = 'talep_edildi')
+     * Personel PWA'dan nöbet istek oluşturduğunda kullanılır
+     */
+    public function addNobetTalebi($data)
+    {
+        $sql = "INSERT INTO {$this->table} 
+                (firma_id, personel_id, nobet_tarihi, baslangic_saati, bitis_saati, nobet_tipi, aciklama, durum, olusturma_tarihi)
+                VALUES 
+                (:firma_id, :personel_id, :nobet_tarihi, :baslangic_saati, :bitis_saati, :nobet_tipi, :aciklama, 'talep_edildi', NOW())";
+
+        $query = $this->db->prepare($sql);
+        $result = $query->execute([
+            'firma_id' => $data['firma_id'] ?? $_SESSION['firma_id'],
+            'personel_id' => $data['personel_id'],
+            'nobet_tarihi' => $data['nobet_tarihi'],
+            'baslangic_saati' => $data['baslangic_saati'] ?? '18:00:00',
+            'bitis_saati' => $data['bitis_saati'] ?? '08:00:00',
+            'nobet_tipi' => $data['nobet_tipi'] ?? 'standart',
+            'aciklama' => $data['aciklama'] ?? null
+        ]);
+
+        return $result ? $this->db->lastInsertId() : false;
+    }
+
+    /**
+     * Personel nöbet taleplerini getirir (Yönetici Talepler sayfası için)
+     * nobetler tablosundan durum = 'talep_edildi' veya 'reddedildi' olanlar
+     * + eski personel_talepleri tablosundaki nobet_talebi kayıtları (geriye dönük uyumluluk)
+     */
+    public function getPersonelNobetTalepleriYonetici($ay = null, $yil = null, $onlyPending = true)
+    {
+        $firma_id = $_SESSION['firma_id'] ?? null;
+        $params = [':firma_id' => $firma_id];
+        $where = "WHERE n.firma_id = :firma_id AND n.silinme_tarihi IS NULL";
+
+        if ($onlyPending) {
+            $where .= " AND n.durum = 'talep_edildi'";
+        } else {
+            $where .= " AND n.durum IN ('onaylandi', 'reddedildi', 'iptal')";
+        }
+
+        if ($ay && $yil) {
+            $where .= " AND MONTH(n.nobet_tarihi) = :ay AND YEAR(n.nobet_tarihi) = :yil";
+            $params[':ay'] = $ay;
+            $params[':yil'] = $yil;
+        }
+
+        $sql = "SELECT n.*, p.adi_soyadi as personel_adi, p.departman
+                FROM {$this->table} n
+                JOIN personel p ON n.personel_id = p.id
+                $where
+                ORDER BY n.olusturma_tarihi DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Nöbet talebini onaylar (durum 'talep_edildi' -> NULL/standart)
+     */
+    public function onaylaNobetTalebi($nobet_id)
+    {
+        $sql = "UPDATE {$this->table} SET durum = 'onaylandi', olusturan_id = :olusturan_id WHERE id = :id AND durum = 'talep_edildi'";
+        $query = $this->db->prepare($sql);
+        return $query->execute([
+            'id' => $nobet_id,
+            'olusturan_id' => $_SESSION['user_id'] ?? null
+        ]);
+    }
+
+    /**
+     * Nöbet talebini reddeder (durum 'talep_edildi' -> 'reddedildi')
+     */
+    public function reddetNobetTalebi($nobet_id, $red_nedeni = null)
+    {
+        $sql = "UPDATE {$this->table} SET durum = 'reddedildi', aciklama = CONCAT(COALESCE(aciklama, ''), :red_nedeni) WHERE id = :id AND durum = 'talep_edildi'";
+        $query = $this->db->prepare($sql);
+        return $query->execute([
+            'id' => $nobet_id,
+            'red_nedeni' => $red_nedeni ? "\n[Red: " . $red_nedeni . "]" : ''
+        ]);
+    }
+
+    /**
+     * Personelin bekleyen nöbet talep tarihlerini getirir (müsait gün kontrolü için)
+     * Hem nobetler hem de eski personel_talepleri tablosundan
+     */
+    public function getPersonelBekleyenTalepTarihleri($personel_id)
+    {
+        $sql = "SELECT nobet_tarihi FROM {$this->table} 
+                WHERE personel_id = :pid 
+                AND durum = 'talep_edildi' 
+                AND silinme_tarihi IS NULL";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':pid' => $personel_id]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * Personelin bireysel nöbet taleplerini getirir (PWA takvim için)
+     * Hem nobetler hem de eski personel_talepleri tablosundan
+     */
+    public function getPersonelBekleyenTalepler($personel_id, $baslangic, $bitis)
+    {
+        $sql = "SELECT id, nobet_tarihi, aciklama, durum, olusturma_tarihi 
+                FROM {$this->table} 
+                WHERE personel_id = :pid 
+                AND durum = 'talep_edildi' 
+                AND silinme_tarihi IS NULL
+                AND nobet_tarihi BETWEEN :bas AND :bit
+                ORDER BY nobet_tarihi ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':pid' => $personel_id, ':bas' => $baslangic, ':bit' => $bitis]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Nöbet talebini iptal eder (personel tarafından)
+     */
+    public function iptalNobetTalebi($nobet_id, $personel_id)
+    {
+        $sql = "UPDATE {$this->table} SET durum = 'iptal', aciklama = 'Personel tarafından iptal edildi.' WHERE id = :id AND personel_id = :pid AND durum = 'talep_edildi'";
+        $query = $this->db->prepare($sql);
+        return $query->execute(['id' => $nobet_id, 'pid' => $personel_id]);
     }
 
     /**
@@ -796,13 +927,11 @@ class NobetModel extends Model
         $stmt->execute(['firma_id' => $firma_id, 'bas' => $bas_tarih, 'bit' => $bit_tarih]);
         $stats['onaylanan'] = $stmt->fetchColumn();
 
-        // Onaylananlar (Yeni Talepler)
-        $sqlYeni = "SELECT COUNT(*) FROM personel_talepleri pt
-                JOIN personel p ON pt.personel_id = p.id
-                WHERE p.firma_id = :firma_id 
-                AND pt.kategori = 'nobet_talebi'
-                AND pt.durum = 'cozuldu'
-                AND pt.cozum_tarihi BETWEEN :bas AND :bit";
+        // Onaylananlar (Nöbet Talepleri - nobetler tablosundan)
+        $sqlYeni = "SELECT COUNT(*) FROM {$this->table}
+                WHERE firma_id = :firma_id 
+                AND durum = 'onaylandi'
+                AND olusturma_tarihi BETWEEN :bas AND :bit";
         $stmtYeni = $this->db->prepare($sqlYeni);
         $stmtYeni->execute(['firma_id' => $firma_id, 'bas' => $bas_tarih . ' 00:00:00', 'bit' => $bit_tarih . ' 23:59:59']);
         $stats['onaylanan'] += $stmtYeni->fetchColumn();
@@ -817,13 +946,11 @@ class NobetModel extends Model
         $stmt->execute(['firma_id' => $firma_id, 'bas' => $bas_tarih, 'bit' => $bit_tarih]);
         $stats['reddedilen'] = $stmt->fetchColumn();
 
-        // Reddedilenler (Yeni Talepler)
-        $sqlYeniRed = "SELECT COUNT(*) FROM personel_talepleri pt
-                   JOIN personel p ON pt.personel_id = p.id
-                   WHERE p.firma_id = :firma_id 
-                   AND pt.kategori = 'nobet_talebi'
-                   AND pt.durum = 'reddedildi'
-                   AND pt.cozum_tarihi BETWEEN :bas AND :bit";
+        // Reddedilenler (Nöbet Talepleri - nobetler tablosundan)
+        $sqlYeniRed = "SELECT COUNT(*) FROM {$this->table}
+                   WHERE firma_id = :firma_id 
+                   AND durum = 'reddedildi'
+                   AND olusturma_tarihi BETWEEN :bas AND :bit";
         $stmtYeniRed = $this->db->prepare($sqlYeniRed);
         $stmtYeniRed->execute(['firma_id' => $firma_id, 'bas' => $bas_tarih . ' 00:00:00', 'bit' => $bit_tarih . ' 23:59:59']);
         $stats['reddedilen'] += $stmtYeniRed->fetchColumn();

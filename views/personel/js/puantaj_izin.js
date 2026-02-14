@@ -415,7 +415,7 @@ $(document).ready(function () {
       new Sortable(cell, {
         group: {
           name: "izinSharing",
-          pull: false, // Prevents extending/cloning from one day to another
+          pull: "clone", // Changed from true to 'clone' for copying
           put: true,
         },
         sort: false,
@@ -426,6 +426,7 @@ $(document).ready(function () {
           $(".tooltip").remove();
         },
         onAdd: function (evt) {
+          // Target cell logic: When an item is dropped
           const typeId = evt.item.dataset.id;
           const typeName = evt.item.dataset.name;
           const typeColor = evt.item.dataset.color;

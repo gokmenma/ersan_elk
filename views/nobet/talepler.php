@@ -370,7 +370,7 @@ $title = 'Talepler & Mazeretler';
                     $('#degisim-table').DataTable().destroy();
                 }
                 $('#degisim-table thead tr:not(:first-child)').remove();
-                
+
                 if (data.success && data.data.length > 0) {
                     let html = '';
                     let bekleyenCount = 0;
@@ -479,13 +479,13 @@ $title = 'Talepler & Mazeretler';
                 if (data.success && data.data.length > 0) {
                     let html = '';
                     data.data.forEach(t => {
-                        const islemButtons = (t.durum === 'beklemede' && !showHistory) ? `
+                        const islemButtons = (t.durum === 'talep_edildi' && !showHistory) ? `
                             <button class="btn btn-sm btn-success me-1" onclick="onaylaPersonelNobetTalebi('${t.id}')" title="Onayla"><i class="bx bx-check"></i></button>
                             <button class="btn btn-sm btn-danger" onclick="reddetPersonelNobetTalebi('${t.id}')" title="Reddet"><i class="bx bx-x"></i></button>
-                        ` : `<span class="badge bg-light text-dark">${formatDateShort(t.guncelleme_tarihi || t.olusturma_tarihi)}</span>`;
+                        ` : `<span class="badge bg-light text-dark">${formatDateShort(t.olusturma_tarihi)}</span>`;
                         html += `<tr>
                             <td><div class="d-flex align-items-center"><div class="avatar-sm me-2"><span class="avatar-title bg-info-subtle text-info rounded-circle">${(t.personel_adi ? t.personel_adi[0] : '?').toUpperCase()}</span></div><strong>${t.personel_adi || '-'}</strong></div></td>
-                            <td><span class="badge bg-primary-subtle text-primary">${formatDateShort(t.baslik)}</span></td>
+                            <td><span class="badge bg-primary-subtle text-primary">${formatDateShort(t.nobet_tarihi)}</span></td>
                             <td>${t.aciklama || '<span class="text-muted">Açıklama yok</span>'}</td>
                             <td>${getTalepDurumBadge(t.durum)}</td>
                             <td>${formatDateShort(t.olusturma_tarihi)}</td>
@@ -536,6 +536,8 @@ $title = 'Talepler & Mazeretler';
 
         function getTalepDurumBadge(durum) {
             const badges = {
+                'talep_edildi': '<span class="badge-premium badge-premium-warning"><i class="bx bx-time-five"></i> Beklemede</span>',
+                'onaylandi': '<span class="badge-premium badge-premium-success"><i class="bx bx-check-circle"></i> Onaylandı</span>',
                 'beklemede': '<span class="badge-premium badge-premium-warning"><i class="bx bx-time-five"></i> Beklemede</span>',
                 'cozuldu': '<span class="badge-premium badge-premium-success"><i class="bx bx-check-circle"></i> Onaylandı</span>',
                 'reddedildi': '<span class="badge-premium badge-premium-danger"><i class="bx bx-x-circle"></i> Reddedildi</span>',

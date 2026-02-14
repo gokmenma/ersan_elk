@@ -55,7 +55,24 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                         ?>
                     </div>
                     <div class="col-md-2 mb-2">
-                        <?php echo Form::FormFloatInput("text", "gorev", $personel->gorev ?? "", "Görev", "Görev", "award"); ?>
+                        <div class="d-flex align-items-start gap-1">
+                            <div class="form-floating form-floating-custom flex-grow-1">
+                                <select style="width:100%" class="form-select select2" id="gorev" name="gorev"
+                                    data-current-gorev="<?php echo htmlspecialchars($personel->gorev ?? ''); ?>"
+                                    data-placeholder="Görev Seçiniz">
+                                    <option value="">Görev Seçiniz</option>
+                                </select>
+                                <label for="gorev">Görev / Unvan</label>
+                                <div class="form-floating-icon">
+                                    <i data-feather="award"></i>
+                                </div>
+                            </div>
+                            <a href="index?p=tanimlamalar/unvan-ucret" target="_blank"
+                                class="btn btn-soft-primary btn-sm d-flex align-items-center justify-content-center"
+                                style="min-width:32px; height:38px; margin-top:2px;" title="Unvan / Ücret Tanımla">
+                                <i class="bx bx-plus font-size-18"></i>
+                            </a>
+                        </div>
                     </div>
                     <div class="col-md-2 mb-2">
                         <?php echo Form::FormSelect2("saha_takibi", ['1' => 'Evet', '0' => 'Hayır'], $personel->saha_takibi ?? '0', "Saha Takibi", "map-pin"); ?>
@@ -95,7 +112,8 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                                 <?php if (!empty($gecmis)): ?>
                                     <?php foreach ($gecmis as $g): ?>
                                         <tr>
-                                            <td><span class="fw-bold text-dark"><?= htmlspecialchars($g->ekip_adi) ?></span></td>
+                                            <td><span class="fw-bold text-dark"><?= htmlspecialchars($g->ekip_adi) ?></span>
+                                            </td>
                                             <td><?= date('d.m.Y', strtotime($g->baslangic_tarihi)) ?></td>
                                             <td><?= $g->bitis_tarihi ? date('d.m.Y', strtotime($g->bitis_tarihi)) : '<span class="badge bg-soft-success text-success">Devam Ediyor</span>' ?>
                                             </td>

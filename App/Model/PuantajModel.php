@@ -496,9 +496,9 @@ class PuantajModel extends Model
         $bugun = date('Y-m-d');
 
         $sql = "SELECT 
-                    SUM(CASE WHEN COALESCE(tn.tur_adi, t.is_emri_tipi) IN ('KESME ISEMRI', 'A\u00c7MA \u0130\u015e EMRI') THEN 1 ELSE 0 END) as kesme_acma,
-                    SUM(CASE WHEN COALESCE(tn.tur_adi, t.is_emri_tipi) IN ('DEGISME S\u00d6KME TAKMA', 'DEGISME S\u00d6KME TAKMA ISEMRI-ERSAN') THEN 1 ELSE 0 END) as sayac_degisimi,
-                    SUM(CASE WHEN COALESCE(tn.tur_adi, t.is_emri_tipi) = 'M\u00dcH\u00dcRLEME' THEN 1 ELSE 0 END) as muhurleme
+                    SUM(CASE WHEN tn.rapor_sekmesi = 'kesme' AND tn.is_turu_ucret > 0 THEN t.sonuclanmis ELSE 0 END) as kesme_acma,
+                    SUM(CASE WHEN tn.rapor_sekmesi = 'sokme_takma' AND tn.is_turu_ucret > 0 THEN t.sonuclanmis ELSE 0 END) as sayac_degisimi,
+                    SUM(CASE WHEN tn.rapor_sekmesi = 'muhurleme' AND tn.is_turu_ucret > 0 THEN t.sonuclanmis ELSE 0 END) as muhurleme
                 FROM $this->table t
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
                 WHERE t.firma_id = ? 
@@ -507,6 +507,27 @@ class PuantajModel extends Model
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $bugun]);
+        return $stmt->fetch(PDO::FETCH_OBJ);
+    }
+
+    public function getMonthlyStats()
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $buAy = date('Y-m-01');
+        $sonGun = date('Y-m-t');
+
+        $sql = "SELECT 
+                    SUM(CASE WHEN tn.rapor_sekmesi = 'kesme' AND tn.is_turu_ucret > 0 THEN t.sonuclanmis ELSE 0 END) as kesme_acma,
+                    SUM(CASE WHEN tn.rapor_sekmesi = 'sokme_takma' AND tn.is_turu_ucret > 0 THEN t.sonuclanmis ELSE 0 END) as sayac_degisimi,
+                    SUM(CASE WHEN tn.rapor_sekmesi = 'muhurleme' AND tn.is_turu_ucret > 0 THEN t.sonuclanmis ELSE 0 END) as muhurleme
+                FROM $this->table t
+                LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                WHERE t.firma_id = ? 
+                AND t.tarih >= ? AND t.tarih <= ?
+                AND t.silinme_tarihi IS NULL";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId, $buAy, $sonGun]);
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
 }

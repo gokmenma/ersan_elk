@@ -168,7 +168,7 @@ try {
 
             foreach ($data as $row) {
                 $p_id = $row['personel_id'];
-                $type_id = $row['type_id'];
+                $type_id = $row['type_id'] ?? ($row['typeId'] ?? null);
                 $baslangic = $row['baslangic_tarihi'] ?? ($row['date'] ?? null);
                 $bitis = $row['bitis_tarihi'] ?? ($row['date'] ?? null);
 
@@ -181,7 +181,7 @@ try {
                 $end = new DateTime($bitis);
                 $toplam_gun = $start->diff($end)->days + 1;
 
-                // Çakışan kayıtları sil (aynı tarihlerdeki tüm izinler)
+                // Çakışan kayıtları sil (Her durumda sil, çünkü üzerine yazıyoruz veya siliyoruz)
                 $deleteStmt->execute([
                     $p_id,
                     $baslangic,
@@ -192,15 +192,17 @@ try {
                     $bitis
                 ]);
 
-                // Yeni kayıt ekle
-                $insertStmt->execute([$p_id, $type_id, $baslangic, $bitis, $toplam_gun]);
-                $izin_id = $Puantaj->db->lastInsertId();
+                // Eğer type_id varsa yeni kayıt ekle
+                if ($type_id) {
+                    $insertStmt->execute([$p_id, $type_id, $baslangic, $bitis, $toplam_gun]);
+                    $izin_id = $Puantaj->db->lastInsertId();
 
-                // Onay kaydı ekle
-                if ($izin_id) {
-                    $onayStmt->execute([$izin_id, $user_id]);
+                    // Onay kaydı ekle
+                    if ($izin_id) {
+                        $onayStmt->execute([$izin_id, $user_id]);
+                    }
+                    $kayit_sayisi++;
                 }
-                $kayit_sayisi++;
             }
 
             // Tüm işlemler başarılı, commit et

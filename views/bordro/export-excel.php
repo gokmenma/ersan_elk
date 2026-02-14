@@ -50,19 +50,21 @@ try {
     $basliklar = [
         'A' => 'TC Kimlik No',
         'B' => 'Personel Ad Soyad',
-        'C' => 'Çalışma Günü',
-        'D' => 'Brüt Maaş',
-        'E' => 'SGK İşçi',
-        'F' => 'İşsizlik İşçi',
-        'G' => 'Gelir Vergisi',
-        'H' => 'Damga Vergisi',
-        'I' => 'Toplam Ek Ödeme',
-        'J' => 'Toplam Kesinti',
-        'K' => 'Net Maaş',
-        'L' => 'Banka',
-        'M' => 'Sodexo',
-        'N' => 'Diğer',
-        'O' => 'Elden'
+        'C' => 'Ekip',
+        'D' => 'Bölge',
+        'E' => 'Çalışma Günü',
+        'F' => 'Brüt Maaş',
+        'G' => 'SGK İşçi',
+        'H' => 'İşsizlik İşçi',
+        'I' => 'Gelir Vergisi',
+        'J' => 'Damga Vergisi',
+        'K' => 'Toplam Ek Ödeme',
+        'L' => 'Toplam Kesinti',
+        'M' => 'Net Maaş',
+        'N' => 'Banka',
+        'O' => 'Sodexo',
+        'P' => 'Diğer',
+        'Q' => 'Elden'
     ];
 
     // Başlık stili
@@ -94,7 +96,7 @@ try {
     }
 
     // Başlık satırına stil uygula
-    $sheet->getStyle('A1:O1')->applyFromArray($baslikStyle);
+    $sheet->getStyle('A1:Q1')->applyFromArray($baslikStyle);
 
     // Veri stili
     $dataStyle = [
@@ -141,28 +143,30 @@ try {
 
         $sheet->setCellValueExplicit('A' . $satir, $personel->tc_kimlik_no ?? '', DataType::TYPE_STRING);
         $sheet->setCellValue('B' . $satir, $personel->adi_soyadi);
-        $sheet->setCellValue('C' . $satir, $calismaGunu);
-        $sheet->setCellValue('D' . $satir, $personel->brut_maas ?? 0);
-        $sheet->setCellValue('E' . $satir, $personel->sgk_isci ?? 0);
-        $sheet->setCellValue('F' . $satir, $personel->issizlik_isci ?? 0);
-        $sheet->setCellValue('G' . $satir, $personel->gelir_vergisi ?? 0);
-        $sheet->setCellValue('H' . $satir, $personel->damga_vergisi ?? 0);
-        $sheet->setCellValue('I' . $satir, $hesaplananEkOdeme);
-        $sheet->setCellValue('J' . $satir, $personel->guncel_toplam_kesinti ?? 0);
-        $sheet->setCellValue('K' . $satir, $personel->net_maas ?? 0);
-        $sheet->setCellValue('L' . $satir, $personel->banka_odemesi ?? 0);
-        $sheet->setCellValue('M' . $satir, $personel->sodexo_odemesi ?? 0);
-        $sheet->setCellValue('N' . $satir, $personel->diger_odeme ?? 0);
-        $sheet->setCellValue('O' . $satir, $eldenOdeme);
+        $sheet->setCellValue('C' . $satir, $personel->ekip_adi ?? '');
+        $sheet->setCellValue('D' . $satir, $personel->ekip_bolge ?? '');
+        $sheet->setCellValue('E' . $satir, $calismaGunu);
+        $sheet->setCellValue('F' . $satir, $personel->brut_maas ?? 0);
+        $sheet->setCellValue('G' . $satir, $personel->sgk_isci ?? 0);
+        $sheet->setCellValue('H' . $satir, $personel->issizlik_isci ?? 0);
+        $sheet->setCellValue('I' . $satir, $personel->gelir_vergisi ?? 0);
+        $sheet->setCellValue('J' . $satir, $personel->damga_vergisi ?? 0);
+        $sheet->setCellValue('K' . $satir, $hesaplananEkOdeme);
+        $sheet->setCellValue('L' . $satir, $personel->guncel_toplam_kesinti ?? 0);
+        $sheet->setCellValue('M' . $satir, $personel->net_maas ?? 0);
+        $sheet->setCellValue('N' . $satir, $personel->banka_odemesi ?? 0);
+        $sheet->setCellValue('O' . $satir, $personel->sodexo_odemesi ?? 0);
+        $sheet->setCellValue('P' . $satir, $personel->diger_odeme ?? 0);
+        $sheet->setCellValue('Q' . $satir, $eldenOdeme);
 
         // Sayı formatları
-        $sheet->getStyle('D' . $satir . ':O' . $satir)->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->getStyle('F' . $satir . ':Q' . $satir)->getNumberFormat()->setFormatCode('#,##0.00');
 
         $satir++;
     }
 
     // Tüm tabloya stil uygula
-    $sheet->getStyle('A1:O' . ($satir - 1))->applyFromArray($dataStyle);
+    $sheet->getStyle('A1:Q' . ($satir - 1))->applyFromArray($dataStyle);
 
     // Dosya adı
     $donemAdiSlug = preg_replace('/[^a-zA-Z0-9]/', '_', $donem->donem_adi);

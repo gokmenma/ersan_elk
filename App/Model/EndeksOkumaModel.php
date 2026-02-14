@@ -205,4 +205,22 @@ class EndeksOkumaModel extends Model
         $result = $stmt->fetch(PDO::FETCH_OBJ);
         return $result->toplam ?? 0;
     }
+
+    public function getMonthlyStats()
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $buAy = date('Y-m-01');
+        $sonGun = date('Y-m-t');
+
+        $sql = "SELECT SUM(okunan_abone_sayisi) as toplam 
+                FROM $this->table 
+                WHERE firma_id = ? 
+                AND tarih >= ? AND tarih <= ?
+                AND silinme_tarihi IS NULL";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId, $buAy, $sonGun]);
+        $result = $stmt->fetch(PDO::FETCH_OBJ);
+        return $result->toplam ?? 0;
+    }
 }

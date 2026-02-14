@@ -150,7 +150,9 @@ if ($page == "kasa/duzenle" || $page == "kasa/list") {
     $page == "bordro/list" || $page == "demirbas/list" || $page == "puantaj/veri-yukleme" ||
     $page == "tanimlamalar/is-turu" || $page == "mail-sms/list" || $page == "tanimlamalar/izin-turu" ||
     $page == "mail-sms/mail-gonder" || $page == "arac-takip/list" || $page == "arac-takip/duzenle" ||
-    $page == "personel-takip/list" || $page == "nobet/talepler" || $page == "talepler/list"
+    $page == "personel-takip/list" || $page == "nobet/talepler" || $page == "talepler/list" ||
+    $page == "tanimlamalar/unvan-ucret" ||
+    $page == "gorev-bildirimler"
 
 ) { ?>
 

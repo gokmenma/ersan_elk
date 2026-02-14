@@ -2098,33 +2098,21 @@ try {
             $baslangic = "$yil-" . str_pad($ay, 2, '0', STR_PAD_LEFT) . "-01";
             $bitis = date('Y-m-t', strtotime($baslangic));
 
+            $NobetModel = new \App\Model\NobetModel();
             $db = new \App\Core\Db();
 
-            // Atanmış nöbetleri getir
+            // Atanmış nöbetleri getir (aktif olanlar - durum NULL veya standart)
             $sql = "SELECT DISTINCT nobet_tarihi FROM nobetler 
                     WHERE firma_id = :firma_id 
                     AND nobet_tarihi BETWEEN :bas AND :bit 
-                    AND silinme_tarihi IS NULL";
+                    AND silinme_tarihi IS NULL
+                    AND (durum IS NULL OR durum NOT IN ('talep_edildi', 'reddedildi'))";
             $stmt = $db->db->prepare($sql);
             $stmt->execute([':firma_id' => $firma_id, ':bas' => $baslangic, ':bit' => $bitis]);
             $assignedDays = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-            // Bu personelin bekleyen nöbet taleplerini getir
-            $sqlReq = "SELECT baslik FROM personel_talepleri 
-                       WHERE personel_id = :pid 
-                       AND kategori = 'nobet_talebi' 
-                       AND deleted_at IS NULL 
-                       AND durum != 'reddedildi'";
-            $stmtReq = $db->db->prepare($sqlReq);
-            $stmtReq->execute([':pid' => $personel_id]);
-            $requestedDaysArr = $stmtReq->fetchAll(PDO::FETCH_COLUMN);
-
-            $requestedDays = [];
-            foreach ($requestedDaysArr as $title) {
-                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $title)) {
-                    $requestedDays[] = $title;
-                }
-            }
+            // Bu personelin bekleyen nöbet taleplerini getir (nobetler tablosundan)
+            $requestedDays = $NobetModel->getPersonelBekleyenTalepTarihleri($personel_id);
 
             $allDays = [];
             $gunler_tr = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
@@ -2149,38 +2137,79 @@ try {
             response(true, $allDays);
             break;
 
-        case 'createYeniNobetTalebi':
-            $tarih = $_POST['tarih'] ?? '';
-            $aciklama = $_POST['aciklama'] ?? '';
+        case 'getBireyselNobetTalepleri':
+            $yil = $_POST['yil'] ?? date('Y');
+            $ay = $_POST['ay'] ?? date('m');
+            $baslangic = "$yil-" . str_pad($ay, 2, '0', STR_PAD_LEFT) . "-01";
+            $bitis = date('Y-m-t', strtotime($baslangic));
 
-            if (empty($tarih)) {
-                response(false, null, 'Lütfen bir tarih seçiniz.');
-            }
+            $NobetModel = new \App\Model\NobetModel();
+            $talepler = $NobetModel->getPersonelBekleyenTalepler($personel_id, $baslangic, $bitis);
 
-            $TalepModel = new \App\Model\TalepModel();
-            $ref_no = $TalepModel->generateRefNo();
+            response(true, $talepler);
+            break;
 
-            $result = $TalepModel->saveWithAttr([
-                'personel_id' => $personel_id,
-                'ref_no' => $ref_no,
-                'konum' => 'PWA',
-                'kategori' => 'nobet_talebi',
-                'oncelik' => 'orta',
-                'baslik' => $tarih,
-                'aciklama' => $aciklama,
-                'durum' => 'beklemede',
-                'olusturma_tarihi' => date('Y-m-d H:i:s')
-            ]);
+        case 'iptalEtNobetTalebi':
+            $talep_id = $_POST['talep_id'] ?? null;
+            if (!$talep_id)
+                response(false, null, 'Talep ID gerekli.');
+
+            $NobetModel = new \App\Model\NobetModel();
+            $result = $NobetModel->iptalNobetTalebi($talep_id, $personel_id);
 
             if ($result) {
+                response(true, null, 'Nöbet talebi iptal edildi.');
+            } else {
+                response(false, null, 'İşlem başarısız.');
+            }
+            break;
+
+        case 'createYeniNobetTalebi':
+            $tarih_string = $_POST['tarih'] ?? '';
+            $aciklama = $_POST['aciklama'] ?? '';
+
+            if (empty($tarih_string)) {
+                response(false, null, 'Lütfen en az bir tarih seçiniz.');
+            }
+
+            $tarihler = explode(',', $tarih_string);
+            $NobetModel = new \App\Model\NobetModel();
+            $firma_id = $personel->firma_id ?? $_SESSION['firma_id'] ?? null;
+            $success_count = 0;
+
+            foreach ($tarihler as $tarih) {
+                $tarih = trim($tarih);
+                if (empty($tarih))
+                    continue;
+
+                $result = $NobetModel->addNobetTalebi([
+                    'firma_id' => $firma_id,
+                    'personel_id' => $personel_id,
+                    'nobet_tarihi' => $tarih,
+                    'aciklama' => $aciklama
+                ]);
+
+                if ($result) {
+                    $success_count++;
+                }
+            }
+
+            if ($success_count > 0) {
                 // Yöneticiye bildirim
                 try {
                     $BildirimModel = new BildirimModel();
-                    $tarihFormatli = date('d.m.Y', strtotime($tarih));
+                    $tarih_sayisi = count($tarihler);
+                    $mesaj = ($personel->adi_soyadi ?? 'Bir personel') . ", $tarih_sayisi farklı gün için nöbet talep etti.";
+
+                    if ($tarih_sayisi == 1) {
+                        $tarihFormatli = date('d.m.Y', strtotime($tarihler[0]));
+                        $mesaj = ($personel->adi_soyadi ?? 'Bir personel') . ", $tarihFormatli tarihi için nöbet talep etti.";
+                    }
+
                     $BildirimModel->createNotification(
                         1,
                         'Yeni Nöbet Talebi',
-                        ($personel->adi_soyadi ?? 'Bir personel') . ", $tarihFormatli tarihi için nöbet talep etti.",
+                        $mesaj,
                         'index?p=nobet/talepler#talepler',
                         'calendar',
                         'info'
@@ -2188,9 +2217,9 @@ try {
                 } catch (Exception $e) {
                 }
 
-                response(true, null, 'Nöbet talebiniz iletildi. Yönetici onayı bekleniyor.');
+                response(true, null, "$success_count adet nöbet talebiniz iletildi. Yönetici onayı bekleniyor.");
             } else {
-                response(false, null, 'Talep oluşturulamadı.');
+                response(false, null, 'Talepler oluşturulamadı.');
             }
             break;
 

@@ -29,6 +29,9 @@ if (Gate::allows("ana_sayfa")) {
     $extraStats = $personelModel->getAdvancedDashboardStats();
     $dailyWorkStats = $puantajModel->getDailyStats();
     $dailyReadingTotal = $endeksOkumaModel->getDailyStats();
+    $monthlyWorkStats = $puantajModel->getMonthlyStats();
+    $monthlyReadingTotal = $endeksOkumaModel->getMonthlyStats();
+    $extraStatsMonthly = $personelModel->getMonthlyAdvancedDashboardStats();
     $saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['dashboard_settings'], true) : [];
 
     if (!function_exists('getWidgetWidth')) {
@@ -186,7 +189,7 @@ if (Gate::allows("ana_sayfa")) {
     <div class="col-md-2 widget-item" id="widget-toplam-personel">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
             style="--card-color: #4e73df; border-bottom: 3px solid var(--card-color) !important; --delay: 0.1s">
-            <div class="card-body p-3">
+            <div class="card-body p-3 pb-2">
                 <div class="icon-label-container">
                     <div class="icon-box" style="background: rgba(78, 115, 223, 0.1);">
                         <i class="bx bx-group fs-4" style="color: #4e73df;"></i>
@@ -208,7 +211,7 @@ if (Gate::allows("ana_sayfa")) {
     <div class="col-md-2 widget-item" id="widget-aktif-personel">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
             style="--card-color: #1cc88a; border-bottom: 3px solid var(--card-color) !important; --delay: 0.2s">
-            <div class="card-body p-3">
+            <div class="card-body p-3 pb-2">
                 <div class="icon-label-container">
                     <div class="icon-box" style="background: rgba(28, 200, 138, 0.1);">
                         <i class="bx bx-user-check fs-4" style="color: #1cc88a;"></i>
@@ -230,7 +233,7 @@ if (Gate::allows("ana_sayfa")) {
     <div class="col-md-2 widget-item" id="widget-pasif-personel">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
             style="--card-color: #858796; border-bottom: 3px solid var(--card-color) !important; --delay: 0.3s">
-            <div class="card-body p-3">
+            <div class="card-body p-3 pb-2">
                 <div class="icon-label-container">
                     <div class="icon-box" style="background: rgba(133, 135, 150, 0.1);">
                         <i class="bx bx-user-x fs-4" style="color: #858796;"></i>
@@ -252,18 +255,32 @@ if (Gate::allows("ana_sayfa")) {
     <div class="col-md-2 widget-item" id="widget-sahadaki-personel">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
             style="--card-color: #4e73df; border-bottom: 3px solid var(--card-color) !important; --delay: 0.4s">
-            <div class="card-body p-3">
+            <div class="card-body p-3 pb-2">
                 <div class="icon-label-container">
                     <div class="icon-box" style="background: rgba(78, 115, 223, 0.1);">
                         <i class="bx bx-user-voice fs-4" style="color: #4e73df;"></i>
                     </div>
                     <span class="text-muted small fw-bold" style="font-size: 0.65rem;">SAHA</span>
                 </div>
-                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">SAHADAKİ PERSONEL</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading">
+                <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK SAHA
+                    PERSONELİ</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
+                    data-daily="<?php echo $extraStats->sahadaki_personel ?? 0; ?>"
+                    data-monthly="<?php echo $extraStatsMonthly->sahadaki_personel ?? 0; ?>"
+                    data-label-daily="GÜNLÜK SAHA PERSONELİ" data-label-monthly="AYLIK SAHA PERSONELİ"
+                    data-sub-daily="Bugün sahada olan/aktif" data-sub-monthly="Bu ay sahada görev alanlar">
                     <?php echo $extraStats->sahadaki_personel ?? 0; ?>
                 </h4>
-                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün sahada olan/aktif</div>
+                <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün sahada olan/aktif
+                </div>
+                <div class="card-footer-actions mt-2">
+                    <div class="btn-group btn-group-sm stats-local-toggle-group">
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn active"
+                            data-mode="daily">Gün</button>
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn"
+                            data-mode="monthly">Ay</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -273,18 +290,31 @@ if (Gate::allows("ana_sayfa")) {
     <div class="col-md-2 widget-item" id="widget-izinli-personel">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
             style="--card-color: #f6c23e; border-bottom: 3px solid var(--card-color) !important; --delay: 0.5s">
-            <div class="card-body p-3">
+            <div class="card-body p-3 pb-2">
                 <div class="icon-label-container">
                     <div class="icon-box" style="background: rgba(246, 194, 62, 0.1);">
                         <i class="bx bx-calendar-minus fs-4" style="color: #f6c23e;"></i>
                     </div>
                     <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İZİN</span>
                 </div>
-                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">İZİNLİ PERSONEL</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading">
+                <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
+                    İZİNLİ PERSONEL</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
+                    data-daily="<?php echo $extraStats->izinli_personel ?? 0; ?>"
+                    data-monthly="<?php echo $extraStatsMonthly->izinli_personel ?? 0; ?>"
+                    data-label-daily="GÜNLÜK İZİNLİ PERSONEL" data-label-monthly="AYLIK İZİNLİ PERSONEL"
+                    data-sub-daily="Bugün izinli olanlar" data-sub-monthly="Bu ay izin kullananlar">
                     <?php echo $extraStats->izinli_personel ?? 0; ?>
                 </h4>
-                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün izinli olanlar</div>
+                <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün izinli olanlar</div>
+                <div class="card-footer-actions mt-2">
+                    <div class="btn-group btn-group-sm stats-local-toggle-group">
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn active"
+                            data-mode="daily">Gün</button>
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn"
+                            data-mode="monthly">Ay</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -294,7 +324,7 @@ if (Gate::allows("ana_sayfa")) {
     <div class="col-md-2 widget-item" id="widget-bekleyen-talepler">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
             style="--card-color: #f6c23e; border-bottom: 3px solid var(--card-color) !important; --delay: 0.6s">
-            <div class="card-body p-3">
+            <div class="card-body p-3 pb-2">
                 <div class="icon-label-container">
                     <div class="icon-box" style="background: rgba(246, 194, 62, 0.1);">
                         <i class="bx bx-time-five fs-4" style="color: #f6c23e;"></i>
@@ -315,25 +345,46 @@ if (Gate::allows("ana_sayfa")) {
     <?php $widgets['widget-bekleyen-talepler'] = ob_get_clean();
 
     ob_start(); ?>
-    <div class="col-12 d-none d-md-block" style="height: 0; margin: 0; padding: 0;"></div>
+    <div class="col-12 mb-3">
+        <div class="d-flex justify-content-between align-items-center bg-white p-2 rounded shadow-sm">
+            <h5 class="mb-0 text-primary fw-bold"><i class="bx bx-stats me-2"></i> Operasyonel İstatistikler</h5>
+        </div>
+    </div>
     <?php $widgets['widget-row-break'] = ob_get_clean();
 
     ob_start(); ?>
     <div class="col-md-2 widget-item" id="widget-gunluk-muhurleme">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative"
             style="--card-color: #858796; border-bottom: 3px solid var(--card-color) !important; --delay: 0.7s">
-            <div class="card-body p-3">
+            <div class="card-body p-3 pb-2">
                 <div class="icon-label-container">
                     <div class="icon-box" style="background: rgba(133, 135, 150, 0.1);">
                         <i class="bx bx-shield fs-4" style="color: #858796;"></i>
                     </div>
                     <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
                 </div>
-                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK MÜHÜRLEME</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading">
+                <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
+                    MÜHÜRLEME</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
+                    data-daily="<?php echo $dailyWorkStats->muhurleme ?? 0; ?>"
+                    data-monthly="<?php echo $monthlyWorkStats->muhurleme ?? 0; ?>" data-label-daily="GÜNLÜK MÜHÜRLEME"
+                    data-label-monthly="AYLIK MÜHÜRLEME" data-sub-daily="Bugün yapılan mühürleme"
+                    data-sub-monthly="Bu ay yapılan mühürleme">
                     <?php echo $dailyWorkStats->muhurleme ?? 0; ?>
                 </h4>
-                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün yapılan mühürleme</div>
+                <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün yapılan mühürleme
+                </div>
+                <div class="card-footer-actions mt-2">
+                    <div class="btn-group btn-group-sm stats-local-toggle-group">
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn active"
+                            data-mode="daily">Gün</button>
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn"
+                            data-mode="monthly">Ay</button>
+                    </div>
+                    <a href="index.php?p=puantaj/raporlar&tab=muhurleme" class="btn btn-xs btn-soft-primary rounded-pill">
+                        <i class="bx bx-right-arrow-alt"></i> Git
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -343,18 +394,32 @@ if (Gate::allows("ana_sayfa")) {
     <div class="col-md-2 widget-item" id="widget-sahadaki-arac">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
             style="--card-color: #5a5c69; border-bottom: 3px solid var(--card-color) !important; --delay: 0.8s">
-            <div class="card-body p-3">
+            <div class="card-body p-3 pb-2">
                 <div class="icon-label-container">
                     <div class="icon-box" style="background: rgba(90, 92, 105, 0.1);">
                         <i class="bx bx-car fs-4" style="color: #5a5c69;"></i>
                     </div>
                     <span class="text-muted small fw-bold" style="font-size: 0.65rem;">ARAÇ</span>
                 </div>
-                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">SAHADAKİ ARAÇ</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading">
+                <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK SAHA
+                    ARACI</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
+                    data-daily="<?php echo $extraStats->sahadaki_arac ?? 0; ?>"
+                    data-monthly="<?php echo $extraStats->sahadaki_arac ?? 0; ?>" data-label-daily="GÜNLÜK SAHA ARACI"
+                    data-label-monthly="AYLIK SAHA ARACI" data-sub-daily="Aktif kullanılan araçlar"
+                    data-sub-monthly="Aktif kullanılan araçlar">
                     <?php echo $extraStats->sahadaki_arac ?? 0; ?>
                 </h4>
-                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Aktif kullanılan araçlar</div>
+                <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Aktif kullanılan araçlar
+                </div>
+                <div class="card-footer-actions mt-2">
+                    <div class="btn-group btn-group-sm stats-local-toggle-group">
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn active"
+                            data-mode="daily">Gün</button>
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn"
+                            data-mode="monthly">Ay</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -362,20 +427,37 @@ if (Gate::allows("ana_sayfa")) {
 
     ob_start(); ?>
     <div class="col-md-2 widget-item" id="widget-gunluk-kesme-acma">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative"
             style="--card-color: #e74a3b; border-bottom: 3px solid var(--card-color) !important; --delay: 0.9s">
-            <div class="card-body p-3">
+            <div class="card-body p-3 pb-2">
                 <div class="icon-label-container">
                     <div class="icon-box" style="background: rgba(231, 74, 59, 0.1);">
                         <i class="bx bx-cut fs-4" style="color: #e74a3b;"></i>
                     </div>
                     <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
                 </div>
-                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK KESME AÇMA</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading">
+                <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
+                    KESME AÇMA</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
+                    data-daily="<?php echo $dailyWorkStats->kesme_acma ?? 0; ?>"
+                    data-monthly="<?php echo $monthlyWorkStats->kesme_acma ?? 0; ?>" data-label-daily="GÜNLÜK KESME AÇMA"
+                    data-label-monthly="AYLIK KESME AÇMA" data-sub-daily="Bugün yapılan kesme/açma"
+                    data-sub-monthly="Bu ay yapılan kesme/açma">
                     <?php echo $dailyWorkStats->kesme_acma ?? 0; ?>
                 </h4>
-                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün yapılan kesme/açma</div>
+                <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün yapılan kesme/açma
+                </div>
+                <div class="card-footer-actions mt-2">
+                    <div class="btn-group btn-group-sm stats-local-toggle-group">
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn active"
+                            data-mode="daily">Gün</button>
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn"
+                            data-mode="monthly">Ay</button>
+                    </div>
+                    <a href="index.php?p=puantaj/raporlar&tab=kesme" class="btn btn-xs btn-soft-danger rounded-pill">
+                        <i class="bx bx-right-arrow-alt"></i> Git
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -383,21 +465,36 @@ if (Gate::allows("ana_sayfa")) {
 
     ob_start(); ?>
     <div class="col-md-2 widget-item" id="widget-gunluk-endeks-okuma">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative"
             style="--card-color: #36b9cc; border-bottom: 3px solid var(--card-color) !important; --delay: 1.0s">
-            <div class="card-body p-3">
+            <div class="card-body p-3 pb-2">
                 <div class="icon-label-container">
                     <div class="icon-box" style="background: rgba(54, 185, 204, 0.1);">
                         <i class="bx bx-tachometer fs-4" style="color: #36b9cc;"></i>
                     </div>
                     <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
                 </div>
-                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK ENDEKS OKUMA
-                </p>
-                <h4 class="mb-0 fw-bold bordro-text-heading">
+                <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
+                    ENDEKS OKUMA</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading stat-value" data-daily="<?php echo $dailyReadingTotal ?? 0; ?>"
+                    data-monthly="<?php echo $monthlyReadingTotal ?? 0; ?>" data-label-daily="GÜNLÜK ENDEKS OKUMA"
+                    data-label-monthly="AYLIK ENDEKS OKUMA" data-sub-daily="Bugün okunan endeksler"
+                    data-sub-monthly="Bu ay okunan endeksler">
                     <?php echo $dailyReadingTotal ?? 0; ?>
                 </h4>
-                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün okunan endeksler</div>
+                <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün okunan endeksler
+                </div>
+                <div class="card-footer-actions mt-2">
+                    <div class="btn-group btn-group-sm stats-local-toggle-group">
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn active"
+                            data-mode="daily">Gün</button>
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn"
+                            data-mode="monthly">Ay</button>
+                    </div>
+                    <a href="index.php?p=puantaj/raporlar&tab=okuma" class="btn btn-xs btn-soft-info rounded-pill">
+                        <i class="bx bx-right-arrow-alt"></i> Git
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -405,7 +502,7 @@ if (Gate::allows("ana_sayfa")) {
 
     ob_start(); ?>
     <div class="col-md-2 widget-item" id="widget-gunluk-sayac-degisimi">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative"
             style="--card-color: #1cc88a; border-bottom: 3px solid var(--card-color) !important; --delay: 1.1s">
             <div class="card-body p-3">
                 <div class="icon-label-container">
@@ -414,12 +511,28 @@ if (Gate::allows("ana_sayfa")) {
                     </div>
                     <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
                 </div>
-                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK SAYAÇ DEĞİŞİMİ
-                </p>
-                <h4 class="mb-0 fw-bold bordro-text-heading">
+                <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
+                    SAYAÇ DEĞİŞİMİ</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
+                    data-daily="<?php echo $dailyWorkStats->sayac_degisimi ?? 0; ?>"
+                    data-monthly="<?php echo $monthlyWorkStats->sayac_degisimi ?? 0; ?>"
+                    data-label-daily="GÜNLÜK SAYAÇ DEĞİŞİMİ" data-label-monthly="AYLIK SAYAÇ DEĞİŞİMİ"
+                    data-sub-daily="Bugün yapılan sayaç değişimi" data-sub-monthly="Bu ay yapılan sayaç değişimi">
                     <?php echo $dailyWorkStats->sayac_degisimi ?? 0; ?>
                 </h4>
-                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün yapılan sayaç değişimi</div>
+                <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün yapılan sayaç
+                    değişimi</div>
+                <div class="card-footer-actions mt-2">
+                    <div class="btn-group btn-group-sm stats-local-toggle-group">
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn active"
+                            data-mode="daily">Gün</button>
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn"
+                            data-mode="monthly">Ay</button>
+                    </div>
+                    <a href="index.php?p=puantaj/raporlar&tab=sokme_takma" class="btn btn-xs btn-soft-success rounded-pill">
+                        <i class="bx bx-right-arrow-alt"></i> Git
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -451,7 +564,12 @@ if (Gate::allows("ana_sayfa")) {
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Görev ve Bildirimler</h5>
-                <?php echo getWidthControl(); ?>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="index.php?p=gorev-bildirimler" class="btn btn-sm btn-soft-primary rounded-pill">
+                        <i class="bx bx-list-ul me-1"></i> Tümünü Gör
+                    </a>
+                    <?php echo getWidthControl(); ?>
+                </div>
             </div>
             <div class="card-body"
                 style="height: <?php echo getWidgetHeight('widget-bildirimler', 'auto'); ?>; overflow-y: auto;">
@@ -1483,6 +1601,54 @@ if (Gate::allows("ana_sayfa")) {
             border-color: rgba(var(--bs-secondary-rgb), 0.3);
         }
 
+        /* Card Actions */
+        .card-footer-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 8px;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .stats-local-toggle-group .btn {
+            padding: 2px 10px;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--card-color);
+            border-color: var(--card-color);
+            background-color: transparent;
+        }
+
+        .stats-local-toggle-group .btn.active,
+        .stats-local-toggle-group .btn:hover {
+            background-color: var(--card-color) !important;
+            color: #fff !important;
+            border-color: var(--card-color) !important;
+        }
+
+        .btn-xs {
+            padding: 2px 8px;
+            font-size: 10px;
+        }
+
+        .btn-soft-danger {
+            background-color: rgba(var(--bs-danger-rgb), 0.1);
+            color: var(--bs-danger);
+            border: 1px solid rgba(var(--bs-danger-rgb), 0.2);
+        }
+
+        .btn-soft-info {
+            background-color: rgba(var(--bs-info-rgb), 0.1);
+            color: var(--bs-info);
+            border: 1px solid rgba(var(--bs-info-rgb), 0.2);
+        }
+
+        .btn-soft-success {
+            background-color: rgba(var(--bs-success-rgb), 0.1);
+            color: var(--bs-success);
+            border: 1px solid rgba(var(--bs-success-rgb), 0.2);
+        }
+
         [data-bs-theme="dark"] .dropdown-menu {
             background-color: #1e293b;
             border-color: #334155;
@@ -2242,6 +2408,27 @@ if (Gate::allows("ana_sayfa")) {
                         location.reload();
                     }
                 });
+            });
+            // Operasyonel İstatistikler Local Toggle Logic
+            $(document).on('click', '.stats-local-btn', function () {
+                const mode = $(this).data('mode');
+                const cardBody = $(this).closest('.card-body');
+                const statValue = cardBody.find('.stat-value');
+
+                // Update local buttons state
+                cardBody.find('.stats-local-btn').removeClass('active');
+                $(this).addClass('active');
+
+                // Update data
+                const newValue = parseInt(statValue.data(mode)) || 0;
+                const label = statValue.data('label-' + mode);
+                const subtext = statValue.data('sub-' + mode);
+
+                cardBody.find('.stat-label').text(label);
+                cardBody.find('.stat-subtext').text(subtext);
+
+                const oldValue = parseInt(statValue.text().replace(/[^0-9]/g, '')) || 0;
+                animateValue(statValue[0], oldValue, newValue, 800);
             });
         });
     </script>

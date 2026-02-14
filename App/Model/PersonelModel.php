@@ -680,4 +680,37 @@ class PersonelModel extends Model
             'servisteki_arac' => $servistekiAracCount
         ];
     }
+
+    public function getMonthlyAdvancedDashboardStats()
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $buAy = date('Y-m-01');
+        $sonGun = date('Y-m-t');
+
+        // Sahadaki Personel Sayısı (Bu ay iş yapmış olan benzersiz personeller)
+        $sqlSahadaki = "SELECT COUNT(DISTINCT p_id) as sahadaki FROM (
+            SELECT personel_id as p_id FROM yapilan_isler WHERE tarih >= :buAy AND tarih <= :sonGun AND firma_id = :firma_id AND silinme_tarihi IS NULL
+            UNION
+            SELECT personel_id as p_id FROM endeks_okuma WHERE tarih >= :buAy AND tarih <= :sonGun AND firma_id = :firma_id AND silinme_tarihi IS NULL
+        ) as sahadakiler";
+        $stmtS = $this->db->prepare($sqlSahadaki);
+        $stmtS->execute(['buAy' => $buAy, 'sonGun' => $sonGun, 'firma_id' => $firmaId]);
+        $sahadakiCount = $stmtS->fetch(PDO::FETCH_OBJ)->sahadaki ?? 0;
+
+        // İzinli Personel Sayısı (Bu ay içinde en az bir gün izin kullanan benzersiz personeller)
+        $sqlIzinli = "SELECT COUNT(DISTINCT personel_id) as izinli FROM personel_izinleri pi
+                      JOIN personel p ON pi.personel_id = p.id
+                      WHERE ((pi.baslangic_tarihi <= :sonGun AND pi.bitis_tarihi >= :buAy))
+                      AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = :firma_id AND pi.silinme_tarihi IS NULL";
+        $stmtI = $this->db->prepare($sqlIzinli);
+        $stmtI->execute(['buAy' => $buAy, 'sonGun' => $sonGun, 'firma_id' => $firmaId]);
+        $izinliCount = $stmtI->fetch(PDO::FETCH_OBJ)->izinli ?? 0;
+
+        return (object) [
+            'sahadaki_personel' => $sahadakiCount,
+            'izinli_personel' => $izinliCount,
+            'sahadaki_arac' => 0,
+            'servisteki_arac' => 0
+        ];
+    }
 }

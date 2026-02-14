@@ -147,13 +147,14 @@ $title = 'Nöbet Planlama';
                             <li>
                                 <h6 class="dropdown-header">Departman Seçin</h6>
                             </li>
-                            <li><a class="dropdown-item active" href="javascript:void(0)" data-dept="all">Tüm
+                            <li><a class="dropdown-item" href="javascript:void(0)" data-dept="all">Tüm
                                     Departmanlar</a></li>
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
                             <?php foreach ($departments as $dept): ?>
-                                <li><a class="dropdown-item" href="javascript:void(0)"
+                                <li><a class="dropdown-item <?php echo $dept == 'Kesme-Açma' ? 'active' : ''; ?>"
+                                        href="javascript:void(0)"
                                         data-dept="<?php echo htmlspecialchars($dept); ?>"><?php echo htmlspecialchars($dept); ?></a>
                                 </li>
                             <?php endforeach; ?>
@@ -981,7 +982,7 @@ $title = 'Nöbet Planlama';
         // PERSONEL FİLTRELEME
         // ============================================
         const searchInput = document.getElementById('personel-search');
-        let selectedDept = 'all';
+        let selectedDept = 'Kesme-Açma';
 
         // Departman Dropdown Takibi
         const deptDropdownItems = document.querySelectorAll('#dept-filter-dropdown .dropdown-item');
@@ -1004,6 +1005,15 @@ $title = 'Nöbet Planlama';
                 filterPersonel();
             });
         });
+
+        // Varsayılan Filtreyi Uygula
+        if (selectedDept !== 'all') {
+            const filterBtn = document.getElementById('dept-filter-btn');
+            if (filterBtn) {
+                filterBtn.classList.replace('btn-outline-light', 'btn-primary');
+            }
+            filterPersonel();
+        }
 
         function filterPersonel() {
             const searchTerm = searchInput.value.toLowerCase();

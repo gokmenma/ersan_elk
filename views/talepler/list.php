@@ -178,6 +178,10 @@ $izinTurleri = [
                     class="btn btn-sm px-3 rounded-pill <?= $showApproved ? 'btn-success text-white shadow-sm fw-bold' : 'btn-link text-muted text-decoration-none' ?>">
                     <i class="bx bx-check-circle me-1"></i>Onaylananlar
                 </a>
+                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                <button type="button" class="btn btn-sm btn-outline-success px-3 rounded-pill" id="btnExportExcel">
+                    <i class="bx bx-file me-1"></i>Excel e Aktar
+                </button>
             </div>
         </div>
         <div class="card-body">
@@ -202,7 +206,7 @@ $izinTurleri = [
                                     <th>Durum</th>
                                     <th>Açıklama</th>
                                     <?php if (!$showApproved): ?>
-                                        <th class="text-center" style="width:150px">İşlemler</th>
+                                        <th class="text-center" style="width:200px">İşlemler</th>
                                     <?php endif; ?>
                                 </tr>
                             </thead>
@@ -260,37 +264,23 @@ $izinTurleri = [
                                         </td>
                                         <?php if (!$showApproved): ?>
                                             <td class="text-center">
-                                                <div class="dropdown">
-                                                    <button class="btn btn-sm btn-secondary dropdown-toggle" type="button"
-                                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                                        <i class="bx bx-dots-vertical-rounded"></i>
+                                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                                    <button class="btn btn-sm btn-soft-success btn-avans-onayla" type="button"
+                                                        data-id="<?= $avans->id ?>"
+                                                        data-personel="<?= htmlspecialchars($avans->adi_soyadi) ?>"
+                                                        data-tutar="<?= $avans->tutar ?>" title="Onayla">
+                                                        <i class="bx bx-check"></i>
                                                     </button>
-                                                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
-                                                        <li>
-                                                            <a class="dropdown-item py-2 btn-avans-onayla"
-                                                                href="javascript:void(0);" data-id="<?= $avans->id ?>"
-                                                                data-personel="<?= htmlspecialchars($avans->adi_soyadi) ?>"
-                                                                data-tutar="<?= $avans->tutar ?>">
-                                                                <i class="bx bx-check me-2 text-success fs-5"></i> Onayla
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item py-2 btn-avans-reddet"
-                                                                href="javascript:void(0);" data-id="<?= $avans->id ?>"
-                                                                data-personel="<?= htmlspecialchars($avans->adi_soyadi) ?>">
-                                                                <i class="bx bx-x me-2 text-danger fs-5"></i> Reddet
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <hr class="dropdown-divider">
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item py-2 btn-avans-detay"
-                                                                href="javascript:void(0);" data-id="<?= $avans->id ?>">
-                                                                <i class="bx bx-show me-2 text-info fs-5"></i> Detay
-                                                            </a>
-                                                        </li>
-                                                    </ul>
+                                                    <button class="btn btn-sm btn-soft-danger btn-avans-reddet" type="button"
+                                                        data-id="<?= $avans->id ?>"
+                                                        data-personel="<?= htmlspecialchars($avans->adi_soyadi) ?>"
+                                                        title="Reddet">
+                                                        <i class="bx bx-x"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-soft-info btn-avans-detay" type="button"
+                                                        data-id="<?= $avans->id ?>" title="Detay">
+                                                        <i class="bx bx-show"></i>
+                                                    </button>
                                                 </div>
                                             </td>
                                         <?php endif; ?>
@@ -314,7 +304,7 @@ $izinTurleri = [
                                     <th>Gün Sayısı</th>
                                     <th>Durum</th>
                                     <?php if (!$showApproved): ?>
-                                        <th class="text-center" style="width:150px">İşlemler</th>
+                                        <th class="text-center" style="width:200px">İşlemler</th>
                                     <?php endif; ?>
                                 </tr>
                             </thead>
@@ -375,37 +365,24 @@ $izinTurleri = [
                                         </td>
                                         <?php if (!$showApproved): ?>
                                             <td class="text-center">
-                                                <div class="dropdown">
-                                                    <button class="btn btn-sm btn-secondary dropdown-toggle" type="button"
-                                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                                        <i class="bx bx-dots-vertical-rounded"></i>
+                                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                                    <button class="btn btn-sm btn-soft-success btn-izin-onayla" type="button"
+                                                        data-id="<?= $izin->id ?>"
+                                                        data-personel="<?= htmlspecialchars($izin->adi_soyadi) ?>"
+                                                        data-tur="<?= $izinTuruLabel ?>" data-gun="<?= $gunSayisi ?>"
+                                                        title="Onayla">
+                                                        <i class="bx bx-check"></i>
                                                     </button>
-                                                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
-                                                        <li>
-                                                            <a class="dropdown-item py-2 btn-izin-onayla"
-                                                                href="javascript:void(0);" data-id="<?= $izin->id ?>"
-                                                                data-personel="<?= htmlspecialchars($izin->adi_soyadi) ?>"
-                                                                data-tur="<?= $izinTuruLabel ?>" data-gun="<?= $gunSayisi ?>">
-                                                                <i class="bx bx-check me-2 text-success fs-5"></i> Onayla
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item py-2 btn-izin-reddet"
-                                                                href="javascript:void(0);" data-id="<?= $izin->id ?>"
-                                                                data-personel="<?= htmlspecialchars($izin->adi_soyadi) ?>">
-                                                                <i class="bx bx-x me-2 text-danger fs-5"></i> Reddet
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <hr class="dropdown-divider">
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item py-2 btn-izin-detay"
-                                                                href="javascript:void(0);" data-id="<?= $izin->id ?>">
-                                                                <i class="bx bx-show me-2 text-info fs-5"></i> Detay
-                                                            </a>
-                                                        </li>
-                                                    </ul>
+                                                    <button class="btn btn-sm btn-soft-danger btn-izin-reddet" type="button"
+                                                        data-id="<?= $izin->id ?>"
+                                                        data-personel="<?= htmlspecialchars($izin->adi_soyadi) ?>"
+                                                        title="Reddet">
+                                                        <i class="bx bx-x"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-soft-info btn-izin-detay" type="button"
+                                                        data-id="<?= $izin->id ?>" title="Detay">
+                                                        <i class="bx bx-show"></i>
+                                                    </button>
                                                 </div>
                                             </td>
                                         <?php endif; ?>
@@ -429,7 +406,7 @@ $izinTurleri = [
                                     <th>Öncelik</th>
                                     <th>Tarih</th>
                                     <?php if (!$showApproved): ?>
-                                        <th class="text-center" style="width:150px">İşlemler</th>
+                                        <th class="text-center" style="width:200px">İşlemler</th>
                                     <?php endif; ?>
                                 </tr>
                             </thead>
@@ -438,8 +415,10 @@ $izinTurleri = [
                                     $durumType = 'warning';
                                     if ($talep->durum == 'islemde')
                                         $durumType = 'info';
-                                    if ($talep->durum == 'cozuldu')
+                                    if ($talep->durum == 'cozuldu' || $talep->durum == 'onaylandi')
                                         $durumType = 'success';
+                                    if ($talep->durum == 'reddedildi' || $talep->durum == 'iptal_edildi')
+                                        $durumType = 'danger';
 
                                     $oncelikType = 'secondary';
                                     if (isset($talep->oncelik)) {
@@ -474,10 +453,25 @@ $izinTurleri = [
                                             <?= htmlspecialchars($talep->baslik ?? '-') ?>
                                         </td>
                                         <td>
+                                            <?php
+                                            $durumText = ucfirst($talep->durum);
+                                            if ($talep->durum == 'cozuldu')
+                                                $durumText = 'Çözüldü';
+                                            if ($talep->durum == 'onaylandi')
+                                                $durumText = 'Onaylandı';
+                                            if ($talep->durum == 'reddedildi')
+                                                $durumText = 'Reddedildi';
+                                            if ($talep->durum == 'iptal_edildi')
+                                                $durumText = 'İptal Edildi';
+                                            if ($talep->durum == 'islemde')
+                                                $durumText = 'İşlemde';
+                                            if ($talep->durum == 'beklemede')
+                                                $durumText = 'Beklemede';
+                                            ?>
                                             <span class="badge-premium badge-premium-<?= $durumType ?>">
                                                 <i
-                                                    class="bx bx-<?= $durumType == 'success' ? 'check-circle' : ($durumType == 'info' ? 'play-circle' : 'time-five') ?>"></i>
-                                                <?= ucfirst($talep->durum) ?>
+                                                    class="bx bx-<?= $durumType == 'success' ? 'check-circle' : ($durumType == 'info' ? 'play-circle' : ($durumType == 'danger' ? 'x-circle' : 'time-five')) ?>"></i>
+                                                <?= $durumText ?>
                                             </span>
                                         </td>
                                         <td>
@@ -492,38 +486,24 @@ $izinTurleri = [
                                         </td>
                                         <?php if (!$showApproved): ?>
                                             <td class="text-center">
-                                                <div class="dropdown">
-                                                    <button class="btn btn-sm btn-secondary dropdown-toggle" type="button"
-                                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                                        <i class="bx bx-dots-vertical-rounded"></i>
+                                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                                    <?php if ($talep->durum != 'islemde'): ?>
+                                                        <button class="btn btn-sm btn-soft-warning btn-talep-isleme" type="button"
+                                                            data-id="<?= $talep->id ?>" title="İşleme Al">
+                                                            <i class="bx bx-play"></i>
+                                                        </button>
+                                                    <?php endif; ?>
+                                                    <button class="btn btn-sm btn-soft-success btn-talep-cozuldu" type="button"
+                                                        data-id="<?= $talep->id ?>"
+                                                        data-personel="<?= htmlspecialchars($talep->adi_soyadi) ?>"
+                                                        data-baslik="<?= htmlspecialchars($talep->baslik ?? '') ?>"
+                                                        title="Çözüldü">
+                                                        <i class="bx bx-check"></i>
                                                     </button>
-                                                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
-                                                        <?php if ($talep->durum != 'islemde'): ?>
-                                                            <li>
-                                                                <a class="dropdown-item py-2 btn-talep-isleme"
-                                                                    href="javascript:void(0);" data-id="<?= $talep->id ?>">
-                                                                    <i class="bx bx-play me-2 text-warning fs-5"></i> İşleme Al
-                                                                </a>
-                                                            </li>
-                                                        <?php endif; ?>
-                                                        <li>
-                                                            <a class="dropdown-item py-2 btn-talep-cozuldu"
-                                                                href="javascript:void(0);" data-id="<?= $talep->id ?>"
-                                                                data-personel="<?= htmlspecialchars($talep->adi_soyadi) ?>"
-                                                                data-baslik="<?= htmlspecialchars($talep->baslik ?? '') ?>">
-                                                                <i class="bx bx-check me-2 text-success fs-5"></i> Çözüldü
-                                                            </a>
-                                                        </li>
-                                                        <li>
-                                                            <hr class="dropdown-divider">
-                                                        </li>
-                                                        <li>
-                                                            <a class="dropdown-item py-2 btn-talep-detay"
-                                                                href="javascript:void(0);" data-id="<?= $talep->id ?>">
-                                                                <i class="bx bx-show me-2 text-info fs-5"></i> Detay
-                                                            </a>
-                                                        </li>
-                                                    </ul>
+                                                    <button class="btn btn-sm btn-soft-info btn-talep-detay" type="button"
+                                                        data-id="<?= $talep->id ?>" title="Detay">
+                                                        <i class="bx bx-show"></i>
+                                                    </button>
                                                 </div>
                                             </td>
                                         <?php endif; ?>
@@ -734,6 +714,55 @@ $izinTurleri = [
         height: 32px;
         object-fit: cover;
     }
+
+    /* Soft button styles for inline action buttons */
+    .btn-soft-success {
+        color: #0ab39c;
+        background-color: rgba(10, 179, 156, 0.1);
+        border: 1px solid rgba(10, 179, 156, 0.2);
+    }
+
+    .btn-soft-success:hover {
+        color: #fff;
+        background-color: #0ab39c;
+        border-color: #0ab39c;
+    }
+
+    .btn-soft-danger {
+        color: #f06548;
+        background-color: rgba(240, 101, 72, 0.1);
+        border: 1px solid rgba(240, 101, 72, 0.2);
+    }
+
+    .btn-soft-danger:hover {
+        color: #fff;
+        background-color: #f06548;
+        border-color: #f06548;
+    }
+
+    .btn-soft-info {
+        color: #299cdb;
+        background-color: rgba(41, 156, 219, 0.1);
+        border: 1px solid rgba(41, 156, 219, 0.2);
+    }
+
+    .btn-soft-info:hover {
+        color: #fff;
+        background-color: #299cdb;
+        border-color: #299cdb;
+    }
+
+    .btn-soft-warning {
+        color: #f7b84b;
+        background-color: rgba(247, 184, 75, 0.1);
+        border: 1px solid rgba(247, 184, 75, 0.2);
+    }
+
+    .btn-soft-warning:hover {
+        color: #fff;
+        background-color: #f7b84b;
+        border-color: #f7b84b;
+    }
 </style>
 
 <script>
@@ -743,6 +772,30 @@ $izinTurleri = [
         // Tab değiştiğinde Datatable'ı yenile (responsive düzeltmesi için)
         $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
             $($.fn.dataTable.tables(true)).DataTable().columns.adjust().responsive.recalc();
+        });
+
+        // Excel Export
+        document.getElementById('btnExportExcel')?.addEventListener('click', function () {
+            // Aktif tabı bul
+            const activeTabId = document.querySelector('.nav-tabs .nav-link.active').getAttribute('href').replace('#', '');
+            let tableId = '';
+            let fileName = '';
+
+            if (activeTabId === 'tabAvans') {
+                tableId = 'avansTable';
+                fileName = 'Avans_Talepleri';
+            } else if (activeTabId === 'tabIzin') {
+                tableId = 'izinTable';
+                fileName = 'Izin_Talepleri';
+            } else if (activeTabId === 'tabTalepler') {
+                tableId = 'taleplerTable';
+                fileName = 'Genel_Talepler';
+            }
+
+            if (tableId) {
+                const table = $('#' + tableId).DataTable();
+                table.button('.buttons-excel').trigger();
+            }
         });
 
         // Avans Onayla

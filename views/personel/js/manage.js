@@ -43,6 +43,12 @@ $(document).ready(function () {
         maxlength: 15,
         digits: true,
       },
+      "departman[]": {
+        required: true,
+      },
+      gorev: {
+        required: true,
+      },
       ekip_no: {
         required: function () {
           return $("#departman").val() !== "BÜRO";
@@ -71,11 +77,17 @@ $(document).ready(function () {
         maxlength: "Cep Telefonu en fazla 15 haneli olmalıdır.",
         digits: "Lütfen sadece rakam giriniz.",
       },
+      "departman[]": {
+        required: "Lütfen Departman seçiniz.",
+      },
+      gorev: {
+        required: "Lütfen Görev / Unvan seçiniz.",
+      },
       ekip_no: {
         required: "Lütfen Ekip Numarası giriniz.",
       },
     },
-    ignore: "hidden",
+    ignore: ":hidden:not(select)",
   });
 
   // Kaydet Butonu Tıklama Olayı
@@ -170,4 +182,125 @@ $(document).ready(function () {
   $(".select2").on("change", function () {
     $(this).valid();
   });
+
+  // Görev select2 init
+  $("#gorev").select2({
+    width: "100%",
+    placeholder: "Görev Seçiniz",
+    allowClear: true,
+  });
+
+  // Görev unvanlarını departmana göre yükle
+  function loadGorevOptions(selectedDepartmanlar, callback) {
+    if (!selectedDepartmanlar || selectedDepartmanlar.length === 0) {
+      var $gorev = $("#gorev");
+      $gorev.find("option").not(":first").remove();
+      $gorev.val("").trigger("change.select2");
+      if (callback) callback();
+      return;
+    }
+
+    var allOptions = [];
+    var promises = [];
+
+    selectedDepartmanlar.forEach(function (departman) {
+      var formData = new FormData();
+      formData.append("action", "unvan-ucretleri-getir");
+      formData.append("departman", departman);
+
+      var promise = fetch("views/tanimlamalar/api.php", {
+        method: "POST",
+        body: formData,
+      })
+        .then(function (response) {
+          return response.json();
+        })
+        .then(function (data) {
+          if (data.status === "success" && data.data) {
+            data.data.forEach(function (item) {
+              allOptions.push({
+                id: item.tur_adi,
+                text: item.tur_adi,
+                ucret: item.unvan_ucret,
+              });
+            });
+          }
+        });
+
+      promises.push(promise);
+    });
+
+    Promise.all(promises).then(function () {
+      var $gorev = $("#gorev");
+      $gorev.find("option").not(":first").remove();
+
+      // Yeni seçenekleri ekle (duplicates yok)
+      var addedValues = [];
+      allOptions.forEach(function (opt) {
+        if (addedValues.indexOf(opt.id) === -1) {
+          var option = new Option(opt.text, opt.id, false, false);
+          $(option).data("ucret", opt.ucret);
+          $gorev.append(option);
+          addedValues.push(opt.id);
+        }
+      });
+
+      $gorev.trigger("change.select2");
+      if (callback) callback();
+    });
+  }
+
+  // Departman değişince görev/unvan listesini güncelle
+  $("#departman").on("change", function () {
+    var selectedDepartmanlar = $(this).val();
+    loadGorevOptions(selectedDepartmanlar);
+  });
+
+  // Görev seçilince ilgili ücreti maaş tutarına aktar
+  $("#gorev").on("change", function () {
+    var selectedVal = $(this).val();
+    if (!selectedVal) return;
+
+    var selectedOption = $(this).find('option[value="' + selectedVal + '"]');
+    var ucret = selectedOption.data("ucret");
+
+    if (ucret && parseFloat(ucret) > 0) {
+      var formattedUcret = parseFloat(ucret)
+        .toFixed(2)
+        .replace(".", ",")
+        .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      var $maasTutari = $("#maas_tutari");
+      if ($maasTutari.length) {
+        $maasTutari.val("₺" + formattedUcret);
+        if (typeof showToast === "function") {
+          showToast(
+            selectedVal +
+              " unvanı için ücret tutarı maaş alanına aktarıldı: ₺" +
+              formattedUcret,
+            "info",
+          );
+        }
+      }
+    }
+  });
+
+  // Sayfa yüklendiğinde mevcut departmana göre görevleri yükle
+  var $gorevSelect = $("#gorev");
+  var currentGorev = $gorevSelect.data("current-gorev") || "";
+  var $departman = $("#departman");
+  var currentDepartmanlar = $departman.val();
+
+  if (currentDepartmanlar && currentDepartmanlar.length > 0) {
+    loadGorevOptions(currentDepartmanlar, function () {
+      // Mevcut görev tanımlı unvanlar arasında varsa seç
+      if (currentGorev) {
+        var matchingOption = $gorevSelect.find(
+          'option[value="' + currentGorev + '"]',
+        );
+        if (matchingOption.length > 0) {
+          $gorevSelect.val(currentGorev).trigger("change.select2");
+        }
+      }
+    });
+  }
 });

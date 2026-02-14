@@ -473,4 +473,17 @@ class TanimlamalarModel extends Model
     }
 
 
+    /**
+     * Departmana göre unvan/ücret tanımlamalarını getirir
+     * @param string $departman Departman adı
+     * @return array Unvan/ücret listesi
+     */
+    public function getUnvanUcretlerByDepartman($departman)
+    {
+        $sql = "SELECT * FROM {$this->table} WHERE grup = 'unvan_ucret' AND unvan_departman = ? AND firma_id = ? AND silinme_tarihi IS NULL ORDER BY tur_adi ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$departman, $_SESSION['firma_id']]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
 }

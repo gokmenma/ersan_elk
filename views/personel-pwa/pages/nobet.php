@@ -112,6 +112,18 @@
         <div id="calendar-grid" class="grid grid-cols-7 gap-1">
             <!-- Days will be rendered here -->
         </div>
+
+        <!-- Calendar Legend -->
+        <div class="flex items-center justify-center gap-6 mt-6 px-2">
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                <span class="text-[11px] text-slate-600 dark:text-slate-400 font-medium">Atanmış Nöbet</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                <span class="text-[11px] text-slate-600 dark:text-slate-400 font-medium">Onay Bekleyen Talep</span>
+            </div>
+        </div>
     </div>
 
     <!-- List View -->
@@ -285,12 +297,16 @@
         <!-- Tabs -->
         <div class="flex gap-2 mb-4">
             <button onclick="filterTalepler('gelen')" id="tab-gelen"
-                class="talep-tab flex-1 py-2 text-sm font-semibold rounded-lg bg-primary text-white">
+                class="talep-tab flex-1 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white">
                 Gelen
             </button>
             <button onclick="filterTalepler('giden')" id="tab-giden"
-                class="talep-tab flex-1 py-2 text-sm font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                class="talep-tab flex-1 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                 Giden
+            </button>
+            <button onclick="filterTalepler('bireysel')" id="tab-bireysel"
+                class="talep-tab flex-1 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                Taleplerim
             </button>
         </div>
 
@@ -363,6 +379,7 @@
     let currentDate = new Date();
     let nobetlerData = [];
     let taleplerData = [];
+    let bireyselTaleplerData = []; // Personelin kendi bekleyen nöbet talepleri
     let personelListesi = [];
     let currentTalepFilter = 'gelen';
 
@@ -406,11 +423,31 @@
 
             if (response.success) {
                 nobetlerData = response.data || [];
+                // Bireysel talepleri de yükle
+                await loadBireyselTalepler();
                 updateStats();
                 renderView();
             }
         } catch (error) {
             console.error('Nöbetler yüklenemedi:', error);
+        }
+    }
+
+    async function loadBireyselTalepler() {
+        try {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth() + 1;
+
+            const response = await API.request('getBireyselNobetTalepleri', {
+                yil: year,
+                ay: month
+            });
+
+            if (response.success) {
+                bireyselTaleplerData = response.data || [];
+            }
+        } catch (error) {
+            console.error('Bireysel talepler yüklenemedi:', error);
         }
     }
 
@@ -465,19 +502,22 @@
             return nobetTarihi >= now;
         }).length;
 
-        document.getElementById('stat-toplam').textContent = toplam;
+        const talepCount = bireyselTaleplerData.length;
+
+        document.getElementById('stat-toplam').textContent = toplam + (talepCount > 0 ? ` / ${talepCount}` : '');
         document.getElementById('stat-haftasonu').textContent = haftaSonu;
         document.getElementById('stat-yaklasan').textContent = yaklasan;
     }
-
     function updateTalepBadge() {
         const gelenBekleyen = taleplerData.filter(t =>
             t.talep_tipi === 'gelen' && t.durum === 'beklemede'
         ).length;
+        const bireyselBekleyen = bireyselTaleplerData.length;
+        const toplamBekleyen = gelenBekleyen + bireyselBekleyen;
 
         const badge = document.getElementById('talep-badge');
-        if (gelenBekleyen > 0) {
-            badge.textContent = gelenBekleyen;
+        if (toplamBekleyen > 0) {
+            badge.textContent = toplamBekleyen;
             badge.classList.remove('hidden');
         } else {
             badge.classList.add('hidden');
@@ -552,6 +592,7 @@
         for (let day = 1; day <= lastDay.getDate(); day++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const nobet = nobetlerData.find(n => n.nobet_tarihi === dateStr);
+            const pendingTalep = bireyselTaleplerData.find(t => t.nobet_tarihi === dateStr);
             const date = new Date(year, month, day);
             date.setHours(0, 0, 0, 0);
             const isToday = date.getTime() === today.getTime();
@@ -571,22 +612,28 @@
             if (nobet) {
                 hasNobet = true;
                 if (isPast) {
-                    // Geçmiş nöbetler için pasif/soluk renkler
                     dayClass = isWeekend ? 'bg-purple-200 dark:bg-purple-900/40' : 'bg-blue-200 dark:bg-blue-900/40';
                     textClass = isWeekend ? 'text-purple-400 dark:text-purple-600' : 'text-blue-400 dark:text-blue-600';
                     opacityClass = 'opacity-60';
                 } else {
-                    // Gelecek nöbetler için normal renkler
                     dayClass = isWeekend ? 'bg-purple-500' : 'bg-blue-500';
                     textClass = 'text-white font-bold';
                 }
             }
 
+            if (pendingTalep) {
+                dayClass = 'bg-amber-50 dark:bg-amber-900/10 ring-2 ring-amber-500 ring-inset';
+                textClass = 'text-amber-600 dark:text-amber-400 font-bold';
+            }
+
             html += `
-                <div onclick="${hasNobet ? `showNobetDetay('${nobet?.id}')` : ''}" 
+                <div onclick="${pendingTalep ? `showTalepDetay('${pendingTalep.id}')` : (hasNobet ? `showNobetDetay('${nobet?.id}')` : `openYeniTalepModal('${dateStr}')`)}" 
                      class="aspect-square p-1 rounded-lg ${dayClass} ${opacityClass} flex flex-col items-center justify-center cursor-pointer transition-transform active:scale-95">
                     <span class="text-sm ${textClass}">${day}</span>
-                    ${hasNobet ? `<span class="w-1.5 h-1.5 ${isPast ? 'bg-slate-400' : 'bg-white'} rounded-full mt-0.5"></span>` : ''}
+                    <div class="flex gap-0.5 mt-0.5">
+                        ${hasNobet ? `<span class="w-1.5 h-1.5 ${isPast ? 'bg-slate-400' : 'bg-white'} rounded-full"></span>` : ''}
+                        ${pendingTalep ? `<span class="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>` : ''}
+                    </div>
                 </div>
             `;
         }
@@ -618,7 +665,7 @@
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         container.innerHTML = sorted.map(nobet => {
             const date = new Date(nobet.nobet_tarihi);
             date.setHours(0, 0, 0, 0);
@@ -628,7 +675,7 @@
 
             // Geçmiş nöbetler için pasif stiller
             const cardOpacity = isPast ? 'opacity-60' : '';
-            const bgClass = isPast 
+            const bgClass = isPast
                 ? (isWeekend ? 'bg-purple-100/50 dark:bg-purple-900/20' : 'bg-blue-100/50 dark:bg-blue-900/20')
                 : (isWeekend ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-blue-100 dark:bg-blue-900/30');
             const textClass = isPast
@@ -661,6 +708,33 @@
                 </div>
             `;
         }).join('');
+
+        // Bekleyen talepleri de listeye ekle
+        const talepHtml = bireyselTaleplerData.map(talep => {
+            const date = new Date(talep.nobet_tarihi);
+            const gunAdi = gunler[date.getDay()];
+
+            return `
+                <div class="card p-4 border-l-4 border-amber-500" onclick="showTalepDetay('${talep.id}')">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-xl bg-amber-50 dark:bg-amber-900/20 flex flex-col items-center justify-center flex-shrink-0">
+                            <span class="text-lg font-bold text-amber-600">${date.getDate()}</span>
+                            <span class="text-[10px] text-amber-500">${aylar[date.getMonth()].substring(0, 3)}</span>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-bold text-slate-900 dark:text-white">${gunAdi}</p>
+                            <p class="text-xs text-amber-600 font-medium">Nöbet Talebi Beklemede</p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="badge bg-amber-100 text-amber-700">Bekliyor</span>
+                            </div>
+                        </div>
+                        <span class="material-symbols-outlined text-amber-400">chevron_right</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = talepHtml + container.innerHTML;
     }
 
     // ============ NÖBET DETAY ============
@@ -755,6 +829,86 @@
         }
 
         Modal.open('nobet-detay-modal');
+    }
+
+    // ============ TALEP DETAY ============
+    async function showTalepDetay(talepId) {
+        const talep = bireyselTaleplerData.find(t => t.id == talepId);
+        if (!talep) return;
+
+        const date = new Date(talep.nobet_tarihi);
+        const gunAdi = gunler[date.getDay()];
+        const formattedDate = date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+        document.getElementById('nobet-detay-content').innerHTML = `
+            <div class="flex flex-col gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex flex-col items-center justify-center">
+                        <span class="text-2xl font-bold text-amber-600">${date.getDate()}</span>
+                        <span class="text-xs text-amber-500">${aylar[date.getMonth()]}</span>
+                    </div>
+                    <div>
+                        <p class="font-bold text-lg text-slate-900 dark:text-white">${gunAdi}</p>
+                        <p class="text-sm text-slate-500">${formattedDate}</p>
+                    </div>
+                </div>
+
+                <div class="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 p-4 rounded-xl">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-amber-600">hourglass_empty</span>
+                        <p class="font-semibold text-amber-700 dark:text-amber-400">Onay Bekleniyor</p>
+                    </div>
+                    <p class="text-sm text-amber-600 dark:text-amber-400 mt-1">Bu nöbet talebiniz henüz yönetici tarafından onaylanmamıştır.</p>
+                </div>
+
+                ${talep.aciklama ? `
+                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl">
+                    <p class="text-xs text-slate-500 mb-1">Talep Notu</p>
+                    <p class="text-sm text-slate-700 dark:text-slate-300">${talep.aciklama}</p>
+                </div>
+                ` : ''}
+            </div>
+        `;
+
+        const actionsContainer = document.getElementById('nobet-detay-actions');
+        actionsContainer.innerHTML = `
+            <button onclick="iptalEtTalep('${talepId}')" 
+                class="w-full py-3 bg-red-50 dark:bg-red-900/20 text-red-600 font-semibold rounded-xl flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-lg">delete</span>
+                Talebi İptal Et
+            </button>
+            <button onclick="Modal.close('nobet-detay-modal')" 
+                class="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
+                Kapat
+            </button>
+        `;
+
+        Modal.open('nobet-detay-modal');
+    }
+
+    async function iptalEtTalep(talepId) {
+        const confirmed = await Alert.confirm(
+            'Talebi İptal Et',
+            'Bu nöbet talebini iptal etmek istediğinize emin misiniz?',
+            'Evet, İptal Et',
+            'Vazgeç'
+        );
+
+        if (!confirmed) return;
+
+        try {
+            const response = await API.request('iptalEtNobetTalebi', { talep_id: talepId });
+
+            if (response.success) {
+                Toast.show('Talep iptal edildi', 'success');
+                Modal.close('nobet-detay-modal');
+                loadNobetler();
+            } else {
+                Toast.show(response.message || 'Bir hata oluştu', 'error');
+            }
+        } catch (error) {
+            Toast.show('Bir hata oluştu', 'error');
+        }
     }
 
     // ============ DEĞİŞİM TALEBİ ============
@@ -858,6 +1012,12 @@
 
     function renderTalepler() {
         const container = document.getElementById('talepler-list');
+
+        if (currentTalepFilter === 'bireysel') {
+            renderBireyselTalepler(container);
+            return;
+        }
+
         const filtered = taleplerData.filter(t => t.talep_tipi === currentTalepFilter);
 
         if (filtered.length === 0) {
@@ -930,6 +1090,45 @@
         }).join('');
     }
 
+    function renderBireyselTalepler(container) {
+        if (bireyselTaleplerData.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state py-8">
+                    <div class="empty-state-icon">
+                        <span class="material-symbols-outlined">event_busy</span>
+                    </div>
+                    <p class="text-slate-600 dark:text-slate-400 font-medium">Nöbet talebiniz yok</p>
+                    <p class="text-sm text-slate-500">Henüz yeni bir nöbet talebinde bulunmadınız.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = bireyselTaleplerData.map(talep => {
+            const date = new Date(talep.nobet_tarihi);
+            const formattedDate = date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', weekday: 'long' });
+
+            return `
+                <div class="card p-4 border-l-4 border-amber-500" onclick="showTalepDetay('${talep.id}')">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-amber-600">event_upcoming</span>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-semibold text-slate-900 dark:text-white">${formattedDate}</p>
+                            <p class="text-xs text-amber-600 font-medium mt-1">Nöbet Talebi - Onay Bekliyor</p>
+                            <div class="flex items-center gap-2 mt-2">
+                                <span class="badge bg-amber-100 text-amber-700">Beklemede</span>
+                                <span class="text-[10px] text-slate-400">${talep.olusturma_tarihi ? API.formatDateTime(talep.olusturma_tarihi) : ''}</span>
+                            </div>
+                        </div>
+                        <span class="material-symbols-outlined text-amber-400">chevron_right</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
     async function onaylaTalep(talepId) {
         const confirmed = await Alert.confirm(
             'Talebi Onayla',
@@ -982,9 +1181,14 @@
     }
 
     // ============ YENİ NÖBET TALEBİ ============
-    async function openYeniTalepModal() {
+    async function openYeniTalepModal(preSelectedDate = null) {
         const container = document.getElementById('musait-gunler-container');
         container.innerHTML = '<div class="col-span-4 py-8 text-center"><div class="shimmer w-full h-10 rounded-lg"></div></div>';
+
+        document.getElementById('selected-talep-tarih').value = '';
+        if (preSelectedDate) {
+            document.getElementById('selected-talep-tarih').value = preSelectedDate;
+        }
 
         Modal.open('yeni-talep-modal');
 
@@ -995,13 +1199,16 @@
             });
 
             if (response.success && response.data.length > 0) {
-                container.innerHTML = response.data.map(d => `
-                    <button type="button" onclick="selectTalepTarih('${d.tarih}', this)" 
-                        class="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-transparent transition-all hover:bg-primary/5">
-                        <span class="text-xs text-slate-500">${d.gun_adi.substring(0, 3)}</span>
-                        <span class="text-lg font-bold text-slate-900 dark:text-white">${d.gun}</span>
-                    </button>
-                `).join('');
+                container.innerHTML = response.data.map(d => {
+                    const isSelected = preSelectedDate === d.tarih;
+                    return `
+                        <button type="button" onclick="selectTalepTarih('${d.tarih}', this)" 
+                            class="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 ${isSelected ? 'border-primary bg-primary/5' : 'border-transparent'} transition-all hover:bg-primary/5">
+                            <span class="text-xs text-slate-500">${d.gun_adi.substring(0, 3)}</span>
+                            <span class="text-lg font-bold text-slate-900 dark:text-white">${d.gun}</span>
+                        </button>
+                    `;
+                }).join('');
             } else {
                 container.innerHTML = '<div class="col-span-4 py-8 text-center text-slate-500 text-sm">Bu ay için müsait nöbet günü bulunamadı.</div>';
             }
@@ -1011,14 +1218,23 @@
     }
 
     function selectTalepTarih(tarih, element) {
-        document.querySelectorAll('#musait-gunler-container button').forEach(btn => {
-            btn.classList.remove('border-primary', 'bg-primary/5');
-            btn.classList.add('border-transparent');
-        });
+        let selectedDates = document.getElementById('selected-talep-tarih').value;
+        let datesArray = selectedDates ? selectedDates.split(',') : [];
 
-        element.classList.remove('border-transparent');
-        element.classList.add('border-primary', 'bg-primary/5');
-        document.getElementById('selected-talep-tarih').value = tarih;
+        const index = datesArray.indexOf(tarih);
+        if (index > -1) {
+            // Varsa çıkar (unselect)
+            datesArray.splice(index, 1);
+            element.classList.remove('border-primary', 'bg-primary/5');
+            element.classList.add('border-transparent');
+        } else {
+            // Yoksa ekle (select)
+            datesArray.push(tarih);
+            element.classList.remove('border-transparent');
+            element.classList.add('border-primary', 'bg-primary/5');
+        }
+
+        document.getElementById('selected-talep-tarih').value = datesArray.join(',');
     }
 
     async function submitYeniNobetTalebi(form) {
@@ -1036,6 +1252,7 @@
                 Toast.show(response.message, 'success');
                 Modal.close('yeni-talep-modal');
                 form.reset();
+                loadNobetler(); // Verileri yenile
             } else {
                 Toast.show(response.message || 'Bir hata oluştu', 'error');
             }

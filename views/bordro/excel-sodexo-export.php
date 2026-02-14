@@ -122,7 +122,7 @@ try {
         $adiSoyadi = $personel->adi_soyadi ?? '';
 
         // Kart No (sodexo_kart_no varsa ondan, yoksa TC'den)
-        $kartNo = !empty($personel->sodexo_kart_no) ? $personel->sodexo_kart_no : ($personel->tc_kimlik_no ?? '');
+        $kartNo = !empty($personel->sodexo_kart_no) ? $personel->sodexo_kart_no : '';
 
         // Kullanıcı Adı (TC Kimlik No kullanılabilir)
         $kullaniciAdi = $personel->tc_kimlik_no ?? '';

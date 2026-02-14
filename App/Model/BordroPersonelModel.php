@@ -25,18 +25,31 @@ class BordroPersonelModel extends Model
      */
     public function getPersonellerByDonem($donem_id)
     {
+        $firma_id = $_SESSION['firma_id'] ?? 0;
         $sql = $this->db->prepare("
             SELECT bp.*, p.adi_soyadi, p.tc_kimlik_no, p.departman, p.gorev, 
                    p.ise_giris_tarihi, p.isten_cikis_tarihi, p.maas_tutari, p.maas_durumu,
                    p.cep_telefonu, p.resim_yolu, bp.hesaplama_detay,
+                   t_all.ekip_adi, t_all.ekip_bolge,
                    (SELECT COALESCE(SUM(tutar), 0) FROM personel_kesintileri WHERE personel_id = bp.personel_id AND donem_id = bp.donem_id AND silinme_tarihi IS NULL AND durum = 'onaylandi') as guncel_toplam_kesinti,
                    (SELECT COALESCE(SUM(tutar), 0) FROM personel_ek_odemeler WHERE personel_id = bp.personel_id AND donem_id = bp.donem_id AND silinme_tarihi IS NULL AND durum = 'onaylandi') as guncel_toplam_ek_odeme
             FROM {$this->table} bp
             INNER JOIN personel p ON bp.personel_id = p.id
+            LEFT JOIN (
+                SELECT pg.personel_id, 
+                       GROUP_CONCAT(DISTINCT t.tur_adi SEPARATOR ', ') as ekip_adi,
+                       GROUP_CONCAT(DISTINCT t.ekip_bolge SEPARATOR ', ') as ekip_bolge
+                FROM personel_ekip_gecmisi pg
+                JOIN tanimlamalar t ON pg.ekip_kodu_id = t.id
+                WHERE pg.baslangic_tarihi <= CURDATE() 
+                AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
+                AND pg.firma_id = ?
+                GROUP BY pg.personel_id
+            ) t_all ON p.id = t_all.personel_id
             WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL
             ORDER BY p.adi_soyadi ASC
         ");
-        $sql->execute([$donem_id]);
+        $sql->execute([$firma_id, $donem_id]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -2196,6 +2209,7 @@ class BordroPersonelModel extends Model
             SELECT bp.*, 
                    bp.banka_odemesi,
                    bp.sodexo_odemesi,
+                   p.sodexo_kart_no,
                    bp.net_maas,
                    p.adi_soyadi, 
                    p.tc_kimlik_no, 

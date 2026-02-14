@@ -471,6 +471,7 @@ $ek_odeme_turleri = [
                                             </div>
                                         </th>
                                         <th class="text-center" style="width: 80px;">Birim</th>
+                                        <th style="min-width: 150px;">Ekip / Bölge</th>
                                         <th>Personel</th>
                                         <th class="text-center">Gün</th>
                                         <th class="text-end">Toplam Alacağı</th>
@@ -591,6 +592,46 @@ $ek_odeme_turleri = [
                                                     </div>
                                                     <span class="d-none"><?= $dInfo['code'] ?>
                                                         <?= htmlspecialchars($deptName) ?></span>
+                                                </td>
+                                                <td>
+                                                    <?php
+                                                    if (!empty($personel->ekip_adi) && $personel->ekip_adi !== "YOK") {
+                                                        $badgeColors = [
+                                                            "bg-primary-subtle text-primary border-primary-subtle",
+                                                            "bg-success-subtle text-success border-success-subtle",
+                                                            "bg-info-subtle text-info border-info-subtle",
+                                                            "bg-warning-subtle text-warning border-warning-subtle",
+                                                            "bg-danger-subtle text-danger border-danger-subtle",
+                                                            "bg-secondary-subtle text-secondary border-secondary-subtle",
+                                                            "bg-dark-subtle text-dark border-dark-subtle",
+                                                        ];
+
+                                                        $ekipler = explode(',', $personel->ekip_adi);
+                                                        echo '<div class="d-flex flex-wrap">';
+                                                        foreach ($ekipler as $ekip) {
+                                                            $cleanEkip = trim($ekip);
+                                                            $cleanEkip = preg_replace('/ER-SAN ELEKTRİK|ERSAN ELEKTRİK|ER SAN ELEKTRİK/i', '', $cleanEkip);
+                                                            $cleanEkip = trim($cleanEkip);
+
+                                                            if (empty($cleanEkip))
+                                                                continue;
+
+                                                            // Hash function for color consistency
+                                                            $hash = 0;
+                                                            for ($i = 0; $i < strlen($cleanEkip); $i++) {
+                                                                $hash = ord($cleanEkip[$i]) + (($hash << 5) - $hash);
+                                                            }
+                                                            $colorClass = $badgeColors[abs($hash) % count($badgeColors)];
+
+                                                            echo '<span class="badge ' . $colorClass . ' font-size-12 px-2 py-1 mb-1 me-1 border">' . htmlspecialchars($cleanEkip) . '</span>';
+                                                        }
+                                                        echo '</div>';
+
+                                                        if (!empty($personel->ekip_bolge) && $personel->ekip_bolge !== "---") {
+                                                            echo '<div class="text-muted small mt-1"><i class="bx bx-map-pin"></i> ' . htmlspecialchars($personel->ekip_bolge) . '</div>';
+                                                        }
+                                                    }
+                                                    ?>
                                                 </td>
                                                 <td>
                                                     <div class="d-flex align-items-center">
@@ -1160,7 +1201,7 @@ $ek_odeme_turleri = [
 
     <!-- Bordro Detay Modal -->
     <div class="modal fade" id="bordroDetailModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
                     <h5 class="modal-title"><i class="bx bx-show me-2"></i>Bordro Detayı</h5>

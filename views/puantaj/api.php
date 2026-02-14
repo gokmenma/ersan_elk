@@ -1246,7 +1246,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // Log kaydet
         $SystemLog = new SystemLogModel();
         $userId = $_SESSION['user_id'] ?? 0;
-        $SystemLog->logAction($userId, 'Online Puantaj Sorgulama', "API Sorgu, Tarih: $baslangicTarihiAPI - $bitisTarihiAPI. $yeniKayit yeni, $guncellenenKayit güncellenen kayıt.");
+        $SystemLog->logAction($userId, 'Online Kesme/Açma Sorgulama', "API Sorgu, Tarih: $baslangicTarihiAPI - $bitisTarihiAPI. $yeniKayit yeni, $guncellenenKayit güncellenen kayıt.");
 
         $response['status'] = 'success';
         $response['yeni_kayit'] = $yeniKayit;

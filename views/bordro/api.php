@@ -678,7 +678,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     // Puantaj ödemelerini ayrı ayrı göster
                     if (!empty($puantajOdemeler)) {
-                        $html .= '<tr><td colspan="2" class="ps-3 pt-2 pb-1 bg-light"><small class="text-primary fw-bold"><i class="bx bx-briefcase me-1"></i>Puantaj Ödemeleri</small></td></tr>';
+                        // Toplam adet hesapla
+                        $toplamPuantajAdet = 0;
+                        foreach ($puantajOdemeler as $p) {
+                            $pAciklama = str_replace('[Puantaj] ', '', $p->aciklama ?? '');
+                            if (preg_match('/(\d+)\s*Adet/i', $pAciklama, $adetMatch)) {
+                                $toplamPuantajAdet += intval($adetMatch[1]);
+                            }
+                        }
+                        $adetBadge = $toplamPuantajAdet > 0 ? ' <span class="badge bg-primary bg-opacity-75 rounded-pill ms-1">Toplam ' . number_format($toplamPuantajAdet, 0, ',', '.') . ' Adet</span>' : '';
+                        $html .= '<tr><td colspan="2" class="ps-3 pt-2 pb-1 bg-light"><small class="text-primary fw-bold"><i class="bx bx-briefcase me-1"></i>Puantaj Ödemeleri' . $adetBadge . '</small></td></tr>';
                         foreach ($puantajOdemeler as $puantaj) {
                             // [Puantaj] Sonuç (Adet x Birim ₺) formatından temiz açıklama çıkar
                             $aciklama = str_replace('[Puantaj] ', '', $puantaj->aciklama ?? '');

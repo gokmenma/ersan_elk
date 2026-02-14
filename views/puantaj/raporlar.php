@@ -160,6 +160,18 @@ foreach ($regionList as $r) {
                 id="btnExportExcel">
                 <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel'e Aktar
             </button>
+            <div class="vr mx-1 vr-online-sorgula <?= in_array($activeTab, ['okuma', 'kesme']) ? '' : 'd-none' ?>"
+                style="height: 25px; align-self: center;"></div>
+            <button type="button"
+                class="btn btn-link btn-sm text-info text-decoration-none px-2 align-items-center btn-online-sorgula <?= $activeTab === 'okuma' ? 'd-flex' : 'd-none' ?>"
+                id="btnOnlineSorgulaEndeks" data-bs-toggle="modal" data-bs-target="#importOnlineIcmalRaporuModal">
+                <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Endeks Sorgula
+            </button>
+            <button type="button"
+                class="btn btn-link btn-sm text-info text-decoration-none px-2 align-items-center btn-online-sorgula <?= $activeTab === 'kesme' ? 'd-flex' : 'd-none' ?>"
+                id="btnOnlineSorgulaPuantaj" data-bs-toggle="modal" data-bs-target="#importOnlinePuantajModal">
+                <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Puantaj Sorgula
+            </button>
         </div>
     </div>
 
@@ -198,7 +210,7 @@ foreach ($regionList as $r) {
 
         const STORAGE_KEY = 'raporlar_filters';
 
-        function saveFiltersToStorage() {
+        const saveFiltersToStorage = function () {
             const filters = {
                 tab: currentTab,
                 year: currentYear,
@@ -207,9 +219,9 @@ foreach ($regionList as $r) {
                 region: currentRegion
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
-        }
+        };
 
-        function loadFiltersFromStorage() {
+        const loadFiltersFromStorage = function () {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 const filters = JSON.parse(saved);
@@ -229,9 +241,9 @@ foreach ($regionList as $r) {
                 $('select[name="personel_id"]').val(currentPersonelId).trigger('change.select2');
                 $('select[name="region"]').val(currentRegion).trigger('change.select2');
             }
-        }
+        };
 
-        function loadReport() {
+        const loadReport = function () {
             $('#reportContent').html('<div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Rapor hazırlanıyor...</p></div>');
             updateFilterSummary();
 
@@ -265,9 +277,9 @@ foreach ($regionList as $r) {
                     $('#reportContent').html('<div class="alert alert-danger">Rapor yüklenirken bir hata oluştu.</div>');
                 }
             });
-        }
+        };
 
-        function updateFilterSummary() {
+        const updateFilterSummary = function () {
             let summary = '';
             const yearText = $('select[name="year"] option:selected').text();
             const monthText = $('select[name="month"] option:selected').text();
@@ -286,7 +298,7 @@ foreach ($regionList as $r) {
             }
 
             $('#filterSummary').html(summary);
-        }
+        };
 
         $(document).on('click', '.btn-clear-filter', function (e) {
             e.stopPropagation();
@@ -301,7 +313,7 @@ foreach ($regionList as $r) {
             loadReport();
         });
 
-        function updateUrl() {
+        const updateUrl = function () {
             const url = new URL(window.location);
             url.searchParams.set('tab', currentTab);
             url.searchParams.set('year', currentYear);
@@ -309,9 +321,9 @@ foreach ($regionList as $r) {
             if (currentPersonelId) url.searchParams.set('personel_id', currentPersonelId); else url.searchParams.delete('personel_id');
             if (currentRegion) url.searchParams.set('region', currentRegion); else url.searchParams.delete('region');
             window.history.pushState({}, '', url);
-        }
+        };
 
-        function adjustTableHeight() {
+        const adjustTableHeight = function () {
             const $tableResp = $('.table-responsive');
             if ($tableResp.length === 0 || document.fullscreenElement) return;
 
@@ -326,7 +338,26 @@ foreach ($regionList as $r) {
                     'height': availableHeight + 'px' // Also set height to force footer to bottom if rows are few
                 });
             }
-        }
+        };
+        const updateOnlineSorgulaVisibility = function () {
+            $('.btn-online-sorgula').addClass('d-none').removeClass('d-flex');
+            $('.vr-online-sorgula').addClass('d-none');
+
+            if (currentTab === 'okuma') {
+                $('#btnOnlineSorgulaEndeks').addClass('d-flex').removeClass('d-none');
+                $('.vr-online-sorgula').removeClass('d-none');
+            } else if (currentTab === 'kesme') {
+                $('#btnOnlineSorgulaPuantaj').addClass('d-flex').removeClass('d-none');
+                $('.vr-online-sorgula').removeClass('d-none');
+            }
+
+            // Show/Hide Kacak Help Info
+            if (currentTab === 'kacakkontrol') {
+                $('#kacakHelpInfo').fadeIn();
+            } else {
+                $('#kacakHelpInfo').fadeOut();
+            }
+        };
 
         // Adjust height on window resize
         $(window).on('resize', function () {
@@ -348,13 +379,7 @@ foreach ($regionList as $r) {
             // Tab değişiminde personel/bölge sıfırlanmalı mı? 
             // Genelde kullanıcılar tüm sekmelerde aynı personeli görmek ister.
 
-            // Show/Hide Kacak Help Info
-            if (currentTab === 'kacakkontrol') {
-                $('#kacakHelpInfo').fadeIn();
-            } else {
-                $('#kacakHelpInfo').fadeOut();
-            }
-
+            updateOnlineSorgulaVisibility();
             loadReport();
         });
 
@@ -420,6 +445,7 @@ foreach ($regionList as $r) {
 
         // Initial load
         loadFiltersFromStorage();
+        updateOnlineSorgulaVisibility();
         loadReport();
 
         window.openKacakModal = function (tarih, pIds, sayi, ekipAdi) {
@@ -465,7 +491,7 @@ foreach ($regionList as $r) {
             });
         }
 
-        function initPersonelSelect2(selectedValues) {
+        const initPersonelSelect2 = function (selectedValues) {
             var $el = $('#kacak_personel_ids');
             if ($el.hasClass('select2-hidden-accessible')) {
                 $el.select2('destroy');
@@ -488,7 +514,7 @@ foreach ($regionList as $r) {
             if (selectedValues && selectedValues.length > 0) {
                 $el.trigger('change');
             }
-        }
+        };
 
         $('#kacakManualForm').on('submit', function (e) {
             e.preventDefault();
@@ -521,7 +547,189 @@ foreach ($regionList as $r) {
                 }
             });
         });
+
+        // Column Search Filtering
+        let searchTimeout;
+        $(document).on('keyup', '.column-search', function () {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(function () {
+                const searchValues = {};
+                $('.column-search').each(function () {
+                    const col = $(this).data('col');
+                    const val = $(this).val().toLowerCase().trim();
+                    if (val) searchValues[col] = val;
+                });
+
+                $('#raporTable tbody tr').each(function () {
+                    const $row = $(this);
+                    let show = true;
+
+                    for (let col in searchValues) {
+                        const searchVal = searchValues[col];
+                        let cellText = '';
+
+                        if (col === 'sira') {
+                            cellText = $row.find('.sticky-col-1').text().toLowerCase();
+                        } else if (col === 'ekip') {
+                            cellText = $row.find('.sticky-col-2').text().toLowerCase();
+                        } else if (col === 'isim') {
+                            cellText = $row.find('.sticky-col-3, .kacakkontrol-name-col').text().toLowerCase();
+                        }
+
+                        if (cellText.indexOf(searchVal) === -1) {
+                            show = false;
+                            break;
+                        }
+                    }
+
+                    if (show) $row.show(); else $row.hide();
+                });
+            }, 300);
+        });
+
+        // Online Puantaj (Kesme/Açma) Sorgulama
+        $('#onlinePuantajForm').on('submit', function (e) {
+            e.preventDefault();
+            var formData = $(this).serialize();
+            formData += '&action=online-puantaj-sorgula';
+
+            $('#onlinePuantajSpinner').show();
+            $('#onlinePuantajResult').hide();
+            $('#btnOnlinePuantajSorgula').prop('disabled', true);
+
+            $.ajax({
+                url: 'views/puantaj/api.php',
+                type: 'POST',
+                data: formData,
+                success: function (response) {
+                    $('#onlinePuantajSpinner').hide();
+                    $('#btnOnlinePuantajSorgula').prop('disabled', false);
+                    try {
+                        var res = JSON.parse(response);
+                        var resultHtml = '';
+                        if (res.status === 'success') {
+                            resultHtml = '<div class="alert alert-success">';
+                            resultHtml += '<strong><i class="bx bx-check-circle me-2"></i>Sorgu Başarılı! (Toplam ' + (res.toplam_api_kayit || 0) + ' kayıt)</strong><br>';
+                            resultHtml += '<span class="fs-5">' + res.yeni_kayit + ' adet yeni kayıt eklendi.</span>';
+                            if (res.guncellenen_kayit > 0) {
+                                resultHtml += '<br><span class="text-warning">' + res.guncellenen_kayit + ' adet kayıt güncellendi.</span>';
+                            }
+
+                            if (res.mevcut_kayitlar && res.mevcut_kayitlar.length > 0) {
+                                resultHtml += '<hr><strong>Daha önce çekilmiş kayıtlar:</strong>';
+                                if (res.mevcut_kayitlar.length > 5) {
+                                    resultHtml += '<div class="d-flex align-items-center justify-content-between mt-1">';
+                                    resultHtml += '<span>' + res.mevcut_kayitlar.length + ' adet kayıt daha önce işlendiği için atlandı.</span>';
+                                    resultHtml += '<button type="button" class="btn btn-sm btn-outline-info fw-bold" onclick=\'exportToCsv(this, ' + JSON.stringify(res.mevcut_kayitlar) + ', {"islem_id":"İşlem ID","tarih":"Tarih","ekip_kodu":"Ekip Kodu","is_emri_tipi":"İş Emri Tipi","is_emri_sonucu":"İş Emri Sonucu"}, "mevcut_kayitlar")\' style="font-size: 11px;"><i class="mdi mdi-file-excel me-1"></i>Excel Olarak İndir</button>';
+                                    resultHtml += '</div>';
+                                } else {
+                                    resultHtml += '<ul class="mb-0 mt-1 small">';
+                                    res.mevcut_kayitlar.forEach(function (item) {
+                                        resultHtml += '<li>İşlem ID: ' + item.islem_id + ' - ' + item.ekip_kodu + ' - ' + item.is_emri_tipi + '</li>';
+                                    });
+                                    resultHtml += '</ul>';
+                                }
+                            }
+                            resultHtml += '</div>';
+                            loadReport();
+                        } else {
+                            resultHtml = '<div class="alert alert-danger"><strong>Hata!</strong><br>' + res.message + '</div>';
+                        }
+                        $('#onlinePuantajResult').html(resultHtml).show();
+                    } catch (err) {
+                        $('#onlinePuantajResult').html('<div class="alert alert-danger">Sunucudan geçersiz yanıt alındı.</div>').show();
+                    }
+                },
+                error: function () {
+                    $('#onlinePuantajSpinner').hide();
+                    $('#btnOnlinePuantajSorgula').prop('disabled', false);
+                    $('#onlinePuantajResult').html('<div class="alert alert-danger">Bağlantı hatası oluştu.</div>').show();
+                }
+            });
+        });
+
+        // Online İcmal (Endeks Okuma) Sorgulama
+        $('#onlineIcmalForm').on('submit', function (e) {
+            e.preventDefault();
+            var formData = $(this).serialize();
+            formData += '&action=online-icmal-sorgula';
+
+            $('#onlineIcmalSpinner').show();
+            $('#onlineIcmalResult').hide();
+            $('#btnOnlineIcmalSorgula').prop('disabled', true);
+
+            $.ajax({
+                url: 'views/puantaj/api.php',
+                type: 'POST',
+                data: formData,
+                success: function (response) {
+                    $('#onlineIcmalSpinner').hide();
+                    $('#btnOnlineIcmalSorgula').prop('disabled', false);
+                    try {
+                        var res = JSON.parse(response);
+                        var resultHtml = '';
+                        if (res.status === 'success') {
+                            resultHtml = '<div class="alert alert-success">';
+                            resultHtml += '<strong><i class="bx bx-check-circle me-2"></i>Sorgu Başarılı!</strong><br>';
+                            resultHtml += '<span class="fs-5">' + res.yeni_kayit + ' adet yeni kayıt eklendi.</span>';
+                            if (res.guncellenen_kayit > 0) {
+                                resultHtml += '<br><span class="text-warning">' + res.guncellenen_kayit + ' adet kayıt güncellendi.</span>';
+                            }
+                            if (res.mevcut_kayitlar && res.mevcut_kayitlar.length > 0) {
+                                resultHtml += '<hr><strong>Daha önce çekilmiş kayıtlar:</strong>';
+                                if (res.mevcut_kayitlar.length > 5) {
+                                    resultHtml += '<div class="d-flex align-items-center justify-content-between mt-1">';
+                                    resultHtml += '<span>' + res.mevcut_kayitlar.length + ' adet kayıt daha önce işlendiği için atlandı.</span>';
+                                    resultHtml += '<button type="button" class="btn btn-sm btn-outline-info fw-bold" onclick=\'exportToCsv(this, ' + JSON.stringify(res.mevcut_kayitlar) + ', {"islem_id":"İşlem ID","kullanici_adi":"Okuyucu Adı","bolge":"Bölge"}, "mevcut_kayitlar")\' style="font-size: 11px;"><i class="mdi mdi-file-excel me-1"></i>Excel Olarak İndir</button>';
+                                    resultHtml += '</div>';
+                                } else {
+                                    resultHtml += '<ul class="mb-0 mt-1 small">';
+                                    res.mevcut_kayitlar.forEach(function (item) {
+                                        resultHtml += '<li>İşlem ID: ' + item.islem_id + ' - ' + item.kullanici_adi + ' - ' + item.bolge + '</li>';
+                                    });
+                                    resultHtml += '</ul>';
+                                }
+                            }
+                            resultHtml += '</div>';
+                            loadReport();
+                        } else {
+                            resultHtml = '<div class="alert alert-danger"><strong>Hata!</strong><br>' + res.message + '</div>';
+                        }
+                        $('#onlineIcmalResult').html(resultHtml).show();
+                    } catch (err) {
+                        $('#onlineIcmalResult').html('<div class="alert alert-danger">Sunucudan geçersiz yanıt alındı.</div>').show();
+                    }
+                },
+                error: function () {
+                    $('#onlineIcmalSpinner').hide();
+                    $('#btnOnlineIcmalSorgula').prop('disabled', false);
+                    $('#onlineIcmalResult').html('<div class="alert alert-danger">Bağlantı hatası oluştu.</div>').show();
+                }
+            });
+        });
+
+        // Modal cleanup
+        $('#importOnlinePuantajModal').on('hidden.bs.modal', function () { $('#onlinePuantajResult').hide().html(''); });
+        $('#importOnlineIcmalRaporuModal').on('hidden.bs.modal', function () { $('#onlineIcmalResult').hide().html(''); });
     });
+
+    function exportToCsv(btn, data, Mapping, filename) {
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+        csvContent += Object.values(Mapping).join(";") + "\r\n";
+        data.forEach(function (row) {
+            let rowData = [];
+            Object.keys(Mapping).forEach(key => { rowData.push(row[key] || ''); });
+            csvContent += rowData.join(";") + "\r\n";
+        });
+        var encodedUri = encodeURI(csvContent);
+        var link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", filename + ".csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
 </script>
 
 <!-- Kaçak Kontrol Manuel Modal -->
@@ -595,6 +803,117 @@ foreach ($personelList as $p) {
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
                     <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Online Puantaj (Kesme/Açma) Sorgulama Modal -->
+<div class="modal fade" id="importOnlinePuantajModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Online Kesme/Açma İşlemleri Sorgula</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="onlinePuantajForm">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bx bx-info-circle me-2"></i>
+                        Ekip İş Emri Sonuç Raporu (Sonuç Tarihine Göre Sorgular) - KESME İŞEMRİ türünde online sorgulama
+                        yapılacaktır.
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(type: 'number', name: 'ilk_firma', value: $_SESSION['firma_kodu'] ?? '17', placeholder: '', label: "İlk Firma", icon: "briefcase", required: true, class: "form-control"); ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(type: 'number', name: 'son_firma', value: $_SESSION['firma_kodu'] ?? '17', placeholder: '', label: "Son Firma", icon: "briefcase", required: true, class: "form-control"); ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(type: 'text', name: 'baslangic_tarihi', value: date('d.m.Y'), placeholder: '', label: "Başlangıç Tarihi", icon: "calendar", required: true, class: "form-control flatpickr"); ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(type: 'text', name: 'bitis_tarihi', value: date('d.m.Y'), placeholder: '', label: "Bitiş Tarihi", icon: "calendar", required: true, class: "form-control flatpickr"); ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="onlinePuantajSpinner" class="text-center p-2" style="display: none;">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Sorgulanıyor...</p>
+                    </div>
+                    <div id="onlinePuantajResult" class="mt-3" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="submit" class="btn btn-primary" id="btnOnlinePuantajSorgula">
+                        <i class="bx bx-search me-1"></i> Sorgula
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Online İcmal (Endeks Okuma) Sorgulama Modal -->
+<div class="modal fade" id="importOnlineIcmalRaporuModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Online Endeks Okuma Sorgula</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="onlineIcmalForm">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bx bx-info-circle me-2"></i>
+                        Endeks Okuma İcmal Raporu - online sorgulama yapılacaktır.
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(type: 'number', name: 'ilk_firma', value: $_SESSION['firma_kodu'] ?? '17', placeholder: '', label: "İlk Firma", icon: "briefcase", required: true, class: "form-control"); ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(type: 'number', name: 'son_firma', value: $_SESSION['firma_kodu'] ?? '17', placeholder: '', label: "Son Firma", icon: "briefcase", required: true, class: "form-control"); ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(type: 'text', name: 'baslangic_tarihi', value: date('d.m.Y'), placeholder: '', label: "Başlangıç Tarihi", icon: "calendar", required: true, class: "form-control flatpickr"); ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(type: 'text', name: 'bitis_tarihi', value: date('d.m.Y'), placeholder: '', label: "Bitiş Tarihi", icon: "calendar", required: true, class: "form-control flatpickr"); ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="onlineIcmalSpinner" class="text-center p-2" style="display: none;">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Sorgulanıyor...</p>
+                    </div>
+                    <div id="onlineIcmalResult" class="mt-3" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="submit" class="btn btn-primary" id="btnOnlineIcmalSorgula">
+                        <i class="bx bx-search me-1"></i> Sorgula
+                    </button>
                 </div>
             </form>
         </div>

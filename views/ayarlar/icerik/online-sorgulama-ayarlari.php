@@ -109,14 +109,14 @@ for ($saat = 0; $saat < 24; $saat++) {
                         "online_sorgulama_endeks_saat_select",
                         $saatSecenekleri,
                         $endeks_saatleri,
-                        "Sorgulama Saatleri (En fazla 4)",
+                        "Sorgulama Saatleri (En fazla 6)",
                         "clock"
                     ); ?>
                     <input type="hidden" name="online_sorgulama_endeks_saat" id="online_sorgulama_endeks_saat"
                         value="<?php echo htmlspecialchars($online_sorgulama_endeks_saat); ?>">
                     <div class="form-text">
                         <i data-feather="info" style="width:14px;height:14px" class="me-1"></i>
-                        En fazla <strong>4 saat</strong> seçilebilir, saatler arasında en az <strong>1 saat</strong>
+                        En fazla <strong>6 saat</strong> seçilebilir, saatler arasında en az <strong>1 saat</strong>
                         fark olmalıdır.
                     </div>
                 </div>
@@ -144,14 +144,14 @@ for ($saat = 0; $saat < 24; $saat++) {
                         "online_sorgulama_puantaj_saat_select",
                         $saatSecenekleri,
                         $puantaj_saatleri,
-                        "Sorgulama Saatleri (En fazla 4)",
+                        "Sorgulama Saatleri (En fazla 6)",
                         "clock"
                     ); ?>
                     <input type="hidden" name="online_sorgulama_puantaj_saat" id="online_sorgulama_puantaj_saat"
                         value="<?php echo htmlspecialchars($online_sorgulama_puantaj_saat); ?>">
                     <div class="form-text">
                         <i data-feather="info" style="width:14px;height:14px" class="me-1"></i>
-                        En fazla <strong>4 saat</strong> seçilebilir, saatler arasında en az <strong>1 saat</strong>
+                        En fazla <strong>6 saat</strong> seçilebilir, saatler arasında en az <strong>1 saat</strong>
                         fark olmalıdır.
                     </div>
                 </div>
@@ -245,8 +245,8 @@ for ($saat = 0; $saat < 24; $saat++) {
             <p>Otomatik sorgulama için sunucunuzda aşağıdaki <strong>2 ayrı</strong> cron job'u eklemeniz gerekmektedir:
             </p>
 
-            <?php 
-            $basePath = realpath(dirname(__DIR__, 2)); 
+            <?php
+            $basePath = realpath(dirname(__DIR__, 2));
             // Windows-style path'leri Linux formatına çevir (eğer lazımsa, genellikle PHP ikisini de anlar ama temiz görünmesi için)
             $endeksPath = str_replace('\\', '/', $basePath . '/cron/endeks_okuma_cron.php');
             $kesmePath = str_replace('\\', '/', $basePath . '/cron/kesme_acma_cron.php');
@@ -271,7 +271,7 @@ for ($saat = 0; $saat < 24; $saat++) {
             <p class="mb-0 text-muted">
                 <i data-feather="info" class="me-1"></i>
                 Her iki cron da 15 dakikada bir çalışır ve yukarıda ayarlanan saatlere denk geldiğinde sorgulama yapar.
-                Her sorgulama türü için günde en fazla <strong>4 farklı saat</strong> belirlenebilir.
+                Her sorgulama türü için günde en fazla <strong>6 farklı saat</strong> belirlenebilir.
             </p>
         </div>
     </div>
@@ -340,7 +340,7 @@ for ($saat = 0; $saat < 24; $saat++) {
                 $select.select2({
                     placeholder: 'Saat seçiniz...',
                     allowClear: true,
-                    maximumSelectionLength: 4
+                    maximumSelectionLength: 6
                 });
             }
 
@@ -383,8 +383,8 @@ for ($saat = 0; $saat < 24; $saat++) {
 
                 if (endeksSaatler) {
                     const arr = endeksSaatler.split(',');
-                    if (arr.length > 4) {
-                        Swal.fire('Hata', 'Endeks Okuma için en fazla 4 saat seçebilirsiniz.', 'error');
+                    if (arr.length > 6) {
+                        Swal.fire('Hata', 'Endeks Okuma için en fazla 6 saat seçebilirsiniz.', 'error');
                         return;
                     }
                     const sonuc = saatlerGecerliMi(arr);
@@ -395,8 +395,8 @@ for ($saat = 0; $saat < 24; $saat++) {
                 }
                 if (puantajSaatler) {
                     const arr = puantajSaatler.split(',');
-                    if (arr.length > 4) {
-                        Swal.fire('Hata', 'Kesme/Açma için en fazla 4 saat seçebilirsiniz.', 'error');
+                    if (arr.length > 6) {
+                        Swal.fire('Hata', 'Kesme/Açma için en fazla 6 saat seçebilirsiniz.', 'error');
                         return;
                     }
                     const sonuc = saatlerGecerliMi(arr);

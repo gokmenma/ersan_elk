@@ -654,31 +654,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $yil = $_POST['yil'] ?? null;
                 $onlyPending = ($_POST['is_gecmis'] ?? '0') == '0';
 
-                $where = "pt.kategori = 'nobet_talebi' AND pt.deleted_at IS NULL AND p.firma_id = :firma_id";
-                $params = [':firma_id' => $_SESSION['firma_id']];
-
-                if ($onlyPending) {
-                    $where .= " AND pt.durum = 'beklemede'";
-                } else {
-                    $where .= " AND pt.durum != 'beklemede'";
-                }
-
-                if ($ay && $yil) {
-                    $where .= " AND MONTH(STR_TO_DATE(pt.baslik, '%Y-%m-%d')) = :ay AND YEAR(STR_TO_DATE(pt.baslik, '%Y-%m-%d')) = :yil";
-                    $params[':ay'] = $ay;
-                    $params[':yil'] = $yil;
-                }
-
-                $sql = "SELECT pt.*, p.adi_soyadi as personel_adi
-                        FROM personel_talepleri pt
-                        JOIN personel p ON pt.personel_id = p.id
-                        WHERE $where
-                        ORDER BY pt.olusturma_tarihi DESC";
-
-                $stmt = $Nobet->getDb()->prepare($sql);
-                $stmt->execute($params);
-                $results = $stmt->fetchAll(PDO::FETCH_OBJ);
-
+                $results = $Nobet->getPersonelNobetTalepleriYonetici($ay, $yil, $onlyPending);
                 foreach ($results as &$r) {
                     $r->id = Security::encrypt($r->id);
                     $r->personel_id = Security::encrypt($r->personel_id);
@@ -688,38 +664,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             case 'onayla-personel-nobet-talebi':
                 $id = Security::decrypt($_POST['talep_id']);
-                $TalepModel = new \App\Model\TalepModel();
-                $talep = $TalepModel->getTalepDetay($id);
 
-                if (!$talep)
-                    throw new Exception("Talep bulunamadı.");
-
-                // Nöbet ekle
-                $nobetData = [
-                    'personel_id' => $talep->personel_id,
-                    'nobet_tarihi' => $talep->baslik, // baslik stores the date
-                    'baslangic_saati' => '18:00:00',
-                    'bitis_saati' => '08:00:00',
-                    'nobet_tipi' => 'standart',
-                    'aciklama' => $talep->aciklama
-                ];
-
-                if ($Nobet->hasNobetOnDate($talep->personel_id, $talep->baslik)) {
-                    throw new Exception("Bu personelin bu tarihte zaten bir nöbeti var.");
+                // Nöbet kaydını al
+                $nobet = $Nobet->find($id);
+                if (!$nobet || $nobet->durum !== 'talep_edildi') {
+                    throw new Exception("Talep bulunamadı veya zaten işlem görmüş.");
                 }
 
-                $nobet_id = $Nobet->addNobet($nobetData);
+                $result = $Nobet->onaylaNobetTalebi($id);
 
-                if ($nobet_id) {
-                    $TalepModel->updateDurum($id, 'cozuldu', 'Nöbet ataması yapıldı.');
-                    $SystemLog->logAction($userId, 'Nöbet Talebi Onayı', "{$talep->adi_soyadi} için {$talep->baslik} tarihli nöbet talebi onaylandı.");
+                if ($result) {
+                    $SystemLog->logAction($userId, 'Nöbet Talebi Onayı', "{$nobet->adi_soyadi} için {$nobet->nobet_tarihi} tarihli nöbet talebi onaylandı.");
 
                     // PWA Bildirimi
-                    $Nobet->sendNobetAtamaBildirimi($talep->personel_id, $talep->baslik);
+                    $Nobet->sendNobetAtamaBildirimi($nobet->personel_id, $nobet->nobet_tarihi);
 
-                    echo json_encode(['success' => true, 'message' => 'Talep onaylandı ve nöbet atandı.']);
+                    echo json_encode(['success' => true, 'message' => 'Talep onaylandı. Nöbet aktif hale getirildi.']);
                 } else {
-                    throw new Exception("Nöbet oluşturulamadı.");
+                    throw new Exception("Onaylama işlemi başarısız.");
                 }
                 break;
 
@@ -727,8 +689,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $id = Security::decrypt($_POST['talep_id']);
                 $red_nedeni = $_POST['red_nedeni'] ?? 'Yönetici tarafından reddedildi.';
 
-                $TalepModel = new \App\Model\TalepModel();
-                $result = $TalepModel->updateDurum($id, 'reddedildi', $red_nedeni);
+                $result = $Nobet->reddetNobetTalebi($id, $red_nedeni);
 
                 if ($result) {
                     echo json_encode(['success' => true, 'message' => 'Talep reddedildi.']);

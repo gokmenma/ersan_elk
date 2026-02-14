@@ -31,7 +31,7 @@ $regions = $Tanimlamalar->getEkipBolgeleri();
 
 if ($filterRegion) {
     $regions = array_filter($regions, function ($r) use ($filterRegion) {
-        return $r == $filterRegion;
+        return mb_strtoupper($r, 'UTF-8') == mb_strtoupper($filterRegion, 'UTF-8');
     });
 }
 
@@ -280,6 +280,9 @@ if (true) { // Always use unified logic for all standard tabs
             $regionName = $team->ekip_bolge ?: 'TANIMSIZ BÖLGE';
         }
 
+        if ($filterRegion && mb_strtoupper($regionName, 'UTF-8') !== mb_strtoupper($filterRegion, 'UTF-8'))
+            continue;
+
         $regionGrouped[$regionName][] = [
             'team' => $team,
             'personel' => $p,
@@ -448,20 +451,44 @@ if (!empty($workTypeCols)) {
 
     #raporTable thead tr:nth-child(1) th {
         top: 0;
-        z-index: 105;
-        height: 40px;
+        z-index: 105 !important;
+        height: 32px;
     }
 
     #raporTable thead tr:nth-child(2) th {
-        top: 40px;
-        z-index: 104;
-        height: 40px;
+        top: 31px;
+        z-index: 104 !important;
+        height: 34px;
     }
 
-    #raporTable thead tr:nth-child(3) th {
-        top: 80px;
-        z-index: 103;
-        height: 65px;
+    .column-search {
+        height: 30px !important;
+        font-size: 11px !important;
+        padding: 4px 8px !important;
+        background-color: #ffffff !important;
+        border: 1px solid #e9ecef !important;
+        border-radius: 6px !important;
+        width: 100% !important;
+        transition: all 0.2s ease;
+        color: #495057;
+        margin: 0 !important;
+    }
+
+    .column-search::placeholder {
+        color: #adb5bd;
+        text-transform: none;
+        font-weight: 400;
+    }
+
+    .column-search:focus {
+        border-color: var(--bs-primary) !important;
+        box-shadow: 0 0 0 0.15rem rgba(var(--bs-primary-rgb), 0.15) !important;
+        outline: none;
+    }
+
+    .search-row th {
+        padding: 0 !important;
+        background-color: #f8f9fa !important;
     }
 
     #raporTable tfoot td {
@@ -525,11 +552,21 @@ if (!empty($workTypeCols)) {
         max-width: 340px !important;
     }
 
-    #raporTable thead .sticky-col-1,
-    #raporTable thead .sticky-col-2,
-    #raporTable thead .sticky-col-3,
-    #raporTable thead .kacakkontrol-name-col {
-        z-index: 150;
+    /* Row 1 Sticky Header Columns */
+    #raporTable thead tr:nth-child(1) .sticky-col-1,
+    #raporTable thead tr:nth-child(1) .sticky-col-2,
+    #raporTable thead tr:nth-child(1) .sticky-col-3,
+    #raporTable thead tr:nth-child(1) .kacakkontrol-name-col {
+        z-index: 160 !important;
+        background-color: var(--bs-card-bg, #f8f9fa) !important;
+    }
+
+    /* Row 2 Sticky Header Columns (Search row) */
+    #raporTable thead tr:nth-child(2) .sticky-col-1,
+    #raporTable thead tr:nth-child(2) .sticky-col-2,
+    #raporTable thead tr:nth-child(2) .sticky-col-3,
+    #raporTable thead tr:nth-child(2) .kacakkontrol-name-col {
+        z-index: 155 !important;
         background-color: var(--bs-card-bg, #f8f9fa) !important;
     }
 
@@ -627,54 +664,78 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
     <table class="table table-bordered table-sm mb-0" id="raporTable" style="min-width: <?= $tableMinWidth ?>;">
         <thead>
             <tr>
-                <th rowspan="<?= $headerRowspan ?>" class="sticky-col-1"
-                    style="width: 50px; min-width: 50px; max-width: 50px;">SIRA</th>
+                <th class="sticky-col-1" style="width: 50px; min-width: 50px; max-width: 50px;">SIRA</th>
                 <?php if ($activeTab !== 'kacakkontrol'): ?>
-                    <th rowspan="<?= $headerRowspan ?>" class="sticky-col-2"
-                        style="width: 120px; min-width: 120px; max-width: 120px;">EKİP / BÖLGE</th>
+                    <th class="sticky-col-2" style="width: 120px; min-width: 120px; max-width: 120px;">EKİP / BÖLGE</th>
                 <?php endif; ?>
-                <th rowspan="<?= $headerRowspan ?>"
-                    class="<?= ($activeTab === 'kacakkontrol') ? 'kacakkontrol-name-col' : 'sticky-col-3' ?>"
+                <th class="<?= ($activeTab === 'kacakkontrol') ? 'kacakkontrol-name-col' : 'sticky-col-3' ?>"
                     style="<?= ($activeTab === 'kacakkontrol') ? '' : 'width: 220px; min-width: 220px; max-width: 220px;' ?>">
                     İSİM SOYİSİM</th>
-                <th colspan="<?= $daysInMonth * $subColCount ?>" id="mainGunlerHeader">GÜNLER</th>
-                <?php if ($hasSubCols): ?>
-                    <th colspan="<?= $subColCount ?>" id="actionTotalsHeader">İŞLEM TOPLAMLARI</th><?php endif; ?>
-                <th rowspan="<?= $headerRowspan ?>">TOPLAM</th>
-                <th rowspan="<?= $headerRowspan ?>">BÖLGE TOP.</th>
-                <th rowspan="<?= $headerRowspan ?>">BÖLGE ADI</th>
-            </tr>
-            <tr>
-                <?php for ($d = 1; $d <= $daysInMonth; $d++):
-                    $isSunday = in_array($d, $sundayDays);
-                    ?>
-                    <th colspan="<?= $subColCount ?>"
-                        class="day-num-header day-separator <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
-                        data-day="<?= $d ?>">
-                        <?= $d ?>
-                    </th><?php endfor; ?>
-                <?php if ($hasSubCols): ?>
-                    <th colspan="<?= $subColCount ?>" class="action-totals-day-header day-separator" data-day="genel-total">
-                        GENEL</th><?php endif; ?>
-            </tr>
-            <?php if ($hasSubCols && $headerRowspan === 3): ?>
-                <tr>
+
+                <?php if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol'): ?>
+                    <th colspan="<?= $daysInMonth * $subColCount ?>" id="mainGunlerHeader">GÜNLER</th>
+                <?php else: ?>
                     <?php for ($d = 1; $d <= $daysInMonth; $d++):
                         $isSunday = in_array($d, $sundayDays);
-                        ?>         <?php $idx = 0;
-                                 foreach ($workTypeCols as $wt):
-                                     $idx++; ?>
-                            <th class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
-                                data-day="<?= $d ?>" data-wt-code="<?= $wt['code'] ?>"><span
-                                    class="vertical-text"><?= $wt['code'] ?></span></th><?php endforeach; ?><?php endfor; ?>
+                        ?>
+                        <th colspan="<?= $subColCount ?>"
+                            class="day-num-header day-separator <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
+                            data-day="<?= $d ?>">
+                            <?= $d ?>
+                        </th><?php endfor; ?>
+                <?php endif; ?>
+
+                <?php if ($hasSubCols): ?>
+                    <th colspan="<?= $subColCount ?>" id="actionTotalsHeader">İŞLEM TOPLAMLARI</th><?php endif; ?>
+                <th>TOPLAM</th>
+                <th>BÖLGE TOP.</th>
+                <th>BÖLGE ADI</th>
+            </tr>
+            <tr class="search-row">
+                <th class="sticky-col-1"><input type="text" class="column-search" placeholder="SIRA" data-col="sira">
+                </th>
+                <?php if ($activeTab !== 'kacakkontrol'): ?>
+                    <th class="sticky-col-2"><input type="text" class="column-search" placeholder="EKİP / BÖLGE"
+                            data-col="ekip"></th>
+                <?php endif; ?>
+                <th class="<?= ($activeTab === 'kacakkontrol') ? 'kacakkontrol-name-col' : 'sticky-col-3' ?>">
+                    <input type="text" class="column-search" placeholder="İSİM SOYİSİM" data-col="isim">
+                </th>
+
+                <?php if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol'): ?>
+                    <?php for ($d = 1; $d <= $daysInMonth; $d++):
+                        $isSunday = in_array($d, $sundayDays);
+                        ?>
+                        <th colspan="<?= $subColCount ?>"
+                            class="day-num-header day-separator <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
+                            data-day="<?= $d ?>">
+                            <?= $d ?>
+                        </th><?php endfor; ?>
+                <?php else: ?>
+                    <?php if ($hasSubCols): ?>
+                        <?php for ($d = 1; $d <= $daysInMonth; $d++):
+                            $isSunday = in_array($d, $sundayDays);
+                            $idx = 0;
+                            foreach ($workTypeCols as $wt):
+                                $idx++; ?>
+                                <th class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
+                                    data-day="<?= $d ?>" data-wt-code="<?= $wt['code'] ?>"><span
+                                        class="vertical-text"><?= $wt['code'] ?></span></th><?php endforeach; ?><?php endfor; ?>
+                    <?php endif; ?>
+                <?php endif; ?>
+
+                <?php if ($hasSubCols): ?>
                     <?php $idx = 0;
                     foreach ($workTypeCols as $wt):
                         $idx++; ?>
                         <th class="wt-cell-sub wt-code-<?= $wt['code'] ?> table-info <?= ($idx === $subColCount) ? 'day-separator' : '' ?>"
                             data-day="genel-total" data-wt-code="<?= $wt['code'] ?>"><span
                                 class="vertical-text"><?= $wt['code'] ?></span></th><?php endforeach; ?>
-                </tr>
-            <?php endif; ?>
+                <?php endif; ?>
+                <th></th>
+                <th></th>
+                <th></th>
+            </tr>
         </thead>
         <tbody>
             <?php
