@@ -2439,7 +2439,7 @@ if (Gate::allows("ana_sayfa")) {
             // Dashboard Sortable Logic
             dashboard.sortable({
                 handle: ".card-header, .card-header-flex, .bordro-summary-card",
-                cancel: ".btn-api-sync",
+                cancel: ".btn-api-sync, .stats-local-btn, .btn",
                 placeholder: "ui-sortable-placeholder",
                 start: function (e, ui) {
                     const classes = ui.item.attr('class');

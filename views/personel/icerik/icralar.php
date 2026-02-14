@@ -12,6 +12,7 @@ $aktifIcra = 0;
 $toplamBorc = 0;
 $toplamKesilen = 0;
 $toplamKalan = 0;
+$nextSira = 1;
 if (!empty($icralar)) {
     foreach ($icralar as $i) {
         if ($i->durum === 'devam_ediyor') {
@@ -20,6 +21,9 @@ if (!empty($icralar)) {
         $toplamBorc += floatval($i->toplam_borc);
         $toplamKesilen += floatval($i->toplam_kesilen);
         $toplamKalan += floatval($i->kalan_tutar);
+        if (intval($i->sira) >= $nextSira) {
+            $nextSira = intval($i->sira) + 1;
+        }
     }
 }
 ?>
@@ -221,7 +225,7 @@ if (!empty($icralar)) {
                     </button>
                     <button type="button"
                         class="btn btn-warning btn-sm fw-bold px-3 d-flex align-items-center shadow-sm rounded-pill"
-                        id="btnOpenIcraModal">
+                        id="btnOpenIcraModal" data-next-sira="<?= $nextSira ?>">
                         <i data-feather="plus-circle" class="me-1" style="width: 14px; height: 14px;"></i> Dosya Ekle
                     </button>
                 </div>

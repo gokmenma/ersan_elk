@@ -16,11 +16,13 @@ $(document).ready(function () {
 
   // İcra Modal Aç (Yeni Ekle)
   $(document).on("click", "#btnOpenIcraModal", function () {
+    var nextSira = $(this).data("next-sira") || 1;
     $("#icraModalTitle").html(
       '<i data-feather="plus-circle" class="icon-sm me-2"></i>Yeni İcra Dosyası Ekle',
     );
     $("#formPersonelIcraEkle")[0].reset();
     $("#icra_id_hidden").val("");
+    $("#icra_sira").val(nextSira);
     $("#icra_durum").val("devam_ediyor");
     $("#icra_kesinti_tipi").val("tutar");
     $("#icra_kesinti_orani").val("25");
@@ -28,8 +30,8 @@ $(document).ready(function () {
     setTimeout(syncFeather, 50);
     /**select2 */
     $("#icra_durum, #icra_kesinti_tipi").select2({
-      theme: "bootstrap-5",
       dropdownParent: $("#modalPersonelIcraEkle"),
+      width: "100%",
     });
 
     // Modal açıldığında varsayılanları tetikle
@@ -85,7 +87,13 @@ $(document).ready(function () {
           $("#icra_aciklama").val(response.aciklama);
 
           $("#modalPersonelIcraEkle").modal("show");
-          setTimeout(syncFeather, 50);
+          setTimeout(function () {
+            $("#icra_durum, #icra_kesinti_tipi").select2({
+              dropdownParent: $("#modalPersonelIcraEkle"),
+              width: "100%",
+            });
+            syncFeather();
+          }, 50);
         } else {
           Swal.fire("Hata", "İcra bilgileri alınamadı", "error");
         }

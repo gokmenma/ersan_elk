@@ -722,6 +722,10 @@ body {
 .form-floating
   .select2-container--default
   .select2-selection--single
+  .select2-selection__rendered,
+.form-floating
+  .select2-container--bootstrap-5
+  .select2-selection--single
   .select2-selection__rendered {
   color: var(--bs-body-color) !important;
   line-height: 70px !important;
@@ -731,7 +735,14 @@ body {
   .select2-container--default
   .select2-selection--single
   .select2-selection__rendered,
+.form-floating
+  .select2-container--bootstrap-5
+  .select2-selection--single
+  .select2-selection__rendered,
 .select2-container--default
+  .select2-selection--multiple
+  .select2-selection__rendered,
+.select2-container--bootstrap-5
   .select2-selection--multiple
   .select2-selection__rendered {
   padding-left: 45px !important;
@@ -778,15 +789,16 @@ body {
   padding: 5px !important;
 }
 
-/* Hide label when select has a value */
-.form-floating select:valid + label {
-  display: none !important;
+/* Ensure label is correctly positioned and visible for floating selects/select2 */
+.form-floating .select2-container + label {
+  transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem) !important;
+  opacity: 0.65 !important;
 }
 
-/* Show label when select is invalid or empty */
-.form-floating select:invalid + label {
-  display: block !important;
-}
+/* Fix: The following rule was hiding labels unnecessarily */
+/* .form-floating select:valid + label {
+  display: none !important;
+} */
 
 .select2-search__field:focus {
   border-color: #80bdff !important;
@@ -1810,7 +1822,7 @@ table thead tr:first-child th {
 
 /* Sidebar & Topbar Adjustments */
 #sidebar-menu {
-    padding: 0px 0 30px 0 !important;
+  padding: 0px 0 30px 0 !important;
 }
 
 [data-bs-theme="dark"] .mm-active > a {
