@@ -1052,6 +1052,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $bitisTarihi = \App\Helper\Date::convertExcelDate($bitisTarihiRaw, 'Y-m-d') ?: date('Y-m-d');
 
         $firmaId = $_SESSION['firma_id'] ?? 0;
+        $activeTab = $_POST['active_tab'] ?? '';
+        $resultsFilter = $_POST['results_filter'] ?? '';
+
+        // Dinamik filtreleme: Eğer active_tab gelmişse ve results_filter boşsa, 
+        // tanimlamalar tablosundan o tab'a ait ücretli iş türlerini çekelim.
+        if (empty($resultsFilter) && !empty($activeTab)) {
+            if (!isset($Tanimlamalar)) {
+                $Tanimlamalar = new \App\Model\TanimlamalarModel();
+            }
+            // sokme_takma için bazen 'sokme' de kullanılıyor olabilir ama getIsTurleriByRaporTuru zaten handle ediyor
+            $workTypes = $Tanimlamalar->getIsTurleriByRaporTuru($activeTab);
+
+            // Eğer sokme_takma için sonuç dönmezse 'sokme' olarak da dene
+            if (empty($workTypes) && $activeTab === 'sokme_takma') {
+                $workTypes = $Tanimlamalar->getIsTurleriByRaporTuru('sokme');
+            }
+
+            if (!empty($workTypes)) {
+                $filterNames = [];
+                foreach ($workTypes as $wt) {
+                    $filterNames[] = $wt->is_emri_sonucu;
+                }
+                $resultsFilter = implode(',', $filterNames);
+            }
+        }
 
         $KesmeAcmaSvc = new KesmeAcmaService();
         $baslangicTarihiAPI = \App\Helper\Date::convertExcelDate($baslangicTarihiRaw, 'd/m/Y') ?: $baslangicTarihiRaw;
@@ -1119,6 +1144,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $atlanAnKayitlar = [];
         $bosSonucSayisi = 0;
 
+        $filterArray = !empty($resultsFilter) ? array_map('trim', explode(',', $resultsFilter)) : [];
+
         foreach ($apiData as $veri) {
             // API'den gelen gerçek alan adlarını eşleştiriyoruz
             $firmaAdi = $veri['FIRMAADI'] ?? 'ER-SAN ELEKTRİK';
@@ -1127,6 +1154,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $isEmriSonucu = $veri['SONUC'] ?? '';
             $sonuclanmis = $veri['SONUCLANMIS'] ?? 0;
             $acikOlanlar = $veri['ACIK'] ?? 0;
+
+            // Filtre varsa ve eşleşmiyorsa atla
+            if (!empty($filterArray) && !in_array($isEmriSonucu, $filterArray)) {
+                continue;
+            }
 
             // SONUCLANMIS 0 olan kayıtları atla
             if ((int) $sonuclanmis === 0) {

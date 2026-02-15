@@ -367,6 +367,7 @@ $title = 'Nöbet Planlama';
                 <div class="d-flex align-items-center gap-2">
                     <div class="view-buttons">
                         <button class="btn active" data-view="dayGridMonth">Ay</button>
+                        <button class="btn" data-view="dayGridWeek">Hafta</button>
                         <button class="btn" data-view="multiMonthYear">Yıl</button>
                     </div>
                     <button class="btn btn-soft-primary"
@@ -403,10 +404,10 @@ $title = 'Nöbet Planlama';
                             style="width:auto; height:32px; padding:0 12px; font-weight:500;">Bugün</button>
                         <button class="btn" id="calendar-next"><i class="bx bx-chevron-right"></i></button>
                         <?php if ($hasSettingPermission): ?>
-                            <button class="btn ms-1" id="btn-nobet-settings" title="Nöbet Ayarları" data-bs-toggle="modal"
-                                data-bs-target="#nobetSettingsModal">
-                                <i class="bx bx-cog"></i>
-                            </button>
+                                <button class="btn ms-1" id="btn-nobet-settings" title="Nöbet Ayarları" data-bs-toggle="modal"
+                                    data-bs-target="#nobetSettingsModal">
+                                    <i class="bx bx-cog"></i>
+                                </button>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -828,6 +829,8 @@ $title = 'Nöbet Planlama';
             timeZone: 'local',
             firstDay: 1,
             initialView: 'dayGridMonth',
+            showNonCurrentDates: false,
+            fixedWeekCount: false,
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
@@ -1104,6 +1107,20 @@ $title = 'Nöbet Planlama';
             if (titleEl) {
                 if (view.type === 'multiMonthYear') {
                     titleEl.textContent = view.currentStart.getFullYear();
+                } else if (view.type === 'dayGridWeek') {
+                    // Hafta görünümü için tarih aralığı
+                    const start = view.activeStart;
+                    const end = new Date(view.activeEnd);
+                    end.setDate(end.getDate() - 1);
+                    
+                    const startMonth = start.toLocaleDateString('tr-TR', { month: 'short' });
+                    const endMonth = end.toLocaleDateString('tr-TR', { month: 'short' });
+                    
+                    if (startMonth === endMonth) {
+                        titleEl.textContent = `${start.getDate()} - ${end.getDate()} ${startMonth.toUpperCase()} ${start.getFullYear()}`;
+                    } else {
+                        titleEl.textContent = `${start.getDate()} ${startMonth.toUpperCase()} - ${end.getDate()} ${endMonth.toUpperCase()} ${start.getFullYear()}`;
+                    }
                 } else {
                     const date = view.currentStart;
                     const months = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN',

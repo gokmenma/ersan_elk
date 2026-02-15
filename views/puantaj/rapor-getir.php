@@ -1,5 +1,6 @@
 <?php
 use App\Helper\Date;
+use App\Helper\Security;
 use App\Model\TanimlamalarModel;
 use App\Model\EndeksOkumaModel;
 use App\Model\PuantajModel;
@@ -838,7 +839,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                         $pid = trim($pid);
                                         if (isset($personelById[$pid])) {
                                             $pers = $personelById[$pid];
-                                            $nameLinks[] = '<a class="fw-bold text-primary" target="_blank" href="index?p=personel/manage&id=' . $pid . '">' . htmlspecialchars($pers->adi_soyadi) . '</a>';
+                                            $nameLinks[] = '<a class="fw-bold text-primary" target="_blank" href="index?p=personel/manage&id=' . Security::encrypt($pid) . '">' . htmlspecialchars($pers->adi_soyadi) . '</a>';
                                         }
                                     }
                                     echo !empty($nameLinks) ? implode(', ', $nameLinks) : htmlspecialchars($personel->adi_soyadi);
@@ -847,7 +848,8 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                 }
                                 ?>
                             <?php else: ?>
-                                <a class="fw-bold text-primary" target="_blank" href="index?p=personel/manage&id=<?= $pId ?>">
+                                <a class="fw-bold text-primary" target="_blank"
+                                    href="index?p=personel/manage&id=<?= Security::encrypt($pId) ?>">
                                     <?= htmlspecialchars($personel->adi_soyadi) ?>
                                 </a>
                             <?php endif; ?>
@@ -869,7 +871,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                 $currentDate = str_pad($d, 2, '0', STR_PAD_LEFT) . "." . str_pad($month, 2, '0', STR_PAD_LEFT) . "." . $year;
                                 ?>
                                 <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?> <?= ($activeTab === 'kacakkontrol') ? 'kacak-quick-cell' : '' ?>"
-                                    <?php if ($activeTab === 'kacakkontrol'): ?> data-date="<?= $currentDate ?>"
+                                    data-day="<?= $d ?>" <?php if ($activeTab === 'kacakkontrol'): ?> data-date="<?= $currentDate ?>"
                                         data-personel-ids="<?= $pIdsStr ?: $pId ?>" data-ekip-adi="<?= htmlspecialchars($team->tur_adi) ?>"
                                         style="cursor: cell;" title="Çift tıklayarak yeni kayıt ekle" <?php endif; ?>>
                                     <?= $val ?: '' ?>
@@ -886,8 +888,8 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                         $dailyDetailedTotals[$d][$wt['name']] = 0;
                                     $dailyDetailedTotals[$d][$wt['name']] += $val;
                                     $dailyTotals[$d] += $val; ?>
-                                    <td
-                                        class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>">
+                                    <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
+                                        data-day="<?= $d ?>" data-wt-code="<?= $wt['code'] ?>">
                                         <?= $val ?: '' ?>
                                     </td>
                                 <?php endforeach; ?>
@@ -1076,60 +1078,116 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
 
     function updateDynamicTotals() {
         const totalDays = <?= $daysInMonth ?>;
-        let overallGrandSum = 0;
-        let actionTypesGrandSum = 0;
+        const hasSubCols = <?= json_encode($hasSubCols) ?>;
+        const workTypeTotals = {}; // legend totals
+        const dayTypeTotals = {}; // footer row 1 totals [day][code]
+        const dailyGrandTotals = {}; // footer row 2 totals [day]
+        let overallGrandTotal = 0;
 
-        // Her satırın TOPLAM değerini güncelle
-        $('#raporTable tbody tr').each(function () {
-            let rowSum = 0;
-            // Bu satırdaki görünür İŞLEM TOPLAMLARI (GENEL) hücrelerini topla
-            $(this).find('td.row-action-total').filter(':visible').each(function () {
-                const val = parseInt($(this).text()) || 0;
-                rowSum += val;
-            });
-            // TOPLAM hücresini güncelle
-            const totalCell = $(this).find('td.row-total-cell');
-            if (totalCell.length) {
-                totalCell.text(rowSum || '');
-            }
-        });
-
-        // Bölge toplamlarını güncelle
-        $('.region-total-cell').each(function () {
-            const regionId = $(this).data('region-id');
-            let regionSum = 0;
-
-            // Bu bölgeye ait tüm satırların row-total-cell değerlerini topla
-            $(`#raporTable tbody tr[data-region-id="${regionId}"]`).each(function () {
-                const rowTotal = parseInt($(this).find('.row-total-cell').text()) || 0;
-                regionSum += rowTotal;
-            });
-
-            $(this).text(regionSum || '');
+        // Initialize structures
+        $('#workTypeLegend .legend-item').each(function () {
+            workTypeTotals[$(this).data('wt-code')] = 0;
         });
 
         for (let d = 1; d <= totalDays; d++) {
-            let daySum = 0;
-            $(`#raporTable tfoot .tfoot-action td.wt-cell-sub[data-day="${d}"]`).filter(':visible').each(function () {
-                const val = parseInt($(this).text()) || 0;
-                daySum += val;
-            });
-            const generalCell = $(`#raporTable tfoot .tfoot-general .daily-total-cell[data-day="${d}"]`);
-            generalCell.text(daySum || '');
-            overallGrandSum += daySum;
+            dailyGrandTotals[d] = 0;
+            dayTypeTotals[d] = {};
+            for (let code in workTypeTotals) {
+                dayTypeTotals[d][code] = 0;
+            }
         }
 
-        // Calculate action types grand total from visible GENEL columns
-        $(`#raporTable tfoot .tfoot-action td.action-grand-total-cell[data-day="genel-total"]`).filter(':visible').each(function () {
-            const val = parseInt($(this).text()) || 0;
-            actionTypesGrandSum += val;
+        // Iterate through visible rows only
+        $('#raporTable tbody tr').filter(':visible').each(function () {
+            const $row = $(this);
+            let rowTotal = 0;
+
+            // Row action totals (the vertical totals for THIS row)
+            const rowActTotals = {};
+            for (let code in workTypeTotals) rowActTotals[code] = 0;
+
+            if (hasSubCols) {
+                $row.find('td.wt-cell-sub[data-day]').each(function () {
+                    const $cell = $(this);
+                    const day = $cell.data('day');
+                    const code = $cell.data('wt-code');
+                    const val = parseInt($cell.text()) || 0;
+
+                    // Row action totals (vertical inside row - always calculated per type)
+                    rowActTotals[code] += val;
+
+                    // If column is visible, add to grand totals
+                    if ($cell.is(':visible')) {
+                        workTypeTotals[code] += val;
+                        dayTypeTotals[day][code] += val;
+                        dailyGrandTotals[day] += val;
+                        rowTotal += val;
+                    }
+                });
+
+                // Update row's action total cells (column-based totals for this row)
+                for (let code in rowActTotals) {
+                    $row.find(`.row-action-total.wt-code-${code}`).text(rowActTotals[code] || '');
+                }
+            } else {
+                // Okuma or Kacak tab (single value per day)
+                $row.find('td[data-day]').each(function () {
+                    const $cell = $(this);
+                    const day = $cell.data('day');
+                    const val = parseInt($cell.text()) || 0;
+
+                    if ($cell.is(':visible')) {
+                        dailyGrandTotals[day] += val;
+                        rowTotal += val;
+                    }
+                });
+            }
+
+            // Update row total cell
+            $row.find('.row-total-cell').text(rowTotal || '');
+            overallGrandTotal += rowTotal;
         });
 
-        // Update action types grand total (İŞLEM BAZINDA GÜNLÜK TOPLAMLAR row)
-        $('.action-types-grand-total').text(actionTypesGrandSum || '');
+        // Update Legend Badges
+        for (let code in workTypeTotals) {
+            $(`#workTypeLegend .legend-item[data-wt-code="${code}"] .badge`).text(workTypeTotals[code]);
+        }
 
-        // Update consolidated action total and grand total
-        $('.action-grand-total-consolidated').text(overallGrandSum || '');
-        $('.grand-total-cell').text(overallGrandSum || '');
+        // Update Footer - Row 1 (Action totals)
+        if (hasSubCols) {
+            let actionGrandSum = 0;
+            for (let d = 1; d <= totalDays; d++) {
+                for (let code in dayTypeTotals[d]) {
+                    const val = dayTypeTotals[d][code];
+                    $(`#raporTable tfoot .tfoot-action td.wt-cell-sub[data-day="${d}"][data-wt-code="${code}"]`).text(val || '');
+                }
+            }
+
+            // Update Footer - Action grand totals (the columns after the days)
+            for (let code in workTypeTotals) {
+                const val = workTypeTotals[code];
+                $(`#raporTable tfoot .tfoot-action td.action-grand-total-cell[data-wt-code="${code}"]`).text(val || '');
+                actionGrandSum += val;
+            }
+            $('.action-types-grand-total').text(actionGrandSum || '');
+            $('.action-grand-total-consolidated').text(overallGrandTotal || '');
+        }
+
+        // Update Footer - Row 2 (General totals)
+        for (let d = 1; d <= totalDays; d++) {
+            $(`#raporTable tfoot .tfoot-general .daily-total-cell[data-day="${d}"]`).text(dailyGrandTotals[d] || '');
+        }
+
+        // Update Grand Total and Region Totals
+        $('.grand-total-cell').text(overallGrandTotal || '');
+
+        $('.region-total-cell').each(function () {
+            const regionId = $(this).data('region-id');
+            let regionSum = 0;
+            $(`#raporTable tbody tr[data-region-id="${regionId}"]`).filter(':visible').each(function () {
+                regionSum += parseInt($(this).find('.row-total-cell').text()) || 0;
+            });
+            $(this).text(regionSum || '');
+        });
     }
 </script>

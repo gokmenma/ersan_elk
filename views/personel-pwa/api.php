@@ -2101,14 +2101,15 @@ try {
             $NobetModel = new \App\Model\NobetModel();
             $db = new \App\Core\Db();
 
-            // Atanmış nöbetleri getir (aktif olanlar - durum NULL veya standart)
+            // Bu personelin atanmış nöbetlerini getir (aktif olanlar - durum NULL veya standart)
             $sql = "SELECT DISTINCT nobet_tarihi FROM nobetler 
                     WHERE firma_id = :firma_id 
+                    AND personel_id = :personel_id
                     AND nobet_tarihi BETWEEN :bas AND :bit 
                     AND silinme_tarihi IS NULL
                     AND (durum IS NULL OR durum NOT IN ('talep_edildi', 'reddedildi'))";
             $stmt = $db->db->prepare($sql);
-            $stmt->execute([':firma_id' => $firma_id, ':bas' => $baslangic, ':bit' => $bitis]);
+            $stmt->execute([':firma_id' => $firma_id, ':personel_id' => $personel_id, ':bas' => $baslangic, ':bit' => $bitis]);
             $assignedDays = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
             // Bu personelin bekleyen nöbet taleplerini getir (nobetler tablosundan)

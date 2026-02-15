@@ -463,6 +463,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'hafta_ici_nobet' => 'Hafta İçi Nöbet',
                     'hafta_sonu_nobet' => 'Hafta Sonu Nöbet',
                     'resmi_tatil_nobet' => 'Resmi Tatil Nöbeti',
+                    'nobet_grubu' => 'Nöbet Ödemeleri',
                     'diger' => 'Diğer Ek Ödeme'
                 ];
 
@@ -657,12 +658,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     } else {
                         // Diğer ödemeler - grupla
                         $tur = $odeme->tur;
+                        // Nöbet türlerini tek grupta topla
+                        if (strpos($tur, 'nobet') !== false) {
+                            $tur = 'nobet_grubu';
+                        }
+
                         if (!isset($ekOdemelerNonPuantaj[$tur])) {
-                            $ekOdemelerNonPuantaj[$tur] = ['toplam' => 0, 'adet' => 0, 'kayit_sayisi' => 0];
+                            $ekOdemelerNonPuantaj[$tur] = ['toplam' => 0, 'adet' => 0, 'kayit_sayisi' => 0, 'items' => []];
                         }
                         $ekOdemelerNonPuantaj[$tur]['toplam'] += floatval($odeme->tutar);
                         $ekOdemelerNonPuantaj[$tur]['adet'] += $parsedAdet;
                         $ekOdemelerNonPuantaj[$tur]['kayit_sayisi']++;
+                        $ekOdemelerNonPuantaj[$tur]['items'][] = $odeme;
                     }
                 }
 
@@ -672,35 +679,104 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Önce normal ek ödemeleri göster
                     foreach ($ekOdemelerNonPuantaj as $tur => $data) {
                         $turEtiket = $ekOdemeTurEtiketleri[$tur] ?? ucfirst($tur);
+                        $count = $data['adet'] > 0 ? $data['adet'] : ($data['kayit_sayisi'] > 0 ? $data['kayit_sayisi'] : 0);
+                        $adetSubText = $count > 0 ? '<div class="text-muted fw-normal" style="font-size: 10px;">(Toplam ' . $count . ' Adet)</div>' : '';
+                        $collapseId = "collapse-" . $tur;
 
-                        // Eğer açıklamadan adet gelmediyse ve birden fazla kayıt varsa kayıt sayısını göster
-                        $count = $data['adet'] > 0 ? $data['adet'] : ($data['kayit_sayisi'] > 1 ? $data['kayit_sayisi'] : 0);
-                        $adetStr = $count > 0 ? ' <small class="text-muted fw-normal">(Toplam ' . $count . ' Adet)</small>' : '';
+                        $html .= '<tr class="cursor-pointer bg-light" data-bs-toggle="collapse" data-bs-target=".' . $collapseId . '" aria-expanded="false" style="border-top: 1px solid #e9ecef !important; border-bottom: 1px solid #e9ecef !important;">
+                                    <td class="ps-3 pt-2 pb-2">
+                                        <div class="d-flex align-items-center">
+                                            <i class="bx bx-plus-circle me-2 text-primary fs-5"></i>
+                                            <div>
+                                                <div class="text-primary fw-bold" style="line-height: 1.1; font-size: 12px;">' . htmlspecialchars($turEtiket) . '</div>
+                                                ' . $adetSubText . '
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-end pe-3 align-middle">
+                                        <div class="d-flex justify-content-end align-items-center gap-2">
+                                            <span class="text-success fw-bold">+' . number_format($data['toplam'], 2, ',', '.') . ' ₺</span>
+                                            <i class="bx bx-chevron-down text-primary fs-5 transition-icon"></i>
+                                        </div>
+                                    </td>
+                                  </tr>';
 
-                        $html .= '<tr><td class="ps-3 fw-medium">' . htmlspecialchars($turEtiket) . $adetStr . '</td><td class="text-end pe-3 text-success fw-bold">+' . number_format($data['toplam'], 2, ',', '.') . ' ₺</td></tr>';
+                        foreach ($data['items'] as $item) {
+                            $itemAciklama = $item->aciklama ?? '';
+                            if (preg_match('/^(.*?)\s*\((.*?)\)$/', $itemAciklama, $matches)) {
+                                $anaMetin = $matches[1];
+                                $detayMetin = $matches[2];
+                                $html .= '<tr class="' . $collapseId . ' collapse"><td class="ps-4 py-2"><div class="fw-medium">' . htmlspecialchars($anaMetin) . '</div><small class="text-muted">' . htmlspecialchars($detayMetin) . '</small></td><td class="text-end pe-3 text-success align-middle">+' . number_format($item->tutar, 2, ',', '.') . ' ₺</td></tr>';
+                            } else {
+                                $html .= '<tr class="' . $collapseId . ' collapse"><td class="ps-4 py-2 small">' . htmlspecialchars($itemAciklama) . '</td><td class="text-end pe-3 text-success align-middle">+' . number_format($item->tutar, 2, ',', '.') . ' ₺</td></tr>';
+                            }
+                        }
                     }
 
-                    // Kaçak Kontrol ödemelerini ayrı göster
+                    // Kaçak Kontrol ödemelerini de aynı formatta göster
                     if (!empty($kacakKontrolOdemeler)) {
-                        $html .= '<tr><td colspan="2" class="ps-3 pt-2 pb-1"><small class="text-muted fw-medium"><i class="bx bx-search-alt me-1"></i>Kaçak Kontrol Primi</small></td></tr>';
+                        $toplamKacakTutar = 0;
+                        foreach ($kacakKontrolOdemeler as $k)
+                            $toplamKacakTutar += floatval($k->tutar);
+                        $kacakCount = count($kacakKontrolOdemeler);
+                        $adetSubText = '<div class="text-muted fw-normal" style="font-size: 10px;">(Toplam ' . $kacakCount . ' Adet)</div>';
+
+                        $html .= '<tr class="cursor-pointer bg-light" data-bs-toggle="collapse" data-bs-target=".kacak-row" aria-expanded="false" style="border-top: 1px solid #e9ecef !important; border-bottom: 1px solid #e9ecef !important;">
+                                    <td class="ps-3 pt-2 pb-2">
+                                        <div class="d-flex align-items-center">
+                                            <i class="bx bx-search-alt me-2 text-primary fs-5"></i>
+                                            <div>
+                                                <div class="text-primary fw-bold" style="line-height: 1.1; font-size: 12px;">Kaçak Kontrol Primi</div>
+                                                ' . $adetSubText . '
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-end pe-3 align-middle">
+                                        <div class="d-flex justify-content-end align-items-center gap-2">
+                                            <span class="text-success fw-bold">+' . number_format($toplamKacakTutar, 2, ',', '.') . ' ₺</span>
+                                            <i class="bx bx-chevron-down text-primary fs-5 transition-icon"></i>
+                                        </div>
+                                    </td>
+                                  </tr>';
+
                         foreach ($kacakKontrolOdemeler as $kacak) {
                             $aciklama = str_replace('[Kaçak Kontrol] ', '', $kacak->aciklama ?? '');
-                            $html .= '<tr><td class="ps-4 small">' . htmlspecialchars($aciklama) . '</td><td class="text-end pe-3 text-success">+' . number_format($kacak->tutar, 2, ',', '.') . ' ₺</td></tr>';
+                            $html .= '<tr class="kacak-row collapse"><td class="ps-4 py-2 small">' . htmlspecialchars($aciklama) . '</td><td class="text-end pe-3 text-success">+' . number_format($kacak->tutar, 2, ',', '.') . ' ₺</td></tr>';
                         }
                     }
 
                     // Puantaj ödemelerini ayrı ayrı göster
                     if (!empty($puantajOdemeler)) {
-                        // Toplam adet hesapla
+                        // Toplam adet ve tutar hesapla
                         $toplamPuantajAdet = 0;
+                        $toplamPuantajTutar = 0;
                         foreach ($puantajOdemeler as $p) {
                             $pAciklama = str_replace('[Puantaj] ', '', $p->aciklama ?? '');
                             if (preg_match('/(\d+)\s*Adet/i', $pAciklama, $adetMatch)) {
                                 $toplamPuantajAdet += intval($adetMatch[1]);
                             }
+                            $toplamPuantajTutar += floatval($p->tutar);
                         }
-                        $adetText = $toplamPuantajAdet > 0 ? ' <span class="text-dark fw-normal ms-1 fs-xs">(Toplam ' . number_format($toplamPuantajAdet, 0, ',', '.') . ' Adet)</span>' : '';
-                        $html .= '<tr><td colspan="2" class="ps-3 pt-2 pb-1 bg-light"><small class="text-primary fw-bold"><i class="bx bx-briefcase me-1"></i>Puantaj Ödemeleri' . $adetText . '</small></td></tr>';
+
+                        $adetSubText = $toplamPuantajAdet > 0 ? '<div class="text-muted fw-normal" style="font-size: 10px;">(Toplam ' . number_format($toplamPuantajAdet, 0, ',', '.') . ' Adet)</div>' : '';
+
+                        $html .= '<tr class="cursor-pointer bg-light" data-bs-toggle="collapse" data-bs-target=".puantaj-row" aria-expanded="false" style="border-top: 1px solid #e9ecef !important; border-bottom: 1px solid #e9ecef !important;">
+                                    <td class="ps-3 pt-2 pb-2">
+                                        <div class="d-flex align-items-center">
+                                            <i class="bx bx-briefcase me-2 text-primary fs-5"></i>
+                                            <div>
+                                                <div class="text-primary fw-bold" style="line-height: 1.1; font-size: 12px;">Puantaj Ödemeleri</div>
+                                                ' . $adetSubText . '
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-end pe-3 align-middle">
+                                        <div class="d-flex justify-content-end align-items-center gap-2">
+                                            <span class="text-success fw-bold">+' . number_format($toplamPuantajTutar, 2, ',', '.') . ' ₺</span>
+                                            <i class="bx bx-chevron-down text-primary fs-5 transition-icon"></i>
+                                        </div>
+                                    </td>
+                                  </tr>';
                         foreach ($puantajOdemeler as $puantaj) {
                             // [Puantaj] Sonuç (Adet x Birim ₺) formatından temiz açıklama çıkar
                             $aciklama = str_replace('[Puantaj] ', '', $puantaj->aciklama ?? '');
@@ -709,9 +785,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             if (preg_match('/^(.*?)\s*\((.*?)\)$/', $aciklama, $matches)) {
                                 $anaMetin = $matches[1];
                                 $detayMetin = $matches[2];
-                                $html .= '<tr><td class="ps-4 py-2"><div class="fw-medium">' . htmlspecialchars($anaMetin) . '</div><small class="text-muted">' . htmlspecialchars($detayMetin) . '</small></td><td class="text-end pe-3 text-success align-middle">+' . number_format($puantaj->tutar, 2, ',', '.') . ' ₺</td></tr>';
+                                $html .= '<tr class="puantaj-row collapse"><td class="ps-4 py-2"><div class="fw-medium">' . htmlspecialchars($anaMetin) . '</div><small class="text-muted">' . htmlspecialchars($detayMetin) . '</small></td><td class="text-end pe-3 text-success align-middle">+' . number_format($puantaj->tutar, 2, ',', '.') . ' ₺</td></tr>';
                             } else {
-                                $html .= '<tr><td class="ps-4 py-2 small">' . htmlspecialchars($aciklama) . '</td><td class="text-end pe-3 text-success align-middle">+' . number_format($puantaj->tutar, 2, ',', '.') . ' ₺</td></tr>';
+                                $html .= '<tr class="puantaj-row collapse"><td class="ps-4 py-2 small">' . htmlspecialchars($aciklama) . '</td><td class="text-end pe-3 text-success align-middle">+' . number_format($puantaj->tutar, 2, ',', '.') . ' ₺</td></tr>';
                             }
                         }
                     }
@@ -726,17 +802,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $html .= '</div>'; // Kesinti/Ek ödeme row kapandı
 
-                // İşveren Maliyetleri
-                $html .= '<div class="row mt-4">';
-                $html .= '<div class="col-12">';
-                $html .= '<h6 class="border-bottom pb-2 mb-3"><i class="bx bx-building me-1"></i>İşveren Maliyetleri</h6>';
-                $html .= '<div class="row text-center">';
-                $html .= '<div class="col-md-4"><div class="border rounded p-3"><small class="text-muted d-block">SGK İşveren (%20.5)</small><span class="fs-5 fw-bold text-warning">' . ($bp->sgk_isveren ? number_format($bp->sgk_isveren, 2, ',', '.') . ' ₺' : '-') . '</span></div></div>';
-                $html .= '<div class="col-md-4"><div class="border rounded p-3"><small class="text-muted d-block">İşsizlik İşveren (%2)</small><span class="fs-5 fw-bold text-warning">' . ($bp->issizlik_isveren ? number_format($bp->issizlik_isveren, 2, ',', '.') . ' ₺' : '-') . '</span></div></div>';
-                $html .= '<div class="col-md-4"><div class="border rounded p-3 bg text-white-primary bg-opacity-10"><small class="text-muted d-block">Toplam Maliyet</small><span class="fs-5 fw-bold text-primary">' . ($bp->toplam_maliyet ? number_format($bp->toplam_maliyet, 2, ',', '.') . ' ₺' : '-') . '</span></div></div>';
-                $html .= '</div>';
-                $html .= '</div>';
-                $html .= '</div>';
+                // İşveren Maliyetleri - Sadece Brüt maaş tipinde göster
+                if (($personel->maas_durumu ?? '') == 'Brüt') {
+                    $html .= '<div class="row mt-4">';
+                    $html .= '<div class="col-12">';
+                    $html .= '<h6 class="border-bottom pb-2 mb-3"><i class="bx bx-building me-1"></i>İşveren Maliyetleri</h6>';
+                    $html .= '<div class="row text-center">';
+                    $html .= '<div class="col-md-4"><div class="border rounded p-3"><small class="text-muted d-block">SGK İşveren (%20.5)</small><span class="fs-5 fw-bold text-warning">' . ($bp->sgk_isveren ? number_format($bp->sgk_isveren, 2, ',', '.') . ' ₺' : '-') . '</span></div></div>';
+                    $html .= '<div class="col-md-4"><div class="border rounded p-3"><small class="text-muted d-block">İşsizlik İşveren (%2)</small><span class="fs-5 fw-bold text-warning">' . ($bp->issizlik_isveren ? number_format($bp->issizlik_isveren, 2, ',', '.') . ' ₺' : '-') . '</span></div></div>';
+                    $html .= '<div class="col-md-4"><div class="border rounded p-3 bg text-white-primary bg-opacity-10"><small class="text-muted d-block">Toplam Maliyet</small><span class="fs-5 fw-bold text-primary">' . ($bp->toplam_maliyet ? number_format($bp->toplam_maliyet, 2, ',', '.') . ' ₺' : '-') . '</span></div></div>';
+                    $html .= '</div>';
+                    $html .= '</div>';
+                    $html .= '</div>';
+                }
 
                 // Ödeme Dağılımı
                 $eldenOdeme = $bp->elden_odeme ?? max(0, ($bp->net_maas ?? 0) - ($bp->banka_odemesi ?? 0) - ($bp->sodexo_odemesi ?? 0) - ($bp->diger_odeme ?? 0));

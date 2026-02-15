@@ -160,7 +160,7 @@ foreach ($regionList as $r) {
                 id="btnExportExcel">
                 <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel'e Aktar
             </button>
-            <div class="vr mx-1 vr-online-sorgula <?= in_array($activeTab, ['okuma', 'kesme']) ? '' : 'd-none' ?>"
+            <div class="vr mx-1 vr-online-sorgula <?= in_array($activeTab, ['okuma', 'kesme', 'sokme_takma', 'muhurleme']) ? '' : 'd-none' ?>"
                 style="height: 25px; align-self: center;"></div>
             <button type="button"
                 class="btn btn-link btn-sm text-info text-decoration-none px-2 align-items-center btn-online-sorgula <?= $activeTab === 'okuma' ? 'd-flex' : 'd-none' ?>"
@@ -171,6 +171,16 @@ foreach ($regionList as $r) {
                 class="btn btn-link btn-sm text-info text-decoration-none px-2 align-items-center btn-online-sorgula <?= $activeTab === 'kesme' ? 'd-flex' : 'd-none' ?>"
                 id="btnOnlineSorgulaPuantaj" data-bs-toggle="modal" data-bs-target="#importOnlinePuantajModal">
                 <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Puantaj Sorgula
+            </button>
+            <button type="button"
+                class="btn btn-link btn-sm text-info text-decoration-none px-2 align-items-center btn-online-sorgula <?= $activeTab === 'sokme_takma' ? 'd-flex' : 'd-none' ?>"
+                id="btnOnlineSorgulaSayac" data-bs-toggle="modal" data-bs-target="#importOnlineSayacModal">
+                <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Sayaç Sorgula
+            </button>
+            <button type="button"
+                class="btn btn-link btn-sm text-info text-decoration-none px-2 align-items-center btn-online-sorgula <?= $activeTab === 'muhurleme' ? 'd-flex' : 'd-none' ?>"
+                id="btnOnlineSorgulaMuhurleme" data-bs-toggle="modal" data-bs-target="#importOnlineMuhurlemeModal">
+                <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Mühürleme Sorgula
             </button>
         </div>
     </div>
@@ -348,6 +358,12 @@ foreach ($regionList as $r) {
                 $('.vr-online-sorgula').removeClass('d-none');
             } else if (currentTab === 'kesme') {
                 $('#btnOnlineSorgulaPuantaj').addClass('d-flex').removeClass('d-none');
+                $('.vr-online-sorgula').removeClass('d-none');
+            } else if (currentTab === 'sokme_takma') {
+                $('#btnOnlineSorgulaSayac').addClass('d-flex').removeClass('d-none');
+                $('.vr-online-sorgula').removeClass('d-none');
+            } else if (currentTab === 'muhurleme') {
+                $('#btnOnlineSorgulaMuhurleme').addClass('d-flex').removeClass('d-none');
                 $('.vr-online-sorgula').removeClass('d-none');
             }
 
@@ -584,6 +600,10 @@ foreach ($regionList as $r) {
 
                     if (show) $row.show(); else $row.hide();
                 });
+
+                if (typeof updateDynamicTotals === 'function') {
+                    updateDynamicTotals();
+                }
             }, 300);
         });
 
@@ -592,6 +612,7 @@ foreach ($regionList as $r) {
             e.preventDefault();
             var formData = $(this).serialize();
             formData += '&action=online-puantaj-sorgula';
+            formData += '&active_tab=kesme';
 
             $('#onlinePuantajSpinner').show();
             $('#onlinePuantajResult').hide();
@@ -614,7 +635,6 @@ foreach ($regionList as $r) {
                             if (res.guncellenen_kayit > 0) {
                                 resultHtml += '<br><span class="text-warning">' + res.guncellenen_kayit + ' adet kayıt güncellendi.</span>';
                             }
-
                             if (res.mevcut_kayitlar && res.mevcut_kayitlar.length > 0) {
                                 resultHtml += '<hr><strong>Daha önce çekilmiş kayıtlar:</strong>';
                                 if (res.mevcut_kayitlar.length > 5) {
@@ -644,6 +664,98 @@ foreach ($regionList as $r) {
                     $('#onlinePuantajSpinner').hide();
                     $('#btnOnlinePuantajSorgula').prop('disabled', false);
                     $('#onlinePuantajResult').html('<div class="alert alert-danger">Bağlantı hatası oluştu.</div>').show();
+                }
+            });
+        });
+
+        // Online Sayaç Sorgulama
+        $('#onlineSayacForm').on('submit', function (e) {
+            e.preventDefault();
+            var formData = $(this).serialize();
+            formData += '&action=online-puantaj-sorgula';
+            formData += '&active_tab=sokme_takma';
+
+            $('#onlineSayacSpinner').show();
+            $('#onlineSayacResult').hide();
+            $('#btnOnlineSayacSorgula').prop('disabled', true);
+
+            $.ajax({
+                url: 'views/puantaj/api.php',
+                type: 'POST',
+                data: formData,
+                success: function (response) {
+                    $('#onlineSayacSpinner').hide();
+                    $('#btnOnlineSayacSorgula').prop('disabled', false);
+                    try {
+                        var res = JSON.parse(response);
+                        var resultHtml = '';
+                        if (res.status === 'success') {
+                            resultHtml = '<div class="alert alert-success">';
+                            resultHtml += '<strong><i class="bx bx-check-circle me-2"></i>Sorgu Başarılı!</strong><br>';
+                            resultHtml += '<span class="fs-5">' + res.yeni_kayit + ' adet yeni kayıt eklendi.</span>';
+                            if (res.guncellenen_kayit > 0) {
+                                resultHtml += '<br><span class="text-warning">' + res.guncellenen_kayit + ' adet kayıt güncellendi.</span>';
+                            }
+                            resultHtml += '</div>';
+                            loadReport();
+                        } else {
+                            resultHtml = '<div class="alert alert-danger"><strong>Hata!</strong><br>' + res.message + '</div>';
+                        }
+                        $('#onlineSayacResult').html(resultHtml).show();
+                    } catch (err) {
+                        $('#onlineSayacResult').html('<div class="alert alert-danger">Sunucudan geçersiz yanıt alındı.</div>').show();
+                    }
+                },
+                error: function () {
+                    $('#onlineSayacSpinner').hide();
+                    $('#btnOnlineSayacSorgula').prop('disabled', false);
+                    $('#onlineSayacResult').html('<div class="alert alert-danger">Bağlantı hatası oluştu.</div>').show();
+                }
+            });
+        });
+
+        // Online Mühürleme Sorgulama
+        $('#onlineMuhurlemeForm').on('submit', function (e) {
+            e.preventDefault();
+            var formData = $(this).serialize();
+            formData += '&action=online-puantaj-sorgula';
+            formData += '&active_tab=muhurleme';
+
+            $('#onlineMuhurlemeSpinner').show();
+            $('#onlineMuhurlemeResult').hide();
+            $('#btnOnlineMuhurlemeSorgula').prop('disabled', true);
+
+            $.ajax({
+                url: 'views/puantaj/api.php',
+                type: 'POST',
+                data: formData,
+                success: function (response) {
+                    $('#onlineMuhurlemeSpinner').hide();
+                    $('#btnOnlineMuhurlemeSorgula').prop('disabled', false);
+                    try {
+                        var res = JSON.parse(response);
+                        var resultHtml = '';
+                        if (res.status === 'success') {
+                            resultHtml = '<div class="alert alert-success">';
+                            resultHtml += '<strong><i class="bx bx-check-circle me-2"></i>Sorgu Başarılı!</strong><br>';
+                            resultHtml += '<span class="fs-5">' + res.yeni_kayit + ' adet yeni kayıt eklendi.</span>';
+                            if (res.guncellenen_kayit > 0) {
+                                resultHtml += '<br><span class="text-warning">' + res.guncellenen_kayit + ' adet kayıt güncellendi.</span>';
+                            }
+                            resultHtml += '</div>';
+                            loadReport();
+                        } else {
+                            resultHtml = '<div class="alert alert-danger"><strong>Hata!</strong><br>' + res.message + '</div>';
+                        }
+                        $('#onlineMuhurlemeResult').html(resultHtml).show();
+                    } catch (err) {
+                        $('#onlineMuhurlemeResult').html('<div class="alert alert-danger">Sunucudan geçersiz yanıt alındı.</div>').show();
+                    }
+                },
+                error: function () {
+                    $('#onlineMuhurlemeSpinner').hide();
+                    $('#btnOnlineMuhurlemeSorgula').prop('disabled', false);
+                    $('#onlineMuhurlemeResult').html('<div class="alert alert-danger">Bağlantı hatası oluştu.</div>').show();
                 }
             });
         });
@@ -710,6 +822,8 @@ foreach ($regionList as $r) {
 
         // Modal cleanup
         $('#importOnlinePuantajModal').on('hidden.bs.modal', function () { $('#onlinePuantajResult').hide().html(''); });
+        $('#importOnlineSayacModal').on('hidden.bs.modal', function () { $('#onlineSayacResult').hide().html(''); });
+        $('#importOnlineMuhurlemeModal').on('hidden.bs.modal', function () { $('#onlineMuhurlemeResult').hide().html(''); });
         $('#importOnlineIcmalRaporuModal').on('hidden.bs.modal', function () { $('#onlineIcmalResult').hide().html(''); });
     });
 
@@ -912,6 +1026,118 @@ foreach ($personelList as $p) {
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
                     <button type="submit" class="btn btn-primary" id="btnOnlineIcmalSorgula">
+                        <i class="bx bx-search me-1"></i> Sorgula
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Online Sayaç Sorgulama Modal -->
+<div class="modal fade" id="importOnlineSayacModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Online Sayaç Sökme Takma Sorgula</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="onlineSayacForm">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bx bx-info-circle me-2"></i>
+                        Sayaç Sökme/Takma işlemleri için online sorgulama yapılacaktır.
+                        (Tanımlı olan ücretli tüm iş emri sonuçları otomatik olarak çekilir)
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(type: 'number', name: 'ilk_firma', value: $_SESSION['firma_kodu'] ?? '17', placeholder: '', label: "İlk Firma", icon: "briefcase", required: true, class: "form-control"); ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(type: 'number', name: 'son_firma', value: $_SESSION['firma_kodu'] ?? '17', placeholder: '', label: "Son Firma", icon: "briefcase", required: true, class: "form-control"); ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(type: 'text', name: 'baslangic_tarihi', value: date('d.m.Y'), placeholder: '', label: "Başlangıç Tarihi", icon: "calendar", required: true, class: "form-control flatpickr"); ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(type: 'text', name: 'bitis_tarihi', value: date('d.m.Y'), placeholder: '', label: "Bitiş Tarihi", icon: "calendar", required: true, class: "form-control flatpickr"); ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="onlineSayacSpinner" class="text-center p-2" style="display: none;">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Sorgulanıyor...</p>
+                    </div>
+                    <div id="onlineSayacResult" class="mt-3" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="submit" class="btn btn-primary" id="btnOnlineSayacSorgula">
+                        <i class="bx bx-search me-1"></i> Sorgula
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Online Mühürleme Sorgulama Modal -->
+<div class="modal fade" id="importOnlineMuhurlemeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Online Mühürleme İşlemleri Sorgula</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="onlineMuhurlemeForm">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bx bx-info-circle me-2"></i>
+                        Mühürleme işlemleri için online sorgulama yapılacaktır.
+                        (Tanımlı olan ücretli tüm iş emri sonuçları otomatik olarak çekilir)
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(type: 'number', name: 'ilk_firma', value: $_SESSION['firma_kodu'] ?? '17', placeholder: '', label: "İlk Firma", icon: "briefcase", required: true, class: "form-control"); ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(type: 'number', name: 'son_firma', value: $_SESSION['firma_kodu'] ?? '17', placeholder: '', label: "Son Firma", icon: "briefcase", required: true, class: "form-control"); ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(type: 'text', name: 'baslangic_tarihi', value: date('d.m.Y'), placeholder: '', label: "Başlangıç Tarihi", icon: "calendar", required: true, class: "form-control flatpickr"); ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(type: 'text', name: 'bitis_tarihi', value: date('d.m.Y'), placeholder: '', label: "Bitiş Tarihi", icon: "calendar", required: true, class: "form-control flatpickr"); ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="onlineMuhurlemeSpinner" class="text-center p-2" style="display: none;">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Sorgulanıyor...</p>
+                    </div>
+                    <div id="onlineMuhurlemeResult" class="mt-3" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="submit" class="btn btn-primary" id="btnOnlineMuhurlemeSorgula">
                         <i class="bx bx-search me-1"></i> Sorgula
                     </button>
                 </div>

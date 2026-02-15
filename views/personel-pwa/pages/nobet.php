@@ -335,7 +335,8 @@
         <form id="yeni-talep-form" class="flex flex-col gap-4">
             <div>
                 <label class="form-label">Müsait Günler</label>
-                <div id="musait-gunler-container" class="grid grid-cols-4 gap-2 max-h-[200px] overflow-y-auto p-1">
+                <div id="musait-gunler-container"
+                    class="grid grid-cols-5 gap-2 max-h-[200px] overflow-y-auto p-1 text-center">
                     <!-- Günler buraya yüklenecek -->
                 </div>
                 <input type="hidden" name="tarih" id="selected-talep-tarih" required>
@@ -1209,9 +1210,9 @@
                     const isSelected = preSelectedDate === d.tarih;
                     return `
                         <button type="button" onclick="selectTalepTarih('${d.tarih}', this)" 
-                            class="flex flex-col items-center justify-center p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 ${isSelected ? 'border-primary bg-primary/5' : 'border-transparent'} transition-all hover:bg-primary/5">
-                            <span class="text-xs text-slate-500">${d.gun_adi.substring(0, 3)}</span>
-                            <span class="text-lg font-bold text-slate-900 dark:text-white">${d.gun}</span>
+                            class="flex flex-col items-center justify-center p-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 ${isSelected ? 'border-primary bg-primary/5' : 'border-transparent'} transition-all hover:bg-primary/5">
+                            <span class="text-[10px] text-slate-500">${d.gun_adi.substring(0, 3)}</span>
+                            <span class="text-base font-bold text-slate-900 dark:text-white">${d.gun}</span>
                         </button>
                     `;
                 }).join('');

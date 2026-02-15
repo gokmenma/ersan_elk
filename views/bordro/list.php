@@ -99,6 +99,19 @@ $ek_odeme_turleri = [
     $title = "Bordro Yönetimi";
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
+    <style>
+        .transition-icon {
+            transition: transform 0.2s ease;
+        }
+
+        [aria-expanded="true"] .transition-icon {
+            transform: rotate(180deg);
+        }
+
+        .fs-xs {
+            font-size: 0.75rem;
+        }
+    </style>
 
     <div class="row">
         <div class="col-12">
