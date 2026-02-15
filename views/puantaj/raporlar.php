@@ -635,6 +635,7 @@ foreach ($regionList as $r) {
                             if (res.guncellenen_kayit > 0) {
                                 resultHtml += '<br><span class="text-warning">' + res.guncellenen_kayit + ' adet kayıt güncellendi.</span>';
                             }
+
                             if (res.mevcut_kayitlar && res.mevcut_kayitlar.length > 0) {
                                 resultHtml += '<hr><strong>Daha önce çekilmiş kayıtlar:</strong>';
                                 if (res.mevcut_kayitlar.length > 5) {
@@ -649,6 +650,23 @@ foreach ($regionList as $r) {
                                     });
                                     resultHtml += '</ul>';
                                 }
+                            }
+
+                            if (res.atlanAn_kayitlar && res.atlanAn_kayitlar.length > 0) {
+                                resultHtml += '<hr><div class="alert alert-warning mb-0 p-2"><strong>⚠️ Eşleşmeyen Ekipler (' + res.atlanAn_kayitlar.length + '):</strong><br>';
+                                if (res.atlanAn_kayitlar.length > 5) {
+                                    resultHtml += '<div class="d-flex align-items-center justify-content-between mt-1">';
+                                    resultHtml += '<span>' + res.atlanAn_kayitlar.length + ' adet kayıt ekip kodu uyuşmadığı için atlandı.</span>';
+                                    resultHtml += '<button type="button" class="btn btn-sm btn-outline-dark fw-bold" onclick=\'exportToCsv(this, ' + JSON.stringify(res.atlanAn_kayitlar) + ', {"ekip_kodu":"Ekip Kodu","is_emri_tipi":"İş Emri Tipi","is_emri_sonucu":"İş Emri Sonucu","tarih":"Tarih"}, "eslesmeyen_ekipler")\' style="font-size: 11px;"><i class="mdi mdi-file-excel me-1"></i>Excel Olarak İndir</button>';
+                                    resultHtml += '</div>';
+                                } else {
+                                    resultHtml += '<ul class="mb-0 mt-1 small" style="max-height:100px; overflow-y:auto;">';
+                                    res.atlanAn_kayitlar.forEach(function (item) {
+                                        resultHtml += '<li>' + item.ekip_kodu + ' (' + item.tarih + ')</li>';
+                                    });
+                                    resultHtml += '</ul>';
+                                }
+                                resultHtml += '</div>';
                             }
                             resultHtml += '</div>';
                             loadReport();
@@ -696,6 +714,23 @@ foreach ($regionList as $r) {
                             if (res.guncellenen_kayit > 0) {
                                 resultHtml += '<br><span class="text-warning">' + res.guncellenen_kayit + ' adet kayıt güncellendi.</span>';
                             }
+
+                            if (res.atlanAn_kayitlar && res.atlanAn_kayitlar.length > 0) {
+                                resultHtml += '<hr><div class="alert alert-warning mb-0 p-2"><strong>⚠️ Eşleşmeyen Ekipler (' + res.atlanAn_kayitlar.length + '):</strong><br>';
+                                if (res.atlanAn_kayitlar.length > 5) {
+                                    resultHtml += '<div class="d-flex align-items-center justify-content-between mt-1">';
+                                    resultHtml += '<span>' + res.atlanAn_kayitlar.length + ' adet kayıt ekip kodu uyuşmadığı için atlandı.</span>';
+                                    resultHtml += '<button type="button" class="btn btn-sm btn-outline-dark fw-bold" onclick=\'exportToCsv(this, ' + JSON.stringify(res.atlanAn_kayitlar) + ', {"ekip_kodu":"Ekip Kodu","is_emri_tipi":"İş Emri Tipi","is_emri_sonucu":"İş Emri Sonucu","tarih":"Tarih"}, "eslesmeyen_ekipler")\' style="font-size: 11px;"><i class="mdi mdi-file-excel me-1"></i>Excel Olarak İndir</button>';
+                                    resultHtml += '</div>';
+                                } else {
+                                    resultHtml += '<ul class="mb-0 mt-1 small" style="max-height:100px; overflow-y:auto;">';
+                                    res.atlanAn_kayitlar.forEach(function (item) {
+                                        resultHtml += '<li>' + item.ekip_kodu + ' (' + item.tarih + ')</li>';
+                                    });
+                                    resultHtml += '</ul>';
+                                }
+                                resultHtml += '</div>';
+                            }
                             resultHtml += '</div>';
                             loadReport();
                         } else {
@@ -742,6 +777,23 @@ foreach ($regionList as $r) {
                             if (res.guncellenen_kayit > 0) {
                                 resultHtml += '<br><span class="text-warning">' + res.guncellenen_kayit + ' adet kayıt güncellendi.</span>';
                             }
+
+                            if (res.atlanAn_kayitlar && res.atlanAn_kayitlar.length > 0) {
+                                resultHtml += '<hr><div class="alert alert-warning mb-0 p-2"><strong>⚠️ Eşleşmeyen Ekipler (' + res.atlanAn_kayitlar.length + '):</strong><br>';
+                                if (res.atlanAn_kayitlar.length > 5) {
+                                    resultHtml += '<div class="d-flex align-items-center justify-content-between mt-1">';
+                                    resultHtml += '<span>' + res.atlanAn_kayitlar.length + ' adet kayıt ekip kodu uyuşmadığı için atlandı.</span>';
+                                    resultHtml += '<button type="button" class="btn btn-sm btn-outline-dark fw-bold" onclick=\'exportToCsv(this, ' + JSON.stringify(res.atlanAn_kayitlar) + ', {"ekip_kodu":"Ekip Kodu","is_emri_tipi":"İş Emri Tipi","is_emri_sonucu":"İş Emri Sonucu","tarih":"Tarih"}, "eslesmeyen_ekipler")\' style="font-size: 11px;"><i class="mdi mdi-file-excel me-1"></i>Excel Olarak İndir</button>';
+                                    resultHtml += '</div>';
+                                } else {
+                                    resultHtml += '<ul class="mb-0 mt-1 small" style="max-height:100px; overflow-y:auto;">';
+                                    res.atlanAn_kayitlar.forEach(function (item) {
+                                        resultHtml += '<li>' + item.ekip_kodu + ' (' + item.tarih + ')</li>';
+                                    });
+                                    resultHtml += '</ul>';
+                                }
+                                resultHtml += '</div>';
+                            }
                             resultHtml += '</div>';
                             loadReport();
                         } else {
@@ -786,6 +838,23 @@ foreach ($regionList as $r) {
                             resultHtml += '<span class="fs-5">' + res.yeni_kayit + ' adet yeni kayıt eklendi.</span>';
                             if (res.silinen_kayit > 0) {
                                 resultHtml += '<br><span class="text-info">' + res.silinen_kayit + ' adet eski kayıt temizlendi.</span>';
+                            }
+
+                            if (res.atlanAn_kayitlar && res.atlanAn_kayitlar.length > 0) {
+                                resultHtml += '<hr><div class="alert alert-warning mb-0 p-2"><strong>⚠️ Eşleşmeyen Ekipler (' + res.atlanAn_kayitlar.length + '):</strong><br>';
+                                if (res.atlanAn_kayitlar.length > 5) {
+                                    resultHtml += '<div class="d-flex align-items-center justify-content-between mt-1">';
+                                    resultHtml += '<span>' + res.atlanAn_kayitlar.length + ' adet kayıt ekip kodu uyuşmadığı için atlandı.</span>';
+                                    resultHtml += '<button type="button" class="btn btn-sm btn-outline-dark fw-bold" onclick=\'exportToCsv(this, ' + JSON.stringify(res.atlanAn_kayitlar) + ', {"kullanici_adi":"Okuyucu Adı","bolge":"Bölge","okuyucu_no":"Okuyucu No"}, "eslesmeyen_ekipler")\' style="font-size: 11px;"><i class="mdi mdi-file-excel me-1"></i>Excel Olarak İndir</button>';
+                                    resultHtml += '</div>';
+                                } else {
+                                    resultHtml += '<small>Sistemde tanımlı olmadığı için atlanan ekipler:</small><ul class="mb-0 mt-1 small" style="max-height:100px; overflow-y:auto;">';
+                                    res.atlanAn_kayitlar.forEach(function (item) {
+                                        resultHtml += '<li>' + item.kullanici_adi + ' (' + item.bolge + ')</li>';
+                                    });
+                                    resultHtml += '</ul>';
+                                }
+                                resultHtml += '</div>';
                             }
                             resultHtml += '</div>';
                             loadReport();
