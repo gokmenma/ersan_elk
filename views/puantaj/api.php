@@ -1058,6 +1058,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $bitisTarihi = \App\Helper\Date::convertExcelDate($bitisTarihiRaw, 'Y-m-d') ?: date('Y-m-d');
 
         $firmaId = $_SESSION['firma_id'] ?? 0;
+        $Settings = new \App\Model\SettingsModel();
+
+        // ========== CONCURRENCY LOCK (ÇAKIŞMA ÖNLEME) ==========
+        $lockKey = 'lock_online_puantaj_sorgula_' . $firmaId;
+        $activeLock = $Settings->getSettings($lockKey);
+
+        if (!empty($activeLock)) {
+            $lockTime = strtotime($activeLock);
+            // Eğer kilit 10 dakikadan eskiyse aşılmış say (güvenlik için)
+            if ((time() - $lockTime) < 600) {
+                throw new Exception("Şu anda başka bir kullanıcı tarafından kesme/açma sorgulama işlemi yapılıyor. Lütfen işlemin bitmesini bekleyin.");
+            }
+        }
+
+        // Kilidi koy
+        $Settings->upsertSetting($lockKey, date('Y-m-d H:i:s'));
+        // ========================================================
         $activeTab = $_POST['active_tab'] ?? '';
         $resultsFilter = $_POST['results_filter'] ?? '';
 
@@ -1302,6 +1319,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
     } catch (Exception $e) {
         $response['message'] = $e->getMessage();
+    } finally {
+        // ========== KİLİDİ KALDIR ==========
+        if (isset($Settings) && isset($lockKey)) {
+            $Settings->upsertSetting($lockKey, '');
+        }
+        // ===================================
     }
 
     echo json_encode($response);
@@ -1329,6 +1352,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $EndeksOkuma = new EndeksOkumaModel();
         $apiService = new EndeskOkumaService();
+        $Settings = new \App\Model\SettingsModel();
+
+        // ========== CONCURRENCY LOCK (ÇAKIŞMA ÖNLEME) ==========
+        $lockKey = 'lock_online_icmal_sorgula_' . $firmaId;
+        $activeLock = $Settings->getSettings($lockKey);
+
+        if (!empty($activeLock)) {
+            $lockTime = strtotime($activeLock);
+            // Eğer kilit 10 dakikadan eskiyse aşılmış say (güvenlik için)
+            if ((time() - $lockTime) < 600) {
+                throw new Exception("Şu anda başka bir kullanıcı tarafından sorgulama işlemi yapılıyor. Lütfen işlemin bitmesini bekleyin (Yaklaşık " . (600 - (time() - $lockTime)) . " sn sonra kilit açılacak).");
+            }
+        }
+
+        // Kilidi koy (Şu anki zamanı kaydet)
+        $Settings->upsertSetting($lockKey, date('Y-m-d H:i:s'));
+        // ===================================
 
         // Tarih aralığını günlere bölerek tek tek çekiyoruz (API birleştirme yapmasın diye)
         $apiData = [];
@@ -1527,6 +1567,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
     } catch (Exception $e) {
         $response['message'] = $e->getMessage();
+    } finally {
+        // ========== KİLİDİ KALDIR ==========
+        if (isset($Settings) && isset($lockKey)) {
+            $Settings->upsertSetting($lockKey, '');
+        }
+        // ===================================
     }
 
     echo json_encode($response);
