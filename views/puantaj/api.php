@@ -502,7 +502,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $firmaId = $_SESSION['firma_id'] ?? 0;
 
         foreach ($rows as $rowIndex => $data) {
-            $bolge = $data['bolge'];
+            $bolge = $data['bolge'] ?? '';
+
+            // Bölgesi boş veya null olan kayıtları atla
+            if (empty(trim((string) $bolge))) {
+                continue;
+            }
+
             $kullanici_adi = $data['kullanici_adi'];
             $teamNo = $data['team_no'] ?? 0;
             $excelRowNum = $data['excel_row'] ?? ($rowIndex + 1);
@@ -1379,40 +1385,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
 
         $yeniKayit = 0;
-        $guncellenenKayit = 0;
-        $mevcutKayitlar = [];
+        $silinenKayit = 0;
         $atlanAnKayitlar = [];
 
-        // ========== PERFORMANS OPTİMİZASYONU ==========
-        // 1. Tüm islem_id'leri önceden hesapla
-        $processedData = [];
-        foreach ($apiData as $veri) {
-            $normDate = \App\Helper\Date::convertExcelDate($veri['OKUMATARIHI'], 'Y-m-d') ?: $veri['OKUMATARIHI'];
-            $rawIdString = $normDate . '|' . $veri['BOLGE'] . '|' . ($veri['DEFTER'] ?? '') . '|' . $veri['OKUYUCUNO'] . '|' . $veri['ABONE_SAYISI'];
-            $islemId = md5($rawIdString);
-            $processedData[] = [
-                'islem_id' => $islemId,
-                'norm_date' => $normDate,
-                'veri' => $veri
-            ];
-        }
-
-        // 2. Mevcut kayıtları toplu çek (tek sorgu)
-        $allIslemIds = array_column($processedData, 'islem_id');
-        $existingRecords = [];
-        if (!empty($allIslemIds)) {
-            $chunks = array_chunk($allIslemIds, 500);
-            foreach ($chunks as $chunk) {
-                $placeholders = implode(',', array_fill(0, count($chunk), '?'));
-                $stmt = $EndeksOkuma->db->prepare("SELECT id, islem_id, kullanici_adi, bolge, tarih, okunan_abone_sayisi FROM endeks_okuma WHERE islem_id IN ($placeholders) AND silinme_tarihi IS NULL");
-                $stmt->execute($chunk);
-                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    $existingRecords[$row['islem_id']] = $row;
-                }
-            }
-        }
-
-        // 3. Personel ve ekip verilerini toplu yükle (lookup tabloları)
+        // ========== SİL VE YENİDEN YÜKLE YAKLAŞIMI ==========
+        // 1. Personel ve ekip verilerini toplu yükle (lookup tabloları)
         $stmtAllPersonel = $EndeksOkuma->db->prepare("SELECT id, adi_soyadi, ekip_no FROM personel WHERE silinme_tarihi IS NULL");
         $stmtAllPersonel->execute();
         $personelByName = [];
@@ -1428,7 +1405,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $stmtAllEkip->execute();
         $ekipKodlari = [];
         while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
-            // Ekip numarasını çıkar
             if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $ek['tur_adi'], $m)) {
                 $ekipKodlari[$m[1]] = $ek['id'];
             }
@@ -1441,102 +1417,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $ekipGecmisi[$h['ekip_kodu_id']][] = $h;
         }
 
-        // 4. Kayıtları işle: güncelleme ve yeni ekleme listelerini oluştur
-        $updateBatch = [];
+        // 2. Sorgulanan tarih aralığındaki mevcut kayıtları soft-delete et
+        $deleteStmt = $EndeksOkuma->db->prepare("UPDATE endeks_okuma SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL");
+        $deleteStmt->execute([$firmaId, $baslangicTarihiDB, $bitisTarihiDB]);
+        $silinenKayit = $deleteStmt->rowCount();
+
+        // 3. API verilerini işle ve insert listesi oluştur
         $insertBatch = [];
 
-        foreach ($processedData as $item) {
-            $islemId = $item['islem_id'];
-            $normDate = $item['norm_date'];
-            $veri = $item['veri'];
+        foreach ($apiData as $veri) {
+            // Bölgesi boş veya null olan kayıtları atla
+            if (!isset($veri['BOLGE']) || empty(trim((string) $veri['BOLGE']))) {
+                continue;
+            }
 
-            if (isset($existingRecords[$islemId])) {
-                // Güncelleme listesine ekle
-                $updateBatch[] = [
-                    'bolge' => $veri['BOLGE'],
-                    'kullanici_adi' => $veri['OKUYUCUADI'],
-                    'okunan_abone_sayisi' => $veri['ABONE_SAYISI'],
-                    'tarih' => $normDate,
-                    'defter' => $veri['DEFTER'] ?? '',
-                    'sayac_durum' => $veri['SAYACDURUM'] ?? '',
-                    'islem_id' => $islemId
-                ];
-                $guncellenenKayit++;
-                $mevcutKayitlar[] = $existingRecords[$islemId];
+            $normDate = \App\Helper\Date::convertExcelDate($veri['OKUMATARIHI'], 'Y-m-d') ?: $veri['OKUMATARIHI'];
+            $rawIdString = $normDate . '|' . $veri['BOLGE'] . '|' . ($veri['DEFTER'] ?? '') . '|' . $veri['OKUYUCUNO'] . '|' . ($veri['SAYACDURUM'] ?? '');
+            $islemId = md5($rawIdString);
+
+            // Personel eşleştirme
+            $personelId = 0;
+            $ekipKoduId = 0;
+
+            if (isset($personelByName[$veri['OKUYUCUADI']])) {
+                $personelId = $personelByName[$veri['OKUYUCUADI']]['id'];
+                $ekipKoduId = $personelByName[$veri['OKUYUCUADI']]['ekip_no'];
             } else {
-                // Personel eşleştirme (ön yüklenen verilerden)
-                $personelId = 0;
-                $ekipKoduId = 0;
+                if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $veri['OKUYUCUADI'], $m)) {
+                    $ekipNo = $m[1];
+                    $ekipKoduId = $ekipKodlari[$ekipNo] ?? 0;
 
-                if (isset($personelByName[$veri['OKUYUCUADI']])) {
-                    $personelId = $personelByName[$veri['OKUYUCUADI']]['id'];
-                    $ekipKoduId = $personelByName[$veri['OKUYUCUADI']]['ekip_no'];
-                } else {
-                    if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $veri['OKUYUCUADI'], $m)) {
-                        $ekipNo = $m[1];
-                        $ekipKoduId = $ekipKodlari[$ekipNo] ?? 0;
-
-                        if ($ekipKoduId) {
-                            // Ekip geçmişinden personeli bul
-                            if (isset($ekipGecmisi[$ekipKoduId])) {
-                                foreach ($ekipGecmisi[$ekipKoduId] as $hist) {
-                                    if ($hist['baslangic_tarihi'] <= $normDate && ($hist['bitis_tarihi'] === null || $hist['bitis_tarihi'] >= $normDate)) {
-                                        $personelId = $hist['personel_id'];
-                                        break;
-                                    }
+                    if ($ekipKoduId) {
+                        // Ekip geçmişinden personeli bul
+                        if (isset($ekipGecmisi[$ekipKoduId])) {
+                            foreach ($ekipGecmisi[$ekipKoduId] as $hist) {
+                                if ($hist['baslangic_tarihi'] <= $normDate && ($hist['bitis_tarihi'] === null || $hist['bitis_tarihi'] >= $normDate)) {
+                                    $personelId = $hist['personel_id'];
+                                    break;
                                 }
                             }
-                            // Bulunamazsa mevcut personelden bak
-                            if (!$personelId) {
-                                $personelId = $personelByEkip[$ekipKoduId] ?? 0;
-                            }
+                        }
+                        // Bulunamazsa mevcut personelden bak
+                        if (!$personelId) {
+                            $personelId = $personelByEkip[$ekipKoduId] ?? 0;
                         }
                     }
                 }
+            }
 
-                if ($ekipKoduId === 0) {
-                    $atlanAnKayitlar[] = [
-                        'kullanici_adi' => $veri['OKUYUCUADI'],
-                        'okuyucu_no' => $veri['OKUYUCUNO'] ?? '-',
-                        'bolge' => $veri['BOLGE']
-                    ];
-                    continue;
-                }
-
-                $insertBatch[] = [
-                    $islemId,
-                    $personelId,
-                    $ekipKoduId,
-                    $firmaId,
-                    $veri['BOLGE'],
-                    $veri['OKUYUCUADI'],
-                    0,
-                    0,
-                    0,
-                    0,
-                    1,
-                    $veri['ABONE_SAYISI'],
-                    $veri['ABONE_SAYISI'],
-                    100,
-                    $normDate,
-                    $veri['DEFTER'] ?? '',
-                    $veri['SAYACDURUM'] ?? ''
+            if ($ekipKoduId === 0) {
+                $atlanAnKayitlar[] = [
+                    'kullanici_adi' => $veri['OKUYUCUADI'],
+                    'okuyucu_no' => $veri['OKUYUCUNO'] ?? '-',
+                    'bolge' => $veri['BOLGE']
                 ];
-                $yeniKayit++;
+                continue;
             }
+
+            $insertBatch[] = [
+                $islemId,
+                $personelId,
+                $ekipKoduId,
+                $firmaId,
+                $veri['BOLGE'],
+                $veri['OKUYUCUADI'],
+                0,
+                0,
+                0,
+                0,
+                1,
+                $veri['ABONE_SAYISI'],
+                $veri['ABONE_SAYISI'],
+                100,
+                $normDate,
+                $veri['DEFTER'] ?? '',
+                $veri['SAYACDURUM'] ?? ''
+            ];
+            $yeniKayit++;
         }
 
-        // 5. Toplu UPDATE (chunk halinde)
-        if (!empty($updateBatch)) {
-            $updateStmt = $EndeksOkuma->db->prepare("UPDATE endeks_okuma SET bolge = ?, kullanici_adi = ?, okunan_abone_sayisi = ?, tarih = ?, defter = ?, sayac_durum = ? WHERE islem_id = ?");
-            $EndeksOkuma->db->beginTransaction();
-            foreach ($updateBatch as $row) {
-                $updateStmt->execute(array_values($row));
-            }
-            $EndeksOkuma->db->commit();
-        }
-
-        // 6. Toplu INSERT (chunk halinde, her 50 kayıtta bir)
+        // 4. Toplu INSERT (chunk halinde, her 50 kayıtta bir)
         if (!empty($insertBatch)) {
             $EndeksOkuma->db->beginTransaction();
             $insertChunks = array_chunk($insertBatch, 50);
@@ -1556,16 +1516,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // Log kaydet
         $SystemLog = new SystemLogModel();
         $userId = $_SESSION['user_id'] ?? 0;
-        $SystemLog->logAction($userId, 'Online Endeks Okuma Sorgulama', "API Sorgu, Tarih: $baslangicTarihiAPI - $bitisTarihiAPI. $yeniKayit yeni, $guncellenenKayit güncellenen kayıt.");
+        $SystemLog->logAction($userId, 'Online Endeks Okuma Sorgulama', "API Sorgu, Tarih: $baslangicTarihiAPI - $bitisTarihiAPI. $silinenKayit eski kayıt silindi, $yeniKayit yeni kayıt eklendi.");
 
         $response['status'] = 'success';
         $response['yeni_kayit'] = $yeniKayit;
-        $response['guncellenen_kayit'] = $guncellenenKayit;
-        $response['mevcut_kayitlar'] = $mevcutKayitlar;
+        $response['silinen_kayit'] = $silinenKayit;
         $response['atlanAn_kayitlar'] = $atlanAnKayitlar;
         $response['toplam_api_kayit'] = count($apiData);
-        $response['api_raw_data'] = $apiData;
-        $response['message'] = "$yeniKayit adet yeni kayıt eklendi.";
+        $response['message'] = "$silinenKayit eski kayıt silindi, $yeniKayit yeni kayıt eklendi.";
 
     } catch (Exception $e) {
         $response['message'] = $e->getMessage();

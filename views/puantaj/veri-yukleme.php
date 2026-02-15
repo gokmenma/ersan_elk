@@ -1587,23 +1587,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             resultHtml = '<div class="alert alert-success">';
                             resultHtml += '<strong><i class="bx bx-check-circle me-2"></i>Sorgu Başarılı!</strong><br>';
                             resultHtml += '<span class="fs-5">' + res.yeni_kayit + ' adet yeni kayıt eklendi.</span>';
-                            if (res.guncellenen_kayit > 0) {
-                                resultHtml += '<br><span class="text-warning">' + res.guncellenen_kayit + ' adet kayıt güncellendi.</span>';
-                            }
-                            if (res.mevcut_kayitlar && res.mevcut_kayitlar.length > 0) {
-                                resultHtml += '<hr><strong>Daha önce çekilmiş kayıtlar:</strong>';
-                                if (res.mevcut_kayitlar.length > 5) {
-                                    resultHtml += '<div class="d-flex align-items-center justify-content-between mt-1">';
-                                    resultHtml += '<span>' + res.mevcut_kayitlar.length + ' adet kayıt daha önce işlendiği için atlandı.</span>';
-                                    resultHtml += '<button type="button" class="btn btn-sm btn-outline-info fw-bold" onclick=\'exportToCsv(this, ' + JSON.stringify(res.mevcut_kayitlar) + ', {"islem_id":"İşlem ID","kullanici_adi":"Okuyucu Adı","bolge":"Bölge"}, "mevcut_kayitlar")\' style="font-size: 11px;"><i class="mdi mdi-file-excel me-1"></i>Excel Olarak İndir</button>';
-                                    resultHtml += '</div>';
-                                } else {
-                                    resultHtml += '<ul class="mb-0 mt-1 small">';
-                                    res.mevcut_kayitlar.forEach(function (item) {
-                                        resultHtml += '<li>İşlem ID: ' + item.islem_id + ' - ' + item.kullanici_adi + ' - ' + item.bolge + '</li>';
-                                    });
-                                    resultHtml += '</ul>';
-                                }
+                            if (res.silinen_kayit > 0) {
+                                resultHtml += '<br><span class="text-info">' + res.silinen_kayit + ' adet eski kayıt temizlendi.</span>';
                             }
 
                             if (res.atlanAn_kayitlar && res.atlanAn_kayitlar.length > 0) {

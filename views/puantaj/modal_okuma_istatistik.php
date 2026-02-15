@@ -21,7 +21,7 @@ $sql = "SELECT bolge,
                SUM(sarfiyat) as toplam_sarfiyat,
                SUM(tahakkuk) as toplam_tahakkuk
         FROM endeks_okuma 
-        WHERE firma_id = ? AND tarih >= ? AND tarih <= ?";
+        WHERE firma_id = ? AND tarih >= ? AND tarih <= ? AND silinme_tarihi IS NULL";
 
 $params = [$firmaId, $sqlStart, $sqlEnd];
 if ($personelId) {
