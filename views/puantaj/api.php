@@ -1106,205 +1106,173 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
 
         $KesmeAcmaSvc = new KesmeAcmaService();
-        $baslangicTarihiAPI = \App\Helper\Date::convertExcelDate($baslangicTarihiRaw, 'd/m/Y') ?: $baslangicTarihiRaw;
-        $bitisTarihiAPI = \App\Helper\Date::convertExcelDate($bitisTarihiRaw, 'd/m/Y') ?: $bitisTarihiRaw;
-
         $apiData = [];
 
-        // Tarih aralığını günlere bölerek tek tek çekiyoruz (API birleştirme yapmasın diye)
         $begin = new DateTime($baslangicTarihi);
         $end = new DateTime($bitisTarihi);
-        $end->modify('+1 day'); // Bitiş gününü dahil et
+        $end->modify('+1 day');
 
         $interval = new DateInterval('P1D');
         $daterange = new DatePeriod($begin, $interval, $end);
 
-        // PHP zaman aşımını uzat (çok günlük sorgularda)
-        set_time_limit(300);
+        set_time_limit(600);
 
         foreach ($daterange as $date) {
             $currentDateAPI = $date->format('d/m/Y');
+            $offset = 0;
+            $limit = 500;
+            $hasMore = true;
 
-            try {
-                $offset = 0;
-                $limit = 100;
-                $hasMore = true;
+            while ($hasMore) {
+                $apiResponse = $KesmeAcmaSvc->getData($currentDateAPI, $currentDateAPI, $limit, $offset);
+                if (!($apiResponse['success'] ?? false))
+                    break;
 
-                while ($hasMore) {
-                    // Günlük bazda sorgu yapıyoruz
-                    $apiResponse = $KesmeAcmaSvc->getData($currentDateAPI, $currentDateAPI, $limit, $offset);
-
-                    if (!($apiResponse['success'] ?? false)) {
-                        break; // Bu gün için hata varsa veya veri yoksa diğer güne geç
+                $batchData = $apiResponse['data']['data'] ?? [];
+                if (empty($batchData)) {
+                    $hasMore = false;
+                } else {
+                    foreach ($batchData as $item) {
+                        $item['TARIH'] = $date->format('Y-m-d');
+                        $apiData[] = $item;
                     }
-
-                    $batchData = $apiResponse['data']['data'] ?? [];
-                    if (empty($batchData)) {
+                    if (count($batchData) < $limit) {
                         $hasMore = false;
                     } else {
-                        // Her kayda hangi güne ait olduğunu enjekte ediyoruz
-                        foreach ($batchData as &$item) {
-                            if (!isset($item['TARIH'])) {
-                                $item['TARIH'] = $date->format('Y-m-d');
-                            }
-                        }
-                        $apiData = array_merge($apiData, $batchData);
-                        if (count($batchData) < $limit) {
-                            $hasMore = false;
-                        } else {
-                            $offset += $limit;
-                        }
+                        $offset += $limit;
                     }
-
-                    if ($offset >= 1000)
-                        break; // Bir gün için 1000 kayıt güvenlik sınırı
                 }
-            } catch (Exception $e) {
-                // Bu günün hatası diğer günleri engellemesin, devam et
-                continue;
+                if ($offset >= 5000)
+                    break;
             }
         }
 
-        $yeniKayit = 0;
-        $guncellenenKayit = 0;
-        $mevcutKayitlar = [];
-        $atlanAnKayitlar = [];
-        $bosSonucSayisi = 0;
+        $Tanimlamalar = new \App\Model\TanimlamalarModel();
+        $Puantaj = new \App\Model\PuantajModel();
+        // $Zimmet dosyanın başında global olarak tanımlanmış (line 22)
 
+        // 1. Ekip ve Personel lookup verilerini yükle
+        $stmtAllEkip = $Puantaj->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
+        $stmtAllEkip->execute();
+        $ekipKodlari = [];
+        while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
+            if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $ek['tur_adi'], $m)) {
+                $ekipKodlari[$m[1]] = $ek['id'];
+            }
+        }
+
+        $stmtAllPersonel = $Puantaj->db->prepare("SELECT id, ekip_no FROM personel WHERE silinme_tarihi IS NULL");
+        $stmtAllPersonel->execute();
+        $personelByEkip = [];
+        while ($p = $stmtAllPersonel->fetch(PDO::FETCH_ASSOC)) {
+            if (($p['ekip_no'] ?? 0) > 0) {
+                $personelByEkip[$p['ekip_no']] = $p['id'];
+            }
+        }
+
+        $stmtAllHist = $Puantaj->db->prepare("SELECT ekip_kodu_id, personel_id, baslangic_tarihi, bitis_tarihi FROM personel_ekip_gecmisi WHERE firma_id = ?");
+        $stmtAllHist->execute([$firmaId]);
+        $ekipGecmisi = [];
+        while ($h = $stmtAllHist->fetch(PDO::FETCH_ASSOC)) {
+            $ekipGecmisi[$h['ekip_kodu_id']][] = $h;
+        }
+
+        // 2. Mevcut kayıtları temizle (Hız için Sil/Yeniden Yükle)
+        $deleteStmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL");
+        $deleteStmt->execute([$firmaId, $baslangicTarihi, $bitisTarihi]);
+        $silinenKayit = $deleteStmt->rowCount();
+
+        // 3. API verilerini işle
+        $insertBatch = [];
         $filterArray = !empty($resultsFilter) ? array_map('trim', explode(',', $resultsFilter)) : [];
 
         foreach ($apiData as $veri) {
-            // API'den gelen gerçek alan adlarını eşleştiriyoruz
-            $firmaAdi = $veri['FIRMAADI'] ?? 'ER-SAN ELEKTRİK';
             $isEmriTipi = $veri['ISEMRITIPI'] ?? '';
-            $ekipKodu = $veri['EKIP'] ?? '';
+            $ekipKoduStr = $veri['EKIP'] ?? '';
             $isEmriSonucu = $veri['SONUC'] ?? '';
             $sonuclanmis = $veri['SONUCLANMIS'] ?? 0;
             $acikOlanlar = $veri['ACIK'] ?? 0;
+            $tarihRaw = $veri['TARIH'];
 
-            // Filtre varsa ve eşleşmiyorsa atla
-            if (!empty($filterArray) && !in_array($isEmriSonucu, $filterArray)) {
+            if (!empty($filterArray) && !in_array($isEmriSonucu, $filterArray))
                 continue;
-            }
-
-            // SONUCLANMIS 0 olan kayıtları atla
             if ((int) $sonuclanmis === 0) {
                 $bosSonucSayisi++;
                 continue;
             }
 
-            // Artık her kaydın kendi tarihi (TARIH) var
-            $tarihRaw = $veri['TARIH'];
             $normDate = \App\Helper\Date::convertExcelDate($tarihRaw, 'Y-m-d') ?: $tarihRaw;
+            $islemId = md5($normDate . '|' . $ekipKoduStr . '|' . $isEmriTipi . '|' . $isEmriSonucu);
 
-            // Unique ID oluştur (Sonuç ve ekip bazlı)
-            $rawIdString = $normDate . '|' . $ekipKodu . '|' . $isEmriTipi . '|' . $isEmriSonucu;
-            $islemId = md5($rawIdString);
-
-            // Tanimlamalar'dan is_emri_sonucu_id bul (İş türü ve sonucuna göre)
+            // İş Türü ID Bul/Oluştur
             $existingTur = $Tanimlamalar->isEmriSonucu($isEmriTipi, $isEmriSonucu);
-
-            if (!$existingTur && (!empty($isEmriTipi) || !empty($isEmriSonucu))) {
-                // Eğer yoksa yeni oluştur (Excel yükleme mantığı)
-                $dataTanim = [
-                    'firma_id' => $firmaId ?: ($_SESSION['firma_id'] ?? 0),
+            $isEmriSonucuId = $existingTur ? $existingTur->id : 0;
+            if (!$isEmriSonucuId && (!empty($isEmriTipi) || !empty($isEmriSonucu))) {
+                $encryptedId = $Tanimlamalar->saveWithAttr([
+                    'firma_id' => $firmaId,
                     'grup' => 'is_turu',
                     'tur_adi' => $isEmriTipi,
                     'is_emri_sonucu' => $isEmriSonucu,
-                    'aciklama' => "Online sorgulama sırasında otomatik oluşturuldu"
-                ];
-                $encryptedId = $Tanimlamalar->saveWithAttr($dataTanim);
+                    'aciklama' => "Online sorgulama"
+                ]);
                 $isEmriSonucuId = \App\Helper\Security::decrypt($encryptedId);
-            } else {
-                $isEmriSonucuId = $existingTur ? $existingTur->id : 0;
             }
 
-            // Eğer ID bulunduysa string kolonlara ekleme yapma
-            $saveTipi = $isEmriSonucuId ? '' : $isEmriTipi;
-            $saveSonucu = $isEmriSonucuId ? '' : $isEmriSonucu;
-
-            // Daha önce aynı islem_id ile kayıt var mı kontrol et
-            $checkStmt = $Puantaj->db->prepare("SELECT id, islem_id, ekip_kodu, is_emri_tipi FROM yapilan_isler WHERE islem_id = ? AND silinme_tarihi IS NULL");
-            $checkStmt->execute([$islemId]);
-            $mevcutKayit = $checkStmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($mevcutKayit) {
-                // Mevcut kayıt varsa güncelle
-                $updateStmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET sonuclanmis = ?, acik_olanlar = ?, tarih = ?, is_emri_sonucu_id = ?, is_emri_tipi = ?, is_emri_sonucu = ? WHERE islem_id = ?");
-                $updateStmt->execute([$sonuclanmis, $acikOlanlar, $normDate, $isEmriSonucuId, $saveTipi, $saveSonucu, $islemId]);
-                $guncellenenKayit++;
-
-                // Excel raporu için değerleri doldur
-                $mevcutKayit['is_emri_tipi'] = $isEmriTipi;
-                $mevcutKayit['is_emri_sonucu'] = $isEmriSonucu;
-                $mevcutKayit['tarih'] = \App\Helper\Date::Ymd($normDate, 'd.m.Y');
-                $mevcutKayitlar[] = $mevcutKayit;
-            } else {
-                // Personel eşleştirme (ekip kodundan)
-                $personelId = 0;
-                $defId = 0;
-                $ekipNo = 0;
-                if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $ekipKodu, $m)) {
-                    $ekipNo = $m[1];
-                }
-
-                if ($ekipNo > 0) {
-                    $stmtDef = $Puantaj->db->prepare("SELECT id FROM tanimlamalar WHERE (tur_adi LIKE ? OR tur_adi LIKE ?) AND grup = 'ekip_kodu' AND silinme_tarihi IS NULL LIMIT 1");
-                    $stmtDef->execute(["%EKİP-$ekipNo", "%EKIP-$ekipNo"]);
-                    $defId = $stmtDef->fetchColumn();
-
-                    if ($defId) {
-                        // 1. Önce o tarihteki ekip geçmişinden personeli bulmaya çalış (en doğru yöntem)
-                        $stmtHist = $Puantaj->db->prepare("SELECT personel_id FROM personel_ekip_gecmisi 
-                                                         WHERE ekip_kodu_id = ? AND baslangic_tarihi <= ? 
-                                                         AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?) 
-                                                         LIMIT 1");
-                        $stmtHist->execute([$defId, $normDate, $normDate]);
-                        $personelId = $stmtHist->fetchColumn();
-
-                        // 2. Bulunamazsa mevcut personel tablosundaki ekip_no'ya bak
-                        if (!$personelId) {
-                            $stmtPersonel = $Puantaj->db->prepare("SELECT id FROM personel WHERE ekip_no = ? AND silinme_tarihi IS NULL LIMIT 1");
-                            $stmtPersonel->execute([$defId]);
-                            $personelId = $stmtPersonel->fetchColumn() ?: 0;
+            // Ekip ve Personel Bul
+            $personelId = 0;
+            $defId = 0;
+            $ekipNo = 0;
+            if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $ekipKoduStr, $m)) {
+                $ekipNo = $m[1];
+                $defId = $ekipKodlari[$ekipNo] ?? 0;
+                if ($defId) {
+                    if (isset($ekipGecmisi[$defId])) {
+                        foreach ($ekipGecmisi[$defId] as $hist) {
+                            if ($hist['baslangic_tarihi'] <= $normDate && ($hist['bitis_tarihi'] === null || $hist['bitis_tarihi'] >= $normDate)) {
+                                $personelId = $hist['personel_id'];
+                                break;
+                            }
                         }
                     }
-                }
-
-                // Eğer ekip bulunamadıysa bu kaydı atla
-                if ($defId === 0) {
-                    $atlanAnKayitlar[] = [
-                        'ekip_kodu' => $ekipKodu,
-                        'is_emri_tipi' => $isEmriTipi,
-                        'is_emri_sonucu' => $isEmriSonucu,
-                        'tarih' => \App\Helper\Date::Ymd($normDate, 'd.m.Y')
-                    ];
-                    continue;
-                }
-
-                // Yeni kayıt ekle
-                $insertStmt = $Puantaj->db->prepare("INSERT INTO yapilan_isler (islem_id, personel_id, ekip_kodu_id, firma_id, is_emri_sonucu_id, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $insertStmt->execute([
-                    $islemId,
-                    $personelId,
-                    $defId,
-                    $firmaId,
-                    $isEmriSonucuId,
-                    $saveTipi,
-                    $ekipKodu,
-                    $saveSonucu,
-                    $sonuclanmis,
-                    $acikOlanlar,
-                    $normDate
-                ]);
-                $yeniKayit++;
-
-                // Otomatik Demirbaş İşlemi
-                if ($personelId > 0) {
-                    $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucu, $normDate, $islemId, $sonuclanmis);
+                    if (!$personelId)
+                        $personelId = $personelByEkip[$defId] ?? 0;
                 }
             }
+
+            if ($defId === 0) {
+                $atlanAnKayitlar[] = ['ekip_kodu' => $ekipKoduStr, 'is_emri_tipi' => $isEmriTipi, 'is_emri_sonucu' => $isEmriSonucu, 'tarih' => \App\Helper\Date::Ymd($normDate, 'd.m.Y')];
+                continue;
+            }
+
+            $insertBatch[] = [$islemId, $personelId, $defId, $firmaId, $isEmriSonucuId, $isEmriTipi, $ekipKoduStr, $isEmriSonucu, $sonuclanmis, $acikOlanlar, $normDate];
+            $yeniKayit++;
+
+            // Demirbaş işlemi
+            if ($personelId > 0)
+                $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucu, $normDate, $islemId, $sonuclanmis);
         }
+
+        // 4. Toplu Kayıt
+        if (!empty($insertBatch)) {
+            $Puantaj->db->beginTransaction();
+            $chunks = array_chunk($insertBatch, 500);
+            foreach ($chunks as $chunk) {
+                $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?)'));
+                $sql = "INSERT INTO yapilan_isler (islem_id, personel_id, ekip_kodu_id, firma_id, is_emri_sonucu_id, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih) VALUES $placeholders";
+                $stmt = $Puantaj->db->prepare($sql);
+                $flatParams = [];
+                foreach ($chunk as $row) {
+                    $flatParams = array_merge($flatParams, $row);
+                }
+                $stmt->execute($flatParams);
+            }
+            $Puantaj->db->commit();
+        }
+
+        // Response güncellemesi
+        $response['silinen_kayit'] = $silinenKayit;
+        $response['guncellenen_kayit'] = 0; // Artık hepsi yeni
+        $response['mevcut_kayitlar'] = [];
 
         // Log kaydet
         $SystemLog = new SystemLogModel();
@@ -1378,57 +1346,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $Settings->upsertSetting($lockKey, date('Y-m-d H:i:s') . '|' . $currentUserId);
         // ===================================
 
-        // Tarih aralığını günlere bölerek tek tek çekiyoruz (API birleştirme yapmasın diye)
         $apiData = [];
         $begin = new DateTime($baslangicTarihiDB);
         $end = new DateTime($bitisTarihiDB);
-        $end->modify('+1 day'); // Bitiş gününü dahil et
+        $end->modify('+1 day');
 
         $interval = new DateInterval('P1D');
         $daterange = new DatePeriod($begin, $interval, $end);
 
-        // PHP zaman aşımını uzat (çok günlük sorgularda)
-        set_time_limit(300);
+        set_time_limit(600);
 
         foreach ($daterange as $date) {
             $currentDateAPI = $date->format('d/m/Y');
+            $offset = 0;
+            $limit = 500;
+            $hasMore = true;
 
-            try {
-                $offset = 0;
-                $limit = 100;
-                $hasMore = true;
+            while ($hasMore) {
+                $apiResponse = $apiService->getData($currentDateAPI, $currentDateAPI, $limit, $offset);
+                if (!($apiResponse['success'] ?? false))
+                    break;
 
-                while ($hasMore) {
-                    $apiResponse = $apiService->getData($currentDateAPI, $currentDateAPI, $limit, $offset);
-
-                    if (!($apiResponse['success'] ?? false)) {
-                        break; // Bu gün için hata varsa diğer güne geç
+                $batchData = $apiResponse['data']['data'] ?? [];
+                if (empty($batchData)) {
+                    $hasMore = false;
+                } else {
+                    foreach ($batchData as $item) {
+                        // Eğer OKUMATARIHI boşsa günün tarihini enjekte et
+                        if (!isset($item['OKUMATARIHI']) || empty($item['OKUMATARIHI'])) {
+                            $item['OKUMATARIHI'] = $date->format('Y-m-d');
+                        }
+                        $apiData[] = $item;
                     }
-
-                    $batchData = $apiResponse['data']['data'] ?? [];
-                    if (empty($batchData)) {
+                    if (count($batchData) < $limit) {
                         $hasMore = false;
                     } else {
-                        // Her kayda hangi güne ait olduğunu enjekte ediyoruz
-                        foreach ($batchData as &$item) {
-                            if (!isset($item['OKUMATARIHI']) || empty($item['OKUMATARIHI'])) {
-                                $item['OKUMATARIHI'] = $date->format('Y-m-d');
-                            }
-                        }
-                        $apiData = array_merge($apiData, $batchData);
-                        if (count($batchData) < $limit) {
-                            $hasMore = false;
-                        } else {
-                            $offset += $limit;
-                        }
+                        $offset += $limit;
                     }
-
-                    if ($offset >= 1000)
-                        break; // Bir gün için güvenlik sınırı
                 }
-            } catch (Exception $e) {
-                // Bu günün hatası diğer günleri engellemesin, devam et
-                continue;
+                if ($offset >= 5000)
+                    break;
             }
         }
 
@@ -1547,7 +1504,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // 4. Toplu INSERT (chunk halinde, her 50 kayıtta bir)
         if (!empty($insertBatch)) {
             $EndeksOkuma->db->beginTransaction();
-            $insertChunks = array_chunk($insertBatch, 50);
+            $insertChunks = array_chunk($insertBatch, 500);
             foreach ($insertChunks as $chunk) {
                 $valuesPart = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'));
                 $sql = "INSERT INTO endeks_okuma (islem_id, personel_id, ekip_kodu_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih, defter, sayac_durum) VALUES $valuesPart";
