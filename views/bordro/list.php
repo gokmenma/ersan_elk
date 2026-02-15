@@ -252,13 +252,14 @@ $ek_odeme_turleri = [
                         <?php
                         // Dönem toplamlarını hesapla
                         $toplamAlacagi = 0;
+                        $toplamKesintiHaricIcra = 0;
+                        $toplamNetAlacagi = 0;
                         $toplamIcra = 0;
                         $toplamBanka = 0;
                         $toplamSodexo = 0;
                         $toplamElden = 0;
 
                         foreach ($personeller as $p) {
-                            // Prim Usülü personellerde ek ödeme/prim maaş tutarı olarak gösteriliyor
                             $hesaplananEkOdeme = $p->guncel_toplam_ek_odeme;
                             if (!empty($p->hesaplama_detay)) {
                                 $detayEkOdeme = json_decode($p->hesaplama_detay, true);
@@ -270,22 +271,29 @@ $ek_odeme_turleri = [
                                 }
                             }
 
-                            $isPrimUsulu = ($p->maas_durumu ?? '') == 'Prim Usülü';
-                            $displayMaas = $isPrimUsulu ? $hesaplananEkOdeme : $p->maas_tutari;
+                            // User definition: maas_tutari + ek_odemeler
+                            $pToplamAlacagi = ($p->maas_tutari ?? 0) + $hesaplananEkOdeme;
 
-                            $toplamAlacagi += $displayMaas;
+                            $pIcra = 0;
+                            if (!empty($p->hesaplama_detay)) {
+                                $detay = json_decode($p->hesaplama_detay, true);
+                                $pIcra = $detay['odeme_dagilimi']['icra_kesintisi'] ?? 0;
+                            }
+
+                            $pKesintiHaricIcra = ($p->kesinti_tutar ?? 0) - $pIcra;
+                            $pNetAlacagi = $pToplamAlacagi - $pKesintiHaricIcra;
+
+                            $toplamAlacagi += $pToplamAlacagi;
+                            $toplamKesintiHaricIcra += $pKesintiHaricIcra;
+                            $toplamNetAlacagi += $pNetAlacagi;
+                            $toplamIcra += $pIcra;
+
                             $toplamBanka += floatval($p->banka_odemesi ?? 0);
                             $toplamSodexo += floatval($p->sodexo_odemesi ?? 0);
 
                             // Elden hesaplama
                             $eldenP = $p->elden_odeme ?? (($p->net_maas ?? 0) - ($p->banka_odemesi ?? 0) - ($p->sodexo_odemesi ?? 0) - ($p->diger_odeme ?? 0));
                             $toplamElden += max(0, floatval($eldenP));
-
-                            // İcra hesaplama
-                            if (!empty($p->hesaplama_detay)) {
-                                $detay = json_decode($p->hesaplama_detay, true);
-                                $toplamIcra += $detay['odeme_dagilimi']['icra_kesintisi'] ?? 0;
-                            }
                         }
 
                         // En son hesaplama tarihini bul
@@ -388,7 +396,7 @@ $ek_odeme_turleri = [
                                 </div>
                             </div>
 
-                            <!-- İcra Kesintisi -->
+                            <!-- Kesinti Tutarı -->
                             <div class="col-xl col-md-4">
                                 <div class="card border-0 shadow-sm h-100 bordro-summary-card"
                                     style="--card-color: #f43f5e; border-bottom: 3px solid var(--card-color) !important;">
@@ -399,6 +407,48 @@ $ek_odeme_turleri = [
                                             </div>
                                             <span class="text-muted small fw-bold"
                                                 style="font-size: 0.65rem;">KESİNTİ</span>
+                                        </div>
+                                        <p class="text-muted mb-1 small fw-bold"
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">KESİNTİ TUTARI (HARİÇ İCRA)</p>
+                                        <h4 class="mb-0 fw-bold bordro-text-heading">
+                                            <?= number_format($toplamKesintiHaricIcra, 2, ',', '.') ?> <span
+                                                style="font-size: 0.85rem; font-weight: 600;">₺</span>
+                                        </h4>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Net Alacağı -->
+                            <div class="col-xl col-md-4">
+                                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                                    style="--card-color: #2a9d8f; border-bottom: 3px solid var(--card-color) !important;">
+                                    <div class="card-body p-3">
+                                        <div class="icon-label-container">
+                                            <div class="icon-box" style="background: rgba(42, 157, 143, 0.1);">
+                                                <i class="bx bx-wallet fs-4" style="color: #2a9d8f;"></i>
+                                            </div>
+                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">NET</span>
+                                        </div>
+                                        <p class="text-muted mb-1 small fw-bold"
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">NET ALACAĞI</p>
+                                        <h4 class="mb-0 fw-bold bordro-text-heading">
+                                            <?= number_format($toplamNetAlacagi, 2, ',', '.') ?> <span
+                                                style="font-size: 0.85rem; font-weight: 600;">₺</span>
+                                        </h4>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- İcra Kesintisi -->
+                            <div class="col-xl col-md-4">
+                                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                                    style="--card-color: #ef4444; border-bottom: 3px solid var(--card-color) !important;">
+                                    <div class="card-body p-3">
+                                        <div class="icon-label-container">
+                                            <div class="icon-box" style="background: rgba(239, 68, 68, 0.1);">
+                                                <i class="bx bx-shield-x fs-4 text-danger"></i>
+                                            </div>
+                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İCRA</span>
                                         </div>
                                         <p class="text-muted mb-1 small fw-bold"
                                             style="letter-spacing: 0.5px; opacity: 0.7;">İCRA KESİNTİSİ</p>
@@ -489,6 +539,8 @@ $ek_odeme_turleri = [
                                         <th class="text-center">Maaş Tipi</th>
                                         <th class="text-center">Gün</th>
                                         <th class="text-end">Toplam Alacağı</th>
+                                        <th class="text-end">Kesinti Tutarı</th>
+                                        <th class="text-end">Net Alacağı</th>
                                         <th class="text-end">İcra Kesintisi</th>
                                         <th class="text-end">Banka</th>
                                         <th class="text-end">Sodexo</th>
@@ -524,8 +576,7 @@ $ek_odeme_turleri = [
                                             }
 
                                             $isPrimUsulu = ($personel->maas_durumu ?? '') == 'Prim Usülü';
-                                            $displayMaas = ($personel->net_maas > 0) ? $personel->net_maas : ($isPrimUsulu ? $hesaplananEkOdeme : $personel->maas_tutari);
-                                            $displayEkOdeme = $isPrimUsulu ? 0 : $hesaplananEkOdeme;
+                                            $toplamAlacagiPersonel = ($personel->maas_tutari ?? 0) + $hesaplananEkOdeme;
 
                                             // İcra kesintisini al
                                             $icraKesintisi = 0;
@@ -533,6 +584,9 @@ $ek_odeme_turleri = [
                                                 $detay = json_decode($personel->hesaplama_detay, true);
                                                 $icraKesintisi = $detay['odeme_dagilimi']['icra_kesintisi'] ?? 0;
                                             }
+
+                                            $kesintiHaricIcra = ($personel->kesinti_tutar ?? 0) - $icraKesintisi;
+                                            $netAlacagi = $toplamAlacagiPersonel - $kesintiHaricIcra;
                                             ?>
                                             <?php
                                             // Elden ödeme artık model'de hesaplanıp kaydediliyor
@@ -661,8 +715,7 @@ $ek_odeme_turleri = [
                                                 </td>
                                                 <td class="text-center" style="font-size: 12px;">
                                                     <span class="badge bg-light text-dark border fw-medium px-2 py-1">
-                                                        <?= htmlspecialchars($personel->maas_durumu ?? '-') ?> /
-                                                        <?= number_format($personel->maas_tutari ?? 0, 0, ',', '.') ?> ₺
+                                                        <?= htmlspecialchars($personel->maas_durumu ?? '-') ?>
                                                     </span>
                                                 </td>
                                                 <td class="text-center fw-bold text-secondary">
@@ -672,7 +725,20 @@ $ek_odeme_turleri = [
                                                 <td class="text-end text-dark fw-bold">
                                                     <span class="cursor-pointer btn-detail text-primary"
                                                         data-id="<?= $personel->id ?>" title="Bordro Detayını Gör">
-                                                        <?= $displayMaas > 0 ? number_format($displayMaas, 2, ',', '.') . ' ₺' : '-' ?>
+                                                        <?= number_format($toplamAlacagiPersonel, 2, ',', '.') ?> ₺
+                                                    </span>
+                                                </td>
+                                                <td class="text-end text-danger fw-bold">
+                                                    <span class="cursor-pointer btn-kesinti-ekle text-danger"
+                                                        data-id="<?= $personel->personel_id ?>"
+                                                        data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>">
+                                                        <?= number_format($kesintiHaricIcra, 2, ',', '.') ?> ₺
+                                                    </span>
+                                                </td>
+                                                <td class="text-end text-success fw-bold">
+                                                    <span class="cursor-pointer btn-detail text-success"
+                                                        data-id="<?= $personel->id ?>">
+                                                        <?= number_format($netAlacagi, 2, ',', '.') ?> ₺
                                                     </span>
                                                 </td>
                                                 <td class="text-end text-danger fw-medium">
@@ -696,7 +762,7 @@ $ek_odeme_turleri = [
                                                         <input type="text"
                                                             class="form-control form-control-sm text-end update-sodexo money d-none"
                                                             style="width: 100px;" data-id="<?= $personel->id ?>"
-                                                            data-net="<?= number_format($personel->net_maas ?? 0, 2, '.', '') ?>"
+                                                            data-net="<?= number_format($netAlacagi, 2, '.', '') ?>"
                                                             data-banka="<?= number_format($personel->banka_odemesi ?? 0, 2, '.', '') ?>"
                                                             data-diger="<?= number_format($personel->diger_odeme ?? 0, 2, '.', '') ?>"
                                                             data-icra="<?= number_format($icraKesintisi, 2, '.', '') ?>"
@@ -722,10 +788,11 @@ $ek_odeme_turleri = [
                                                             <li>
                                                                 <a class="dropdown-item btn-odeme<?= $donemKapali ? ' disabled' : '' ?>"
                                                                     href="javascript:void(0);" data-id="<?= $personel->id ?>"
-                                                                    data-net="<?= $personel->net_maas ?? 0 ?>"
+                                                                    data-net="<?= $netAlacagi ?>"
                                                                     data-banka="<?= $personel->banka_odemesi ?? 0 ?>"
                                                                     data-sodexo="<?= $personel->sodexo_odemesi ?? 0 ?>"
                                                                     data-diger="<?= $personel->diger_odeme ?? 0 ?>"
+                                                                    data-icra="<?= $icraKesintisi ?>"
                                                                     data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>">
                                                                     <i class="mdi mdi-wallet-outline me-2 text-primary"></i> Ödeme
                                                                     Dağıt

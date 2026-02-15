@@ -88,6 +88,38 @@ $(document).ready(function () {
       },
     },
     ignore: ":hidden:not(select)",
+    errorElement: "span",
+    errorPlacement: function (error, element) {
+      error.addClass("invalid-feedback");
+      if (
+        element.hasClass("select2") &&
+        element.next(".select2-container").length
+      ) {
+        error.insertAfter(element.next(".select2-container"));
+      } else if (element.parent(".form-floating").length) {
+        error.insertAfter(element.parent(".form-floating"));
+      } else {
+        error.insertAfter(element);
+      }
+    },
+    highlight: function (element) {
+      $(element).addClass("is-invalid");
+      if ($(element).hasClass("select2")) {
+        $(element)
+          .next(".select2-container")
+          .find(".select2-selection")
+          .addClass("border-danger");
+      }
+    },
+    unhighlight: function (element) {
+      $(element).removeClass("is-invalid");
+      if ($(element).hasClass("select2")) {
+        $(element)
+          .next(".select2-container")
+          .find(".select2-selection")
+          .removeClass("border-danger");
+      }
+    },
   });
 
   // Kaydet Butonu Tıklama Olayı
@@ -254,24 +286,37 @@ $(document).ready(function () {
   $("#departman").on("change", function () {
     var selectedDepartmanlar = $(this).val();
     loadGorevOptions(selectedDepartmanlar);
+
+    // Departman temizlendiğinde ücreti de temizle
+    if (!selectedDepartmanlar || selectedDepartmanlar.length === 0) {
+      var $maasTutari = $("#maas_tutari");
+      if ($maasTutari.length) {
+        $maasTutari.val("₺0,00");
+      }
+    }
   });
 
   // Görev seçilince ilgili ücreti maaş tutarına aktar
   $("#gorev").on("change", function () {
     var selectedVal = $(this).val();
-    if (!selectedVal) return;
+    var ucret = 0;
 
-    var selectedOption = $(this).find('option[value="' + selectedVal + '"]');
-    var ucret = selectedOption.data("ucret");
+    if (selectedVal) {
+      var selectedOption = $(this).find('option[value="' + selectedVal + '"]');
+      ucret = selectedOption.data("ucret") || 0;
+    }
 
-    if (ucret && parseFloat(ucret) > 0) {
-      var formattedUcret = parseFloat(ucret)
-        .toFixed(2)
-        .replace(".", ",")
-        .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-      var $maasTutari = $("#maas_tutari");
-      if ($maasTutari.length) {
-        $maasTutari.val("₺" + formattedUcret);
+    var numericUcret = parseFloat(ucret) || 0;
+    var formattedUcret = numericUcret
+      .toFixed(2)
+      .replace(".", ",")
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+    var $maasTutari = $("#maas_tutari");
+    if ($maasTutari.length) {
+      $maasTutari.val("₺" + formattedUcret);
+
+      if (selectedVal && numericUcret > 0) {
         if (typeof showToast === "function") {
           showToast(
             selectedVal +

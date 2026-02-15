@@ -55,7 +55,7 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                         ?>
                     </div>
                     <div class="col-md-2 mb-2">
-                        <div class="d-flex align-items-start gap-1">
+                        <div class="d-flex align-items-start gap-1 flex-wrap">
                             <div class="form-floating form-floating-custom flex-grow-1">
                                 <select style="width:100%" class="form-select select2" id="gorev" name="gorev"
                                     data-current-gorev="<?php echo htmlspecialchars($personel->gorev ?? ''); ?>"

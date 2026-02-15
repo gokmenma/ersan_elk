@@ -46,6 +46,26 @@ $allPersonel = array_map(function ($item) use ($id, &$selectedOption) {
 }, $allPersonel);
 
 $activeTab = $_GET['tab'] ?? 'home';
+
+$tabs = [
+    'home' => ['label' => 'Genel Bilgiler', 'icon' => 'fas fa-home'],
+    'calisma' => ['label' => 'Çalışma Bilgileri', 'icon' => 'far fa-user'],
+    'finansal' => ['label' => 'Finansal Bilgileri', 'icon' => 'fas fa-wallet'],
+    'diger' => ['label' => 'Diğer Bilgiler', 'icon' => 'far fa-envelope'],
+];
+
+if ($id > 0) {
+    $tabs += [
+        'izinler' => ['label' => 'İzin/Rapor/Eksik Gün', 'icon' => 'bx bx-calendar-event'],
+        'zimmetler' => ['label' => 'Zimmetler', 'icon' => 'bx bx-devices'],
+        'kesintiler' => ['label' => 'Kesintiler', 'icon' => 'bx bx-minus-circle'],
+        'ek_odemeler' => ['label' => 'Ek Ödemeler', 'icon' => 'bx bx-plus-circle'],
+        'icralar' => ['label' => 'İcralar', 'icon' => 'bx bx-gavel'],
+        'finansal_islemler' => ['label' => 'Hesap Hareketleri', 'icon' => 'bx bx-lira'],
+        'evraklar' => ['label' => 'Evraklar', 'icon' => 'bx bx-file'],
+        'puantaj' => ['label' => 'Puantaj/İş Takip', 'icon' => 'bx bx-time-five'],
+    ];
+}
 ?>
 <div class="container-fluid">
 
@@ -139,48 +159,11 @@ $activeTab = $_GET['tab'] ?? 'home';
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end mobile-tabs-dropdown"
                                             aria-labelledby="mobileTabsMenuBtn">
-                                            <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'home' ? 'active' : ''; ?>"
-                                                    href="javascript:void(0);" data-target="#home">Genel Bilgiler <i
-                                                        class="fas fa-home ms-2"></i></a></li>
-                                            <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'calisma' ? 'active' : ''; ?>"
-                                                    href="javascript:void(0);" data-target="#calisma">Çalışma Bilgileri
-                                                    <i class="far fa-user ms-2"></i></a></li>
-                                            <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'finansal' ? 'active' : ''; ?>"
-                                                    href="javascript:void(0);" data-target="#finansal">Finansal Bilgiler
-                                                    <i class="fas fa-wallet ms-2"></i></a></li>
-                                            <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'diger' ? 'active' : ''; ?>"
-                                                    href="javascript:void(0);" data-target="#diger">Diğer Bilgiler <i
-                                                        class="far fa-envelope ms-2"></i></a></li>
-                                            <?php if ($id > 0): ?>
-                                                <li>
-                                                    <hr class="dropdown-divider">
-                                                </li>
-                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'izinler' ? 'active' : ''; ?>"
-                                                        href="javascript:void(0);" data-target="#izinler">İzin/Rapor/Eksik
-                                                        Gün <i class="bx bx-calendar-event ms-2"></i></a></li>
-                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'zimmetler' ? 'active' : ''; ?>"
-                                                        href="javascript:void(0);" data-target="#zimmetler">Zimmetler <i
-                                                            class="bx bx-devices ms-2"></i></a></li>
-                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'kesintiler' ? 'active' : ''; ?>"
-                                                        href="javascript:void(0);" data-target="#kesintiler">Kesintiler <i
-                                                            class="bx bx-minus-circle ms-2"></i></a></li>
-                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'ek_odemeler' ? 'active' : ''; ?>"
-                                                        href="javascript:void(0);" data-target="#ek_odemeler">Ek Ödemeler <i
-                                                            class="bx bx-plus-circle ms-2"></i></a></li>
-                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'icralar' ? 'active' : ''; ?>"
-                                                        href="javascript:void(0);" data-target="#icralar">İcralar <i
-                                                            class="bx bx-gavel ms-2"></i></a></li>
-                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'finansal_islemler' ? 'active' : ''; ?>"
-                                                        href="javascript:void(0);" data-target="#finansal_islemler">Hesap
-                                                        Hareketleri <i class="bx bx-lira ms-2"></i></a></li>
-                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'evraklar' ? 'active' : ''; ?>"
-                                                        href="javascript:void(0);" data-target="#evraklar">Evraklar <i
-                                                            class="bx bx-file ms-2"></i></a></li>
-
-                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === 'puantaj' ? 'active' : ''; ?>"
-                                                        href="javascript:void(0);" data-target="#puantaj">Puantaj/İş Takip
-                                                        <i class="bx bx-time-five ms-2"></i></a></li>
-                                            <?php endif; ?>
+                                            <?php foreach ($tabs as $key => $tab): ?>
+                                                <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === $key ? 'active' : ''; ?>"
+                                                        href="javascript:void(0);"
+                                                        data-target="#<?php echo $key; ?>"><?php echo $tab['label']; ?></a></li>
+                                            <?php endforeach; ?>
                                         </ul>
                                     </div>
                                 </div>
@@ -188,60 +171,52 @@ $activeTab = $_GET['tab'] ?? 'home';
                         </div>
                     </div>
                 </div>
-                <div class="card-body">
-
+                <div class="card-body pb-0">
                     <!-- Nav tabs (Desktop Only) -->
-                    <ul class="nav nav-tabs d-none d-md-flex" role="tablist" id="desktopTabs">
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo $activeTab === 'home' ? 'active' : ''; ?>"
-                                data-bs-toggle="tab" href="#home" role="tab">
-                                <i class="fas fa-home me-1"></i> Genel Bilgiler
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo $activeTab === 'calisma' ? 'active' : ''; ?>"
-                                data-bs-toggle="tab" href="#calisma" role="tab">
-                                <i class="far fa-user me-1"></i> Çalışma Bilgileri
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo $activeTab === 'finansal' ? 'active' : ''; ?>"
-                                data-bs-toggle="tab" href="#finansal" role="tab">
-                                <i class="fas fa-wallet me-1"></i> Finansal Bilgileri
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo $activeTab === 'diger' ? 'active' : ''; ?>"
-                                data-bs-toggle="tab" href="#diger" role="tab">
-                                <i class="far fa-envelope me-1"></i> Diğer Bilgiler
-                            </a>
-                        </li>
-                        <?php if ($id > 0): ?>
-                            <li class="nav-item"><a class="nav-link <?php echo $activeTab === 'izinler' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#izinler" role="tab">İzin/Rapor/Eksik Gün</a></li>
-                            <li class="nav-item"><a
-                                    class="nav-link <?php echo $activeTab === 'zimmetler' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#zimmetler" role="tab">Zimmetler</a></li>
-                            <li class="nav-item"><a
-                                    class="nav-link <?php echo $activeTab === 'kesintiler' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#kesintiler" role="tab">Kesintiler</a></li>
-                            <li class="nav-item"><a
-                                    class="nav-link <?php echo $activeTab === 'ek_odemeler' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#ek_odemeler" role="tab">Ek Ödemeler</a></li>
-                            <li class="nav-item"><a class="nav-link <?php echo $activeTab === 'icralar' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#icralar" role="tab">İcralar</a></li>
-                            <li class="nav-item"><a
-                                    class="nav-link <?php echo $activeTab === 'finansal_islemler' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#finansal_islemler" role="tab">Hesap Hareketleri</a></li>
-                            <li class="nav-item"><a
-                                    class="nav-link <?php echo $activeTab === 'evraklar' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#evraklar" role="tab">Evraklar</a></li>
+                    <div class="d-none d-md-flex align-items-center gap-2">
+                        <div class="calendar-nav d-flex gap-1">
+                            <button type="button"
+                                class="btn border shadow-sm d-flex align-items-center justify-content-center"
+                                id="scrollTabsLeft"
+                                style="height: 38px; width: 38px; border-radius: 8px !important; background: #fff;">
+                                <i class="bx bx-chevron-left fs-4"></i>
+                            </button>
+                        </div>
 
-                            <li class="nav-item"><a class="nav-link <?php echo $activeTab === 'puantaj' ? 'active' : ''; ?>"
-                                    data-bs-toggle="tab" href="#puantaj" role="tab">Puantaj/İş Takip</a></li>
-                        <?php endif; ?>
-                    </ul>
+                        <div class="flex-grow-1 border rounded shadow-sm p-1 overflow-hidden"
+                            style="background: #fdfdfd; height: 48px;">
+                            <div class="d-flex align-items-center gap-1 overflow-auto no-scrollbar" id="desktopTabs"
+                                role="tablist" style="scroll-behavior: smooth; height: 100%;">
+                                <?php
+                                $count = count($tabs);
+                                $i = 0;
+                                foreach ($tabs as $key => $tab):
+                                    $i++;
+                                    $isActive = ($activeTab === $key);
+                                    ?>
+                                    <a class="nav-link btn <?php echo $isActive ? 'active' : ''; ?> d-flex align-items-center px-3"
+                                        style="white-space: nowrap; border-radius: 8px !important; transition: all 0.2s ease; height: 38px; flex-shrink: 0;"
+                                        data-bs-toggle="tab" href="#<?php echo $key; ?>" role="tab">
+                                        <?php echo $tab['label']; ?>
+                                    </a>
+                                    <?php if ($i < $count): ?>
+                                        <div class="vr mx-1"
+                                            style="height: 25px; align-self: center; opacity: 0.15; flex-shrink: 0;">
+                                        </div>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
 
+                        <div class="calendar-nav d-flex gap-1">
+                            <button type="button"
+                                class="btn border shadow-sm d-flex align-items-center justify-content-center"
+                                id="scrollTabsRight"
+                                style="height: 38px; width: 38px; border-radius: 8px !important; background: #fff;">
+                                <i class="bx bx-chevron-right fs-4"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <style>
                     #personelTabContent>.tab-pane,
@@ -252,6 +227,34 @@ $activeTab = $_GET['tab'] ?? 'home';
                     #personelTabContent>.tab-pane.active,
                     #personelTabContent>form>.tab-pane.active {
                         display: block;
+                    }
+
+                    #desktopTabs .nav-link {
+                        border: none;
+                        background: transparent;
+                        color: #6c757d;
+                        font-weight: 500;
+                    }
+
+                    #desktopTabs .nav-link.active {
+                        background-color: var(--bs-primary) !important;
+                        color: #fff !important;
+                        font-weight: 700 !important;
+                        box-shadow: 0 4px 10px rgba(var(--bs-primary-rgb), 0.3);
+                    }
+
+                    #desktopTabs .nav-link:hover:not(.active) {
+                        background-color: #f1f1f1 !important;
+                        color: var(--bs-primary) !important;
+                    }
+
+                    .no-scrollbar::-webkit-scrollbar {
+                        display: none;
+                    }
+
+                    .no-scrollbar {
+                        -ms-overflow-style: none;
+                        scrollbar-width: none;
                     }
 
                     @media (max-width: 768px) {
@@ -348,6 +351,14 @@ $activeTab = $_GET['tab'] ?? 'home';
                         fill: none;
                         display: inline-block;
                         vertical-align: middle;
+                    }
+
+                    .invalid-feedback {
+                        display: block !important;
+                        width: 100%;
+                        margin-top: 0.25rem;
+                        font-size: 80%;
+                        color: #f46a6a;
                     }
                 </style>
                 <div class="tab-content p-3 text-muted" id="personelTabContent">
@@ -587,6 +598,35 @@ $activeTab = $_GET['tab'] ?? 'home';
             var targetId = activeTabLink.getAttribute('href');
             var targetPane = document.querySelector(targetId);
             loadTabContent(targetPane);
+        }
+
+        // Tab Kaydırma İşlemleri
+        const scrollAmount = 300;
+        const tabsContainer = document.getElementById('desktopTabs');
+
+        if (tabsContainer) {
+            $('#scrollTabsLeft').on('click', function (e) {
+                e.preventDefault();
+                tabsContainer.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+            });
+
+            $('#scrollTabsRight').on('click', function (e) {
+                e.preventDefault();
+                tabsContainer.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+            });
+
+            // Sayfa yüklendiğinde aktif tabı görünür yap
+            setTimeout(() => {
+                const activeTab = tabsContainer.querySelector('.nav-link.active');
+                if (activeTab) {
+                    const containerRect = tabsContainer.getBoundingClientRect();
+                    const tabRect = activeTab.getBoundingClientRect();
+
+                    if (tabRect.left < containerRect.left || tabRect.right > containerRect.right) {
+                        activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }
+                }
+            }, 300);
         }
     });
 </script>

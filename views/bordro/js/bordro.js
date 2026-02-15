@@ -737,18 +737,19 @@ $(document).ready(function () {
     }
   });
 
-  // Ödeme Dağıt Butonu
   $(document).on("click", ".btn-odeme", function () {
     const id = $(this).data("id");
     const ad = $(this).data("ad");
     const net = parseFloat($(this).data("net")) || 0;
     const banka = parseFloat($(this).data("banka")) || 0;
     const sodexo = parseFloat($(this).data("sodexo")) || 0;
+    const icra = parseFloat($(this).data("icra")) || 0;
     const diger = parseFloat($(this).data("diger")) || 0;
 
     $("#odeme_bordro_id").val(id);
     $("#odeme_personel_ad").text(ad);
-    $("#odeme_net_maas").text(formatMoney(net) + " ₺");
+    $("#odeme_net_maas").text(formatMoney(net) + " ₺ (Net Alacağı)");
+    $("#odeme_icra_tutari").val(icra); // Hidden input if added or just for calc
     $("#banka_odemesi").val(banka);
     $("#sodexo_odemesi").val(sodexo);
     $("#diger_odeme").val(diger);
@@ -1389,14 +1390,21 @@ function hesaplaEldenOdeme() {
     parseFloat(
       $("#odeme_net_maas")
         .text()
+        .split("(")[0]
         .replace(/[^\d,]/g, "")
         .replace(",", "."),
+    ) || 0;
+  const icra =
+    parseFloat(
+      $(".btn-odeme[data-id='" + $("#odeme_bordro_id").val() + "']").data(
+        "icra",
+      ),
     ) || 0;
   const banka = parseFloat($("#banka_odemesi").val()) || 0;
   const sodexo = parseFloat($("#sodexo_odemesi").val()) || 0;
   const diger = parseFloat($("#diger_odeme").val()) || 0;
 
-  const elden = net - banka - sodexo - diger;
+  const elden = net - banka - sodexo - diger - icra;
   $("#elden_odeme_goster").text(formatMoney(elden >= 0 ? elden : 0) + " ₺");
 
   if (elden < 0) {

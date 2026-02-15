@@ -132,11 +132,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'url' => '?page=nobet'
                 ];
 
-                if ($pushService->sendToPersonel($personel_id, $payload)) {
+                if ($pushService->sendToPersonel($personel_id, $payload) === true) {
                     $SystemLog->logAction($userId, 'Nöbet Hatırlatma', "{$personel->adi_soyadi} için hatırlatma bildirimi gönderildi.");
                     echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Hatırlatma bildirimi başarıyla gönderildi.']);
                 } else {
-                    throw new Exception("Bildirim gönderilemedi.");
+                    throw new Exception("Bildirim gönderilemedi. Personelin Push aboneliği olmayabilir veya geçerli bir e-posta adresi kayıtlı değildir.");
                 }
                 break;
 

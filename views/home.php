@@ -408,11 +408,11 @@ if (Gate::allows("ana_sayfa")) {
                                     <small class="text-muted font-size-11"><?php echo $nobet->cep_telefonu; ?></small>
                                 </div>
                                 <?php if ($nobet->cep_telefonu): ?>
-                                    <a href="tel:<?php echo $nobet->cep_telefonu; ?>" class="text-success ms-1">
+                                    <a href="tel:<?php echo $nobet->cep_telefonu; ?>" class="text-success ms-1 bx-no-drag">
                                         <i class="bx bx-phone"></i>
                                     </a>
                                 <?php endif; ?>
-                                <a href="javascript:void(0);" class="text-primary ms-1 btn-send-nobet-reminder"
+                                <a href="javascript:void(0);" class="text-primary ms-1 btn-send-nobet-reminder bx-no-drag"
                                     data-id="<?php echo Security::encrypt($nobet->personel_id); ?>"
                                     data-name="<?php echo $nobet->adi_soyadi; ?>" title="Bildirim Gönder">
                                     <i class="bx bx-bell"></i>
@@ -2551,7 +2551,7 @@ if (Gate::allows("ana_sayfa")) {
             // Dashboard Sortable Logic
             dashboard.sortable({
                 handle: ".card-header, .card-header-flex, .bordro-summary-card",
-                cancel: ".btn-api-sync, .stats-local-btn, .btn",
+                cancel: ".btn-api-sync, .stats-local-btn, .btn, .bx-no-drag",
                 placeholder: "ui-sortable-placeholder",
                 start: function (e, ui) {
                     const classes = ui.item.attr('class');
