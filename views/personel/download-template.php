@@ -91,6 +91,7 @@ try {
         'Sodexo Kart No' => 'sodexo_kart_no',
         'Günlük Ücret' => 'gunluk_ucret',
         'Bes Kesintisi Var mı?' => 'bes_kesintisi_varmi',
+        'Araç Kullanım' => 'arac_kullanim',
     ];
 
     // Başlıkları yaz ve sütun indekslerini kaydet
@@ -255,6 +256,7 @@ try {
     $personelSinifiList = '"Beyaz Yaka,Mavi Yaka"';
     $maasDurumuList = '"Brüt,Net,Prim Usülü"';
     $aktifList = '"1,0"';
+    $aracKullanimList = '"Yok,Kendi Aracı,Şirket aracı"';
 
     // Veri Doğrulama (Data Validation) - 100 satır için uygula
     for ($i = 2; $i <= $rowCount; $i++) {
@@ -349,6 +351,16 @@ try {
             $objValidation->setAllowBlank(true);
             $objValidation->setShowDropDown(true);
             $objValidation->setFormula1($evetHayirList);
+        }
+
+        // Araç Kullanımı
+        if (isset($fieldToCol['arac_kullanim'])) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($fieldToCol['arac_kullanim']);
+            $objValidation = $sheet->getCell($col . $i)->getDataValidation();
+            $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $objValidation->setAllowBlank(true);
+            $objValidation->setShowDropDown(true);
+            $objValidation->setFormula1($aracKullanimList);
         }
     }
 

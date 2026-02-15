@@ -77,6 +77,9 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                     <div class="col-md-2 mb-2">
                         <?php echo Form::FormSelect2("saha_takibi", ['1' => 'Evet', '0' => 'Hayır'], $personel->saha_takibi ?? '0', "Saha Takibi", "map-pin"); ?>
                     </div>
+                    <div class="col-md-2 mb-2">
+                        <?php echo Form::FormSelect2("arac_kullanim", ['Yok' => 'Yok', 'Kendi Aracı' => 'Kendi Aracı', 'Şirket aracı' => 'Şirket aracı'], $personel->arac_kullanim ?? 'Yok', "Araç Kullanım", "truck"); ?>
+                    </div>
                 </div>
 
 

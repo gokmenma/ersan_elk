@@ -5,6 +5,8 @@ $(document).on("click", "#actionEkle", function () {
   $("#is_turu").val("").trigger("change");
   $("#is_turu_id").val(0);
   $("#is_emri_sonucu").val("");
+  $("#is_turu_ucret").val("");
+  $("#aracli_personel_is_turu_ucret").val("");
   $("#rapor_sekmesi").val("").trigger("change");
   $("#actionModalLabel").text("İş Türü Ekle");
 });
@@ -105,6 +107,9 @@ $(document).on("click", ".duzenle", function (e) {
 
         $("#is_emri_sonucu").val(data.data.is_emri_sonucu);
         $("#is_turu_ucret").val(data.data.is_turu_ucret);
+        $("#aracli_personel_is_turu_ucret").val(
+          data.data.aracli_personel_is_turu_ucret,
+        );
         $("#rapor_sekmesi").val(data.data.rapor_sekmesi).trigger("change");
         $("#aciklama").val(data.data.aciklama);
         $("#actionModalLabel").text("İş Türü Düzenle");
@@ -231,4 +236,10 @@ $(document).on("submit", "#formExcelYukle", function (e) {
         confirmButtonText: "Tamam",
       });
     });
+});
+
+$(document).on("input", "#is_turu_ucret", function () {
+  if ($("#is_turu_id").val() == 0) {
+    $("#aracli_personel_is_turu_ucret").val($(this).val()).trigger("input");
+  }
 });

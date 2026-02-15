@@ -37,6 +37,7 @@ $canManageRules = Gate::allows('ekip_kodu_kurallari');
             width: 18px !important;
             height: 18px !important;
         }
+
         .btn-label .label-icon {
             padding: 0;
             display: flex;
@@ -67,7 +68,7 @@ $canManageRules = Gate::allows('ekip_kodu_kurallari');
 
                 </div>
 
-                <div class="card-body overflow-auto">
+                <div class="card-body">
 
 
                     <table id="actionTable" class="datatable table table-bordered nowrap w-100">
@@ -122,7 +123,7 @@ $canManageRules = Gate::allows('ekip_kodu_kurallari');
                                                     data-bs-boundary="viewport" aria-haspopup="true" aria-expanded="false">
                                                     <i class="bx bx-dots-vertical-rounded font-size-24 text-dark"></i>
                                                 </a>
-                                                <div class="dropdown-menu">
+                                                <div class="dropdown-menu dropdown-menu-end">
                                                     <a href="#" class="dropdown-item duzenle"
                                                         data-id="<?php echo $enc_id; ?>"><span
                                                             class="mdi mdi-account-edit font-size-18"></span>
@@ -130,6 +131,10 @@ $canManageRules = Gate::allows('ekip_kodu_kurallari');
                                                     <a href="#" class="dropdown-item sil" data-id="<?php echo $enc_id; ?>">
                                                         <span class="mdi mdi-delete font-size-18"></span>
                                                         Sil</a>
+                                                    <a href="#" class="dropdown-item gecmis"
+                                                        data-id="<?php echo $enc_id; ?>">
+                                                        <span class="mdi mdi-history font-size-18"></span>
+                                                        Geçmiş</a>
                                                 </div>
                                             </div>
                                         </div>
@@ -376,9 +381,40 @@ $canManageRules = Gate::allows('ekip_kodu_kurallari');
 
                 <button type="button" id="actionKaydet"
                     class="btn btn-primary waves-effect btn-label waves-light float-end">
-                   <i class="bx bx-save label-icon"></i>Kaydet
+                    <i class="bx bx-save label-icon"></i>Kaydet
                 </button>
-  
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Geçmiş Modal -->
+<div class="modal fade" id="gecmisModal" tabindex="-1" aria-labelledby="gecmisModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="gecmisModalLabel">Ekip Kodu Geçmişi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped" id="gecmisTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Personel</th>
+                                <th>Başlangıç Tarihi</th>
+                                <th>Bitiş Tarihi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gecmisBody">
+                            <!-- Veriler JS ile doldurulacak -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
             </div>
         </div>
     </div>

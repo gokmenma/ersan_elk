@@ -360,6 +360,11 @@ if (Gate::canWithMessage("personel_listesi")) {
                                                 <label class="form-label text-muted font-size-13">SGK Yapılan Firma</label>
                                                 <div id="detailSgkFirma" class="fw-bold text-dark border-bottom pb-1"></div>
                                             </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label text-muted font-size-13">Araç Kullanım</label>
+                                                <div id="detailAracKullanim" class="fw-bold text-dark border-bottom pb-1">
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

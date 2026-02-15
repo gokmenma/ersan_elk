@@ -386,3 +386,44 @@ $(document).on("click", "#kuralKaydet", function () {
       }
     });
 });
+
+$(document).on("click", ".gecmis", function (e) {
+  e.preventDefault();
+  var id = $(this).data("id");
+
+  var formData = new FormData();
+  formData.append("action", "ekip-kodu-gecmis-getir");
+  formData.append("id", id);
+
+  fetch(url, {
+    method: "POST",
+    body: formData,
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.status == "success") {
+        var html = "";
+        data.data.forEach(function (item) {
+          html += `<tr>
+            <td>${item.adi_soyadi}</td>
+            <td>${item.baslangic_tarihi || "-"}</td>
+            <td>${
+              item.bitis_tarihi && item.bitis_tarihi != "0000-00-00"
+                ? item.bitis_tarihi
+                : "Devam Ediyor"
+            }</td>
+          </tr>`;
+        });
+
+        if (data.data.length === 0) {
+          html =
+            '<tr><td colspan="3" class="text-center">Geçmiş kayıt bulunamadı.</td></tr>';
+        }
+
+        $("#gecmisBody").html(html);
+        $("#gecmisModal").modal("show");
+      } else {
+        swal.fire("Hata", data.message, "error");
+      }
+    });
+});

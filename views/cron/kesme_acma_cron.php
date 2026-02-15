@@ -212,7 +212,7 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
     $SystemLog = new SystemLogModel();
 
     $yeniKayit = 0;
-    $guncellenenKayit = 0;
+    $silinenKayit = 0;
     $atlanAnKayitlar = 0;
     $bosSonucSayisi = 0;
     $atlanAnListesi = [];
@@ -223,185 +223,164 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
 
         cronLog("API sorgusu yapılıyor: Tarih=$tarihAPI");
 
-        // API'den verileri çek (pagination ile)
+        // PHP zaman aşımını uzat
+        set_time_limit(600);
+        ini_set('memory_limit', '512M');
+
         $apiData = [];
         $offset = 0;
-        $limit = 100;
+        $limit = 500;
         $hasMore = true;
-
-        // PHP zaman aşımını uzat
-        set_time_limit(300);
 
         while ($hasMore) {
             $apiResponse = $KesmeAcmaSvc->getData($tarihAPI, $tarihAPI, $limit, $offset);
-
-            if (!($apiResponse['success'] ?? false)) {
-                cronLog("API başarısız yanıt: " . json_encode($apiResponse));
+            if (!($apiResponse['success'] ?? false))
                 break;
-            }
 
             $batchData = $apiResponse['data']['data'] ?? [];
             if (empty($batchData)) {
                 $hasMore = false;
             } else {
-                foreach ($batchData as &$item) {
-                    if (!isset($item['TARIH'])) {
-                        $item['TARIH'] = $tarih;
-                    }
+                foreach ($batchData as $item) {
+                    $item['TARIH'] = $tarih;
+                    $apiData[] = $item;
                 }
-                $apiData = array_merge($apiData, $batchData);
                 if (count($batchData) < $limit) {
                     $hasMore = false;
                 } else {
                     $offset += $limit;
                 }
             }
-
-            if ($offset >= 1000)
-                break; // Güvenlik sınırı
+            if ($offset >= 5000)
+                break;
         }
 
         cronLog("API'den " . count($apiData) . " kayıt geldi.");
+        if (empty($apiData))
+            return ['yeni_kayit' => 0, 'guncellenen_kayit' => 0, 'toplam_api' => 0, 'mesaj' => 'API\'den veri gelmedi.'];
 
-        if (empty($apiData)) {
-            return [
-                'yeni_kayit' => 0,
-                'guncellenen_kayit' => 0,
-                'toplam_api' => 0,
-                'mesaj' => 'API\'den veri gelmedi.'
-            ];
+        // 1. Ekip ve Personel lookup verilerini yükle
+        $stmtAllEkip = $Puantaj->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
+        $stmtAllEkip->execute();
+        $ekipKodlari = [];
+        while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
+            if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $ek['tur_adi'], $m)) {
+                $ekipKodlari[$m[1]] = $ek['id'];
+            }
         }
 
+        $stmtAllPersonel = $Puantaj->db->prepare("SELECT id, ekip_no FROM personel WHERE silinme_tarihi IS NULL");
+        $stmtAllPersonel->execute();
+        $personelByEkip = [];
+        while ($p = $stmtAllPersonel->fetch(PDO::FETCH_ASSOC)) {
+            if (($p['ekip_no'] ?? 0) > 0) {
+                $personelByEkip[$p['ekip_no']] = $p['id'];
+            }
+        }
+
+        $stmtAllHist = $Puantaj->db->prepare("SELECT ekip_kodu_id, personel_id, baslangic_tarihi, bitis_tarihi FROM personel_ekip_gecmisi WHERE firma_id = ?");
+        $stmtAllHist->execute([$firmaId]);
+        $ekipGecmisi = [];
+        while ($h = $stmtAllHist->fetch(PDO::FETCH_ASSOC)) {
+            $ekipGecmisi[$h['ekip_kodu_id']][] = $h;
+        }
+
+        // 2. Mevcut kayıtları temizle (Soft Delete)
+        $deleteStmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih = ? AND silinme_tarihi IS NULL");
+        $deleteStmt->execute([$firmaId, $tarih]);
+        $silinenKayit = $deleteStmt->rowCount();
+
+        // 3. API verilerini işle
+        $insertBatch = [];
         foreach ($apiData as $veri) {
-            // API'den gelen alan adlarını eşleştir
-            $firmaAdi = $veri['FIRMAADI'] ?? 'ER-SAN ELEKTRİK';
             $isEmriTipi = $veri['ISEMRITIPI'] ?? '';
-            $ekipKodu = $veri['EKIP'] ?? '';
+            $ekipKoduStr = $veri['EKIP'] ?? '';
             $isEmriSonucu = $veri['SONUC'] ?? '';
             $sonuclanmis = $veri['SONUCLANMIS'] ?? 0;
             $acikOlanlar = $veri['ACIK'] ?? 0;
 
-            // SONUCLANMIS 0 olan kayıtları atla
             if ((int) $sonuclanmis === 0) {
                 $bosSonucSayisi++;
                 continue;
             }
 
-            // Tarih normalize
-            $tarihRaw = $veri['TARIH'];
-            $normDate = \App\Helper\Date::convertExcelDate($tarihRaw, 'Y-m-d') ?: $tarihRaw;
+            $normDate = $tarih;
+            $islemId = md5($normDate . '|' . $ekipKoduStr . '|' . $isEmriTipi . '|' . $isEmriSonucu);
 
-            // Unique ID oluştur
-            $rawIdString = $normDate . '|' . $ekipKodu . '|' . $isEmriTipi . '|' . $isEmriSonucu;
-            $islemId = md5($rawIdString);
-
-            // Tanimlamalar'dan is_emri_sonucu_id bul
+            // İş Türü ID Bul/Oluştur
             $existingTur = $Tanimlamalar->isEmriSonucu($isEmriTipi, $isEmriSonucu);
-
-            if (!$existingTur && (!empty($isEmriTipi) || !empty($isEmriSonucu))) {
-                $dataTanim = [
-                    'firma_id' => $firmaId ?: ($_SESSION['firma_id'] ?? 0),
+            $isEmriSonucuId = $existingTur ? $existingTur->id : 0;
+            if (!$isEmriSonucuId && (!empty($isEmriTipi) || !empty($isEmriSonucu))) {
+                $encryptedId = $Tanimlamalar->saveWithAttr([
+                    'firma_id' => $firmaId,
                     'grup' => 'is_turu',
                     'tur_adi' => $isEmriTipi,
                     'is_emri_sonucu' => $isEmriSonucu,
-                    'aciklama' => "Cron sorgulama sırasında otomatik oluşturuldu"
-                ];
-                $encryptedId = $Tanimlamalar->saveWithAttr($dataTanim);
+                    'aciklama' => "Cron sorgulama"
+                ]);
                 $isEmriSonucuId = \App\Helper\Security::decrypt($encryptedId);
-            } else {
-                $isEmriSonucuId = $existingTur ? $existingTur->id : 0;
             }
 
-            $saveTipi = $isEmriSonucuId ? '' : $isEmriTipi;
-            $saveSonucu = $isEmriSonucuId ? '' : $isEmriSonucu;
-
-            // Daha önce aynı islem_id ile kayıt var mı?
-            $checkStmt = $Puantaj->db->prepare("SELECT id, islem_id FROM yapilan_isler WHERE islem_id = ? AND silinme_tarihi IS NULL");
-            $checkStmt->execute([$islemId]);
-            $mevcutKayit = $checkStmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($mevcutKayit) {
-                // Güncelle
-                $updateStmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET sonuclanmis = ?, acik_olanlar = ?, tarih = ?, is_emri_sonucu_id = ?, is_emri_tipi = ?, is_emri_sonucu = ? WHERE islem_id = ?");
-                $updateStmt->execute([$sonuclanmis, $acikOlanlar, $normDate, $isEmriSonucuId, $saveTipi, $saveSonucu, $islemId]);
-                $guncellenenKayit++;
-            } else {
-                // Personel eşleştirme (ekip kodundan)
-                $personelId = 0;
-                $defId = 0;
-                $ekipNo = 0;
-                if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $ekipKodu, $m)) {
-                    $ekipNo = $m[1];
-                }
-
-                if ($ekipNo > 0) {
-                    $stmtDef = $Puantaj->db->prepare("SELECT id FROM tanimlamalar WHERE (tur_adi LIKE ? OR tur_adi LIKE ?) AND grup = 'ekip_kodu' AND silinme_tarihi IS NULL LIMIT 1");
-                    $stmtDef->execute(["%EKİP-$ekipNo", "%EKIP-$ekipNo"]);
-                    $defId = $stmtDef->fetchColumn();
-
-                    if ($defId) {
-                        // Ekip geçmişinden personeli bul
-                        $stmtHist = $Puantaj->db->prepare("SELECT personel_id FROM personel_ekip_gecmisi 
-                                                         WHERE ekip_kodu_id = ? AND baslangic_tarihi <= ? 
-                                                         AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?) 
-                                                         LIMIT 1");
-                        $stmtHist->execute([$defId, $normDate, $normDate]);
-                        $personelId = $stmtHist->fetchColumn();
-
-                        if (!$personelId) {
-                            $stmtPersonel = $Puantaj->db->prepare("SELECT id FROM personel WHERE ekip_no = ? AND silinme_tarihi IS NULL LIMIT 1");
-                            $stmtPersonel->execute([$defId]);
-                            $personelId = $stmtPersonel->fetchColumn() ?: 0;
+            // Ekip ve Personel Bul
+            $personelId = 0;
+            $defId = 0;
+            $ekipNo = 0;
+            if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $ekipKoduStr, $m)) {
+                $ekipNo = $m[1];
+                $defId = $ekipKodlari[$ekipNo] ?? 0;
+                if ($defId) {
+                    if (isset($ekipGecmisi[$defId])) {
+                        foreach ($ekipGecmisi[$defId] as $hist) {
+                            if ($hist['baslangic_tarihi'] <= $normDate && ($hist['bitis_tarihi'] === null || $hist['bitis_tarihi'] >= $normDate)) {
+                                $personelId = $hist['personel_id'];
+                                break;
+                            }
                         }
                     }
-                }
-
-                // Ekip bulunamadıysa atla
-                if ($defId === 0) {
-                    $atlanAnKayitlar++;
-                    $atlanAnListesi[] = $ekipKodu . " (API Verisi: " . ($veri['ISEMRITIPI'] ?? '') . " - " . ($veri['SONUC'] ?? '') . ")";
-                    continue;
-                }
-
-                // Yeni kayıt ekle
-                $insertStmt = $Puantaj->db->prepare("INSERT INTO yapilan_isler (islem_id, personel_id, ekip_kodu_id, firma_id, is_emri_sonucu_id, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $insertStmt->execute([
-                    $islemId,
-                    $personelId,
-                    $defId,
-                    $firmaId,
-                    $isEmriSonucuId,
-                    $saveTipi,
-                    $ekipKodu,
-                    $saveSonucu,
-                    $sonuclanmis,
-                    $acikOlanlar,
-                    $normDate
-                ]);
-                $yeniKayit++;
-
-                // Otomatik Demirbaş İşlemi
-                if ($personelId > 0) {
-                    $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucu, $normDate, $islemId, $sonuclanmis);
+                    if (!$personelId)
+                        $personelId = $personelByEkip[$defId] ?? 0;
                 }
             }
+
+            if ($defId === 0) {
+                $atlanAnKayitlar++;
+                $atlanAnListesi[] = $ekipKoduStr . " (API: $isEmriTipi - $isEmriSonucu)";
+                continue;
+            }
+
+            $insertBatch[] = [$islemId, $personelId, $defId, $firmaId, $isEmriSonucuId, $isEmriTipi, $ekipKoduStr, $isEmriSonucu, $sonuclanmis, $acikOlanlar, $normDate];
+            $yeniKayit++;
+
+            // Demirbaş işlemi
+            if ($personelId > 0)
+                $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucu, $normDate, $islemId, $sonuclanmis);
         }
 
-        cronLog("$yeniKayit yeni kayıt, $guncellenenKayit güncellenen, $atlanAnKayitlar atlanan, $bosSonucSayisi boş sonuç.");
+        // 4. Toplu Kayıt
+        if (!empty($insertBatch)) {
+            $Puantaj->db->beginTransaction();
+            $chunks = array_chunk($insertBatch, 500);
+            foreach ($chunks as $chunk) {
+                $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?)'));
+                $sql = "INSERT INTO yapilan_isler (islem_id, personel_id, ekip_kodu_id, firma_id, is_emri_sonucu_id, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih) VALUES $placeholders";
+                $stmt = $Puantaj->db->prepare($sql);
+                $flatParams = [];
+                foreach ($chunk as $row) {
+                    $flatParams = array_merge($flatParams, $row);
+                }
+                $stmt->execute($flatParams);
+            }
+            $Puantaj->db->commit();
+        }
+
+        cronLog("$yeniKayit yeni kayıt eklendi, $silinenKayit eski silindi.");
+        unset($apiData);
+        unset($insertBatch);
 
     } catch (Exception $e) {
-        cronLog("Kesme/Açma sorgulama hatası: " . $e->getMessage());
+        cronLog("HATA: " . $e->getMessage());
     }
 
-    // Log kaydet
-    $SystemLog->logAction(0, 'Cron - Online Kesme/Açma Sorgulama', "Firma $ilkFirma-$sonFirma, Tarih: $tarih. $yeniKayit yeni, $guncellenenKayit güncellenen kayıt.");
-
-    return [
-        'yeni_kayit' => $yeniKayit,
-        'guncellenen_kayit' => $guncellenenKayit,
-        'atlanAn' => $atlanAnKayitlar,
-        'atlanAnListesi' => array_unique($atlanAnListesi),
-        'bos_sonuc' => $bosSonucSayisi,
-        'toplam_api' => count($apiData ?? [])
-    ];
+    $SystemLog->logAction(0, 'Cron - Online Kesme/Açma Sorgulama', "Firma ID: $firmaId, Tarih: $tarih. $yeniKayit yeni kayıt, $silinenKayit silinen.");
+    return ['yeni_kayit' => $yeniKayit, 'silinen_kayit' => $silinenKayit, 'guncellenen_kayit' => 0, 'atlanAn' => $atlanAnKayitlar, 'atlanAnListesi' => array_unique($atlanAnListesi), 'bos_sonuc' => $bosSonucSayisi, 'toplam_api' => count($apiData ?? [])];
 }

@@ -486,4 +486,20 @@ class TanimlamalarModel extends Model
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
+    /**
+     * Ekip kodunun geçmişini getirir
+     * @param int $ekip_kodu_id Ekip kodu ID'si
+     * @return array Geçmiş listesi
+     */
+    public function getEkipGecmisi($ekip_kodu_id)
+    {
+        $sql = "SELECT peg.*, p.adi_soyadi 
+                FROM personel_ekip_gecmisi peg
+                JOIN personel p ON peg.personel_id = p.id
+                WHERE peg.ekip_kodu_id = ? AND peg.firma_id = ?
+                ORDER BY peg.baslangic_tarihi DESC, peg.id DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$ekip_kodu_id, $_SESSION['firma_id']]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
 }

@@ -101,6 +101,7 @@ try {
         'Sodexo Kart No' => 'sodexo_kart_no',
         'Günlük Ücret' => 'gunluk_ucret',
         'Bes Kesintisi Var mı?' => 'bes_kesintisi_varmi',
+        'Araç Kullanım' => 'arac_kullanim',
     ];
 
     // Personeller filter() metodu ile çekildi - firma_adi ve ekip_adi JOIN ile geliyor

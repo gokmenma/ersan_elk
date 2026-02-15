@@ -541,6 +541,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<tr><td class="text-muted">Departman:</td><td>' . htmlspecialchars($personel->departman ?? '-') . '</td></tr>';
                 $html .= '<tr><td class="text-muted">Görev:</td><td>' . htmlspecialchars($personel->gorev ?? '-') . '</td></tr>';
                 $html .= '<tr><td class="text-muted">İşe Giriş:</td><td>' . ($personel->ise_giris_tarihi ? date('d.m.Y', strtotime($personel->ise_giris_tarihi)) : '-') . '</td></tr>';
+                $html .= '<tr><td class="text-muted">Araç Kullanım:</td><td>' . htmlspecialchars($personel->arac_kullanim ?? 'Yok') . '</td></tr>';
                 $html .= '</table>';
                 $html .= '</div>';
 

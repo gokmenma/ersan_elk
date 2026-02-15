@@ -160,6 +160,19 @@ if (isset($_POST["action"]) && $_POST["action"] == "ekip-kodu-getir") {
     echo json_encode(["status" => $status, "data" => $data]);
 }
 
+// Ekip Kodu Geçmişini Getir
+if (isset($_POST["action"]) && $_POST["action"] == "ekip-kodu-gecmis-getir") {
+    $id = Security::decrypt($_POST["id"]);
+    try {
+        $data = $Tanimlamalar->getEkipGecmisi($id);
+        $status = "success";
+    } catch (PDOException $ex) {
+        $status = "error";
+        $data = [];
+    }
+    echo json_encode(["status" => $status, "data" => $data]);
+}
+
 // Ekip Kodu Sil
 if (isset($_POST["action"]) && $_POST["action"] == "ekip-kodu-sil") {
     $id = Security::decrypt($_POST["id"]);
@@ -198,6 +211,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
             "type" => 0, // İş türü için type 0
             "grup" => "is_turu",
             "is_turu_ucret" => Helper::formattedMoneyToNumber($_POST["is_turu_ucret"] ?? "0"),
+            "aracli_personel_is_turu_ucret" => Helper::formattedMoneyToNumber($_POST["aracli_personel_is_turu_ucret"] ?? "0"),
             "is_emri_sonucu" => $_POST["is_emri_sonucu"] ?? "",
             "tur_adi" => $_POST["is_turu"] ?? "",
             "rapor_sekmesi" => $_POST["rapor_sekmesi"] ?? "",

@@ -61,6 +61,7 @@ $isTuruAdlari = $Tanimlamalar->getIsTurleriAdlari();
                                 <th class="text-center">İş Türü</th>
                                 <th class="text-center">İş Emri Sonucu</th>
                                 <th class="text-center">İş Türü Ücreti</th>
+                                <th class="text-center">Araçlı Pers. İş Türü Ücreti</th>
                                 <th class="text-center">Rapor Sekmesi</th>
                                 <th class="text-center">Açıklama</th>
                                 <th style="width:5%">İşlem</th>
@@ -88,6 +89,9 @@ $isTuruAdlari = $Tanimlamalar->getIsTurleriAdlari();
                                     </td>
                                     <td class="text-center">
                                         <?php echo $isTuru->is_turu_ucret ?? "0,00 TL" ?>
+                                    </td>
+                                    <td class="text-center">
+                                        <?php echo $isTuru->aracli_personel_is_turu_ucret ?? "0,00 TL" ?>
                                     </td>
                                     <td class="text-center text-capitalize">
                                         <?php echo $isTuru->rapor_sekmesi ?>
@@ -129,7 +133,7 @@ $isTuruAdlari = $Tanimlamalar->getIsTurleriAdlari();
 </div> <!-- container-fluid -->
 
 <div class="modal fade" id="actionModal" tabindex="-1" aria-labelledby="actionModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="actionModalLabel">İş Türü İşlemleri</h5>
@@ -174,8 +178,7 @@ $isTuruAdlari = $Tanimlamalar->getIsTurleriAdlari();
                         </div>
                     </div>
                     <div class="row mb-3">
-
-                        <div class="col-md-12">
+                        <div class="col-md-6">
                             <?php echo
                                 Form::FormFloatInput(
                                     "text",
@@ -184,6 +187,19 @@ $isTuruAdlari = $Tanimlamalar->getIsTurleriAdlari();
                                     "İş Türü Ücreti giriniz!",
                                     "İş Türü Ücreti",
                                     "dollar-sign",
+                                    "form-control money"
+
+                                ); ?>
+                        </div>
+                        <div class="col-md-6">
+                            <?php echo
+                                Form::FormFloatInput(
+                                    "text",
+                                    "aracli_personel_is_turu_ucret",
+                                    "",
+                                    "Araçlı Personel İş Türü Ücreti giriniz!",
+                                    "Araçlı Personel İş Türü Ücreti",
+                                    "truck",
                                     "form-control money"
 
                                 ); ?>

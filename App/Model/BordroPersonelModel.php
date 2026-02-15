@@ -552,14 +552,24 @@ class BordroPersonelModel extends Model
         $deleteSql->execute([$personel_id, $donem_id]);
 
         // 3. Tanımlamalar tablosundan ücretli iş türlerini al
-        // Sadece is_turu_ucret > 0 olan kayıtları çekiyoruz
         $TanimlamalarModel = new \App\Model\TanimlamalarModel();
         $isTurleri = $TanimlamalarModel->getIsTurleri(); // grup = 'is_turu'
+
+        // Araç kullanımı "Kendi Aracı" ise araçlı personel ücretini kullan
+        $isAracli = (isset($personel->arac_kullanim) && $personel->arac_kullanim === 'Kendi Aracı');
 
         // is_emri_sonucu -> (tur_adi, birim_ucret) map'i oluştur
         $isEmriSonucuMap = [];
         foreach ($isTurleri as $tur) {
-            $birimUcret = floatval(\App\Helper\Helper::formattedMoneyToNumber($tur->is_turu_ucret ?? 0));
+            // Araçlı personel için özel ücret alanı kontrolü
+            $ucretAlani = $isAracli ? 'aracli_personel_is_turu_ucret' : 'is_turu_ucret';
+            $birimUcret = floatval(\App\Helper\Helper::formattedMoneyToNumber($tur->$ucretAlani ?? 0));
+
+            // Eğer araçlı personel ücreti 0 ise normal ücreti kullan (opsiyonel, ama genellikle istenir)
+            if ($isAracli && $birimUcret <= 0) {
+                $birimUcret = floatval(\App\Helper\Helper::formattedMoneyToNumber($tur->is_turu_ucret ?? 0));
+            }
+
             if ($birimUcret > 0 && !empty($tur->is_emri_sonucu)) {
                 $isEmriSonucuMap[$tur->is_emri_sonucu] = [
                     'tur_adi' => $tur->tur_adi,
@@ -584,6 +594,7 @@ class BordroPersonelModel extends Model
             WHERE t.personel_id = ? 
             AND t.tarih BETWEEN ? AND ?
             AND (t.is_emri_sonucu_id > 0 OR (t.is_emri_sonucu IS NOT NULL AND t.is_emri_sonucu != ''))
+            AND t.silinme_tarihi IS NULL
             GROUP BY COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), COALESCE(tn.tur_adi, t.is_emri_tipi)
         ");
         $sql->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
@@ -596,7 +607,6 @@ class BordroPersonelModel extends Model
         // 5. is_emri_sonucu bazlı hesapla
         foreach ($yapilanIsler as $is) {
             $isEmriSonucu = $is->is_emri_sonucu;
-            $isTipi = $is->is_emri_tipi;
             $adet = floatval($is->adet);
 
             // Bu is_emri_sonucu için ücret tanımlı mı?
@@ -605,7 +615,6 @@ class BordroPersonelModel extends Model
             }
 
             $birimUcret = $isEmriSonucuMap[$isEmriSonucu]['birim_ucret'];
-            $turAdi = $isEmriSonucuMap[$isEmriSonucu]['tur_adi'];
 
             if ($adet > 0) {
                 $PersonelEkOdemelerModel = new \App\Model\PersonelEkOdemelerModel();
@@ -1092,6 +1101,7 @@ class BordroPersonelModel extends Model
             )
             AND pi.baslangic_tarihi <= ?
             AND pi.bitis_tarihi >= ?
+            AND pi.silinme_tarihi IS NULL
         ");
 
         // Parametreleri birleştir: personel_id + ID'ler + tarihler
@@ -1223,6 +1233,7 @@ class BordroPersonelModel extends Model
             AND izin_tipi_id IN ($idPlaceholders)
             AND baslangic_tarihi <= ?
             AND bitis_tarihi >= ?
+            AND silinme_tarihi IS NULL
         ");
 
         $params = array_merge([$personel_id], $ucretliIzinTurIds, [$donem_bitis, $donem_baslangic]);
@@ -1274,6 +1285,7 @@ class BordroPersonelModel extends Model
             AND izin_tipi_id IN ($idPlaceholders)
             AND baslangic_tarihi <= ?
             AND bitis_tarihi >= ?
+            AND silinme_tarihi IS NULL
         ");
 
         $params = array_merge([$personel_id], $ucretsizIzinTurIds, [$donem_bitis, $donem_baslangic]);
@@ -1369,6 +1381,7 @@ class BordroPersonelModel extends Model
             FROM yapilan_isler 
             WHERE ekip_kodu = ? 
             AND DATE(tarih) BETWEEN ? AND ?
+            AND silinme_tarihi IS NULL
         ");
         $sql->execute([$personel->ekip_no, $baslangic_tarihi, $bitis_tarihi]);
         $sonuc = $sql->fetch(PDO::FETCH_OBJ);

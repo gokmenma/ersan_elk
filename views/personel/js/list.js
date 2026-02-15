@@ -287,6 +287,7 @@ $(document).ready(function () {
             $("#detailTakim").text(data.takim);
             $("#detailSgkNo").text(data.sgk_no);
             $("#detailSgkFirma").text(data.sgk_yapilan_firma);
+            $("#detailAracKullanim").text(data.arac_kullanim || "Yok");
 
             // Modalı göster
             var myModal = new bootstrap.Modal(

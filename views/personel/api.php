@@ -483,7 +483,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'sodexo' => ['sodexo ödemesi tutarı', 'sodexo odemesi tutari', 'sodexo'],
                 'sodexo_kart_no' => ['sodexo kart no', 'sodexo kart numarası', 'sodexo kart', 'kart no', 'kart numarası'],
                 'gunluk_ucret' => ['günlük ücret', 'gunluk ucret'],
-                'bes_kesintisi_varmi' => ['bes kesintisi var mı?', 'bes kesintisi var mi?', 'bes kesintisi', 'bes']
+                'bes_kesintisi_varmi' => ['bes kesintisi var mı?', 'bes kesintisi var mi?', 'bes kesintisi', 'bes'],
+                'arac_kullanim' => ['araç kullanım', 'arac kullanim', 'araç', 'arac']
             ];
 
             $colIndices = [];

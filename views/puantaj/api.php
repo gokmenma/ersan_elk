@@ -1049,6 +1049,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
 
     try {
+        ini_set('memory_limit', '512M');
         $ilkFirma = $_POST['ilk_firma'] ?? 17;
         $sonFirma = $_POST['son_firma'] ?? 17;
         $baslangicTarihiRaw = $_POST['baslangic_tarihi'] ?? date('Y-m-d');
@@ -1286,8 +1287,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $response['mevcut_kayitlar'] = $mevcutKayitlar;
         $response['atlanAn_kayitlar'] = $atlanAnKayitlar;
         $response['toplam_api_kayit'] = count($apiData);
-        $response['api_raw_data'] = $apiData; // Hata ayıklama için eklendi
+        // Hata ayıklama verisini kaldırıyoruz (Yüzlerce MB JSON oluşmasını engellemek için)
+        // $response['api_raw_data'] = $apiData; 
         $response['message'] = "$yeniKayit adet yeni kayıt eklendi.";
+
+        // Belleği boşalt
+        unset($apiData);
+        unset($insertBatch);
 
     } catch (Exception $e) {
         $response['message'] = $e->getMessage();
@@ -1308,6 +1314,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
 
     try {
+        ini_set('memory_limit', '512M');
         $ilkFirma = $_POST['ilk_firma'] ?? 17;
         $sonFirma = $_POST['son_firma'] ?? 17;
         $baslangicTarihiRaw = $_POST['baslangic_tarihi'] ?? date('Y-m-d');
@@ -1529,6 +1536,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $response['atlanAn_kayitlar'] = $atlanAnKayitlar;
         $response['toplam_api_kayit'] = count($apiData);
         $response['message'] = "$silinenKayit eski kayıt silindi, $yeniKayit yeni kayıt eklendi.";
+
+        // Belleği boşalt
+        unset($apiData);
+        unset($insertBatch);
 
     } catch (Exception $e) {
         $response['message'] = $e->getMessage();

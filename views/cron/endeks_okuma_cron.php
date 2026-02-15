@@ -377,7 +377,7 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         // 4. Toplu INSERT
         if (!empty($insertBatch)) {
             $EndeksOkuma->db->beginTransaction();
-            $insertChunks = array_chunk($insertBatch, 50);
+            $insertChunks = array_chunk($insertBatch, 500);
             foreach ($insertChunks as $chunk) {
                 $valuesPart = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'));
                 $sql = "INSERT INTO endeks_okuma (islem_id, personel_id, ekip_kodu_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih, defter, sayac_durum) VALUES $valuesPart";
@@ -395,6 +395,9 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         if ($atlanAnKayitlar > 0) {
             cronLog("$atlanAnKayitlar kayıt atlandı (ekip eşleşmedi).");
         }
+
+        unset($apiData);
+        unset($insertBatch);
 
     } catch (Exception $e) {
         cronLog("Endeks sorgulama hatası: " . $e->getMessage());
