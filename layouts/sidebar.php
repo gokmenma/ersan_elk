@@ -27,13 +27,13 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
         <div id="sidebar-menu">
             <style>
                 .sidebar-search-container {
-                    padding: 10px 20px 15px 20px;
+                    padding: 10px 20px 5px 20px;
                 }
 
                 .sidebar-search {
-                    background-color: rgba(255, 255, 255, 0.05) !important;
-                    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-                    color: #ced4da !important;
+                    background-color: rgba(0, 0, 0, 0.03) !important;
+                    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+                    color: inherit !important;
                     border-radius: 8px !important;
                     padding-left: 38px !important;
                     height: 38px;
@@ -41,10 +41,23 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
                     transition: all 0.3s ease;
                 }
 
+                [data-bs-theme="dark"] .sidebar-search,
+                [data-theme-mode="dark"] .sidebar-search {
+                    background-color: rgba(255, 255, 255, 0.05) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+                    color: #ced4da !important;
+                }
+
                 .sidebar-search:focus {
+                    background-color: rgba(0, 0, 0, 0.05) !important;
+                    border-color: rgba(0, 0, 0, 0.15) !important;
+                    box-shadow: none;
+                }
+
+                [data-bs-theme="dark"] .sidebar-search:focus,
+                [data-theme-mode="dark"] .sidebar-search:focus {
                     background-color: rgba(255, 255, 255, 0.1) !important;
                     border-color: rgba(255, 255, 255, 0.2) !important;
-                    box-shadow: none;
                     color: #fff !important;
                 }
 

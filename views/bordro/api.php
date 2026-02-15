@@ -166,12 +166,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
+                // Log detaylarını almak için kaydı çekelim
+                $kesintiBak = $BordroPersonel->getDb()->prepare("SELECT k.*, p.adi_soyadi FROM personel_kesintileri k JOIN personel p ON k.personel_id = p.id WHERE k.id = ?");
+                $kesintiBak->execute([$id]);
+                $kesintiInfo = $kesintiBak->fetch(PDO::FETCH_OBJ);
+
                 $sql = $BordroPersonel->getDb()->prepare("UPDATE personel_kesintileri SET silinme_tarihi = NOW() WHERE id = ?");
                 if ($sql->execute([$id])) {
                     // Maaş tekrar hesapla
                     if ($personel_id > 0 && $donem_id > 0) {
                         $BordroPersonel->hesaplaMaasByPersonelDonem($personel_id, $donem_id);
                     }
+
+                    if ($kesintiInfo) {
+                        $logDetay = "{$kesintiInfo->adi_soyadi} isimli personelin " . number_format($kesintiInfo->tutar, 2, ',', '.') . " ₺ tutarındaki kesintisi ({$kesintiInfo->aciklama}) silindi.";
+                        $SystemLog->logAction($userId, 'Bordro Kesinti Silindi', $logDetay);
+                    }
+
                     echo json_encode(['status' => 'success', 'message' => 'Kesinti silindi.']);
                 } else {
                     throw new Exception('Silme işlemi başarısız.');
@@ -196,12 +207,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
+                // Log detaylarını almak için kaydı çekelim
+                $odemeBak = $BordroPersonel->getDb()->prepare("SELECT eo.*, p.adi_soyadi FROM personel_ek_odemeler eo JOIN personel p ON eo.personel_id = p.id WHERE eo.id = ?");
+                $odemeBak->execute([$id]);
+                $odemeInfo = $odemeBak->fetch(PDO::FETCH_OBJ);
+
                 $sql = $BordroPersonel->getDb()->prepare("UPDATE personel_ek_odemeler SET silinme_tarihi = NOW() WHERE id = ?");
                 if ($sql->execute([$id])) {
                     // Maaş tekrar hesapla
                     if ($personel_id > 0 && $donem_id > 0) {
                         $BordroPersonel->hesaplaMaasByPersonelDonem($personel_id, $donem_id);
                     }
+
+                    if ($odemeInfo) {
+                        $logDetay = "{$odemeInfo->adi_soyadi} isimli personelin " . number_format($odemeInfo->tutar, 2, ',', '.') . " ₺ tutarındaki ek ödemesi ({$odemeInfo->aciklama}) silindi.";
+                        $SystemLog->logAction($userId, 'Bordro Ek Ödeme Silindi', $logDetay);
+                    }
+
                     echo json_encode(['status' => 'success', 'message' => 'Ek ödeme silindi.']);
                 } else {
                     throw new Exception('Silme işlemi başarısız.');
@@ -243,7 +265,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Geçersiz kayıt.');
                 }
 
+                // Log detaylarını almak için kaydı çekelim
+                $personelBak = $BordroPersonel->getDb()->prepare("
+                    SELECT p.adi_soyadi, d.donem_adi 
+                    FROM bordro_personelleri bp 
+                    JOIN personel p ON bp.personel_id = p.id 
+                    JOIN bordro_donemi d ON bp.donem_id = d.id 
+                    WHERE bp.id = ?
+                ");
+                $personelBak->execute([$id]);
+                $personelInfo = $personelBak->fetch(PDO::FETCH_OBJ);
+
                 $BordroPersonel->removeFromDonem($id);
+
+                if ($personelInfo) {
+                    $logDetay = "{$personelInfo->adi_soyadi} isimli personel {$personelInfo->donem_adi} döneminden çıkarıldı.";
+                    $SystemLog->logAction($userId, 'Bordro Personel Çıkarıldı', $logDetay);
+                }
 
                 echo json_encode([
                     'status' => 'success',

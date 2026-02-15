@@ -412,6 +412,11 @@ if (Gate::allows("ana_sayfa")) {
                                         <i class="bx bx-phone"></i>
                                     </a>
                                 <?php endif; ?>
+                                <a href="javascript:void(0);" class="text-primary ms-1 btn-send-nobet-reminder"
+                                    data-id="<?php echo Security::encrypt($nobet->personel_id); ?>"
+                                    data-name="<?php echo $nobet->adi_soyadi; ?>" title="Bildirim Gönder">
+                                    <i class="bx bx-bell"></i>
+                                </a>
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -2686,6 +2691,66 @@ if (Gate::allows("ana_sayfa")) {
                         $btn.removeClass('syncing');
                         $icon.removeClass('bx-spin text-primary');
                         Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
+                    }
+                });
+            });
+
+            // Tekil Nöbet Hatırlatma Bildirimi
+            $(document).on('click', '.btn-send-nobet-reminder', function (e) {
+                e.preventDefault();
+                const $btn = $(this);
+                const $icon = $btn.find('i');
+                const pId = $btn.data('id');
+                const pName = $btn.data('name');
+
+                Swal.fire({
+                    title: 'Bildirim Gönderilsin mi?',
+                    text: pName + ' isimli personele bugün nöbetçi olduğuna dair hatırlatma bildirimi gönderilecek.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Evet, Gönder',
+                    cancelButtonText: 'İptal',
+                    confirmButtonColor: '#556ee6',
+                    cancelButtonColor: '#f46a6a',
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $icon.removeClass('bx-bell').addClass('bx-loader-alt bx-spin');
+                        $btn.addClass('disabled');
+
+                        $.ajax({
+                            url: 'views/nobet/api.php',
+                            type: 'POST',
+                            data: {
+                                action: 'send-today-nobet-reminder',
+                                personel_id: pId
+                            },
+                            success: function (response) {
+                                $icon.removeClass('bx-loader-alt bx-spin').addClass('bx-bell');
+                                $btn.removeClass('disabled');
+
+                                try {
+                                    const res = typeof response === 'string' ? JSON.parse(response) : response;
+                                    if (res.status === 'success' || res.success) {
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'Başarılı',
+                                            text: res.message,
+                                            timer: 1500,
+                                            showConfirmButton: false
+                                        });
+                                    } else {
+                                        Swal.fire('Hata', res.message || 'Bildirim gönderilemedi.', 'error');
+                                    }
+                                } catch (err) {
+                                    Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
+                                }
+                            },
+                            error: function () {
+                                $icon.removeClass('bx-loader-alt bx-spin').addClass('bx-bell');
+                                $btn.removeClass('disabled');
+                                Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
+                            }
+                        });
                     }
                 });
             });

@@ -117,6 +117,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo json_encode(['success' => true, 'status' => 'success', 'message' => $responseMsg]);
                 break;
 
+            case 'send-today-nobet-reminder':
+                $personel_id = Security::decrypt($_POST['personel_id']);
+                $personel = $Personel->find($personel_id);
+
+                if (!$personel) {
+                    throw new Exception("Personel bulunamadı.");
+                }
+
+                $pushService = new \App\Service\PushNotificationService();
+                $payload = [
+                    'title' => '⏰ Nöbet Hatırlatması',
+                    'body' => "Sayın {$personel->adi_soyadi}, bugün nöbetçi olduğunuzu hatırlatmak isteriz.",
+                    'url' => '?page=nobet'
+                ];
+
+                if ($pushService->sendToPersonel($personel_id, $payload)) {
+                    $SystemLog->logAction($userId, 'Nöbet Hatırlatma', "{$personel->adi_soyadi} için hatırlatma bildirimi gönderildi.");
+                    echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Hatırlatma bildirimi başarıyla gönderildi.']);
+                } else {
+                    throw new Exception("Bildirim gönderilemedi.");
+                }
+                break;
+
             case 'get-bildirim-stats':
                 $monthYear = $_POST['ay'] ?? date('Y-m');
                 list($year, $month) = explode('-', $monthYear);

@@ -661,7 +661,8 @@ $ek_odeme_turleri = [
                                                 </td>
                                                 <td class="text-center" style="font-size: 12px;">
                                                     <span class="badge bg-light text-dark border fw-medium px-2 py-1">
-                                                        <?= htmlspecialchars($personel->maas_durumu ?? '-') ?>
+                                                        <?= htmlspecialchars($personel->maas_durumu ?? '-') ?> /
+                                                        <?= number_format($personel->maas_tutari ?? 0, 0, ',', '.') ?> ₺
                                                     </span>
                                                 </td>
                                                 <td class="text-center fw-bold text-secondary">
