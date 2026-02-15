@@ -1063,17 +1063,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // ========== CONCURRENCY LOCK (ÇAKIŞMA ÖNLEME) ==========
         $lockKey = 'lock_online_puantaj_sorgula_' . $firmaId;
         $activeLock = $Settings->getSettings($lockKey);
+        $currentUserId = $_SESSION['user_id'] ?? 0;
 
         if (!empty($activeLock)) {
-            $lockTime = strtotime($activeLock);
-            // Eğer kilit 10 dakikadan eskiyse aşılmış say (güvenlik için)
-            if ((time() - $lockTime) < 600) {
+            $lockParts = explode('|', $activeLock);
+            $lockTime = strtotime($lockParts[0]);
+            $lockUserId = $lockParts[1] ?? 0;
+
+            // Eğer kilit 10 dakikadan eskiyse VEYA kilidi koyan aynı kullanıcıysa devam et
+            if ((time() - $lockTime) < 600 && $lockUserId != $currentUserId) {
                 throw new Exception("Şu anda başka bir kullanıcı tarafından kesme/açma sorgulama işlemi yapılıyor. Lütfen işlemin bitmesini bekleyin.");
             }
         }
 
-        // Kilidi koy
-        $Settings->upsertSetting($lockKey, date('Y-m-d H:i:s'));
+        // Kilidi koy (Zaman ve Kullanıcı ID)
+        $Settings->upsertSetting($lockKey, date('Y-m-d H:i:s') . '|' . $currentUserId);
         // ========================================================
         $activeTab = $_POST['active_tab'] ?? '';
         $resultsFilter = $_POST['results_filter'] ?? '';
@@ -1357,17 +1361,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // ========== CONCURRENCY LOCK (ÇAKIŞMA ÖNLEME) ==========
         $lockKey = 'lock_online_icmal_sorgula_' . $firmaId;
         $activeLock = $Settings->getSettings($lockKey);
+        $currentUserId = $_SESSION['user_id'] ?? 0;
 
         if (!empty($activeLock)) {
-            $lockTime = strtotime($activeLock);
-            // Eğer kilit 10 dakikadan eskiyse aşılmış say (güvenlik için)
-            if ((time() - $lockTime) < 600) {
-                throw new Exception("Şu anda başka bir kullanıcı tarafından sorgulama işlemi yapılıyor. Lütfen işlemin bitmesini bekleyin (Yaklaşık " . (600 - (time() - $lockTime)) . " sn sonra kilit açılacak).");
+            $lockParts = explode('|', $activeLock);
+            $lockTime = strtotime($lockParts[0]);
+            $lockUserId = $lockParts[1] ?? 0;
+
+            // Eğer kilit 10 dakikadan eskiyse VEYA kilidi koyan aynı kullanıcıysa devam et
+            if ((time() - $lockTime) < 600 && $lockUserId != $currentUserId) {
+                throw new Exception("Şu anda başka bir kullanıcı tarafından sorgulama işlemi yapılıyor. Lütfen işlemin bitmesini bekleyin.");
             }
         }
 
-        // Kilidi koy (Şu anki zamanı kaydet)
-        $Settings->upsertSetting($lockKey, date('Y-m-d H:i:s'));
+        // Kilidi koy (Zaman ve Kullanıcı ID)
+        $Settings->upsertSetting($lockKey, date('Y-m-d H:i:s') . '|' . $currentUserId);
         // ===================================
 
         // Tarih aralığını günlere bölerek tek tek çekiyoruz (API birleştirme yapmasın diye)
