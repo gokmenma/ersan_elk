@@ -115,7 +115,7 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                                 <?php if (!empty($gecmis)): ?>
                                     <?php foreach ($gecmis as $g): ?>
                                         <tr>
-                                            <td><span class="fw-bold text-dark"><?= htmlspecialchars($g->ekip_adi) ?></span>
+                                            <td><span class="fw-bold text-dark"><?= htmlspecialchars($g->ekip_adi ?? '') ?></span>
                                             </td>
                                             <td><?= date('d.m.Y', strtotime($g->baslangic_tarihi)) ?></td>
                                             <td><?= $g->bitis_tarihi ? date('d.m.Y', strtotime($g->bitis_tarihi)) : '<span class="badge bg-soft-success text-success">Devam Ediyor</span>' ?>

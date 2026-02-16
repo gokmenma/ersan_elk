@@ -146,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // İşe giriş tarihi kontrolü (Mevcut ekip atamaları varsa)
             if ($personel_id > 0 && !empty($data['ise_giris_tarihi'])) {
                 $earliestEkipDate = $Personel->getEarliestEkipAssignmentDate($personel_id);
-                if ($earliestEkipDate && $data['ise_giris_tarihi'] > $earliestEkipDate) {
+                if ($earliestEkipDate && $data['ise_giris_tarihi'] > Date::Ymd($earliestEkipDate)) {
                     $formattedEarliest = Date::dmY($earliestEkipDate);
                     throw new Exception("İşe giriş tarihi, personelin mevcut ekip atamalarının en eskisi olan {$formattedEarliest} tarihinden sonra olamaz. Öncelikle ekip geçmişindeki tarihleri düzeltmelisiniz.");
                 }
@@ -626,7 +626,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // İşe giriş tarihi kontrolü (Güncelleme ise ve mevcut ekip atamaları varsa)
                 if ($isUpdate && !empty($newData['ise_giris_tarihi'])) {
                     $earliestEkipDate = $Personel->getEarliestEkipAssignmentDate($existingId);
-                    if ($earliestEkipDate && $newData['ise_giris_tarihi'] > $earliestEkipDate) {
+                    if ($earliestEkipDate && $newData['ise_giris_tarihi'] > Date::Ymd($earliestEkipDate)) {
                         $formattedEarliest = Date::dmY($earliestEkipDate);
                         $errorDetails[] = "Satır $rowNum ($name): İşe giriş tarihi ({$newData['ise_giris_tarihi']}), mevcut ekip atamalarından ({$formattedEarliest}) daha sonra olamaz.";
                         continue;
