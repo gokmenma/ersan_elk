@@ -257,11 +257,11 @@ class PersonelModel extends Model
                     JOIN tanimlamalar t ON pg.ekip_kodu_id = t.id
                     WHERE pg.baslangic_tarihi <= CURDATE() 
                     AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
-                    AND pg.firma_id = :firma_id_internal
+                    AND pg.firma_id = :firma_id_sub
                 ) t_all ON p.id = t_all.personel_id
                 WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL";
 
-        $params['firma_id_internal'] = $_SESSION['firma_id'];
+        $params['firma_id_sub'] = $_SESSION['firma_id'];
 
         // Toplam kayıt sayısı (filtresiz)
         $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} WHERE firma_id = :firma_id");
@@ -304,26 +304,100 @@ class PersonelModel extends Model
             foreach ($request['columns'] as $i => $column) {
                 if (!empty($column['search']['value']) && isset($colMap[$i])) {
                     $field = $colMap[$i];
-                    $val = "%" . $column['search']['value'] . "%";
+                    $searchValue = $column['search']['value'];
                     $paramName = "col_" . $i;
 
-                    if ($i == 12) { // Durum
-                        if (stripos('Aktif', $column['search']['value']) !== false) {
-                            $filterSql .= " AND p.aktif_mi = 1";
-                        } elseif (stripos('Pasif', $column['search']['value']) !== false) {
-                            $filterSql .= " AND p.aktif_mi = 0";
+                    // Gelişmiş Filtre Ayrıştırıcı (mode:value)
+                    if (strpos($searchValue, ':') !== false) {
+                        list($mode, $val) = explode(':', $searchValue, 2);
+
+                        // Between için değerleri ayır
+                        $val2 = null;
+                        if (strpos($val, '|') !== false) {
+                            list($v1, $v2) = explode('|', $val, 2);
+                            $val = $v1;
+                            $val2 = $v2;
                         }
-                    } elseif ($i == 10) { // Ekip / Bölge
-                        $val = "%" . $column['search']['value'] . "%";
-                        $filterSql .= " AND (t_all.tur_adi LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
-                        $params[$paramName] = $val;
-                    } elseif ($i == 5 || $i == 6) { // Tarih
-                        $filterSql .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramName";
-                        $params[$paramName] = $val;
+
+                        if ($val !== '' || $val2 !== null) {
+                            switch ($mode) {
+                                case 'contains':
+                                    $filterSql .= " AND $field LIKE :$paramName";
+                                    $params[$paramName] = "%$val%";
+                                    break;
+                                case 'not_contains':
+                                    $filterSql .= " AND $field NOT LIKE :$paramName";
+                                    $params[$paramName] = "%$val%";
+                                    break;
+                                case 'starts_with':
+                                    $filterSql .= " AND $field LIKE :$paramName";
+                                    $params[$paramName] = "$val%";
+                                    break;
+                                case 'ends_with':
+                                    $filterSql .= " AND $field LIKE :$paramName";
+                                    $params[$paramName] = "%$val";
+                                    break;
+                                case 'equals':
+                                    $filterSql .= " AND $field = :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'not_equals':
+                                    $filterSql .= " AND $field != :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'gt':
+                                    $filterSql .= " AND $field > :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'lt':
+                                    $filterSql .= " AND $field < :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'gte':
+                                    $filterSql .= " AND $field >= :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'lte':
+                                    $filterSql .= " AND $field <= :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'before':
+                                    $filterSql .= " AND $field < :$paramName";
+                                    $params[$paramName] = \App\Helper\Date::Ymd($val);
+                                    break;
+                                case 'after':
+                                    $filterSql .= " AND $field > :$paramName";
+                                    $params[$paramName] = \App\Helper\Date::Ymd($val);
+                                    break;
+                                case 'between':
+                                    if ($val && $val2) {
+                                        $p1 = $paramName . "_1";
+                                        $p2 = $paramName . "_2";
+                                        $filterSql .= " AND $field BETWEEN :$p1 AND :$p2";
+                                        $params[$p1] = \App\Helper\Date::Ymd($val);
+                                        $params[$p2] = \App\Helper\Date::Ymd($val2);
+                                    }
+                                    break;
+                            }
+                        }
                     } else {
-                        $val = "%" . $column['search']['value'] . "%";
-                        $filterSql .= " AND $field LIKE :$paramName";
-                        $params[$paramName] = $val;
+                        // Normal (Eski) Filtre Mantığı (Sadece LIKE)
+                        if ($i == 12) { // Durum
+                            if (stripos('Aktif', $searchValue) !== false) {
+                                $filterSql .= " AND p.aktif_mi = 1";
+                            } elseif (stripos('Pasif', $searchValue) !== false) {
+                                $filterSql .= " AND p.aktif_mi = 0";
+                            }
+                        } elseif ($i == 10) { // Ekip / Bölge
+                            $filterSql .= " AND (t_all.tur_adi LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
+                            $params[$paramName] = "%$searchValue%";
+                        } elseif ($i == 4 || $i == 5) { // Tarih (DataTables sütun indexine göre)
+                            $filterSql .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramName";
+                            $params[$paramName] = "%$searchValue%";
+                        } else {
+                            $filterSql .= " AND $field LIKE :$paramName";
+                            $params[$paramName] = "%$searchValue%";
+                        }
                     }
                 }
             }
@@ -340,19 +414,20 @@ class PersonelModel extends Model
                                  JOIN tanimlamalar t ON pg.ekip_kodu_id = t.id
                                  WHERE pg.baslangic_tarihi <= CURDATE() 
                                  AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
-                                 AND pg.firma_id = :firma_id_internal_v2
+                                 AND pg.firma_id = :firma_id_sub
                              ) t_all ON p.id = t_all.personel_id
                              WHERE p.firma_id = :firma_id $filterSql GROUP BY p.id) as temp";
+
         $filteredQuery = $this->db->prepare($filteredQuerySql);
-        // Filtrelenmiş sayı için parametreleri temizle (sadece gerekli olanları bırak)
-        $filteredParams = ['firma_id' => $_SESSION['firma_id'], 'firma_id_internal_v2' => $_SESSION['firma_id']];
-        if (isset($params['search']))
-            $filteredParams['search'] = $params['search'];
+
+        // Sadece SQL içinde geçen parametreleri bind et
         foreach ($params as $key => $val) {
-            if (strpos($key, 'col_') === 0)
-                $filteredParams[$key] = $val;
+            if (strpos($filteredQuerySql, ":" . $key) !== false) {
+                $filteredQuery->bindValue(":$key", $val);
+            }
         }
-        $filteredQuery->execute($filteredParams);
+
+        $filteredQuery->execute();
         $recordsFiltered = $filteredQuery->fetchColumn();
 
         // Sıralama
@@ -377,12 +452,14 @@ class PersonelModel extends Model
 
         $query = $this->db->prepare($sql);
 
-        // Bind values for LIMIT
+        // Sadece SQL içinde geçen parametreleri bind et
         foreach ($params as $key => $val) {
-            if ($key === 'start' || $key === 'length') {
-                $query->bindValue(":$key", $val, PDO::PARAM_INT);
-            } else {
-                $query->bindValue(":$key", $val);
+            if (strpos($sql, ":" . $key) !== false) {
+                if ($key === 'start' || $key === 'length') {
+                    $query->bindValue(":$key", $val, PDO::PARAM_INT);
+                } else {
+                    $query->bindValue(":$key", $val);
+                }
             }
         }
 

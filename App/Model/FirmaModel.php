@@ -70,21 +70,23 @@ class FirmaModel extends Model
     public function normalizeSaveData(array $data)
     {
         $out = [];
-        $out['firma_adi'] = trim((string)($data['firma_adi'] ?? ''));
-        $out['firma_kodu'] = isset($data['firma_kodu']) ? trim((string)$data['firma_kodu']) : null;
+        $out['firma_adi'] = trim((string) ($data['firma_adi'] ?? ''));
+        $out['firma_kodu'] = isset($data['firma_kodu']) ? trim((string) $data['firma_kodu']) : null;
         if ($out['firma_kodu'] === '') {
             $out['firma_kodu'] = null;
         }
-        $out['vergi_no'] = (string)($data['vergi_no'] ?? '');
-        $out['vergi_dairesi'] = (string)($data['vergi_dairesi'] ?? '');
-        $out['telefon'] = (string)($data['telefon'] ?? '');
-        $out['adres'] = (string)($data['adres'] ?? '');
+        $out['vergi_no'] = (string) ($data['vergi_no'] ?? '');
+        $out['vergi_dairesi'] = (string) ($data['vergi_dairesi'] ?? '');
+        $out['telefon'] = (string) ($data['telefon'] ?? '');
+        $out['adres'] = (string) ($data['adres'] ?? '');
+        $out['firma_unvan'] = (string) ($data['firma_unvan'] ?? '');
+        $out['firma_iban'] = (string) ($data['firma_iban'] ?? '');
 
-        if (isset($data['id']) && (int)$data['id'] > 0) {
-            $out['id'] = (int)$data['id'];
+        if (isset($data['id']) && (int) $data['id'] > 0) {
+            $out['id'] = (int) $data['id'];
         }
         if (isset($data['kayit_yapan'])) {
-            $out['kayit_yapan'] = (int)$data['kayit_yapan'];
+            $out['kayit_yapan'] = (int) $data['kayit_yapan'];
         }
 
         return $out;

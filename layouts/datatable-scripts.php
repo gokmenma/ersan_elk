@@ -14,5 +14,10 @@
 <script src="assets/libs/jszip/jszip.min.js"></script>
 <script src="assets/libs/datatables.net-buttons/js/buttons.html5.min.js"></script>
 
+<!-- Advanced Column Filters -->
+<link rel="stylesheet"
+    href="assets/css/datatable-filters.css?v=<?php echo filemtime("assets/css/datatable-filters.css"); ?>">
+<script src="assets/js/datatable-filters.js?v=<?php echo filemtime("assets/js/datatable-filters.js"); ?>"></script>
+
 <!-- Datatable init js -->
 <script src="assets/js/datatables.init.js?v=<?php echo filemtime("assets/js/datatables.init.js"); ?>"></script>

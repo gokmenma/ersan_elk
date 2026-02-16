@@ -162,7 +162,8 @@ if ($id > 0) {
                                             <?php foreach ($tabs as $key => $tab): ?>
                                                 <li><a class="dropdown-item mobile-tab-link <?php echo $activeTab === $key ? 'active' : ''; ?>"
                                                         href="javascript:void(0);"
-                                                        data-target="#<?php echo $key; ?>"><?php echo $tab['label']; ?></a></li>
+                                                        data-target="#<?php echo $key; ?>"><?php echo $tab['label']; ?></a>
+                                                </li>
                                             <?php endforeach; ?>
                                         </ul>
                                     </div>
@@ -176,15 +177,14 @@ if ($id > 0) {
                     <div class="d-none d-md-flex align-items-center gap-2">
                         <div class="calendar-nav d-flex gap-1">
                             <button type="button"
-                                class="btn border shadow-sm d-flex align-items-center justify-content-center"
-                                id="scrollTabsLeft"
-                                style="height: 38px; width: 38px; border-radius: 8px !important; background: #fff;">
+                                class="btn border shadow-sm d-flex align-items-center justify-content-center tab-scroll-btn"
+                                id="scrollTabsLeft" style="height: 38px; width: 38px; border-radius: 8px !important;">
                                 <i class="bx bx-chevron-left fs-4"></i>
                             </button>
                         </div>
 
-                        <div class="flex-grow-1 border rounded shadow-sm p-1 overflow-hidden"
-                            style="background: #fdfdfd; height: 48px;">
+                        <div class="flex-grow-1 border rounded shadow-sm p-1 overflow-hidden tab-nav-container"
+                            style="height: 48px;">
                             <div class="d-flex align-items-center gap-1 overflow-auto no-scrollbar" id="desktopTabs"
                                 role="tablist" style="scroll-behavior: smooth; height: 100%;">
                                 <?php
@@ -210,9 +210,8 @@ if ($id > 0) {
 
                         <div class="calendar-nav d-flex gap-1">
                             <button type="button"
-                                class="btn border shadow-sm d-flex align-items-center justify-content-center"
-                                id="scrollTabsRight"
-                                style="height: 38px; width: 38px; border-radius: 8px !important; background: #fff;">
+                                class="btn border shadow-sm d-flex align-items-center justify-content-center tab-scroll-btn"
+                                id="scrollTabsRight" style="height: 38px; width: 38px; border-radius: 8px !important;">
                                 <i class="bx bx-chevron-right fs-4"></i>
                             </button>
                         </div>
@@ -232,7 +231,7 @@ if ($id > 0) {
                     #desktopTabs .nav-link {
                         border: none;
                         background: transparent;
-                        color: #6c757d;
+                        color: #adb5bd;
                         font-weight: 500;
                     }
 
@@ -244,8 +243,42 @@ if ($id > 0) {
                     }
 
                     #desktopTabs .nav-link:hover:not(.active) {
-                        background-color: #f1f1f1 !important;
+                        background-color: rgba(255, 255, 255, 0.05) !important;
                         color: var(--bs-primary) !important;
+                    }
+
+                    .tab-nav-container {
+                        background: #fff;
+                    }
+
+                    .tab-scroll-btn {
+                        background: #fff;
+                    }
+
+                    /* Dark Mode Overrides */
+                    html[data-bs-theme="dark"] .tab-nav-container {
+                        background: #2a3042 !important;
+                        border-color: #32394e !important;
+                    }
+
+                    html[data-bs-theme="dark"] .tab-scroll-btn {
+                        background: #2a3042 !important;
+                        border-color: #32394e !important;
+                        color: #fff !important;
+                    }
+
+                    html[data-bs-theme="dark"] #desktopTabs .nav-link {
+                        color: #9299af;
+                    }
+
+                    html[data-bs-theme="dark"] #desktopTabs .nav-link.active {
+                        background-color: var(--bs-primary) !important;
+                        color: #fff !important;
+                    }
+
+                    html[data-bs-theme="dark"] #desktopTabs .nav-link:hover:not(.active) {
+                        background-color: rgba(255, 255, 255, 0.1) !important;
+                        color: #fff !important;
                     }
 
                     .no-scrollbar::-webkit-scrollbar {

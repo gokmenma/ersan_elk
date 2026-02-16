@@ -199,11 +199,11 @@ $izinTurleri = [
                         <table class="table table-premium align-middle w-100 datatable" id="avansTable">
                             <thead>
                                 <tr>
-                                    <th>Personel</th>
-                                    <th>Talep Türü</th>
-                                    <th>Tutar</th>
-                                    <th>Talep Tarihi</th>
-                                    <th>Durum</th>
+                                    <th data-filter="string">Personel</th>
+                                    <th data-filter="select">Talep Türü</th>
+                                    <th data-filter="number">Tutar</th>
+                                    <th data-filter="date">Talep Tarihi</th>
+                                    <th data-filter="select">Durum</th>
                                     <th>Açıklama</th>
                                     <?php if (!$showApproved): ?>
                                         <th class="text-center" style="width:200px">İşlemler</th>

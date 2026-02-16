@@ -523,7 +523,9 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
 
         <div class="branch-list">
             <?php foreach ($branchs as $branch) { ?>
-                <div class="branch-item" data-id="<?php echo $branch->id ?>" data-kodu="<?php echo htmlspecialchars($branch->firma_kodu ?? '', ENT_QUOTES, 'UTF-8'); ?>" onclick="selectBranch(this)">
+                <div class="branch-item" data-id="<?php echo $branch->id ?>"
+                    data-kodu="<?php echo htmlspecialchars($branch->firma_kodu ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                    onclick="selectBranch(this)">
                     <div class="radio-wrapper">
                         <div class="custom-radio"></div>
                     </div>
@@ -536,7 +538,8 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                         </div>
                         <div class="branch-details">
                             <?php if (!empty($branch->firma_kodu)) { ?>
-                                <p><i class="fa fa-hashtag" style="width: 1.25rem;"></i> <?php echo htmlspecialchars($branch->firma_kodu, ENT_QUOTES, 'UTF-8'); ?></p>
+                                <p><i class="fa fa-hashtag" style="width: 1.25rem;"></i>
+                                    <?php echo htmlspecialchars($branch->firma_kodu, ENT_QUOTES, 'UTF-8'); ?></p>
                             <?php } ?>
                             <?php if ($branch->adres) { ?>
                                 <p><i class="fa fa-location-dot" style="width: 1.25rem;"></i> <?php echo $branch->adres ?>
@@ -593,7 +596,7 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                     </div>
                     <div class="form-group">
                         <?php echo Form::FormFloatInput("text", "firma_kodu", "", "Firma Kodu", "Firma Kodu", "hash"); ?>
-                    <span class="text-muted">Online İcmal Sorgulama raporunda kullanılacaktır.</span>
+                        <span class="text-muted">Online İcmal Sorgulama raporunda kullanılacaktır.</span>
                     </div>
                     <div class="form-grid">
                         <div class="form-group">
@@ -605,6 +608,12 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                         <div class="form-group">
                             <?php echo Form::FormFloatInput("text", "telefon", "", "Telefon", "Telefon", "phone"); ?>
                         </div>
+                    </div>
+                    <div class="form-group">
+                        <?php echo Form::FormFloatInput("text", "firma_unvan", "", "Firma Ünvanı", "Firma Ünvanı", "briefcase"); ?>
+                    </div>
+                    <div class="form-group">
+                        <?php echo Form::FormFloatInput("text", "firma_iban", "", "Firma IBAN", "Firma IBAN", "credit-card"); ?>
                     </div>
                     <div class="form-group full">
                         <?php echo Form::FormFloatTextarea("adres", "", "Adres", "Adres", "map-pin"); ?>
@@ -686,6 +695,12 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                     document.getElementById('vergi_dairesi').value = data.vergi_dairesi;
                     document.getElementById('telefon').value = data.telefon;
                     document.getElementById('adres').value = data.adres;
+                    if (document.getElementById('firma_unvan')) {
+                        document.getElementById('firma_unvan').value = data.firma_unvan ?? '';
+                    }
+                    if (document.getElementById('firma_iban')) {
+                        document.getElementById('firma_iban').value = data.firma_iban ?? '';
+                    }
                     document.getElementById('firmaModal').classList.add('show');
                 });
         }

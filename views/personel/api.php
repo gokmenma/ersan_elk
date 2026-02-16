@@ -24,6 +24,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $Personel = new PersonelModel();
     $SystemLog = new SystemLogModel();
     $userId = $_SESSION['user_id'] ?? 0;
+    $firma_id = $_SESSION['firma_id'] ?? 0;
+
+    // Oturum kontrolü: firma_id yoksa hiçbir işlem yapma
+    if (empty($firma_id)) {
+        echo json_encode(['status' => 'error', 'message' => 'Oturumunuz sona ermiş. Lütfen sayfayı yenileyip tekrar giriş yapın.']);
+        exit;
+    }
 
     if ($action == 'personel-kaydet') {
         try {

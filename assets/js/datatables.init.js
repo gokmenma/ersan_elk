@@ -24,14 +24,11 @@ function getDatatableOptions() {
     initComplete: function (settings, json) {
       var api = this.api();
       var tableId = settings.sTableId;
-      var $thead = $("#" + tableId + " thead");
+      var $nTable = $(settings.nTable);
+      var $thead = $nTable.find("thead");
 
-      if ($thead.find(".search-input-row").length > 0) {
-        return;
-      }
-
-      var $searchRow = $('<tr class="search-input-row"></tr>');
-      $thead.append($searchRow);
+      // Gelişmiş filtre var mı kontrol et (Daha sağlam kontrol)
+      var hasAnyAdvancedFilter = $thead.find("th[data-filter]").length > 0;
 
       // PageLength select kutusunun düzgün görünmesi için
       $(settings.nTableWrapper)
@@ -41,127 +38,110 @@ function getDatatableOptions() {
         .find(".dataTables_length select")
         .addClass("mx-2");
 
-      api.columns().every(function () {
-        let column = this;
-        let title = column.header().textContent;
+      if (hasAnyAdvancedFilter) {
+        // Gelişmiş filtre varsa, eski basit filtre satırını HİÇ oluşturma.
+        // initAdvancedFilters fonksiyonu aşağıda (satır 145) toplu olarak çağrılıyor.
+      } else {
+        // Sadece eski tip filtreler varsa eski mantığı çalıştır
+        if ($thead.find(".search-input-row").length > 0) return;
+        var $searchRow = $('<tr class="search-input-row"></tr>');
+        $thead.append($searchRow);
 
-        if (
-          title != "İşlem" &&
-          title != "Seç" &&
-          title != "#" &&
-          $(column.header()).find('input[type="checkbox"]').length === 0
-        ) {
-          // Create input element
-          let input = document.createElement("input");
-          input.placeholder = title;
-          input.classList.add("form-control");
-          input.classList.add("form-control-sm");
-          input.setAttribute("autocomplete", "off");
+        api.columns().every(function () {
+          let column = this;
+          let title = column.header().textContent;
 
-          // Append input element to the new row
-          const th = $('<th class="search">').append(input);
-          $searchRow.append(th);
+          if (
+            title != "İşlem" &&
+            title != "Seç" &&
+            title != "#" &&
+            $(column.header()).find('input[type="checkbox"]').length === 0
+          ) {
+            let input = document.createElement("input");
+            input.placeholder = title;
+            input.classList.add("form-control", "form-control-sm");
+            input.setAttribute("autocomplete", "off");
+            $(input).attr("data-col-idx", column.index());
 
-          // Tarih sütunu için flatpickr ekle
-          if (title === "Tarih") {
-            $(input).addClass("flatpickr-datatable");
-            $(input).flatpickr({
-              locale: "tr",
-              dateFormat: "d.m.Y",
-              allowInput: true,
-              onChange: function (selectedDates, dateStr) {
-                let colIdx = $(input).attr("data-col-idx");
-                let table = $(input).closest("table").DataTable();
-                if (table.settings()[0].oFeatures.bServerSide) {
-                  table.column(colIdx).search(dateStr).draw();
-                } else {
-                  table.draw();
-                }
-              },
+            const th = $('<th class="search">').append(input);
+            $searchRow.append(th);
+
+            // Eski tip Tarih sütunu desteği
+            if (title === "Tarih") {
+              $(input).addClass("flatpickr-datatable");
+              $(input).flatpickr({
+                locale: "tr",
+                dateFormat: "d.m.Y",
+                allowInput: true,
+                onChange: function (selectedDates, dateStr) {
+                  let colIdx = $(input).attr("data-col-idx");
+                  let table = $(input).closest("table").DataTable();
+                  if (table.settings()[0].oFeatures.bServerSide) {
+                    table.column(colIdx).search(dateStr).draw();
+                  } else {
+                    table.draw();
+                  }
+                },
+              });
+            }
+
+            let searchTimeout;
+            $(input).on("input change", function (event) {
+              let val = $(this).val();
+              let colIdx = $(this).attr("data-col-idx");
+              let table = $(this).closest("table").DataTable();
+              if (
+                $(this).hasClass("flatpickr-datatable") &&
+                event.type === "input"
+              )
+                return;
+
+              clearTimeout(searchTimeout);
+              searchTimeout = setTimeout(
+                function () {
+                  if (table.settings()[0].oFeatures.bServerSide) {
+                    table.column(colIdx).search(val).draw();
+                  } else {
+                    table.draw();
+                  }
+                },
+                event.type === "input" ? 300 : 0,
+              );
             });
-          }
 
-          // Türkçe arama için: column.search() yerine data attribute kullanıyoruz
-          $(input).attr("data-col-idx", column.index());
-
-          let searchTimeout;
-          $(input).on("input change", function (event) {
-            let val = $(this).val();
-            let lastVal = $(this).data("last-search-val") || "";
-
-            // Eğer değer değişmediyse ve event "change" (blur) ise işlem yapma
-            if (val === lastVal && event.type === "change") {
-              return;
-            }
-
-            $(this).data("last-search-val", val);
-
-            let colIdx = $(this).attr("data-col-idx");
-            let table = $(this).closest("table").DataTable();
-
-            // Eğer flatpickr ise onChange zaten tetikliyor, input'u ignore edebiliriz
-            if (
-              $(this).hasClass("flatpickr-datatable") &&
-              event.type === "input"
-            )
-              return;
-
-            clearTimeout(searchTimeout);
-
-            // Gecikmeli arama (debounce) - especially useful for input event
-            let delay = event.type === "input" ? 300 : 0;
-
-            searchTimeout = setTimeout(function () {
-              // Eğer serverSide ise, DataTables'ın kendi arama mekanizmasını tetikle
-              if (table.settings()[0].oFeatures.bServerSide) {
-                table.column(colIdx).search(val).draw();
-              } else {
-                // Client-side ise sadece draw() yeterli (custom filter çalışır)
-                table.draw();
-              }
-            }, delay);
-          });
-
-          // Sütunun gerçekten görünür olup olmadığını kontrol et
-          const isColumnVisible =
-            column.visible() && !$(column.header()).hasClass("dtr-hidden");
-
-          if (!isColumnVisible) {
-            th.hide(); // Sütun gerçekten görünmüyorsa input'u da gizle
-          }
-        } else {
-          // Eğer "İşlem" sütunuysa, boş bir th ekleyin
-          $searchRow.append("<th></th>");
-        }
-      });
-
-      // Responsive olayını dinle
-      api.on("responsive-resize", function (e, datatable, columns) {
-        // Sütun görünürlüğünü kontrol et ve inputları gizle/göster
-        $searchRow.find("th").each(function (index) {
-          if (columns[index]) {
-            $(this).show(); // Sütun görünüyorsa inputu göster
+            if (!column.visible()) th.hide();
           } else {
-            $(this).hide(); // Sütun gizliyse inputu gizle
+            $searchRow.append("<th></th>");
           }
         });
-      });
 
-      var state = api.state.loaded();
-      if (state) {
-        $searchRow.find("input").each(function (index) {
-          var colIdx = $(this).attr("data-col-idx");
-          if (colIdx && state.columns[colIdx]) {
-            var searchValue = state.columns[colIdx].search.search;
-            if (searchValue) {
-              $(this).val(searchValue);
-            }
-          }
+        // Responsive olayını dinle
+        api.on("responsive-resize", function (e, datatable, columns) {
+          $searchRow.find("th").each(function (i) {
+            columns[i] ? $(this).show() : $(this).hide();
+          });
         });
+
+        // State'den değerleri geri yükle
+        var state = api.state.loaded();
+        if (state) {
+          $searchRow.find("input").each(function () {
+            var colIdx = $(this).attr("data-col-idx");
+            if (colIdx && state.columns[colIdx]) {
+              var val = state.columns[colIdx].search.search;
+              if (val) $(this).val(val);
+            }
+          });
+        }
       }
 
       if (typeof feather !== "undefined") {
         feather.replace();
+      }
+
+      // Gelişmiş kolon filtreleri başlat (Sadece bir kez, initComplete sonunda)
+      if (typeof initAdvancedFilters === "function") {
+        initAdvancedFilters(api, settings);
       }
     },
   };

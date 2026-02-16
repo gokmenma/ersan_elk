@@ -1,0 +1,190 @@
+/* ===================================================
+   DataTable Advanced Filters CSS
+   =================================================== */
+
+/* Header Trigger Position */
+.dt-header-with-filter {
+  position: relative;
+  padding-right: 32px !important;
+  vertical-align: middle !important;
+}
+
+.dt-filter-mode-trigger {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #fff;
+  color: #adb5bd;
+  border-radius: 4px;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+  z-index: 5;
+}
+
+.dt-filter-mode-trigger:hover {
+  color: #556ee6;
+  background: #f8f9fa;
+  border-color: #556ee6;
+}
+
+.dt-filter-mode-trigger.active {
+  background: #556ee6 !important;
+  color: #fff !important;
+  border-color: #556ee6 !important;
+}
+
+/* Filter Row (Row 2) */
+.dt-filter-row > th {
+  padding: 4px 6px !important;
+  background-color: #fafbfc !important;
+  border-bottom: 2px solid #eff2f7 !important;
+}
+
+.dt-filter-cell {
+  width: 100%;
+}
+
+.dt-filter-control {
+  width: 100%;
+  height: 28px;
+  padding: 2px 8px;
+  font-size: 11.5px;
+  border: 1.5px solid #e1e5eb;
+  border-radius: 5px;
+  outline: none;
+  transition: all 0.2s;
+  background: #fff;
+}
+
+.dt-filter-control:focus {
+  border-color: #556ee6;
+  box-shadow: 0 0 0 3px rgba(85, 110, 230, 0.1);
+}
+
+/* Dropdown Menu (Floating) */
+.dt-filter-mode-dropdown {
+  position: absolute;
+  z-index: 9999;
+  background: #fff;
+  border: 1px solid #e1e5eb;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  min-width: 150px;
+  padding: 5px 0;
+  display: none;
+}
+
+.dt-filter-mode-dropdown.show {
+  display: block;
+}
+
+.dt-filter-mode-dropdown .mode-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  color: #495057;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dt-filter-mode-dropdown .mode-opt:hover {
+  background: #f8f9fa;
+  color: #556ee6;
+}
+
+.dt-filter-mode-dropdown .mode-opt i {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+}
+
+/* Active Filter Bar */
+.dt-active-filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  background: #f8f9fa;
+  border: 1px solid #eff2f7;
+  padding: 6px 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.dt-active-filters-bar .label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #556ee6;
+  text-transform: uppercase;
+}
+
+.dt-active-filters-bar .badge {
+  background: rgba(85, 110, 230, 0.1);
+  color: #556ee6;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+}
+
+.dt-active-filters-bar .badge i.remove {
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.dt-active-filters-bar .badge i.remove:hover {
+  color: #f46a6a;
+}
+
+.dt-active-filters-bar .clear-all {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: #f46a6a;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Dark Mode Support */
+html[data-bs-theme="dark"] .dt-filter-mode-trigger {
+  background: #32394e;
+  border-color: #3e4556;
+  color: #a6b0cf;
+}
+
+html[data-bs-theme="dark"] .dt-filter-row > th {
+  background-color: #2e3548 !important;
+  border-bottom-color: #32394e !important;
+}
+
+html[data-bs-theme="dark"] .dt-filter-control {
+  background: #2a3042;
+  border-color: #32394e;
+  color: #a6b0cf;
+}
+
+html[data-bs-theme="dark"] .dt-filter-mode-dropdown {
+  background: #2a3042;
+  border-color: #32394e;
+}
+
+html[data-bs-theme="dark"] .dt-filter-mode-dropdown .mode-opt {
+  color: #a6b0cf;
+}

@@ -12,7 +12,7 @@ use App\Helper\Helper;
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-3 mb-2">
-                        <?php echo Form::FormFloatInput("text", "iban_numarasi", $personel->iban_numarasi ?? "", "Maaş IBAN", "IBAN Numarası", "credit-card"); ?>
+                        <?php echo Form::FormFloatInput("text", "iban_numarasi", $personel->iban_numarasi ?? "", "Maaş IBAN", "Maaş IBAN Numarası", "credit-card"); ?>
                     </div>
                     <div class="col-md-3 mb-2">
                         <?php echo Form::FormFloatInput("text", "ek_odeme_iban_numarasi", $personel->ek_odeme_iban_numarasi ?? "", "Ek Ödeme IBAN", "Ek Ödeme IBAN", "credit-card"); ?>

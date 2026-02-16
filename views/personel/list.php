@@ -136,17 +136,17 @@ if (Gate::canWithMessage("personel_listesi")) {
                                         #
                                     </th>
                                     <th class="text-center">SIRA</th>
-                                    <th style="width: 100px;">TC KİMLİK NO</th>
-                                    <th>ADI SOYADI</th>
-                                    <th style="width: 110px;">İŞE BAŞLAMA TARİHİ</th>
-                                    <th style="width: 110px;">İŞTEN AYRILMA TARİHİ</th>
-                                    <th style="width: 110px;">CEP TELEFONU</th>
-                                    <th>EMAIL</th>
-                                    <th>GÖREV</th>
-                                    <th>DEPARTMAN</th>
-                                    <th style="min-width: 160px; width: 160px;">EKİP / BÖLGE</th>
+                                    <th style="width: 100px;" data-filter="string">TC KİMLİK NO</th>
+                                    <th data-filter="string">ADI SOYADI</th>
+                                    <th style="width: 110px;" data-filter="date">İŞE BAŞLAMA TARİHİ</th>
+                                    <th style="width: 110px;" data-filter="date">İŞTEN AYRILMA TARİHİ</th>
+                                    <th style="width: 110px;" data-filter="string">CEP TELEFONU</th>
+                                    <th data-filter="string">EMAIL</th>
+                                    <th data-filter="select">GÖREV</th>
+                                    <th data-filter="select">DEPARTMAN</th>
+                                    <th style="min-width: 160px; width: 160px;" data-filter="string">EKİP / BÖLGE</th>
                                     <th class="text-center">BİLDİRİM</th>
-                                    <th>DURUM</th>
+                                    <th data-filter="select">DURUM</th>
                                 </tr>
                             </thead>
                             <tbody>
