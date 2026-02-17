@@ -21,8 +21,8 @@ use App\Helper\Route;
     </div>
     <div class="card-body">
         <div class="alert alert-info">
-             <i class="bx bx-info-circle me-2"></i>
-             Lütfen "Ekip Bazında İş Emri Sonuçları Raporu" formatındaki Excel dosyasını yükleyiniz.
+            <i class="bx bx-info-circle me-2"></i>
+            Lütfen "Ekip Bazında İş Emri Sonuçları Raporu" formatındaki Excel dosyasını yükleyiniz.
         </div>
 
         <form id="uploadForm" enctype="multipart/form-data">
@@ -32,7 +32,7 @@ use App\Helper\Route;
                     <input type="date" name="upload_date" class="form-control" required value="<?= date('Y-m-d') ?>">
                     <div class="form-text">Bu tarih, yüklenen verilerin tarihi olarak kaydedilecektir.</div>
                 </div>
-                
+
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Excel Dosyası (.xlsx, .xls)</label>
                     <input type="file" name="excel_file" class="form-control" accept=".xlsx, .xls" required>
@@ -49,67 +49,67 @@ use App\Helper\Route;
 </div>
 
 <script>
-$(document).ready(function() {
-    $('#uploadForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        var formData = new FormData(this);
-        formData.append('action', 'puantaj-excel-kaydet');
+    $(document).ready(function () {
+        $('#uploadForm').on('submit', function (e) {
+            e.preventDefault();
 
-        // Show spinner
-        $('#spinner').show();
-        $('#btnUpload').prop('disabled', true);
+            var formData = new FormData(this);
+            formData.append('action', 'puantaj-excel-kaydet');
 
-        $.ajax({
-            url: 'views/puantaj/api.php',
-            type: 'POST',
-            data: formData,
-            contentType: false,
-            processData: false,
-            success: function(response) {
-                $('#spinner').hide();
-                $('#btnUpload').prop('disabled', false);
-                
-                try {
-                    var res = JSON.parse(response);
-                    if (res.status === 'success') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Başarılı',
-                            text: res.message,
-                            confirmButtonText: 'Tamam'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                window.location.href = 'index.php?p=puantaj/list';
-                            }
-                        });
-                    } else {
+            // Show spinner
+            $('#spinner').show();
+            $('#btnUpload').prop('disabled', true);
+
+            $.ajax({
+                url: 'views/puantaj/api.php',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (response) {
+                    $('#spinner').hide();
+                    $('#btnUpload').prop('disabled', false);
+
+                    try {
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
+                        if (res.status === 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Başarılı',
+                                text: res.message,
+                                confirmButtonText: 'Tamam'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    window.location.href = 'index.php?p=puantaj/list';
+                                }
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Hata',
+                                text: res.message
+                            });
+                        }
+                    } catch (err) {
+                        console.error('JSON Parse Error:', err, response);
                         Swal.fire({
                             icon: 'error',
-                            title: 'Hata',
-                            text: res.message
+                            title: 'Sistem Hatası',
+                            text: 'Sunucudan geçersiz yanıt alındı.'
                         });
                     }
-                } catch (err) {
-                    console.error('JSON Parse Error:', err, response);
+                },
+                error: function (xhr, status, error) {
+                    $('#spinner').hide();
+                    $('#btnUpload').prop('disabled', false);
+                    console.error('AJAX Error:', error);
                     Swal.fire({
                         icon: 'error',
-                        title: 'Sistem Hatası',
-                        text: 'Sunucudan geçersiz yanıt alındı.'
+                        title: 'Bağlantı Hatası',
+                        text: 'Bir hata oluştu: ' + error
                     });
                 }
-            },
-            error: function(xhr, status, error) {
-                $('#spinner').hide();
-                $('#btnUpload').prop('disabled', false);
-                console.error('AJAX Error:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Bağlantı Hatası',
-                    text: 'Bir hata oluştu: ' + error
-                });
-            }
+            });
         });
     });
-});
 </script>

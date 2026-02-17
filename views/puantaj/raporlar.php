@@ -10,6 +10,9 @@ $Tanimlamalar = new TanimlamalarModel();
 $EndeksOkuma = new EndeksOkumaModel();
 $Puantaj = new PuantajModel();
 $Personel = new PersonelModel();
+$Settings = new \App\Model\SettingsModel();
+
+$reportSettings = $Settings->getAllSettingsAsKeyValue($_SESSION['firma_id'] ?? null);
 
 $year = $_GET['year'] ?? date('Y');
 $month = $_GET['month'] ?? date('m');
@@ -543,7 +546,7 @@ foreach ($regionList as $r) {
                 data: formData,
                 success: function (response) {
                     try {
-                        var res = JSON.parse(response);
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
                         if (res.status === 'success') {
                             Swal.fire({
                                 icon: 'success',
@@ -626,12 +629,12 @@ foreach ($regionList as $r) {
                     $('#onlinePuantajSpinner').hide();
                     $('#btnOnlinePuantajSorgula').prop('disabled', false);
                     try {
-                        var res = JSON.parse(response);
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
                         var resultHtml = '';
                         if (res.status === 'success') {
                             resultHtml = '<div class="alert alert-success">';
                             resultHtml += '<strong><i class="bx bx-check-circle me-2"></i>Sorgu Başarılı! (Toplam ' + (res.toplam_api_kayit || 0) + ' kayıt)</strong><br>';
-                            resultHtml += '<span class="fs-5">' + res.yeni_kayit + ' adet yeni kayıt eklendi.</span>';
+                            resultHtml += '<span class="fs-5">' + (res.message || res.yeni_kayit + ' adet yeni kayıt eklendi.') + '</span>';
                             if (res.guncellenen_kayit > 0) {
                                 resultHtml += '<br><span class="text-warning">' + res.guncellenen_kayit + ' adet kayıt güncellendi.</span>';
                             }
@@ -705,12 +708,12 @@ foreach ($regionList as $r) {
                     $('#onlineSayacSpinner').hide();
                     $('#btnOnlineSayacSorgula').prop('disabled', false);
                     try {
-                        var res = JSON.parse(response);
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
                         var resultHtml = '';
                         if (res.status === 'success') {
                             resultHtml = '<div class="alert alert-success">';
                             resultHtml += '<strong><i class="bx bx-check-circle me-2"></i>Sorgu Başarılı!</strong><br>';
-                            resultHtml += '<span class="fs-5">' + res.yeni_kayit + ' adet yeni kayıt eklendi.</span>';
+                            resultHtml += '<span class="fs-5">' + (res.message || res.yeni_kayit + ' adet yeni kayıt eklendi.') + '</span>';
                             if (res.guncellenen_kayit > 0) {
                                 resultHtml += '<br><span class="text-warning">' + res.guncellenen_kayit + ' adet kayıt güncellendi.</span>';
                             }
@@ -768,12 +771,12 @@ foreach ($regionList as $r) {
                     $('#onlineMuhurlemeSpinner').hide();
                     $('#btnOnlineMuhurlemeSorgula').prop('disabled', false);
                     try {
-                        var res = JSON.parse(response);
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
                         var resultHtml = '';
                         if (res.status === 'success') {
                             resultHtml = '<div class="alert alert-success">';
                             resultHtml += '<strong><i class="bx bx-check-circle me-2"></i>Sorgu Başarılı!</strong><br>';
-                            resultHtml += '<span class="fs-5">' + res.yeni_kayit + ' adet yeni kayıt eklendi.</span>';
+                            resultHtml += '<span class="fs-5">' + (res.message || res.yeni_kayit + ' adet yeni kayıt eklendi.') + '</span>';
                             if (res.guncellenen_kayit > 0) {
                                 resultHtml += '<br><span class="text-warning">' + res.guncellenen_kayit + ' adet kayıt güncellendi.</span>';
                             }
@@ -830,12 +833,12 @@ foreach ($regionList as $r) {
                     $('#onlineIcmalSpinner').hide();
                     $('#btnOnlineIcmalSorgula').prop('disabled', false);
                     try {
-                        var res = JSON.parse(response);
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
                         var resultHtml = '';
                         if (res.status === 'success') {
                             resultHtml = '<div class="alert alert-success">';
                             resultHtml += '<strong><i class="bx bx-check-circle me-2"></i>Sorgu Başarılı!</strong><br>';
-                            resultHtml += '<span class="fs-5">' + res.yeni_kayit + ' adet yeni kayıt eklendi.</span>';
+                            resultHtml += '<span class="fs-5">' + (res.message || res.yeni_kayit + ' adet yeni kayıt eklendi.') + '</span>';
                             if (res.silinen_kayit > 0) {
                                 resultHtml += '<br><span class="text-info">' + res.silinen_kayit + ' adet eski kayıt temizlendi.</span>';
                             }
@@ -1438,3 +1441,98 @@ foreach ($personelList as $p) {
         pointer-events: none;
     }
 </style>
+
+<div class="modal fade" id="reportSettingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Raporlama Ekip Aralığı Ayarları</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="reportSettingsForm">
+                <input type="hidden" name="action" value="report-settings-kaydet">
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 mb-3">
+                        <i class="bx bx-info-circle me-1"></i> Ekip aralıklarını belirleyin.
+                        <br><small>Birden fazla aralık için virgül kullanın (Örn: 1-40, 101-200)</small>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3" data-settings-group="kesme">
+                            <?= \App\Helper\Form::FormFloatInput('text', 'ekip_aralik_kesme', $reportSettings['ekip_aralik_kesme'] ?? '1-40', '1-40', 'Kesme/Açma Ekibi (Genel)', 'bx bx-group') ?>
+                        </div>
+                        <div class="col-md-6 mb-3" data-settings-group="kesme">
+                            <?= \App\Helper\Form::FormFloatInput('text', 'ekip_aralik_kesme_merkez', $reportSettings['ekip_aralik_kesme_merkez'] ?? '1-30', '1-30', '↳ Kesme (Merkez)', 'bx bx-map-pin') ?>
+                        </div>
+                        <div class="col-md-6 mb-3" data-settings-group="kesme">
+                            <?= \App\Helper\Form::FormFloatInput('text', 'ekip_aralik_kesme_ilce', $reportSettings['ekip_aralik_kesme_ilce'] ?? '31-40', '31-40', '↳ Kesme (İlçe)', 'bx bx-map-alt') ?>
+                        </div>
+                        <div class="col-md-12 mb-3" data-settings-group="sokme_takma">
+                            <?= \App\Helper\Form::FormFloatInput('text', 'ekip_aralik_sayac_degisimi', $reportSettings['ekip_aralik_sayac_degisimi'] ?? '41-50', '41-50', 'Sayaç Değişimi Ekibi', 'bx bx-reset') ?>
+                        </div>
+                        <div class="col-md-12 mb-3" data-settings-group="kacakkontrol">
+                            <?= \App\Helper\Form::FormFloatInput('text', 'ekip_aralik_kacak_kontrol', $reportSettings['ekip_aralik_kacak_kontrol'] ?? '51-60', '51-60', 'Kaçak Kontrol Ekibi', 'bx bx-search-alt') ?>
+                        </div>
+                        <div class="col-md-12 mb-3" data-settings-group="okuma">
+                            <?= \App\Helper\Form::FormFloatInput('text', 'ekip_aralik_okuma', $reportSettings['ekip_aralik_okuma'] ?? '101-200', '101-200', 'Endeks Okuma Ekibi', 'bx bx-bullseye') ?>
+                        </div>
+                        <div class="col-md-12 mb-3" data-settings-group="muhurleme">
+                            <?= \App\Helper\Form::FormFloatInput('text', 'ekip_aralik_muhurleme', $reportSettings['ekip_aralik_muhurleme'] ?? '1-100', '1-100', 'Mühürleme Ekibi', 'bx bx-lock') ?>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveReportSettings">Ayarları Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        // Tab özelinde ayarlar butonu tetikleyici (Dinamik butonlar için delegate)
+        $(document).on('click', '.btn-tab-settings', function () {
+            var tab = $(this).data('tab');
+            var tabName = $(this).data('tab-name');
+
+            $('#reportSettingsModal .modal-title').text(tabName + ' Ayarları');
+            $('#reportSettingsModal [data-settings-group]').hide();
+            $('#reportSettingsModal [data-settings-group="' + tab + '"]').show();
+
+            $('#reportSettingsModal').modal('show');
+        });
+
+        $('#reportSettingsForm').on('submit', function (e) {
+            e.preventDefault();
+            var btn = $('#btnSaveReportSettings');
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Kaydediliyor...');
+
+            $.ajax({
+                url: 'views/puantaj/api.php',
+                type: 'POST',
+                data: $(this).serialize(),
+                success: function (response) {
+                    try {
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
+                        if (res.status === 'success') {
+                            Swal.fire('Başarılı', res.message, 'success').then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Hata', res.message, 'error');
+                        }
+                    } catch (err) {
+                        Swal.fire('Hata', 'İşlem sırasında bir hata oluştu.', 'error');
+                    }
+                },
+                error: function () {
+                    Swal.fire('Hata', 'Sunucuya bağlanılamadı.', 'error');
+                },
+                complete: function () {
+                    btn.prop('disabled', false).text('Ayarları Kaydet');
+                }
+            });
+        });
+    });
+</script>

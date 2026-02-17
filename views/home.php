@@ -449,7 +449,7 @@ if (Gate::allows("ana_sayfa")) {
                     </div>
                     <div class="d-flex align-items-center gap-1">
                         <a href="javascript:void(0);" class="btn-api-sync text-muted" data-action="online-puantaj-sorgula"
-                            data-bs-toggle="tooltip" title="Online sorgula(API)">
+                            data-active-tab="muhurleme" data-bs-toggle="tooltip" title="Online sorgula(API)">
                             <i class="bx bx-refresh fs-5"></i>
                         </a>
                         <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
@@ -528,7 +528,7 @@ if (Gate::allows("ana_sayfa")) {
                     </div>
                     <div class="d-flex align-items-center gap-1">
                         <a href="javascript:void(0);" class="btn-api-sync text-muted" data-action="online-puantaj-sorgula"
-                            data-bs-toggle="tooltip" title="Online sorgula(API)">
+                            data-active-tab="kesme" data-bs-toggle="tooltip" title="Online sorgula(API)">
                             <i class="bx bx-refresh fs-5"></i>
                         </a>
                         <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
@@ -615,7 +615,7 @@ if (Gate::allows("ana_sayfa")) {
                     </div>
                     <div class="d-flex align-items-center gap-1">
                         <a href="javascript:void(0);" class="btn-api-sync text-muted" data-action="online-puantaj-sorgula"
-                            data-bs-toggle="tooltip" title="Online sorgula(API)">
+                            data-active-tab="sokme_takma" data-bs-toggle="tooltip" title="Online sorgula(API)">
                             <i class="bx bx-refresh fs-5"></i>
                         </a>
                         <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
@@ -2659,104 +2659,108 @@ if (Gate::allows("ana_sayfa")) {
                     type: 'POST',
                     data: {
                         action: action,
-                        baslangic_tarihi: today,
-                        bitis_tarihi: today,
-                        ilk_firma: firmaId,
-                        son_firma: firmaId
-                    },
-                    success: function (response) {
-                        $btn.removeClass('syncing');
-                        $icon.removeClass('bx-spin text-primary');
+                        active_tab: $(this).data(                                                             
+                                           'active-tab') || '',
+                            baslangic_tarihi: today,
+                            bitis_tarihi: today,
+                            ilk_firma: firmaId,
+                            son_firma: firmaId
+                        },
+                        success: function (response) {
+                            $btn.removeClass('syncing');
+                            $icon.removeClass('bx-spin text-primary');
 
-                        try {
-                            const res = typeof response === 'object' ? response : JSON.parse(response);
-                            if (res.status === 'success') {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Sorgulama Başarılı',
-                                    text: (res.yeni_kayit || 0) + ' adet yeni kayıt eklendi.',
-                                    timer: 2000,
-                                    showConfirmButton: false
-                                }).then(() => {
-                                    location.reload();
-                                });
-                            } else {
-                                Swal.fire('Hata', res.message || 'Sorgulama sırasında bir hata oluştu.', 'error');
-                            }
-                        } catch (err) {
-                            Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
-                        }
-                    },
-                    error: function () {
-                        $btn.removeClass('syncing');
-                        $icon.removeClass('bx-spin text-primary');
-                        Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
-                    }
-                });
-            });
-
-            // Tekil Nöbet Hatırlatma Bildirimi
-            $(document).on('click', '.btn-send-nobet-reminder', function (e) {
-                e.preventDefault();
-                const $btn = $(this);
-                const $icon = $btn.find('i');
-                const pId = $btn.data('id');
-                const pName = $btn.data('name');
-
-                Swal.fire({
-                    title: 'Bildirim Gönderilsin mi?',
-                    text: pName + ' isimli personele bugün nöbetçi olduğuna dair hatırlatma bildirimi gönderilecek.',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Evet, Gönder',
-                    cancelButtonText: 'İptal',
-                    confirmButtonColor: '#556ee6',
-                    cancelButtonColor: '#f46a6a',
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        $icon.removeClass('bx-bell').addClass('bx-loader-alt bx-spin');
-                        $btn.addClass('disabled');
-
-                        $.ajax({
-                            url: 'views/nobet/api.php',
-                            type: 'POST',
-                            data: {
-                                action: 'send-today-nobet-reminder',
-                                personel_id: pId
-                            },
-                            success: function (response) {
-                                $icon.removeClass('bx-loader-alt bx-spin').addClass('bx-bell');
-                                $btn.removeClass('disabled');
-
-                                try {
-                                    const res = typeof response === 'string' ? JSON.parse(response) : response;
-                                    if (res.status === 'success' || res.success) {
-                                        Swal.fire({
-                                            icon: 'success',
-                                            title: 'Başarılı',
-                                            text: res.message,
-                                            timer: 1500,
-                                            showConfirmButton: false
-                                        });
-                                    } else {
-                                        Swal.fire('Hata', res.message || 'Bildirim gönderilemedi.', 'error');
-                                    }
-                                } catch (err) {
-                                    Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
+                            try {
+                                const res = typeof response === 'object' ? response : JSON.parse(response);
+                                if (res.status === 'success') {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Sorgulama Başarılı',
+                                        text: res.message || (res.yeni_kayit || 0) + ' adet yeni kayıt eklendi.',
+                                        timer: 2000,
+                                        showConfirmButton: false
+                                    }).then(() => {
+                                        location.reload();
+                                    });
+                                } else {
+                                    Swal.fire('Hata', res.message || 'Sorgulama sırasında bir hata oluştu.', 'error');
                                 }
-                            },
-                            error: function () {
-                                $icon.removeClass('bx-loader-alt bx-spin').addClass('bx-bell');
-                                $btn.removeClass('disabled');
-                                Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
+                            } catch (err) {
+                                console.error("API Response Error:", err);
+                                console.log("Raw Response:", response);
+                                Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
                             }
-                        });
-                    }
+                        },
+                        error: function () {
+                            $btn.removeClass('syncing');
+                            $icon.removeClass('bx-spin text-primary');
+                            Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
+                        }
+                    });
+                });
+
+                // Tekil Nöbet Hatırlatma Bildirimi
+                $(document).on('click', '.btn-send-nobet-reminder', function (e) {
+                    e.preventDefault();
+                    const $btn = $(this);
+                    const $icon = $btn.find('i');
+                    const pId = $btn.data('id');
+                    const pName = $btn.data('name');
+
+                    Swal.fire({
+                        title: 'Bildirim Gönderilsin mi?',
+                        text: pName + ' isimli personele bugün nöbetçi olduğuna dair hatırlatma bildirimi gönderilecek.',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Evet, Gönder',
+                        cancelButtonText: 'İptal',
+                        confirmButtonColor: '#556ee6',
+                        cancelButtonColor: '#f46a6a',
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            $icon.removeClass('bx-bell').addClass('bx-loader-alt bx-spin');
+                            $btn.addClass('disabled');
+
+                            $.ajax({
+                                url: 'views/nobet/api.php',
+                                type: 'POST',
+                                data: {
+                                    action: 'send-today-nobet-reminder',
+                                    personel_id: pId
+                                },
+                                success: function (response) {
+                                    $icon.removeClass('bx-loader-alt bx-spin').addClass('bx-bell');
+                                    $btn.removeClass('disabled');
+
+                                    try {
+                                        const res = typeof response === 'string' ? JSON.parse(response) : response;
+                                        if (res.status === 'success' || res.success) {
+                                            Swal.fire({
+                                                icon: 'success',
+                                                title: 'Başarılı',
+                                                text: res.message,
+                                                timer: 1500,
+                                                showConfirmButton: false
+                                            });
+                                        } else {
+                                            Swal.fire('Hata', res.message || 'Bildirim gönderilemedi.', 'error');
+                                        }
+                                    } catch (err) {
+                                        Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
+                                    }
+                                },
+                                error: function () {
+                                    $icon.removeClass('bx-loader-alt bx-spin').addClass('bx-bell');
+                                    $btn.removeClass('disabled');
+                                    Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
+                                }
+                            });
+                        }
+                    });
                 });
             });
-        });
-    </script>
-    <?php
+        </script>
+        <?php
 } else {
     //Alert::danger("Bu sayfaya erişim yetkiniz yok!");
     /**Personelin yetkili olduğu ilk sayfaya yönlendir */

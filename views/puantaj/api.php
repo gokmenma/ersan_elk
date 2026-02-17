@@ -1188,7 +1188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $ekipGecmisi[$h['ekip_kodu_id']][] = $h;
         }
 
-        // 2. Mevcut kayıtları temizle (Hız için Sil/Yeniden Yükle)
+        // 2. Mevcut kayıtları temizle (Hız ve veri tutarlılığı için Sil/Yeniden Yükle)
         $deleteStmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL");
         $deleteStmt->execute([$firmaId, $baslangicTarihi, $bitisTarihi]);
         $silinenKayit = $deleteStmt->rowCount();
@@ -1263,7 +1263,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucu, $normDate, $islemId, $sonuclanmis);
         }
 
-        // 4. Toplu Kayıt
+        // 4. Toplu Kayıt (Yeni olanlar)
         if (!empty($insertBatch)) {
             $Puantaj->db->beginTransaction();
             $chunks = array_chunk($insertBatch, 500);
@@ -1282,7 +1282,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         // Response güncellemesi
         $response['silinen_kayit'] = $silinenKayit;
-        $response['guncellenen_kayit'] = 0; // Artık hepsi yeni
+        $response['guncellenen_kayit'] = $guncellenenKayit;
         $response['mevcut_kayitlar'] = [];
 
         // Log kaydet
@@ -1299,7 +1299,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $response['toplam_api_kayit'] = count($apiData);
         // Hata ayıklama verisini kaldırıyoruz (Yüzlerce MB JSON oluşmasını engellemek için)
         // $response['api_raw_data'] = $apiData; 
-        $response['message'] = "$yeniKayit adet yeni kayıt eklendi.";
+        $response['message'] = "$yeniKayit kayıt başarıyla güncellendi.";
+        if ($yeniKayit == 0 && $silinenKayit == 0)
+            $response['message'] = "Veriler zaten güncel.";
 
         // Belleği boşalt
         unset($apiData);
@@ -1316,7 +1318,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     ob_end_clean();
-    echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
     exit;
 }
 
@@ -1503,6 +1505,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 continue;
             }
 
+            if ($ekipKoduId === 0) {
+                $atlanAnKayitlar[] = [
+                    'kullanici_adi' => $veri['OKUYUCUADI'],
+                    'okuyucu_no' => $veri['OKUYUCUNO'] ?? '-',
+                    'bolge' => $veri['BOLGE']
+                ];
+                continue;
+            }
+
             $insertBatch[] = [
                 $islemId,
                 $personelId,
@@ -1552,7 +1563,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $response['silinen_kayit'] = $silinenKayit;
         $response['atlanAn_kayitlar'] = $atlanAnKayitlar;
         $response['toplam_api_kayit'] = count($apiData);
-        $response['message'] = "$silinenKayit eski kayıt silindi, $yeniKayit yeni kayıt eklendi.";
+        $response['message'] = "$yeniKayit kayıt başarıyla güncellendi.";
+        if ($yeniKayit == 0 && $silinenKayit == 0)
+            $response['message'] = "Veriler zaten güncel.";
 
         // Belleği boşalt
         unset($apiData);
@@ -1569,7 +1582,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     ob_end_clean();
-    echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
     exit;
 }
 
@@ -1783,6 +1796,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $response['message'] = $e->getMessage();
     }
 
+    echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'report-settings-kaydet') {
+    $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
+    try {
+        $Settings = new \App\Model\SettingsModel();
+        $settingsToUpdate = [
+            'ekip_aralik_okuma' => $_POST['ekip_aralik_okuma'] ?? '',
+            'ekip_aralik_kesme' => $_POST['ekip_aralik_kesme'] ?? '',
+            'ekip_aralik_kesme_merkez' => $_POST['ekip_aralik_kesme_merkez'] ?? '',
+            'ekip_aralik_kesme_ilce' => $_POST['ekip_aralik_kesme_ilce'] ?? '',
+            'ekip_aralik_sayac_degisimi' => $_POST['ekip_aralik_sayac_degisimi'] ?? '',
+            'ekip_aralik_kacak_kontrol' => $_POST['ekip_aralik_kacak_kontrol'] ?? '',
+            'ekip_aralik_muhurleme' => $_POST['ekip_aralik_muhurleme'] ?? ''
+        ];
+
+        $result = $Settings->upsertMultipleSettings($settingsToUpdate, $_SESSION['firma_id'] ?? null);
+        $response = ['status' => $result ? 'success' : 'error', 'message' => $result ? 'Ayarlar başarıyla kaydedildi.' : 'Ayarlar kaydedilirken hata oluştu.'];
+    } catch (Exception $e) {
+        $response['message'] = $e->getMessage();
+    }
     echo json_encode($response, JSON_UNESCAPED_UNICODE);
     exit;
 }

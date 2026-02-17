@@ -20,6 +20,7 @@ $EndeksOkuma = new EndeksOkumaModel();
 $Puantaj = new PuantajModel();
 $Personel = new PersonelModel();
 $Firma = new FirmaModel();
+$Settings = new \App\Model\SettingsModel();
 
 $firma = $Firma->getFirma($_SESSION['firma_id'] ?? 0);
 $firmaAdi = $firma->firma_adi ?? '';
@@ -361,43 +362,61 @@ $grandTotal = 0;
 
 // 1. Build Valid Pairs
 $validPairs = []; // key: [pId]_[tId] => ['pId' => X, 'tId' => Y]
-if (!empty($summary)) {
+foreach ($summary as $pId => $teams) {
     if ($activeTab === 'kacakkontrol') {
-        foreach ($summary as $teamName => $days) {
-            $matchingTeams = array_filter($allTeams, function ($t) use ($teamName) {
-                return $t->tur_adi === $teamName;
-            });
-            foreach ($matchingTeams as $mt) {
-                foreach ($activeAssignments as $assign) {
-                    if ($assign->ekip_kodu_id == $mt->id) {
-                        $validPairs[$assign->personel_id . '_' . $mt->id] = ['pId' => $assign->personel_id, 'tId' => $mt->id];
-                    }
+        $teamName = $pId; // In kacak summary, pId is actually teamName
+        $matchingTeams = array_filter($allTeams, function ($t) use ($teamName) {
+            return $t->tur_adi === $teamName;
+        });
+        $team = !empty($matchingTeams) ? reset($matchingTeams) : null;
+        if ($team && preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
+            $teamNo = (int) $m[1];
+            if (!\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'kacakkontrol', $Settings)) {
+                continue;
+            }
+        }
+        foreach ($matchingTeams as $mt) {
+            foreach ($activeAssignments as $assign) {
+                if ($assign->ekip_kodu_id == $mt->id) {
+                    $validPairs[$assign->personel_id . '_' . $mt->id] = ['pId' => $assign->personel_id, 'tId' => $mt->id];
                 }
             }
         }
     } else {
-        foreach ($summary as $pId => $teams) {
-            foreach ($teams as $tId => $data) {
-                if ($filterPersonelId && $pId != $filterPersonelId)
-                    continue;
+        foreach ($teams as $tId => $data) {
+            if ($filterPersonelId && $pId != $filterPersonelId)
+                continue;
 
-                // Endeks okuma listesinde ekip kodu 101'den küçük olanları gösterme
-                if ($activeTab === 'okuma') {
-                    $team = $teamById[$tId] ?? null;
-                    if (!$team)
-                        continue;
-                    if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
-                        $teamNo = (int) $m[1];
-                        if ($teamNo < 101)
-                            continue;
-                    } else {
-                        // Belirtilen formatta olmayan ekipleri okuma listesinde gösterme
-                        continue;
+            // Eğer okuma değilse, bu ekip/personel ikilisinin bu tabdaki iş türlerinden en az birine sahip olup olmadığını kontrol et
+            $hasRelevantData = true;
+            if ($activeTab !== 'okuma') {
+                $hasRelevantData = false;
+                foreach ($data as $day => $workTypeCounts) {
+                    foreach ($workTypeCounts as $workTypeName => $count) {
+                        foreach ($workTypeCols as $wtCol) {
+                            if ($wtCol['name'] === $workTypeName && $count > 0) {
+                                $hasRelevantData = true;
+                                break 3;
+                            }
+                        }
                     }
                 }
-
-                $validPairs[$pId . '_' . $tId] = ['pId' => $pId, 'tId' => $tId];
             }
+
+            // Eğer verisi yoksa, aralıkta mı bak
+            if (!$hasRelevantData) {
+                $team = $teamById[$tId] ?? null;
+                if ($team && preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
+                    $teamNo = (int) $m[1];
+                    if (!\App\Helper\EkipHelper::isTeamInTabRange($teamNo, $activeTab, $Settings)) {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+            }
+
+            $validPairs[$pId . '_' . $tId] = ['pId' => $pId, 'tId' => $tId];
         }
     }
 }
@@ -407,35 +426,38 @@ foreach ($activeAssignments as $assign) {
     if ($filterPersonelId && $assign->personel_id != $filterPersonelId)
         continue;
 
+    // Ekip kodu kontrolü
+    $team = $teamById[$assign->ekip_kodu_id] ?? null;
+    if (!$team || !preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
+        continue;
+    }
+    $teamNo = (int) $m[1];
+
     $isValid = false;
     $personelDepts = !empty($assign->departman) ? array_map('trim', explode(',', $assign->departman)) : [];
-    $gorev = $assign->gorev ?? '';
 
     if ($activeTab === 'okuma') {
-        if (in_array('Endeks Okuma', $personelDepts) || in_array('Okuma', $personelDepts)) {
-            // Endeks okuma listesinde ekip kodu 101'den küçük olanları gösterme
-            $team = $teamById[$assign->ekip_kodu_id] ?? null;
-            if ($team && preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
-                $teamNo = (int) $m[1];
-                if ($teamNo >= 101) {
-                    $isValid = true;
-                }
-            }
+        if (\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'okuma', $Settings) && (in_array('Endeks Okuma', $personelDepts) || in_array('Okuma', $personelDepts))) {
+            $isValid = true;
         }
     } elseif ($activeTab === 'kesme') {
-        if (in_array('Kesme Açma', $personelDepts) || in_array('Kesme-Açma', $personelDepts))
+        if (\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'kesme', $Settings) && (in_array('Kesme Açma', $personelDepts) || in_array('Kesme-Açma', $personelDepts))) {
             $isValid = true;
+        }
     } elseif ($activeTab === 'sokme_takma') {
-        if (in_array('Sayaç Sökme Takma', $personelDepts) || in_array('Sökme Takma', $personelDepts))
+        if (\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'sokme_takma', $Settings) && (in_array('Sayaç Sökme Takma', $personelDepts) || in_array('Sökme Takma', $personelDepts))) {
             $isValid = true;
+        }
     } elseif ($activeTab === 'muhurleme') {
-        if (in_array('Mühürleme', $personelDepts))
+        if (\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'muhurleme', $Settings) && in_array('Mühürleme', $personelDepts)) {
             $isValid = true;
+        }
     } elseif ($activeTab === 'kacakkontrol') {
-        if (in_array('Kaçak Kontrol', $personelDepts) || in_array('Kaçak Su Tespiti', $personelDepts))
-            $isValid = true;
+        $isValid = false;
     } else {
-        $isValid = true;
+        if (\App\Helper\EkipHelper::isTeamInTabRange($teamNo, $activeTab, $Settings)) {
+            $isValid = true;
+        }
     }
 
     if ($isValid) {

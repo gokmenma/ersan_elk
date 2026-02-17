@@ -17,6 +17,8 @@ if (!isset($Personel))
     $Personel = new PersonelModel();
 if (!isset($Firma))
     $Firma = new FirmaModel();
+if (!isset($Settings))
+    $Settings = new \App\Model\SettingsModel();
 
 $firma = $Firma->getFirma($_SESSION['firma_id'] ?? 0);
 $firmaAdi = $firma->firma_adi ?? '';
@@ -172,14 +174,21 @@ if (true) { // Always use unified logic for all standard tabs
     // For okuma/kesme/etc, summary is [pId][tId]
     // For kacak, summary is [teamName][day]
     if (!empty($summary)) {
-        if ($activeTab === 'kacakkontrol') {
-            foreach ($summary as $teamName => $days) {
-                // Find teams with this name to get their IDs
-
+        foreach ($summary as $pId => $teams) {
+            if ($activeTab === 'kacakkontrol') {
+                $teamName = $pId; // In kacak summary, pId is actually teamName
                 $matchingTeams = array_filter($allTeams, function ($t) use ($teamName) {
                     return $t->tur_adi === $teamName;
                 });
-                $tId = !empty($matchingTeams) ? reset($matchingTeams)->id : 0;
+                $team = !empty($matchingTeams) ? reset($matchingTeams) : null;
+                $tId = $team ? $team->id : 0;
+
+                if ($team && preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
+                    $teamNo = (int) $m[1];
+                    if (!\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'kacakkontrol', $Settings)) {
+                        continue;
+                    }
+                }
 
                 $validPairs['kacak_' . $teamName] = [
                     'pId' => 'kacak_' . $teamName,
@@ -187,24 +196,36 @@ if (true) { // Always use unified logic for all standard tabs
                     'isKacak' => true,
                     'teamName' => $teamName
                 ];
-            }
-        } else {
-            foreach ($summary as $pId => $teams) {
+            } else {
                 foreach ($teams as $tId => $data) {
                     if ($filterPersonelId && $pId != $filterPersonelId)
                         continue;
 
-                    // Endeks okuma listesinde ekip kodu 101'den küçük olanları gösterme
-                    if ($activeTab === 'okuma') {
+                    // Eğer okuma değilse, bu ekip/personel ikilisinin bu tabdaki iş türlerinden en az birine sahip olup olmadığını kontrol et
+                    $hasRelevantData = true;
+                    if ($activeTab !== 'okuma') {
+                        $hasRelevantData = false;
+                        foreach ($data as $day => $workTypeCounts) {
+                            foreach ($workTypeCounts as $workTypeName => $count) {
+                                foreach ($workTypeCols as $wtCol) {
+                                    if ($wtCol['name'] === $workTypeName && $count > 0) {
+                                        $hasRelevantData = true;
+                                        break 3;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Eğer ilgili verisi yoksa, en azından bu tabın belirlenen ekip aralığında mı diye bak (Eğer aralıktaysa boş da olsa gelsin diye)
+                    if (!$hasRelevantData) {
                         $team = $teamById[$tId] ?? null;
-                        if (!$team)
-                            continue;
-                        if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
+                        if ($team && preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
                             $teamNo = (int) $m[1];
-                            if ($teamNo < 101)
+                            if (!\App\Helper\EkipHelper::isTeamInTabRange($teamNo, $activeTab, $Settings)) {
                                 continue;
+                            }
                         } else {
-                            // Ekip adı beklenen formatta değilse gösterme
                             continue;
                         }
                     }
@@ -220,37 +241,42 @@ if (true) { // Always use unified logic for all standard tabs
         if ($filterPersonelId && $assign->personel_id != $filterPersonelId)
             continue;
 
+        // Ekip kodu aralık kontrolü (Dinamik) - Birincil koşul olarak kontrol et
+        $team = $teamById[$assign->ekip_kodu_id] ?? null;
+        if (!$team || !preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
+            continue; // Ekip bulunamadı veya ekip adı formatı uymuyor, atla
+        }
+        $teamNo = (int) $m[1];
+
         $isValid = false;
         $personelDepts = !empty($assign->departman) ? array_map('trim', explode(',', $assign->departman)) : [];
         $gorev = $assign->gorev ?? '';
 
         if ($activeTab === 'okuma') {
-            if (in_array('Endeks Okuma', $personelDepts) || in_array('Okuma', $personelDepts)) {
-                // Endeks okuma listesinde ekip kodu 101'den küçük olanları gösterme
-                $team = $teamById[$assign->ekip_kodu_id] ?? null;
-                if ($team && preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
-                    $teamNo = (int) $m[1];
-                    if ($teamNo >= 101) {
-                        $isValid = true;
-                    }
-                }
+            if (\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'okuma', $Settings) && (in_array('Endeks Okuma', $personelDepts) || in_array('Okuma', $personelDepts))) {
+                $isValid = true;
             }
         } elseif ($activeTab === 'kesme') {
-            if (in_array('Kesme Açma', $personelDepts) || in_array('Kesme-Açma', $personelDepts))
+            if (\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'kesme', $Settings) && (in_array('Kesme Açma', $personelDepts) || in_array('Kesme-Açma', $personelDepts))) {
                 $isValid = true;
+            }
         } elseif ($activeTab === 'sokme_takma') {
-            if (in_array('Sayaç Sökme Takma', $personelDepts) || in_array('Sökme Takma', $personelDepts))
+            if (\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'sokme_takma', $Settings) && (in_array('Sayaç Sökme Takma', $personelDepts) || in_array('Sökme Takma', $personelDepts))) {
                 $isValid = true;
+            }
         } elseif ($activeTab === 'muhurleme') {
-            if (in_array('Mühürleme', $personelDepts))
+            if (\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'muhurleme', $Settings) && in_array('Mühürleme', $personelDepts)) {
                 $isValid = true;
+            }
         } elseif ($activeTab === 'kacakkontrol') {
             // Kaçak Kontrol - Sadece verisi olanlar summary üzerinden eklensin isteniyor.
             // Bu nedenle assignments üzerinden otomatik ekleme yapmıyoruz.
             $isValid = false;
         } else {
-            // Other unofficial tabs might show everyone
-            $isValid = true;
+            // Other unofficial tabs might show everyone, but still respect team range
+            if (\App\Helper\EkipHelper::isTeamInTabRange($teamNo, $activeTab, $Settings)) {
+                $isValid = true;
+            }
         }
 
         if ($isValid) {
@@ -364,9 +390,19 @@ if (!empty($workTypeCols)) {
 }
 ?>
 
-<?php if ($activeTab !== 'okuma' && !empty($workTypeCols)): ?>
+<?php
+$tabNames = [
+    'okuma' => 'Endeks Okuma',
+    'kesme' => 'Kesme/Açma',
+    'sokme_takma' => 'Sayaç Sökme Takma',
+    'muhurleme' => 'Mühürleme',
+    'kacakkontrol' => 'Kaçak Kontrol'
+];
+$currentTabName = $tabNames[$activeTab] ?? 'Rapor';
+?>
 
-    <div class="report-legend" id="workTypeLegend">
+<div class="report-legend d-flex align-items-center" id="workTypeLegend">
+    <?php if ($activeTab !== 'okuma' && !empty($workTypeCols)): ?>
         <?php foreach ($workTypeCols as $wt): ?>
             <div class="legend-item" data-wt-code="<?= $wt['code'] ?>" style="cursor: pointer; transition: all 0.2s;">
                 <span class="legend-code"><?= $wt['code'] ?></span>
@@ -384,18 +420,25 @@ if (!empty($workTypeCols)) {
         ?>
         <small class="text-muted ms-2 align-self-center">* Kodlara tıklayarak tabloyu filtreleyebilirsiniz.</small>
 
-        <?php
-
-        if ($unmatchedCount > 0): ?>
-            <div class="legend-item ms-auto border-danger text-danger border-dashed" id="btnExportUnmatched"
+        <?php if ($unmatchedCount > 0): ?>
+            <div class="legend-item ms-auto border-danger text-danger border-dashed me-2" id="btnExportUnmatched"
                 title="Tanımlı olmayan iş emri sonuçları var. Raporu indirerek kontrol edebilirsiniz."
                 style="cursor: pointer; border: 1px dashed #f46a6a; padding: 2px 10px; border-radius: 6px; background-color: rgba(244, 106, 106, 0.05); font-weight: 500;">
                 <i class="bx bx-error-circle me-1 animate-pulse"></i>
                 Ücretsiz İşlemler: <span class="badge bg-danger ms-1"><?= $unmatchedCount ?></span>
             </div>
         <?php endif; ?>
+    <?php endif; ?>
+
+    <div class="ms-auto">
+        <button type="button"
+            class="btn btn-outline-secondary btn-sm btn-tab-settings d-flex align-items-center justify-content-center"
+            style="width: 32px; height: 32px; padding: 0;" data-tab="<?= $activeTab ?>"
+            data-tab-name="<?= $currentTabName ?>" title="<?= $currentTabName ?> Ayarları">
+            <i class="bx bx-cog fs-4"></i>
+        </button>
     </div>
-<?php endif; ?>
+</div>
 
 <style>
     .legend-item.active-filter {
