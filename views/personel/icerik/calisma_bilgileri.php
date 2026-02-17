@@ -41,17 +41,8 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                     </div>
                     <div class="col-md-2 mb-2">
                         <?php
-                        $departmanlar = [
-                            "BÜRO" => "BÜRO",
-                            'Kesme Açma' => 'Kesme Açma',
-                            'Kaçak Kontrol' => 'Kaçak Kontrol',
-                            'Endeks Okuma' => 'Endeks Okuma',
-                            'Sayaç Sökme Takma' => 'Sayaç Sökme Takma',
-                            'Mühürleme' => 'Mühürleme',
-                            'Kaçak Su Tespiti' => 'Kaçak Su Tespiti',
-                        ];
                         $selectedDepartmanlar = !empty($personel->departman) ? explode(',', $personel->departman) : [];
-                        echo Form::FormMultipleSelect2("departman", $departmanlar, $selectedDepartmanlar, "Departman", "grid");
+                        echo Form::FormMultipleSelect2("departman", Helper::DEPARTMAN, $selectedDepartmanlar, "Departman", "grid");
                         ?>
                     </div>
                     <div class="col-md-2 mb-2">

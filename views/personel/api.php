@@ -243,7 +243,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 $changesStr = !empty($changes) ? implode(', ', $changes) : 'Değişiklik yok';
                 $tcNo = $data['tc_kimlik_no'] ?? ($oldData->tc_kimlik_no ?? 'Bilinmeyen');
-                $SystemLog->logAction($userId, 'Personel Güncelleme', "$tcNo kimlik numaralı personelin verileri güncellendi (Güncellenen veriler: { $changesStr })");
+                $adiSoyadi = $data['adi_soyadi'] ?? ($oldData->adi_soyadi ?? '');
+                $SystemLog->logAction($userId, 'Personel Güncelleme', "$tcNo kimlik numaralı $adiSoyadi isimli personelin verileri güncellendi (Güncellenen veriler: { $changesStr })");
 
                 $message = "Personel başarıyla güncellendi.";
             } else {
@@ -263,7 +264,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } elseif ($action == 'personel-sil') {
         try {
             $id = Security::decrypt($_POST['id']);
+            $personel = $Personel->find($id);
+            $tcNo = $personel->tc_kimlik_no ?? 'Bilinmeyen';
+            $adiSoyadi = $personel->adi_soyadi ?? 'Bilinmeyen';
             $Personel->delete($id, false); // false: decrypt işlemi yapılmasın (id direkt geliyorsa)
+            $SystemLog->logAction($userId, 'Personel Silme', "$tcNo kimlik numaralı $adiSoyadi isimli personel silindi.");
             echo json_encode(['status' => 'success', 'message' => 'Personel başarıyla silindi.']);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -286,6 +291,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             ];
 
             $PersonelEkOdemelerModel->saveWithAttr($saveData);
+            
+            $personel = $Personel->find($data['personel_id']);
+            $adiSoyadi = $personel->adi_soyadi ?? 'Bilinmeyen';
+            $tutar = number_format($saveData['tutar'], 2, ',', '.') . ' ₺';
+            $SystemLog->logAction($userId, 'Ek Ödeme Ekleme', "$adiSoyadi isimli personele $tutar tutarında ek ödeme eklendi ({$saveData['aciklama']})");
+
             echo json_encode(['status' => 'success', 'message' => 'Gelir başarıyla eklendi.']);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -308,6 +319,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             ];
 
             $PersonelKesintileriModel->saveWithAttr($saveData);
+            
+            $personel = $Personel->find($data['personel_id']);
+            $adiSoyadi = $personel->adi_soyadi ?? 'Bilinmeyen';
+            $tutar = number_format($saveData['tutar'], 2, ',', '.') . ' ₺';
+            $SystemLog->logAction($userId, 'Kesinti Ekleme', "$adiSoyadi isimli personelden $tutar tutarında kesinti tanımlandı ({$saveData['aciklama']})");
+
             echo json_encode(['status' => 'success', 'message' => 'Kesinti başarıyla eklendi.']);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

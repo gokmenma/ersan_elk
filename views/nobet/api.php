@@ -488,10 +488,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             case 'onayla-amir-talebi':
                 $talep_id = Security::decrypt($_POST['talep_id']);
+                $stmt = $Nobet->getDb()->prepare("SELECT dt.*, p.adi_soyadi FROM nobet_degisim_talepleri dt JOIN nobetler n ON dt.nobet_id = n.id JOIN personel p ON n.personel_id = p.id WHERE dt.id = ?");
+                $stmt->execute([$talep_id]);
+                $talep = $stmt->fetch(PDO::FETCH_OBJ);
                 $result = $Nobet->onaylaAmirTalebi($talep_id, $userId);
 
                 if ($result) {
-                    $SystemLog->logAction($userId, 'Nöbet Değişim Onayı', "Nöbet değişim talebi #{$talep_id} onaylandı.");
+                    $pName = $talep->adi_soyadi ?? "Bilinmeyen";
+                    $SystemLog->logAction($userId, 'Nöbet Değişim Onayı', "{$pName} isimli personelin nöbet değişim talebi #{$talep_id} onaylandı.");
                     echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Değişim onaylandı. Takvim güncellendi.']);
                 } else {
                     throw new Exception("Onaylama başarısız.");
@@ -666,7 +670,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $result = $Nobet->onaylaAmirTalebi($talepId, $userId);
 
                 if ($result) {
-                    $SystemLog->logAction($userId, 'nobet_degisim_onayla', 'Nöbet değişim talebi onaylandı');
+                    $stmt = $Nobet->getDb()->prepare("SELECT p.adi_soyadi FROM nobet_degisim_talepleri dt JOIN nobetler n ON dt.nobet_id = n.id JOIN personel p ON n.personel_id = p.id WHERE dt.id = ?");
+                    $stmt->execute([$talepId]);
+                    $pName = $stmt->fetch(PDO::FETCH_OBJ)->adi_soyadi ?? "Bilinmeyen";
+                    $SystemLog->logAction($userId, 'Nöbet Değişim Onayı', "{$pName} isimli personelin nöbet değişim talebi #{$talepId} onaylandı.");
                     echo json_encode(['success' => true, 'message' => 'Değişim talebi onaylandı.']);
                 } else {
                     throw new Exception("Onaylama işlemi başarısız.");

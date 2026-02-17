@@ -254,6 +254,7 @@ try {
     $evetHayirList = '"Evet,Hayır"';
     $varYokList = '"Var,Yok"';
     $personelSinifiList = '"Beyaz Yaka,Mavi Yaka"';
+    $departmanList = '"' . implode(',', array_keys(\App\Helper\Helper::DEPARTMAN)) . '"';
     $maasDurumuList = '"Brüt,Net,Prim Usülü"';
     $aktifList = '"1,0"';
     $aracKullanimList = '"Yok,Kendi Aracı,Şirket aracı"';
@@ -331,6 +332,16 @@ try {
             $objValidation->setAllowBlank(true);
             $objValidation->setShowDropDown(true);
             $objValidation->setFormula1($personelSinifiList);
+        }
+
+        // Departman
+        if (isset($fieldToCol['departman'])) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($fieldToCol['departman']);
+            $objValidation = $sheet->getCell($col . $i)->getDataValidation();
+            $objValidation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $objValidation->setAllowBlank(true);
+            $objValidation->setShowDropDown(true);
+            $objValidation->setFormula1($departmanList);
         }
 
         // Maaş Durumu

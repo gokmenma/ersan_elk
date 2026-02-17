@@ -16,6 +16,16 @@ class Helper
         '2' => "Gelen Evrak",
     ];
 
+    const DEPARTMAN = [
+        "BÜRO" => "BÜRO",
+        'Kesme Açma' => 'Kesme Açma',
+        'Kaçak Kontrol' => 'Kaçak Kontrol',
+        'Endeks Okuma' => 'Endeks Okuma',
+        'Sayaç Sökme Takma' => 'Sayaç Sökme Takma',
+        'Mühürleme' => 'Mühürleme',
+        'Kaçak Su Tespiti' => 'Kaçak Su Tespiti',
+    ];
+
 
 
 

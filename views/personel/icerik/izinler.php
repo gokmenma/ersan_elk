@@ -149,6 +149,12 @@ $onay_durumlari = [
                         </button>
                     </div>
 
+                    <!-- Tam Ekran Butonu (Sadece Takvim Görünümünde) -->
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="btnCalendarFullscreen"
+                        title="Tam Ekran" style="display: none;">
+                        <i class="bx bx-fullscreen"></i>
+                    </button>
+
                     <button type="button" class="btn btn-sm btn-primary ms-2" data-bs-toggle="modal"
                         data-bs-target="#modalIzinEkle"><i class="bx bx-plus"></i> <span class="d-none d-sm-inline">Yeni
                             Ekle</span></button>
@@ -260,6 +266,20 @@ $onay_durumlari = [
 
                 <!-- Takvim Görünümü -->
                 <div id="izinCalendarContainer" style="display: none;" class="p-3 bg-light">
+                    <!-- Tam Ekran Başlığı -->
+                    <div id="calendarFullscreenHeader">
+                        <h5 class="mb-0 text-primary">
+                            <i class="bx bx-calendar-event me-2"></i>
+                            <span id="fsPersonelAdi"><?= htmlspecialchars($personel->adi_soyadi ?? '') ?></span> -
+                            <span id="fsYilGosterge"></span> Yıllık Takvim
+                        </h5>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-danger" id="btnExitCalendarFullscreen">
+                                <i class="bx bx-exit-fullscreen"></i> Tam Ekrandan Çık
+                            </button>
+                        </div>
+                    </div>
+
                     <div id="yillikTakvimContainer" class="row g-3">
                         <!-- JS ile doldurulacak -->
                     </div>
@@ -558,6 +578,42 @@ $onay_durumlari = [
         border-radius: 4px;
         font-size: 10px;
     }
+
+    /* Takvim Tam Ekran Stilleri */
+    body.calendar-fullscreen {
+        overflow: hidden !important;
+    }
+
+    body.calendar-fullscreen #izinCalendarContainer {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 9999;
+        background: var(--bs-body-bg, #f3f3f9);
+        padding: 20px;
+        overflow-y: auto;
+        display: block !important;
+    }
+
+    body.calendar-fullscreen .year-calendar-month {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Tam ekranda başlığı da gösterelim */
+    #calendarFullscreenHeader {
+        display: none;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    body.calendar-fullscreen #calendarFullscreenHeader {
+        display: flex !important;
+        justify-content: space-between;
+        align-items: center;
+    }
 </style>
 
 <script>
@@ -696,6 +752,7 @@ $onay_durumlari = [
             $('#izinListContainer').show();
             $('#izinCalendarContainer').hide();
             $('#takvimYilSecici').hide();
+            $('#btnCalendarFullscreen').hide();
         });
 
         $(document).off('click', '#btnCalendarView').on('click', '#btnCalendarView', function () {
@@ -703,11 +760,29 @@ $onay_durumlari = [
             $('#izinListContainer').hide();
             $('#izinCalendarContainer').show();
             $('#takvimYilSecici').show();
+            $('#btnCalendarFullscreen').show();
             loadYearlyCalendar();
+        });
+
+        $(document).off('click', '#btnCalendarFullscreen').on('click', '#btnCalendarFullscreen', function () {
+            $('body').addClass('calendar-fullscreen');
+            $('#fsYilGosterge').text($('#yillik_takvim_yil').val());
+        });
+
+        $(document).off('click', '#btnExitCalendarFullscreen').on('click', '#btnExitCalendarFullscreen', function () {
+            $('body').removeClass('calendar-fullscreen');
+        });
+
+        // ESC tuşu ile tam ekrandan çıkma
+        $(document).on('keydown', function (e) {
+            if (e.key === "Escape" && $('body').hasClass('calendar-fullscreen')) {
+                $('body').removeClass('calendar-fullscreen');
+            }
         });
 
         $(document).off('change', '#yillik_takvim_yil').on('change', '#yillik_takvim_yil', function () {
             loadYearlyCalendar();
+            $('#fsYilGosterge').text($(this).val());
         });
 
         function loadYearlyCalendar() {

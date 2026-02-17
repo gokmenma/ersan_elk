@@ -790,22 +790,23 @@
       api.column(cell.colIdx).search("");
     }
 
-    filterCells.forEach((cell) => {
-      const val = cell.value;
+    // Girişte kaydedilmiş filtreleri uygula
+    const hasInitialFilters = filterCells.some((cell) => {
+      const isNullMode = ["null", "not_null"].includes(cell.mode);
       const hasVal =
-        val &&
-        (Array.isArray(val) ? val.length > 0 : val.toString().trim() !== "");
-      if (cell.$trigger) cell.$trigger.toggleClass("active", !!hasVal);
+        (cell.value &&
+          (Array.isArray(cell.value)
+            ? cell.value.length > 0
+            : cell.value.toString().trim() !== "")) ||
+        isNullMode;
+      const isNonDefaultMode =
+        cell.mode !== (DEFAULT_MODES[cell.type] || "contains");
+      return hasVal || isNonDefaultMode;
     });
-    if (
-      filterCells.some((c) => {
-        const v = c.value;
-        return (
-          v && (Array.isArray(v) ? v.length > 0 : v.toString().trim() !== "")
-        );
-      })
-    ) {
-      api.draw();
+
+    if (hasInitialFilters) {
+      applyFilters();
+    } else {
       updateFilterBar();
     }
   };
