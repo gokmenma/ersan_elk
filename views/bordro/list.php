@@ -533,18 +533,18 @@ $ek_odeme_turleri = [
                                                 <input type="checkbox" class="form-check-input" id="selectAll">
                                             </div>
                                         </th>
-                                        <th class="text-center" style="width: 80px;">Birim</th>
-                                        <th style="min-width: 150px;">Ekip / Bölge</th>
+                                        <th class="text-center" style="width: 80px;" data-filter="select">Birim</th>
+                                        <th style="min-width: 150px;" data-filter="select">Ekip / Bölge</th>
                                         <th>Personel</th>
-                                        <th class="text-center">Maaş Tipi</th>
-                                        <th class="text-center">Gün</th>
-                                        <th class="text-end">Toplam Alacağı</th>
-                                        <th class="text-end">Kesinti Tutarı</th>
-                                        <th class="text-end">Net Alacağı</th>
-                                        <th class="text-end">İcra Kesintisi</th>
-                                        <th class="text-end">Banka</th>
-                                        <th class="text-end">Sodexo</th>
-                                        <th class="text-end">Elden</th>
+                                        <th class="text-center" data-filter="select">Maaş Tipi</th>
+                                        <th class="text-center" data-filter="number">Gün</th>
+                                        <th class="text-end" data-filter="number">Toplam Alacağı</th>
+                                        <th class="text-end" data-filter="number">Kesinti Tutarı</th>
+                                        <th class="text-end" data-filter="number">Net Alacağı</th>
+                                        <th class="text-end" data-filter="number">İcra Kesintisi</th>
+                                        <th class="text-end" data-filter="number">Banka</th>
+                                        <th class="text-end" data-filter="number">Sodexo</th>
+                                        <th class="text-end" data-filter="number">Elden</th>
                                         <th class="text-center">İşlemler</th>
                                     </tr>
                                 </thead>

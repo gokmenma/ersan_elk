@@ -2,24 +2,28 @@
    DataTable Advanced Filters CSS
    =================================================== */
 
+:root {
+  --dtf-primary: #556ee6;
+}
+
 /* Header Trigger Position */
 .dt-header-with-filter {
   position: relative;
-  padding-right: 32px !important;
+  padding-right: 35px !important;
   vertical-align: middle !important;
 }
 
 .dt-filter-mode-trigger {
   position: absolute;
-  right: 6px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  width: 22px;
-  height: 22px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   background: #fff;
   color: #adb5bd;
-  border-radius: 4px;
+  border-radius: 6px;
   display: flex !important;
   align-items: center;
   justify-content: center;
@@ -30,22 +34,23 @@
 }
 
 .dt-filter-mode-trigger:hover {
-  color: #556ee6;
+  color: var(--bs-primary, var(--dtf-primary));
   background: #f8f9fa;
-  border-color: #556ee6;
+  border-color: var(--bs-primary, var(--dtf-primary));
 }
 
 .dt-filter-mode-trigger.active {
-  background: #556ee6 !important;
+  background: var(--bs-primary, var(--dtf-primary)) !important;
   color: #fff !important;
-  border-color: #556ee6 !important;
+  border-color: var(--bs-primary, var(--dtf-primary)) !important;
 }
 
-/* Filter Row (Row 2) */
+/* Filter Row - Modern Clean Look */
 .dt-filter-row > th {
-  padding: 4px 6px !important;
-  background-color: #fafbfc !important;
-  border-bottom: 2px solid #eff2f7 !important;
+  padding: 4px 3px !important;
+  background-color: #fff !important;
+  border-bottom: 1px solid #eff2f7 !important;
+  vertical-align: middle !important;
 }
 
 .dt-filter-cell {
@@ -53,62 +58,178 @@
 }
 
 .dt-filter-control {
+  display: block;
   width: 100%;
-  height: 28px;
-  padding: 2px 8px;
-  font-size: 11.5px;
-  border: 1.5px solid #e1e5eb;
-  border-radius: 5px;
+  height: 38px;
+  margin: 0px !important;
+  padding: 8px !important;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #495057;
+  background-color: #fff;
+  background-clip: padding-box;
+  border: 1px solid #bfc1c2 !important;
+  border-radius: 8px;
   outline: none;
-  transition: all 0.2s;
-  background: #fff;
+  transition:
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
+  text-align: center;
+}
+
+.dt-filter-control::placeholder {
+  color: #ced4da;
+  opacity: 0.8;
+}
+
+.dt-filter-control[readonly] {
+  background-color: #fcfdfe;
+  cursor: pointer;
 }
 
 .dt-filter-control:focus {
-  border-color: #556ee6;
+  border-color: var(--bs-primary, var(--dtf-primary)) !important;
   box-shadow: 0 0 0 3px rgba(85, 110, 230, 0.1);
 }
 
-/* Dropdown Menu (Floating) */
-.dt-filter-mode-dropdown {
+/* Dropdown Menus Framework */
+.dt-filter-mode-dropdown,
+.dt-filter-excel-dropdown {
   position: absolute;
-  z-index: 9999;
+  z-index: 10000;
   background: #fff;
-  border: 1px solid #e1e5eb;
-  border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-  min-width: 150px;
-  padding: 5px 0;
+  border: 1px solid #bfc1c2;
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   display: none;
+  flex-direction: column;
+  width: 260px;
+  overflow: hidden;
+  height: auto;
+  max-height: 450px; /* Overall limit */
 }
 
-.dt-filter-mode-dropdown.show {
-  display: block;
+.dt-filter-mode-dropdown.show,
+.dt-filter-excel-dropdown.show {
+  display: flex !important;
+}
+
+/* Standard Mode Dropdown (Funnel) */
+.dt-filter-mode-dropdown {
+  width: 180px;
+  padding: 8px;
 }
 
 .dt-filter-mode-dropdown .mode-opt {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
   padding: 8px 12px;
-  border: none;
-  background: none;
-  font-size: 13px;
+  border: none !important;
+  background: transparent;
+  font-size: 13.5px;
+  font-weight: 500;
   color: #495057;
   text-align: left;
   cursor: pointer;
+  transition: all 0.1s;
+  border-radius: 6px;
+  margin-bottom: 2px;
 }
 
 .dt-filter-mode-dropdown .mode-opt:hover {
   background: #f8f9fa;
-  color: #556ee6;
+  color: var(--bs-primary, var(--dtf-primary));
 }
 
-.dt-filter-mode-dropdown .mode-opt i {
-  font-size: 16px;
-  width: 20px;
-  text-align: center;
+.dt-filter-mode-dropdown .mode-opt.active {
+  background: var(--bs-primary, var(--dtf-primary)) !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+
+.dt-filter-mode-dropdown .mode-opt.active i {
+  color: #fff !important;
+  opacity: 1;
+}
+
+/* Excel-like Dropdown Style - UI FIXES */
+.dt-filter-excel-dropdown .search-box {
+  padding: 12px;
+  border-bottom: 1px solid #f1f3f7;
+  flex-shrink: 0;
+}
+
+.dt-filter-excel-dropdown .search-box input {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #bfc1c2;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.dt-filter-excel-dropdown .options-list {
+  max-height: 250px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  background: #fff;
+}
+
+.dt-filter-excel-dropdown .option-item {
+  display: flex;
+  align-items: center;
+  padding: 9px 16px;
+  gap: 12px;
+  cursor: pointer;
+  margin-bottom: 0;
+  font-size: 13px;
+  color: #495057;
+  background: #fff;
+}
+
+.dt-filter-excel-dropdown .option-item:hover {
+  background: #f8f9fa;
+}
+
+.dt-filter-excel-dropdown .option-item input {
+  margin: 0;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--bs-primary, var(--dtf-primary));
+}
+
+.dt-filter-excel-dropdown .option-item.select-all {
+  border-bottom: 1px solid #f1f3f7;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #fff;
+}
+
+/* KESİN ÇÖZÜM: Footer her zaman en altta ve görünür */
+.dt-filter-excel-dropdown .dt-filter-footer {
+  padding: 12px;
+  border-top: 1px solid #f1f3f7;
+  background: #fcfdfe;
+  display: flex !important;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+  z-index: 11;
+  width: 100%;
+  min-height: 55px; /* Ensure it has height */
+}
+
+.dt-filter-excel-dropdown .dt-filter-footer .btn-apply,
+.dt-filter-excel-dropdown .dt-filter-footer .btn-cancel {
+  min-width: 80px;
 }
 
 /* Active Filter Bar */
@@ -116,75 +237,77 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  background: #f8f9fa;
+  gap: 10px;
+  background: #fff;
   border: 1px solid #eff2f7;
-  padding: 6px 12px;
-  border-radius: 6px;
-  margin-bottom: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 .dt-active-filters-bar .label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  color: #556ee6;
+  color: var(--bs-primary, var(--dtf-primary));
   text-transform: uppercase;
 }
 
 .dt-active-filters-bar .badge {
-  background: rgba(85, 110, 230, 0.1);
-  color: #556ee6;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  display: flex;
+  background: #f8f9fa;
+  border: 1px solid #e1e5eb;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-weight: 500;
+  gap: 8px;
+  color: #495057;
 }
 
 .dt-active-filters-bar .badge i.remove {
   cursor: pointer;
-  font-size: 14px;
+  color: #adb5bd;
 }
 
 .dt-active-filters-bar .badge i.remove:hover {
   color: #f46a6a;
 }
 
-.dt-active-filters-bar .clear-all {
-  margin-left: auto;
-  border: none;
-  background: none;
-  color: #f46a6a;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
 /* Dark Mode Support */
-html[data-bs-theme="dark"] .dt-filter-mode-trigger {
-  background: #32394e;
+html[data-bs-theme="dark"] .dt-filter-excel-dropdown {
+  background: #2a3042;
   border-color: #3e4556;
+}
+
+html[data-bs-theme="dark"] .dt-filter-excel-dropdown .search-box,
+html[data-bs-theme="dark"] .dt-filter-excel-dropdown .options-list,
+html[data-bs-theme="dark"] .dt-filter-excel-dropdown .dt-filter-footer,
+html[data-bs-theme="dark"] .dt-filter-excel-dropdown .option-item.select-all {
+  background: transparent;
+  border-color: #3e4556;
+}
+
+html[data-bs-theme="dark"] .dt-filter-excel-dropdown .option-item {
+  color: #a6b0cf;
+  background: transparent;
+}
+
+html[data-bs-theme="dark"]
+  .dt-filter-excel-dropdown
+  .dt-filter-footer
+  .btn-cancel {
+  background: #2e3548;
   color: #a6b0cf;
 }
 
-html[data-bs-theme="dark"] .dt-filter-row > th {
-  background-color: #2e3548 !important;
-  border-bottom-color: #32394e !important;
+html[data-bs-theme="dark"] .dt-active-filters-bar {
+  background: #2e3548;
+  border-color: #3e4556;
 }
 
-html[data-bs-theme="dark"] .dt-filter-control {
+html[data-bs-theme="dark"] .dt-active-filters-bar .badge {
   background: #2a3042;
-  border-color: #32394e;
-  color: #a6b0cf;
-}
-
-html[data-bs-theme="dark"] .dt-filter-mode-dropdown {
-  background: #2a3042;
-  border-color: #32394e;
-}
-
-html[data-bs-theme="dark"] .dt-filter-mode-dropdown .mode-opt {
+  border-color: #3e4556;
   color: #a6b0cf;
 }
