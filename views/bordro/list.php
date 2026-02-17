@@ -535,7 +535,7 @@ $ek_odeme_turleri = [
                                         </th>
                                         <th class="text-center" style="width: 80px;" data-filter="select">Birim</th>
                                         <th style="min-width: 150px;" data-filter="select">Ekip / Bölge</th>
-                                        <th>Personel</th>
+                                        <th data-filter="string">Personel</th>
                                         <th class="text-center" data-filter="select">Maaş Tipi</th>
                                         <th class="text-center" data-filter="number">Gün</th>
                                         <th class="text-end" data-filter="number">Toplam Alacağı</th>

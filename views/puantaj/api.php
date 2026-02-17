@@ -1046,6 +1046,8 @@ if (isset($_GET["action"]) && $_GET["action"] == "get-report-table") {
 
 // Online Puantaj (Kesme/Açma İşlemleri) Sorgulama
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'online-puantaj-sorgula') {
+    ob_start();
+    header('Content-Type: application/json; charset=utf-8');
     $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
 
     try {
@@ -1105,6 +1107,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $resultsFilter = implode(',', $filterNames);
             }
         }
+
+        // Sayaçları ve dizileri başlat (Hata almamak için)
+        $yeniKayit = 0;
+        $guncellenenKayit = 0;
+        $silinenKayit = 0;
+        $atlanAnKayitlar = [];
+        $bosSonucSayisi = 0;
+        $mevcutKayitlar = [];
 
         $KesmeAcmaSvc = new KesmeAcmaService();
         $apiData = [];
@@ -1305,16 +1315,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // ===================================
     }
 
-    echo json_encode($response);
+    ob_end_clean();
+    echo json_encode($response, JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 // Online İcmal (Endeks Okuma) Sorgulama
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'online-icmal-sorgula') {
+    ob_start();
+    header('Content-Type: application/json; charset=utf-8');
     $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
 
     try {
         ini_set('memory_limit', '512M');
+        $yeniKayit = 0;
+        $guncellenenKayit = 0;
+        $silinenKayit = 0;
+        $atlanAnKayitlar = [];
+        $mevcutKayitlar = [];
+        $bosSonucSayisi = 0;
+        $apiData = [];
+
         $ilkFirma = $_POST['ilk_firma'] ?? 17;
         $sonFirma = $_POST['son_firma'] ?? 17;
         $baslangicTarihiRaw = $_POST['baslangic_tarihi'] ?? date('Y-m-d');
@@ -1395,10 +1416,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     break;
             }
         }
-
-        $yeniKayit = 0;
-        $silinenKayit = 0;
-        $atlanAnKayitlar = [];
 
         // ========== SİL VE YENİDEN YÜKLE YAKLAŞIMI ==========
         // 1. Personel ve ekip verilerini toplu yükle (lookup tabloları)
@@ -1551,7 +1568,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // ===================================
     }
 
-    echo json_encode($response);
+    ob_end_clean();
+    echo json_encode($response, JSON_UNESCAPED_UNICODE);
     exit;
 }
 

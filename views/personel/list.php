@@ -145,7 +145,7 @@ if (Gate::canWithMessage("personel_listesi")) {
                                     <th data-filter="select">GÖREV</th>
                                     <th data-filter="select">DEPARTMAN</th>
                                     <th style="min-width: 160px; width: 160px;" data-filter="string">EKİP / BÖLGE</th>
-                                    <th class="text-center">BİLDİRİM</th>
+                                    <th class="text-center" data-filter="select">BİLDİRİM</th>
                                     <th data-filter="select">DURUM</th>
                                 </tr>
                             </thead>

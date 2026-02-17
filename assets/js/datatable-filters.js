@@ -96,9 +96,6 @@
     if (!data) return "";
     return data
       .toString()
-      .replace(/[\n\r\t]/g, " ")
-      .replace(/\s\s+/g, " ")
-      .trim()
       .replace(/İ/gi, "i")
       .replace(/I/g, "ı")
       .replace(/Ş/gi, "s")
@@ -112,62 +109,92 @@
       .replace(/ğ/g, "g")
       .replace(/ü/g, "u")
       .replace(/ö/g, "o")
-      .replace(/ç/g, "c");
+      .replace(/ç/g, "c")
+      .replace(/â/g, "a")
+      .replace(/î/g, "i")
+      .replace(/û/g, "u")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function extractTextWithSpaces(html) {
+    if (!html) return "";
+    if (typeof html !== "string") return html.toString();
+    // Wrap to parse easily, replace tag junctions with space
+    const cleanedHtml = html.toString().replace(/>\s*</g, "> <");
+    const $tmp = $("<div>").html(cleanedHtml);
+    return $tmp.text().replace(/\s+/g, " ").trim();
   }
 
   // --- Filter Engine ---
   function matchFilter(cell, cellValueRaw) {
     const mode = cell.mode;
     const val = cell.value;
-    const hasVal =
-      val &&
-      (Array.isArray(val) ? val.length > 0 : val.toString().trim() !== "");
-    if (!hasVal) return true;
 
-    const cellValue = $("<div>")
-      .html(cellValueRaw)
-      .text()
-      .replace(/\s\s+/g, " ")
-      .trim();
+    // Determine if applied
+    const isApplied = Array.isArray(val)
+      ? true
+      : val && val.toString().trim() !== "";
+    if (!isApplied) return true;
 
-    if (cell.type === "select") {
-      const normalizedCell = normalizeTR(cellValue);
-      if (Array.isArray(val)) {
-        return val.some((v) => normalizeTR(v) === normalizedCell);
-      }
-      return normalizedCell === normalizeTR(val);
+    // Handle empty array as "Select None"
+    if (Array.isArray(val) && val.length === 0) return false;
+
+    const cellText = extractTextWithSpaces(cellValueRaw);
+    const isSelect = cell.type === "select";
+
+    if (isSelect) {
+      const nCell = normalizeTR(cellText);
+      const valArr = Array.isArray(val) ? val : [val];
+      const match = valArr.some((v) => {
+        const nv = normalizeTR(v);
+        const hit = nCell === nv || nCell.indexOf(nv) !== -1;
+        return hit;
+      });
+      console.log(`[DT-Filter] Col:${cell.colIdx} Select Match:${match}`, {
+        nCell,
+        valArr,
+      });
+      return match;
     }
 
     if (cell.type === "string") {
-      const nCell = normalizeTR(cellValue);
+      const nCell = normalizeTR(cellText);
       const nFilter = normalizeTR(val);
+      let match = false;
       switch (mode) {
         case "contains":
-          return nCell.indexOf(nFilter) !== -1;
+          match = nCell.indexOf(nFilter) !== -1;
+          break;
         case "not_contains":
-          return nCell.indexOf(nFilter) === -1;
+          match = nCell.indexOf(nFilter) === -1;
+          break;
         case "starts_with":
-          return nCell.indexOf(nFilter) === 0;
+          match = nCell.indexOf(nFilter) === 0;
+          break;
         case "ends_with":
-          return (
+          match =
             nCell.length >= nFilter.length &&
-            nCell.substr(nCell.length - nFilter.length) === nFilter
-          );
+            nCell.substr(nCell.length - nFilter.length) === nFilter;
+          break;
         case "equals":
-          return nCell === nFilter;
+          match = nCell === nFilter;
+          break;
         case "not_equals":
-          return nCell !== nFilter;
+          match = nCell !== nFilter;
+          break;
         default:
-          return true;
+          match = true;
       }
+      return match;
     }
 
     if (cell.type === "number") {
-      const nCellStr = cellValue.toString().replace(/[^\d]/g, "");
+      const nCellStr = cellText.replace(/[^\d]/g, "");
       const nFilterStr = val.toString().replace(/[^\d]/g, "");
       if (mode === "contains") return nCellStr.indexOf(nFilterStr) !== -1;
 
-      const numCell = parseNumTR(cellValue);
+      const numCell = parseNumTR(cellText);
       const numFilter = parseNumTR(val);
       if (isNaN(numFilter)) return true;
       if (isNaN(numCell)) return false;
@@ -218,9 +245,22 @@
       $filterRow.append($th);
 
       const isActionCol =
-        ["İŞLEM", "SEC", "SEÇ", "#", "SIRA", "BİLDİRİM", "BILDIRIM"].includes(
-          title.toUpperCase().replace(/\s/g, ""),
-        ) || $header.find('input[type="checkbox"]').length > 0;
+        [
+          "İŞLEM",
+          "İŞLEMLER",
+          "SEC",
+          "SEÇ",
+          "SEÇİM",
+          "SECIM",
+          "#",
+          "SIRA",
+          "NO",
+          "NÖBET",
+          "NOBET",
+          "BİLDİRİM",
+          "BILDIRIM",
+        ].includes(title.toUpperCase().replace(/\s/g, "")) ||
+        $header.find('input[type="checkbox"]').length > 0;
 
       if (!filterType && isActionCol) return;
 
@@ -289,7 +329,7 @@
           .data()
           .unique()
           .each(function (v) {
-            const t = $("<div>").html(v).text().replace(/\s\s+/g, " ").trim();
+            const t = extractTextWithSpaces(v);
             if (t && !uniqueVals.includes(t)) uniqueVals.push(t);
           });
         uniqueVals.sort();
@@ -326,13 +366,36 @@
 
         // Sync "Select All" initial state
         const updateSelectAllState = () => {
-          const $items = $list.find(".option-item:not(.select-all) input");
-          const $checked = $list.find(
-            ".option-item:not(.select-all) input:checked",
-          );
-          $excelDpy
-            .find(".select-all input")
-            .prop("checked", $items.length === $checked.length);
+          const $searchInp = $excelDpy.find(".search-box input");
+          const searchTerm = normalizeTR($searchInp.val());
+          const $items = $list.find(".option-item:not(.select-all)");
+
+          if (searchTerm !== "") {
+            // During search, "Select All" reflects visible items
+            let visibleCount = 0;
+            let visibleChecked = 0;
+            $items.each(function () {
+              if ($(this).css("display") !== "none") {
+                visibleCount++;
+                if ($(this).find("input").prop("checked")) visibleChecked++;
+              }
+            });
+            $excelDpy
+              .find(".select-all input")
+              .prop(
+                "checked",
+                visibleCount > 0 && visibleCount === visibleChecked,
+              );
+          } else {
+            // Normal state: reflects all items
+            const checkedCount = $items.find("input:checked").length;
+            $excelDpy
+              .find(".select-all input")
+              .prop(
+                "checked",
+                $items.length > 0 && $items.length === checkedCount,
+              );
+          }
         };
         updateSelectAllState();
 
@@ -368,6 +431,7 @@
             const text = normalizeTR($(this).find("span").text());
             $(this).toggle(text.indexOf(term) !== -1);
           });
+          updateSelectAllState();
         });
 
         $excelDpy
@@ -376,9 +440,20 @@
 
         $excelDpy.find(".select-all input").on("change", function () {
           const isChecked = $(this).prop("checked");
-          $excelDpy
-            .find(".option-item:not(.select-all):visible input")
-            .prop("checked", isChecked);
+          const term = normalizeTR($excelDpy.find(".search-box input").val());
+          const hasSearch = term !== "";
+
+          $excelDpy.find(".option-item:not(.select-all)").each(function () {
+            const isVisible = $(this).css("display") !== "none";
+            if (isVisible) {
+              $(this).find("input").prop("checked", isChecked);
+            } else if (hasSearch && isChecked) {
+              // Eğer arama yaparken "Hepsini Seç" deniliyorsa, genellikle SADECE arama sonuçları istenir.
+              // Bu yüzden gizli olanları kaldırıyoruz.
+              $(this).find("input").prop("checked", false);
+            }
+          });
+          updateSelectAllState();
         });
 
         $excelDpy
@@ -387,23 +462,49 @@
 
         $excelDpy.find(".btn-apply").on("click", function () {
           const selected = [];
-          const $allItems = $list.find(".option-item:not(.select-all) input");
-          const $checkedItems = $list.find(
-            ".option-item:not(.select-all) input:checked",
-          );
+          const $searchInp = $excelDpy.find(".search-box input");
+          const term = normalizeTR($searchInp.val());
+          const hasSearch = term !== "";
 
-          if ($checkedItems.length < $allItems.length) {
-            $checkedItems.each(function () {
-              selected.push($(this).val());
+          const $allItems = $list.find(".option-item:not(.select-all) input");
+
+          if (hasSearch) {
+            // Eğer arama aktifse, sadece GÖRÜNÜR ve SEÇİLİ olanları alıyoruz
+            $list.find(".option-item:not(.select-all)").each(function () {
+              if ($(this).css("display") !== "none") {
+                const $chk = $(this).find("input");
+                if ($chk.prop("checked")) {
+                  selected.push($chk.val());
+                }
+              }
             });
+
+            // Arama varken "Hepsini Seç" deniliyorsa ve her şey görünür/seçiliyse bile,
+            // bunu bir dizi olarak gönderelim ki filtreleme sadece bunlarla yapılsın.
             cellInfo.value = selected;
             $displayInput.val(
               selected.length > 0 ? selected.length + " seçildi" : "Hiçbiri",
             );
           } else {
-            cellInfo.value = "";
-            $displayInput.val("");
+            // Normal mod: Standart mantık
+            const $checkedItems = $list.find(
+              ".option-item:not(.select-all) input:checked",
+            );
+
+            if ($checkedItems.length < $allItems.length) {
+              $checkedItems.each(function () {
+                selected.push($(this).val());
+              });
+              cellInfo.value = selected;
+              $displayInput.val(
+                selected.length > 0 ? selected.length + " seçildi" : "Hiçbiri",
+              );
+            } else {
+              cellInfo.value = "";
+              $displayInput.val("");
+            }
           }
+
           $excelDpy.removeClass("show");
           applyFilters();
         });
@@ -551,14 +652,18 @@
       $filterBar.html(html);
     }
 
-    $.fn.dataTable.ext.search.push(function (s, searchData, dataIndex) {
-      if (s.sTableId !== tableId) return true;
-      for (let i = 0; i < filterCells.length; i++) {
-        if (!matchFilter(filterCells[i], searchData[filterCells[i].colIdx]))
-          return false;
-      }
-      return true;
-    });
+    $.fn.dataTable.ext.search.push(
+      function (s, searchData, dataIndex, rowData) {
+        if (s.sTableId !== tableId) return true;
+        // Use original rowData or searchData if not available
+        const dataToMatch = rowData || searchData;
+        for (let i = 0; i < filterCells.length; i++) {
+          const cell = filterCells[i];
+          if (!matchFilter(cell, dataToMatch[cell.colIdx])) return false;
+        }
+        return true;
+      },
+    );
 
     const ns = ".dtf_" + tableId;
     $(document)

@@ -2669,7 +2669,7 @@ if (Gate::allows("ana_sayfa")) {
                         $icon.removeClass('bx-spin text-primary');
 
                         try {
-                            const res = JSON.parse(response);
+                            const res = typeof response === 'object' ? response : JSON.parse(response);
                             if (res.status === 'success') {
                                 Swal.fire({
                                     icon: 'success',

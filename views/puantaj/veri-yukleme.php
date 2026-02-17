@@ -1183,7 +1183,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     $('#endeksSpinner').hide();
                     $('#btnEndeksUpload').prop('disabled', false);
                     try {
-                        var res = JSON.parse(response);
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
                         if (res.status === 'success') {
                             var htmlMessage = res.message;
                             // Atlanan satırlar varsa detaylı göster
@@ -1236,7 +1236,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     $('#puantajSpinner').hide();
                     $('#btnPuantajUpload').prop('disabled', false);
                     try {
-                        var res = JSON.parse(response);
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
                         if (res.status === 'success') {
                             var htmlMessage = res.message;
                             // Atlanan satırlar varsa detaylı göster
@@ -1289,7 +1289,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     $('#kacakSpinner').hide();
                     $('#btnKacakUpload').prop('disabled', false);
                     try {
-                        var res = JSON.parse(response);
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
                         if (res.status === 'success') {
                             var htmlMessage = res.message;
                             // Atlanan satırlar varsa detaylı göster
@@ -1354,7 +1354,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             formData += '&action=kacak-kaydet';
 
             $.post('views/puantaj/api.php', formData, function (response) {
-                var res = JSON.parse(response);
+                var res = typeof response === 'object' ? response : JSON.parse(response);
                 if (res.status === 'success') {
                     Swal.fire('Başarılı', 'Kayıt kaydedildi.', 'success');
                     $('#kacakModal').modal('hide');
@@ -1368,7 +1368,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         $(document).on('click', '.edit-kacak', function () {
             var id = $(this).data('id');
             $.get('views/puantaj/api.php', { action: 'get-kacak-record', id: id }, function (response) {
-                var record = JSON.parse(response);
+                var record = typeof response === 'object' ? response : JSON.parse(response);
                 $('#kacakManualForm input[name="id"]').val(record.id);
                 $('#kacakManualForm input[name="tarih"]').val(record.tarih_formatted);
                 $('#kacakManualForm input[name="sayi"]').val(record.sayi);
@@ -1401,7 +1401,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             }).then((result) => {
                 if (result.isConfirmed) {
                     $.post('views/puantaj/api.php', { action: 'kacak-sil', id: id }, function (response) {
-                        var res = JSON.parse(response);
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
                         if (res.status === 'success') {
                             Swal.fire('Silindi!', 'Kayıt başarıyla silindi.', 'success');
                             loadKacakContent();
@@ -1427,7 +1427,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             }).then((result) => {
                 if (result.isConfirmed) {
                     $.post('views/puantaj/api.php', { action: 'endeks-sil', id: id }, function (response) {
-                        var res = JSON.parse(response);
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
                         if (res.status === 'success') {
                             Swal.fire('Silindi!', 'Kayıt başarıyla silindi.', 'success');
                             if (endeksDataTable) {
@@ -1457,7 +1457,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             }).then((result) => {
                 if (result.isConfirmed) {
                     $.post('views/puantaj/api.php', { action: 'puantaj-sil', id: id }, function (response) {
-                        var res = JSON.parse(response);
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
                         if (res.status === 'success') {
                             Swal.fire('Silindi!', 'Kayıt başarıyla silindi.', 'success');
                             if (puantajDataTable) {
@@ -1491,10 +1491,10 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     $('#onlinePuantajSpinner').hide();
                     $('#btnOnlinePuantajSorgula').prop('disabled', false);
                     try {
-                        var res = JSON.parse(response);
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
 
                         // API'den dönen ham veriyi konsola bas
-                        console.log("Kesme/Açma API Ham Veri:", res.api_raw_data);
+                        if (res.api_raw_data) console.log("Kesme/Açma API Ham Veri:", res.api_raw_data);
 
                         var resultHtml = '';
                         if (res.status === 'success') {
@@ -1580,7 +1580,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     $('#btnOnlineIcmalSorgula').prop('disabled', false);
                     console.log("Raw Response:", response);
                     try {
-                        var res = JSON.parse(response);
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
                         console.log("Online İcmal API Yanıtı:", res);
                         var resultHtml = '';
                         if (res.status === 'success') {
