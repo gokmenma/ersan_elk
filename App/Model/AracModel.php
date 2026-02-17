@@ -180,10 +180,10 @@ class AracModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT id, plaka, marka, model,
-                   muayene_tarihi,
+                   muayene_bitis_tarihi,
                    sigorta_bitis_tarihi,
                    kasko_bitis_tarihi,
-                   DATEDIFF(muayene_tarihi, CURDATE()) as muayene_kalan_gun,
+                   DATEDIFF(muayene_bitis_tarihi, CURDATE()) as muayene_kalan_gun,
                    DATEDIFF(sigorta_bitis_tarihi, CURDATE()) as sigorta_kalan_gun,
                    DATEDIFF(kasko_bitis_tarihi, CURDATE()) as kasko_kalan_gun
             FROM {$this->table}
@@ -191,12 +191,12 @@ class AracModel extends Model
             AND aktif_mi = 1
             AND silinme_tarihi IS NULL
             AND (
-                (muayene_tarihi IS NOT NULL AND DATEDIFF(muayene_tarihi, CURDATE()) <= :gun1 AND DATEDIFF(muayene_tarihi, CURDATE()) >= 0)
+                (muayene_bitis_tarihi IS NOT NULL AND DATEDIFF(muayene_bitis_tarihi, CURDATE()) <= :gun1 AND DATEDIFF(muayene_bitis_tarihi, CURDATE()) >= 0)
                 OR (sigorta_bitis_tarihi IS NOT NULL AND DATEDIFF(sigorta_bitis_tarihi, CURDATE()) <= :gun2 AND DATEDIFF(sigorta_bitis_tarihi, CURDATE()) >= 0)
                 OR (kasko_bitis_tarihi IS NOT NULL AND DATEDIFF(kasko_bitis_tarihi, CURDATE()) <= :gun3 AND DATEDIFF(kasko_bitis_tarihi, CURDATE()) >= 0)
             )
             ORDER BY LEAST(
-                COALESCE(DATEDIFF(muayene_tarihi, CURDATE()), 9999),
+                COALESCE(DATEDIFF(muayene_bitis_tarihi, CURDATE()), 9999),
                 COALESCE(DATEDIFF(sigorta_bitis_tarihi, CURDATE()), 9999),
                 COALESCE(DATEDIFF(kasko_bitis_tarihi, CURDATE()), 9999)
             ) ASC

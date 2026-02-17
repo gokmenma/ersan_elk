@@ -105,6 +105,56 @@ try {
             'status' => 'success',
             'data' => $data
         ]);
+    } elseif ($action === 'get-personel-yearly-data') {
+        $personel_id = $_POST['personel_id'] ?? 0;
+        $yil = $_POST['yil'] ?? date('Y');
+
+        if (!$personel_id) {
+            throw new Exception("Personel ID gerekli.");
+        }
+
+        $startDate = "$yil-01-01";
+        $endDate = "$yil-12-31";
+
+        // İzinler, Raporlar, Devamsızlıklar vb.
+        $izin_stmt = $PersonelIzinleri->db->prepare("
+            SELECT pi.id, pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id, t.tur_adi, t.kisa_kod, t.renk 
+            FROM personel_izinleri pi
+            JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL 
+            AND (
+                (pi.baslangic_tarihi BETWEEN ? AND ?) 
+                OR (pi.bitis_tarihi BETWEEN ? AND ?)
+                OR (pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?)
+            )
+        ");
+        $izin_stmt->execute([$personel_id, $startDate, $endDate, $startDate, $endDate, $startDate, $endDate]);
+        $izinler = $izin_stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $entries = [];
+        foreach ($izinler as $izin) {
+            $cur = strtotime($izin->baslangic_tarihi);
+            $end = strtotime($izin->bitis_tarihi);
+            while ($cur <= $end) {
+                $date_str = date('Y-m-d', $cur);
+                if ($date_str >= $startDate && $date_str <= $endDate) {
+                    $entries[$date_str][] = [
+                        'type' => 'izin',
+                        'id' => $izin->id,
+                        'tip_id' => $izin->izin_tipi_id,
+                        'name' => $izin->tur_adi,
+                        'kisa_kod' => $izin->kisa_kod,
+                        'color' => $izin->renk ?: '#34c38f'
+                    ];
+                }
+                $cur = strtotime("+1 day", $cur);
+            }
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => $entries
+        ]);
     } elseif ($action === 'save-bulk-entries') {
         $data = json_decode($_POST['data'] ?? '[]', true);
         $excelPersonnelIds = json_decode($_POST['excelPersonnelIds'] ?? '[]', true);

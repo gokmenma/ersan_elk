@@ -63,7 +63,7 @@ if ($id > 0) {
         'icralar' => ['label' => 'İcralar', 'icon' => 'bx bx-gavel'],
         'finansal_islemler' => ['label' => 'Hesap Hareketleri', 'icon' => 'bx bx-lira'],
         'evraklar' => ['label' => 'Evraklar', 'icon' => 'bx bx-file'],
-        'puantaj' => ['label' => 'Puantaj/İş Takip', 'icon' => 'bx bx-time-five'],
+        'puantaj' => ['label' => 'İş Takip', 'icon' => 'bx bx-time-five'],
     ];
 }
 ?>

@@ -826,6 +826,239 @@ const AracTakip = {
   },
 
   // =============================================
+  // ARAÇ EXCEL YÜKLEME
+  // =============================================
+  aracExcelYukle: function () {
+    const formData = new FormData($("#aracExcelUploadForm")[0]);
+    formData.append("action", "arac-excel-yukle");
+
+    const btn = $("#btnAracExcelYukle");
+    const originalText = btn.html();
+    btn
+      .html('<i class="bx bx-loader-alt bx-spin me-1"></i> Yükleniyor...')
+      .prop("disabled", true);
+
+    $.ajax({
+      url: this.apiUrl,
+      type: "POST",
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: function (response) {
+        if (response.status === "success") {
+          let msg = response.message;
+          if (response.errors && response.errors.length > 0) {
+            msg += "<br><br><strong>Hatalar:</strong><ul>";
+            response.errors.forEach(function (e) {
+              msg += "<li>" + e + "</li>";
+            });
+            msg += "</ul>";
+          }
+          Swal.fire({
+            icon: "success",
+            title: "İşlem Tamamlandı",
+            html: msg,
+            confirmButtonText: "Tamam",
+          }).then(() => {
+            $("#aracExcelModal").modal("hide");
+            location.reload();
+          });
+        } else {
+          Swal.fire("Hata", response.message, "error");
+        }
+      },
+      error: function () {
+        Swal.fire("Hata", "Bir hata oluştu.", "error");
+      },
+      complete: function () {
+        btn.html(originalText).prop("disabled", false);
+      },
+    });
+  },
+
+  // =============================================
+  // SERVİS İŞLEMLERİ
+  // =============================================
+  servisKaydet: function () {
+    const form = $("#servisForm");
+    const formData = new FormData(form[0]);
+    formData.append("action", "servis-kaydet");
+
+    const btn = $("#btnServisKaydet");
+    const originalText = btn.html();
+    btn
+      .html('<i class="bx bx-loader-alt bx-spin me-1"></i> Kaydediliyor...')
+      .prop("disabled", true);
+
+    $.ajax({
+      url: this.apiUrl,
+      type: "POST",
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: function (response) {
+        if (response.status === "success") {
+          Swal.fire({
+            icon: "success",
+            title: "Başarılı",
+            text: response.message,
+            timer: 1500,
+            showConfirmButton: false,
+          }).then(() => {
+            $("#servisModal").modal("hide");
+            AracTakip.servisListesiYukle();
+          });
+        } else {
+          Swal.fire("Hata", response.message, "error");
+        }
+      },
+      error: function () {
+        Swal.fire("Hata", "Bir hata oluştu.", "error");
+      },
+      complete: function () {
+        btn.html(originalText).prop("disabled", false);
+      },
+    });
+  },
+
+  servisDuzenle: function (id) {
+    const self = this;
+    $.post(
+      this.apiUrl,
+      { action: "servis-detay", id: id },
+      function (response) {
+        if (response.status === "success") {
+          const data = response.data;
+          $("#servisModal")
+            .find(".modal-title")
+            .html('<i class="bx bx-edit me-2"></i>Servis Kaydı Düzenle');
+
+          // Form alanlarını doldur
+          Object.keys(data).forEach(function (key) {
+            const input = $("#servisModal").find('[name="' + key + '"]');
+            if (input.length) {
+              if (input.hasClass("flatpickr") && data[key]) {
+                const dateVal = data[key];
+                // dd.mm.yyyy formatını ayrıştır
+                const parts = dateVal.split(".");
+                if (parts.length === 3) {
+                  const date = new Date(parts[2], parts[1] - 1, parts[0]);
+                  input[0]._flatpickr.setDate(date);
+                }
+              } else if (input.is("select")) {
+                input.val(data[key]).trigger("change");
+              } else {
+                input.val(data[key]);
+              }
+            }
+          });
+
+          $("#servisModal").modal("show");
+        } else {
+          Swal.fire("Hata", response.message, "error");
+        }
+      },
+    );
+  },
+
+  servisSil: function (id) {
+    Swal.fire({
+      title: "Emin misiniz?",
+      text: "Bu servis kaydını silmek istediğinize emin misiniz?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Evet, Sil",
+      cancelButtonText: "İptal",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        $.post(
+          this.apiUrl,
+          { action: "servis-sil", id: id },
+          function (response) {
+            if (response.status === "success") {
+              Swal.fire({
+                icon: "success",
+                title: "Silindi",
+                text: response.message,
+                timer: 1500,
+                showConfirmButton: false,
+              }).then(() => AracTakip.servisListesiYukle());
+            } else {
+              Swal.fire("Hata", response.message, "error");
+            }
+          },
+        );
+      }
+    });
+  },
+
+  servisListesiYukle: function (aracId = null, baslangic = null, bitis = null) {
+    const self = this;
+    if ($.fn.DataTable.isDataTable("#servisTable")) {
+      $("#servisTable").DataTable().destroy();
+      $("#servisTable thead .search-input-row").remove();
+    }
+
+    const tbody = $("#servisTableBody");
+    self.showLoading(tbody);
+
+    const data = { action: "servis-listesi" };
+    if (aracId) data.arac_id = aracId;
+    if (baslangic) data.baslangic = baslangic;
+    if (bitis) data.bitis = bitis;
+
+    $.post(this.apiUrl, data, function (response) {
+      if (response.status === "success") {
+        let html = "";
+        if (response.data && response.data.length > 0) {
+          response.data.forEach(function (s, index) {
+            html += `<tr>
+                            <td class="text-center">${index + 1}</td>
+                            <td><strong>${s.plaka || "-"}</strong><br><small>${s.marka || ""} ${s.model || ""}</small></td>
+                            <td>${self.formatDate(s.servis_tarihi)}</td>
+                            <td>${s.iade_tarihi ? self.formatDate(s.iade_tarihi) : "-"}</td>
+                            <td class="text-end">${self.formatNumber(s.giris_km)} km</td>
+                            <td class="text-end">${self.formatNumber(s.cikis_km)} km</td>
+                            <td class="text-truncate" style="max-width: 200px;" title="${s.servis_nedeni}">${s.servis_nedeni || "-"}</td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-warning servis-duzenle" data-id="${s.id}" title="Düzenle"><i class="bx bx-edit"></i></button>
+                                    <button class="btn btn-danger servis-sil" data-id="${s.id}" title="Sil"><i class="bx bx-trash"></i></button>
+                                </div>
+                            </td>
+                        </tr>`;
+          });
+        } else {
+          html =
+            '<tr><td colspan="8" class="text-center py-4 text-muted">Kayıt bulunamadı.</td></tr>';
+        }
+        tbody.html(html);
+        self.initDataTable("#servisTable");
+
+        // İstatistikleri güncelle
+        if (response.stats) {
+          $("#servis-toplam-kayit").text(response.stats.toplam_kayit || 0);
+          $("#servis-toplam-maliyet").text(
+            self.formatMoney(response.stats.toplam_maliyet || 0),
+          );
+        }
+      } else {
+        const colCount = $("#servisTable").find("thead th").length || 1;
+        tbody.html(
+          `<tr><td colspan="${colCount}" class="text-center text-danger">${response.message || "Veri yüklenirken bir hata oluştu."}</td></tr>`,
+        );
+      }
+    }).fail(function (xhr) {
+      const colCount = $("#servisTable").find("thead th").length || 1;
+      tbody.html(
+        `<tr><td colspan="${colCount}" class="text-center text-danger">Sunucu hatası: ${xhr.statusText}</td></tr>`,
+      );
+    });
+  },
+
+  // =============================================
   // MODAL RESETLEME
   // =============================================
   resetAracModal: function () {
@@ -855,6 +1088,15 @@ const AracTakip = {
     $("#kmForm")[0].reset();
     $('#kmForm input[name="id"]').val("");
     $("#kmModal #arac_id").val(null).trigger("change");
+  },
+
+  resetServisModal: function () {
+    $("#servisForm")[0].reset();
+    $('#servisForm input[name="id"]').val("");
+    $("#servisModal #arac_id").val(null).trigger("change");
+    $("#servisModal")
+      .find(".modal-title")
+      .html('<i class="bx bx-wrench me-2"></i>Yeni Servis Kaydı');
   },
 };
 
@@ -908,6 +1150,12 @@ $(document).ready(function () {
     }
   });
 
+  // Excel'den Araç Yükle
+  $(document).on("click", "#btnAracExcelYukle", (e) => {
+    e.preventDefault();
+    AracTakip.aracExcelYukle();
+  });
+
   // Yeni Ekle Butonu
   $(document).on("click", "#btnYeniEkle", function (e) {
     e.preventDefault();
@@ -928,6 +1176,9 @@ $(document).ready(function () {
       case "km-tab":
         modalId = "#kmModal";
         break;
+      case "servis-tab":
+        modalId = "#servisModal";
+        break;
     }
 
     if (modalId) {
@@ -940,6 +1191,7 @@ $(document).ready(function () {
   $("#zimmetModal").on("hidden.bs.modal", () => AracTakip.resetZimmetModal());
   $("#yakitModal").on("hidden.bs.modal", () => AracTakip.resetYakitModal());
   $("#kmModal").on("hidden.bs.modal", () => AracTakip.resetKmModal());
+  $("#servisModal").on("hidden.bs.modal", () => AracTakip.resetServisModal());
 
   // Kaydetme ve Silme İşlemleri
   $(document).on("click", "#btnAracKaydet", (e) => {
@@ -985,6 +1237,19 @@ $(document).ready(function () {
     e.preventDefault();
     AracTakip.kmSil($(this).data("id"));
   });
+  $(document).on("click", "#btnServisKaydet", (e) => {
+    e.preventDefault();
+    AracTakip.servisKaydet();
+  });
+  $(document).on("click", ".servis-duzenle", function (e) {
+    e.preventDefault();
+    const id = $(this).data("id");
+    if (id) AracTakip.servisDuzenle(id);
+  });
+  $(document).on("click", ".servis-sil", function (e) {
+    e.preventDefault();
+    AracTakip.servisSil($(this).data("id"));
+  });
   $(document).on("click", "#btnExcelYukle", (e) => {
     e.preventDefault();
     AracTakip.yakitExcelYukle();
@@ -1007,6 +1272,14 @@ $(document).ready(function () {
       $("#km-filtre-arac").val(),
       $("#km-filtre-baslangic").val(),
       $("#km-filtre-bitis").val(),
+    );
+  });
+  $(document).on("click", "#btnServisFiltrele", (e) => {
+    e.preventDefault();
+    AracTakip.servisListesiYukle(
+      $("#servis-filtre-arac").val(),
+      $("#servis-filtre-baslangic").val(),
+      $("#servis-filtre-bitis").val(),
     );
   });
 
@@ -1072,6 +1345,12 @@ $(document).ready(function () {
         $("#km-filtre-baslangic").val(),
         $("#km-filtre-bitis").val(),
       );
+    else if (target === "#servisContent")
+      AracTakip.servisListesiYukle(
+        $("#servis-filtre-arac").val(),
+        $("#servis-filtre-baslangic").val(),
+        $("#servis-filtre-bitis").val(),
+      );
     else if (target === "#raporContent") AracTakip.aylikRaporYukle();
     else if (
       target === "#aracContent" &&
@@ -1098,6 +1377,12 @@ $(document).ready(function () {
         $("#km-filtre-arac").val(),
         $("#km-filtre-baslangic").val(),
         $("#km-filtre-bitis").val(),
+      );
+    else if (activeTarget === "#servisContent")
+      AracTakip.servisListesiYukle(
+        $("#servis-filtre-arac").val(),
+        $("#servis-filtre-baslangic").val(),
+        $("#servis-filtre-bitis").val(),
       );
     else if (activeTarget === "#raporContent") AracTakip.aylikRaporYukle();
     updateAracTakipUI();

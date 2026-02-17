@@ -264,7 +264,7 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         $stmtAllEkip->execute();
         $ekipKodlari = [];
         while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
-            if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $ek['tur_adi'], $m)) {
+            if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $ek['tur_adi'], $m)) {
                 $ekipKodlari[$m[1]] = $ek['id'];
             }
         }
@@ -305,10 +305,10 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             }
 
             $normDate = $tarih;
-            $islemId = md5($normDate . '|' . $ekipKoduStr . '|' . $isEmriTipi . '|' . $isEmriSonucu);
+            $islemId = md5($normDate . '|' . trim($ekipKoduStr) . '|' . trim($isEmriTipi) . '|' . trim($isEmriSonucu));
 
             // İş Türü ID Bul/Oluştur
-            $existingTur = $Tanimlamalar->isEmriSonucu($isEmriTipi, $isEmriSonucu);
+            $existingTur = $Tanimlamalar->isEmriSonucu(trim($isEmriTipi), trim($isEmriSonucu));
             $isEmriSonucuId = $existingTur ? $existingTur->id : 0;
             if (!$isEmriSonucuId && (!empty($isEmriTipi) || !empty($isEmriSonucu))) {
                 $encryptedId = $Tanimlamalar->saveWithAttr([
@@ -325,7 +325,7 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             $personelId = 0;
             $defId = 0;
             $ekipNo = 0;
-            if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $ekipKoduStr, $m)) {
+            if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $ekipKoduStr, $m)) {
                 $ekipNo = $m[1];
                 $defId = $ekipKodlari[$ekipNo] ?? 0;
                 if ($defId) {

@@ -120,111 +120,149 @@ $onay_durumlari = [
 <div class="row">
     <div class="col-12">
         <div class="card border">
-            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
+            <div
+                class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="card-title mb-0 text-primary"><i class="bx bx-calendar-event me-2"></i>İzin Bilgileri</h5>
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                    data-bs-target="#modalIzinEkle"><i class="bx bx-plus"></i> Yeni Ekle</button>
+                <div class="d-flex align-items-center gap-2">
+                    <!-- Yıl Seçicisi (Sadece Takvim Görünümünde Görünür) -->
+                    <div id="takvimYilSecici" style="display: none;">
+                        <div class="d-flex align-items-center gap-2 me-2">
+                            <label class="mb-0 small fw-bold text-muted">Yıl:</label>
+                            <select class="form-select form-select-sm" id="yillik_takvim_yil"
+                                style="width: 80px; border-radius: 6px;">
+                                <?php for ($y = date('Y'); $y >= 2024; $y--): ?>
+                                    <option value="<?= $y ?>"><?= $y ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Görünüm Toggle -->
+                    <div class="btn-group btn-group-sm p-1 bg-light rounded" role="group"
+                        style="border: 1px solid #eee;">
+                        <button type="button" class="btn btn-sm btn-white active shadow-sm" id="btnListView"
+                            title="Liste Görünümü">
+                            <i class="bx bx-list-ul"></i> <span class="d-none d-sm-inline ms-1">Liste</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-white" id="btnCalendarView" title="Takvim Görünümü">
+                            <i class="bx bx-calendar"></i> <span class="d-none d-sm-inline ms-1">Takvim</span>
+                        </button>
+                    </div>
+
+                    <button type="button" class="btn btn-sm btn-primary ms-2" data-bs-toggle="modal"
+                        data-bs-target="#modalIzinEkle"><i class="bx bx-plus"></i> <span class="d-none d-sm-inline">Yeni
+                            Ekle</span></button>
+                </div>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table id="izinlerTable" class="table table-selected datatable table-bordered nowrap w-100">
-                        <thead class="table-light">
-                            <tr>
-                                <th>İzin Türü</th>
-                                <th>Başlangıç</th>
-                                <th>Bitiş</th>
-                                <th>Süre (Gün)</th>
-                                <th>Durum</th>
-                                <th>Onay Bilgisi</th>
-                                <th>İşlem</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (isset($izinler) && count($izinler) > 0): ?>
-                                <?php foreach ($izinler as $izin): ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($izin->izin_tipi_adi ?? $izin->izin_tipi ?? '') ?></td>
-                                        <td><?= date('d.m.Y', strtotime($izin->baslangic_tarihi ?? 'now')) ?></td>
-                                        <td><?= date('d.m.Y', strtotime($izin->bitis_tarihi ?? 'now')) ?></td>
-                                        <td><?= htmlspecialchars($izin->toplam_gun ?? '-') ?></td>
-                                        <td>
-                                            <?php
-                                            // Son durumu belirle
-                                            $durum = $izin->son_durum ?? 'Bekliyor';
-                                            if ($durum == 'Onaylandı'): ?>
-                                                <span class="badge bg-success">Onaylandı</span>
-                                            <?php elseif ($durum == 'Reddedildi'): ?>
-                                                <span class="badge bg-danger">Reddedildi</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-warning"><?= htmlspecialchars($durum) ?></span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <?php if (!empty($izin->onaylar)): ?>
-                                                <?php foreach ($izin->onaylar as $onay): ?>
-                                                    <div class="mb-1 border-bottom pb-1">
-                                                        <div><strong><?= htmlspecialchars($onay->adi ?? 'Bilinmiyor') ?></strong></div>
-                                                        <div class="small text-muted">
-                                                            <?= !empty($onay->tarih) ? date('d.m.Y H:i', strtotime($onay->tarih)) : '-' ?>
-                                                            - <?= htmlspecialchars($onay->durum) ?>
+                <!-- Liste Görünümü -->
+                <div id="izinListContainer" class="p-0">
+                    <div class="table-responsive">
+                        <table id="izinlerTable" class="table table-selected datatable table-bordered nowrap w-100">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>İzin Türü</th>
+                                    <th>Başlangıç</th>
+                                    <th>Bitiş</th>
+                                    <th>Süre (Gün)</th>
+                                    <th>Durum</th>
+                                    <th>Onay Bilgisi</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (isset($izinler) && count($izinler) > 0): ?>
+                                    <?php foreach ($izinler as $izin): ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars($izin->izin_tipi_adi ?? $izin->izin_tipi ?? '') ?></td>
+                                            <td><?= date('d.m.Y', strtotime($izin->baslangic_tarihi ?? 'now')) ?></td>
+                                            <td><?= date('d.m.Y', strtotime($izin->bitis_tarihi ?? 'now')) ?></td>
+                                            <td><?= htmlspecialchars($izin->toplam_gun ?? '-') ?></td>
+                                            <td>
+                                                <?php
+                                                // Son durumu belirle
+                                                $durum = $izin->son_durum ?? 'Bekliyor';
+                                                if ($durum == 'Onaylandı'): ?>
+                                                    <span class="badge bg-success">Onaylandı</span>
+                                                <?php elseif ($durum == 'Reddedildi'): ?>
+                                                    <span class="badge bg-danger">Reddedildi</span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-warning"><?= htmlspecialchars($durum) ?></span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?php if (!empty($izin->onaylar)): ?>
+                                                    <?php foreach ($izin->onaylar as $onay): ?>
+                                                        <div class="mb-1 border-bottom pb-1">
+                                                            <div><strong><?= htmlspecialchars($onay->adi ?? 'Bilinmiyor') ?></strong>
+                                                            </div>
+                                                            <div class="small text-muted">
+                                                                <?= !empty($onay->tarih) ? date('d.m.Y H:i', strtotime($onay->tarih)) : '-' ?>
+                                                                - <?= htmlspecialchars($onay->durum) ?>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                <?php endforeach; ?>
-                                            <?php else: ?>
-                                                <span class="text-muted">-</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <?php 
-                                                $durum = $izin->son_durum ?? 'Beklemede';
-                                                $onayaTabi = ($izin->yetkili_onayina_tabi ?? 0) == 1;
-                                                $isKilitli = $onayaTabi && $durum == 'Onaylandı';
-                                                
-                                                if (!$isKilitli): ?>
-                                                    <?php if ($durum == 'Beklemede'): ?>
-                                                        <button type="button" class="btn btn-sm btn-success btn-izin-onayla"
+                                                    <?php endforeach; ?>
+                                                <?php else: ?>
+                                                    <span class="text-muted">-</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <?php
+                                                    $durum = $izin->son_durum ?? 'Beklemede';
+                                                    $onayaTabi = ($izin->yetkili_onayina_tabi ?? 0) == 1;
+                                                    $isKilitli = $onayaTabi && $durum == 'Onaylandı';
+
+                                                    if (!$isKilitli): ?>
+                                                        <?php if ($durum == 'Beklemede'): ?>
+                                                            <button type="button" class="btn btn-sm btn-success btn-izin-onayla"
+                                                                data-id="<?= $izin->id ?>"
+                                                                data-personel="<?= htmlspecialchars($personel->adi_soyadi ?? '') ?>"
+                                                                data-tur="<?= htmlspecialchars($izin->izin_tipi_adi ?? $izin->izin_tipi ?? '') ?>"
+                                                                data-gun="<?= htmlspecialchars($izin->sure ?? '-') ?>" title="Onayla">
+                                                                <i class="bx bx-check"></i>
+                                                            </button>
+                                                            <button type="button" class="btn btn-sm btn-danger btn-izin-reddet"
+                                                                data-id="<?= $izin->id ?>"
+                                                                data-personel="<?= htmlspecialchars($personel->adi_soyadi ?? '') ?>"
+                                                                title="Reddet">
+                                                                <i class="bx bx-x"></i>
+                                                            </button>
+                                                        <?php endif; ?>
+
+                                                        <button type="button" class="btn btn-sm btn-warning btn-izin-duzenle"
                                                             data-id="<?= $izin->id ?>"
-                                                            data-personel="<?= htmlspecialchars($personel->adi_soyadi ?? '') ?>"
-                                                            data-tur="<?= htmlspecialchars($izin->izin_tipi_adi ?? $izin->izin_tipi ?? '') ?>"
-                                                            data-gun="<?= htmlspecialchars($izin->sure ?? '-') ?>" title="Onayla">
-                                                            <i class="bx bx-check"></i>
+                                                            data-json='<?= htmlspecialchars(json_encode($izin), ENT_QUOTES, 'UTF-8') ?>'
+                                                            title="Düzenle">
+                                                            <i class="bx bx-edit-alt"></i>
                                                         </button>
-                                                        <button type="button" class="btn btn-sm btn-danger btn-izin-reddet"
-                                                            data-id="<?= $izin->id ?>"
-                                                            data-personel="<?= htmlspecialchars($personel->adi_soyadi ?? '') ?>"
-                                                            title="Reddet">
-                                                            <i class="bx bx-x"></i>
+
+                                                        <button type="button" class="btn btn-sm btn-outline-danger btn-izin-sil"
+                                                            data-id="<?= $izin->id ?>" data-durum="<?= htmlspecialchars($durum) ?>"
+                                                            data-onaya-tabi="<?= $onayaTabi ? 1 : 0 ?>" title="Sil">
+                                                            <i class="bx bx-trash"></i>
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <button type="button" class="btn btn-sm btn-info btn-izin-detay"
+                                                            data-id="<?= $izin->id ?>" title="Detay">
+                                                            <i class="bx bx-show"></i>
                                                         </button>
                                                     <?php endif; ?>
-                                                    
-                                                    <button type="button" class="btn btn-sm btn-warning btn-izin-duzenle"
-                                                        data-id="<?= $izin->id ?>"
-                                                        data-json='<?= htmlspecialchars(json_encode($izin), ENT_QUOTES, 'UTF-8') ?>'
-                                                        title="Düzenle">
-                                                        <i class="bx bx-edit-alt"></i>
-                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
 
-                                                    <button type="button" class="btn btn-sm btn-outline-danger btn-izin-sil"
-                                                        data-id="<?= $izin->id ?>"
-                                                        data-durum="<?= htmlspecialchars($durum) ?>"
-                                                        data-onaya-tabi="<?= $onayaTabi ? 1 : 0 ?>"
-                                                        title="Sil">
-                                                        <i class="bx bx-trash"></i>
-                                                    </button>
-                                                <?php else: ?>
-                                                    <button type="button" class="btn btn-sm btn-info btn-izin-detay"
-                                                        data-id="<?= $izin->id ?>" title="Detay">
-                                                        <i class="bx bx-show"></i>
-                                                    </button>
-                                                <?php endif; ?>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+                <!-- Takvim Görünümü -->
+                <div id="izinCalendarContainer" style="display: none;" class="p-3 bg-light">
+                    <div id="yillikTakvimContainer" class="row g-3">
+                        <!-- JS ile doldurulacak -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -445,29 +483,82 @@ $onay_durumlari = [
     </div>
 </div>
 
-<!-- İzin Detay Modal -->
-<div class="modal fade" id="modalIzinDetayPersonel" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="bx bx-detail me-2"></i>İzin Detayı</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="izinDetayContent">
-                    <div class="text-center py-4">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Yükleniyor...</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
-            </div>
-        </div>
-    </div>
-</div>
+
+<style>
+    .year-calendar-month {
+        background: #fff;
+        border-radius: 8px;
+        padding: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        height: 100%;
+    }
+
+    .year-calendar-header {
+        text-align: center;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #495057;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 5px;
+    }
+
+    .year-calendar-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .year-calendar-table th {
+        font-size: 10px;
+        text-align: center;
+        padding: 2px;
+        color: #adb5bd;
+        text-transform: uppercase;
+    }
+
+    .year-calendar-table td {
+        width: 14.28%;
+        height: 30px;
+        text-align: center;
+        vertical-align: middle;
+        font-size: 12px;
+        border: 1px solid #f8f9fa;
+        position: relative;
+    }
+
+    .year-calendar-day {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        cursor: default;
+    }
+
+    .year-calendar-day.other-month {
+        color: #dee2e6;
+    }
+
+    .year-calendar-day.has-event {
+        font-weight: bold;
+        color: #fff;
+        border-radius: 4px;
+    }
+
+    .year-calendar-day.today {
+        border: 2px solid #556ee6;
+        border-radius: 4px;
+    }
+
+    .year-calendar-event-dot {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        font-size: 10px;
+    }
+</style>
 
 <script>
     var allIzinTurleri = <?= json_encode($izin_turleri_all) ?>;
@@ -595,5 +686,153 @@ $onay_durumlari = [
                 handleIzinTuruChange();
             }, 100);
         });
+
+        // Yıllık Takvim İşlemleri
+        const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+        const gunIsimleri = ["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"];
+
+        $(document).off('click', '#btnListView').on('click', '#btnListView', function () {
+            $(this).addClass('active btn-white shadow-sm').siblings().removeClass('active btn-white shadow-sm');
+            $('#izinListContainer').show();
+            $('#izinCalendarContainer').hide();
+            $('#takvimYilSecici').hide();
+        });
+
+        $(document).off('click', '#btnCalendarView').on('click', '#btnCalendarView', function () {
+            $(this).addClass('active btn-white shadow-sm').siblings().removeClass('active btn-white shadow-sm');
+            $('#izinListContainer').hide();
+            $('#izinCalendarContainer').show();
+            $('#takvimYilSecici').show();
+            loadYearlyCalendar();
+        });
+
+        $(document).off('change', '#yillik_takvim_yil').on('change', '#yillik_takvim_yil', function () {
+            loadYearlyCalendar();
+        });
+
+        function loadYearlyCalendar() {
+            const yil = $('#yillik_takvim_yil').val();
+            const personelId = $('#personel_id').val();
+
+            $('#yillikTakvimContainer').html('<div class="col-12 text-center p-5"><div class="spinner-border text-primary"></div></div>');
+
+            $.post('views/personel/api/puantaj_izin.php', {
+                action: 'get-personel-yearly-data',
+                personel_id: personelId,
+                yil: yil
+            }, function (res) {
+                if (res.status === 'success') {
+                    renderYearlyCalendar(yil, res.data);
+                } else {
+                    $('#yillikTakvimContainer').html('<div class="col-12 text-center p-5"><div class="alert alert-danger">Veriler yüklenemedi.</div></div>');
+                }
+            });
+        }
+
+        function renderYearlyCalendar(year, events) {
+            let html = '';
+            for (let month = 0; month < 12; month++) {
+                html += `<div class="col-xl-3 col-lg-4 col-md-6 mb-3">
+                    <div class="year-calendar-month shadow-sm border">
+                        <div class="year-calendar-header bg-light-subtle rounded-top py-2 mb-2">${ayIsimleri[month]}</div>
+                        <div class="p-2">
+                            <table class="year-calendar-table">
+                                <thead>
+                                    <tr>${gunIsimleri.map(g => `<th>${g}</th>`).join('')}</tr>
+                                </thead>
+                                <tbody>
+                                    ${getMonthRows(year, month, events)}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
+            }
+            $('#yillikTakvimContainer').html(html);
+
+            // Tooltipleri başlat
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('#yillikTakvimContainer [data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
+
+        function getMonthRows(year, month, events) {
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+
+            let startingDay = firstDay.getDay(); // 0 (Paz) - 6 (Cmt)
+            // Pt formatına çevir (Pazartesi 1, Pazar 7)
+            startingDay = (startingDay === 0) ? 7 : startingDay;
+
+            const totalDays = lastDay.getDate();
+            let rows = '';
+            let day = 1;
+
+            for (let i = 0; i < 6; i++) {
+                let cells = '';
+                for (let j = 1; j <= 7; j++) {
+                    if (i === 0 && j < startingDay) {
+                        cells += '<td></td>';
+                    } else if (day > totalDays) {
+                        cells += '<td></td>';
+                    } else {
+                        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        const dayEvents = (events && events[dateStr]) ? events[dateStr] : [];
+                        let cellContent = day;
+                        let style = '';
+                        let titleAttr = '';
+
+                        if (dayEvents.length > 0) {
+                            const event = dayEvents[0];
+                            const eventStyle = getStyleFromTailwindProxy(event.color);
+                            style = `background-color: ${eventStyle.bg} !important; color: ${eventStyle.color} !important; border-radius: 4px; font-weight: bold;`;
+                            cellContent = event.kisa_kod;
+                            titleAttr = `data-bs-toggle="tooltip" title="${event.name}"`;
+                        }
+
+                        const isToday = new Date().toISOString().split('T')[0] === dateStr;
+                        const todayClass = isToday ? 'today' : '';
+
+                        cells += `<td class="${todayClass}" style="${style}" ${titleAttr}>${cellContent}</td>`;
+                        day++;
+                    }
+                }
+                rows += `<tr>${cells}</tr>`;
+                if (day > totalDays) break;
+            }
+            return rows;
+        }
+
+        function getStyleFromTailwindProxy(tailwindClass) {
+            if (!tailwindClass)
+                return { bg: "rgba(85, 110, 230, 0.15)", color: "#556ee6" };
+
+            // Check if it's already a hex
+            if (tailwindClass.startsWith("#")) {
+                return {
+                    bg: tailwindClass + "26", // 15% opacity hex
+                    color: tailwindClass,
+                };
+            }
+
+            if (tailwindClass.includes("blue"))
+                return { bg: "#dbeafe", color: "#2563eb" };
+            if (tailwindClass.includes("amber") || tailwindClass.includes("warning"))
+                return { bg: "#fef3c7", color: "#d97706" };
+            if (tailwindClass.includes("red") || tailwindClass.includes("danger"))
+                return { bg: "#fee2e2", color: "#dc2626" };
+            if (tailwindClass.includes("pink"))
+                return { bg: "#fce7f3", color: "#db2777" };
+            if (tailwindClass.includes("gray"))
+                return { bg: "#f3f4f6", color: "#4b5563" };
+            if (tailwindClass.includes("green") || tailwindClass.includes("success"))
+                return { bg: "#dcfce7", color: "#16a34a" };
+            if (tailwindClass.includes("purple"))
+                return { bg: "#f3e8ff", color: "#9333ea" };
+
+            // Default to primary theme color (light style)
+            return { bg: "rgba(85, 110, 230, 0.15)", color: "#556ee6" };
+        }
     });
 </script>

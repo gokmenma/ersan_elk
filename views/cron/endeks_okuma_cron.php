@@ -284,7 +284,7 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         $stmtAllEkip->execute();
         $ekipKodlari = [];
         while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
-            if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $ek['tur_adi'], $m)) {
+            if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $ek['tur_adi'], $m)) {
                 $ekipKodlari[$m[1]] = $ek['id'];
             }
         }
@@ -315,7 +315,7 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             }
 
             $normDate = \App\Helper\Date::convertExcelDate($veri['OKUMATARIHI'], 'Y-m-d') ?: $veri['OKUMATARIHI'];
-            $rawIdString = $normDate . '|' . $veri['BOLGE'] . '|' . ($veri['DEFTER'] ?? '') . '|' . $veri['OKUYUCUNO'] . '|' . ($veri['SAYACDURUM'] ?? '');
+            $rawIdString = $normDate . '|' . trim($veri['BOLGE']) . '|' . (trim($veri['DEFTER'] ?? '')) . '|' . trim($veri['OKUYUCUNO']) . '|' . (trim($veri['SAYACDURUM'] ?? ''));
             $islemId = md5($rawIdString);
 
             // Personel eşleştirme
@@ -326,7 +326,7 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
                 $personelId = $personelByName[$veri['OKUYUCUADI']]['id'];
                 $ekipKoduId = $personelByName[$veri['OKUYUCUADI']]['ekip_no'];
             } else {
-                if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $veri['OKUYUCUADI'], $m)) {
+                if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $veri['OKUYUCUADI'], $m)) {
                     $ekipNo = $m[1];
                     $ekipKoduId = $ekipKodlari[$ekipNo] ?? 0;
 

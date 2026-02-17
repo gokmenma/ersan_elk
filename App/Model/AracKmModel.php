@@ -294,4 +294,74 @@ class AracKmModel extends Model
         $sql->execute(['firma_id' => $_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_KEY_PAIR);
     }
+
+    /**
+     * Belirli bir ay için tüm araçların günlük KM verilerini getirir
+     */
+    public function getMonthlyPuantaj($yil, $ay, $aracId = null)
+    {
+        $baslangic = "$yil-$ay-01";
+        $bitis = date('Y-m-t', strtotime($baslangic));
+
+        $sql = "
+            SELECT 
+                a.id as arac_id,
+                a.plaka,
+                a.marka,
+                a.model,
+                k.tarih,
+                DAY(k.tarih) as gun,
+                k.baslangic_km,
+                k.bitis_km,
+                k.yapilan_km
+            FROM araclar a
+            LEFT JOIN {$this->table} k ON a.id = k.arac_id 
+                AND k.tarih BETWEEN :baslangic AND :bitis
+                AND k.silinme_tarihi IS NULL
+            WHERE a.firma_id = :firma_id
+            AND a.silinme_tarihi IS NULL
+            AND a.aktif_mi = 1
+        ";
+
+        $params = [
+            'firma_id' => $_SESSION['firma_id'],
+            'baslangic' => $baslangic,
+            'bitis' => $bitis
+        ];
+
+        if ($aracId) {
+            $sql .= " AND a.id = :arac_id";
+            $params['arac_id'] = $aracId;
+        }
+
+        $sql .= " ORDER BY a.plaka, k.tarih";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        $results = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $data = [];
+        foreach ($results as $row) {
+            if (!isset($data[$row->arac_id])) {
+                $data[$row->arac_id] = [
+                    'info' => [
+                        'plaka' => $row->plaka,
+                        'marka' => $row->marka,
+                        'model' => $row->model
+                    ],
+                    'gunler' => []
+                ];
+            }
+            if ($row->gun) {
+                $data[$row->arac_id]['gunler'][$row->gun] = [
+                    'baslangic' => $row->baslangic_km,
+                    'bitis' => $row->bitis_km,
+                    'yapilan' => $row->yapilan_km
+                ];
+            }
+        }
+
+        return $data;
+    }
 }

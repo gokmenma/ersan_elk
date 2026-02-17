@@ -9,12 +9,14 @@ use App\Model\AracZimmetModel;
 use App\Model\AracYakitModel;
 use App\Model\AracKmModel;
 use App\Model\PersonelModel;
+use App\Model\AracServisModel;
 
 $Arac = new AracModel();
 $Zimmet = new AracZimmetModel();
 $Yakit = new AracYakitModel();
 $Km = new AracKmModel();
 $Personel = new PersonelModel();
+$Servis = new AracServisModel();
 
 $araclar = $Arac->all();
 $personeller = $Personel->all();
@@ -76,6 +78,12 @@ $activeTab = $_GET['tab'] ?? 'arac';
                                     <i class="bx bx-bar-chart-alt-2 me-1"></i> Raporlar
                                 </button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link <?php echo $activeTab === 'servis' ? 'active' : ''; ?>" id="servis-tab" data-bs-toggle="tab"
+                                    data-bs-target="#servisContent" type="button" role="tab">
+                                    <i class="bx bx-wrench me-1"></i> Servis Kayıtları
+                                </button>
+                            </li>
                         </ul>
 
                         <div class="vr mx-2 d-none d-md-block"></div>
@@ -115,6 +123,10 @@ $activeTab = $_GET['tab'] ?? 'arac';
                                             data-bs-target="#excelModal">
                                             <i class="bx bx-upload me-2"></i> Excel'den Yakıt Yükle
                                         </a></li>
+                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal"
+                                            data-bs-target="#aracExcelModal">
+                                            <i class="bx bx-upload me-2"></i> Excel'den Araç Yükle
+                                        </a></li>
                                 </ul>
                             </div>
                         </div>
@@ -135,6 +147,7 @@ $activeTab = $_GET['tab'] ?? 'arac';
                                             <th class="text-center" style="width:5%">Sıra</th>
                                             <th style="width:12%">Plaka</th>
                                             <th style="width:15%">Marka/Model</th>
+                                            <th style="width:10%">Mülkiyet</th>
                                             <th style="width:8%" class="text-center">Tip</th>
                                             <th style="width:8%" class="text-center">Yakıt</th>
                                             <th style="width:10%" class="text-end">Güncel KM</th>
@@ -180,6 +193,9 @@ $activeTab = $_GET['tab'] ?? 'arac';
                                                                 </td>
                                                                 <td>
                                                                     <?php echo ($arac->marka ?? '-') . ' ' . ($arac->model ?? ''); ?>
+                                                                </td>
+                                                                <td>
+                                                                    <?php echo $arac->mulkiyet ?: '-'; ?>
                                                                 </td>
                                                                 <td class="text-center">
                                                                     <?php echo $tipLabels[$arac->arac_tipi] ?? '-'; ?>
@@ -533,6 +549,82 @@ $activeTab = $_GET['tab'] ?? 'arac';
                             </div>
                         </div>
 
+                        <!-- =============================================
+                             SERVİS KAYITLARI TAB
+                             ============================================= -->
+                        <div class="tab-pane fade <?php echo $activeTab === 'servis' ? 'show active' : ''; ?>" id="servisContent" role="tabpanel">
+                            <!-- Servis Özet Kartları -->
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="card bg-info bg-gradient text-white mb-0">
+                                        <div class="card-body text-center py-3">
+                                            <h5 class="card-title text-white-50 mb-1">Toplam Servis Kaydı</h5>
+                                            <h3 class="mb-0 text-white" id="servis-toplam-kayit">0</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card bg-danger bg-gradient text-white mb-0">
+                                        <div class="card-body text-center py-3">
+                                            <h5 class="card-title text-white-50 mb-1">Toplam Servis Maliyeti</h5>
+                                            <h3 class="mb-0 text-white" id="servis-toplam-maliyet">0.00 ₺</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Filtreler -->
+                            <div class="card border shadow-none mb-4">
+                                <div class="card-body p-3">
+                                    <div class="row g-3">
+                                        <div class="col-md-3">
+                                            <?php
+                                            $aracOptions = ['' => 'Tüm Araçlar'];
+                                            foreach ($araclar as $arac) {
+                                                $aracOptions[$arac->id] = $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? '');
+                                            }
+                                            echo App\Helper\Form::FormSelect2('servis-filtre-arac', $aracOptions, '', 'Plaka', 'truck', 'key', '', 'form-select select2');
+                                            ?>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <?php echo App\Helper\Form::FormFloatInput('text', 'servis-filtre-baslangic', date('01.m.Y'), '', 'Başlangıç Tarihi', 'calendar', 'form-control flatpickr'); ?>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <?php echo App\Helper\Form::FormFloatInput('text', 'servis-filtre-bitis', date('t.m.Y'), '', 'Bitiş Tarihi', 'calendar', 'form-control flatpickr'); ?>
+                                        </div>
+                                        <div class="col-md-3 d-flex align-items-end">
+                                            <button type="button" class="btn btn-primary w-100" id="btnServisFiltrele">
+                                                <i class="bx bx-filter-alt me-1"></i> Filtrele
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table id="servisTable" class="table table-hover table-bordered nowrap w-100">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="text-center" style="width:5%">Sıra</th>
+                                            <th style="width:12%">Plaka</th>
+                                            <th style="width:12%">Giriş Tarihi</th>
+                                            <th style="width:12%">İade Tarihi</th>
+                                            <th style="width:10%" class="text-end">Giriş KM</th>
+                                            <th style="width:10%" class="text-end">Çıkış KM</th>
+                                            <th style="width:25%">Servis Nedeni</th>
+                                            <th style="width:10%" class="text-center">İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="servisTableBody">
+                                        <tr>
+                                            <td colspan="8" class="text-center text-muted py-4">
+                                                Yükleniyor...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -541,17 +633,15 @@ $activeTab = $_GET['tab'] ?? 'arac';
 </div>
 
 <style>
-    #aracTable tbody tr,
-    #zimmetTable tbody tr,
     #yakitTable tbody tr,
-    #kmTable tbody tr {
+    #kmTable tbody tr,
+    #servisTable tbody tr {
         transition: background-color 0.2s ease;
     }
 
-    #aracTable tbody tr:hover,
-    #zimmetTable tbody tr:hover,
     #yakitTable tbody tr:hover,
-    #kmTable tbody tr:hover {
+    #kmTable tbody tr:hover,
+    #servisTable tbody tr:hover {
         background-color: rgba(85, 110, 230, 0.1);
     }
 
@@ -575,6 +665,8 @@ $activeTab = $_GET['tab'] ?? 'arac';
 <?php include_once "modal/yakit-modal.php"; ?>
 <?php include_once "modal/km-modal.php"; ?>
 <?php include_once "modal/excel-modal.php"; ?>
+<?php include_once "modal/arac-excel-modal.php"; ?>
+<?php include_once "modal/servis-modal.php"; ?>
 
 <!-- İstatistik Modal -->
 <div class="modal fade" id="istatistikModal" tabindex="-1" aria-hidden="true">

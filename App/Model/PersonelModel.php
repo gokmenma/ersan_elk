@@ -264,7 +264,7 @@ class PersonelModel extends Model
         $params['firma_id_sub'] = $_SESSION['firma_id'];
 
         // Toplam kayıt sayısı (filtresiz)
-        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} WHERE firma_id = :firma_id");
+        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} WHERE firma_id = :firma_id AND silinme_tarihi IS NULL");
         $totalQuery->execute(['firma_id' => $_SESSION['firma_id']]);
         $recordsTotal = $totalQuery->fetchColumn();
 
@@ -297,6 +297,7 @@ class PersonelModel extends Model
             8 => 'p.gorev',
             9 => 'p.departman',
             10 => 't_all.tur_adi',
+            11 => 'bildirim_abonesi',
             12 => 'p.aktif_mi'
         ];
 
@@ -311,16 +312,37 @@ class PersonelModel extends Model
                     if (strpos($searchValue, ':') !== false) {
                         list($mode, $val) = explode(':', $searchValue, 2);
 
-                        // Between için değerleri ayır
-                        $val2 = null;
-                        if (strpos($val, '|') !== false) {
-                            list($v1, $v2) = explode('|', $val, 2);
-                            $val = $v1;
-                            $val2 = $v2;
-                        }
+                        // Değerleri ayır
+                        $vals = explode('|', $val);
+                        $val = $vals[0];
+                        $val2 = isset($vals[1]) ? $vals[1] : null;
 
-                        if ($val !== '' || $val2 !== null) {
+                        if ($val !== '' || $val2 !== null || in_array($mode, ['null', 'not_null', 'multi'])) {
                             switch ($mode) {
+                                case 'multi':
+                                    if (!empty($vals)) {
+                                        $orConditions = [];
+                                        foreach ($vals as $vIdx => $v) {
+                                            $vParam = $paramName . "_" . $vIdx;
+
+                                            if ($v === '(Boş)') {
+                                                $orConditions[] = "($field IS NULL OR $field = '' OR $field = '0000-00-00')";
+                                            } elseif ($field == 'p.aktif_mi') {
+                                                $mappedVal = (stripos($v, 'Aktif') !== false) ? 1 : 0;
+                                                $orConditions[] = "$field = :$vParam";
+                                                $params[$vParam] = $mappedVal;
+                                            } elseif ($field == 'bildirim_abonesi') {
+                                                $mappedVal = (stripos($v, 'Açık') !== false) ? 1 : 0;
+                                                $orConditions[] = "(CASE WHEN EXISTS (SELECT 1 FROM push_subscriptions WHERE personel_id = p.id) THEN 1 ELSE 0 END) = :$vParam";
+                                                $params[$vParam] = $mappedVal;
+                                            } else {
+                                                $orConditions[] = "$field LIKE :$vParam";
+                                                $params[$vParam] = "%$v%";
+                                            }
+                                        }
+                                        $filterSql .= " AND (" . implode(" OR ", $orConditions) . ")";
+                                    }
+                                    break;
                                 case 'contains':
                                     $filterSql .= " AND $field LIKE :$paramName";
                                     $params[$paramName] = "%$val%";
@@ -346,18 +368,22 @@ class PersonelModel extends Model
                                     $params[$paramName] = $val;
                                     break;
                                 case 'gt':
+                                case 'greater_than':
                                     $filterSql .= " AND $field > :$paramName";
                                     $params[$paramName] = $val;
                                     break;
                                 case 'lt':
+                                case 'less_than':
                                     $filterSql .= " AND $field < :$paramName";
                                     $params[$paramName] = $val;
                                     break;
                                 case 'gte':
+                                case 'greater_equal':
                                     $filterSql .= " AND $field >= :$paramName";
                                     $params[$paramName] = $val;
                                     break;
                                 case 'lte':
+                                case 'less_equal':
                                     $filterSql .= " AND $field <= :$paramName";
                                     $params[$paramName] = $val;
                                     break;
@@ -377,6 +403,12 @@ class PersonelModel extends Model
                                         $params[$p1] = \App\Helper\Date::Ymd($val);
                                         $params[$p2] = \App\Helper\Date::Ymd($val2);
                                     }
+                                    break;
+                                case 'null':
+                                    $filterSql .= " AND ($field IS NULL OR $field = '' OR $field = '0000-00-00')";
+                                    break;
+                                case 'not_null':
+                                    $filterSql .= " AND $field IS NOT NULL AND $field != '' AND $field != '0000-00-00'";
                                     break;
                             }
                         }
@@ -416,7 +448,7 @@ class PersonelModel extends Model
                                  AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
                                  AND pg.firma_id = :firma_id_sub
                              ) t_all ON p.id = t_all.personel_id
-                             WHERE p.firma_id = :firma_id $filterSql GROUP BY p.id) as temp";
+                             WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL $filterSql GROUP BY p.id) as temp";
 
         $filteredQuery = $this->db->prepare($filteredQuerySql);
 
@@ -789,5 +821,185 @@ class PersonelModel extends Model
             'sahadaki_arac' => 0,
             'servisteki_arac' => 0
         ];
+    }
+
+    /**
+     * Sütun için benzersiz değerleri getirir (Filtreleme için)
+     */
+    public function getUniqueValues($column, $request = [])
+    {
+        $params = ['firma_id' => $_SESSION['firma_id']];
+        $params['firma_id_sub'] = $_SESSION['firma_id'];
+
+        $colMap = [
+            2 => 'p.tc_kimlik_no',
+            3 => 'p.adi_soyadi',
+            4 => 'p.ise_giris_tarihi',
+            5 => 'p.isten_cikis_tarihi',
+            6 => 'p.cep_telefonu',
+            7 => 'p.email_adresi',
+            8 => 'p.gorev',
+            9 => 'p.departman',
+            10 => 't_all.tur_adi',
+            11 => 'bildirim_abonesi',
+            12 => 'p.aktif_mi'
+        ];
+
+        $targetField = '';
+        $skipIdx = -1;
+
+        if ($column === 'ekip_adi' || $column === 'tur_adi' || $column === 't_all.tur_adi') {
+            $targetField = 't_all.tur_adi';
+            $skipIdx = 10;
+        } elseif ($column === 'bildirim_abonesi') {
+            return ['Açık', 'Kapalı'];
+        } elseif ($column === 'aktif_mi' || $column === 'p.aktif_mi' || $column === 'Durum') {
+            return ['Aktif', 'Pasif'];
+        } else {
+            $targetField = strpos($column, 'p.') === false ? "p." . $column : $column;
+            foreach ($colMap as $idx => $f) {
+                if ($f === $targetField || $f === $column) {
+                    $skipIdx = $idx;
+                    break;
+                }
+            }
+        }
+
+        // Temel Sorgu (DataTables filtrelemesiyle aynı JOIN yapısı)
+        $sql = "SELECT DISTINCT $targetField as val
+                FROM {$this->table} p 
+                LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
+                LEFT JOIN (
+                    SELECT pg.personel_id, t.tur_adi, t.ekip_bolge
+                    FROM personel_ekip_gecmisi pg
+                    JOIN tanimlamalar t ON pg.ekip_kodu_id = t.id
+                    WHERE pg.baslangic_tarihi <= CURDATE() 
+                    AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
+                    AND pg.firma_id = :firma_id_sub
+                ) t_all ON p.id = t_all.personel_id
+                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL";
+
+        // Diğer sütunlardaki aktif filtreleri uygula (Cascading)
+        $filterSql = "";
+        if (isset($request['columns']) && is_array($request['columns'])) {
+            foreach ($request['columns'] as $i => $columnData) {
+                if ($i == $skipIdx)
+                    continue; // Mevcut sütun filtresini dahil etme
+
+                if (!empty($columnData['search']['value']) && isset($colMap[$i])) {
+                    $field = $colMap[$i];
+                    $searchValue = $columnData['search']['value'];
+                    $paramName = "u_col_" . $i;
+
+                    if (strpos($searchValue, ':') !== false) {
+                        list($mode, $val) = explode(':', $searchValue, 2);
+                        $vals = explode('|', $val);
+                        $val = $vals[0];
+                        $val2 = isset($vals[1]) ? $vals[1] : null;
+
+                        if ($val !== '' || $val2 !== null || in_array($mode, ['null', 'not_null', 'multi'])) {
+                            switch ($mode) {
+                                case 'multi':
+                                    if (!empty($vals)) {
+                                        $orConditions = [];
+                                        foreach ($vals as $vIdx => $v) {
+                                            $vParam = $paramName . "_" . $vIdx;
+                                            if ($v === '(Boş)') {
+                                                $orConditions[] = "($field IS NULL OR $field = '' OR $field = '0000-00-00')";
+                                            } elseif ($field == 'p.aktif_mi') {
+                                                $mappedVal = (stripos($v, 'Aktif') !== false) ? 1 : 0;
+                                                $orConditions[] = "$field = :$vParam";
+                                                $params[$vParam] = $mappedVal;
+                                            } elseif ($field == 'bildirim_abonesi') {
+                                                $mappedVal = (stripos($v, 'Açık') !== false) ? 1 : 0;
+                                                $orConditions[] = "(CASE WHEN EXISTS (SELECT 1 FROM push_subscriptions WHERE personel_id = p.id) THEN 1 ELSE 0 END) = :$vParam";
+                                                $params[$vParam] = $mappedVal;
+                                            } else {
+                                                $orConditions[] = "$field LIKE :$vParam";
+                                                $params[$vParam] = "%$v%";
+                                            }
+                                        }
+                                        $filterSql .= " AND (" . implode(" OR ", $orConditions) . ")";
+                                    }
+                                    break;
+                                case 'contains':
+                                    $filterSql .= " AND $field LIKE :$paramName";
+                                    $params[$paramName] = "%$val%";
+                                    break;
+                                case 'not_contains':
+                                    $filterSql .= " AND $field NOT LIKE :$paramName";
+                                    $params[$paramName] = "%$val%";
+                                    break;
+                                case 'starts_with':
+                                    $filterSql .= " AND $field LIKE :$paramName";
+                                    $params[$paramName] = "$val%";
+                                    break;
+                                case 'ends_with':
+                                    $filterSql .= " AND $field LIKE :$paramName";
+                                    $params[$paramName] = "%$val";
+                                    break;
+                                case 'equals':
+                                    $filterSql .= " AND $field = :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'gt':
+                                case 'greater_than':
+                                    $filterSql .= " AND $field > :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'lt':
+                                case 'less_than':
+                                    $filterSql .= " AND $field < :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'null':
+                                    $filterSql .= " AND ($field IS NULL OR $field = '' OR $field = '0000-00-00')";
+                                    break;
+                                case 'not_null':
+                                    $filterSql .= " AND $field IS NOT NULL AND $field != '' AND $field != '0000-00-00'";
+                                    break;
+                            }
+                        }
+                    } else {
+                        if ($i == 12) {
+                            if (stripos('Aktif', $searchValue) !== false)
+                                $filterSql .= " AND p.aktif_mi = 1";
+                            elseif (stripos('Pasif', $searchValue) !== false)
+                                $filterSql .= " AND p.aktif_mi = 0";
+                        } elseif ($i == 10) {
+                            $filterSql .= " AND (t_all.tur_adi LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
+                            $params[$paramName] = "%$searchValue%";
+                        } else {
+                            $filterSql .= " AND $field LIKE :$paramName";
+                            $params[$paramName] = "%$searchValue%";
+                        }
+                    }
+                }
+            }
+        }
+
+        $sql .= $filterSql;
+        $sql .= " ORDER BY $targetField ASC";
+
+        $query = $this->db->prepare($sql);
+        $query->execute($params);
+        $results = $query->fetchAll(PDO::FETCH_COLUMN);
+
+        // Boş/Null olanları temizle ve (Boş) olarak ekle (eğer varsa)
+        $cleanResults = [];
+        $hasEmpty = false;
+        foreach ($results as $r) {
+            if ($r === null || $r === '' || $r === '0000-00-00') {
+                $hasEmpty = true;
+            } else {
+                $cleanResults[] = $r;
+            }
+        }
+
+        if ($hasEmpty) {
+            $cleanResults[] = "(Boş)";
+        }
+
+        return array_unique($cleanResults);
     }
 }

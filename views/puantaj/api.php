@@ -1112,7 +1112,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $yeniKayit = 0;
         $guncellenenKayit = 0;
         $silinenKayit = 0;
-        $atlanAnKayitlar = [];
+        $atlanAnKayitlar = 0;
+        $atlanAnListesi = [];
+        $mevcutHatalar = []; // Eşleşmeyen ekipleri unique yapmak için
         $bosSonucSayisi = 0;
         $mevcutKayitlar = [];
 
@@ -1165,17 +1167,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // 1. Ekip ve Personel lookup verilerini yükle
         $stmtAllEkip = $Puantaj->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
         $stmtAllEkip->execute();
-        $ekipKodlari = [];
+        $ekipKodlariByNo = [];
+        $ekipKodlariByName = [];
         while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
-            if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $ek['tur_adi'], $m)) {
-                $ekipKodlari[$m[1]] = $ek['id'];
+            $name = trim($ek['tur_adi']);
+            $ekipKodlariByName[mb_strtolower($name, 'UTF-8')] = $ek['id'];
+            //Regex'i daha esnek yapalım (encoding sorunları için EK.P şeklinde)
+            if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $name, $m)) {
+                $ekipKodlariByNo[$m[1]] = $ek['id'];
             }
         }
 
-        $stmtAllPersonel = $Puantaj->db->prepare("SELECT id, ekip_no FROM personel WHERE silinme_tarihi IS NULL");
+        $stmtAllPersonel = $Puantaj->db->prepare("SELECT id, adi_soyadi, ekip_no FROM personel WHERE silinme_tarihi IS NULL");
         $stmtAllPersonel->execute();
+        $personelByName = [];
         $personelByEkip = [];
         while ($p = $stmtAllPersonel->fetch(PDO::FETCH_ASSOC)) {
+            $name = trim($p['adi_soyadi']);
+            $personelByName[mb_strtolower($name, 'UTF-8')] = $p;
             if (($p['ekip_no'] ?? 0) > 0) {
                 $personelByEkip[$p['ekip_no']] = $p['id'];
             }
@@ -1197,26 +1206,96 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $insertBatch = [];
         $filterArray = !empty($resultsFilter) ? array_map('trim', explode(',', $resultsFilter)) : [];
 
+        $idx = 0;
         foreach ($apiData as $veri) {
-            $isEmriTipi = $veri['ISEMRITIPI'] ?? '';
-            $ekipKoduStr = $veri['EKIP'] ?? '';
-            $isEmriSonucu = $veri['SONUC'] ?? '';
+            $idx++;
+            $isEmriTipi = trim($veri['ISEMRITIPI'] ?? '');
+            $ekipKoduStr = trim($veri['EKIP'] ?? '');
+            $isEmriSonucu = trim($veri['SONUC'] ?? '');
             $sonuclanmis = $veri['SONUCLANMIS'] ?? 0;
             $acikOlanlar = $veri['ACIK'] ?? 0;
             $tarihRaw = $veri['TARIH'];
 
-            if (!empty($filterArray) && !in_array($isEmriSonucu, $filterArray))
+            // 1. İş Emri Sonucu / Ücretli iş kontrolü (USER: Sadece ücretli iş türlerini ver)
+            if (!empty($filterArray) && !in_array($isEmriSonucu, $filterArray)) {
+                $atlanAnKayitlar++;
+                $uniqKey = "FILTER|" . $isEmriSonucu;
+                if (!isset($mevcutHatalar[$uniqKey])) {
+                    $atlanAnListesi[] = "Filtreye Takıldı: $isEmriSonucu (Ekip: $ekipKoduStr)";
+                    $mevcutHatalar[$uniqKey] = true;
+                }
                 continue;
+            }
+
+            // 2. İş emri tipi boşsa atla (USER: iş emri türü boş gelenleri eşleşmedi verme)
+            if (empty(trim($isEmriTipi)))
+                continue;
+
+            // 3. Sonuçlanmamışsa atla
             if ((int) $sonuclanmis === 0) {
                 $bosSonucSayisi++;
                 continue;
             }
 
             $normDate = \App\Helper\Date::convertExcelDate($tarihRaw, 'Y-m-d') ?: $tarihRaw;
-            $islemId = md5($normDate . '|' . $ekipKoduStr . '|' . $isEmriTipi . '|' . $isEmriSonucu);
+            // Benzersizlik için döngü sayacını ekliyoruz (Aynı ekip aynı gün aynı işi birden fazla satır yapabilirse çakışmasın)
+            // Trim uygulayalım ki boşluk farklarından islem_id değişmesin
+            $islemId = md5($normDate . '|' . trim($ekipKoduStr) . '|' . trim($isEmriTipi) . '|' . trim($isEmriSonucu));
+
+            // Ekip ve Personel Bul
+            $personelId = 0;
+            $defId = 0;
+            $ekipNo = 0;
+            $ekipKoduStrClean = trim($ekipKoduStr);
+            $ekipKoduStrLower = mb_strtolower($ekipKoduStrClean, 'UTF-8');
+
+            // 1. Önce personel ismiyle eşleştir (API'den direkt personel adı geliyorsa)
+            if (isset($personelByName[$ekipKoduStrLower])) {
+                $personelId = $personelByName[$ekipKoduStrLower]['id'];
+                $defId = $personelByName[$ekipKoduStrLower]['ekip_no'];
+            } else {
+                // 2. Ekip numarasıyla eşleştir (EKİP-XX formatı)
+                if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $ekipKoduStrClean, $m)) {
+                    $ekipNo = $m[1];
+                    $defId = $ekipKodlariByNo[$ekipNo] ?? 0;
+                }
+
+                // 3. Eğer hala bulamadıysa, direkt ekip adıyla eşleştir
+                if (!$defId && isset($ekipKodlariByName[$ekipKoduStrLower])) {
+                    $defId = $ekipKodlariByName[$ekipKoduStrLower];
+                }
+
+                if ($defId > 0) {
+                    // Geçmişten personel bul
+                    if (isset($ekipGecmisi[$defId])) {
+                        foreach ($ekipGecmisi[$defId] as $hist) {
+                            if ($hist['baslangic_tarihi'] <= $normDate && ($hist['bitis_tarihi'] === null || $hist['bitis_tarihi'] >= $normDate)) {
+                                $personelId = $hist['personel_id'];
+                                break;
+                            }
+                        }
+                    }
+                    // Geçmişte yoksa güncel personeli al
+                    if (!$personelId) {
+                        $personelId = $personelByEkip[$defId] ?? 0;
+                    }
+                }
+            }
+
+            // Eşleşmeyen ekip toplama (Hata listesi)
+            // Not: defId 0 ise ekip sistemde yok demektir.
+            if ($defId === 0 && !empty($ekipKoduStrClean)) {
+                $atlanAnKayitlar++;
+                $uniqKey = "EKIP|" . $ekipKoduStrClean;
+                if (!isset($mevcutHatalar[$uniqKey])) {
+                    $atlanAnListesi[] = "Ekip Bulunamadı: $ekipKoduStrClean";
+                    $mevcutHatalar[$uniqKey] = true;
+                }
+                continue;
+            }
 
             // İş Türü ID Bul/Oluştur
-            $existingTur = $Tanimlamalar->isEmriSonucu($isEmriTipi, $isEmriSonucu);
+            $existingTur = $Tanimlamalar->isEmriSonucu(trim($isEmriTipi), trim($isEmriSonucu));
             $isEmriSonucuId = $existingTur ? $existingTur->id : 0;
             if (!$isEmriSonucuId && (!empty($isEmriTipi) || !empty($isEmriSonucu))) {
                 $encryptedId = $Tanimlamalar->saveWithAttr([
@@ -1227,32 +1306,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     'aciklama' => "Online sorgulama"
                 ]);
                 $isEmriSonucuId = \App\Helper\Security::decrypt($encryptedId);
-            }
-
-            // Ekip ve Personel Bul
-            $personelId = 0;
-            $defId = 0;
-            $ekipNo = 0;
-            if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $ekipKoduStr, $m)) {
-                $ekipNo = $m[1];
-                $defId = $ekipKodlari[$ekipNo] ?? 0;
-                if ($defId) {
-                    if (isset($ekipGecmisi[$defId])) {
-                        foreach ($ekipGecmisi[$defId] as $hist) {
-                            if ($hist['baslangic_tarihi'] <= $normDate && ($hist['bitis_tarihi'] === null || $hist['bitis_tarihi'] >= $normDate)) {
-                                $personelId = $hist['personel_id'];
-                                break;
-                            }
-                        }
-                    }
-                    if (!$personelId)
-                        $personelId = $personelByEkip[$defId] ?? 0;
-                }
-            }
-
-            if ($defId === 0) {
-                $atlanAnKayitlar[] = ['ekip_kodu' => $ekipKoduStr, 'is_emri_tipi' => $isEmriTipi, 'is_emri_sonucu' => $isEmriSonucu, 'tarih' => \App\Helper\Date::Ymd($normDate, 'd.m.Y')];
-                continue;
             }
 
             $insertBatch[] = [$islemId, $personelId, $defId, $firmaId, $isEmriSonucuId, $isEmriTipi, $ekipKoduStr, $isEmriSonucu, $sonuclanmis, $acikOlanlar, $normDate];
@@ -1297,6 +1350,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $response['mevcut_kayitlar'] = $mevcutKayitlar;
         $response['atlanAn_kayitlar'] = $atlanAnKayitlar;
         $response['toplam_api_kayit'] = count($apiData);
+        $response['atlanAn_listesi'] = $atlanAnListesi;
         // Hata ayıklama verisini kaldırıyoruz (Yüzlerce MB JSON oluşmasını engellemek için)
         // $response['api_raw_data'] = $apiData; 
         $response['message'] = "$yeniKayit kayıt başarıyla güncellendi.";
@@ -1436,7 +1490,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $stmtAllEkip->execute();
         $ekipKodlari = [];
         while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
-            if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $ek['tur_adi'], $m)) {
+            if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $ek['tur_adi'], $m)) {
                 $ekipKodlari[$m[1]] = $ek['id'];
             }
         }
@@ -1462,19 +1516,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 continue;
             }
 
+            $okuyucuAdi = trim($veri['OKUYUCUADI'] ?? '');
+            $bolge = trim($veri['BOLGE'] ?? '');
+            $defter = trim($veri['DEFTER'] ?? '');
+            $okuyucuNo = trim($veri['OKUYUCUNO'] ?? '');
+            $sayacDurum = trim($veri['SAYACDURUM'] ?? '');
+
             $normDate = \App\Helper\Date::convertExcelDate($veri['OKUMATARIHI'], 'Y-m-d') ?: $veri['OKUMATARIHI'];
-            $rawIdString = $normDate . '|' . $veri['BOLGE'] . '|' . ($veri['DEFTER'] ?? '') . '|' . $veri['OKUYUCUNO'] . '|' . ($veri['SAYACDURUM'] ?? '');
+            $rawIdString = $normDate . '|' . $bolge . '|' . $defter . '|' . $okuyucuNo . '|' . $sayacDurum;
             $islemId = md5($rawIdString);
 
             // Personel eşleştirme
             $personelId = 0;
             $ekipKoduId = 0;
 
-            if (isset($personelByName[$veri['OKUYUCUADI']])) {
-                $personelId = $personelByName[$veri['OKUYUCUADI']]['id'];
-                $ekipKoduId = $personelByName[$veri['OKUYUCUADI']]['ekip_no'];
+            if (isset($personelByName[$okuyucuAdi])) {
+                $personelId = $personelByName[$okuyucuAdi]['id'];
+                $ekipKoduId = $personelByName[$okuyucuAdi]['ekip_no'];
             } else {
-                if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $veri['OKUYUCUADI'], $m)) {
+                if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $veri['OKUYUCUADI'], $m)) {
                     $ekipNo = $m[1];
                     $ekipKoduId = $ekipKodlari[$ekipNo] ?? 0;
 
@@ -1498,18 +1558,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             if ($ekipKoduId === 0) {
                 $atlanAnKayitlar[] = [
-                    'kullanici_adi' => $veri['OKUYUCUADI'],
-                    'okuyucu_no' => $veri['OKUYUCUNO'] ?? '-',
-                    'bolge' => $veri['BOLGE']
-                ];
-                continue;
-            }
-
-            if ($ekipKoduId === 0) {
-                $atlanAnKayitlar[] = [
-                    'kullanici_adi' => $veri['OKUYUCUADI'],
-                    'okuyucu_no' => $veri['OKUYUCUNO'] ?? '-',
-                    'bolge' => $veri['BOLGE']
+                    'kullanici_adi' => $okuyucuAdi,
+                    'okuyucu_no' => $okuyucuNo ?: '-',
+                    'bolge' => $bolge
                 ];
                 continue;
             }

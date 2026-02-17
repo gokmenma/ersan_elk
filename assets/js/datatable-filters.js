@@ -15,6 +15,12 @@
       { key: "ends_with", label: "İle Biter", icon: "bx bx-chevron-left" },
       { key: "equals", label: "Eşittir", icon: "bx bx-check" },
       { key: "not_equals", label: "Eşit Değil", icon: "bx bx-x" },
+      { key: "null", label: "Boş Olanlar", icon: "bx bx-checkbox" },
+      {
+        key: "not_null",
+        label: "Dolu Olanlar",
+        icon: "bx bx-checkbox-checked",
+      },
     ],
     number: [
       { key: "contains", label: "İçerir", icon: "bx bx-search" },
@@ -24,12 +30,24 @@
       { key: "less_than", label: "Küçüktür", icon: "bx bx-chevron-down" },
       { key: "greater_equal", label: "Büyük Eşit", icon: "bx bx-chevrons-up" },
       { key: "less_equal", label: "Küçük Eşit", icon: "bx bx-chevrons-down" },
+      { key: "null", label: "Boş Olanlar", icon: "bx bx-checkbox" },
+      {
+        key: "not_null",
+        label: "Dolu Olanlar",
+        icon: "bx bx-checkbox-checked",
+      },
     ],
     date: [
       { key: "equals", label: "Eşittir", icon: "bx bx-calendar-check" },
       { key: "before", label: "Öncesi", icon: "bx bx-chevron-left" },
       { key: "after", label: "Sonrası", icon: "bx bx-chevron-right" },
       { key: "between", label: "Arasında", icon: "bx bx-calendar-event" },
+      { key: "null", label: "Boş Olanlar", icon: "bx bx-checkbox" },
+      {
+        key: "not_null",
+        label: "Dolu Olanlar",
+        icon: "bx bx-checkbox-checked",
+      },
     ],
   };
 
@@ -244,23 +262,15 @@
       if (!column.visible()) $th.hide();
       $filterRow.append($th);
 
-      const isActionCol =
-        [
-          "İŞLEM",
-          "İŞLEMLER",
-          "SEC",
-          "SEÇ",
-          "SEÇİM",
-          "SECIM",
-          "#",
-          "SIRA",
-          "NO",
-          "NÖBET",
-          "NOBET",
-          "BİLDİRİM",
-          "BILDIRIM",
-        ].includes(title.toUpperCase().replace(/\s/g, "")) ||
-        $header.find('input[type="checkbox"]').length > 0;
+      const isActionCol = [
+        "SEC",
+        "SEÇ",
+        "NO",
+        "NÖBET",
+        "NOBET",
+        "BİLDİRİM",
+        "BILDIRIM",
+      ].includes(title.toUpperCase().replace(/\s/g, ""));
 
       if (!filterType && isActionCol) return;
 
@@ -324,7 +334,22 @@
       };
 
       if (filterType === "select") {
-        const uniqueVals = [];
+        let uniqueVals = [];
+        const isServerSide = settings.oFeatures.bServerSide;
+
+        const populateOptions = (vals) => {
+          $list.find(".option-item:not(.select-all)").remove();
+          vals.sort().forEach((v) => {
+            const isChecked =
+              !cellInfo.value ||
+              (Array.isArray(cellInfo.value) && cellInfo.value.includes(v));
+            $list.append(
+              `<label class="option-item"><input type="checkbox" value="${v}" ${isChecked ? "checked" : ""}> <span>${v}</span></label>`,
+            );
+          });
+          updateSelectAllState();
+        };
+
         column
           .data()
           .unique()
@@ -344,9 +369,6 @@
           `<label class="option-item select-all"><input type="checkbox"> <span>(Hepsini Seç)</span></label>`,
         );
         uniqueVals.forEach((v) => {
-          // Sync logic: If value is an array, check if it contains v. If value is empty, all are checked by default in Excel.
-          // BUT: If user explicitly unchecked some, value is an array of what remains.
-          // If value is empty string, it means "All Selected".
           const isChecked =
             !cellInfo.value ||
             (Array.isArray(cellInfo.value) && cellInfo.value.includes(v));
@@ -364,6 +386,53 @@
 
         cellInfo.$excelDropdown = $excelDpy;
 
+        // Server-side lazy load
+        let hasLoadedFullList = !isServerSide;
+        const loadFullList = () => {
+          if (hasLoadedFullList) return;
+          const ajaxUrl =
+            typeof settings.ajax === "string"
+              ? settings.ajax
+              : settings.ajax.url;
+          if (!ajaxUrl) return;
+
+          const colData = column.dataSrc();
+          if (!colData) return;
+
+          $list.append(
+            '<div class="loading-info p-2 text-center text-muted"><i class="bx bx-loader-alt bx-spin"></i> Yükleniyor...</div>',
+          );
+
+          const filterData = {
+            action: "get-unique-values",
+            column: colData,
+            columns: [],
+          };
+
+          api.columns().every(function () {
+            filterData.columns.push({
+              search: { value: this.search() },
+            });
+          });
+
+          $.ajax({
+            url: ajaxUrl,
+            type: "POST",
+            data: filterData,
+            dataType: "json",
+            success: function (res) {
+              $list.find(".loading-info").remove();
+              if (res.status === "success" && Array.isArray(res.data)) {
+                hasLoadedFullList = true;
+                populateOptions(res.data);
+              }
+            },
+            error: function () {
+              $list.find(".loading-info").remove();
+            },
+          });
+        };
+
         // Sync "Select All" initial state
         const updateSelectAllState = () => {
           const $searchInp = $excelDpy.find(".search-box input");
@@ -371,7 +440,6 @@
           const $items = $list.find(".option-item:not(.select-all)");
 
           if (searchTerm !== "") {
-            // During search, "Select All" reflects visible items
             let visibleCount = 0;
             let visibleChecked = 0;
             $items.each(function () {
@@ -387,7 +455,6 @@
                 visibleCount > 0 && visibleCount === visibleChecked,
               );
           } else {
-            // Normal state: reflects all items
             const checkedCount = $items.find("input:checked").length;
             $excelDpy
               .find(".select-all input")
@@ -414,6 +481,10 @@
               left: Math.max(10, leftPos),
             })
             .toggleClass("show");
+
+          if ($excelDpy.hasClass("show")) {
+            loadFullList();
+          }
         });
 
         const $displayInput = $(
@@ -434,9 +505,11 @@
           updateSelectAllState();
         });
 
-        $excelDpy
-          .find(".option-item:not(.select-all) input")
-          .on("change", updateSelectAllState);
+        $excelDpy.on(
+          "change",
+          ".option-item:not(.select-all) input",
+          updateSelectAllState,
+        );
 
         $excelDpy.find(".select-all input").on("change", function () {
           const isChecked = $(this).prop("checked");
@@ -583,9 +656,14 @@
       const state = {};
       filterCells.forEach((cell) => {
         const val = cell.value;
+        const isNullMode = ["null", "not_null"].includes(cell.mode);
         const hasVal =
-          val &&
-          (Array.isArray(val) ? val.length > 0 : val.toString().trim() !== "");
+          (val &&
+            (Array.isArray(val)
+              ? val.length > 0
+              : val.toString().trim() !== "")) ||
+          isNullMode;
+
         if (cell.$trigger) cell.$trigger.toggleClass("active", !!hasVal);
         if (
           hasVal ||
@@ -600,11 +678,13 @@
         }
         if (settings.oFeatures.bServerSide) {
           if (hasVal) {
-            let s =
-              cell.mode +
-              ":" +
-              (Array.isArray(cell.value) ? cell.value.join("|") : cell.value);
-            if (cell.value2) s += "|" + cell.value2;
+            let s = cell.mode + ":";
+            if (!isNullMode) {
+              s += Array.isArray(cell.value)
+                ? cell.value.join("|")
+                : cell.value;
+              if (cell.value2) s += "|" + cell.value2;
+            }
             api.column(cell.colIdx).search(s);
           } else api.column(cell.colIdx).search("");
         }

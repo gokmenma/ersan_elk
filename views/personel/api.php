@@ -782,6 +782,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
+    } elseif ($action == 'get-unique-values') {
+        try {
+            $column = $_POST['column'] ?? '';
+            $values = $Personel->getUniqueValues($column, $_POST);
+            echo json_encode(['status' => 'success', 'data' => $values]);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
     } elseif ($action == 'personel-list') {
         try {
             $result = $Personel->getDataTable($_POST);

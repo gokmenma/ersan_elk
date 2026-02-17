@@ -31,7 +31,7 @@ class Form
                 >
             <label for="' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
             <div class="form-floating-icon">
-                ' . ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') . '
+                ' . (!empty($icon) ? ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') : '') . '
             </div>
         </div>';
     }
@@ -62,7 +62,7 @@ class Form
             '</textarea>
             <label for="' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
             <div class="form-floating-icon">
-                ' . ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') . '
+                ' . (!empty($icon) ? ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') : '') . '
             </div>
         </div>';
     }
@@ -169,7 +169,7 @@ class Form
         $html .= '</select>
         <label for="' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
         <div class="form-floating-icon">
-            ' . ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') . '
+            ' . (!empty($icon) ? ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') : '') . '
         </div>
     </div>';
 
@@ -216,7 +216,7 @@ class Form
         $html .= '</select>
         <label for="' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
         <div class="form-floating-icon">
-            ' . ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') . '
+            ' . (!empty($icon) ? ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') : '') . '
         </div>
     </div>';
 
@@ -231,7 +231,7 @@ class Form
         <input type="file" class="' . htmlspecialchars($class) . '" id="' . htmlspecialchars($name) . '" name="' . htmlspecialchars($name) . '" ' . ($required ? 'required' : '') . '>
         <label for="' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
         <div class="form-floating-icon">
-            ' . ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') . '
+            ' . (!empty($icon) ? ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') : '') . '
         </div>
     </div>';
     }

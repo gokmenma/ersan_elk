@@ -40,34 +40,6 @@
                                 </div>
                             </div>
 
-                            <div class="row">
-                                <div class="col-6 mb-3">
-                                    <?php
-                                    $aracTipleri = [
-                                        'binek' => 'Binek',
-                                        'kamyonet' => 'Kamyonet',
-                                        'kamyon' => 'Kamyon',
-                                        'minibus' => 'Minibüs',
-                                        'otobus' => 'Otobüs',
-                                        'motosiklet' => 'Motosiklet',
-                                        'diger' => 'Diğer'
-                                    ];
-                                    echo Form::FormSelect2('arac_tipi', $aracTipleri, null, 'Araç Tipi', 'truck');
-                                    ?>
-                                </div>
-                                <div class="col-6 mb-3">
-                                    <?php
-                                    $yakitTipleri = [
-                                        'dizel' => 'Dizel',
-                                        'benzin' => 'Benzin',
-                                        'lpg' => 'LPG',
-                                        'elektrik' => 'Elektrik',
-                                        'hibrit' => 'Hibrit'
-                                    ];
-                                    echo Form::FormSelect2('yakit_tipi', $yakitTipleri, null, 'Yakıt Tipi', 'droplet');
-                                    ?>
-                                </div>
-                            </div>
                         </div>
 
                         <!-- Sağ Kolon -->
@@ -97,17 +69,55 @@
                                     <?php echo Form::FormFloatInput('number', 'guncel_km', null, '0', 'Güncel KM', 'activity', 'form-control', false, null, 'on', false, 'min="0"'); ?>
                                 </div>
                             </div>
+                        </div>
 
-
-
-
+                        <!-- Üçlü Satır -->
+                        <div class="col-12">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <?php
+                                    $aracTipleri = [
+                                        'binek' => 'Binek',
+                                        'kamyonet' => 'Kamyonet',
+                                        'kamyon' => 'Kamyon',
+                                        'minibus' => 'Minibüs',
+                                        'otobus' => 'Otobüs',
+                                        'motosiklet' => 'Motosiklet',
+                                        'diger' => 'Diğer'
+                                    ];
+                                    echo Form::FormSelect2('arac_tipi', $aracTipleri, null, 'Araç Tipi', 'truck');
+                                    ?>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <?php
+                                    $yakitTipleri = [
+                                        'dizel' => 'Dizel',
+                                        'benzin' => 'Benzin',
+                                        'lpg' => 'LPG',
+                                        'elektrik' => 'Elektrik',
+                                        'hibrit' => 'Hibrit'
+                                    ];
+                                    echo Form::FormSelect2('yakit_tipi', $yakitTipleri, null, 'Yakıt Tipi', 'droplet');
+                                    ?>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <?php
+                                    $mulkiyetTipleri = [
+                                        'Şirket Aracı' => 'Şirket Aracı',
+                                        'Personel Aracı' => 'Personel Aracı',
+                                        'Kiralık Araç' => 'Kiralık Araç'
+                                    ];
+                                    echo Form::FormSelect2('mulkiyet', $mulkiyetTipleri, null, 'Mülkiyet Durumu', 'key');
+                                    ?>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-12">
                             <div class="row">
                                 <h6 class="text-warning border-bottom pb-2 mb-3 mt-3"><i data-feather="calendar"
                                         class="me-1"></i> Tarihler</h6>
                                 <div class="col-4 mb-3">
-                                    <?php echo Form::FormFloatInput('text', 'muayene_tarihi', null, '', 'Muayene Tarihi', 'calendar', 'form-control flatpickr', false, null, 'on', false, 'min="0"'); ?>
+                                    <?php echo Form::FormFloatInput('text', 'muayene_bitis_tarihi', null, '', 'Muayene Bitiş Tarihi', 'calendar', 'form-control flatpickr', false, null, 'on', false, 'min="0"'); ?>
                                 </div>
                                 <div class="col-4 mb-3">
                                     <?php echo Form::FormFloatInput('text', 'sigorta_bitis_tarihi', null, '', 'Sigorta Bitiş', 'calendar', 'form-control flatpickr', false, null, 'on', false, 'min="0"'); ?>

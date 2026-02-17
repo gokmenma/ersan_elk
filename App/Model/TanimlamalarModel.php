@@ -407,19 +407,19 @@ class TanimlamalarModel extends Model
 
 
 
-    /** İş Emri Sonucu Tanımlı mı */
     public function isEmriSonucu($isEmriTipi, $isEmriSonucu)
     {
+        // Gelen verileri ve veritabanı değerlerini trim ile karşılaştır
         $sql = "SELECT * FROM $this->table 
                         WHERE grup = 'is_turu' 
-                        AND tur_adi = :tur_adi 
-                        AND is_emri_sonucu = :is_emri_sonucu 
+                        AND TRIM(tur_adi) = :tur_adi 
+                        AND TRIM(is_emri_sonucu) = :is_emri_sonucu 
                         AND firma_id = :firma_id 
                         AND silinme_tarihi IS NULL";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
-            'tur_adi' => $isEmriTipi,
-            'is_emri_sonucu' => $isEmriSonucu,
+            'tur_adi' => trim($isEmriTipi),
+            'is_emri_sonucu' => trim($isEmriSonucu),
             'firma_id' => $_SESSION['firma_id']
         ]);
         return $stmt->fetch(PDO::FETCH_OBJ);
