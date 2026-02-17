@@ -23,9 +23,18 @@ class BordroPersonelModel extends Model
     /**
      * Belirli bir dönemdeki tüm personelleri getirir
      */
-    public function getPersonellerByDonem($donem_id)
+    public function getPersonellerByDonem($donem_id, $ids = [])
     {
         $firma_id = $_SESSION['firma_id'] ?? 0;
+        $idFilter = "";
+        $params = [$firma_id, $donem_id];
+
+        if (!empty($ids)) {
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $idFilter = " AND bp.id IN ($placeholders)";
+            $params = array_merge($params, $ids);
+        }
+
         $sql = $this->db->prepare("
             SELECT bp.*, p.adi_soyadi, p.tc_kimlik_no, p.departman, p.gorev, 
                    p.ise_giris_tarihi, p.isten_cikis_tarihi, p.maas_tutari, p.maas_durumu,
@@ -46,10 +55,10 @@ class BordroPersonelModel extends Model
                 AND pg.firma_id = ?
                 GROUP BY pg.personel_id
             ) t_all ON p.id = t_all.personel_id
-            WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL
+            WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL $idFilter
             ORDER BY p.adi_soyadi ASC
         ");
-        $sql->execute([$firma_id, $donem_id]);
+        $sql->execute($params);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -2392,8 +2401,17 @@ class BordroPersonelModel extends Model
      * Banka export için dönemdeki personellerin detaylı bilgilerini getirir
      * Personel tablosundan tüm gerekli alanları çeker
      */
-    public function getPersonellerByDonemDetayli($donem_id)
+    public function getPersonellerByDonemDetayli($donem_id, $ids = [])
     {
+        $idFilter = "";
+        $params = [$donem_id];
+
+        if (!empty($ids)) {
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $idFilter = " AND bp.id IN ($placeholders)";
+            $params = array_merge($params, $ids);
+        }
+
         $sql = $this->db->prepare("
             SELECT bp.*, 
                    bp.banka_odemesi,
@@ -2414,10 +2432,10 @@ class BordroPersonelModel extends Model
                    p.iban_numarasi
             FROM {$this->table} bp
             INNER JOIN personel p ON bp.personel_id = p.id
-            WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL
+            WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL $idFilter
             ORDER BY p.adi_soyadi ASC
         ");
-        $sql->execute([$donem_id]);
+        $sql->execute($params);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 }

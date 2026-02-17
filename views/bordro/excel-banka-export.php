@@ -23,6 +23,12 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 
 $donemId = $_GET['donem_id'] ?? null;
+$ids = $_GET['ids'] ?? null;
+$idArray = [];
+if ($ids) {
+    $idArray = explode(',', $ids);
+    $idArray = array_filter(array_map('intval', $idArray));
+}
 $firmaId = $_SESSION['firma_id'] ?? null;
 
 if (!$donemId) {
@@ -47,10 +53,10 @@ try {
     }
 
     // Dönemdeki personelleri getir (detaylı bilgiler dahil)
-    $personeller = $BordroPersonel->getPersonellerByDonemDetayli($donemId);
+    $personeller = $BordroPersonel->getPersonellerByDonemDetayli($donemId, $idArray);
 
     if (empty($personeller)) {
-        die('Bu dönemde personel bulunmamaktadır.');
+        die('Bu dönemde kriterlere uygun personel bulunmamaktadır.');
     }
 
     // Yeni Excel dosyası oluştur

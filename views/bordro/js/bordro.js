@@ -710,12 +710,34 @@ $(document).ready(function () {
     uploadExcelFile(formData, "Ödemeler Dağıtılıyor", "#odemeEkleModal");
   });
 
+  // Filtrelenmiş ID'leri al
+  function getFilteredIds() {
+    const table = $("#bordroTable").DataTable();
+    const info = table.page.info();
+
+    // Eğer filtre uygulanmışsa (toplam kayıt ile filtrelenmiş kayıt sayısı farklıysa)
+    if (info.recordsDisplay < info.recordsTotal) {
+      const rows = table.rows({ filter: "applied" }).nodes();
+      const ids = [];
+      $(rows).each(function () {
+        const id = $(this).data("id");
+        if (id) ids.push(id);
+      });
+      return ids;
+    }
+    return [];
+  }
+
   // Excel Export
   $("#btnExportExcel").on("click", function () {
     const donemId = $("#donemSelect").val();
     if (donemId) {
-      window.location.href =
-        "views/bordro/export-excel.php?donem_id=" + donemId;
+      let url = "views/bordro/export-excel.php?donem_id=" + donemId;
+      const ids = getFilteredIds();
+      if (ids.length > 0) {
+        url += "&ids=" + ids.join(",");
+      }
+      window.location.href = url;
     }
   });
 
@@ -723,8 +745,12 @@ $(document).ready(function () {
   $("#btnExportExcelBanka").on("click", function () {
     const donemId = $("#donemSelect").val();
     if (donemId) {
-      window.location.href =
-        "views/bordro/excel-banka-export.php?donem_id=" + donemId;
+      let url = "views/bordro/excel-banka-export.php?donem_id=" + donemId;
+      const ids = getFilteredIds();
+      if (ids.length > 0) {
+        url += "&ids=" + ids.join(",");
+      }
+      window.location.href = url;
     }
   });
 
@@ -732,8 +758,12 @@ $(document).ready(function () {
   $("#btnExportExcelSodexo").on("click", function () {
     const donemId = $("#donemSelect").val();
     if (donemId) {
-      window.location.href =
-        "views/bordro/excel-sodexo-export.php?donem_id=" + donemId;
+      let url = "views/bordro/excel-sodexo-export.php?donem_id=" + donemId;
+      const ids = getFilteredIds();
+      if (ids.length > 0) {
+        url += "&ids=" + ids.join(",");
+      }
+      window.location.href = url;
     }
   });
 
