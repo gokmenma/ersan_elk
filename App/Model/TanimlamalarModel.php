@@ -148,7 +148,8 @@ class TanimlamalarModel extends Model
                                                  WHERE peg.personel_id = p.id AND peg.ekip_kodu_id = t.id 
                                                  AND (peg.baslangic_tarihi IS NULL OR peg.baslangic_tarihi = '' OR DATE(peg.baslangic_tarihi) <= CURDATE())
                                                  AND (peg.bitis_tarihi IS NULL OR peg.bitis_tarihi = '' OR peg.bitis_tarihi = '0000-00-00' OR DATE(peg.bitis_tarihi) >= CURDATE()))
-                                         OR (p.ekip_no = t.id AND NOT EXISTS (SELECT 1 FROM personel_ekip_gecmisi peg2 WHERE peg2.personel_id = p.id)))) as personel_isimleri
+                                         OR (p.ekip_no = t.id AND NOT EXISTS (SELECT 1 FROM personel_ekip_gecmisi peg2 WHERE peg2.personel_id = p.id)))) as personel_isimleri,
+                                   TRIM(t.ekip_bolge) as ekip_bolge
                                    FROM $this->table t 
                                    WHERE t.grup = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL
                                    ORDER BY t.id DESC");
@@ -321,7 +322,7 @@ class TanimlamalarModel extends Model
      */
     public function getEkipBolgeleri()
     {
-        $sql = "SELECT DISTINCT ekip_bolge FROM $this->table WHERE grup = 'ekip_kodu' AND ekip_bolge IS NOT NULL AND ekip_bolge != '' AND ekip_bolge != '0' AND firma_id = ? AND silinme_tarihi IS NULL";
+        $sql = "SELECT DISTINCT TRIM(ekip_bolge) FROM $this->table WHERE grup = 'ekip_kodu' AND ekip_bolge IS NOT NULL AND ekip_bolge != '' AND ekip_bolge != '0' AND firma_id = ? AND silinme_tarihi IS NULL";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$_SESSION['firma_id']]);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -384,7 +385,16 @@ class TanimlamalarModel extends Model
 
     public function getUcretliIsTurleri()
     {
-        $sql = "SELECT * FROM $this->table WHERE grup = 'is_turu' AND is_turu_ucret > 0 AND silinme_tarihi IS NULL ORDER BY id ASC";
+        // Aynı isimli iş türlerini tekilleştir (Trimleyerek)
+        $sql = "SELECT id, tur_adi, TRIM(is_emri_sonucu) as is_emri_sonucu, is_turu_ucret, rapor_sekmesi 
+            FROM $this->table 
+            WHERE id IN (
+                SELECT MAX(id) 
+                FROM $this->table 
+                WHERE grup = 'is_turu' AND is_turu_ucret > 0 AND silinme_tarihi IS NULL 
+                GROUP BY TRIM(is_emri_sonucu)
+            )
+            ORDER BY id ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_OBJ);
@@ -392,7 +402,16 @@ class TanimlamalarModel extends Model
 
     public function getIsTurleriByRaporTuru($raporTuru)
     {
-        $sql = "SELECT * FROM $this->table WHERE grup = 'is_turu' AND rapor_sekmesi = ? AND is_turu_ucret > 0 AND silinme_tarihi IS NULL ORDER BY id ASC";
+        // Aynı isimli iş türlerini tekilleştir (Trimleyerek)
+        $sql = "SELECT id, tur_adi, TRIM(is_emri_sonucu) as is_emri_sonucu, is_turu_ucret, rapor_sekmesi 
+            FROM $this->table 
+            WHERE id IN (
+                SELECT MAX(id) 
+                FROM $this->table 
+                WHERE grup = 'is_turu' AND rapor_sekmesi = ? AND is_turu_ucret > 0 AND silinme_tarihi IS NULL 
+                GROUP BY TRIM(is_emri_sonucu)
+            )
+            ORDER BY id ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$raporTuru]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);

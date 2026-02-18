@@ -40,6 +40,10 @@
                                 </div>
                             </div>
 
+                            <div class="mb-3">
+                                <?php echo Form::FormSelect2('departmani', \App\Helper\Helper::DEPARTMAN, null, 'Departman', 'briefcase'); ?>
+                            </div>
+
                         </div>
 
                         <!-- Sağ Kolon -->

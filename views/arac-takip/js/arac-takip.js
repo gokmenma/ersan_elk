@@ -63,6 +63,24 @@ const AracTakip = {
         };
       }
 
+      // Sadece araç tablosu için sayfa uzunluğunu hatırla
+      if (selector === "#aracTable") {
+        options.stateSave = true;
+        options.stateSaveParams = function (settings, data) {
+          // Sadece sayfa uzunluğunu (length) sakla, diğer her şeyi sıfırla
+          data.start = 0;
+          data.search.search = "";
+          data.order = [];
+          if (data.columns) {
+            data.columns.forEach((col) => {
+              col.search.search = "";
+            });
+          }
+        };
+      } else {
+        options.stateSave = false;
+      }
+
       // Excel butonu için DOM düzenlemesi (B ekle)
       if (options.dom && options.dom.indexOf("B") === -1) {
         options.dom = "B" + options.dom;

@@ -9,3 +9,5 @@ uploads/*
 
 /** agents klasorunu ekle */
 .agents/*
+
+debug_date.txt

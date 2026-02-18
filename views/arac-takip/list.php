@@ -160,6 +160,7 @@ $activeTab = $_GET['tab'] ?? 'arac';
                                             <th class="text-center" style="width:5%">Sıra</th>
                                             <th style="width:12%">Plaka</th>
                                             <th style="width:15%">Marka/Model</th>
+                                            <th style="width:12%">Departman</th>
                                             <th style="width:10%">Mülkiyet</th>
                                             <th style="width:8%" class="text-center">Tip</th>
                                             <th style="width:8%" class="text-center">Yakıt</th>
@@ -206,6 +207,9 @@ $activeTab = $_GET['tab'] ?? 'arac';
                                                 </td>
                                                 <td>
                                                     <?php echo ($arac->marka ?? '-') . ' ' . ($arac->model ?? ''); ?>
+                                                </td>
+                                                <td>
+                                                    <?php echo $arac->departmani ?: '-'; ?>
                                                 </td>
                                                 <td>
                                                     <?php echo $arac->mulkiyet ?: '-'; ?>
@@ -690,7 +694,8 @@ $activeTab = $_GET['tab'] ?? 'arac';
                                             <p class="text-muted mb-1 small fw-bold"
                                                 style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM SERVİS MALİYETİ</p>
                                             <h4 class="mb-0 fw-bold bordro-text-heading" id="servis-toplam-maliyet">0.00
-                                                <span style="font-size: 0.85rem; font-weight: 600;">₺</span></h4>
+                                                <span style="font-size: 0.85rem; font-weight: 600;">₺</span>
+                                            </h4>
                                         </div>
                                     </div>
                                 </div>
@@ -739,9 +744,17 @@ $activeTab = $_GET['tab'] ?? 'arac';
                                     </thead>
                                     <tbody id="servisTableBody">
                                         <tr>
-                                            <td class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary" role="status"></div></td>
+                                            <td class="text-center py-4 text-muted">
+                                                <div class="spinner-border spinner-border-sm text-primary"
+                                                    role="status"></div>
+                                            </td>
                                             <td class="py-4 text-muted">Yükleniyor...</td>
-                                            <td></td><td></td><td></td><td></td><td></td><td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
                                         </tr>
                                     </tbody>
                                 </table>
