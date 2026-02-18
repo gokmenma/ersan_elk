@@ -30,6 +30,14 @@ $month = $_GET['month'] ?? date('m');
 $activeTab = $_GET['tab'] ?? 'okuma';
 $filterPersonelId = $_GET['personel_id'] ?? '';
 $filterRegion = $_GET['region'] ?? '';
+
+// Month name to number mapping safeguard
+if (!is_numeric($month)) {
+    $monthMapping = array_flip(Date::MONTHS);
+    if (isset($monthMapping[$month])) {
+        $month = $monthMapping[$month];
+    }
+}
 $startDate = $_GET['start_date'] ?? '';
 $endDate = $_GET['end_date'] ?? '';
 
@@ -40,7 +48,8 @@ if ($filterType === 'range' && !empty($startDate) && !empty($endDate)) {
     $startDateStr = date('Y-m-d', strtotime($startDate));
     $endDateStr = date('Y-m-d', strtotime($endDate));
 } else {
-    $startDateStr = "$year-$month-01";
+    $m_val = str_pad($month, 2, '0', STR_PAD_LEFT);
+    $startDateStr = "$year-$m_val-01";
     $endDateStr = date('Y-m-t', strtotime($startDateStr));
 }
 

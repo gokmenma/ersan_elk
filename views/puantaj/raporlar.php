@@ -49,9 +49,44 @@ foreach ($regionList as $r) {
 
 ?>
 <style>
-    .accordion-button.collapsed~.only-show-open,
-    .accordion-button.collapsed~#filterSummary {
+    .accordion-button.collapsed~.only-show-open {
         display: none !important;
+    }
+
+    .filter-summary-badge {
+        display: flex;
+        align-items: center;
+        background: #2a2f34;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        border: 1px solid #323940;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-summary-badge .badge-label {
+        color: #adb5bd;
+        margin-right: 4px;
+        font-weight: 600;
+    }
+
+    .filter-summary-badge .badge-value {
+        color: #ffffff;
+        font-weight: 700;
+    }
+
+    .btn-clear-filter {
+        background: none;
+        border: none;
+        padding: 0 0 0 4px;
+        color: #fa5f7e;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+    }
+
+    .btn-clear-filter:hover {
+        color: #e83e8c;
     }
 
     .filter-type-switcher {
@@ -145,10 +180,10 @@ foreach ($regionList as $r) {
                             <div class="accordion-body pt-3 pb-2">
                                 <div class="row g-3">
                                     <div class="col-md-2 filter-group-period" <?= $filterType === 'range' ? 'style="display:none"' : '' ?>>
-                                        <?php echo Form::FormSelect2("year", $yearOptions, $year, "Yıl Seçiniz", "bx bx-calendar-event", "grid", "key", "form-select select2"); ?>
+                                        <?php echo Form::FormSelect2("year", $yearOptions, $year, "Yıl Seçiniz", "bx bx-calendar-event", "key", "", "form-select select2"); ?>
                                     </div>
                                     <div class="col-md-2 filter-group-period" <?= $filterType === 'range' ? 'style="display:none"' : '' ?>>
-                                        <?php echo Form::FormSelect2("month", $monthOptions, $month, "Ay Seçiniz", "bx bx-calendar-check", "grid", "key", "form-select select2"); ?>
+                                        <?php echo Form::FormSelect2("month", $monthOptions, $month, "Ay Seçiniz", "bx bx-calendar-check", "key", "", "form-select select2"); ?>
                                     </div>
 
                                     <div class="col-md-2 filter-group-range" <?= $filterType === 'period' ? 'style="display:none"' : '' ?>>
