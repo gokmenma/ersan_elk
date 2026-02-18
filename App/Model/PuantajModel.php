@@ -139,12 +139,12 @@ class PuantajModel extends Model
         $firmaId = $_SESSION['firma_id'] ?? 0;
         // COALESCE ile eski ve yeni alanlardan is_emri_sonucu al
         $sql = "SELECT t.personel_id, t.ekip_kodu_id, DAY(t.tarih) as gun, 
-                    COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu, 
+                    TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) as is_emri_sonucu, 
                     SUM(t.sonuclanmis) as toplam 
                 FROM $this->table t
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
                 WHERE t.firma_id = ? AND YEAR(t.tarih) = ? AND MONTH(t.tarih) = ? AND t.silinme_tarihi IS NULL
-                GROUP BY t.personel_id, t.ekip_kodu_id, DAY(t.tarih), COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)";
+                GROUP BY t.personel_id, t.ekip_kodu_id, DAY(t.tarih), TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu))";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $year, $month]);
@@ -407,15 +407,15 @@ class PuantajModel extends Model
         if (!empty($matchedResults)) {
             $placeholders = implode(',', array_fill(0, count($matchedResults), '?'));
             // COALESCE ile hem yeni hem eski alanı kontrol et
-            $notInClause = " AND COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) NOT IN ($placeholders)";
+            $notInClause = " AND TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) NOT IN ($placeholders)";
             $params = array_merge($params, $matchedResults);
         }
 
         $sql = "SELECT t.*, 
                     p.adi_soyadi as personel_adi, 
                     ek.tur_adi as ekip_kodu,
-                    COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi,
-                    COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu
+                    TRIM(COALESCE(tn.tur_adi, t.is_emri_tipi)) as is_emri_tipi,
+                    TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) as is_emri_sonucu
                 FROM yapilan_isler t
                 LEFT JOIN personel p ON t.personel_id = p.id
                 LEFT JOIN personel_ekip_gecmisi pg ON t.personel_id = pg.personel_id 

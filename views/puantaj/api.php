@@ -1570,8 +1570,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $personelId,
                 $ekipKoduId,
                 $firmaId,
-                $veri['BOLGE'],
-                $veri['OKUYUCUADI'],
+                $bolge,
+                $okuyucuAdi,
                 0,
                 0,
                 0,
@@ -1581,8 +1581,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $veri['ABONE_SAYISI'],
                 100,
                 $normDate,
-                $veri['DEFTER'] ?? '',
-                $veri['SAYACDURUM'] ?? ''
+                $defter,
+                $sayacDurum
             ];
             $yeniKayit++;
         }

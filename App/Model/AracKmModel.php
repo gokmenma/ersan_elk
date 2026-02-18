@@ -364,4 +364,72 @@ class AracKmModel extends Model
 
         return $data;
     }
+    /**
+     * Belirli bir ay için belirli bir aracın günlük KM verilerini ve şoför bilgisini getirir
+     */
+    public function getSingleVehicleMonthlyPuantaj($yil, $ay, $aracId)
+    {
+        $baslangic = "$yil-$ay-01";
+        $bitis = date('Y-m-t', strtotime($baslangic));
+
+        // Araç ve Şoför Bilgisi
+        $sqlInfo = "
+            SELECT a.plaka, a.marka, a.model, p.adi_soyadi as sofor_adi
+            FROM araclar a
+            LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id 
+                AND az.durum = 'aktif' 
+                AND az.firma_id = :firma_id
+            LEFT JOIN personel p ON az.personel_id = p.id
+            WHERE a.id = :arac_id 
+            AND a.firma_id = :firma_id
+            AND a.silinme_tarihi IS NULL
+        ";
+
+        $stmtInfo = $this->db->prepare($sqlInfo);
+        $stmtInfo->execute([
+            'arac_id' => $aracId,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+        $info = $stmtInfo->fetch(PDO::FETCH_OBJ);
+
+        if (!$info)
+            return null;
+
+        // Günlük Veriler
+        $sqlKm = "
+            SELECT tarih, DAY(tarih) as gun, baslangic_km, bitis_km, yapilan_km
+            FROM {$this->table}
+            WHERE arac_id = :arac_id
+            AND tarih BETWEEN :baslangic AND :bitis
+            AND firma_id = :firma_id
+            AND silinme_tarihi IS NULL
+            ORDER BY tarih ASC
+        ";
+
+        $stmtKm = $this->db->prepare($sqlKm);
+        $stmtKm->execute([
+            'arac_id' => $aracId,
+            'baslangic' => $baslangic,
+            'bitis' => $bitis,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+        $kmData = $stmtKm->fetchAll(PDO::FETCH_OBJ);
+
+        $gunler = [];
+        foreach ($kmData as $row) {
+            $gunler[$row->gun] = [
+                'baslangic' => $row->baslangic_km,
+                'bitis' => $row->bitis_km,
+                'yapilan' => $row->yapilan_km
+            ];
+        }
+
+        return [
+            'info' => $info,
+            'gunler' => $gunler,
+            'yil' => $yil,
+            'ay' => $ay,
+            'gunSayisi' => date('t', strtotime($baslangic))
+        ];
+    }
 }

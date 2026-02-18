@@ -909,5 +909,14 @@ $onay_durumlari = [
             // Default to primary theme color (light style)
             return { bg: "rgba(85, 110, 230, 0.15)", color: "#556ee6" };
         }
+
+        // URL'den view parametresi kontrolü
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('view') === 'calendar') {
+            setTimeout(function () {
+                $('#btnCalendarView').click();
+            }, 100);
+        }
     });
+
 </script>

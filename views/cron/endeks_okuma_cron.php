@@ -314,19 +314,24 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
                 continue;
             }
 
+            $okuyucuAdi = trim($veri['OKUYUCUADI'] ?? '');
+            $bolge = trim($veri['BOLGE'] ?? '');
+            $defter = trim($veri['DEFTER'] ?? '');
+            $okuyucuNo = trim($veri['OKUYUCUNO'] ?? '');
+            $sayacDurum = trim($veri['SAYACDURUM'] ?? '');
+
             $normDate = \App\Helper\Date::convertExcelDate($veri['OKUMATARIHI'], 'Y-m-d') ?: $veri['OKUMATARIHI'];
-            $rawIdString = $normDate . '|' . trim($veri['BOLGE']) . '|' . (trim($veri['DEFTER'] ?? '')) . '|' . trim($veri['OKUYUCUNO']) . '|' . (trim($veri['SAYACDURUM'] ?? ''));
-            $islemId = md5($rawIdString);
+            $islemId = md5($normDate . '|' . $bolge . '|' . $defter . '|' . $okuyucuNo . '|' . $sayacDurum);
 
             // Personel eşleştirme
             $personelId = 0;
             $ekipKoduId = 0;
 
-            if (isset($personelByName[$veri['OKUYUCUADI']])) {
-                $personelId = $personelByName[$veri['OKUYUCUADI']]['id'];
-                $ekipKoduId = $personelByName[$veri['OKUYUCUADI']]['ekip_no'];
+            if (isset($personelByName[$okuyucuAdi])) {
+                $personelId = $personelByName[$okuyucuAdi]['id'];
+                $ekipKoduId = $personelByName[$okuyucuAdi]['ekip_no'];
             } else {
-                if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $veri['OKUYUCUADI'], $m)) {
+                if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $okuyucuAdi, $m)) {
                     $ekipNo = $m[1];
                     $ekipKoduId = $ekipKodlari[$ekipNo] ?? 0;
 
@@ -348,7 +353,7 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
 
             if ($ekipKoduId === 0) {
                 $atlanAnKayitlar++;
-                $atlanAnListesi[] = $veri['OKUYUCUADI'] . " (Bölge: " . $veri['BOLGE'] . ")";
+                $atlanAnListesi[] = $okuyucuAdi . " (Bölge: " . $bolge . ")";
                 continue;
             }
 
@@ -357,8 +362,8 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
                 $personelId,
                 $ekipKoduId,
                 $firmaId,
-                $veri['BOLGE'],
-                $veri['OKUYUCUADI'],
+                $bolge,
+                $okuyucuAdi,
                 0,
                 0,
                 0,
@@ -368,8 +373,8 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
                 $veri['ABONE_SAYISI'], // ort_okunan_abone_sayisi_gunluk
                 100, // okuma_performansi
                 $normDate,
-                $veri['DEFTER'] ?? '',
-                $veri['SAYACDURUM'] ?? ''
+                $defter,
+                $sayacDurum
             ];
             $yeniKayit++;
         }

@@ -109,10 +109,10 @@
     var aracKmMap = <?php echo json_encode($aracKmMap); ?>;
 
     // Araç seçildiğinde KM'yi otomatik doldur
-    $(document).on('change', '#arac_id', function () {
+    $(document).on('change', '#zimmetModal #arac_id', function () {
         const aracId = $(this).val();
         if (aracId && aracKmMap[aracId]) {
-            $('#teslim_km').val(aracKmMap[aracId]);
+            $('#zimmetModal #teslim_km').val(aracKmMap[aracId]);
         }
     });
 </script>

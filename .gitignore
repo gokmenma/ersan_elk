@@ -5,3 +5,7 @@ cache/*
 
 # /**uploads klasorunu ekle */
 uploads/*
+
+
+/** agents klasorunu ekle */
+.agents/*

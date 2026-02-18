@@ -15,7 +15,7 @@ use App\Helper\Date;
 
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && $_GET['action'] == 'get-arac-puantaj-table')) {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj']))) {
     $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
     $Arac = new AracModel();
@@ -453,20 +453,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && $_GET['ac
 
                 // Başlıkları al
                 $headers = array_map(function ($h) {
-                    $h = str_replace(['İ', 'I', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç'], ['i', 'ı', 'ğ', 'ü', 'ş', 'ö', 'ç'], $h ?? '');
-                    return mb_strtolower(trim($h), 'UTF-8');
+                    $h = trim($h ?? '');
+                    // Normalize for comparison: lower case and handle Turkish chars
+                    $h = str_replace(['İ', 'I', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç'], ['i', 'i', 'g', 'u', 's', 'o', 'c'], $h);
+                    return mb_strtolower($h, 'UTF-8');
                 }, $rows[0]);
 
                 // Sütun eşleştirme
                 $columnMap = [
+                    'external_id' => ['id', 'ıd'],
                     'plaka' => ['plaka', 'araç plakası', 'arac plakasi'],
                     'tarih' => ['tarih', 'yakıt tarihi', 'yakit tarihi'],
                     'km' => ['km', 'kilometre', 'güncel km', 'guncel km'],
                     'yakit_miktari' => ['litre', 'yakıt miktarı', 'yakit miktari', 'miktar'],
-                    'birim_fiyat' => ['birim fiyat', 'litre fiyatı', 'litre fiyati', 'fiyat'],
-                    'toplam_tutar' => ['tutar', 'toplam tutar', 'toplam', 'ödenen'],
+                    'birim_fiyat' => ['birim fiyat', 'litre fiyatı', 'litre fiyati', 'fiyat', 'birim fiyatı'],
+                    'toplam_tutar' => ['tutar', 'toplam tutar', 'toplam', 'ödenen', 'net tutar'],
+                    'brut_tutar' => ['brüt tutar', 'brut tutar'],
                     'istasyon' => ['istasyon', 'akaryakıt istasyonu', 'benzin istasyonu'],
-                    'fatura_no' => ['fatura no', 'fatura numarası', 'fiş no'],
+                    'fatura_no' => ['fatura no', 'fatura numarası', 'fiş no', 'fatura numarası'],
+                    'fatura_tarihi' => ['fatura tarihi'],
+                    'cihaz_numarasi' => ['cihaz numarası', 'cihaz numarasi'],
+                    'kart_numarasi' => ['kart numarası', 'kart numarasi'],
                     'notlar' => ['not', 'notlar', 'açıklama']
                 ];
 
@@ -486,14 +493,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && $_GET['ac
                 }
 
                 $addedCount = 0;
+                $updatedCount = 0;
                 $errorDetails = [];
 
-                // Tüm araçları al (plaka -> id eşleştirmesi için)
-                $tumAraclar = $Arac->all();
-                $plakaMap = [];
-                foreach ($tumAraclar as $arac) {
-                    $plakaMap[strtoupper(trim($arac->plaka))] = $arac->id;
-                }
+                // Numeric parsing function
+                $cleanNum = function ($val) {
+                    if ($val === null || $val === '')
+                        return 0.0;
+                    $val = str_replace(['TL', ' ', '%'], '', $val);
+                    $val = str_replace(',', '', $val);
+                    return (float) $val;
+                };
 
                 for ($i = 1; $i < count($rows); $i++) {
                     $row = $rows[$i];
@@ -503,12 +513,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && $_GET['ac
                     if (empty($plaka))
                         continue;
 
-                    if (!isset($plakaMap[$plaka])) {
-                        $errorDetails[] = "Satır $rowNum: '$plaka' plakalı araç bulunamadı.";
-                        continue;
+                    // Araç bul veya ekle
+                    $mevcutArac = $Arac->plakaKontrol($plaka);
+                    if (!$mevcutArac) {
+                        try {
+                            $encryptedId = $Arac->saveWithAttr([
+                                'firma_id' => $_SESSION['firma_id'],
+                                'plaka' => $plaka,
+                                'aktif_mi' => 1
+                            ]);
+                            $aracId = (int) Security::decrypt($encryptedId);
+                        } catch (Exception $e) {
+                            $errorDetails[] = "Satır $rowNum ($plaka): Araç eklenemedi - " . $e->getMessage();
+                            continue;
+                        }
+                    } else {
+                        $aracId = $mevcutArac->id;
                     }
-
-                    $aracId = $plakaMap[$plaka];
 
                     try {
                         $newData = [
@@ -520,23 +541,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && $_GET['ac
                         // Tarih
                         if (isset($colIndices['tarih'])) {
                             $tarihVal = $row[$colIndices['tarih']];
-                            if (is_numeric($tarihVal)) {
+                            if (is_numeric($tarihVal) && $tarihVal > 30000) { // Excel format check
                                 $tarihVal = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($tarihVal)->format('Y-m-d');
                             } else {
-                                $timestamp = strtotime(str_replace(['.', '/'], '-', $tarihVal));
-                                $tarihVal = $timestamp ? date('Y-m-d', $timestamp) : date('Y-m-d');
+                                $tarihVal = trim($tarihVal);
+                                if (!empty($tarihVal)) {
+                                    $timestamp = strtotime(str_replace(['.', '/'], '-', $tarihVal));
+                                    $tarihVal = $timestamp ? date('Y-m-d', $timestamp) : date('Y-m-d');
+                                } else {
+                                    $tarihVal = date('Y-m-d');
+                                }
                             }
                             $newData['tarih'] = $tarihVal;
                         } else {
                             $newData['tarih'] = date('Y-m-d');
                         }
 
-                        // Diğer alanlar
-                        foreach (['km', 'yakit_miktari', 'birim_fiyat', 'toplam_tutar', 'istasyon', 'fatura_no', 'notlar'] as $field) {
+                        // Sayısal alanlar
+                        foreach (['km', 'yakit_miktari', 'birim_fiyat', 'toplam_tutar', 'brut_tutar'] as $field) {
                             if (isset($colIndices[$field])) {
-                                $val = trim($row[$colIndices[$field]] ?? '');
-                                if ($val !== '') {
-                                    $newData[$field] = $val;
+                                $newData[$field] = $cleanNum($row[$colIndices[$field]]);
+                            }
+                        }
+
+                        // Metinsel alanlar
+                        foreach (['istasyon', 'fatura_no', 'notlar', 'cihaz_numarasi', 'kart_numarasi', 'external_id'] as $field) {
+                            if (isset($colIndices[$field])) {
+                                $newData[$field] = trim($row[$colIndices[$field]] ?? '');
+                            }
+                        }
+
+                        // Fatura Tarihi
+                        if (isset($colIndices['fatura_tarihi'])) {
+                            $ft = $row[$colIndices['fatura_tarihi']];
+                            if (is_numeric($ft) && $ft > 30000) {
+                                $newData['fatura_tarihi'] = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($ft)->format('Y-m-d');
+                            } else {
+                                $ft = trim($ft);
+                                if (!empty($ft)) {
+                                    $timestamp = strtotime(str_replace(['.', '/'], '-', $ft));
+                                    $newData['fatura_tarihi'] = $timestamp ? date('Y-m-d', $timestamp) : null;
                                 }
                             }
                         }
@@ -550,21 +594,72 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && $_GET['ac
                         $oncekiKm = $Yakit->getOncekiKm($aracId);
                         $newData['onceki_km'] = $oncekiKm;
 
-                        $Yakit->saveWithAttr($newData);
+                        // UPSERT mantığı
+                        if (!empty($newData['external_id'])) {
+                            $sql = "INSERT INTO arac_yakit_kayitlari (
+                                        firma_id, arac_id, tarih, km, yakit_miktari, birim_fiyat, 
+                                        toplam_tutar, istasyon, fatura_no, external_id, 
+                                        cihaz_numarasi, kart_numarasi, brut_tutar, fatura_tarihi,
+                                        yakit_tipi, olusturan_kullanici_id
+                                    ) VALUES (
+                                        :firma_id, :arac_id, :tarih, :km, :yakit_miktari, :birim_fiyat, 
+                                        :toplam_tutar, :istasyon, :fatura_no, :external_id, 
+                                        :cihaz_numarasi, :kart_numarasi, :brut_tutar, :fatura_tarihi,
+                                        'dizel', :olusturan_kullanici_id
+                                    ) ON DUPLICATE KEY UPDATE 
+                                        arac_id = VALUES(arac_id),
+                                        tarih = VALUES(tarih),
+                                        km = VALUES(km),
+                                        yakit_miktari = VALUES(yakit_miktari),
+                                        birim_fiyat = VALUES(birim_fiyat),
+                                        toplam_tutar = VALUES(toplam_tutar),
+                                        istasyon = VALUES(istasyon),
+                                        fatura_no = VALUES(fatura_no),
+                                        cihaz_numarasi = VALUES(cihaz_numarasi),
+                                        kart_numarasi = VALUES(kart_numarasi),
+                                        brut_tutar = VALUES(brut_tutar),
+                                        fatura_tarihi = VALUES(fatura_tarihi),
+                                        guncelleme_tarihi = NOW()";
+
+                            $stmt = $Yakit->getDb()->prepare($sql);
+                            $stmt->execute([
+                                ':firma_id' => $newData['firma_id'],
+                                ':arac_id' => $newData['arac_id'],
+                                ':tarih' => $newData['tarih'],
+                                ':km' => $newData['km'] ?? 0,
+                                ':yakit_miktari' => $newData['yakit_miktari'] ?? 0,
+                                ':birim_fiyat' => $newData['birim_fiyat'] ?? 0,
+                                ':toplam_tutar' => $newData['toplam_tutar'] ?? 0,
+                                ':istasyon' => $newData['istasyon'] ?? null,
+                                ':fatura_no' => $newData['fatura_no'] ?? null,
+                                ':external_id' => $newData['external_id'],
+                                ':cihaz_numarasi' => $newData['cihaz_numarasi'] ?? null,
+                                ':kart_numarasi' => $newData['kart_numarasi'] ?? null,
+                                ':brut_tutar' => $newData['brut_tutar'] ?? null,
+                                ':fatura_tarihi' => $newData['fatura_tarihi'] ?? null,
+                                ':olusturan_kullanici_id' => $newData['olusturan_kullanici_id']
+                            ]);
+
+                            if ($stmt->rowCount() == 1)
+                                $addedCount++;
+                            else
+                                $updatedCount++;
+                        } else {
+                            $Yakit->saveWithAttr($newData);
+                            $addedCount++;
+                        }
 
                         // Araç KM güncelle
                         if (!empty($newData['km'])) {
                             $Arac->updateKm($aracId, $newData['km']);
                         }
 
-                        $addedCount++;
-
                     } catch (Exception $e) {
                         $errorDetails[] = "Satır $rowNum ($plaka): " . $e->getMessage();
                     }
                 }
 
-                $responseMessage = "İşlem tamamlandı. Eklenen: $addedCount";
+                $responseMessage = "İşlem tamamlandı. Eklenen: $addedCount, Güncellenen: $updatedCount";
                 if (count($errorDetails) > 0) {
                     $responseMessage .= ", Hatalı: " . count($errorDetails);
                 }
@@ -866,26 +961,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && $_GET['ac
                     <table class="table table-bordered table-sm table-hover align-middle mb-0" id="puantajTable">
                         <thead class="table-light sticky-top">
                             <tr>
-                                <th class="text-center sticky-col-1" rowspan="2">#</th>
-                                <th class="sticky-col-2" rowspan="2">Plaka</th>
-                                <th class="sticky-col-3" rowspan="2">Marka/Model</th>
-                                <?php for ($i = 1; $i <= $gunSayisi; $i++): ?>
-                                    <th class="text-center" colspan="3"><?= $i ?></th>
+                                <th class="text-center sticky-col-1 fw-bold">SIRA</th>
+                                <th class="sticky-col-2 fw-bold">PLAKA</th>
+                                <th class="sticky-col-3 fw-bold">MARKA / MODEL</th>
+                                <?php for ($i = 1; $i <= $gunSayisi; $i++):
+                                    $isSunday = date('N', strtotime("$yil-$ay-$i")) == 7;
+                                    ?>
+                                    <th class="text-center <?= $isSunday ? 'weekend-header' : '' ?>" colspan="3"><?= $i ?></th>
                                 <?php endfor; ?>
-                                <th class="text-center bg-info text-white" rowspan="2">Toplam KM</th>
+                                <th class="text-center bg-primary text-white">AYLIK TOPLAM</th>
                             </tr>
                             <tr>
-                                <?php for ($i = 1; $i <= $gunSayisi; $i++): ?>
-                                    <th class="text-center km-col km-start-col d-none" style="font-size: 10px;">Bas.</th>
-                                    <th class="text-center km-col km-end-col d-none" style="font-size: 10px;">Bit.</th>
-                                    <th class="text-center km-total-col" style="font-size: 10px;">KM</th>
+                                <th class="sticky-col-1 bg-light p-1">
+                                    <input type="text" class="form-control form-control-xs table-filter text-center" data-col="0"
+                                        placeholder="SIF">
+                                </th>
+                                <th class="sticky-col-2 bg-light p-1">
+                                    <input type="text" class="form-control form-control-xs table-filter" data-col="1"
+                                        placeholder="PLAKA">
+                                </th>
+                                <th class="sticky-col-3 bg-light p-1">
+                                    <input type="text" class="form-control form-control-xs table-filter" data-col="2" placeholder="ARA">
+                                </th>
+                                <?php for ($i = 1; $i <= $gunSayisi; $i++):
+                                    $isSunday = date('N', strtotime("$yil-$ay-$i")) == 7;
+                                    ?>
+                                    <th class="text-center km-col km-start-col d-none <?= $isSunday ? 'weekend-header' : '' ?>"
+                                        style="font-size: 9px;">Bas.</th>
+                                    <th class="text-center km-col km-end-col d-none <?= $isSunday ? 'weekend-header' : '' ?>"
+                                        style="font-size: 9px;">Bit.</th>
+                                    <th class="text-center km-total-col <?= $isSunday ? 'weekend-header' : '' ?>" style="font-size: 9px;">KM
+                                    </th>
                                 <?php endfor; ?>
+                                <th class="bg-primary bg-opacity-10"></th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($puantajData)): ?>
                                 <tr>
-                                    <td colspan="<?= ($gunSayisi * 3) + 4 ?>" class="text-center py-4">Kayıt bulunamadı.</td>
+                                    <td colspan="<?= ($gunSayisi * 3) + 4 ?>" class="text-center py-4 text-muted">Arama kriterlerine uygun
+                                        araç kaydı bulunamadı.</td>
                                 </tr>
                             <?php else: ?>
                                 <?php $sira = 1;
@@ -893,120 +1008,523 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && $_GET['ac
                                     $aylikToplam = 0;
                                     ?>
                                     <tr>
-                                        <td class="text-center sticky-col-1"><?= $sira++ ?></td>
-                                        <td class="fw-bold sticky-col-2"><?= $row['info']['plaka'] ?></td>
-                                        <td class="sticky-col-3 text-truncate" style="max-width: 150px;">
+                                        <td class="text-center sticky-col-1 bg-white"><?= $sira++ ?></td>
+                                        <td class="fw-bold sticky-col-2 text-primary cursor-pointer btn-arac-detay bg-white"
+                                            data-id="<?= Security::encrypt($arac_id) ?>"><?= $row['info']['plaka'] ?></td>
+                                        <td class="sticky-col-3 bg-white text-truncate" style="max-width: 15rem;">
                                             <?= ($row['info']['marka'] ?? '-') . ' ' . ($row['info']['model'] ?? '') ?>
                                         </td>
                                         <?php for ($i = 1; $i <= $gunSayisi; $i++):
                                             $gunData = $row['gunler'][$i] ?? null;
                                             $yapilan = $gunData ? (float) $gunData['yapilan'] : 0;
                                             $aylikToplam += $yapilan;
+                                            $isSunday = date('N', strtotime("$yil-$ay-$i")) == 7;
+                                            $cellClass = $isSunday ? 'weekend-cell' : '';
                                             ?>
-                                            <td class="text-center km-col km-start-col d-none bg-light">
+                                            <td class="text-center km-col km-start-col d-none bg-light <?= $cellClass ?>">
                                                 <?= $gunData ? number_format($gunData['baslangic'], 0, ',', '.') : '-' ?>
                                             </td>
-                                            <td class="text-center km-col km-end-col d-none bg-light">
+                                            <td class="text-center km-col km-end-col d-none bg-light <?= $cellClass ?>">
                                                 <?= $gunData ? number_format($gunData['bitis'], 0, ',', '.') : '-' ?>
                                             </td>
-                                            <td class="text-center km-total-col fw-bold <?= $yapilan > 0 ? 'text-primary' : 'text-muted' ?>">
+                                            <td
+                                                class="text-center km-total-col fw-bold <?= $yapilan > 0 ? 'text-dark' : 'text-muted opacity-50' ?> <?= $cellClass ?>">
                                                 <?= $yapilan > 0 ? number_format($yapilan, 0, ',', '.') : '-' ?>
                                             </td>
                                         <?php endfor; ?>
-                                        <td class="text-center bg-info-subtle fw-bold"><?= number_format($aylikToplam, 0, ',', '.') ?></td>
+                                        <td class="text-center bg-light-blue fw-800 text-primary">
+                                            <?= number_format($aylikToplam, 0, ',', '.') ?>
+                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </tbody>
+                        <tfoot class="sticky-footer">
+                            <tr class="fw-bold">
+                                <td class="sticky-col-1 bg-light"></td>
+                                <td colspan="2" class="text-center sticky-footer-label-span bg-light border-end-2">GÜNLÜK TOPLAMLAR</td>
+                                <?php
+                                $genelAyToplam = 0;
+                                for ($i = 1; $i <= $gunSayisi; $i++):
+                                    $gunlukBaslangic = 0;
+                                    $gunlukBitis = 0;
+                                    $gunlukToplam = 0;
+                                    if (!empty($puantajData)) {
+                                        foreach ($puantajData as $row) {
+                                            $gd = $row['gunler'][$i] ?? null;
+                                            if ($gd) {
+                                                $gunlukBaslangic += (float) ($gd['baslangic'] ?? 0);
+                                                $gunlukBitis += (float) ($gd['bitis'] ?? 0);
+                                                $gunlukToplam += (float) ($gd['yapilan'] ?? 0);
+                                            }
+                                        }
+                                    }
+                                    $genelAyToplam += $gunlukToplam;
+                                    ?>
+                                    <td class="text-center km-col km-start-col d-none">
+                                        <?= $gunlukBaslangic > 0 ? number_format($gunlukBaslangic, 0, ',', '.') : '-' ?>
+                                    </td>
+                                    <td class="text-center km-col km-end-col d-none">
+                                        <?= $gunlukBitis > 0 ? number_format($gunlukBitis, 0, ',', '.') : '-' ?>
+                                    </td>
+                                    <td class="text-center km-total-col text-dark">
+                                        <?= $gunlukToplam > 0 ? number_format($gunlukToplam, 0, ',', '.') : '-' ?>
+                                    </td>
+                                <?php endfor; ?>
+                                <td class="text-center bg-primary text-white"><?= number_format($genelAyToplam, 0, ',', '.') ?></td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
                 <style>
                     #puantajTable {
-                        border-collapse: separate;
-                        border-spacing: 0;
+                        border-collapse: separate !important;
+                        border-spacing: 0 !important;
                         width: 100% !important;
                         font-size: 11px;
-                        /* Smaller font for better fit */
+                        border: 1px solid #dee2e6;
                     }
 
+                    #puantajTable.table-bordered> :not(caption)>*>* {
+                        border-width: 1px !important;
+                    }
+
+                    .table-responsive {
+                        max-height: calc(100vh - 350px) !important;
+                        overflow: auto !important;
+                        border-radius: 8px;
+                        box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+                    }
+
+                    /* Sticky Header & Footer */
+                    #puantajTable thead th {
+                        background: #f1f3f7 !important;
+                        z-index: 30;
+                        vertical-align: middle;
+                        text-align: center;
+                        white-space: nowrap;
+                        color: #495057;
+                        border: 1px solid #dee2e6 !important;
+                    }
+
+                    .sticky-footer {
+                        position: sticky !important;
+                        bottom: 0 !important;
+                        z-index: 40 !important;
+                    }
+
+                    .sticky-footer td {
+                        background: #f8f9fa !important;
+                        border-top: 2px solid #adb5bd !important;
+                        border-bottom: 0 !important;
+                        position: sticky !important;
+                        bottom: 0 !important;
+                        z-index: 41 !important;
+                        height: 40px;
+                        vertical-align: middle;
+                    }
+
+                    /* Sticky Columns */
                     .sticky-col-1,
                     .sticky-col-2,
                     .sticky-col-3 {
                         position: sticky !important;
-                        background: #f8f9fa !important;
-                        z-index: 20 !important;
-                        box-shadow: 2px 0 2px -1px rgba(0, 0, 0, 0.1);
+                        z-index: 25 !important;
+                        border-right: 1px solid #dee2e6 !important;
                     }
 
                     .sticky-col-1 {
                         left: 0;
-                        width: 30px;
-                        min-width: 30px;
+                        min-width: 40px;
+                        width: 40px;
                     }
 
                     .sticky-col-2 {
-                        left: 30px;
-                        width: 90px;
-                        min-width: 90px;
-                        border-right: 1px solid #dee2e6 !important;
+                        left: 40px;
+                        min-width: 100px;
+                        width: 100px;
                     }
 
                     .sticky-col-3 {
-                        left: 120px;
-                        width: 120px;
-                        min-width: 120px;
+                        left: 140px;
+                        min-width: 160px;
+                        width: 160px;
                         border-right: 2px solid #adb5bd !important;
                     }
 
-                    /* Dark mode adjustments for sticky columns */
-                    [data-bs-theme="dark"] .sticky-col-1,
-                    [data-bs-theme="dark"] .sticky-col-2,
-                    [data-bs-theme="dark"] .sticky-col-3 {
-                        background: #2a3042 !important;
-                    }
-
-                    #puantajTable thead th {
+                    .sticky-footer-label-span {
+                        position: sticky !important;
+                        left: 40px !important;
+                        z-index: 45 !important;
                         background: #f8f9fa !important;
-                        z-index: 10;
-                        vertical-align: middle;
-                        white-space: nowrap;
-                        padding: 4px 2px !important;
-                        /* Minimal padding */
                     }
 
-                    #puantajTable tbody td {
-                        padding: 4px 2px !important;
+                    .bg-light-blue {
+                        background-color: #f0f7ff !important;
+                    }
+
+                    [data-bs-theme="dark"] .bg-light-blue {
+                        background-color: #2b394e !important;
+                    }
+
+                    .sticky-footer .sticky-col-3 {
+                        z-index: 45 !important;
+                        bottom: 0 !important;
+                    }
+
+                    /* Filtrations */
+                    .form-control-xs {
+                        height: 24px;
+                        padding: 2px 5px;
+                        font-size: 10px;
+                        border-radius: 4px;
+                        border: 1px solid #ced4da;
+                        background-color: #fff;
+                    }
+
+                    .form-control-xs:focus {
+                        border-color: #0d6efd;
+                        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+                    }
+
+                    /* Weekend Highlighting */
+                    .weekend-header {
+                        background-color: #fff5f5 !important;
+                        color: #dc3545 !important;
+                    }
+
+                    .weekend-cell {
+                        background-color: #fffafa !important;
+                    }
+
+                    /* Helper Classes */
+                    .fw-800 {
+                        font-weight: 800;
+                    }
+
+                    .border-end-2 {
+                        border-right: 2px solid #adb5bd !important;
                     }
 
                     [data-bs-theme="dark"] #puantajTable thead th {
+                        background: #2e3548 !important;
+                        color: #ced4da;
+                    }
+
+                    [data-bs-theme="dark"] .sticky-col-1,
+                    [data-bs-theme="dark"] .sticky-col-2,
+                    [data-bs-theme="dark"] .sticky-col-3,
+                    [data-bs-theme="dark"] .bg-white {
+                        background: #2a3042 !important;
+                    }
+
+                    [data-bs-theme="dark"] .bg-light {
                         background: #32394e !important;
                     }
 
-                    #puantajTable thead tr:first-child th {
-                        top: 0;
-                        z-index: 11;
+                    [data-bs-theme="dark"] .sticky-footer td {
+                        background: #2e3548 !important;
+                        border-top-color: #495057 !important;
                     }
 
-                    #puantajTable thead tr:last-child th {
-                        top: 25px;
-                        /* Adjusted for smaller font */
-                        z-index: 11;
+                    [data-bs-theme="dark"] .weekend-header {
+                        background-color: #3d2b2b !important;
                     }
 
-                    .km-col {
-                        min-width: 25px;
+                    [data-bs-theme="dark"] .weekend-cell {
+                        background-color: #352626 !important;
+                    }
+                </style>
+                <?php
+                $html = ob_get_clean();
+                header('Content-Type: text/html');
+                die($html);
+                break;
+
+            case 'get-arac-ozel-puantaj':
+                $yil = intval($_GET['year'] ?? date('Y'));
+                $ay = str_pad($_GET['month'] ?? date('m'), 2, '0', STR_PAD_LEFT);
+                $arac_id = intval(Security::decrypt($_GET['id'] ?? '0'));
+
+                if ($arac_id <= 0) {
+                    throw new Exception("Geçersiz araç ID.");
+                }
+
+                $data = $Km->getSingleVehicleMonthlyPuantaj($yil, $ay, $arac_id);
+                if (!$data) {
+                    throw new Exception("Araç bilgisi bulunamadı.");
+                }
+
+                $monthName = Date::monthName($ay);
+
+                ob_start();
+                ?>
+                <div id="printableArea">
+                    <div class="report-header">
+                        <div class="report-title"><?= $yil ?>                 <?= $monthName ?> Ayı Araç Puantaj Cetveli</div>
+                        <div class="report-info-grid">
+                            <div class="info-item">
+                                <span class="info-label">PLAKA:</span>
+                                <span class="info-value"><?= htmlspecialchars($data['info']->plaka) ?></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">ŞOFÖR:</span>
+                                <span
+                                    class="info-value"><?= htmlspecialchars($data['info']->sofor_adi ?? 'Zimmetli Personel Yok') ?></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">ARAÇ:</span>
+                                <span
+                                    class="info-value"><?= htmlspecialchars(($data['info']->marka ?? '') . ' ' . ($data['info']->model ?? '')) ?></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">TARİH</th>
+                                <th>BAŞLANGIÇ KM</th>
+                                <th>BİTİŞ KM</th>
+                                <th>TOPLAM KM</th>
+                                <th style="width: 100px;">İMZA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            $genelToplam = 0;
+                            for ($i = 1; $i <= $data['gunSayisi']; $i++) {
+                                $gunData = $data['gunler'][$i] ?? null;
+                                $yapilan = $gunData ? (float) $gunData['yapilan'] : 0;
+                                $genelToplam += $yapilan;
+                                $tarih = str_pad($i, 2, '0', STR_PAD_LEFT) . '.' . $ay . '.' . $yil;
+                                ?>
+                                <tr>
+                                    <td class="text-center fw-bold"><?= $tarih ?></td>
+                                    <td class="text-center"><?= $gunData ? number_format($gunData['baslangic'], 0, ',', '.') : '-' ?></td>
+                                    <td class="text-center"><?= $gunData ? number_format($gunData['bitis'], 0, ',', '.') : '-' ?></td>
+                                    <td class="text-center fw-bold <?= $yapilan > 0 ? 'text-primary' : '' ?>">
+                                        <?= $yapilan > 0 ? number_format($yapilan, 0, ',', '.') : '-' ?>
+                                    </td>
+                                    <td></td>
+                                </tr>
+                                <?php
+                            }
+                            ?>
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-bold bg-light">
+                                <td colspan="3" class="text-end">GENEL TOPLAM:</td>
+                                <td class="text-center text-primary" style="font-size: 14px;">
+                                    <?= number_format($genelToplam, 0, ',', '.') ?> KM
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div class="text-end mt-3 no-print">
+                    <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Kapat</button>
+                    <button type="button" class="btn btn-primary" onclick="window.print()">
+                        <i class="mdi mdi-printer me-1"></i> Yazdır
+                    </button>
+                </div>
+                <style>
+                    /* Modal/Screen Styles */
+                    .report-header {
+                        margin-bottom: 20px;
+                        border-bottom: 2px solid #333;
+                        padding-bottom: 10px;
                     }
 
-                    .km-total-col {
-                        min-width: 30px;
+                    .report-title {
+                        font-size: 20px;
+                        font-weight: 800;
+                        text-align: center;
+                        margin-bottom: 15px;
+                        text-transform: uppercase;
+                        color: #1a1a1a;
                     }
 
-                    .bg-info-subtle {
-                        background-color: #e0f2f1 !important;
+                    .report-info-grid {
+                        display: grid;
+                        grid-template-columns: repeat(3, 1fr);
+                        gap: 10px;
                     }
 
-                    [data-bs-theme="dark"] .bg-info-subtle {
-                        background-color: rgba(0, 150, 136, 0.2) !important;
+                    .info-item {
+                        background: #f8f9fa;
+                        border: 1px solid #dee2e6;
+                        padding: 8px 12px;
+                        border-radius: 4px;
+                        display: flex;
+                        flex-direction: column;
+                    }
+
+                    .info-label {
+                        font-size: 10px;
+                        font-weight: 700;
+                        color: #6c757d;
+                        margin-bottom: 2px;
+                    }
+
+                    .info-value {
+                        font-size: 14px;
+                        font-weight: 700;
+                        color: #333;
+                    }
+
+                    .report-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 10px;
+                        border: 1px solid #333;
+                    }
+
+                    .report-table th {
+                        background: #333;
+                        color: #fff;
+                        padding: 8px;
+                        font-size: 12px;
+                        text-align: center;
+                        border: 1px solid #333;
+                    }
+
+                    .report-table td {
+                        padding: 5px 8px;
+                        border: 1px solid #333;
+                        font-size: 12px;
+                        height: 24px;
+                    }
+
+                    .report-table .text-primary {
+                        color: #0062cc !important;
+                    }
+
+                    @media print {
+                        @page {
+                            size: A4 portrait;
+                            margin: 5mm !important;
+                        }
+
+                        html,
+                        body {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            height: 100%;
+                        }
+
+                        /* Reset all parent containers to allow full page utilization */
+                        .modal,
+                        .modal-dialog,
+                        .modal-content,
+                        .modal-body,
+                        .main-wrapper,
+                        #layout-wrapper {
+                            display: block !important;
+                            overflow: visible !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            border: none !important;
+                            height: auto !important;
+                        }
+
+                        /* Hide everything else */
+                        body * {
+                            visibility: hidden !important;
+                        }
+
+                        #printableArea,
+                        #printableArea * {
+                            visibility: visible !important;
+                        }
+
+                        #printableArea {
+                            position: static !important;
+                            /* Changed from absolute */
+                            left: auto !important;
+                            top: auto !important;
+                            width: 100% !important;
+                            margin: 0 !important;
+                            padding: 5mm !important;
+                            /* Internal page buffer */
+                            box-sizing: border-box !important;
+                        }
+
+                        .report-header {
+                            margin-bottom: 20px !important;
+                            border-bottom: 3px solid #000 !important;
+                            padding-bottom: 15px !important;
+                        }
+
+                        .report-title {
+                            font-size: 24px !important;
+                            font-weight: 800 !important;
+                            text-align: center !important;
+                            margin-bottom: 20px !important;
+                            text-transform: uppercase !important;
+                            letter-spacing: 1px;
+                        }
+
+                        .report-info-grid {
+                            display: grid !important;
+                            grid-template-columns: repeat(3, 1fr) !important;
+                            gap: 15px !important;
+                            margin-bottom: 10px !important;
+                        }
+
+                        .info-item {
+                            padding: 12px 15px !important;
+                            border: 2px solid #000 !important;
+                            background: #fcfcfc !important;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
+
+                        .info-label {
+                            font-size: 10px !important;
+                            font-weight: 800 !important;
+                        }
+
+                        .info-value {
+                            font-size: 15px !important;
+                            font-weight: 800 !important;
+                        }
+
+                        .report-table {
+                            width: 100% !important;
+                            border: 2px solid #000 !important;
+                            border-collapse: collapse !important;
+                        }
+
+                        .report-table th {
+                            background: #f0f0f0 !important;
+                            font-size: 12px !important;
+                            padding: 10px 5px !important;
+                            border: 1px solid #000 !important;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
+
+                        .report-table td {
+                            font-size: 12px !important;
+                            padding: 6px 8px !important;
+                            border: 1px solid #000 !important;
+                            height: 28px !important;
+                            /* Increased for better page coverage */
+                        }
+
+                        .report-table tfoot td {
+                            font-size: 14px !important;
+                            padding: 12px !important;
+                            background: #f0f0f0 !important;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
+
+                        .no-print {
+                            display: none !important;
+                        }
                     }
                 </style>
                 <?php

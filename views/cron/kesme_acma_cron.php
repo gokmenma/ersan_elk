@@ -293,9 +293,9 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         // 3. API verilerini işle
         $insertBatch = [];
         foreach ($apiData as $veri) {
-            $isEmriTipi = $veri['ISEMRITIPI'] ?? '';
-            $ekipKoduStr = $veri['EKIP'] ?? '';
-            $isEmriSonucu = $veri['SONUC'] ?? '';
+            $isEmriTipi = trim($veri['ISEMRITIPI'] ?? '');
+            $ekipKoduStr = trim($veri['EKIP'] ?? '');
+            $isEmriSonucu = trim($veri['SONUC'] ?? '');
             $sonuclanmis = $veri['SONUCLANMIS'] ?? 0;
             $acikOlanlar = $veri['ACIK'] ?? 0;
 

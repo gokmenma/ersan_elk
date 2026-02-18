@@ -1082,8 +1082,8 @@ const AracTakip = {
 
   resetZimmetModal: function () {
     $("#zimmetForm")[0].reset();
-    $("#arac_id").val(null).trigger("change");
-    $("#personel_id").val(null).trigger("change");
+    $("#zimmetModal #arac_id").val(null).trigger("change");
+    $("#zimmetModal #personel_id").val(null).trigger("change");
   },
 
   resetYakitModal: function () {
@@ -1231,6 +1231,23 @@ $(document).ready(function () {
   $(document).on("click", ".zimmet-iade", function (e) {
     e.preventDefault();
     AracTakip.zimmetIade($(this).data("id"), $(this).data("plaka"));
+  });
+  $(document).on("click", ".zimmet-hizli", function (e) {
+    e.preventDefault();
+    const id = $(this).data("id");
+    const plaka = $(this).data("plaka");
+    const km = $(this).data("km");
+
+    AracTakip.resetZimmetModal();
+    $("#zimmetModal").modal("show");
+
+    // Modal içindeki select2'nin yüklendiğinden emin olmak için hafif gecikme
+    setTimeout(() => {
+      $("#zimmetModal #arac_id").val(id).trigger("change");
+      if (km) {
+        $("#zimmetModal #teslim_km").val(km);
+      }
+    }, 200);
   });
   $(document).on("click", "#btnYakitKaydet", (e) => {
     e.preventDefault();

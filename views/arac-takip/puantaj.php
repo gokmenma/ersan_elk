@@ -124,6 +124,17 @@ for ($m = 1; $m <= 12; $m++) {
     </div>
 </div>
 
+<!-- Araç Özel Puantaj Modal -->
+<div class="modal fade" id="aracOzelPuantajModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body" id="aracOzelPuantajContent">
+                <!-- AJAX ile dolacak -->
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     .filter-summary-badge {
         display: flex;
@@ -280,12 +291,65 @@ for ($m = 1; $m <= 12; $m++) {
             }
         });
 
+        $(document).on('click', '.btn-arac-detay', function () {
+            const id = $(this).data('id');
+            const year = $('select[name="year"]').val();
+            const month = $('select[name="month"]').val();
+
+            $('#aracOzelPuantajContent').html('<div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Rapor hazırlanıyor...</p></div>');
+            const modal = new bootstrap.Modal(document.getElementById('aracOzelPuantajModal'));
+            modal.show();
+
+            $.ajax({
+                url: 'views/arac-takip/api.php',
+                type: 'GET',
+                data: {
+                    action: 'get-arac-ozel-puantaj',
+                    id: id,
+                    year: year,
+                    month: month
+                },
+                success: function (html) {
+                    $('#aracOzelPuantajContent').html(html);
+                },
+                error: function (xhr) {
+                    $('#aracOzelPuantajContent').html('<div class="alert alert-danger m-3">Hata: ' + xhr.responseText + '</div>');
+                }
+            });
+        });
+
         $('#btnExportExcel').on('click', function () {
-            Swal.fire({
-                title: 'Bilgi',
-                text: 'Excel dışa aktarma özelliği hazırlanıyor.',
-                icon: 'info',
-                confirmButtonText: 'Tamam'
+            const year = $('select[name="year"]').val();
+            const month = $('select[name="month"]').val();
+            const arac_id = $('select[name="arac_id"]').val();
+            const show_km = $('#toggleKmCols').is(':checked') ? 1 : 0;
+ let url = 'views/arac-takip/export-excel.php?year=' + year + '&month=' + month + '&show_km=' + show_km;
+            if (arac_id) {
+                url += '&arac_id=' + arac_id;
+            }
+            window.location.href = url;
+        });
+
+        $(document).on('keyup', '.table-filter', function () {
+   const filters = {};
+            $('.table-filter').each(function() {
+                const val = $(this).val().toLowerCase();
+                const col = $(this).data('col');
+                if (val) filters[col] = val;
+            });
+
+            $('#puantajTable tbody tr').each(function () {
+                if ($(this).find('td').length < 3) return; // Kayıt bulunamadı satırı vb. için
+                
+                let show = true;
+                for (const col in filters) {
+                    const text = $(this).find('td').eq(col).text().toLowerCase();
+                    if (text.indexOf(filters[col]) === -1) {
+                        show = false;
+                        break;
+                    }
+                }
+                $(this).toggle(show);
             });
         });
 
