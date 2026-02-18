@@ -380,50 +380,52 @@ if (Gate::allows("ana_sayfa")) {
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
             style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important; --delay: 0.75s">
             <div class="card-body p-3">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="icon-label-container">
-                        <div class="icon-box" style="background: rgba(85, 110, 230, 0.1);">
-                            <i class="bx bx-calendar-star fs-4" style="color: #556ee6;"></i>
-                        </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">NÖBET</span>
+                <div class="icon-label-container">
+                    <div class="icon-box" style="background: rgba(85, 110, 230, 0.1);">
+                        <i class="bx bx-calendar-star fs-4" style="color: #556ee6;"></i>
                     </div>
-                    <a href="index.php?p=nobet/list" class="btn btn-sm btn-soft-primary rounded-pill">
+                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">NÖBET</span>
+                </div>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">BUGÜNKÜ NÖBETÇİLER</p>
+
+                <div class="grid-content-area">
+                    <?php if (empty($nobetciler)): ?>
+                        <div class="text-center py-2">
+                            <p class="text-muted mb-0 small">Kayıt yok</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="nobetci-list" style="max-height: 120px; overflow-y: auto;">
+                            <?php foreach (array_slice($nobetciler, 0, 5) as $nobet): ?>
+                                <div class="d-flex align-items-center mb-2">
+                                    <img src="<?php echo !empty($nobet->resim_yolu) ? $nobet->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
+                                        class="rounded-circle avatar-xs me-2" style="width: 28px; height: 28px;">
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <h6 class="mb-0 font-size-12 text-truncate"><?php echo $nobet->adi_soyadi; ?></h6>
+                                        <small class="text-muted font-size-11"><?php echo $nobet->cep_telefonu; ?></small>
+                                    </div>
+                                    <?php if ($nobet->cep_telefonu): ?>
+                                        <a href="tel:<?php echo $nobet->cep_telefonu; ?>" class="text-success ms-1 bx-no-drag">
+                                            <i class="bx bx-phone"></i>
+                                        </a>
+                                    <?php endif; ?>
+                                    <a href="javascript:void(0);" class="text-primary ms-1 btn-send-nobet-reminder bx-no-drag"
+                                        data-id="<?php echo Security::encrypt($nobet->personel_id); ?>"
+                                        data-name="<?php echo $nobet->adi_soyadi; ?>" title="Bildirim Gönder">
+                                        <i class="bx bx-bell"></i>
+                                    </a>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="card-footer-actions mt-2">
+                    <div class="sub-text m-0" style="font-size: 10px; color: #858796;">
+                        <?php echo count($nobetciler); ?> personel nöbetçi
+                    </div>
+                    <a href="index.php?p=nobet/list" class="btn btn-xs btn-soft-primary rounded-pill">
                         <i class="bx bx-calendar"></i> Takvim
                     </a>
-                </div>
-                <p class="text-muted mb-2 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">BUGÜNKÜ NÖBETÇİLER</p>
-
-                <?php if (empty($nobetciler)): ?>
-                    <div class="text-center py-2">
-                        <p class="text-muted mb-0 small">Kayıt yok</p>
-                    </div>
-                <?php else: ?>
-                    <div class="nobetci-list" style="max-height: 120px; overflow-y: auto;">
-                        <?php foreach (array_slice($nobetciler, 0, 5) as $nobet): ?>
-                            <div class="d-flex align-items-center mb-2">
-                                <img src="<?php echo !empty($nobet->resim_yolu) ? $nobet->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
-                                    class="rounded-circle avatar-xs me-2" style="width: 28px; height: 28px;">
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <h6 class="mb-0 font-size-12 text-truncate"><?php echo $nobet->adi_soyadi; ?></h6>
-                                    <small class="text-muted font-size-11"><?php echo $nobet->cep_telefonu; ?></small>
-                                </div>
-                                <?php if ($nobet->cep_telefonu): ?>
-                                    <a href="tel:<?php echo $nobet->cep_telefonu; ?>" class="text-success ms-1 bx-no-drag">
-                                        <i class="bx bx-phone"></i>
-                                    </a>
-                                <?php endif; ?>
-                                <a href="javascript:void(0);" class="text-primary ms-1 btn-send-nobet-reminder bx-no-drag"
-                                    data-id="<?php echo Security::encrypt($nobet->personel_id); ?>"
-                                    data-name="<?php echo $nobet->adi_soyadi; ?>" title="Bildirim Gönder">
-                                    <i class="bx bx-bell"></i>
-                                </a>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
-
-                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">
-                    <?php echo count($nobetciler); ?> personel nöbetçi
                 </div>
             </div>
         </div>
@@ -1653,6 +1655,13 @@ if (Gate::allows("ana_sayfa")) {
             transform: rotate(90deg);
         }
 
+        .icon-label-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
 
 
         /* Sortable Styles */
@@ -1877,7 +1886,7 @@ if (Gate::allows("ana_sayfa")) {
                 margin-bottom: 12px;
             }
 
-            .bordro-summary-card .card-body {
+            .bordro-summary-card .card-body:not(.no-mobile-grid) {
                 display: grid !important;
                 grid-template-columns: 36px 1fr auto;
                 align-items: center;
@@ -1944,6 +1953,10 @@ if (Gate::allows("ana_sayfa")) {
                 margin-top: 6px !important;
             }
 
+            .grid-content-area {
+                grid-column: 1 / span 3 !important;
+            }
+
             .btn-xs {
                 padding: 2px 8px !important;
                 font-size: 9px !important;
@@ -1959,825 +1972,825 @@ if (Gate::allows("ana_sayfa")) {
 
     <script src="https://code.jquery.com/ui/1.14.1/jquery-ui.js"></script>
     <script>
-        // Number Cou            nt                                 er F           unction
-        function animateValue(obj, start, end, duration) {
-            let startTimestamp = null;
-            const step = (timestamp) => {
-                if (!startTimestamp) startTimestamp = timestamp;
-                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                obj.innerHTML = Math.floor(progress * (end - start) + start);
-                if (progress < 1) {
-                    window.requestAnimationFrame(step);
-                }
+           // Number Cou            nt                                 er F           unction
+            function animateValue(obj, start, end, duration) {
+                let startTimestamp = null;
+                const step = (timestamp) => {
+                    if (!startTimestamp) startTimestamp = timestamp;
+                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                    obj.innerHTML = Math.floor(progress * (end - start) + start);
+                    if (progress < 1) {
+                        window.requestAnimationFrame(step);
+                    }
+                };
+                window.requestAnimationFrame(step);
+            }
+
+            var months = <?php echo json_encode($months); ?>;
+            var totals = <?php echo json_encode($totals); ?>;
+
+            var options = {
+                chart: { type: 'line', height: 350 },
+                series: [{ name: 'Üye Sayısı', data: totals }],
+                xaxis: { categories: months },
+                colors: ['#556ee6']
+            }
+            // new ApexCharts(document.querySelector("#chart"), options).render();
+
+            var options2 = {
+                series: [{ name: 'Gelir', data: [44, 55, 57, 56, 61, 58, 63, 60, 66, 85, 96, 85] },
+                { name: 'Gider', data: [76, 85, 101, 98, 87, 105, 91, 114, 94, 78, 77, 25] }],
+                chart: { type: 'bar', height: 350 },
+                plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 4 } },
+                xaxis: { categories: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'] },
+                colors: ['#34c38f', '#f46a6a']
             };
-            window.requestAnimationFrame(step);
-        }
+            // new ApexCharts(document.querySelector("#chart2"), options2).render();
 
-        var months = <?php echo json_encode($months); ?>;
-        var totals = <?php echo json_encode($totals); ?>;
+            // var options3 = {
+            //     series: [<?php echo $toplam_gelir; ?>, <?php echo $toplam_gider; ?>, <?php echo $toplam_bakiye; ?>],
+            //     chart: { type: 'polarArea', height: 350 },
+            //     labels: ['Gelir', 'Gider', 'Kasa'],
+            //     colors: ['#34c38f', '#f46a6a', '#556ee6']
+            // };
+            // new ApexCharts(document.querySelector("#chart3"), options3).render();
 
-        var options = {
-            chart: { type: 'line', height: 350 },
-            series: [{ name: 'Üye Sayısı', data: totals }],
-            xaxis: { categories: months },
-            colors: ['#556ee6']
-        }
-        // new ApexCharts(document.querySelector("#chart"), options).render();
+            let workTypeChart;
+            function loadWorkTypeStats(year) {
+                if (typeof ApexCharts === 'undefined') {
+                    console.log('ApexCharts henüz yüklenmedi, 500ms sonra tekrar denenecek...');
+                    setTimeout(() => loadWorkTypeStats(year), 500);
+                    return;
+                }
 
-        var options2 = {
-            series: [{ name: 'Gelir', data: [44, 55, 57, 56, 61, 58, 63, 60, 66, 85, 96, 85] },
-            { name: 'Gider', data: [76, 85, 101, 98, 87, 105, 91, 114, 94, 78, 77, 25] }],
-            chart: { type: 'bar', height: 350 },
-            plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 4 } },
-            xaxis: { categories: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'] },
-            colors: ['#34c38f', '#f46a6a']
-        };
-        // new ApexCharts(document.querySelector("#chart2"), options2).render();
+                const chartElement = document.querySelector("#work-type-stats-chart");
+                if (!chartElement) return;
 
-        // var options3 = {
-        //     series: [<?php echo $toplam_gelir; ?>, <?php echo $toplam_gider; ?>, <?php echo $toplam_bakiye; ?>],
-        //     chart: { type: 'polarArea', height: 350 },
-        //     labels: ['Gelir', 'Gider', 'Kasa'],
-        //     colors: ['#34c38f', '#f46a6a', '#556ee6']
-        // };
-        // new ApexCharts(document.querySelector("#chart3"), options3).render();
+                const formData = new FormData();
+                formData.append('action', 'get-work-type-stats');
+                formData.append('year', year);
+                // İş türü her zaman tüm yılı gösterecek
 
-        let workTypeChart;
-        function loadWorkTypeStats(year) {
-            if (typeof ApexCharts === 'undefined') {
-                console.log('ApexCharts henüz yüklenmedi, 500ms sonra tekrar denenecek...');
-                setTimeout(() => loadWorkTypeStats(year), 500);
-                return;
-            }
-
-            const chartElement = document.querySelector("#work-type-stats-chart");
-            if (!chartElement) return;
-
-            const formData = new FormData();
-            formData.append('action', 'get-work-type-stats');
-            formData.append('year', year);
-            // İş türü her zaman tüm yılı gösterecek
-
-            fetch('views/home/api.php', {
-                method: 'POST',
-                body: formData
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        if (!data.data.series || data.data.series.length === 0) {
-                            chartElement.innerHTML = '<div class="alert alert-info text-center mt-5">Seçilen yıla ait istatistik verisi bulunamadı.</div>';
-                            workTypeChart = null;
-                            return;
-                        }
-
-                        const options = {
-                            series: data.data.series,
-                            chart: {
-                                type: 'bar',
-                                height: '100%',
-                                stacked: false,
-                                toolbar: { show: true },
-                                animations: { enabled: true }
-                            },
-                            plotOptions: {
-                                bar: {
-                                    horizontal: false,
-                                    columnWidth: '55%',
-                                    borderRadius: 5
-                                },
-                            },
-                            dataLabels: { enabled: false },
-                            stroke: {
-                                show: true,
-                                width: 2,
-                                colors: ['transparent']
-                            },
-                            xaxis: {
-                                categories: data.data.categories,
-                            },
-                            yaxis: {
-                                title: { text: 'İş Adeti' }
-                            },
-                            fill: { opacity: 1 },
-                            colors: ['#556ee6', '#34c38f', '#f46a6a', '#f1b44c', '#50a5f1'],
-                            tooltip: {
-                                y: {
-                                    formatter: function (val) {
-                                        return val + " adet"
-                                    }
-                                }
-                            }
-                        };
-
-                        chartElement.innerHTML = ''; // Temizle
-                        if (workTypeChart) {
-                            workTypeChart.destroy();
-                        }
-
-                        workTypeChart = new ApexCharts(chartElement, options);
-                        workTypeChart.render();
-                    }
+                fetch('views/home/api.php', {
+                    method: 'POST',
+                    body: formData
                 })
-                .catch(err => {
-                    console.error('İstatistik yükleme hatası:', err);
-                    chartElement.innerHTML = '<div class="alert alert-danger text-center mt-5">Veriler yüklenirken bir hata oluştu.</div>';
-                });
-        }
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            if (!data.data.series || data.data.series.length === 0) {
+                                chartElement.innerHTML = '<div class="alert alert-info text-center mt-5">Seçilen yıla ait istatistik verisi bulunamadı.</div>';
+                                workTypeChart = null;
+                                return;
+                            }
 
-        let workResultChart;
-        function loadWorkResultStats(year, month = "") {
-            if (typeof ApexCharts === 'undefined') {
-                setTimeout(() => loadWorkResultStats(year, month), 500);
-                return;
-            }
-
-            const chartElement = document.querySelector("#work-result-stats-chart");
-            if (!chartElement) return;
-
-            const formData = new FormData();
-            formData.append('action', 'get-work-result-stats');
-            formData.append('year', year);
-            formData.append('month', month);
-
-            fetch('views/home/api.php', {
-                method: 'POST',
-                body: formData
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        if (!data.data.series || data.data.series.length === 0) {
-                            chartElement.innerHTML = '<div class="alert alert-info text-center mt-5">Seçilen yıla ait sonuç verisi bulunamadı.</div>';
-                            return;
-                        }
-
-                        const options = {
-                            series: data.data.series,
-                            chart: {
-                                type: 'bar',
-                                height: '100%',
-                                stacked: false,
-                                toolbar: { show: true }
-                            },
-                            plotOptions: {
-                                bar: {
-                                    horizontal: true,
-                                    columnWidth: '55%',
-                                    borderRadius: 5,
-                                    dataLabels: { position: 'top' }
+                            const options = {
+                                series: data.data.series,
+                                chart: {
+                                    type: 'bar',
+                                    height: '100%',
+                                    stacked: false,
+                                    toolbar: { show: true },
+                                    animations: { enabled: true }
                                 },
-                            },
-                            dataLabels: {
-                                enabled: true,
-                                offsetX: -6,
-                                style: { fontSize: '12px', colors: ['#fff'] }
-                            },
-                            xaxis: {
-                                categories: data.data.categories,
-                            },
-                            title: {
-                                text: data.data.selected_month + ' Ayı Sonuç Dağılımı',
-                                align: 'center'
-                            },
-                            yaxis: {
-                                labels: {
-                                    maxWidth: 300,
-                                    style: { fontSize: '11px' }
-                                }
-                            },
-                            fill: { opacity: 1 },
-                            tooltip: {
-                                y: {
-                                    formatter: function (val) {
-                                        return val + " adet"
+                                plotOptions: {
+                                    bar: {
+                                        horizontal: false,
+                                        columnWidth: '55%',
+                                        borderRadius: 5
+                                    },
+                                },
+                                dataLabels: { enabled: false },
+                                stroke: {
+                                    show: true,
+                                    width: 2,
+                                    colors: ['transparent']
+                                },
+                                xaxis: {
+                                    categories: data.data.categories,
+                                },
+                                yaxis: {
+                                    title: { text: 'İş Adeti' }
+                                },
+                                fill: { opacity: 1 },
+                                colors: ['#556ee6', '#34c38f', '#f46a6a', '#f1b44c', '#50a5f1'],
+                                tooltip: {
+                                    y: {
+                                        formatter: function (val) {
+                                            return val + " adet"
+                                        }
                                     }
                                 }
+                            };
+
+                            chartElement.innerHTML = ''; // Temizle
+                            if (workTypeChart) {
+                                workTypeChart.destroy();
                             }
-                        };
 
-                        chartElement.innerHTML = '';
-                        if (workResultChart) {
-                            workResultChart.destroy();
+                            workTypeChart = new ApexCharts(chartElement, options);
+                            workTypeChart.render();
                         }
+                    })
+                    .catch(err => {
+                        console.error('İstatistik yükleme hatası:', err);
+                        chartElement.innerHTML = '<div class="alert alert-danger text-center mt-5">Veriler yüklenirken bir hata oluştu.</div>';
+                    });
+            }
 
-                        workResultChart = new ApexCharts(chartElement, options);
-                        workResultChart.render();
+            let workResultChart;
+            function loadWorkResultStats(year, month = "") {
+                if (typeof ApexCharts === 'undefined') {
+                    setTimeout(() => loadWorkResultStats(year, month), 500);
+                    return;
+                }
+
+                const chartElement = document.querySelector("#work-result-stats-chart");
+                if (!chartElement) return;
+
+                const formData = new FormData();
+                formData.append('action', 'get-work-result-stats');
+                formData.append('year', year);
+                formData.append('month', month);
+
+                fetch('views/home/api.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            if (!data.data.series || data.data.series.length === 0) {
+                                chartElement.innerHTML = '<div class="alert alert-info text-center mt-5">Seçilen yıla ait sonuç verisi bulunamadı.</div>';
+                                return;
+                            }
+
+                            const options = {
+                                series: data.data.series,
+                                chart: {
+                                    type: 'bar',
+                                    height: '100%',
+                                    stacked: false,
+                                    toolbar: { show: true }
+                                },
+                                plotOptions: {
+                                    bar: {
+                                        horizontal: true,
+                                        columnWidth: '55%',
+                                        borderRadius: 5,
+                                        dataLabels: { position: 'top' }
+                                    },
+                                },
+                                dataLabels: {
+                                    enabled: true,
+                                    offsetX: -6,
+                                    style: { fontSize: '12px', colors: ['#fff'] }
+                                },
+                                xaxis: {
+                                    categories: data.data.categories,
+                                },
+                                title: {
+                                    text: data.data.selected_month + ' Ayı Sonuç Dağılımı',
+                                    align: 'center'
+                                },
+                                yaxis: {
+                                    labels: {
+                                        maxWidth: 300,
+                                        style: { fontSize: '11px' }
+                                    }
+                                },
+                                fill: { opacity: 1 },
+                                tooltip: {
+                                    y: {
+                                        formatter: function (val) {
+                                            return val + " adet"
+                                        }
+                                    }
+                                }
+                            };
+
+                            chartElement.innerHTML = '';
+                            if (workResultChart) {
+                                workResultChart.destroy();
+                            }
+
+                            workResultChart = new ApexCharts(chartElement, options);
+                            workResultChart.render();
+                        }
+                    });
+            }
+
+
+            document.addEventListener('DOMContentLoaded', function () {
+                const API_URL = 'views/talepler/api.php';
+
+                // Load widget visibility from localStorage
+                function loadWidgetVisibility() {
+                    const visibility = localStorage.getItem('dashboard_widget_visibility');
+                    if (visibility) {
+                        const visibleWidgets = JSON.parse(visibility);
+                        $('#dashboard-widgets .widget-item').each(function () {
+                            const id = $(this).attr('id');
+                            const isVisible = visibleWidgets[id] !== false;
+                            $(this).toggle(isVisible);
+                            $(`input[data-widget="${id}"]`).prop('checked', isVisible);
+                        });
                     }
+                }
+
+                // Save widget visibility to localStorage
+                function saveWidgetVisibility() {
+                    const visibility = {};
+                    $('input.widget-toggle').each(function () {
+                        const widgetId = $(this).data('widget');
+                        visibility[widgetId] = $(this).is(':checked');
+                    });
+                    localStorage.setItem('dashboard_widget_visibility', JSON.stringify(visibility));
+                }
+
+                // Toggle widget visibility
+                $(document).on('change', '.widget-toggle', function () {
+                    const widgetId = $(this).data('widget');
+                    const isChecked = $(this).is(':checked');
+                    $(`#${widgetId}`).fadeToggle(300);
+                    saveWidgetVisibility();
                 });
-        }
 
+                // Load visibility on page load
+                loadWidgetVisibility();
 
-        document.addEventListener('DOMContentLoaded', function () {
-            const API_URL = 'views/talepler/api.php';
+                // Theme change listener for checkbox colors and button colors
+                function updateThemeColors() {
+                    const html = document.documentElement;
+                    const isDarkMode = html.getAttribute('data-bs-theme') === 'dark';
+                    const themeMode = html.getAttribute('data-theme-mode') || 'default';
 
-            // Load widget visibility from localStorage
-            function loadWidgetVisibility() {
-                const visibility = localStorage.getItem('dashboard_widget_visibility');
-                if (visibility) {
-                    const visibleWidgets = JSON.parse(visibility);
-                    $('#dashboard-widgets .widget-item').each(function () {
-                        const id = $(this).attr('id');
-                        const isVisible = visibleWidgets[id] !== false;
-                        $(this).toggle(isVisible);
-                        $(`input[data-widget="${id}"]`).prop('checked', isVisible);
+                    // Color Palette Map
+                    const colors = {
+                        'red': '#f46a6a',
+                        'orange': '#f1b44c',
+                        'emerald': '#34c38f',
+                        'purple': '#6f42c1',
+                        'slate': '#475569',
+                        'default': '#5156be'
+                    };
+
+                    // Get color based on theme
+                    const color = colors[themeMode] || colors['default'];
+
+                    // Set CSS custom property for checkboxes
+                    document.documentElement.style.setProperty('--dashboard-theme-color', color);
+
+                    // Update checkboxes
+                    const checkboxes = document.querySelectorAll('.widget-toggle');
+                    checkboxes.forEach(checkbox => {
+                        checkbox.style.accentColor = color;
+                    });
+
+                    // Update dashboard control buttons
+                    const dashboardBtns = document.querySelectorAll('#btn-reset-dashboard, .d-flex.gap-2 .dropdown > .btn');
+                    dashboardBtns.forEach(btn => {
+                        if (isDarkMode) {
+                            btn.style.borderColor = '#334155';
+                            btn.style.backgroundColor = '#1e293b';
+                        } else {
+                            btn.style.borderColor = '#e5e7eb';
+                            btn.style.backgroundColor = '#fff';
+                        }
+                        btn.style.color = color;
+                    });
+
+                    // Update soft-primary buttons (like Detay)
+                    const softPrimaryBtns = document.querySelectorAll('.btn-soft-primary');
+                    softPrimaryBtns.forEach(btn => {
+                        btn.style.backgroundColor = hexToRgba(color, 0.1);
+                        btn.style.borderColor = hexToRgba(color, 0.2);
+                        btn.style.color = color;
                     });
                 }
-            }
 
-            // Save widget visibility to localStorage
-            function saveWidgetVisibility() {
-                const visibility = {};
-                $('input.widget-toggle').each(function () {
-                    const widgetId = $(this).data('widget');
-                    visibility[widgetId] = $(this).is(':checked');
-                });
-                localStorage.setItem('dashboard_widget_visibility', JSON.stringify(visibility));
-            }
+                // Helper: Hex to RGBA
+                function hexToRgba(hex, alpha) {
+                    const r = parseInt(hex.slice(1, 3), 16);
+                    const g = parseInt(hex.slice(3, 5), 16);
+                    const b = parseInt(hex.slice(5, 7), 16);
+                    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                }
 
-            // Toggle widget visibility
-            $(document).on('change', '.widget-toggle', function () {
-                const widgetId = $(this).data('widget');
-                const isChecked = $(this).is(':checked');
-                $(`#${widgetId}`).fadeToggle(300);
-                saveWidgetVisibility();
-            });
-
-            // Load visibility on page load
-            loadWidgetVisibility();
-
-            // Theme change listener for checkbox colors and button colors
-            function updateThemeColors() {
-                const html = document.documentElement;
-                const isDarkMode = html.getAttribute('data-bs-theme') === 'dark';
-                const themeMode = html.getAttribute('data-theme-mode') || 'default';
-
-                // Color Palette Map
-                const colors = {
-                    'red': '#f46a6a',
-                    'orange': '#f1b44c',
-                    'emerald': '#34c38f',
-                    'purple': '#6f42c1',
-                    'slate': '#475569',
-                    'default': '#5156be'
-                };
-
-                // Get color based on theme
-                const color = colors[themeMode] || colors['default'];
-
-                // Set CSS custom property for checkboxes
-                document.documentElement.style.setProperty('--dashboard-theme-color', color);
-
-                // Update checkboxes
-                const checkboxes = document.querySelectorAll('.widget-toggle');
-                checkboxes.forEach(checkbox => {
-                    checkbox.style.accentColor = color;
-                });
-
-                // Update dashboard control buttons
-                const dashboardBtns = document.querySelectorAll('#btn-reset-dashboard, .d-flex.gap-2 .dropdown > .btn');
-                dashboardBtns.forEach(btn => {
-                    if (isDarkMode) {
-                        btn.style.borderColor = '#334155';
-                        btn.style.backgroundColor = '#1e293b';
-                    } else {
-                        btn.style.borderColor = '#e5e7eb';
-                        btn.style.backgroundColor = '#fff';
-                    }
-                    btn.style.color = color;
-                });
-
-                // Update soft-primary buttons (like Detay)
-                const softPrimaryBtns = document.querySelectorAll('.btn-soft-primary');
-                softPrimaryBtns.forEach(btn => {
-                    btn.style.backgroundColor = hexToRgba(color, 0.1);
-                    btn.style.borderColor = hexToRgba(color, 0.2);
-                    btn.style.color = color;
-                });
-            }
-
-            // Helper: Hex to RGBA
-            function hexToRgba(hex, alpha) {
-                const r = parseInt(hex.slice(1, 3), 16);
-                const g = parseInt(hex.slice(3, 5), 16);
-                const b = parseInt(hex.slice(5, 7), 16);
-                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-            }
-
-            // Initial call
-            updateThemeColors();
-
-            // Watch for theme changes
-            const observer = new MutationObserver(() => {
+                // Initial call
                 updateThemeColors();
-            });
 
-            observer.observe(document.documentElement, {
-                attributes: true,
-                attributeFilter: ['data-bs-theme', 'data-theme-mode']
-            });
+                // Watch for theme changes
+                const observer = new MutationObserver(() => {
+                    updateThemeColors();
+                });
 
-            // Start counters
-            document.querySelectorAll('.main-value').forEach(el => {
-                const finalValue = parseInt(el.innerText);
-                el.innerText = '0';
-                setTimeout(() => {
-                    animateValue(el, 0, finalValue, 1500);
-                }, 300);
-            });
+                observer.observe(document.documentElement, {
+                    attributes: true,
+                    attributeFilter: ['data-bs-theme', 'data-theme-mode']
+                });
 
-            // Log Detay Modal
-            document.querySelectorAll('.btn-log-detay').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    var title = this.dataset.title;
-                    var user = this.dataset.user;
-                    var date = this.dataset.date;
-                    var content = this.dataset.content;
-                    document.getElementById('logDetayTitle').textContent = title;
-                    document.getElementById('logDetayUser').textContent = user;
-                    document.getElementById('logDetayDate').textContent = date;
+                // Start counters
+                document.querySelectorAll('.main-value').forEach(el => {
+                    const finalValue = parseInt(el.innerText);
+                    el.innerText = '0';
+                    setTimeout(() => {
+                        animateValue(el, 0, finalValue, 1500);
+                    }, 300);
+                });
 
-                    if (content.includes('{') && content.includes('}')) {
-                        try {
-                            let parts = content.split(' (Güncellenen veriler: { ');
-                            let mainText = parts[0];
-                            let changesPart = parts[1].replace(' })', '');
-                            let changes = changesPart.split(', ');
-                            let formattedContent = `<div class="mb-2 fw-bold text-primary">${mainText}</div>`;
-                            formattedContent += `<table class="table table-sm table-bordered mt-2 mb-0">
+                // Log Detay Modal
+                document.querySelectorAll('.btn-log-detay').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var title = this.dataset.title;
+                        var user = this.dataset.user;
+                        var date = this.dataset.date;
+                        var content = this.dataset.content;
+                        document.getElementById('logDetayTitle').textContent = title;
+                        document.getElementById('logDetayUser').textContent = user;
+                        document.getElementById('logDetayDate').textContent = date;
+
+                        if (content.includes('{') && content.includes('}')) {
+                            try {
+                                let parts = content.split(' (Güncellenen veriler: { ');
+                                let mainText = parts[0];
+                                let changesPart = parts[1].replace(' })', '');
+                                let changes = changesPart.split(', ');
+                                let formattedContent = `<div class="mb-2 fw-bold text-primary">${mainText}</div>`;
+                                formattedContent += `<table class="table table-sm table-bordered mt-2 mb-0">
                             <thead class="table-light">
                                 <tr><th>Alan</th><th>Değişim</th></tr>
                             </thead>
                             <tbody>`;
-                            changes.forEach(change => {
-                                if (change.includes(': ')) {
-                                    let [key, val] = change.split(': ');
-                                    formattedContent += `<tr><td class="fw-bold" style="width: 30%;">${key}</td><td>${val}</td></tr>`;
-                                } else {
-                                    formattedContent += `<tr><td colspan="2" class="text-center text-muted italic">${change}</td></tr>`;
-                                }
-                            });
-                            formattedContent += `</tbody></table>`;
-                            document.getElementById('logDetayContent').innerHTML = formattedContent;
-                        } catch (e) {
+                                changes.forEach(change => {
+                                    if (change.includes(': ')) {
+                                        let [key, val] = change.split(': ');
+                                        formattedContent += `<tr><td class="fw-bold" style="width: 30%;">${key}</td><td>${val}</td></tr>`;
+                                    } else {
+                                        formattedContent += `<tr><td colspan="2" class="text-center text-muted italic">${change}</td></tr>`;
+                                    }
+                                });
+                                formattedContent += `</tbody></table>`;
+                                document.getElementById('logDetayContent').innerHTML = formattedContent;
+                            } catch (e) {
+                                document.getElementById('logDetayContent').textContent = content;
+                            }
+                        } else {
                             document.getElementById('logDetayContent').textContent = content;
                         }
-                    } else {
-                        document.getElementById('logDetayContent').textContent = content;
-                    }
-                    new bootstrap.Modal(document.getElementById('modalLogDetay')).show();
+                        new bootstrap.Modal(document.getElementById('modalLogDetay')).show();
+                    });
                 });
-            });
 
-            // Detay Modal - API'den detay çekiyor
-            document.querySelectorAll('.btn-home-detay').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    var id = this.dataset.id;
-                    var tip = this.dataset.tip;
-                    var headerClass = tip === 'Avans' ? 'tip-avans' : (tip === 'İzin' ? 'tip-izin' : 'tip-talep');
-                    var headerIcon = tip === 'Avans' ? 'bx-money' : (tip === 'İzin' ? 'bx-calendar-check' : 'bx-message-square-detail');
+                // Detay Modal - API'den detay çekiyor
+                document.querySelectorAll('.btn-home-detay').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var id = this.dataset.id;
+                        var tip = this.dataset.tip;
+                        var headerClass = tip === 'Avans' ? 'tip-avans' : (tip === 'İzin' ? 'tip-izin' : 'tip-talep');
+                        var headerIcon = tip === 'Avans' ? 'bx-money' : (tip === 'İzin' ? 'bx-calendar-check' : 'bx-message-square-detail');
 
-                    // Header'ı ayarla
-                    document.getElementById('modalHeader').className = 'modal-detay-header ' + headerClass;
-                    document.getElementById('modalTalepTipi').textContent = tip;
-                    document.getElementById('modalHeaderIcon').className = 'bx ' + headerIcon;
+                        // Header'ı ayarla
+                        document.getElementById('modalHeader').className = 'modal-detay-header ' + headerClass;
+                        document.getElementById('modalTalepTipi').textContent = tip;
+                        document.getElementById('modalHeaderIcon').className = 'bx ' + headerIcon;
 
-                    // Tab parametresini ayarla
-                    var tabParam = tip === 'Avans' ? 'avans' : (tip === 'İzin' ? 'izin' : 'talep');
-                    document.getElementById('modalGitBtn').href = 'index.php?p=talepler/list&tab=' + tabParam;
+                        // Tab parametresini ayarla
+                        var tabParam = tip === 'Avans' ? 'avans' : (tip === 'İzin' ? 'izin' : 'talep');
+                        document.getElementById('modalGitBtn').href = 'index.php?p=talepler/list&tab=' + tabParam;
 
-                    // Loading göster, content gizle
-                    document.getElementById('modalLoading').style.display = 'block';
-                    document.getElementById('modalContent').style.display = 'none';
+                        // Loading göster, content gizle
+                        document.getElementById('modalLoading').style.display = 'block';
+                        document.getElementById('modalContent').style.display = 'none';
 
-                    // Modalı aç
-                    new bootstrap.Modal(document.getElementById('modalHomeDetay')).show();
+                        // Modalı aç
+                        new bootstrap.Modal(document.getElementById('modalHomeDetay')).show();
 
-                    // API'den detay çek
-                    var actionName = tip === 'Avans' ? 'get-avans-detay' : (tip === 'İzin' ? 'get-izin-detay' : 'get-talep-detay');
-                    var formData = new FormData();
-                    formData.append('action', actionName);
-                    formData.append('id', id);
+                        // API'den detay çek
+                        var actionName = tip === 'Avans' ? 'get-avans-detay' : (tip === 'İzin' ? 'get-izin-detay' : 'get-talep-detay');
+                        var formData = new FormData();
+                        formData.append('action', actionName);
+                        formData.append('id', id);
 
-                    fetch(API_URL, { method: 'POST', body: formData })
-                        .then(response => response.json())
-                        .then(data => {
-                            document.getElementById('modalLoading').style.display = 'none';
-                            document.getElementById('modalContent').style.display = 'flex';
+                        fetch(API_URL, { method: 'POST', body: formData })
+                            .then(response => response.json())
+                            .then(data => {
+                                document.getElementById('modalLoading').style.display = 'none';
+                                document.getElementById('modalContent').style.display = 'flex';
 
-                            if (data.status === 'success') {
-                                var d = data.data;
+                                if (data.status === 'success') {
+                                    var d = data.data;
 
-                                // Resim
-                                var resimEl = document.getElementById('modalResim');
-                                resimEl.src = d.resim_yolu || 'assets/images/users/user-dummy-img.jpg';
-                                resimEl.onerror = function () { this.src = 'assets/images/users/user-dummy-img.jpg'; };
+                                    // Resim
+                                    var resimEl = document.getElementById('modalResim');
+                                    resimEl.src = d.resim_yolu || 'assets/images/users/user-dummy-img.jpg';
+                                    resimEl.onerror = function () { this.src = 'assets/images/users/user-dummy-img.jpg'; };
 
-                                // Personel bilgileri
-                                document.getElementById('modalPersonelAdi').textContent = d.adi_soyadi || '-';
-                                document.getElementById('modalDepartman').textContent = d.departman || '';
-                                document.getElementById('modalGorev').textContent = d.gorev || '';
+                                    // Personel bilgileri
+                                    document.getElementById('modalPersonelAdi').textContent = d.adi_soyadi || '-';
+                                    document.getElementById('modalDepartman').textContent = d.departman || '';
+                                    document.getElementById('modalGorev').textContent = d.gorev || '';
 
-                                // Başlık satırını kontrol et (Sadece Talep tipinde gösterilir)
-                                var rowBaslik = document.getElementById('rowBaslik');
-                                if (tip === 'Talep') {
-                                    rowBaslik.style.display = 'table-row';
-                                    document.getElementById('modalBaslik').textContent = d.baslik || '-';
+                                    // Başlık satırını kontrol et (Sadece Talep tipinde gösterilir)
+                                    var rowBaslik = document.getElementById('rowBaslik');
+                                    if (tip === 'Talep') {
+                                        rowBaslik.style.display = 'table-row';
+                                        document.getElementById('modalBaslik').textContent = d.baslik || '-';
+                                    } else {
+                                        rowBaslik.style.display = 'none';
+                                    }
+
+                                    // Fotoğraf satırını kontrol et
+                                    var rowFotograf = document.getElementById('rowFotograf');
+                                    if (d.foto || d.dosya_yolu || d.fotograf_yolu) {
+                                        var fotoPath = d.foto || d.dosya_yolu || d.fotograf_yolu;
+                                        rowFotograf.style.display = 'table-row';
+                                        document.getElementById('modalFoto').src = fotoPath;
+                                        document.getElementById('modalFotoLink').href = fotoPath;
+                                    } else {
+                                        rowFotograf.style.display = 'none';
+                                    }
+
+                                    // Tip'e göre detay ve tarih bilgisi
+                                    if (tip === 'Avans') {
+                                        var tutar = parseFloat(d.tutar || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+                                        document.getElementById('modalDetay').textContent = tutar;
+                                        document.getElementById('modalTarih').textContent = formatTarih(d.talep_tarihi);
+                                        document.getElementById('modalDurum').innerHTML = '<span class="badge bg-warning text-dark px-2 py-1"><i class="bx bx-time me-1"></i>' + ucFirst(d.durum) + '</span>';
+                                    } else if (tip === 'İzin') {
+                                        var izinDetay = (d.izin_tipi_adi || d.izin_tipi || 'İzin');
+                                        if (d.gun_sayisi) izinDetay += ' (' + d.gun_sayisi + ' gün)';
+                                        document.getElementById('modalDetay').textContent = izinDetay;
+                                        document.getElementById('modalTarih').textContent = formatTarih(d.baslangic_tarihi) + ' - ' + formatTarih(d.bitis_tarihi);
+                                        document.getElementById('modalDurum').innerHTML = '<span class="badge bg-warning text-dark px-2 py-1"><i class="bx bx-time me-1"></i>' + ucFirst(d.onay_durumu) + '</span>';
+                                    } else {
+                                        document.getElementById('modalDetay').textContent = d.aciklama || '-';
+                                        document.getElementById('modalTarih').textContent = formatTarih(d.olusturma_tarihi);
+                                        document.getElementById('modalDurum').innerHTML = '<span class="badge bg-warning text-dark px-2 py-1"><i class="bx bx-time me-1"></i>' + ucFirst(d.durum) + '</span>';
+                                    }
                                 } else {
-                                    rowBaslik.style.display = 'none';
+                                    document.getElementById('modalContent').innerHTML = '<div class="col-12 text-center py-4"><div class="alert alert-danger">' + (data.message || 'Bir hata oluştu') + '</div></div>';
                                 }
+                            })
+                            .catch(error => {
+                                document.getElementById('modalLoading').style.display = 'none';
+                                document.getElementById('modalContent').style.display = 'flex';
+                                document.getElementById('modalContent').innerHTML = '<div class="col-12 text-center"><div class="alert alert-danger">Detaylar yüklenirken hata oluştu.</div></div>';
+                            });
+                    });
+                });
 
-                                // Fotoğraf satırını kontrol et
-                                var rowFotograf = document.getElementById('rowFotograf');
-                                if (d.foto || d.dosya_yolu || d.fotograf_yolu) {
-                                    var fotoPath = d.foto || d.dosya_yolu || d.fotograf_yolu;
-                                    rowFotograf.style.display = 'table-row';
-                                    document.getElementById('modalFoto').src = fotoPath;
-                                    document.getElementById('modalFotoLink').href = fotoPath;
+                // Yardımcı fonksiyonlar
+                function formatTarih(dateStr) {
+                    if (!dateStr) return '-';
+                    var date = new Date(dateStr);
+                    return date.toLocaleDateString('tr-TR');
+                }
+
+                function ucFirst(str) {
+                    if (!str) return '';
+                    return str.charAt(0).toUpperCase() + str.slice(1);
+                }
+
+                // Avans Onayla/Reddet, İzin Onayla/Reddet, Talep Çözüldü
+                document.querySelectorAll('.btn-avans-onayla').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        document.getElementById('avans_onay_id').value = this.dataset.id;
+                        document.getElementById('avans_onay_personel').textContent = this.dataset.personel;
+                        document.getElementById('avans_onay_tutar').textContent = parseFloat(this.dataset.tutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+                        new bootstrap.Modal(document.getElementById('modalAvansOnay')).show();
+                    });
+                });
+                document.querySelectorAll('.btn-avans-reddet').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        document.getElementById('avans_red_id').value = this.dataset.id;
+                        document.getElementById('avans_red_personel').textContent = this.dataset.personel;
+                        new bootstrap.Modal(document.getElementById('modalAvansRed')).show();
+                    });
+                });
+                document.querySelectorAll('.btn-izin-onayla').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        document.getElementById('izin_onay_id').value = this.dataset.id;
+                        document.getElementById('izin_onay_personel').textContent = this.dataset.personel;
+                        document.getElementById('izin_onay_tur').textContent = this.dataset.tur;
+                        document.getElementById('izin_onay_gun').textContent = this.dataset.gun;
+                        new bootstrap.Modal(document.getElementById('modalIzinOnay')).show();
+                    });
+                });
+                document.querySelectorAll('.btn-izin-reddet').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        document.getElementById('izin_red_id').value = this.dataset.id;
+                        document.getElementById('izin_red_personel').textContent = this.dataset.personel;
+                        new bootstrap.Modal(document.getElementById('modalIzinRed')).show();
+                    });
+                });
+                document.querySelectorAll('.btn-talep-cozuldu').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        document.getElementById('talep_cozuldu_id').value = this.dataset.id;
+                        document.getElementById('talep_cozuldu_baslik').textContent = this.dataset.baslik;
+                        new bootstrap.Modal(document.getElementById('modalTalepCozuldu')).show();
+                    });
+                });
+
+                const handleFormSubmit = (formId) => {
+                    const form = document.getElementById(formId);
+                    if (!form) return;
+                    form.addEventListener('submit', function (e) {
+                        e.preventDefault();
+                        const formData = new FormData(this);
+                        const submitBtn = this.querySelector('button[type="submit"]');
+                        const originalText = submitBtn.innerHTML;
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> İşleniyor...';
+                        fetch(API_URL, { method: 'POST', body: formData })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.status === 'success') {
+                                    Swal.fire({ icon: 'success', title: 'Başarılı', text: data.message, timer: 1500, showConfirmButton: false })
+                                        .then(() => location.reload());
                                 } else {
-                                    rowFotograf.style.display = 'none';
+                                    Swal.fire({ icon: 'error', title: 'Hata', text: data.message });
+                                    submitBtn.disabled = false;
+                                    submitBtn.innerHTML = originalText;
                                 }
-
-                                // Tip'e göre detay ve tarih bilgisi
-                                if (tip === 'Avans') {
-                                    var tutar = parseFloat(d.tutar || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
-                                    document.getElementById('modalDetay').textContent = tutar;
-                                    document.getElementById('modalTarih').textContent = formatTarih(d.talep_tarihi);
-                                    document.getElementById('modalDurum').innerHTML = '<span class="badge bg-warning text-dark px-2 py-1"><i class="bx bx-time me-1"></i>' + ucFirst(d.durum) + '</span>';
-                                } else if (tip === 'İzin') {
-                                    var izinDetay = (d.izin_tipi_adi || d.izin_tipi || 'İzin');
-                                    if (d.gun_sayisi) izinDetay += ' (' + d.gun_sayisi + ' gün)';
-                                    document.getElementById('modalDetay').textContent = izinDetay;
-                                    document.getElementById('modalTarih').textContent = formatTarih(d.baslangic_tarihi) + ' - ' + formatTarih(d.bitis_tarihi);
-                                    document.getElementById('modalDurum').innerHTML = '<span class="badge bg-warning text-dark px-2 py-1"><i class="bx bx-time me-1"></i>' + ucFirst(d.onay_durumu) + '</span>';
-                                } else {
-                                    document.getElementById('modalDetay').textContent = d.aciklama || '-';
-                                    document.getElementById('modalTarih').textContent = formatTarih(d.olusturma_tarihi);
-                                    document.getElementById('modalDurum').innerHTML = '<span class="badge bg-warning text-dark px-2 py-1"><i class="bx bx-time me-1"></i>' + ucFirst(d.durum) + '</span>';
-                                }
-                            } else {
-                                document.getElementById('modalContent').innerHTML = '<div class="col-12 text-center py-4"><div class="alert alert-danger">' + (data.message || 'Bir hata oluştu') + '</div></div>';
-                            }
-                        })
-                        .catch(error => {
-                            document.getElementById('modalLoading').style.display = 'none';
-                            document.getElementById('modalContent').style.display = 'flex';
-                            document.getElementById('modalContent').innerHTML = '<div class="col-12 text-center"><div class="alert alert-danger">Detaylar yüklenirken hata oluştu.</div></div>';
-                        });
-                });
-            });
-
-            // Yardımcı fonksiyonlar
-            function formatTarih(dateStr) {
-                if (!dateStr) return '-';
-                var date = new Date(dateStr);
-                return date.toLocaleDateString('tr-TR');
-            }
-
-            function ucFirst(str) {
-                if (!str) return '';
-                return str.charAt(0).toUpperCase() + str.slice(1);
-            }
-
-            // Avans Onayla/Reddet, İzin Onayla/Reddet, Talep Çözüldü
-            document.querySelectorAll('.btn-avans-onayla').forEach(btn => {
-                btn.addEventListener('click', function () {
-                    document.getElementById('avans_onay_id').value = this.dataset.id;
-                    document.getElementById('avans_onay_personel').textContent = this.dataset.personel;
-                    document.getElementById('avans_onay_tutar').textContent = parseFloat(this.dataset.tutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
-                    new bootstrap.Modal(document.getElementById('modalAvansOnay')).show();
-                });
-            });
-            document.querySelectorAll('.btn-avans-reddet').forEach(btn => {
-                btn.addEventListener('click', function () {
-                    document.getElementById('avans_red_id').value = this.dataset.id;
-                    document.getElementById('avans_red_personel').textContent = this.dataset.personel;
-                    new bootstrap.Modal(document.getElementById('modalAvansRed')).show();
-                });
-            });
-            document.querySelectorAll('.btn-izin-onayla').forEach(btn => {
-                btn.addEventListener('click', function () {
-                    document.getElementById('izin_onay_id').value = this.dataset.id;
-                    document.getElementById('izin_onay_personel').textContent = this.dataset.personel;
-                    document.getElementById('izin_onay_tur').textContent = this.dataset.tur;
-                    document.getElementById('izin_onay_gun').textContent = this.dataset.gun;
-                    new bootstrap.Modal(document.getElementById('modalIzinOnay')).show();
-                });
-            });
-            document.querySelectorAll('.btn-izin-reddet').forEach(btn => {
-                btn.addEventListener('click', function () {
-                    document.getElementById('izin_red_id').value = this.dataset.id;
-                    document.getElementById('izin_red_personel').textContent = this.dataset.personel;
-                    new bootstrap.Modal(document.getElementById('modalIzinRed')).show();
-                });
-            });
-            document.querySelectorAll('.btn-talep-cozuldu').forEach(btn => {
-                btn.addEventListener('click', function () {
-                    document.getElementById('talep_cozuldu_id').value = this.dataset.id;
-                    document.getElementById('talep_cozuldu_baslik').textContent = this.dataset.baslik;
-                    new bootstrap.Modal(document.getElementById('modalTalepCozuldu')).show();
-                });
-            });
-
-            const handleFormSubmit = (formId) => {
-                const form = document.getElementById(formId);
-                if (!form) return;
-                form.addEventListener('submit', function (e) {
-                    e.preventDefault();
-                    const formData = new FormData(this);
-                    const submitBtn = this.querySelector('button[type="submit"]');
-                    const originalText = submitBtn.innerHTML;
-                    submitBtn.disabled = true;
-                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> İşleniyor...';
-                    fetch(API_URL, { method: 'POST', body: formData })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.status === 'success') {
-                                Swal.fire({ icon: 'success', title: 'Başarılı', text: data.message, timer: 1500, showConfirmButton: false })
-                                    .then(() => location.reload());
-                            } else {
-                                Swal.fire({ icon: 'error', title: 'Hata', text: data.message });
+                            })
+                            .catch(error => {
+                                Swal.fire({ icon: 'error', title: 'Hata', text: 'Bir sorun oluştu.' });
                                 submitBtn.disabled = false;
                                 submitBtn.innerHTML = originalText;
-                            }
-                        })
-                        .catch(error => {
-                            Swal.fire({ icon: 'error', title: 'Hata', text: 'Bir sorun oluştu.' });
-                            submitBtn.disabled = false;
-                            submitBtn.innerHTML = originalText;
-                        });
-                });
-            };
-
-            handleFormSubmit('formAvansOnay');
-            handleFormSubmit('formAvansRed');
-            handleFormSubmit('formIzinOnay');
-            handleFormSubmit('formIzinRed');
-            handleFormSubmit('formTalepCozuldu');
-
-            // İş Türü İstatistikleri (Yıllık)
-            const yearFilter = document.getElementById('stats-year-filter');
-            if (yearFilter) {
-                yearFilter.addEventListener('change', function () {
-                    loadWorkTypeStats(this.value);
-                });
-                loadWorkTypeStats(yearFilter.value);
-            }
-
-            // İş Emri Sonuçları (Aylık)
-            const resultMonthFilter = document.getElementById('stats-result-month-filter');
-            const resultYearFilter = document.getElementById('stats-result-year-filter');
-
-            if (resultMonthFilter && resultYearFilter) {
-                const refreshResultStats = () => {
-                    loadWorkResultStats(resultYearFilter.value, resultMonthFilter.value);
+                            });
+                    });
                 };
-                resultMonthFilter.addEventListener('change', refreshResultStats);
-                resultYearFilter.addEventListener('change', refreshResultStats);
-                refreshResultStats();
-            }
-            // Dashboard Config Persistence
-            const dashboard = $("#dashboard-widgets");
 
-            function saveDashboardConfig() {
-                const order = dashboard.sortable("toArray");
-                const settings = {};
-                $("#dashboard-widgets .widget-item").each(function () {
-                    const id = $(this).attr('id');
+                handleFormSubmit('formAvansOnay');
+                handleFormSubmit('formAvansRed');
+                handleFormSubmit('formIzinOnay');
+                handleFormSubmit('formIzinRed');
+                handleFormSubmit('formTalepCozuldu');
 
-                    // Width
-                    const classes = $(this).attr('class').split(' ');
-                    const widthClass = classes.find(c => c.startsWith('col-'));
-
-                    // Height
-                    const height = $(this).find('.card-body').css('height');
-
-                    if (id) {
-                        settings[id] = {
-                            width: widthClass,
-                            height: height
-                        };
-                    }
-                });
-
-                const cookieOptions = "; path=/; max-age=" + (60 * 60 * 24 * 30);
-                document.cookie = "dashboard_order=" + JSON.stringify(order) + cookieOptions;
-                document.cookie = "dashboard_settings=" + JSON.stringify(settings) + cookieOptions;
-            }
-
-            // Dashboard Sortable Logic
-            dashboard.sortable({
-                handle: ".card-header, .card-header-flex, .bordro-summary-card",
-                cancel: ".btn-api-sync, .stats-local-btn, .btn, .bx-no-drag",
-                placeholder: "ui-sortable-placeholder",
-                start: function (e, ui) {
-                    const classes = ui.item.attr('class');
-                    ui.placeholder.attr('class', 'ui-sortable-placeholder ' + classes);
-                },
-                update: function (event, ui) {
-                    saveDashboardConfig();
+                // İş Türü İstatistikleri (Yıllık)
+                const yearFilter = document.getElementById('stats-year-filter');
+                if (yearFilter) {
+                    yearFilter.addEventListener('change', function () {
+                        loadWorkTypeStats(this.value);
+                    });
+                    loadWorkTypeStats(yearFilter.value);
                 }
-            });
 
-            // Card Resize Logic (Width)
-            $(document).on('click', '.btn-resize-width', function (e) {
-                e.preventDefault();
-                const newWidth = $(this).data('width');
-                const widget = $(this).closest('.widget-item');
+                // İş Emri Sonuçları (Aylık)
+                const resultMonthFilter = document.getElementById('stats-result-month-filter');
+                const resultYearFilter = document.getElementById('stats-result-year-filter');
 
-                // Remove existing col- classes
-                const classes = widget.attr('class').split(' ');
-                const newClasses = classes.filter(c => !c.startsWith('col-'));
-                newClasses.push(newWidth);
+                if (resultMonthFilter && resultYearFilter) {
+                    const refreshResultStats = () => {
+                        loadWorkResultStats(resultYearFilter.value, resultMonthFilter.value);
+                    };
+                    resultMonthFilter.addEventListener('change', refreshResultStats);
+                    resultYearFilter.addEventListener('change', refreshResultStats);
+                    refreshResultStats();
+                }
+                // Dashboard Config Persistence
+                const dashboard = $("#dashboard-widgets");
 
-                widget.attr('class', newClasses.join(' '));
-                saveDashboardConfig();
+                function saveDashboardConfig() {
+                    const order = dashboard.sortable("toArray");
+                    const settings = {};
+                    $("#dashboard-widgets .widget-item").each(function () {
+                        const id = $(this).attr('id');
 
-                // Trigger window resize to let charts adjust
-                setTimeout(() => {
-                    window.dispatchEvent(new Event('resize'));
-                }, 100);
-            });
+                        // Width
+                        const classes = $(this).attr('class').split(' ');
+                        const widthClass = classes.find(c => c.startsWith('col-'));
 
-            // Card Resize Logic (Height)
-            $(document).on('click', '.btn-resize-height', function (e) {
-                e.preventDefault();
-                const newHeight = $(this).data('height');
-                const widget = $(this).closest('.widget-item');
-                const cardBody = widget.find('.card-body');
+                        // Height
+                        const height = $(this).find('.card-body').css('height');
 
-                cardBody.css('height', newHeight);
-                saveDashboardConfig();
-
-                // Trigger window resize to let charts adjust
-                setTimeout(() => {
-                    window.dispatchEvent(new Event('resize'));
-                }, 100);
-            });
-
-            // Reset Dashboard Logic
-            $('#btn-reset-dashboard').on('click', function () {
-                Swal.fire({
-                    title: 'Emin misiniz?',
-                    text: "Tüm kart yerleşimleri ve genişlikleri varsayılan ayarlara dönecektir.",
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonColor: '#3085d6',
-                    cancelButtonColor: '#d33',
-                    confirmButtonText: 'Evet, Sıfırla',
-                    cancelButtonText: 'İptal'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        document.cookie = "dashboard_order=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-                        document.cookie = "dashboard_settings=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-                        localStorage.removeItem('dashboard_widget_visibility');
-                        location.reload();
-                    }
-                });
-            });
-            // Operasyonel İstatistikler Local Toggle Logic
-            $(document).on('click', '.stats-local-btn', function () {
-                const mode = $(this).data('mode');
-                const cardBody = $(this).closest('.card-body');
-                const statValue = cardBody.find('.stat-value');
-
-                // Update local buttons state
-                cardBody.find('.stats-local-btn').removeClass('active');
-                $(this).addClass('active');
-
-                // Update data
-                const newValue = parseInt(statValue.data(mode)) || 0;
-                const label = statValue.data('label-' + mode);
-                const subtext = statValue.data('sub-' + mode);
-
-                cardBody.find('.stat-label').text(label);
-                cardBody.find('.stat-subtext').text(subtext);
-
-                const oldValue = parseInt(statValue.text().replace(/[^0-9]/g, '')) || 0;
-                animateValue(statValue[0], oldValue, newValue, 800);
-            });
-
-            // Online API Sync Logic
-            $(document).on('click', '.btn-api-sync', function (e) {
-                e.preventDefault();
-                const $btn = $(this);
-                const $icon = $btn.find('i');
-                const action = $btn.data('action');
-                const today = '<?php echo date('Y-m-d'); ?>';
-                const firmaId = '<?php echo $_SESSION['firma_id'] ?? 17; ?>';
-
-                if ($btn.hasClass('syncing')) return;
-
-                $btn.addClass('syncing');
-                $icon.addClass('bx-spin text-primary');
-
-                $.ajax({
-                    url: 'views/puantaj/api.php',
-                    type: 'POST',
-                    data: {
-                        action: action,
-                        active_tab: $(this).data(
-                            'active-tab') || '',
-                        baslangic_tarihi: today,
-                        bitis_tarihi: today,
-                        ilk_firma: firmaId,
-                        son_firma: firmaId
-                    },
-                    success: function (response) {
-                        $btn.removeClass('syncing');
-                        $icon.removeClass('bx-spin text-primary');
-
-                        try {
-                            const res = typeof response === 'object' ? response : JSON.parse(response);
-                            if (res.status === 'success') {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Sorgulama Başarılı',
-                                    text: res.message || (res.yeni_kayit || 0) + ' adet yeni kayıt eklendi.',
-                                    timer: 2000,
-                                    showConfirmButton: false
-                                }).then(() => {
-                                    location.reload();
-                                });
-                            } else {
-                                Swal.fire('Hata', res.message || 'Sorgulama sırasında bir hata oluştu.', 'error');
-                            }
-                        } catch (err) {
-                            console.error("API Response Error:", err);
-                            console.log("Raw Response:", response);
-                            Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
+                        if (id) {
+                            settings[id] = {
+                                width: widthClass,
+                                height: height
+                            };
                         }
+                    });
+
+                    const cookieOptions = "; path=/; max-age=" + (60 * 60 * 24 * 30);
+                    document.cookie = "dashboard_order=" + JSON.stringify(order) + cookieOptions;
+                    document.cookie = "dashboard_settings=" + JSON.stringify(settings) + cookieOptions;
+                }
+
+                // Dashboard Sortable Logic
+                dashboard.sortable({
+                    handle: ".card-header, .card-header-flex, .bordro-summary-card",
+                    cancel: ".btn-api-sync, .stats-local-btn, .btn, .bx-no-drag",
+                    placeholder: "ui-sortable-placeholder",
+                    start: function (e, ui) {
+                        const classes = ui.item.attr('class');
+                        ui.placeholder.attr('class', 'ui-sortable-placeholder ' + classes);
                     },
-                    error: function () {
-                        $btn.removeClass('syncing');
-                        $icon.removeClass('bx-spin text-primary');
-                        Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
+                    update: function (event, ui) {
+                        saveDashboardConfig();
                     }
                 });
-            });
 
-            // Tekil Nöbet Hatırlatma Bildirimi
-            $(document).on('click', '.btn-send-nobet-reminder', function (e) {
-                e.preventDefault();
-                const $btn = $(this);
-                const $icon = $btn.find('i');
-                const pId = $btn.data('id');
-                const pName = $btn.data('name');
+                // Card Resize Logic (Width)
+                $(document).on('click', '.btn-resize-width', function (e) {
+                    e.preventDefault();
+                    const newWidth = $(this).data('width');
+                    const widget = $(this).closest('.widget-item');
 
-                Swal.fire({
-                    title: 'Bildirim Gönderilsin mi?',
-                    text: pName + ' isimli personele bugün nöbetçi olduğuna dair hatırlatma bildirimi gönderilecek.',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Evet, Gönder',
-                    cancelButtonText: 'İptal',
-                    confirmButtonColor: '#556ee6',
-                    cancelButtonColor: '#f46a6a',
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        $icon.removeClass('bx-bell').addClass('bx-loader-alt bx-spin');
-                        $btn.addClass('disabled');
+                    // Remove existing col- classes
+                    const classes = widget.attr('class').split(' ');
+                    const newClasses = classes.filter(c => !c.startsWith('col-'));
+                    newClasses.push(newWidth);
 
-                        $.ajax({
-                            url: 'views/nobet/api.php',
-                            type: 'POST',
-                            data: {
-                                action: 'send-today-nobet-reminder',
-                                personel_id: pId
-                            },
-                            success: function (response) {
-                                $icon.removeClass('bx-loader-alt bx-spin').addClass('bx-bell');
-                                $btn.removeClass('disabled');
+                    widget.attr('class', newClasses.join(' '));
+                    saveDashboardConfig();
 
-                                try {
-                                    const res = typeof response === 'string' ? JSON.parse(response) : response;
-                                    if (res.status === 'success' || res.success) {
-                                        Swal.fire({
-                                            icon: 'success',
-                                            title: 'Başarılı',
-                                            text: res.message,
-                                            timer: 1500,
-                                            showConfirmButton: false
-                                        });
-                                    } else {
-                                        Swal.fire('Hata', res.message || 'Bildirim gönderilemedi.', 'error');
-                                    }
-                                } catch (err) {
-                                    Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
+                    // Trigger window resize to let charts adjust
+                    setTimeout(() => {
+                        window.dispatchEvent(new Event('resize'));
+                    }, 100);
+                });
+
+                // Card Resize Logic (Height)
+                $(document).on('click', '.btn-resize-height', function (e) {
+                    e.preventDefault();
+                    const newHeight = $(this).data('height');
+                    const widget = $(this).closest('.widget-item');
+                    const cardBody = widget.find('.card-body');
+
+                    cardBody.css('height', newHeight);
+                    saveDashboardConfig();
+
+                    // Trigger window resize to let charts adjust
+                    setTimeout(() => {
+                        window.dispatchEvent(new Event('resize'));
+                    }, 100);
+                });
+
+                // Reset Dashboard Logic
+                $('#btn-reset-dashboard').on('click', function () {
+                    Swal.fire({
+                        title: 'Emin misiniz?',
+                        text: "Tüm kart yerleşimleri ve genişlikleri varsayılan ayarlara dönecektir.",
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Evet, Sıfırla',
+                        cancelButtonText: 'İptal'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            document.cookie = "dashboard_order=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+                            document.cookie = "dashboard_settings=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+                            localStorage.removeItem('dashboard_widget_visibility');
+                            location.reload();
+                        }
+                    });
+                });
+                // Operasyonel İstatistikler Local Toggle Logic
+                $(document).on('click', '.stats-local-btn', function () {
+                    const mode = $(this).data('mode');
+                    const cardBody = $(this).closest('.card-body');
+                    const statValue = cardBody.find('.stat-value');
+
+                    // Update local buttons state
+                    cardBody.find('.stats-local-btn').removeClass('active');
+                    $(this).addClass('active');
+
+                    // Update data
+                    const newValue = parseInt(statValue.data(mode)) || 0;
+                    const label = statValue.data('label-' + mode);
+                    const subtext = statValue.data('sub-' + mode);
+
+                    cardBody.find('.stat-label').text(label);
+                    cardBody.find('.stat-subtext').text(subtext);
+
+                    const oldValue = parseInt(statValue.text().replace(/[^0-9]/g, '')) || 0;
+                    animateValue(statValue[0], oldValue, newValue, 800);
+                });
+
+                // Online API Sync Logic
+                $(document).on('click', '.btn-api-sync', function (e) {
+                    e.preventDefault();
+                    const $btn = $(this);
+                    const $icon = $btn.find('i');
+                    const action = $btn.data('action');
+                    const today = '<?php echo date('Y-m-d'); ?>';
+                    const firmaId = '<?php echo $_SESSION['firma_id'] ?? 17; ?>';
+
+                    if ($btn.hasClass('syncing')) return;
+
+                    $btn.addClass('syncing');
+                    $icon.addClass('bx-spin text-primary');
+
+                    $.ajax({
+                        url: 'views/puantaj/api.php',
+                        type: 'POST',
+                        data: {
+                            action: action,
+                            active_tab: $(this).data(
+                                'active-tab') || '',
+                            baslangic_tarihi: today,
+                            bitis_tarihi: today,
+                            ilk_firma: firmaId,
+                            son_firma: firmaId
+                        },
+                        success: function (response) {
+                            $btn.removeClass('syncing');
+                            $icon.removeClass('bx-spin text-primary');
+
+                            try {
+                                const res = typeof response === 'object' ? response : JSON.parse(response);
+                                if (res.status === 'success') {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Sorgulama Başarılı',
+                                        text: res.message || (res.yeni_kayit || 0) + ' adet yeni kayıt eklendi.',
+                                        timer: 2000,
+                                        showConfirmButton: false
+                                    }).then(() => {
+                                        location.reload();
+                                    });
+                                } else {
+                                    Swal.fire('Hata', res.message || 'Sorgulama sırasında bir hata oluştu.', 'error');
                                 }
-                            },
-                            error: function () {
-                                $icon.removeClass('bx-loader-alt bx-spin').addClass('bx-bell');
-                                $btn.removeClass('disabled');
-                                Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
+                            } catch (err) {
+                                console.error("API Response Error:", err);
+                                console.log("Raw Response:", response);
+                                Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
                             }
-                        });
-                    }
+                        },
+                        error: function () {
+                            $btn.removeClass('syncing');
+                            $icon.removeClass('bx-spin text-primary');
+                            Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
+                        }
+                    });
+                });
+
+                // Tekil Nöbet Hatırlatma Bildirimi
+                $(document).on('click', '.btn-send-nobet-reminder', function (e) {
+                    e.preventDefault();
+                    const $btn = $(this);
+                    const $icon = $btn.find('i');
+                    const pId = $btn.data('id');
+                    const pName = $btn.data('name');
+
+                    Swal.fire({
+                        title: 'Bildirim Gönderilsin mi?',
+                        text: pName + ' isimli personele bugün nöbetçi olduğuna dair hatırlatma bildirimi gönderilecek.',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Evet, Gönder',
+                        cancelButtonText: 'İptal',
+                        confirmButtonColor: '#556ee6',
+                        cancelButtonColor: '#f46a6a',
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            $icon.removeClass('bx-bell').addClass('bx-loader-alt bx-spin');
+                            $btn.addClass('disabled');
+
+                            $.ajax({
+                                url: 'views/nobet/api.php',
+                                type: 'POST',
+                                data: {
+                                    action: 'send-today-nobet-reminder',
+                                    personel_id: pId
+                                },
+                                success: function (response) {
+                                    $icon.removeClass('bx-loader-alt bx-spin').addClass('bx-bell');
+                                    $btn.removeClass('disabled');
+
+                                    try {
+                                        const res = typeof response === 'string' ? JSON.parse(response) : response;
+                                        if (res.status === 'success' || res.success) {
+                                            Swal.fire({
+                                                icon: 'success',
+                                                title: 'Başarılı',
+                                                text: res.message,
+                                                timer: 1500,
+                                                showConfirmButton: false
+                                            });
+                                        } else {
+                                            Swal.fire('Hata', res.message || 'Bildirim gönderilemedi.', 'error');
+                                        }
+                                    } catch (err) {
+                                        Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
+                                    }
+                                },
+                                error: function () {
+                                    $icon.removeClass('bx-loader-alt bx-spin').addClass('bx-bell');
+                                    $btn.removeClass('disabled');
+                                    Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
+                                }
+                            });
+                        }
+                    });
                 });
             });
-        });
-    </script>
-    <?php
+        </script>
+        <?php
 } else {
     //Alert::danger("Bu sayfaya erişim yetkiniz yok!");
     /**Personelin yetkili olduğu ilk sayfaya yönlendir */

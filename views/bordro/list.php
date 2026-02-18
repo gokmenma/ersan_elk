@@ -528,12 +528,12 @@ $ek_odeme_turleri = [
                             <table id="bordroTable" class="table datatable table-hover table-bordered nowrap w-100">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="width: 20px;" data-filter="select">
+                                        <th style="width: 20px;">
                                             <div class="form-check">
                                                 <input type="checkbox" class="form-check-input" id="selectAll">
                                             </div>
                                         </th>
-                                        <th style="width: 40px;" data-filter="number">#</th>
+                                        <th style="width: 40px;">#</th>
                                         <th class="text-center" style="width: 80px;" data-filter="select">Birim</th>
                                         <th style="min-width: 150px;" data-filter="select">Ekip / Bölge</th>
                                         <th data-filter="string">Personel</th>
@@ -546,7 +546,7 @@ $ek_odeme_turleri = [
                                         <th class="text-end" data-filter="number">Banka</th>
                                         <th class="text-end" data-filter="number">Sodexo</th>
                                         <th class="text-end" data-filter="number">Elden</th>
-                                        <th class="text-center" data-filter="string">İşlemler</th>
+                                        <th class="text-center">İşlemler</th>
                                     </tr>
                                 </thead>
                                 <tbody>
