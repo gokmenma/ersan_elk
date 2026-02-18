@@ -144,6 +144,27 @@ function getDatatableOptions() {
   };
 }
 
+/**
+ * DataTable seçeneklerine sadece sayfa uzunluğunu kaydedecek stateSave ayarlarını uygular.
+ * @param {Object} options DataTable seçenekleri
+ * @returns {Object} Güncellenmiş seçenekler
+ */
+function applyLengthStateSave(options) {
+  options.stateSave = true;
+  options.stateSaveParams = function (settings, data) {
+    // Sadece sayfa uzunluğunu (length) sakla, diğer her şeyi sıfırla
+    data.start = 0;
+    data.search.search = "";
+    data.order = [];
+    if (data.columns) {
+      data.columns.forEach((col) => {
+        col.search.search = "";
+      });
+    }
+  };
+  return options;
+}
+
 $("#exportExcel").on("click", function () {
   table.button(".buttons-excel").trigger();
 });

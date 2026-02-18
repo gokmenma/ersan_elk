@@ -530,7 +530,7 @@ $title = "Saha Personel Takibi";
 
             // DataTable'ı başlat (init fonksiyonunu kontrol et)
             var options = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
-            personelTakipDT = $('#personelTakipTable').DataTable(options);
+            personelTakipDT = $('#personelTakipTable').DataTable(applyLengthStateSave(options));
 
             // Detay butonlarına event listener ekle
             document.querySelectorAll('.btn-detay').forEach(function (btn) {
@@ -786,12 +786,12 @@ $title = "Saha Personel Takibi";
 
             // DataTable'ı başlat
             var options = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
-            $('#calismaRaporuTable').DataTable({
+            $('#calismaRaporuTable').DataTable(applyLengthStateSave({
                 ...options, // Genel ayarları al
                 order: [[2, 'desc']], // Varsayılan: Toplam saate göre sırala
                 pageLength: 25,
                 destroy: true // Varsa üzerine yaz
-            });
+            }));
 
         } catch (error) {
             console.error('Çalışma raporu yüklenirken hata:', error);
@@ -886,12 +886,12 @@ $title = "Saha Personel Takibi";
 
             // DataTable'ı başlat
             var options = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
-            $('#gecKalanlarTable').DataTable({
+            $('#gecKalanlarTable').DataTable(applyLengthStateSave({
                 ...options, // Genel ayarları al
                 order: [[2, 'desc']], // Varsayılan: Gecikmeye göre
                 pageLength: 25,
                 destroy: true
-            });
+            }));
 
         } catch (error) {
             console.error('Geç kalanlar yüklenirken hata:', error);

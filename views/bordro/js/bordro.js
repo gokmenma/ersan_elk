@@ -33,6 +33,16 @@ const monthMap = {
 };
 
 $(document).ready(function () {
+  // Bordro Tablosunu Başlat
+  $("#bordroTable").DataTable(
+    applyLengthStateSave({
+      ...getDatatableOptions(),
+      columnDefs: [{ orderable: false, targets: [0, 10] }],
+      order: [[1, "asc"]],
+      pageLength: 25,
+    }),
+  );
+
   // Yıl değiştiğinde sayfayı yenile
   $("#yilSelect").on("change", function () {
     const yil = $(this).val();

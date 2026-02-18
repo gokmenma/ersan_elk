@@ -1,140 +1,144 @@
 $(document).ready(function () {
   // Mevcut DataTable instance'ına eriş
-  var table = $("#membersTable").DataTable({
-    ...getDatatableOptions(),
-    serverSide: true,
-    order: [[3, "asc"]],
-    ajax: {
-      url: "views/personel/api.php",
-      type: "POST",
-      data: function (d) {
-        d.action = "personel-list";
+  var table = $("#membersTable").DataTable(
+    applyLengthStateSave({
+      ...getDatatableOptions(),
+      serverSide: true,
+      order: [[3, "asc"]],
+      ajax: {
+        url: "views/personel/api.php",
+        type: "POST",
+        data: function (d) {
+          d.action = "personel-list";
+        },
       },
-    },
-    columns: [
-      {
-        data: null,
-        orderable: false,
-        render: function (data, type, row, meta) {
-          return `
+      columns: [
+        {
+          data: null,
+          orderable: false,
+          render: function (data, type, row, meta) {
+            return `
             <div class="form-check font-size-16">
                 <input class="form-check-input" type="checkbox" id="orderidcheck${meta.row}">
                 <label class="form-check-label" for="orderidcheck${meta.row}"></label>
             </div>`;
+          },
         },
-      },
-      {
-        data: null,
-        className: "text-center",
-        render: function (data, type, row, meta) {
-          return meta.row + meta.settings._iDisplayStart + 1;
+        {
+          data: null,
+          className: "text-center",
+          render: function (data, type, row, meta) {
+            return meta.row + meta.settings._iDisplayStart + 1;
+          },
         },
-      },
 
-      { data: "tc_kimlik_no" },
-      {
-        data: "adi_soyadi",
-        render: function (data, type, row) {
-          return `
+        { data: "tc_kimlik_no" },
+        {
+          data: "adi_soyadi",
+          render: function (data, type, row) {
+            return `
             <div class="personel-name-container">
                 <a class="fw-bold" target="_blank" href="index?p=personel/manage&id=${row.id}">${data}</a>
                 <img src="${row.resim_yolu ? row.resim_yolu : "assets/images/users/user-dummy-img.jpg"}"
                     alt="${data}" class="personel-hover-image">
             </div>`;
+          },
         },
-      },
-      { data: "ise_giris_tarihi" },
-      { data: "isten_cikis_tarihi" },
-      {
-        data: "cep_telefonu",
-        render: function (data) {
-          return `<i class="feather feather-smartphone"></i> ${data}`;
+        { data: "ise_giris_tarihi" },
+        { data: "isten_cikis_tarihi" },
+        {
+          data: "cep_telefonu",
+          render: function (data) {
+            return `<i class="feather feather-smartphone"></i> ${data}`;
+          },
         },
-      },
-      { data: "email_adresi" },
-      { data: "gorev" },
-      { data: "departman" },
-      {
-        data: null,
-        render: function (data, type, row) {
-          if (
-            !row.ekip_adi ||
-            row.ekip_adi === "YOK" ||
-            row.ekip_adi.trim() === ""
-          ) {
-            return "";
-          }
+        { data: "email_adresi" },
+        { data: "gorev" },
+        { data: "departman" },
+        {
+          data: null,
+          render: function (data, type, row) {
+            if (
+              !row.ekip_adi ||
+              row.ekip_adi === "YOK" ||
+              row.ekip_adi.trim() === ""
+            ) {
+              return "";
+            }
 
-          let deptUp = (row.departman || "").toUpperCase();
-          let colorClass =
-            "bg-secondary-subtle text-secondary border-secondary-subtle";
+            let deptUp = (row.departman || "").toUpperCase();
+            let colorClass =
+              "bg-secondary-subtle text-secondary border-secondary-subtle";
 
-          if (deptUp.includes("OKUMA")) {
-            colorClass = "bg-primary-subtle text-primary border-primary-subtle";
-          } else if (deptUp.includes("KESME")) {
-            colorClass = "bg-danger-subtle text-danger border-danger-subtle";
-          } else if (
-            deptUp.includes("SAYAÇ") ||
-            deptUp.includes("DEGİŞ") ||
-            deptUp.includes("SAYAC")
-          ) {
-            colorClass = "bg-success-subtle text-success border-success-subtle";
-          } else if (deptUp.includes("KAÇAK") || deptUp.includes("KACAK")) {
-            colorClass = "bg-info-subtle text-info border-info-subtle";
-          }
+            if (deptUp.includes("OKUMA")) {
+              colorClass =
+                "bg-primary-subtle text-primary border-primary-subtle";
+            } else if (deptUp.includes("KESME")) {
+              colorClass = "bg-danger-subtle text-danger border-danger-subtle";
+            } else if (
+              deptUp.includes("SAYAÇ") ||
+              deptUp.includes("DEGİŞ") ||
+              deptUp.includes("SAYAC")
+            ) {
+              colorClass =
+                "bg-success-subtle text-success border-success-subtle";
+            } else if (deptUp.includes("KAÇAK") || deptUp.includes("KACAK")) {
+              colorClass = "bg-info-subtle text-info border-info-subtle";
+            }
 
-          let ekipler = row.ekip_adi.split(",");
-          let badges = ekipler.map((ekip) => {
-            let cleanEkip = ekip
-              .trim()
-              .replace(/ER-SAN ELEKTRİK/gi, "")
-              .replace(/ERSAN ELEKTRİK/gi, "")
-              .replace(/ER SAN ELEKTRİK/gi, "")
-              .trim();
-            if (cleanEkip === "") return "";
-            return `<span class="badge ${colorClass} font-size-12 px-2 py-1 mb-1 me-1 border">${cleanEkip}</span>`;
-          });
+            let ekipler = row.ekip_adi.split(",");
+            let badges = ekipler.map((ekip) => {
+              let cleanEkip = ekip
+                .trim()
+                .replace(/ER-SAN ELEKTRİK/gi, "")
+                .replace(/ERSAN ELEKTRİK/gi, "")
+                .replace(/ER SAN ELEKTRİK/gi, "")
+                .trim();
+              if (cleanEkip === "") return "";
+              return `<span class="badge ${colorClass} font-size-12 px-2 py-1 mb-1 me-1 border">${cleanEkip}</span>`;
+            });
 
-          let bolgeler = "";
-          if (row.ekip_bolge && row.ekip_bolge !== "---") {
-            bolgeler = `<div class="text-muted small mt-1"><i class="bx bx-map-pin"></i> ${row.ekip_bolge}</div>`;
-          }
+            let bolgeler = "";
+            if (row.ekip_bolge && row.ekip_bolge !== "---") {
+              bolgeler = `<div class="text-muted small mt-1"><i class="bx bx-map-pin"></i> ${row.ekip_bolge}</div>`;
+            }
 
-          return `
+            return `
             <div class="d-flex flex-wrap">${badges.join("")}</div>
             ${bolgeler}
           `;
+          },
         },
-      },
-      {
-        data: "bildirim_abonesi",
-        className: "text-center",
-        render: function (data) {
-          if (data == 1) {
-            return '<span class="badge bg-success"><i class="bx bx-check-double font-size-13 align-middle me-1"></i>Açık</span>';
-          } else {
-            return '<span class="badge bg-danger"><i class="bx bx-x font-size-13 align-middle me-1"></i>Kapalı</span>';
-          }
+        {
+          data: "bildirim_abonesi",
+          className: "text-center",
+          render: function (data) {
+            if (data == 1) {
+              return '<span class="badge bg-success"><i class="bx bx-check-double font-size-13 align-middle me-1"></i>Açık</span>';
+            } else {
+              return '<span class="badge bg-danger"><i class="bx bx-x font-size-13 align-middle me-1"></i>Kapalı</span>';
+            }
+          },
         },
-      },
-      {
-        data: "aktif_mi",
-        render: function (data) {
-          return data == 1 ? "Aktif" : "Pasif";
+        {
+          data: "aktif_mi",
+          render: function (data) {
+            return data == 1 ? "Aktif" : "Pasif";
+          },
         },
+      ],
+      createdRow: function (row, data, dataIndex) {
+        $(row).attr("data-id", data.id);
+        if (
+          data.isten_cikis_tarihi &&
+          data.isten_cikis_tarihi !== "" &&
+          data.isten_cikis_tarihi !== "0000-00-00"
+        ) {
+          $(row).addClass("row-pasif");
+        }
       },
-    ],
-    createdRow: function (row, data, dataIndex) {
-      $(row).attr("data-id", data.id);
-      if (
-        data.isten_cikis_tarihi &&
-        data.isten_cikis_tarihi !== "" &&
-        data.isten_cikis_tarihi !== "0000-00-00"
-      ) {
-        $(row).addClass("row-pasif");
-      }
-    },
-  });
+    }),
+  );
 
   // Satır seçimi
   table.on("click", "tbody tr", (e) => {
