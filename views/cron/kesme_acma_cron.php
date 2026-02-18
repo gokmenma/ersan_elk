@@ -285,17 +285,18 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             $ekipGecmisi[$h['ekip_kodu_id']][] = $h;
         }
 
-        // 2. Mevcut kayıtları temizle (Soft Delete)
-        $deleteStmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih = ? AND silinme_tarihi IS NULL");
-        $deleteStmt->execute([$firmaId, $tarih]);
-        $silinenKayit = $deleteStmt->rowCount();
-
-        // 3. API verilerini işle
+        // 2. API verilerini işle
         $insertBatch = [];
+        $resultNamesInApi = [];
         foreach ($apiData as $veri) {
             $isEmriTipi = trim($veri['ISEMRITIPI'] ?? '');
             $ekipKoduStr = trim($veri['EKIP'] ?? '');
             $isEmriSonucu = trim($veri['SONUC'] ?? '');
+
+            if (!empty($isEmriSonucu)) {
+                $resultNamesInApi[] = $isEmriSonucu;
+            }
+
             $sonuclanmis = $veri['SONUCLANMIS'] ?? 0;
             $acikOlanlar = $veri['ACIK'] ?? 0;
 
@@ -354,6 +355,15 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             // Demirbaş işlemi
             if ($personelId > 0)
                 $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucu, $normDate, $islemId, $sonuclanmis);
+        }
+
+        // 3. Mevcut kayıtları temizle (Sadece gelen tipler için)
+        if (!empty($resultNamesInApi)) {
+            $uniqueNames = array_unique($resultNamesInApi);
+            $placeholders = implode(',', array_fill(0, count($uniqueNames), '?'));
+            $deleteStmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih = ? AND silinme_tarihi IS NULL AND TRIM(is_emri_sonucu) IN ($placeholders)");
+            $deleteStmt->execute(array_merge([$firmaId, $tarih], $uniqueNames));
+            $silinenKayit = $deleteStmt->rowCount();
         }
 
         // 4. Toplu Kayıt

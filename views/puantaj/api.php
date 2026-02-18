@@ -1198,13 +1198,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
 
         // 2. Mevcut kayıtları temizle (Hız ve veri tutarlılığı için Sil/Yeniden Yükle)
-        $deleteStmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL");
-        $deleteStmt->execute([$firmaId, $baslangicTarihi, $bitisTarihi]);
+        $filterArray = !empty($resultsFilter) ? array_map('trim', explode(',', $resultsFilter)) : [];
+        $deleteSql = "UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL";
+        $deleteParams = [$firmaId, $baslangicTarihi, $bitisTarihi];
+
+        if (!empty($filterArray)) {
+            $placeholders = implode(',', array_fill(0, count($filterArray), '?'));
+            $deleteSql .= " AND TRIM(is_emri_sonucu) IN ($placeholders)";
+            $deleteParams = array_merge($deleteParams, $filterArray);
+        }
+
+        $deleteStmt = $Puantaj->db->prepare($deleteSql);
+        $deleteStmt->execute($deleteParams);
         $silinenKayit = $deleteStmt->rowCount();
 
         // 3. API verilerini işle
         $insertBatch = [];
-        $filterArray = !empty($resultsFilter) ? array_map('trim', explode(',', $resultsFilter)) : [];
 
         $idx = 0;
         foreach ($apiData as $veri) {
