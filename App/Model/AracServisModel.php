@@ -89,12 +89,16 @@ class AracServisModel extends Model
     {
         $sqlStr = "SELECT 
                     COUNT(*) as toplam_kayit,
-                    SUM(tutar) as toplam_maliyet
+                    SUM(tutar) as toplam_maliyet,
+                    (SELECT COUNT(DISTINCT arac_id) FROM {$this->table} WHERE iade_tarihi IS NULL AND silinme_tarihi IS NULL AND firma_id = :firma_id_inner) as servisteki_arac_sayisi
                   FROM {$this->table}
                   WHERE firma_id = :firma_id
                   AND silinme_tarihi IS NULL";
 
-        $params = ['firma_id' => $_SESSION['firma_id']];
+        $params = [
+            'firma_id' => $_SESSION['firma_id'],
+            'firma_id_inner' => $_SESSION['firma_id']
+        ];
 
         if ($yil) {
             $sqlStr .= " AND YEAR(servis_tarihi) = :yil";

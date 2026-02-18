@@ -206,13 +206,23 @@
         }
     });
 
-    // Birim fiyat otomatik hesaplama
-    $(document).on("input", "#yakit_miktari, #toplam_tutar", function () {
+    // Yakıt hesaplama mantığı
+    $(document).on("input", "#yakit_miktari, #birim_fiyat, #toplam_tutar", function (e) {
+        const targetId = e.target.id;
         const miktar = parseFloat($("#yakit_miktari").val()) || 0;
-        const tutar = parseFloat($("#toplam_tutar").val()) || 0;
-        if (miktar > 0 && tutar > 0) {
-            const birimFiyat = (tutar / miktar).toFixed(2);
-            $("#birim_fiyat").val(birimFiyat);
+        const birimFiyat = parseFloat($("#birim_fiyat").val()) || 0;
+        const toplamTutar = parseFloat($("#toplam_tutar").val()) || 0;
+
+        if (targetId === "yakit_miktari" || targetId === "birim_fiyat") {
+            // Miktar veya Birim Fiyat değişince Toplam'ı hesapla
+            if (miktar > 0 && birimFiyat > 0) {
+                $("#toplam_tutar").val((miktar * birimFiyat).toFixed(2));
+            }
+        } else if (targetId === "toplam_tutar") {
+            // Toplam değişince Birim Fiyat'ı hesapla
+            if (miktar > 0 && toplamTutar > 0) {
+                $("#birim_fiyat").val((toplamTutar / miktar).toFixed(2));
+            }
         }
     });
 </script>

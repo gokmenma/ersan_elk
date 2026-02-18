@@ -126,6 +126,13 @@ $(document).ready(function () {
     ],
     createdRow: function (row, data, dataIndex) {
       $(row).attr("data-id", data.id);
+      if (
+        data.isten_cikis_tarihi &&
+        data.isten_cikis_tarihi !== "" &&
+        data.isten_cikis_tarihi !== "0000-00-00"
+      ) {
+        $(row).addClass("row-pasif");
+      }
     },
   });
 

@@ -28,18 +28,28 @@ const AracTakip = {
   },
 
   showLoading: function (selector) {
-    const colCount = $(selector).closest("table").find("thead th").length || 1;
-    $(selector).html(
-      `<tr><td colspan="${colCount}" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Yükleniyor...</p></td></tr>`,
-    );
+    const table = $(selector).closest("table");
+    const colCount = table.find("thead tr:first th").length || 8;
+    let tds = "";
+    for (let i = 0; i < colCount; i++) {
+      if (i === 0)
+        tds += `<td class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary" role="status"></div></td>`;
+      else if (i === 1) tds += `<td class="text-muted py-4">Yükleniyor...</td>`;
+      else tds += `<td></td>`;
+    }
+    $(selector).html(`<tr>${tds}</tr>`);
   },
 
   initDataTable: function (selector) {
     if ($.fn.DataTable) {
+      // Önce mevcut tabloyu yok et (varsa)
       if ($.fn.DataTable.isDataTable(selector)) {
-        $(selector).DataTable().destroy();
-        $(selector).find("thead .search-input-row").remove();
+        $(selector).DataTable().clear().destroy();
       }
+      // Tüm ekstra header satırlarını temizle (DataTable eklentileri tarafından eklenmiş olabilir)
+      $(selector).find("thead tr:not(:first)").remove();
+      // data-filter sütunlarının header sınıflarını temizle (gelişmiş filtreleme için)
+      $(selector).find("thead th").removeClass("dt-header-with-filter");
 
       let options = {};
       if (typeof getDatatableOptions === "function") {
@@ -243,8 +253,13 @@ const AracTakip = {
       confirmButtonText: "İade Et",
       cancelButtonText: "İptal",
       preConfirm: () => {
+        const iadeKm = document.getElementById("iadeKm").value;
+        if (!iadeKm || iadeKm <= 0) {
+          Swal.showValidationMessage(`Lütfen geçerli bir iade KM giriniz.`);
+          return false;
+        }
         return {
-          iade_km: document.getElementById("iadeKm").value,
+          iade_km: iadeKm,
           notlar: document.getElementById("iadeNot").value,
         };
       },
@@ -278,13 +293,9 @@ const AracTakip = {
 
   zimmetListesiYukle: function () {
     const self = this;
-
-    // Mevcut tabloyu temizle
     if ($.fn.DataTable.isDataTable("#zimmetTable")) {
-      $("#zimmetTable").DataTable().destroy();
-      $("#zimmetTable thead .search-input-row").remove();
+      $("#zimmetTable").DataTable().clear().destroy();
     }
-
     const tbody = $("#zimmetTableBody");
     self.showLoading(tbody);
 
@@ -314,16 +325,17 @@ const AracTakip = {
         tbody.html(html);
         self.initDataTable("#zimmetTable");
       } else {
-        const colCount = $("#zimmetTable").find("thead th").length || 1;
-        tbody.html(
-          `<tr><td colspan="${colCount}" class="text-center text-danger">${response.message || "Veri yüklenirken bir hata oluştu."}</td></tr>`,
-        );
+        const colCount =
+          $("#zimmetTable").find("thead tr:first th").length || 7;
+        let tds = `<td>-</td><td>${response.message || "Veri yükleniyor..."}</td>`;
+        for (let i = 2; i < colCount; i++) tds += "<td></td>";
+        tbody.html(`<tr>${tds}</tr>`);
       }
     }).fail(function (xhr) {
-      const colCount = $("#zimmetTable").find("thead th").length || 1;
-      tbody.html(
-        `<tr><td colspan="${colCount}" class="text-center text-danger">Sunucu hatası: ${xhr.statusText}</td></tr>`,
-      );
+      const colCount = $("#zimmetTable").find("thead tr:first th").length || 7;
+      let tds = `<td>-</td><td>Hata: ${xhr.statusText}</td>`;
+      for (let i = 2; i < colCount; i++) tds += "<td></td>";
+      tbody.html(`<tr>${tds}</tr>`);
     });
   },
 
@@ -406,13 +418,9 @@ const AracTakip = {
 
   yakitListesiYukle: function (aracId = null, baslangic = null, bitis = null) {
     const self = this;
-
-    // Mevcut tabloyu temizle
     if ($.fn.DataTable.isDataTable("#yakitTable")) {
-      $("#yakitTable").DataTable().destroy();
-      $("#yakitTable thead .search-input-row").remove();
+      $("#yakitTable").DataTable().clear().destroy();
     }
-
     const tbody = $("#yakitTableBody");
     self.showLoading(tbody);
 
@@ -430,7 +438,7 @@ const AracTakip = {
                             <td class="text-center">${index + 1}</td>
                             <td><strong>${y.plaka}</strong></td>
                             <td>${self.formatDate(y.tarih)}</td>
-                            <td class="text-end">${self.formatNumber(y.km)} km</td>
+                            <td class="text-end"><a href="arac-puantaj?arac_id=${y.arac_id}" class="text-primary fw-bold" title="Puantajda Görüntüle">${self.formatNumber(y.km)} km</a></td>
                             <td class="text-end">${self.formatNumber(y.yakit_miktari)} L</td>
                             <td class="text-end">${self.formatMoney(y.birim_fiyat)}</td>
                             <td class="text-end">${self.formatMoney(y.toplam_tutar)}</td>
@@ -461,16 +469,16 @@ const AracTakip = {
           $("#yakit-kayit-sayisi").text(response.stats.toplam_kayit);
         }
       } else {
-        const colCount = $("#yakitTable").find("thead th").length || 1;
-        tbody.html(
-          `<tr><td colspan="${colCount}" class="text-center text-danger">${response.message || "Veri yüklenirken bir hata oluştu."}</td></tr>`,
-        );
+        const colCount = $("#yakitTable").find("thead tr:first th").length || 9;
+        let tds = `<td>-</td><td>${response.message || "Veri yükleniyor..."}</td>`;
+        for (let i = 2; i < colCount; i++) tds += "<td></td>";
+        tbody.html(`<tr>${tds}</tr>`);
       }
     }).fail(function (xhr) {
-      const colCount = $("#yakitTable").find("thead th").length || 1;
-      tbody.html(
-        `<tr><td colspan="${colCount}" class="text-center text-danger">Sunucu hatası: ${xhr.statusText}</td></tr>`,
-      );
+      const colCount = $("#yakitTable").find("thead tr:first th").length || 9;
+      let tds = `<td>-</td><td>Hata: ${xhr.statusText}</td>`;
+      for (let i = 2; i < colCount; i++) tds += "<td></td>";
+      tbody.html(`<tr>${tds}</tr>`);
     });
   },
 
@@ -549,13 +557,9 @@ const AracTakip = {
 
   kmListesiYukle: function (aracId = null, baslangic = null, bitis = null) {
     const self = this;
-
-    // Mevcut tabloyu temizle
     if ($.fn.DataTable.isDataTable("#kmTable")) {
-      $("#kmTable").DataTable().destroy();
-      $("#kmTable thead .search-input-row").remove();
+      $("#kmTable").DataTable().clear().destroy();
     }
-
     const tbody = $("#kmTableBody");
     self.showLoading(tbody);
 
@@ -573,8 +577,8 @@ const AracTakip = {
                             <td class="text-center">${index + 1}</td>
                             <td><strong>${k.plaka}</strong></td>
                             <td>${self.formatDate(k.tarih)}</td>
-                            <td class="text-end">${self.formatNumber(k.baslangic_km)} km</td>
-                            <td class="text-end">${self.formatNumber(k.bitis_km)} km</td>
+                            <td class="text-end"><a href="arac-puantaj?arac_id=${k.arac_id}" class="text-primary fw-bold" title="Puantajda Görüntüle">${self.formatNumber(k.baslangic_km)} km</a></td>
+                            <td class="text-end"><a href="arac-puantaj?arac_id=${k.arac_id}" class="text-primary fw-bold" title="Puantajda Görüntüle">${self.formatNumber(k.bitis_km)} km</a></td>
                             <td class="text-end">${self.formatNumber(k.yapilan_km)} km</td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm">
@@ -601,16 +605,16 @@ const AracTakip = {
           $("#km-kayit-sayisi").text(response.stats.toplam_kayit);
         }
       } else {
-        const colCount = $("#kmTable").find("thead th").length || 1;
-        tbody.html(
-          `<tr><td colspan="${colCount}" class="text-center text-danger">${response.message || "Veri yüklenirken bir hata oluştu."}</td></tr>`,
-        );
+        const colCount = $("#kmTable").find("thead tr:first th").length || 6;
+        let tds = `<td>-</td><td>${response.message || "Veri yükleniyor..."}</td>`;
+        for (let i = 2; i < colCount; i++) tds += "<td></td>";
+        tbody.html(`<tr>${tds}</tr>`);
       }
     }).fail(function (xhr) {
-      const colCount = $("#kmTable").find("thead th").length || 1;
-      tbody.html(
-        `<tr><td colspan="${colCount}" class="text-center text-danger">Sunucu hatası: ${xhr.statusText}</td></tr>`,
-      );
+      const colCount = $("#kmTable").find("thead tr:first th").length || 6;
+      let tds = `<td>-</td><td>Hata: ${xhr.statusText}</td>`;
+      for (let i = 2; i < colCount; i++) tds += "<td></td>";
+      tbody.html(`<tr>${tds}</tr>`);
     });
   },
 
@@ -997,10 +1001,8 @@ const AracTakip = {
   servisListesiYukle: function (aracId = null, baslangic = null, bitis = null) {
     const self = this;
     if ($.fn.DataTable.isDataTable("#servisTable")) {
-      $("#servisTable").DataTable().destroy();
-      $("#servisTable thead .search-input-row").remove();
+      $("#servisTable").DataTable().clear().destroy();
     }
-
     const tbody = $("#servisTableBody");
     self.showLoading(tbody);
 
@@ -1031,8 +1033,10 @@ const AracTakip = {
                         </tr>`;
           });
         } else {
-          html =
-            '<tr><td colspan="8" class="text-center py-4 text-muted">Kayıt bulunamadı.</td></tr>';
+          let tds =
+            '<td class="text-center py-4 text-muted">-</td><td class="py-4 text-muted">Kayıt bulunamadı.</td>';
+          for (let i = 2; i < 8; i++) tds += "<td></td>";
+          html = `<tr>${tds}</tr>`;
         }
         tbody.html(html);
         self.initDataTable("#servisTable");
@@ -1040,21 +1044,28 @@ const AracTakip = {
         // İstatistikleri güncelle
         if (response.stats) {
           $("#servis-toplam-kayit").text(response.stats.toplam_kayit || 0);
-          $("#servis-toplam-maliyet").text(
-            self.formatMoney(response.stats.toplam_maliyet || 0),
+          $("#servis-servisteki-arac").text(
+            response.stats.servisteki_arac_sayisi || 0,
+          );
+          $("#badge-servisteki-arac").html(
+            `<i class="bx bx-wrench me-1"></i> Servisteki: ${response.stats.servisteki_arac_sayisi || 0}`,
+          );
+          $("#servis-toplam-maliyet").html(
+            `${self.formatMoney(response.stats.toplam_maliyet || 0)}`,
           );
         }
       } else {
-        const colCount = $("#servisTable").find("thead th").length || 1;
-        tbody.html(
-          `<tr><td colspan="${colCount}" class="text-center text-danger">${response.message || "Veri yüklenirken bir hata oluştu."}</td></tr>`,
-        );
+        const colCount =
+          $("#servisTable").find("thead tr:first th").length || 8;
+        let tds = `<td>-</td><td>${response.message || "Veri yükleniyor..."}</td>`;
+        for (let i = 2; i < colCount; i++) tds += "<td></td>";
+        tbody.html(`<tr>${tds}</tr>`);
       }
     }).fail(function (xhr) {
-      const colCount = $("#servisTable").find("thead th").length || 1;
-      tbody.html(
-        `<tr><td colspan="${colCount}" class="text-center text-danger">Sunucu hatası: ${xhr.statusText}</td></tr>`,
-      );
+      const colCount = $("#servisTable").find("thead tr:first th").length || 8;
+      let tds = `<td>-</td><td>Hata: ${xhr.statusText}</td>`;
+      for (let i = 2; i < colCount; i++) tds += "<td></td>";
+      tbody.html(`<tr>${tds}</tr>`);
     });
   },
 
@@ -1357,6 +1368,18 @@ $(document).ready(function () {
       !$.fn.DataTable.isDataTable("#aracTable")
     )
       AracTakip.initDataTable("#aracTable");
+
+    // Excel Yükleme Butonu Görünürlüğü
+    if (tabName === "yakit") {
+      $("#liExcelYakitYukle").show();
+      $("#liExcelAracYukle").hide();
+    } else if (tabName === "arac") {
+      $("#liExcelYakitYukle").hide();
+      $("#liExcelAracYukle").show();
+    } else {
+      $("#liExcelYakitYukle").hide();
+      $("#liExcelAracYukle").hide();
+    }
 
     updateAracTakipUI();
   });

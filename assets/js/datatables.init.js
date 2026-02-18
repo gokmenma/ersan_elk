@@ -97,16 +97,13 @@ function getDatatableOptions() {
                 return;
 
               clearTimeout(searchTimeout);
-              searchTimeout = setTimeout(
-                function () {
-                  if (table.settings()[0].oFeatures.bServerSide) {
-                    table.column(colIdx).search(val).draw();
-                  } else {
-                    table.draw();
-                  }
-                },
-                event.type === "input" ? 300 : 0,
-              );
+              searchTimeout = setTimeout(function () {
+                if (table.settings()[0].oFeatures.bServerSide) {
+                  table.column(colIdx).search(val).draw();
+                } else {
+                  table.draw();
+                }
+              }, 300);
             });
 
             if (!column.visible()) th.hide();

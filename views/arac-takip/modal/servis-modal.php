@@ -52,7 +52,7 @@
                             <?php echo Form::FormFloatInput('text', 'fatura_no', null, '', 'Fatura/Fiş No', 'bx bx-receipt'); ?>
                         </div>
                         <div class="col-md-4">
-                            <?php echo Form::FormFloatInput('text', 'iade_tarihi', null, '', 'İade Tarihi', 'calendar', 'form-control flatpickr'); ?>
+                            <?php echo Form::FormFloatInput('text', 'iade_tarihi', null, '', 'Servis Çıkış Tarihi', 'calendar', 'form-control flatpickr'); ?>
                         </div>
                     </div>
                 </form>

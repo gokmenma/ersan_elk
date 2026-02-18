@@ -142,6 +142,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             }
 
+            // İşten çıkış tarihi doluysa aktif_mi = 0 (Pasif), değilse 1 (Aktif)
+            if (!empty($data['isten_cikis_tarihi']) && $data['isten_cikis_tarihi'] != '0000-00-00') {
+                $data['aktif_mi'] = 0;
+            } else {
+                $data['aktif_mi'] = 1;
+            }
+
 
             // Dizileri virgülle ayrılmış stringe çevir (Örn: departman)
             foreach ($data as $key => $value) {
@@ -291,7 +298,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             ];
 
             $PersonelEkOdemelerModel->saveWithAttr($saveData);
-            
+
             $personel = $Personel->find($data['personel_id']);
             $adiSoyadi = $personel->adi_soyadi ?? 'Bilinmeyen';
             $tutar = number_format($saveData['tutar'], 2, ',', '.') . ' ₺';
@@ -319,7 +326,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             ];
 
             $PersonelKesintileriModel->saveWithAttr($saveData);
-            
+
             $personel = $Personel->find($data['personel_id']);
             $adiSoyadi = $personel->adi_soyadi ?? 'Bilinmeyen';
             $tutar = number_format($saveData['tutar'], 2, ',', '.') . ' ₺';
@@ -644,8 +651,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 // Varsayılan değerler (Sadece yeni kayıtlarda)
-                if (!$isUpdate && !isset($newData['aktif_mi']))
+                // İşten çıkış tarihi doluysa aktif_mi = 0 (Pasif), değilse 1 (Aktif)
+                if (!empty($newData['isten_cikis_tarihi']) && $newData['isten_cikis_tarihi'] != '0000-00-00') {
+                    $newData['aktif_mi'] = 0;
+                } else {
                     $newData['aktif_mi'] = 1;
+                }
 
                 // İşe giriş tarihi kontrolü (Güncelleme ise ve mevcut ekip atamaları varsa)
                 if ($isUpdate && !empty($newData['ise_giris_tarihi'])) {

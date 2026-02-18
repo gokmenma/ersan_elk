@@ -90,6 +90,12 @@ if (Gate::canWithMessage("personel_listesi")) {
                         .fw-bold {
                             font-weight: 600 !important;
                         }
+
+                        /* Passive row styling */
+                        #membersTable tbody tr.row-pasif,
+                        #membersTable tbody tr.row-pasif>td {
+                            background-color: #FFCDC9 !important;
+                        }
                     </style>
 
                     <div class="card-body overflow-auto">
