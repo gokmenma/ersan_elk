@@ -39,6 +39,8 @@ if (Gate::allows("ana_sayfa")) {
     $dailyReadingTotal = $endeksOkumaModel->getDailyStats();
     $monthlyWorkStats = $puantajModel->getMonthlyStats();
     $monthlyReadingTotal = $endeksOkumaModel->getMonthlyStats();
+    $kacakDailyTotal = $puantajModel->getKacakDailyStats();
+    $kacakMonthlyTotal = $puantajModel->getKacakMonthlyStats();
     $extraStatsMonthly = $personelModel->getMonthlyAdvancedDashboardStats();
     $saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['dashboard_settings'], true) : [];
 
@@ -737,6 +739,47 @@ if (Gate::allows("ana_sayfa")) {
     <?php $widgets['widget-gunluk-sayac-degisimi'] = ob_get_clean();
 
     ob_start(); ?>
+    <div class="col-md-2 widget-item" id="widget-kacak-sayisi">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative"
+            style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important; --delay: 1.15s">
+            <div class="card-body p-3 pb-2">
+                <div class="icon-label-container d-flex justify-content-between align-items-start">
+                    <div class="icon-box" style="background: rgba(244, 106, 106, 0.1);">
+                        <i class="bx bx-error-circle fs-4" style="color: #f46a6a;"></i>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">KAÇAK</span>
+                    </div>
+                </div>
+                <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">DÜNKÜ KAÇAK
+                </p>
+                <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
+                    data-daily="<?php echo $kacakDailyTotal->toplam ?? 0; ?>"
+                    data-monthly="<?php echo $kacakMonthlyTotal->toplam ?? 0; ?>" data-label-daily="DÜNKÜ KAÇAK"
+                    data-label-monthly="AYLIK KAÇAK" data-sub-daily="Dün tespit edilen/girilen"
+                    data-sub-monthly="Bu ay tespit edilen/girilen">
+                    <?php echo $kacakDailyTotal->toplam ?? 0; ?>
+                </h4>
+                <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Dün tespit edilen/girilen
+                </div>
+                <div class="card-footer-actions mt-2">
+                    <div class="btn-group btn-group-sm stats-local-toggle-group">
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn active"
+                            data-mode="daily">Gün</button>
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn"
+                            data-mode="monthly">Ay</button>
+                    </div>
+                    <a href="index.php?p=puantaj/veri-yukleme&tab=kacak_kontrol"
+                        class="btn btn-xs btn-soft-danger rounded-pill">
+                        <i class="bx bx-right-arrow-alt"></i> Git
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php $widgets['widget-kacak-sayisi'] = ob_get_clean();
+
+    ob_start(); ?>
     <div class="col-md-2 widget-item" id="widget-servisteki-arac">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
             style="--card-color: #b7b9cc; border-bottom: 3px solid var(--card-color) !important; --delay: 1.2s">
@@ -1312,6 +1355,13 @@ if (Gate::allows("ana_sayfa")) {
                                 <input type="checkbox" class="form-check-input widget-toggle me-2"
                                     data-widget="widget-servisteki-arac" checked>
                                 Servisteki Araç
+                            </label>
+                        </li>
+                        <li>
+                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-kacak-sayisi" checked>
+                                Kaçak Kontrol
                             </label>
                         </li>
                     </ul>

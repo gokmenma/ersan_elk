@@ -26,7 +26,7 @@ class AracZimmetModel extends Model
                    p.adi_soyadi as personel_adi
             FROM {$this->table} az
             INNER JOIN araclar a ON az.arac_id = a.id
-            INNER JOIN personel p ON az.personel_id = p.id
+            LEFT JOIN personel p ON az.personel_id = p.id
             WHERE az.firma_id = :firma_id
             ORDER BY az.zimmet_tarihi DESC
         ");
@@ -62,14 +62,36 @@ class AracZimmetModel extends Model
         $sql = $this->db->prepare("
             SELECT az.*, p.adi_soyadi as personel_adi
             FROM {$this->table} az
-            INNER JOIN personel p ON az.personel_id = p.id
+            LEFT JOIN personel p ON az.personel_id = p.id
             WHERE az.arac_id = :arac_id
+            AND az.durum = 'aktif'
+            AND az.firma_id = :firma_id
+            ORDER BY az.id DESC
+            LIMIT 1
+        ");
+        $sql->execute([
+            'arac_id' => $aracId,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+        return $sql->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Personele ait aktif zimmet var mı kontrolü
+     */
+    public function getAktifZimmetByPersonel($personelId)
+    {
+        $sql = $this->db->prepare("
+            SELECT az.*, a.plaka
+            FROM {$this->table} az
+            INNER JOIN araclar a ON az.arac_id = a.id
+            WHERE az.personel_id = :personel_id
             AND az.durum = 'aktif'
             AND az.firma_id = :firma_id
             LIMIT 1
         ");
         $sql->execute([
-            'arac_id' => $aracId,
+            'personel_id' => $personelId,
             'firma_id' => $_SESSION['firma_id']
         ]);
         return $sql->fetch(PDO::FETCH_OBJ);

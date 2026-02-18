@@ -18,6 +18,10 @@ $year = $_GET['year'] ?? date('Y');
 $month = $_GET['month'] ?? date('m');
 $personel_id = $_GET['personel_id'] ?? '';
 $region = $_GET['region'] ?? '';
+$region = $_GET['region'] ?? '';
+$startDate = $_GET['start_date'] ?? '';
+$endDate = $_GET['end_date'] ?? '';
+$filterType = $_GET['filter_type'] ?? 'period';
 $activeTab = $_GET['tab'] ?? 'okuma';
 
 $yearOptions = [];
@@ -44,6 +48,49 @@ foreach ($regionList as $r) {
 }
 
 ?>
+<style>
+    .accordion-button.collapsed~.only-show-open,
+    .accordion-button.collapsed~#filterSummary {
+        display: none !important;
+    }
+
+    .filter-type-switcher {
+        display: inline-flex;
+        background: #f1f3f7;
+        padding: 3px;
+        border-radius: 8px;
+        border: 1px solid #e2e5e9;
+    }
+
+    .filter-type-switcher .form-check {
+        padding-left: 0;
+        margin: 0;
+    }
+
+    .filter-type-switcher .form-check-input {
+        display: none;
+    }
+
+    .filter-type-switcher .form-check-label {
+        padding: 4px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 600;
+        transition: all 0.2s;
+        margin-bottom: 0;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .filter-type-switcher .form-check-input:checked+.form-check-label {
+        background: #fff;
+        color: #5156be;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+    }
+</style>
 <div class="container-fluid">
     <?php
     $maintitle = "Puantaj";
@@ -53,46 +100,80 @@ foreach ($regionList as $r) {
 
     <div class="row mb-3">
         <div class="col-12">
-            <div class="card">
-                <div class="card-body p-2">
-                    <div class="accordion" id="filterAccordion">
-                        <div class="accordion-item border-0">
-                            <h2 class="accordion-header" id="headingOne">
-                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse"
-                                    data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-                                    <div class="d-flex align-items-center justify-content-between w-100 me-3">
-                                        <div>
-                                            <i class="bx bx-filter-alt me-2"></i> Filtreleme Seçenekleri
-                                        </div>
-                                        <div id="filterSummary" class="d-none d-md-flex gap-2">
-                                            <!-- JS ile doldurulacak -->
-                                        </div>
-                                    </div>
-                                </button>
-                            </h2>
-                        </div>
-                    </div>
+            <form method="GET" action="" id="filterForm">
+                <div class="card">
+                    <div class="card-body p-2">
+                        <div class="accordion" id="filterAccordion">
+                            <div class="accordion-item border-0">
+                                <h2 class="accordion-header position-relative" id="headingOne">
+                                    <button class="accordion-button collapsed py-2" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false"
+                                        aria-controls="collapseOne">
+                                        <i class="bx bx-filter-alt me-2 text-primary"></i> Filtreleme Seçenekleri
+                                    </button>
 
-                    <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne"
-                        data-bs-parent="#filterAccordion">
-                        <div class="accordion-body pt-3">
-                            <form method="GET" action="" id="filterForm">
+                                    <div class="only-show-open animate__animated animate__fadeIn position-absolute"
+                                        style="left: 210px; top: 50%; transform: translateY(-50%); z-index: 5;">
+                                        <div class="filter-type-switcher">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="filter_type"
+                                                    id="typePeriod" value="period" <?= $filterType === 'period' ? 'checked' : '' ?>>
+                                                <label class="form-check-label" for="typePeriod">
+                                                    <i class="bx bx-calendar-event"></i> Dönem Bazlı
+                                                </label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="filter_type"
+                                                    id="typeRange" value="range" <?= $filterType === 'range' ? 'checked' : '' ?>>
+                                                <label class="form-check-label" for="typeRange">
+                                                    <i class="bx bx-calendar-week"></i> Tarih Aralığı
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div id="filterSummary" class="d-none d-md-flex gap-2 position-absolute"
+                                        style="right: 60px; top: 50%; transform: translateY(-50%); z-index: 5;">
+                                        <!-- JS ile doldurulacak -->
+                                    </div>
+                                </h2>
+                            </div>
+                        </div>
+
+                        <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne"
+                            data-bs-parent="#filterAccordion">
+                            <div class="accordion-body pt-3 pb-2">
                                 <div class="row g-3">
+                                    <div class="col-md-2 filter-group-period" <?= $filterType === 'range' ? 'style="display:none"' : '' ?>>
+                                        <?php echo Form::FormSelect2("year", $yearOptions, $year, "Yıl Seçiniz", "bx bx-calendar-event", "grid", "key", "form-select select2"); ?>
+                                    </div>
+                                    <div class="col-md-2 filter-group-period" <?= $filterType === 'range' ? 'style="display:none"' : '' ?>>
+                                        <?php echo Form::FormSelect2("month", $monthOptions, $month, "Ay Seçiniz", "bx bx-calendar-check", "grid", "key", "form-select select2"); ?>
+                                    </div>
+
+                                    <div class="col-md-2 filter-group-range" <?= $filterType === 'period' ? 'style="display:none"' : '' ?>>
+                                        <?php
+                                        $startDateFormatted = !empty($startDate) ? date('d.m.Y', strtotime($startDate)) : '';
+                                        echo Form::FormFloatInput("text", "start_date", $startDateFormatted, "gg.aa.yyyy", "Başlangıç Tarihi", "bx bx-calendar", "form-control flatpickr");
+                                        ?>
+                                    </div>
+                                    <div class="col-md-2 filter-group-range" <?= $filterType === 'period' ? 'style="display:none"' : '' ?>>
+                                        <?php
+                                        $endDateFormatted = !empty($endDate) ? date('d.m.Y', strtotime($endDate)) : '';
+                                        echo Form::FormFloatInput("text", "end_date", $endDateFormatted, "gg.aa.yyyy", "Bitiş Tarihi", "bx bx-calendar", "form-control flatpickr");
+                                        ?>
+                                    </div>
+
                                     <div class="col-md-2">
-                                        <?php echo Form::FormSelect2("year", $yearOptions, $year, "Yıl Seçiniz", "grid", "key", "", "form-select select2"); ?>
+                                        <?php echo Form::FormSelect2("personel_id", $personelOptions, $personel_id, "Personel", "bx bx-user", "grid", "key", "form-control-sm select2"); ?>
                                     </div>
                                     <div class="col-md-2">
-                                        <?php echo Form::FormSelect2("month", $monthOptions, $month, "Ay Seçiniz", "grid", "key", "", "form-select select2"); ?>
+                                        <?php echo Form::FormSelect2("region", $regionOptions, $region, "Bölge", "bx bx-map-pin", "grid", "key", "form-control-sm select2"); ?>
                                     </div>
-                                    <div class="col-md-3">
-                                        <?php echo Form::FormSelect2("personel_id", $personelOptions, $personel_id, "Personel Seçiniz", "grid", "key", "", "form-select select2"); ?>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <?php echo Form::FormSelect2("region", $regionOptions, $region, "Bölge Seçiniz", "grid", "key", "", "form-select select2"); ?>
-                                    </div>
+
                                     <div class="col-md-2 d-flex align-items-end">
                                         <div
-                                            class="action-button-container d-flex align-items-center border rounded shadow-sm p-1 gap-1 w-100">
+                                            class="action-button-container d-flex align-items-center border rounded shadow-sm p-1 gap-1 w-100 bg-white">
                                             <button type="submit" class="btn btn-primary btn-sm flex-grow-1 fw-bold">
                                                 <i class="mdi mdi-magnify me-1"></i> Sorgula
                                             </button>
@@ -104,12 +185,13 @@ foreach ($regionList as $r) {
                                             </button>
                                         </div>
                                     </div>
+
                                 </div>
-                            </form>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 
@@ -220,6 +302,9 @@ foreach ($regionList as $r) {
         let currentMonth = '<?= $month ?>';
         let currentPersonelId = '<?= $personel_id ?>';
         let currentRegion = '<?= $region ?>';
+        let currentStartDate = '<?= $startDate ?>';
+        let currentEndDate = '<?= $endDate ?>';
+        let currentFilterType = '<?= $filterType ?>';
 
         const STORAGE_KEY = 'raporlar_filters';
 
@@ -229,7 +314,10 @@ foreach ($regionList as $r) {
                 year: currentYear,
                 month: currentMonth,
                 personel_id: currentPersonelId,
-                region: currentRegion
+                region: currentRegion,
+                start_date: currentStartDate,
+                end_date: currentEndDate,
+                filter_type: currentFilterType
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
         };
@@ -246,6 +334,9 @@ foreach ($regionList as $r) {
                 if (!urlParams.has('month')) currentMonth = filters.month || currentMonth;
                 if (!urlParams.has('personel_id')) currentPersonelId = filters.personel_id || currentPersonelId;
                 if (!urlParams.has('region')) currentRegion = filters.region || currentRegion;
+                if (!urlParams.has('start_date')) currentStartDate = filters.start_date || currentStartDate;
+                if (!urlParams.has('end_date')) currentEndDate = filters.end_date || currentEndDate;
+                if (!urlParams.has('filter_type')) currentFilterType = filters.filter_type || currentFilterType;
 
                 // UI bileşenlerini güncelle
                 $(`#raporTabs .nav-link[data-tab="${currentTab}"]`).addClass('active').parent().siblings().find('.nav-link').removeClass('active');
@@ -253,6 +344,9 @@ foreach ($regionList as $r) {
                 $('select[name="month"]').val(currentMonth).trigger('change.select2');
                 $('select[name="personel_id"]').val(currentPersonelId).trigger('change.select2');
                 $('select[name="region"]').val(currentRegion).trigger('change.select2');
+                $('input[name="start_date"]').val(currentStartDate);
+                $('input[name="end_date"]').val(currentEndDate);
+                $(`input[name="filter_type"][value="${currentFilterType}"]`).prop('checked', true).trigger('change');
             }
         };
 
@@ -269,7 +363,10 @@ foreach ($regionList as $r) {
                     year: currentYear,
                     month: currentMonth,
                     personel_id: currentPersonelId,
-                    region: currentRegion
+                    region: currentRegion,
+                    start_date: currentStartDate,
+                    end_date: currentEndDate,
+                    filter_type: currentFilterType
                 },
                 success: function (html) {
                     $('#reportContent').html(html);
@@ -298,9 +395,21 @@ foreach ($regionList as $r) {
             const monthText = $('select[name="month"] option:selected').text();
             const personelText = $('select[name="personel_id"] option:selected').text();
             const regionText = $('select[name="region"] option:selected').text();
+            const startDate = $('input[name="start_date"]').val();
+            const endDate = $('input[name="end_date"]').val();
+            const filterType = $('input[name="filter_type"]:checked').val();
 
-            if (yearText) summary += `<div class="filter-summary-badge"><span class="badge-label">Yıl:</span><span class="badge-value">${yearText}</span></div>`;
-            if (monthText) summary += `<div class="filter-summary-badge"><span class="badge-label">Ay:</span><span class="badge-value">${monthText}</span></div>`;
+            if (filterType === 'period') {
+                if (yearText) summary += `<div class="filter-summary-badge"><span class="badge-label">Yıl:</span><span class="badge-value">${yearText}</span></div>`;
+                if (monthText) summary += `<div class="filter-summary-badge"><span class="badge-label">Ay:</span><span class="badge-value">${monthText}</span></div>`;
+            } else {
+                if (startDate) {
+                    summary += `<div class="filter-summary-badge"><span class="badge-label">Başl:</span><span class="badge-value">${startDate}</span><button type="button" class="btn-clear-filter" data-filter="start_date"><i class="bx bx-x"></i></button></div>`;
+                }
+                if (endDate) {
+                    summary += `<div class="filter-summary-badge"><span class="badge-label">Bitiş:</span><span class="badge-value">${endDate}</span><button type="button" class="btn-clear-filter" data-filter="end_date"><i class="bx bx-x"></i></button></div>`;
+                }
+            }
 
             if (currentPersonelId && currentPersonelId !== '') {
                 summary += `<div class="filter-summary-badge"><span class="badge-label">Pers:</span><span class="badge-value">${personelText}</span><button type="button" class="btn-clear-filter" data-filter="personel_id"><i class="bx bx-x"></i></button></div>`;
@@ -322,6 +431,12 @@ foreach ($regionList as $r) {
             } else if (filterType === 'region') {
                 currentRegion = '';
                 $('select[name="region"]').val('').trigger('change');
+            } else if (filterType === 'start_date') {
+                currentStartDate = '';
+                $('input[name="start_date"]').val('');
+            } else if (filterType === 'end_date') {
+                currentEndDate = '';
+                $('input[name="end_date"]').val('');
             }
             loadReport();
         });
@@ -333,6 +448,9 @@ foreach ($regionList as $r) {
             url.searchParams.set('month', currentMonth);
             if (currentPersonelId) url.searchParams.set('personel_id', currentPersonelId); else url.searchParams.delete('personel_id');
             if (currentRegion) url.searchParams.set('region', currentRegion); else url.searchParams.delete('region');
+            if (currentStartDate) url.searchParams.set('start_date', currentStartDate); else url.searchParams.delete('start_date');
+            if (currentEndDate) url.searchParams.set('end_date', currentEndDate); else url.searchParams.delete('end_date');
+            if (currentFilterType) url.searchParams.set('filter_type', currentFilterType); else url.searchParams.delete('filter_type');
             window.history.pushState({}, '', url);
         };
 
@@ -378,6 +496,18 @@ foreach ($regionList as $r) {
             }
         };
 
+        $('input[name="filter_type"]').on('change', function () {
+            const type = $(this).val();
+            currentFilterType = type;
+            if (type === 'period') {
+                $('.filter-group-period').show();
+                $('.filter-group-range').hide();
+            } else {
+                $('.filter-group-period').hide();
+                $('.filter-group-range').show();
+            }
+        });
+
         // Adjust height on window resize
         $(window).on('resize', function () {
             adjustTableHeight();
@@ -421,6 +551,9 @@ foreach ($regionList as $r) {
             currentMonth = $('select[name="month"]').val();
             currentPersonelId = $('select[name="personel_id"]').val();
             currentRegion = $('select[name="region"]').val();
+            currentStartDate = $('input[name="start_date"]').val();
+            currentEndDate = $('input[name="end_date"]').val();
+            currentFilterType = $('input[name="filter_type"]:checked').val();
             loadReport();
             const collapseElement = document.getElementById('collapseOne');
             const bsCollapse = bootstrap.Collapse.getInstance(collapseElement);
@@ -430,13 +563,18 @@ foreach ($regionList as $r) {
         $('#btnClearFilters').on('click', function () {
             currentPersonelId = '';
             currentRegion = '';
+            currentStartDate = '';
+            currentEndDate = '';
             $('select[name="personel_id"]').val('').trigger('change');
             $('select[name="region"]').val('').trigger('change');
+            $('input[name="start_date"]').val('');
+            $('input[name="end_date"]').val('');
+            // Reset to period mode maybe? Let's keep the user's selected mode but clear values.
             loadReport();
         });
 
         $('#btnExportExcel').on('click', function () {
-            const url = `views/puantaj/rapor-excel.php?tab=${currentTab}&year=${currentYear}&month=${currentMonth}&personel_id=${currentPersonelId}&region=${currentRegion}`;
+            const url = `views/puantaj/rapor-excel.php?tab=${currentTab}&year=${currentYear}&month=${currentMonth}&personel_id=${currentPersonelId}&region=${currentRegion}&start_date=${currentStartDate}&end_date=${currentEndDate}&filter_type=${currentFilterType}`;
             window.location.href = url;
         });
 

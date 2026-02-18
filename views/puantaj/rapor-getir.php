@@ -29,7 +29,36 @@ $activeTab = $activeTab ?? $_GET['tab'] ?? 'okuma';
 $filterPersonelId = $_GET['personel_id'] ?? '';
 $filterRegion = $_GET['region'] ?? '';
 
-$daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+$filterType = $_GET['filter_type'] ?? 'period';
+
+// Date range logic
+if ($filterType === 'range' && !empty($_GET['start_date']) && !empty($_GET['end_date'])) {
+    $startDateStr = date('Y-m-d', strtotime($_GET['start_date']));
+    $endDateStr = date('Y-m-d', strtotime($_GET['end_date']));
+} else {
+    $startDateStr = "$year-$month-01";
+    $endDateStr = date('Y-m-t', strtotime($startDateStr));
+}
+
+// Generate array of dates
+$reportDates = [];
+$cPeriod = new DatePeriod(
+    new DateTime($startDateStr),
+    new DateInterval('P1D'),
+    (new DateTime($endDateStr))->modify('+1 day')
+);
+foreach ($cPeriod as $date) {
+    $reportDates[] = $date->format('Y-m-d');
+}
+$isCrossMonth = false;
+if (count($reportDates) > 0) {
+    $firstMonth = date('m', strtotime($reportDates[0]));
+    $lastMonth = date('m', strtotime(end($reportDates)));
+    if ($firstMonth != $lastMonth)
+        $isCrossMonth = true;
+}
+
+$daysCount = count($reportDates);
 $regions = $Tanimlamalar->getEkipBolgeleri();
 
 if ($filterRegion) {
@@ -41,11 +70,11 @@ if ($filterRegion) {
 // Fetch summary based on active tab
 $workTypes = [];
 if ($activeTab === 'okuma') {
-    $summary = $EndeksOkuma->getMonthlySummary($year, $month);
+    $summary = $EndeksOkuma->getSummaryByRange($startDateStr, $endDateStr);
 } elseif ($activeTab === 'kacakkontrol') {
-    $summary = $Puantaj->getKacakSummary($year, $month);
+    $summary = $Puantaj->getKacakSummaryByRange($startDateStr, $endDateStr);
 } else {
-    $summary = $Puantaj->getMonthlySummaryDetailed($year, $month);
+    $summary = $Puantaj->getSummaryDetailedByRange($startDateStr, $endDateStr);
     // Fetch work types based on active tab from tanimlamalar
     $workTypes = $Tanimlamalar->getIsTurleriByRaporTuru($activeTab);
 
@@ -138,9 +167,7 @@ foreach ($allPersonel as $p) {
     $personelById[$p->id] = $p;
 }
 
-// Fetch all active assignments for this month range
-$startDateStr = "$year-$month-01";
-$endDateStr = date('Y-m-t', strtotime($startDateStr));
+// Fetch all active assignments for this range
 $activeAssignments = $Personel->getAllActiveAssignmentsInRange($startDateStr, $endDateStr);
 
 // Pre-fetch all teams to have a lookup
@@ -153,12 +180,11 @@ foreach ($allTeams as $t) {
 // Kacak Kontrol: Get ekip_adi to personel_ids mapping from kacak_kontrol table
 $kacakPersonelMapping = $Puantaj->getKacakPersonelMapping();
 
-// Pazar günlerini belirle (0 = Pazar)
-$sundayDays = [];
-for ($d = 1; $d <= $daysInMonth; $d++) {
-    $timestamp = mktime(0, 0, 0, $month, $d, $year);
-    if (date('w', $timestamp) == 0) {
-        $sundayDays[] = $d;
+// Pazar günlerini belirle (date'e göre)
+$sundayDates = [];
+foreach ($reportDates as $date) {
+    if (date('w', strtotime($date)) == 0) {
+        $sundayDates[] = $date;
     }
 } ?>
 <?php
@@ -719,7 +745,7 @@ $currentTabName = $tabNames[$activeTab] ?? 'Rapor';
 </style>
 
 <?php
-$totalColsInDays = $daysInMonth * $subColCount;
+$totalColsInDays = count($reportDates) * $subColCount;
 // Kesme tablosu sığmasın, scroll olsun. Diğerleri sığsın.
 if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'muhurleme') {
     $tableMinWidth = 1500 + ($totalColsInDays * 25);
@@ -741,16 +767,20 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     İSİM SOYİSİM</th>
 
                 <?php if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol'): ?>
-                    <th colspan="<?= $daysInMonth * $subColCount ?>" id="mainGunlerHeader">GÜNLER</th>
+                    <th colspan="<?= count($reportDates) * $subColCount ?>" id="mainGunlerHeader">GÜNLER</th>
                 <?php else: ?>
-                    <?php for ($d = 1; $d <= $daysInMonth; $d++):
-                        $isSunday = in_array($d, $sundayDays);
+                    <?php
+                    $dateIdx = 0;
+                    foreach ($reportDates as $date):
+                        $dateIdx++;
+                        $isSunday = in_array($date, $sundayDates);
+                        $headerLabel = $isCrossMonth ? date('d.m', strtotime($date)) : date('j', strtotime($date));
                         ?>
                         <th colspan="<?= $subColCount ?>"
-                            class="day-num-header day-separator <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
-                            data-day="<?= $d ?>">
-                            <?= $d ?>
-                        </th><?php endfor; ?>
+                            class="day-num-header day-separator <?= ($dateIdx % 2 == 0) ? 'day-bg-alt' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
+                            data-date="<?= $date ?>">
+                            <?= $headerLabel ?>
+                        </th><?php endforeach; ?>
                 <?php endif; ?>
 
                 <?php if ($hasSubCols): ?>
@@ -771,24 +801,31 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                 </th>
 
                 <?php if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol'): ?>
-                    <?php for ($d = 1; $d <= $daysInMonth; $d++):
-                        $isSunday = in_array($d, $sundayDays);
+                    <?php
+                    $dateIdx = 0;
+                    foreach ($reportDates as $date):
+                        $dateIdx++;
+                        $isSunday = in_array($date, $sundayDates);
+                        $headerLabel = $isCrossMonth ? date('d.m', strtotime($date)) : date('j', strtotime($date));
                         ?>
                         <th colspan="<?= $subColCount ?>"
-                            class="day-num-header day-separator <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
-                            data-day="<?= $d ?>">
-                            <?= $d ?>
-                        </th><?php endfor; ?>
+                            class="day-num-header day-separator <?= ($dateIdx % 2 == 0) ? 'day-bg-alt' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
+                            data-date="<?= $date ?>">
+                            <?= $headerLabel ?>
+                        </th><?php endforeach; ?>
                 <?php else: ?>
                     <?php if ($hasSubCols): ?>
-                        <?php for ($d = 1; $d <= $daysInMonth; $d++):
-                            $isSunday = in_array($d, $sundayDays);
+                        <?php
+                        $dateIdx = 0;
+                        foreach ($reportDates as $date):
+                            $dateIdx++;
+                            $isSunday = in_array($date, $sundayDates);
                             $idx = 0;
                             foreach ($workTypeCols as $wt):
                                 $idx++; ?>
-                                <th class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
-                                    data-day="<?= $d ?>" data-wt-code="<?= $wt['code'] ?>"><span
-                                        class="vertical-text"><?= $wt['code'] ?></span></th><?php endforeach; ?><?php endfor; ?>
+                                <th class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= ($dateIdx % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
+                                    data-date="<?= $date ?>" data-wt-code="<?= $wt['code'] ?>"><span
+                                        class="vertical-text"><?= $wt['code'] ?></span></th><?php endforeach; ?><?php endforeach; ?>
                     <?php endif; ?>
                 <?php endif; ?>
 
@@ -808,7 +845,10 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
         <tbody>
             <?php
             $sira = 1;
-            $dailyTotals = array_fill(1, $daysInMonth, 0);
+            $dailyTotals = [];
+            foreach ($reportDates as $date) {
+                $dailyTotals[$date] = 0;
+            }
             $dailyDetailedTotals = [];
             $grandTotal = 0;
 
@@ -899,44 +939,47 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                         </td>
 
                         <?php if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol'): ?>
-                            <?php for ($d = 1; $d <= $daysInMonth; $d++):
+                            <?php foreach ($reportDates as $date):
                                 $val = 0;
                                 $pIdsStr = '';
                                 if ($activeTab === 'kacakkontrol') {
-                                    $val = $summary[$team->tur_adi][$d] ?? 0;
+                                    $val = $summary[$team->tur_adi][$date] ?? 0;
                                     $pIdsStr = $kacakPersonelMapping[$team->tur_adi] ?? '';
                                 } else {
-                                    $val = $summary[$pId][$tId][$d] ?? 0;
+                                    $val = $summary[$pId][$tId][$date] ?? 0;
                                 }
 
-                                $dailyTotals[$d] += $val;
-                                $isSunday = in_array($d, $sundayDays);
-                                $currentDate = str_pad($d, 2, '0', STR_PAD_LEFT) . "." . str_pad($month, 2, '0', STR_PAD_LEFT) . "." . $year;
+                                $dailyTotals[$date] += $val;
+                                $isSunday = in_array($date, $sundayDates);
+                                $currentDateFormatted = date('d.m.Y', strtotime($date));
                                 ?>
-                                <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d === $daysInMonth) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?> <?= ($activeTab === 'kacakkontrol') ? 'kacak-quick-cell' : '' ?>"
-                                    data-day="<?= $d ?>" <?php if ($activeTab === 'kacakkontrol'): ?> data-date="<?= $currentDate ?>"
+                                <td class="<?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($date === end($reportDates)) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?> <?= ($activeTab === 'kacakkontrol') ? 'kacak-quick-cell' : '' ?>"
+                                    data-date="<?= $date ?>" <?php if ($activeTab === 'kacakkontrol'): ?>
                                         data-personel-ids="<?= $pIdsStr ?: $pId ?>" data-ekip-adi="<?= htmlspecialchars($team->tur_adi) ?>"
                                         style="cursor: cell;" title="Çift tıklayarak yeni kayıt ekle" <?php endif; ?>>
                                     <?= $val ?: '' ?>
                                 </td>
-                            <?php endfor; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
-                            <?php for ($d = 1; $d <= $daysInMonth; $d++):
-                                $isSunday = in_array($d, $sundayDays); ?>
+                            <?php
+                            $dateIdx = 0;
+                            foreach ($reportDates as $date):
+                                $dateIdx++;
+                                $isSunday = in_array($date, $sundayDates); ?>
                                 <?php $idx = 0;
                                 foreach ($workTypeCols as $wt):
                                     $idx++;
-                                    $val = $summary[$pId][$tId][$d][$wt['name']] ?? 0;
-                                    if (!isset($dailyDetailedTotals[$d][$wt['name']]))
-                                        $dailyDetailedTotals[$d][$wt['name']] = 0;
-                                    $dailyDetailedTotals[$d][$wt['name']] += $val;
-                                    $dailyTotals[$d] += $val; ?>
-                                    <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
-                                        data-day="<?= $d ?>" data-wt-code="<?= $wt['code'] ?>">
+                                    $val = $summary[$pId][$tId][$date][$wt['name']] ?? 0;
+                                    if (!isset($dailyDetailedTotals[$date][$wt['name']]))
+                                        $dailyDetailedTotals[$date][$wt['name']] = 0;
+                                    $dailyDetailedTotals[$date][$wt['name']] += $val;
+                                    $dailyTotals[$date] += $val; ?>
+                                    <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= $val ? 'fw-bold' : 'text-muted' ?> <?= ($dateIdx % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
+                                        data-date="<?= $date ?>" data-wt-code="<?= $wt['code'] ?>">
                                         <?= $val ?: '' ?>
                                     </td>
                                 <?php endforeach; ?>
-                            <?php endfor; ?>
+                            <?php endforeach; ?>
                             <?php
                             // İŞLEM TOPLAMLARI değerlerini hesapla ve sakla
                             $personelActTotals = [];
@@ -978,24 +1021,27 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     <td colspan="<?= ($activeTab === 'kacakkontrol') ? '2' : '3' ?>"
                         class="text-end text-muted sticky-col-1" style="font-size: 10px; left: 0; z-index: 165;">
                         İŞLEM BAZINDA GÜNLÜK TOPLAMLAR</td>
-                    <?php for ($d = 1; $d <= $daysInMonth; $d++):
-                        $isSunday = in_array($d, $sundayDays); ?>
+                    <?php
+                    $dateIdx = 0;
+                    foreach ($reportDates as $date):
+                        $dateIdx++;
+                        $isSunday = in_array($date, $sundayDates); ?>
                         <?php $idx = 0;
                         foreach ($workTypeCols as $wt):
                             $idx++; ?>
-                            <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
-                                data-day="<?= $d ?>" data-wt-code="<?= $wt['code'] ?>">
-                                <?= $dailyDetailedTotals[$d][$wt['name']] ?? '' ?>
+                            <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= ($dateIdx % 2 == 0) ? 'day-bg-alt' : '' ?> <?= ($idx === $subColCount) ? 'day-separator' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
+                                data-date="<?= $date ?>" data-wt-code="<?= $wt['code'] ?>">
+                                <?= $dailyDetailedTotals[$date][$wt['name']] ?? '' ?>
                             </td>
                         <?php endforeach; ?>
-                    <?php endfor; ?>
+                    <?php endforeach; ?>
                     <?php $idx = 0;
                     $allActionTypesGrandTotal = 0;
                     foreach ($workTypeCols as $wt):
                         $idx++;
                         $footActTotal = 0;
-                        for ($d = 1; $d <= $daysInMonth; $d++) {
-                            $footActTotal += $dailyDetailedTotals[$d][$wt['name']] ?? 0;
+                        foreach ($reportDates as $date) {
+                            $footActTotal += $dailyDetailedTotals[$date][$wt['name']] ?? 0;
                         }
                         $allActionTypesGrandTotal += $footActTotal;
                         ?>
@@ -1011,12 +1057,15 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                 <td colspan="<?= ($activeTab === 'kacakkontrol') ? '2' : '3' ?>" class="text-end sticky-col-1"
                     style="left: 0; z-index: 166; width: 390px; min-width: 390px; max-width: 390px;">
                     GÜNLÜK TOPLAMLAR</td>
-                <?php for ($d = 1; $d <= $daysInMonth; $d++):
-                    $isSunday = in_array($d, $sundayDays); ?>
+                <?php
+                $dateIdx = 0;
+                foreach ($reportDates as $date):
+                    $dateIdx++;
+                    $isSunday = in_array($date, $sundayDates); ?>
                     <td colspan="<?= $subColCount ?>"
-                        class="day-num-header-footer day-separator daily-total-cell <?= ($d % 2 == 0) ? 'day-bg-alt' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
-                        data-day="<?= $d ?>"><?= $dailyTotals[$d] ?: '' ?></td>
-                <?php endfor; ?>
+                        class="day-num-header-footer day-separator daily-total-cell <?= ($dateIdx % 2 == 0) ? 'day-bg-alt' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"
+                        data-date="<?= $date ?>"><?= $dailyTotals[$date] ?: '' ?></td>
+                <?php endforeach; ?>
                 <?php if ($hasSubCols): ?>
                     <td colspan="<?= $subColCount ?>"
                         class="action-totals-day-header-footer day-separator action-grand-total-consolidated"
@@ -1044,7 +1093,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             $('#raporTable .wt-cell-sub').show();
             $('#raporTable .day-num-header').show();
             $('#raporTable .daily-total-cell').show();
-            $('#mainGunlerHeader').attr('colspan', totalDays * defaultSubColCount);
+            $('#mainGunlerHeader').attr('colspan', <?= count($reportDates) * $subColCount ?>);
             $('#raporTable .day-num-header').attr('colspan', defaultSubColCount);
             $('#actionTotalsHeader').attr('colspan', defaultSubColCount);
             $('#raporTable .action-totals-day-header').attr('colspan', defaultSubColCount);
@@ -1060,17 +1109,18 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                 $(`#raporTable .wt-code-${code}`).show();
             });
 
-            // Dynamically calculate colspans based on visible columns per day
-            for (let d = 1; d <= totalDays; d++) {
-                const visibleInDay = $(`#raporTable thead tr:nth-child(3) th[data-day="${d}"]`).filter(':visible').length;
-                if (visibleInDay > 0) {
-                    $(`#raporTable .day-num-header[data-day="${d}"]`).show().attr('colspan', visibleInDay);
-                    $(`#raporTable .daily-total-cell[data-day="${d}"]`).show().attr('colspan', visibleInDay);
+            // Dynamically calculate colspans based on visible columns per date
+            $('#raporTable thead tr:nth-child(2) th[data-date]').each(function () {
+                const date = $(this).data('date');
+                const visibleInDate = $(`#raporTable thead tr:nth-child(3) th[data-date="${date}"]`).filter(':visible').length;
+                if (visibleInDate > 0) {
+                    $(`#raporTable .day-num-header[data-date="${date}"]`).show().attr('colspan', visibleInDate);
+                    $(`#raporTable .daily-total-cell[data-date="${date}"]`).show().attr('colspan', visibleInDate);
                 } else {
-                    $(`#raporTable .day-num-header[data-day="${d}"]`).hide();
-                    $(`#raporTable .daily-total-cell[data-day="${d}"]`).hide();
+                    $(`#raporTable .day-num-header[data-date="${date}"]`).hide();
+                    $(`#raporTable .daily-total-cell[data-date="${date}"]`).hide();
                 }
-            }
+            });
 
             // Calculate for GENERAL total column
             const visibleInGenel = $(`#raporTable thead tr:nth-child(3) th[data-day="genel-total"]`).filter(':visible').length;
@@ -1093,13 +1143,14 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
         $('#raporTable td, #raporTable th').css('border-right', ''); // Clear inline border-right
         $('#raporTable .day-separator').removeClass('day-separator');
 
-        for (let d = 1; d <= totalDays; d++) {
-            const lastVis = $(`#raporTable [data-day="${d}"]`).filter(':visible').last();
+        $('#raporTable [data-date]').each(function () {
+            const date = $(this).data('date');
+            const lastVis = $(`#raporTable [data-date="${date}"]`).filter(':visible').last();
             if (lastVis.length) lastVis.addClass('day-separator');
 
-            const dayHead = $(`#raporTable .day-num-header[data-day="${d}"]`);
+            const dayHead = $(`#raporTable .day-num-header[data-date="${date}"]`);
             if (dayHead.is(':visible')) dayHead.addClass('day-separator');
-        }
+        });
 
         const lastGenel = $(`#raporTable [data-day="genel-total"]`).filter(':visible').last();
         if (lastGenel.length) lastGenel.addClass('day-separator');
@@ -1120,11 +1171,10 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
     });
 
     function updateDynamicTotals() {
-        const totalDays = <?= $daysInMonth ?>;
-        const hasSubCols = <?= json_encode($hasSubCols) ?>;
+        const reportDates = <?= json_encode($reportDates) ?>;
         const workTypeTotals = {}; // legend totals
-        const dayTypeTotals = {}; // footer row 1 totals [day][code]
-        const dailyGrandTotals = {}; // footer row 2 totals [day]
+        const dateTypeTotals = {}; // footer row 1 totals [date][code]
+        const dailyGrandTotals = {}; // footer row 2 totals [date]
         let overallGrandTotal = 0;
 
         // Initialize structures
@@ -1132,13 +1182,13 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             workTypeTotals[$(this).data('wt-code')] = 0;
         });
 
-        for (let d = 1; d <= totalDays; d++) {
-            dailyGrandTotals[d] = 0;
-            dayTypeTotals[d] = {};
+        reportDates.forEach(date => {
+            dailyGrandTotals[date] = 0;
+            dateTypeTotals[date] = {};
             for (let code in workTypeTotals) {
-                dayTypeTotals[d][code] = 0;
+                dateTypeTotals[date][code] = 0;
             }
-        }
+        });
 
         // Iterate through visible rows only
         $('#raporTable tbody tr').filter(':visible').each(function () {
@@ -1150,9 +1200,9 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             for (let code in workTypeTotals) rowActTotals[code] = 0;
 
             if (hasSubCols) {
-                $row.find('td.wt-cell-sub[data-day]').each(function () {
+                $row.find('td.wt-cell-sub[data-date]').each(function () {
                     const $cell = $(this);
-                    const day = $cell.data('day');
+                    const date = $cell.data('date');
                     const code = $cell.data('wt-code');
                     const val = parseInt($cell.text()) || 0;
 
@@ -1162,8 +1212,8 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     // If column is visible, add to grand totals
                     if ($cell.is(':visible')) {
                         workTypeTotals[code] += val;
-                        dayTypeTotals[day][code] += val;
-                        dailyGrandTotals[day] += val;
+                        dateTypeTotals[date][code] += val;
+                        dailyGrandTotals[date] += val;
                         rowTotal += val;
                     }
                 });
@@ -1173,14 +1223,14 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     $row.find(`.row-action-total.wt-code-${code}`).text(rowActTotals[code] || '');
                 }
             } else {
-                // Okuma or Kacak tab (single value per day)
-                $row.find('td[data-day]').each(function () {
+                // Okuma or Kacak tab (single value per date)
+                $row.find('td[data-date]').each(function () {
                     const $cell = $(this);
-                    const day = $cell.data('day');
+                    const date = $cell.data('date');
                     const val = parseInt($cell.text()) || 0;
 
                     if ($cell.is(':visible')) {
-                        dailyGrandTotals[day] += val;
+                        dailyGrandTotals[date] += val;
                         rowTotal += val;
                     }
                 });
@@ -1199,12 +1249,12 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
         // Update Footer - Row 1 (Action totals)
         if (hasSubCols) {
             let actionGrandSum = 0;
-            for (let d = 1; d <= totalDays; d++) {
-                for (let code in dayTypeTotals[d]) {
-                    const val = dayTypeTotals[d][code];
-                    $(`#raporTable tfoot .tfoot-action td.wt-cell-sub[data-day="${d}"][data-wt-code="${code}"]`).text(val || '');
+            reportDates.forEach(date => {
+                for (let code in dateTypeTotals[date]) {
+                    const val = dateTypeTotals[date][code];
+                    $(`#raporTable tfoot .tfoot-action td.wt-cell-sub[data-date="${date}"][data-wt-code="${code}"]`).text(val || '');
                 }
-            }
+            });
 
             // Update Footer - Action grand totals (the columns after the days)
             for (let code in workTypeTotals) {
@@ -1217,9 +1267,9 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
         }
 
         // Update Footer - Row 2 (General totals)
-        for (let d = 1; d <= totalDays; d++) {
-            $(`#raporTable tfoot .tfoot-general .daily-total-cell[data-day="${d}"]`).text(dailyGrandTotals[d] || '');
-        }
+        reportDates.forEach(date => {
+            $(`#raporTable tfoot .tfoot-general .daily-total-cell[data-date="${date}"]`).text(dailyGrandTotals[date] || '');
+        });
 
         // Update Grand Total and Region Totals
         $('.grand-total-cell').text(overallGrandTotal || '');

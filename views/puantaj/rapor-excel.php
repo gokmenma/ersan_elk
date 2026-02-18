@@ -30,8 +30,38 @@ $month = $_GET['month'] ?? date('m');
 $activeTab = $_GET['tab'] ?? 'okuma';
 $filterPersonelId = $_GET['personel_id'] ?? '';
 $filterRegion = $_GET['region'] ?? '';
+$startDate = $_GET['start_date'] ?? '';
+$endDate = $_GET['end_date'] ?? '';
 
-$daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+$filterType = $_GET['filter_type'] ?? 'period';
+
+// Date range logic
+if ($filterType === 'range' && !empty($startDate) && !empty($endDate)) {
+    $startDateStr = date('Y-m-d', strtotime($startDate));
+    $endDateStr = date('Y-m-d', strtotime($endDate));
+} else {
+    $startDateStr = "$year-$month-01";
+    $endDateStr = date('Y-m-t', strtotime($startDateStr));
+}
+
+// Generate array of dates
+$reportDates = [];
+$cPeriod = new DatePeriod(
+    new DateTime($startDateStr),
+    new DateInterval('P1D'),
+    (new DateTime($endDateStr))->modify('+1 day')
+);
+foreach ($cPeriod as $date) {
+    $reportDates[] = $date->format('Y-m-d');
+}
+$isCrossMonth = false;
+if (count($reportDates) > 0) {
+    $firstMonth = date('m', strtotime($reportDates[0]));
+    $lastMonth = date('m', strtotime(end($reportDates)));
+    if ($firstMonth != $lastMonth)
+        $isCrossMonth = true;
+}
+$daysCount = count($reportDates);
 $regions = $Tanimlamalar->getEkipBolgeleri();
 
 if ($filterRegion) {
@@ -42,13 +72,13 @@ if ($filterRegion) {
 
 $workTypes = [];
 if ($activeTab === 'okuma') {
-    $summary = $EndeksOkuma->getMonthlySummary($year, $month);
+    $summary = $EndeksOkuma->getSummaryByRange($startDateStr, $endDateStr);
     $title = "Okuma Özet Raporu";
 } elseif ($activeTab === 'kacakkontrol') {
-    $summary = $Puantaj->getKacakSummary($year, $month);
+    $summary = $Puantaj->getKacakSummaryByRange($startDateStr, $endDateStr);
     $title = "Kaçak Kontrol Özet Raporu";
 } else {
-    $summary = $Puantaj->getMonthlySummaryDetailed($year, $month);
+    $summary = $Puantaj->getSummaryDetailedByRange($startDateStr, $endDateStr);
     $workTypes = $Tanimlamalar->getIsTurleriByRaporTuru($activeTab);
 
     // Fallback for sokme_takma if no records found
@@ -136,9 +166,7 @@ foreach ($allPersonel as $p) {
     $personelById[$p->id] = $p;
 }
 
-// Fetch all active assignments for this month range
-$startDateStr = "$year-$month-01";
-$endDateStr = date('Y-m-t', strtotime($startDateStr));
+// Fetch all active assignments for this range
 $activeAssignments = $Personel->getAllActiveAssignmentsInRange($startDateStr, $endDateStr);
 
 // Pre-fetch all teams to have a lookup
@@ -157,7 +185,7 @@ $allSummaryPersonels = ($activeTab !== 'kacakkontrol' && is_array($summary)) ? a
 $isUnmatchedReport = isset($_GET['unmatched']) && $_GET['unmatched'] == 1;
 
 if ($isUnmatchedReport) {
-    $unmatchedRecords = $Puantaj->getUnmatchedWorkResults($year, $month, $activeTab);
+    $unmatchedRecords = $Puantaj->getUnmatchedWorkResults($startDateStr, $endDateStr, $activeTab);
     $spreadsheet = new Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
     $sheet->setTitle('Eşleşmeyen Kayıtlar');
@@ -242,7 +270,7 @@ if ($activeTab !== 'kacakkontrol') {
 }
 
 $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($daysColStartIdx) . '1', 'GÜNLER');
-$lastDayColIdx = ($daysColStartIdx - 1) + ($daysInMonth * $subColCount);
+$lastDayColIdx = ($daysColStartIdx - 1) + ($daysCount * $subColCount);
 $lastDayCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($lastDayColIdx);
 $sheet->mergeCells(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($daysColStartIdx) . '1:' . $lastDayCol . '1');
 
@@ -272,10 +300,11 @@ if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol' || empty($workTypeCo
 
 // Headers - Row 2 (Days)
 $colIndex = $daysColStartIdx;
-for ($d = 1; $d <= $daysInMonth; $d++) {
+foreach ($reportDates as $date) {
+    $displayLabel = $isCrossMonth ? date('d.m', strtotime($date)) : date('j', strtotime($date));
     $startColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
     $endColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + $subColCount - 1);
-    $sheet->setCellValue($startColLetter . '2', $d);
+    $sheet->setCellValue($startColLetter . '2', $displayLabel);
     if ($subColCount > 1) {
         $sheet->mergeCells($startColLetter . '2:' . $endColLetter . '2');
     }
@@ -356,7 +385,10 @@ $sheet->getStyle('A1:' . $lastCol . $headerRows)->applyFromArray($headerStyle);
 // Data Rendering
 $row = $headerRows + 1;
 $sira = 1;
-$dailyTotals = array_fill(1, $daysInMonth, 0);
+$dailyTotals = [];
+foreach ($reportDates as $date) {
+    $dailyTotals[$date] = 0;
+}
 $dailyDetailedTotals = [];
 $grandTotal = 0;
 
@@ -515,12 +547,12 @@ foreach ($regions as $regionName) {
 
         $colIdx = $daysColStartIdx;
         if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol') {
-            for ($d = 1; $d <= $daysInMonth; $d++) {
-                $val = ($activeTab === 'kacakkontrol') ? ($summary[$team->tur_adi][$d] ?? 0) : ($summary[$pId][$tId][$d] ?? 0);
+            foreach ($reportDates as $date) {
+                $val = ($activeTab === 'kacakkontrol') ? ($summary[$team->tur_adi][$date] ?? 0) : ($summary[$pId][$tId][$date] ?? 0);
                 if ($val > 0) {
                     $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
                     $sheet->setCellValue($colLetter . $row, $val);
-                    $dailyTotals[$d] += $val;
+                    $dailyTotals[$date] += $val;
                     $personelTotal += $val;
                 }
                 $colIdx++;
@@ -529,16 +561,16 @@ foreach ($regions as $regionName) {
             $personelWorkTypeTotals = [];
             foreach ($workTypeCols as $wt)
                 $personelWorkTypeTotals[$wt['name']] = 0;
-            for ($d = 1; $d <= $daysInMonth; $d++) {
+            foreach ($reportDates as $date) {
                 foreach ($workTypeCols as $wt) {
-                    $val = $summary[$pId][$tId][$d][$wt['name']] ?? 0;
+                    $val = $summary[$pId][$tId][$date][$wt['name']] ?? 0;
                     if ($val > 0) {
                         $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
                         $sheet->setCellValue($colLetter . $row, $val);
-                        if (!isset($dailyDetailedTotals[$d][$wt['name']]))
-                            $dailyDetailedTotals[$d][$wt['name']] = 0;
-                        $dailyDetailedTotals[$d][$wt['name']] += $val;
-                        $dailyTotals[$d] += $val;
+                        if (!isset($dailyDetailedTotals[$date][$wt['name']]))
+                            $dailyDetailedTotals[$date][$wt['name']] = 0;
+                        $dailyDetailedTotals[$date][$wt['name']] += $val;
+                        $dailyTotals[$date] += $val;
                         $personelTotal += $val;
                         $personelWorkTypeTotals[$wt['name']] += $val;
                     }
@@ -650,9 +682,9 @@ if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeC
     $actionGrandTotals = [];
     foreach ($workTypeCols as $wt)
         $actionGrandTotals[$wt['name']] = 0;
-    for ($d = 1; $d <= $daysInMonth; $d++) {
+    foreach ($reportDates as $date) {
         foreach ($workTypeCols as $wt) {
-            $val = $dailyDetailedTotals[$d][$wt['name']] ?? 0;
+            $val = $dailyDetailedTotals[$date][$wt['name']] ?? 0;
             if ($val > 0) {
                 $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
                 $sheet->setCellValue($colLetter . $row, $val);
@@ -680,10 +712,10 @@ $footerMergeEnd = ($activeTab === 'kacakkontrol') ? 'B' : 'C';
 $sheet->mergeCells('A' . $row . ':' . $footerMergeEnd . $row);
 $sheet->getStyle('A' . $row . ':' . $footerMergeEnd . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
 $colIdx = $daysColStartIdx;
-for ($d = 1; $d <= $daysInMonth; $d++) {
+foreach ($reportDates as $date) {
     $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
-    if ($dailyTotals[$d] > 0)
-        $sheet->setCellValue($colLetter . $row, $dailyTotals[$d]);
+    if ($dailyTotals[$date] > 0)
+        $sheet->setCellValue($colLetter . $row, $dailyTotals[$date]);
     if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && $subColCount > 1) {
         $endColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx + $subColCount - 1);
         $sheet->mergeCells($colLetter . $row . ':' . $endColLetter . $row);

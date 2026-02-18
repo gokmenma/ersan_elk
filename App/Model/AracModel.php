@@ -25,7 +25,12 @@ class AracModel extends Model
                    az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi
             FROM {$this->table} a
-            LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
+            LEFT JOIN (
+                SELECT az1.* FROM arac_zimmetleri az1
+                INNER JOIN (
+                    SELECT MAX(id) as max_id FROM arac_zimmetleri WHERE durum = 'aktif' GROUP BY arac_id
+                ) az2 ON az1.id = az2.max_id
+            ) az ON a.id = az.arac_id
             LEFT JOIN personel p ON az.personel_id = p.id
             WHERE a.firma_id = :firma_id 
             AND a.silinme_tarihi IS NULL

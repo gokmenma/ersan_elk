@@ -120,10 +120,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     throw new Exception("Araç ve personel seçimi zorunludur.");
                 }
 
-                // Aktif zimmet kontrolü
-                $aktifZimmet = $Zimmet->getAktifZimmetByArac($arac_id);
-                if ($aktifZimmet) {
-                    throw new Exception("Bu araç zaten {$aktifZimmet->personel_adi} adlı personele zimmetli. Önce iade alınmalı.");
+                // Araç aktif zimmet kontrolü
+                $aktifZimmetArac = $Zimmet->getAktifZimmetByArac($arac_id);
+                if ($aktifZimmetArac) {
+                    $personelIsim = $aktifZimmetArac->personel_adi ?? 'Bilinmeyen Personel';
+                    throw new Exception("Bu araç zaten {$personelIsim} adlı personele zimmetli. Önce iade alınmalı.");
+                }
+
+                // Personel aktif zimmet kontrolü
+                $aktifZimmetPersonel = $Zimmet->getAktifZimmetByPersonel($personel_id);
+                if ($aktifZimmetPersonel) {
+                    throw new Exception("Bu personelin üzerine zaten aktif bir araç ({$aktifZimmetPersonel->plaka}) zimmetli. Önce o araç iade edilmeli.");
                 }
 
                 $data = [

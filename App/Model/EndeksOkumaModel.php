@@ -14,23 +14,23 @@ class EndeksOkumaModel extends Model
         parent::__construct($this->table);
     }
 
-    public function getMonthlySummary($year, $month)
+    public function getSummaryByRange($startDate, $endDate)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT t.personel_id, t.ekip_kodu_id, DAY(t.tarih) as gun, SUM(t.okunan_abone_sayisi) as toplam 
+        $sql = "SELECT t.personel_id, t.ekip_kodu_id, t.tarih, SUM(t.okunan_abone_sayisi) as toplam 
                 FROM $this->table t
                 LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
-                WHERE t.firma_id = ? AND YEAR(t.tarih) = ? AND MONTH(t.tarih) = ? AND t.silinme_tarihi IS NULL
+                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
                 AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?(10[1-9]|1[1-9][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3,})'
-                GROUP BY t.personel_id, t.ekip_kodu_id, DAY(t.tarih)";
+                GROUP BY t.personel_id, t.ekip_kodu_id, t.tarih";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $year, $month]);
+        $stmt->execute([$firmaId, $startDate, $endDate]);
         $results = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         $summary = [];
         foreach ($results as $row) {
-            $summary[$row->personel_id][$row->ekip_kodu_id][$row->gun] = $row->toplam;
+            $summary[$row->personel_id][$row->ekip_kodu_id][$row->tarih] = $row->toplam;
         }
         return $summary;
     }

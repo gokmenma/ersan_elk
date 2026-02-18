@@ -115,63 +115,62 @@ class PuantajModel extends Model
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
-    public function getMonthlySummary($year, $month)
+    public function getSummaryByRange($startDate, $endDate)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT personel_id, ekip_kodu_id, DAY(tarih) as gun, SUM(sonuclanmis) as toplam 
+        $sql = "SELECT personel_id, ekip_kodu_id, tarih, SUM(sonuclanmis) as toplam 
                 FROM $this->table 
-                WHERE firma_id = ? AND YEAR(tarih) = ? AND MONTH(tarih) = ? AND silinme_tarihi IS NULL
-                GROUP BY personel_id, ekip_kodu_id, DAY(tarih)";
+                WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL
+                GROUP BY personel_id, ekip_kodu_id, tarih";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $year, $month]);
+        $stmt->execute([$firmaId, $startDate, $endDate]);
         $results = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         $summary = [];
         foreach ($results as $row) {
-            $summary[$row->personel_id][$row->ekip_kodu_id][$row->gun] = $row->toplam;
+            $summary[$row->personel_id][$row->ekip_kodu_id][$row->tarih] = $row->toplam;
         }
         return $summary;
     }
 
-    public function getMonthlySummaryDetailed($year, $month)
+    public function getSummaryDetailedByRange($startDate, $endDate)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        // COALESCE ile eski ve yeni alanlardan is_emri_sonucu al
-        $sql = "SELECT t.personel_id, t.ekip_kodu_id, DAY(t.tarih) as gun, 
+        $sql = "SELECT t.personel_id, t.ekip_kodu_id, t.tarih, 
                     TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) as is_emri_sonucu, 
                     SUM(t.sonuclanmis) as toplam 
                 FROM $this->table t
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
-                WHERE t.firma_id = ? AND YEAR(t.tarih) = ? AND MONTH(t.tarih) = ? AND t.silinme_tarihi IS NULL
-                GROUP BY t.personel_id, t.ekip_kodu_id, DAY(t.tarih), TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu))";
+                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
+                GROUP BY t.personel_id, t.ekip_kodu_id, t.tarih, TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu))";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $year, $month]);
+        $stmt->execute([$firmaId, $startDate, $endDate]);
         $results = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         $summary = [];
         foreach ($results as $row) {
-            $summary[$row->personel_id][$row->ekip_kodu_id][$row->gun][$row->is_emri_sonucu] = $row->toplam;
+            $summary[$row->personel_id][$row->ekip_kodu_id][$row->tarih][$row->is_emri_sonucu] = $row->toplam;
         }
         return $summary;
     }
 
-    public function getKacakSummary($year, $month)
+    public function getKacakSummaryByRange($startDate, $endDate)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT ekip_adi, DAY(tarih) as gun, SUM(sayi) as toplam 
+        $sql = "SELECT ekip_adi, tarih, SUM(sayi) as toplam 
                 FROM kacak_kontrol 
-                WHERE firma_id = ? AND YEAR(tarih) = ? AND MONTH(tarih) = ? AND silinme_tarihi IS NULL
-                GROUP BY ekip_adi, DAY(tarih)";
+                WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL
+                GROUP BY ekip_adi, tarih";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $year, $month]);
+        $stmt->execute([$firmaId, $startDate, $endDate]);
         $results = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         $summary = [];
         foreach ($results as $row) {
-            $summary[$row->ekip_adi][$row->gun] = $row->toplam;
+            $summary[$row->ekip_adi][$row->tarih] = $row->toplam;
         }
         return $summary;
     }
@@ -372,7 +371,7 @@ class PuantajModel extends Model
         ];
     }
 
-    public function getUnmatchedWorkResults($year, $month, $raporTuru)
+    public function getUnmatchedWorkResults($startDate, $endDate, $raporTuru)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
 
@@ -402,7 +401,7 @@ class PuantajModel extends Model
             }
         }
 
-        $params = [$firmaId, $year, $month];
+        $params = [$firmaId, $startDate, $endDate];
         $notInClause = "";
         if (!empty($matchedResults)) {
             $placeholders = implode(',', array_fill(0, count($matchedResults), '?'));
@@ -423,7 +422,7 @@ class PuantajModel extends Model
                     AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= t.tarih)
                 LEFT JOIN tanimlamalar ek ON pg.ekip_kodu_id = ek.id
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
-                WHERE t.firma_id = ? AND YEAR(t.tarih) = ? AND MONTH(t.tarih) = ? 
+                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? 
                 AND t.silinme_tarihi IS NULL
                 $notInClause
                 AND (t.is_emri_sonucu_id > 0 OR (t.is_emri_sonucu IS NOT NULL AND t.is_emri_sonucu != ''))
@@ -525,6 +524,40 @@ class PuantajModel extends Model
                 WHERE t.firma_id = ? 
                 AND t.tarih >= ? AND t.tarih <= ?
                 AND t.silinme_tarihi IS NULL";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId, $buAy, $sonGun]);
+        return $stmt->fetch(PDO::FETCH_OBJ);
+    }
+
+
+    public function getKacakDailyStats()
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $dun = date('Y-m-d', strtotime('-1 day'));
+
+        $sql = "SELECT SUM(sayi) as toplam 
+                FROM kacak_kontrol 
+                WHERE firma_id = ? 
+                AND tarih = ? 
+                AND silinme_tarihi IS NULL";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId, $dun]);
+        return $stmt->fetch(PDO::FETCH_OBJ);
+    }
+
+    public function getKacakMonthlyStats()
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $buAy = date('Y-m-01');
+        $sonGun = date('Y-m-t');
+
+        $sql = "SELECT SUM(sayi) as toplam 
+                FROM kacak_kontrol 
+                WHERE firma_id = ? 
+                AND tarih >= ? AND tarih <= ?
+                AND silinme_tarihi IS NULL";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $buAy, $sonGun]);

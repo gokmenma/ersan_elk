@@ -231,7 +231,7 @@ $title = 'Nöbet Planlama';
                                 <hr class="dropdown-divider">
                             </li>
                             <?php foreach ($departments as $dept): ?>
-                                <li><a class="dropdown-item <?php echo $dept == 'Kesme-Açma' ? 'active' : ''; ?>"
+                                <li><a class="dropdown-item <?php echo $dept == \App\Helper\Helper::DEPARTMAN['Kesme Açma'] ? 'active' : ''; ?>"
                                         href="javascript:void(0)"
                                         data-dept="<?php echo htmlspecialchars($dept); ?>"><?php echo htmlspecialchars($dept); ?></a>
                                 </li>
@@ -404,10 +404,10 @@ $title = 'Nöbet Planlama';
                             style="width:auto; height:32px; padding:0 12px; font-weight:500;">Bugün</button>
                         <button class="btn" id="calendar-next"><i class="bx bx-chevron-right"></i></button>
                         <?php if ($hasSettingPermission): ?>
-                                <button class="btn ms-1" id="btn-nobet-settings" title="Nöbet Ayarları" data-bs-toggle="modal"
-                                    data-bs-target="#nobetSettingsModal">
-                                    <i class="bx bx-cog"></i>
-                                </button>
+                            <button class="btn ms-1" id="btn-nobet-settings" title="Nöbet Ayarları" data-bs-toggle="modal"
+                                data-bs-target="#nobetSettingsModal">
+                                <i class="bx bx-cog"></i>
+                            </button>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -1112,10 +1112,10 @@ $title = 'Nöbet Planlama';
                     const start = view.activeStart;
                     const end = new Date(view.activeEnd);
                     end.setDate(end.getDate() - 1);
-                    
+
                     const startMonth = start.toLocaleDateString('tr-TR', { month: 'short' });
                     const endMonth = end.toLocaleDateString('tr-TR', { month: 'short' });
-                    
+
                     if (startMonth === endMonth) {
                         titleEl.textContent = `${start.getDate()} - ${end.getDate()} ${startMonth.toUpperCase()} ${start.getFullYear()}`;
                     } else {
@@ -1167,7 +1167,7 @@ $title = 'Nöbet Planlama';
         // PERSONEL FİLTRELEME
         // ============================================
         const searchInput = document.getElementById('personel-search');
-        let selectedDept = 'Kesme-Açma';
+        let selectedDept = '<?php echo \App\Helper\Helper::DEPARTMAN['Kesme Açma']; ?>';
 
         // Departman Dropdown Takibi
         const deptDropdownItems = document.querySelectorAll('#dept-filter-dropdown .dropdown-item');
