@@ -318,6 +318,31 @@ class PersonelModel extends Model
                         $val2 = isset($vals[1]) ? $vals[1] : null;
 
                         if ($val !== '' || $val2 !== null || in_array($mode, ['null', 'not_null', 'multi'])) {
+                            // Tarih sütunları için d.m.Y -> Y-m-d dönüşümü
+                            if ($i == 4 || $i == 5) {
+                                if ($val && strpos($val, '.') !== false)
+                                    $val = \App\Helper\Date::Ymd($val, 'Y-m-d');
+                                if ($val2 && strpos($val2, '.') !== false)
+                                    $val2 = \App\Helper\Date::Ymd($val2, 'Y-m-d');
+                            }
+
+                            // Özel alanlar için değer eşleme
+                            if ($field == 'p.aktif_mi') {
+                                if (stripos('Aktif', $val) !== false)
+                                    $val = 1;
+                                elseif (stripos('Pasif', $val) !== false)
+                                    $val = 0;
+                            }
+
+                            // Computed (Hesaplanan) alanlar için WHERE düzenlemesi
+                            if ($field == 'bildirim_abonesi') {
+                                $field = "(CASE WHEN EXISTS (SELECT 1 FROM push_subscriptions WHERE personel_id = p.id) THEN 1 ELSE 0 END)";
+                                if (stripos('Açık', $val) !== false)
+                                    $val = 1;
+                                elseif (stripos('Kapalı', $val) !== false)
+                                    $val = 0;
+                            }
+
                             switch ($mode) {
                                 case 'multi':
                                     if (!empty($vals)) {
@@ -331,13 +356,20 @@ class PersonelModel extends Model
                                                 $mappedVal = (stripos($v, 'Aktif') !== false) ? 1 : 0;
                                                 $orConditions[] = "$field = :$vParam";
                                                 $params[$vParam] = $mappedVal;
-                                            } elseif ($field == 'bildirim_abonesi') {
+                                            } elseif (strpos($field, 'push_subscriptions') !== false) { // bildirim_abonesi
                                                 $mappedVal = (stripos($v, 'Açık') !== false) ? 1 : 0;
-                                                $orConditions[] = "(CASE WHEN EXISTS (SELECT 1 FROM push_subscriptions WHERE personel_id = p.id) THEN 1 ELSE 0 END) = :$vParam";
+                                                $orConditions[] = "$field = :$vParam";
                                                 $params[$vParam] = $mappedVal;
                                             } else {
-                                                $orConditions[] = "$field LIKE :$vParam";
-                                                $params[$vParam] = "%$v%";
+                                                // Eğer tarih sütunuysa ve değer nokta içeriyorsa dönüştür
+                                                if (($i == 4 || $i == 5) && strpos($v, '.') !== false) {
+                                                    $v = \App\Helper\Date::Ymd($v, 'Y-m-d');
+                                                    $orConditions[] = "$field = :$vParam";
+                                                    $params[$vParam] = $v;
+                                                } else {
+                                                    $orConditions[] = "$field LIKE :$vParam";
+                                                    $params[$vParam] = "%$v%";
+                                                }
                                             }
                                         }
                                         $filterSql .= " AND (" . implode(" OR ", $orConditions) . ")";
@@ -389,19 +421,19 @@ class PersonelModel extends Model
                                     break;
                                 case 'before':
                                     $filterSql .= " AND $field < :$paramName";
-                                    $params[$paramName] = \App\Helper\Date::Ymd($val);
+                                    $params[$paramName] = $val; // Zaten yukarıda Y-m-d yapıldı
                                     break;
                                 case 'after':
                                     $filterSql .= " AND $field > :$paramName";
-                                    $params[$paramName] = \App\Helper\Date::Ymd($val);
+                                    $params[$paramName] = $val; // Zaten yukarıda Y-m-d yapıldı
                                     break;
                                 case 'between':
                                     if ($val && $val2) {
                                         $p1 = $paramName . "_1";
                                         $p2 = $paramName . "_2";
                                         $filterSql .= " AND $field BETWEEN :$p1 AND :$p2";
-                                        $params[$p1] = \App\Helper\Date::Ymd($val);
-                                        $params[$p2] = \App\Helper\Date::Ymd($val2);
+                                        $params[$p1] = $val; // Zaten yukarıda Y-m-d yapıldı
+                                        $params[$p2] = $val2; // Zaten yukarıda Y-m-d yapıldı
                                     }
                                     break;
                                 case 'null':
@@ -774,9 +806,9 @@ class PersonelModel extends Model
         $sahadakiAracRecord = $stmtA->fetch(PDO::FETCH_OBJ);
         $sahadakiAracCount = $sahadakiAracRecord ? $sahadakiAracRecord->sahadaki_arac : 0;
 
-        // Servisteki Araç Sayısı (Pasif olanlar)
-        $sqlAracServis = "SELECT COUNT(*) as servisteki_arac FROM araclar 
-                          WHERE aktif_mi = 0 AND firma_id = :firma_id AND silinme_tarihi IS NULL";
+        // Servisteki Araç Sayısı (Giriş yapılmış ama henüz iade edilmemiş olanlar)
+        $sqlAracServis = "SELECT COUNT(DISTINCT arac_id) as servisteki_arac FROM arac_servis_kayitlari 
+                          WHERE iade_tarihi IS NULL AND firma_id = :firma_id AND silinme_tarihi IS NULL";
         $stmtAS = $this->db->prepare($sqlAracServis);
         $stmtAS->execute(['firma_id' => $firmaId]);
         $servistekiAracRecord = $stmtAS->fetch(PDO::FETCH_OBJ);
@@ -815,11 +847,25 @@ class PersonelModel extends Model
         $stmtI->execute(['buAy' => $buAy, 'sonGun' => $sonGun, 'firma_id' => $firmaId]);
         $izinliCount = $stmtI->fetch(PDO::FETCH_OBJ)->izinli ?? 0;
 
+        // Sahadaki Araç Sayısı (Bu ay aktif olanlar)
+        $sqlAracSaha = "SELECT COUNT(*) as sahadaki_arac FROM araclar 
+                        WHERE aktif_mi = 1 AND firma_id = :firma_id AND silinme_tarihi IS NULL";
+        $stmtA = $this->db->prepare($sqlAracSaha);
+        $stmtA->execute(['firma_id' => $firmaId]);
+        $sahadakiAracCount = $stmtA->fetch(PDO::FETCH_OBJ)->sahadaki_arac ?? 0;
+
+        // Servisteki Araç Sayısı (Giriş yapılmış ama henüz iade edilmemiş olanlar)
+        $sqlAracServis = "SELECT COUNT(DISTINCT arac_id) as servisteki_arac FROM arac_servis_kayitlari 
+                          WHERE iade_tarihi IS NULL AND firma_id = :firma_id AND silinme_tarihi IS NULL";
+        $stmtAS = $this->db->prepare($sqlAracServis);
+        $stmtAS->execute(['firma_id' => $firmaId]);
+        $servistekiAracCount = $stmtAS->fetch(PDO::FETCH_OBJ)->servisteki_arac ?? 0;
+
         return (object) [
             'sahadaki_personel' => $sahadakiCount,
             'izinli_personel' => $izinliCount,
-            'sahadaki_arac' => 0,
-            'servisteki_arac' => 0
+            'sahadaki_arac' => $sahadakiAracCount,
+            'servisteki_arac' => $servistekiAracCount
         ];
     }
 

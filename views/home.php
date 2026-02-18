@@ -652,18 +652,35 @@ if (Gate::allows("ana_sayfa")) {
     <div class="col-md-2 widget-item" id="widget-servisteki-arac">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
             style="--card-color: #b7b9cc; border-bottom: 3px solid var(--card-color) !important; --delay: 1.2s">
-            <div class="card-body p-3">
+            <div class="card-body p-3 pb-2">
                 <div class="icon-label-container">
                     <div class="icon-box" style="background: rgba(183, 185, 204, 0.1);">
                         <i class="bx bx-wrench fs-4" style="color: #b7b9cc;"></i>
                     </div>
                     <span class="text-muted small fw-bold" style="font-size: 0.65rem;">ARAÇ</span>
                 </div>
-                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">SERVİSTEKİ ARAÇ</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading">
+                <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">SERVİSTEKİ
+                    ARAÇ</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
+                    data-daily="<?php echo $extraStats->servisteki_arac ?? 0; ?>"
+                    data-monthly="<?php echo $extraStatsMonthly->servisteki_arac ?? 0; ?>"
+                    data-label-daily="SERVİSTEKİ ARAÇ" data-label-monthly="AYLIK SERVİSTEKİ ARAÇ"
+                    data-sub-daily="Serviste/Pasif araçlar" data-sub-monthly="Bu ay serviste olan/giren araçlar">
                     <?php echo $extraStats->servisteki_arac ?? 0; ?>
                 </h4>
-                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Serviste/Pasif araçlar</div>
+                <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Serviste/Pasif araçlar
+                </div>
+                <div class="card-footer-actions mt-2">
+                    <div class="btn-group btn-group-sm stats-local-toggle-group">
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn active"
+                            data-mode="daily">Gün</button>
+                        <button type="button" class="btn btn-outline-secondary stats-local-btn"
+                            data-mode="monthly">Ay</button>
+                    </div>
+                    <a href="index.php?p=arac-takip/list&tab=servis" class="btn btn-xs btn-soft-primary rounded-pill">
+                        <i class="bx bx-right-arrow-alt"></i> Git
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -2659,108 +2676,108 @@ if (Gate::allows("ana_sayfa")) {
                     type: 'POST',
                     data: {
                         action: action,
-                        active_tab: $(this).data(                                                             
-                                           'active-tab') || '',
-                            baslangic_tarihi: today,
-                            bitis_tarihi: today,
-                            ilk_firma: firmaId,
-                            son_firma: firmaId
-                        },
-                        success: function (response) {
-                            $btn.removeClass('syncing');
-                            $icon.removeClass('bx-spin text-primary');
+                        active_tab: $(this).data(
+                            'active-tab') || '',
+                        baslangic_tarihi: today,
+                        bitis_tarihi: today,
+                        ilk_firma: firmaId,
+                        son_firma: firmaId
+                    },
+                    success: function (response) {
+                        $btn.removeClass('syncing');
+                        $icon.removeClass('bx-spin text-primary');
 
-                            try {
-                                const res = typeof response === 'object' ? response : JSON.parse(response);
-                                if (res.status === 'success') {
-                                    Swal.fire({
-                                        icon: 'success',
-                                        title: 'Sorgulama Başarılı',
-                                        text: res.message || (res.yeni_kayit || 0) + ' adet yeni kayıt eklendi.',
-                                        timer: 2000,
-                                        showConfirmButton: false
-                                    }).then(() => {
-                                        location.reload();
-                                    });
-                                } else {
-                                    Swal.fire('Hata', res.message || 'Sorgulama sırasında bir hata oluştu.', 'error');
-                                }
-                            } catch (err) {
-                                console.error("API Response Error:", err);
-                                console.log("Raw Response:", response);
-                                Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
+                        try {
+                            const res = typeof response === 'object' ? response : JSON.parse(response);
+                            if (res.status === 'success') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Sorgulama Başarılı',
+                                    text: res.message || (res.yeni_kayit || 0) + ' adet yeni kayıt eklendi.',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire('Hata', res.message || 'Sorgulama sırasında bir hata oluştu.', 'error');
                             }
-                        },
-                        error: function () {
-                            $btn.removeClass('syncing');
-                            $icon.removeClass('bx-spin text-primary');
-                            Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
+                        } catch (err) {
+                            console.error("API Response Error:", err);
+                            console.log("Raw Response:", response);
+                            Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
                         }
-                    });
-                });
-
-                // Tekil Nöbet Hatırlatma Bildirimi
-                $(document).on('click', '.btn-send-nobet-reminder', function (e) {
-                    e.preventDefault();
-                    const $btn = $(this);
-                    const $icon = $btn.find('i');
-                    const pId = $btn.data('id');
-                    const pName = $btn.data('name');
-
-                    Swal.fire({
-                        title: 'Bildirim Gönderilsin mi?',
-                        text: pName + ' isimli personele bugün nöbetçi olduğuna dair hatırlatma bildirimi gönderilecek.',
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonText: 'Evet, Gönder',
-                        cancelButtonText: 'İptal',
-                        confirmButtonColor: '#556ee6',
-                        cancelButtonColor: '#f46a6a',
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            $icon.removeClass('bx-bell').addClass('bx-loader-alt bx-spin');
-                            $btn.addClass('disabled');
-
-                            $.ajax({
-                                url: 'views/nobet/api.php',
-                                type: 'POST',
-                                data: {
-                                    action: 'send-today-nobet-reminder',
-                                    personel_id: pId
-                                },
-                                success: function (response) {
-                                    $icon.removeClass('bx-loader-alt bx-spin').addClass('bx-bell');
-                                    $btn.removeClass('disabled');
-
-                                    try {
-                                        const res = typeof response === 'string' ? JSON.parse(response) : response;
-                                        if (res.status === 'success' || res.success) {
-                                            Swal.fire({
-                                                icon: 'success',
-                                                title: 'Başarılı',
-                                                text: res.message,
-                                                timer: 1500,
-                                                showConfirmButton: false
-                                            });
-                                        } else {
-                                            Swal.fire('Hata', res.message || 'Bildirim gönderilemedi.', 'error');
-                                        }
-                                    } catch (err) {
-                                        Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
-                                    }
-                                },
-                                error: function () {
-                                    $icon.removeClass('bx-loader-alt bx-spin').addClass('bx-bell');
-                                    $btn.removeClass('disabled');
-                                    Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
-                                }
-                            });
-                        }
-                    });
+                    },
+                    error: function () {
+                        $btn.removeClass('syncing');
+                        $icon.removeClass('bx-spin text-primary');
+                        Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
+                    }
                 });
             });
-        </script>
-        <?php
+
+            // Tekil Nöbet Hatırlatma Bildirimi
+            $(document).on('click', '.btn-send-nobet-reminder', function (e) {
+                e.preventDefault();
+                const $btn = $(this);
+                const $icon = $btn.find('i');
+                const pId = $btn.data('id');
+                const pName = $btn.data('name');
+
+                Swal.fire({
+                    title: 'Bildirim Gönderilsin mi?',
+                    text: pName + ' isimli personele bugün nöbetçi olduğuna dair hatırlatma bildirimi gönderilecek.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Evet, Gönder',
+                    cancelButtonText: 'İptal',
+                    confirmButtonColor: '#556ee6',
+                    cancelButtonColor: '#f46a6a',
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $icon.removeClass('bx-bell').addClass('bx-loader-alt bx-spin');
+                        $btn.addClass('disabled');
+
+                        $.ajax({
+                            url: 'views/nobet/api.php',
+                            type: 'POST',
+                            data: {
+                                action: 'send-today-nobet-reminder',
+                                personel_id: pId
+                            },
+                            success: function (response) {
+                                $icon.removeClass('bx-loader-alt bx-spin').addClass('bx-bell');
+                                $btn.removeClass('disabled');
+
+                                try {
+                                    const res = typeof response === 'string' ? JSON.parse(response) : response;
+                                    if (res.status === 'success' || res.success) {
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'Başarılı',
+                                            text: res.message,
+                                            timer: 1500,
+                                            showConfirmButton: false
+                                        });
+                                    } else {
+                                        Swal.fire('Hata', res.message || 'Bildirim gönderilemedi.', 'error');
+                                    }
+                                } catch (err) {
+                                    Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
+                                }
+                            },
+                            error: function () {
+                                $icon.removeClass('bx-loader-alt bx-spin').addClass('bx-bell');
+                                $btn.removeClass('disabled');
+                                Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+    <?php
 } else {
     //Alert::danger("Bu sayfaya erişim yetkiniz yok!");
     /**Personelin yetkili olduğu ilk sayfaya yönlendir */
