@@ -300,6 +300,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     throw new Exception("Araç seçimi zorunludur.");
                 }
 
+                $baslangic_km = intval($data['baslangic_km'] ?? 0);
+                $bitis_km = intval($data['bitis_km'] ?? 0);
+
+                if ($bitis_km > 0 && $bitis_km < $baslangic_km) {
+                    throw new Exception("Bitiş KM, başlangıç KM'den küçük olamaz.");
+                }
+
                 $tarih = Date::Ymd($data['tarih'] ?? date('Y-m-d'));
 
                 // Aynı tarihte kayıt var mı kontrolü
@@ -385,6 +392,74 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 }
 
                 echo json_encode(['status' => 'success', 'data' => $kayit]);
+                break;
+
+            case 'km-kaydet-inline':
+                $data = $_POST;
+                $arac_id = intval($data['arac_id'] ?? 0);
+                $km_id = intval($data['id'] ?? 0);
+
+                // Tarih formatını dd.mm.yyyy -> Y-m-d dönüştür
+                $inputTarih = $data['tarih'] ?? '';
+                if (strpos($inputTarih, '.') !== false) {
+                    $parts = explode('.', $inputTarih);
+                    if (count($parts) === 3) {
+                        $inputTarih = $parts[2] . '-' . $parts[1] . '-' . $parts[0];
+                    }
+                }
+                $tarih = date('Y-m-d', strtotime($inputTarih));
+
+                $baslangic_km = !empty($data['baslangic_km']) ? intval($data['baslangic_km']) : 0;
+                $bitis_km = !empty($data['bitis_km']) ? intval($data['bitis_km']) : 0;
+
+                if ($bitis_km > 0 && $bitis_km < $baslangic_km) {
+                    throw new Exception("Bitiş KM, başlangıç KM'den küçük olamaz.");
+                }
+
+                if ($arac_id <= 0) {
+                    throw new Exception("Araç seçimi zorunludur.");
+                }
+
+                // ID yoksa tarihten bulmayı dene
+                if ($km_id <= 0) {
+                    $mevcutKayit = $Km->kayitVarMi($arac_id, $tarih);
+                    if ($mevcutKayit) {
+                        $km_id = $mevcutKayit->id;
+                    }
+                }
+
+                $saveData = [
+                    'firma_id' => $_SESSION['firma_id'],
+                    'arac_id' => $arac_id,
+                    'tarih' => $tarih,
+                    'baslangic_km' => $baslangic_km,
+                    'bitis_km' => $bitis_km,
+                    'yapilan_km' => ($bitis_km > 0 && $baslangic_km > 0) ? ($bitis_km - $baslangic_km) : 0,
+                    'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null
+                ];
+
+                if ($km_id > 0) {
+                    $saveData['id'] = $km_id;
+                }
+
+                $resultId = $Km->saveWithAttr($saveData);
+
+                // saveWithAttr insert'de şifreli ID döner, update'de null döner
+                // Her durumda düz (numeric) ID döndür
+                if ($km_id > 0) {
+                    // Update ise zaten elimizde var
+                    $numericId = $km_id;
+                } else {
+                    // Insert ise decrypt et
+                    $numericId = intval(Security::decrypt($resultId));
+                }
+
+                // Araç güncel KM güncelle
+                if ($bitis_km > 0) {
+                    $Arac->updateKm($arac_id, $bitis_km);
+                }
+
+                echo json_encode(['status' => 'success', 'message' => 'KM güncellendi.', 'yapilan' => $saveData['yapilan_km'], 'id' => $numericId]);
                 break;
 
             // =============================================
@@ -1028,18 +1103,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                             $isSunday = date('N', strtotime("$yil-$ay-$i")) == 7;
                                             $cellClass = $isSunday ? 'weekend-cell' : '';
                                             ?>
-                                            <td class="text-center km-col km-start-col d-none bg-light <?= $cellClass ?>">
+                                            <td class="text-center km-col km-start-col d-none bg-light <?= $cellClass ?>"
+                                                data-arac-id="<?= Security::encrypt($arac_id) ?>" data-day="<?= $i ?>" data-type="baslangic">
                                                 <?= $gunData ? number_format($gunData['baslangic'], 0, ',', '.') : '-' ?>
                                             </td>
-                                            <td class="text-center km-col km-end-col d-none bg-light <?= $cellClass ?>">
+                                            <td class="text-center km-col km-end-col d-none bg-light <?= $cellClass ?>"
+                                                data-arac-id="<?= Security::encrypt($arac_id) ?>" data-day="<?= $i ?>" data-type="bitis">
                                                 <?= $gunData ? number_format($gunData['bitis'], 0, ',', '.') : '-' ?>
                                             </td>
-                                            <td
-                                                class="text-center km-total-col fw-bold <?= $yapilan > 0 ? 'text-dark' : 'text-muted opacity-50' ?> <?= $cellClass ?>">
+                                            <td class="text-center km-total-col fw-bold <?= $yapilan > 0 ? 'text-dark' : 'text-muted opacity-50' ?> <?= $cellClass ?>"
+                                                data-arac-id="<?= Security::encrypt($arac_id) ?>" data-day="<?= $i ?>" data-type="yapilan">
                                                 <?= $yapilan > 0 ? number_format($yapilan, 0, ',', '.') : '-' ?>
                                             </td>
                                         <?php endfor; ?>
-                                        <td class="text-center bg-light-blue fw-800 text-primary">
+                                        <td class="text-center bg-light-blue fw-800 text-primary"
+                                            data-arac-id="<?= Security::encrypt($arac_id) ?>" data-type="row-total">
                                             <?= number_format($aylikToplam, 0, ',', '.') ?>
                                         </td>
                                     </tr>
@@ -1068,17 +1146,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                     }
                                     $genelAyToplam += $gunlukToplam;
                                     ?>
-                                    <td class="text-center km-col km-start-col d-none">
+                                    <td class="text-center km-col km-start-col d-none" data-day="<?= $i ?>" data-type="col-baslangic">
                                         <?= $gunlukBaslangic > 0 ? number_format($gunlukBaslangic, 0, ',', '.') : '-' ?>
                                     </td>
-                                    <td class="text-center km-col km-end-col d-none">
+                                    <td class="text-center km-col km-end-col d-none" data-day="<?= $i ?>" data-type="col-bitis">
                                         <?= $gunlukBitis > 0 ? number_format($gunlukBitis, 0, ',', '.') : '-' ?>
                                     </td>
-                                    <td class="text-center km-total-col text-dark">
+                                    <td class="text-center km-total-col text-dark" data-day="<?= $i ?>" data-type="col-yapilan">
                                         <?= $gunlukToplam > 0 ? number_format($gunlukToplam, 0, ',', '.') : '-' ?>
                                     </td>
                                 <?php endfor; ?>
-                                <td class="text-center bg-primary text-white"><?= number_format($genelAyToplam, 0, ',', '.') ?></td>
+                                <td class="text-center bg-primary text-white" id="puantajGrandTotal">
+                                    <?= number_format($genelAyToplam, 0, ',', '.') ?>
+                                </td>
                             </tr>
                         </tfoot>
                     </table>
@@ -1267,6 +1347,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 ob_start();
                 ?>
                 <div id="printableArea">
+                    <div class="alert alert-soft-info d-flex align-items-center mb-3 no-print" role="alert">
+                        <i class="bx bxs-info-circle fs-4 me-2"></i>
+                        <div>
+                            <strong>İpucu:</strong> Tablodaki hücrelere <strong>tıklayarak</strong> Excel gibi veri girişi
+                            yapabilirsiniz. Ok tuşları ve Enter ile hücreler arası geçiş yapabilirsiniz.
+                        </div>
+                    </div>
                     <div class="report-header">
                         <div class="report-title"><?= $yil ?>                 <?= $monthName ?> Ayı Araç Puantaj Cetveli</div>
                         <div class="report-info-grid">
@@ -1300,17 +1387,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         <tbody>
                             <?php
                             $genelToplam = 0;
+                            // Başlangıç KM'sini belirle: İlk kayıttan önceki en son bitiş veya aracın baslangic_km'si
+                            $lastBitis = (float) ($data['info']->baslangic_km ?? 0);
+
+                            // Ay içindeki her gün için dön
                             for ($i = 1; $i <= $data['gunSayisi']; $i++) {
                                 $gunData = $data['gunler'][$i] ?? null;
+
+                                // Eğer o gün kayıt varsa, o günün başlangıcını kullan
+                                if ($gunData && (float) $gunData['baslangic'] > 0) {
+                                    $baslangicGoster = (float) $gunData['baslangic'];
+                                } else {
+                                    // Kayıt yoksa bir önceki günün bitişini göster
+                                    $baslangicGoster = $lastBitis;
+                                }
+
+                                $bitisGoster = $gunData ? (float) $gunData['bitis'] : 0;
                                 $yapilan = $gunData ? (float) $gunData['yapilan'] : 0;
                                 $genelToplam += $yapilan;
+
+                                // Eğer o gün için bitiş girilmişse, bir sonraki günün başlangıcı için sakla
+                                if ($bitisGoster > 0) {
+                                    $lastBitis = $bitisGoster;
+                                }
+
                                 $tarih = str_pad($i, 2, '0', STR_PAD_LEFT) . '.' . $ay . '.' . $yil;
                                 ?>
-                                <tr>
+                                <tr class="km-quick-row" data-date="<?= $tarih ?>" data-arac-id="<?= $arac_id ?>"
+                                    data-arac-encrypt="<?= Security::encrypt($arac_id) ?>" data-day="<?= $i ?>"
+                                    data-id="<?= $gunData['id'] ?? '' ?>">
                                     <td class="text-center fw-bold"><?= $tarih ?></td>
-                                    <td class="text-center"><?= $gunData ? number_format($gunData['baslangic'], 0, ',', '.') : '-' ?></td>
-                                    <td class="text-center"><?= $gunData ? number_format($gunData['bitis'], 0, ',', '.') : '-' ?></td>
-                                    <td class="text-center fw-bold <?= $yapilan > 0 ? 'text-primary' : '' ?>">
+                                    <td class="text-center km-editable" data-type="baslangic" data-day="<?= $i ?>" contenteditable="true">
+                                        <?= $baslangicGoster > 0 ? (int) $baslangicGoster : '' ?>
+                                    </td>
+                                    <td class="text-center km-editable" data-type="bitis" data-day="<?= $i ?>" contenteditable="true">
+                                        <?= $bitisGoster > 0 ? (int) $bitisGoster : '' ?>
+                                    </td>
+                                    <td class="text-center fw-bold yapilan-km <?= $yapilan > 0 ? 'text-primary' : '' ?>"
+                                        data-day="<?= $i ?>">
                                         <?= $yapilan > 0 ? number_format($yapilan, 0, ',', '.') : '-' ?>
                                     </td>
                                     <td></td>
@@ -1344,171 +1458,205 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 </div>
                 <?php if (isset($_GET['full_print'])): ?>
                     <script>
-                        window.onload = function () {
-                            setTimeout(() => {
-                                window.print();
-                                window.onafterprint = function () { window.close(); }
-                            }, 500);
-                        }
-                    </script>
-                <?php endif; ?>
-                <style>
-                    /* Modal/Screen Styles */
-                    .report-header {
-                        margin-bottom: 20px;
-                        border-bottom: 2px solid #333;
-                        padding-bottom: 10px;
-                    }
+                                            window.onload = function () {
+                                                setTimeout(() => {
+                                                    window.print();
+                                                    window.onafterprint = function () { window.close(); }
+                                                }, 500);
+                                            }
+                                        </script>
+                                <?php endif; ?>
+                                <style>
+                                    /* Modal/Screen Styles */
+                                    .report-header {
+                                        margin-bottom: 20px;
+                                        border-bottom: 2px solid #333;
+                                        padding-bottom: 10px;
+                                    }
 
-                    .report-title {
-                        font-size: 20px;
-                        font-weight: 800;
-                        text-align: center;
-                        margin-bottom: 15px;
-                        text-transform: uppercase;
-                        color: #1a1a1a;
-                    }
+                                    .report-title {
+                                        font-size: 20px;
+                                        font-weight: 800;
+                                        text-align: center;
+                                        margin-bottom: 15px;
+                                        text-transform: uppercase;
+                                        color: #1a1a1a;
+                                    }
 
-                    .report-info-grid {
-                        display: grid;
-                        grid-template-columns: repeat(3, 1fr);
-                        gap: 10px;
-                    }
+                                    .report-info-grid {
+                                        display: grid;
+                                        grid-template-columns: repeat(3, 1fr);
+                                        gap: 10px;
+                                    }
 
-                    .info-item {
-                        background: #f8f9fa;
-                        border: 1px solid #dee2e6;
-                        padding: 8px 12px;
-                        border-radius: 4px;
-                        display: flex;
-                        flex-direction: column;
-                    }
+                                    .info-item {
+                                        background: #f8f9fa;
+                                        border: 1px solid #dee2e6;
+                                        padding: 8px 12px;
+                                        border-radius: 4px;
+                                        display: flex;
+                                        flex-direction: column;
+                                    }
 
-                    .info-label {
-                        font-size: 10px;
-                        font-weight: 700;
-                        color: #6c757d;
-                        margin-bottom: 2px;
-                    }
+                                    .info-label {
+                                        font-size: 10px;
+                                        font-weight: 700;
+                                        color: #6c757d;
+                                        margin-bottom: 2px;
+                                    }
 
-                    .info-value {
-                        font-size: 14px;
-                        font-weight: 700;
-                        color: #333;
-                    }
+                                    .info-value {
+                                        font-size: 14px;
+                                        font-weight: 700;
+                                        color: #333;
+                                    }
 
-                    .report-table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin-top: 10px;
-                        border: 1px solid #333;
-                    }
+                                    .report-table {
+                                        width: 100%;
+                                        border-collapse: collapse;
+                                        margin-top: 10px;
+                                        border: 1px solid #333;
+                                    }
 
-                    .report-table th {
-                        background: #333;
-                        color: #fff;
-                        padding: 8px;
-                        font-size: 12px;
-                        text-align: center;
-                        border: 1px solid #333;
-                    }
+                                    .report-table th {
+                                        background: #333;
+                                        color: #fff;
+                                        padding: 8px;
+                                        font-size: 12px;
+                                        text-align: center;
+                                        border: 1px solid #333;
+                                    }
 
-                    .report-table td {
-                        padding: 5px 8px;
-                        border: 1px solid #333;
-                        font-size: 12px;
-                        height: 24px;
-                    }
+                                    .km-editable {
+                                        cursor: cell;
+                                        transition: background-color 0.2s;
+                                    }
 
-                    .report-table .text-primary {
-                        color: #0062cc !important;
-                    }
+                                    .km-editable:hover {
+                                        background-color: #fff8e1 !important;
+                                    }
 
-                    @media print {
-                        @page {
-                            size: A4 portrait;
-                            margin: 10mm !important;
-                        }
+                                    .km-editable:focus {
+                                        background-color: #fff !important;
+                                        outline: 2px solid #556ee6 !important;
+                                        outline-offset: -2px;
+                                        z-index: 10;
+                                        box-shadow: 0 0 10px rgba(85, 110, 230, 0.3) !important;
+                                    }
 
-                        body {
-                            background: #fff !important;
-                        }
+                                    .km-editable:empty::before {
+                                        content: '-';
+                                        color: #ccc;
+                                    }
 
-                        .container,
-                        .container-fluid {
-                            width: 100% !important;
-                            max-width: none !important;
-                            padding: 0 !important;
-                            margin: 0 !important;
-                        }
+                                    .bg-soft-success {
+                                        background-color: #d4edda !important;
+                                    }
 
-                        .report-header {
-                            border-bottom: 3px solid #000 !important;
-                        }
+                                    .bg-soft-warning {
+                                        background-color: #fff3cd !important;
+                                    }
 
-                        .info-item {
-                            border: 2px solid #000 !important;
-                            background: #fff !important;
-                            -webkit-print-color-adjust: exact;
-                            print-color-adjust: exact;
-                        }
+                                    .bg-soft-danger {
+                                        background-color: #f8d7da !important;
+                                    }
 
-                        .report-table {
-                            border: 2px solid #000 !important;
-                        }
+                                    .report-table td {
+                                        padding: 5px 8px;
+                                        border: 1px solid #333;
+                                        font-size: 12px;
+                                        height: 24px;
+                                    }
 
-                        .report-table th,
-                        .report-table td {
-                            border: 1px solid #000 !important;
-                        }
+                                    .report-table .text-primary {
+                                        color: #0062cc !important;
+                                    }
 
-                        .no-print {
-                            display: none !important;
-                        }
-                    }
-                </style>
-                <?php
-                $html = ob_get_clean();
-                if (isset($_GET['full_print'])) {
-                    header('Content-Type: text/html; charset=UTF-8');
-                    ?>
-                    <!DOCTYPE html>
-                    <html lang="tr">
+                                    @media print {
+                                        @page {
+                                            size: A4 portrait;
+                                            margin: 10mm !important;
+                                        }
 
-                    <head>
-                        <meta charset="UTF-8">
-                        <title><?= $yil ?>                     <?= $monthName ?> Araç Puantaj Cetveli</title>
-                        <link href="../../assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
-                        <style>
-                            body {
-                                background: #fff !important;
-                            }
+                                        body {
+                                            background: #fff !important;
+                                        }
 
-                            @media print {
-                                body {
-                                    background: #fff !important;
+                                        .container,
+                                        .container-fluid {
+                                            width: 100% !important;
+                                            max-width: none !important;
+                                            padding: 0 !important;
+                                            margin: 0 !important;
+                                        }
+
+                                        .report-header {
+                                            border-bottom: 3px solid #000 !important;
+                                        }
+
+                                        .info-item {
+                                            border: 2px solid #000 !important;
+                                            background: #fff !important;
+                                            -webkit-print-color-adjust: exact;
+                                            print-color-adjust: exact;
+                                        }
+
+                                        .report-table {
+                                            border: 2px solid #000 !important;
+                                        }
+
+                                        .report-table th,
+                                        .report-table td {
+                                            border: 1px solid #000 !important;
+                                        }
+
+                                        .no-print {
+                                            display: none !important;
+                                        }
+                                    }
+                                </style>
+                                <?php
+                                $html = ob_get_clean();
+                                if (isset($_GET['full_print'])) {
+                                    header('Content-Type: text/html; charset=UTF-8');
+                                    ?>
+                                        <!DOCTYPE html>
+                                        <html lang="tr">
+
+                                        <head>
+                                            <meta charset="UTF-8">
+                                            <title><?= $yil ?>                                         <?= $monthName ?> Araç Puantaj Cetveli</title>
+                                            <link href="../../assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+                                            <style>
+                                                body {
+                                                    background: #fff !important;
+                                                }
+
+                                                @media print {
+                                                    body {
+                                                        background: #fff !important;
+                                                    }
+
+                                                    .no-print {
+                                                        display: none !important;
+                                                    }
+                                                }
+                                            </style>
+                                        </head>
+
+                                        <body class="bg-white">
+                                            <div class="container py-4">
+                                                <?= $html ?>
+                                            </div>
+                                        </body>
+
+                                        </html>
+                                        <?php
+                                        exit;
                                 }
-
-                                .no-print {
-                                    display: none !important;
-                                }
-                            }
-                        </style>
-                    </head>
-
-                    <body class="bg-white">
-                        <div class="container py-4">
-                            <?= $html ?>
-                        </div>
-                    </body>
-
-                    </html>
-                    <?php
-                    exit;
-                }
-                header('Content-Type: text/html; charset=UTF-8');
-                die($html);
-                break;
+                                header('Content-Type: text/html; charset=UTF-8');
+                                die($html);
+                                break;
 
             default:
                 throw new Exception("Geçersiz işlem.");

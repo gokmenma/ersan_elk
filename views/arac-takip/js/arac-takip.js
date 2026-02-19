@@ -93,6 +93,250 @@ const AracTakip = {
     }
   },
 
+  recalculatePuantajTable: function () {
+    const table = $("#puantajTable");
+    if (!table.length) return;
+
+    let grandTotal = 0;
+    const dayTotals = {
+      yapilan: {},
+      baslangic: {},
+      bitis: {},
+    };
+
+    // Satır bazlı (Araç bazlı) toplamları hesapla
+    table.find("tbody tr").each(function () {
+      const tr = $(this);
+      const aracId = tr.find("td[data-arac-id]").first().data("arac-id");
+      if (!aracId) return;
+
+      let rowTotal = 0;
+
+      // Her günü işle
+      tr.find("td[data-day]").each(function () {
+        const cell = $(this);
+        const day = cell.data("day");
+        const type = cell.data("type");
+        const val = parseInt(cell.text().replace(/\./g, "")) || 0;
+
+        if (type === "yapilan") {
+          rowTotal += val;
+          dayTotals.yapilan[day] = (dayTotals.yapilan[day] || 0) + val;
+        } else if (type === "baslangic") {
+          dayTotals.baslangic[day] = (dayTotals.baslangic[day] || 0) + val;
+        } else if (type === "bitis") {
+          dayTotals.bitis[day] = (dayTotals.bitis[day] || 0) + val;
+        }
+      });
+
+      // Satır toplamını yaz
+      tr.find('td[data-type="row-total"]').text(
+        AracTakip.formatNumber(rowTotal),
+      );
+      grandTotal += rowTotal;
+    });
+
+    // Günlük (Sütun bazlı) toplamları güncelle
+    Object.keys(dayTotals.yapilan).forEach((day) => {
+      table
+        .find(`tfoot td[data-day="${day}"][data-type="col-yapilan"]`)
+        .text(AracTakip.formatNumber(dayTotals.yapilan[day]) || "-");
+      table
+        .find(`tfoot td[data-day="${day}"][data-type="col-baslangic"]`)
+        .text(AracTakip.formatNumber(dayTotals.baslangic[day]) || "-");
+      table
+        .find(`tfoot td[data-day="${day}"][data-type="col-bitis"]`)
+        .text(AracTakip.formatNumber(dayTotals.bitis[day]) || "-");
+    });
+
+    // Genel toplamı güncelle
+    $("#puantajGrandTotal").text(AracTakip.formatNumber(grandTotal));
+  },
+
+  kmKaydetChain: function (startRow) {
+    const nextRows = startRow.nextAll(
+      'tr.km-quick-row[data-needs-update="true"]',
+    );
+    if (nextRows.length > 0) {
+      this.kmKaydetSequential(nextRows.toArray());
+    }
+  },
+
+  kmKaydetSequential: function (rows) {
+    if (rows.length === 0) return;
+
+    const tr = $(rows.shift());
+    const aracId = tr.data("arac-id");
+    const date = tr.data("date");
+    const kmId = tr.data("id");
+    const baslangic = tr
+      .find('.km-editable[data-type="baslangic"]')
+      .text()
+      .trim()
+      .replace(/\D/g, "");
+    const bitis = tr
+      .find('.km-editable[data-type="bitis"]')
+      .text()
+      .trim()
+      .replace(/\D/g, "");
+
+    const bVal = parseInt(baslangic) || 0;
+    const eVal = parseInt(bitis) || 0;
+
+    tr.removeAttr("data-needs-update");
+    tr.find('.km-editable[data-type="baslangic"]').removeClass("text-info");
+
+    // Sadece mevcut kaydı olan satırları güncelle (yeni boş kayıt yaratma)
+    if (!kmId && eVal === 0) {
+      // Kayıt yok ve bitiş de girilmemiş - sadece görsel güncelleme, atla
+      this.kmKaydetSequential(rows);
+      return;
+    }
+
+    $.post(
+      AracTakip.apiUrl,
+      {
+        action: "km-kaydet-inline",
+        id: kmId || "",
+        arac_id: aracId,
+        tarih: date,
+        baslangic_km: bVal,
+        bitis_km: eVal,
+      },
+      (response) => {
+        if (response.status === "success") {
+          if (response.id)
+            tr.attr("data-id", response.id).data("id", response.id);
+          // Sıradakini kaydet
+          this.kmKaydetSequential(rows);
+        }
+      },
+    );
+  },
+
+  recalculateModalChain: function (startRow) {
+    const tbody = startRow.closest("tbody");
+    let lastBitis = 0;
+
+    // Başlangıç değerini bul: Ya bu satırın başlangıcı ya da bir önceki satırın bitişi
+    const prevTr = startRow.prev("tr.km-quick-row");
+    if (prevTr.length) {
+      lastBitis =
+        parseInt(
+          prevTr
+            .find('.km-editable[data-type="bitis"]')
+            .text()
+            .replace(/\D/g, ""),
+        ) || 0;
+      if (lastBitis === 0) {
+        lastBitis =
+          parseInt(
+            prevTr
+              .find('.km-editable[data-type="baslangic"]')
+              .text()
+              .replace(/\D/g, ""),
+          ) || 0;
+      }
+    }
+
+    // Seçilen satırdan sonuna kadar tüm günleri tara
+    let rowsToProcess = startRow.nextAll("tr.km-quick-row").addBack();
+
+    rowsToProcess.each(function () {
+      const tr = $(this);
+      const baslangicTd = tr.find('.km-editable[data-type="baslangic"]');
+      const bitisTd = tr.find('.km-editable[data-type="bitis"]');
+      const yapilanTd = tr.find(".yapilan-km");
+
+      let currentBaslangic =
+        parseInt(baslangicTd.text().replace(/\D/g, "")) || 0;
+      let currentBitis = parseInt(bitisTd.text().replace(/\D/g, "")) || 0;
+
+      // Eğer bu satırın başlangıcı boşsa veya bir önceki bitişten farklıysa
+      if (lastBitis > 0) {
+        if (!tr.is(startRow)) {
+          const oldBaslangic = baslangicTd.text().trim().replace(/\D/g, "");
+          if (oldBaslangic != lastBitis) {
+            baslangicTd
+              .text(AracTakip.formatNumber(lastBitis))
+              .addClass("text-info");
+            tr.attr("data-needs-update", "true");
+            currentBaslangic = lastBitis;
+          }
+        }
+      }
+
+      // Arka plan tablosunu (arka plandakini) anlık güncelle
+      const aracEncrypt = tr.data("arac-encrypt");
+      const day = tr.data("day");
+      if (aracEncrypt && day) {
+        $(
+          `#puantajTable td[data-arac-id="${aracEncrypt}"][data-day="${day}"][data-type="baslangic"]`,
+        ).text(baslangicTd.text());
+        $(
+          `#puantajTable td[data-arac-id="${aracEncrypt}"][data-day="${day}"][data-type="bitis"]`,
+        ).text(bitisTd.text());
+        // Yapılan KM hesaplanacak ve aşağıda basılacak
+      }
+
+      const yapilan =
+        currentBitis > 0
+          ? currentBitis >= currentBaslangic
+            ? currentBitis - currentBaslangic
+            : "Hata"
+          : 0;
+
+      const formattedYapilan =
+        yapilan === "Hata"
+          ? "Hata"
+          : yapilan > 0
+            ? AracTakip.formatNumber(yapilan)
+            : "-";
+
+      if (yapilan === "Hata") {
+        yapilanTd
+          .text("Hata")
+          .addClass("text-danger")
+          .removeClass("text-primary");
+      } else if (yapilan > 0) {
+        yapilanTd
+          .text(formattedYapilan)
+          .addClass("text-primary")
+          .removeClass("text-danger");
+      } else {
+        yapilanTd.text("-").removeClass("text-primary text-danger");
+      }
+
+      if (aracEncrypt && day) {
+        $(
+          `#puantajTable td[data-arac-id="${aracEncrypt}"][data-day="${day}"][data-type="yapilan"]`,
+        )
+          .text(formattedYapilan)
+          .toggleClass("text-primary", yapilan > 0)
+          .toggleClass("text-danger", yapilan === "Hata");
+      }
+
+      // Bir sonraki satır için bu satırın bitişini ayarla
+      if (currentBitis > 0) {
+        lastBitis = currentBitis;
+      } else {
+        // Eğer bitiş yoksa, başlangıç bir sonraki gün için referans olabilir
+        lastBitis = currentBaslangic;
+      }
+    });
+
+    // Genel toplamı güncelle
+    let genelToplam = 0;
+    tbody.find(".yapilan-km").each(function () {
+      const val = parseInt($(this).text().replace(/\./g, "")) || 0;
+      genelToplam += val;
+    });
+    tbody
+      .closest("table")
+      .find("tfoot .text-primary")
+      .text(AracTakip.formatNumber(genelToplam) + " KM");
+  },
+
   // =============================================
   // ARAÇ İŞLEMLERİ
   // =============================================
@@ -512,6 +756,18 @@ const AracTakip = {
   // KM KAYDI İŞLEMLERİ
   // =============================================
   kmKaydet: function () {
+    const baslangic = parseInt($("#kmForm #baslangic_km").val()) || 0;
+    const bitis = parseInt($("#kmForm #bitis_km").val()) || 0;
+
+    if (bitis < baslangic) {
+      Swal.fire({
+        icon: "warning",
+        title: "Hata",
+        text: "Bitiş KM, başlangıç KM'den küçük olamaz.",
+      });
+      return;
+    }
+
     const formData = new FormData($("#kmForm")[0]);
     formData.append("action", "km-kaydet");
 
@@ -641,6 +897,31 @@ const AracTakip = {
       let tds = `<td>-</td><td>Hata: ${xhr.statusText}</td>`;
       for (let i = 2; i < colCount; i++) tds += "<td></td>";
       tbody.html(`<tr>${tds}</tr>`);
+    });
+  },
+
+  openKmModalWithData: function (aracId, date) {
+    this.resetKmModal();
+
+    // Tarih formatını dd.mm.yyyy -> yyyy-mm-dd dönüştür (eğer nokta içeriyorsa)
+    let dbDate = date;
+    if (date.includes(".")) {
+      const parts = date.split(".");
+      if (parts.length === 3) {
+        dbDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+    }
+
+    $("#kmModal #arac_id").val(aracId).trigger("change");
+    $("#kmModal #tarih").val(dbDate);
+
+    $("#kmModal").modal("show");
+
+    // Focus on bitis_km after modal is shown
+    $("#kmModal").one("shown.bs.modal", function () {
+      setTimeout(() => {
+        $("#kmModal #bitis_km").focus();
+      }, 300);
     });
   },
 
@@ -1355,6 +1636,249 @@ $(document).ready(function () {
       $("#servis-filtre-baslangic").val(),
       $("#servis-filtre-bitis").val(),
     );
+  });
+
+  // KM Inline Düzenleme (Excel-like)
+  $(document).on("focus", ".km-editable", function () {
+    const td = $(this);
+    td.data("old-val", td.text().trim().replace(/\D/g, ""));
+
+    const range = document.createRange();
+    range.selectNodeContents(this);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  });
+
+  $(document).on("keydown", ".km-editable", function (e) {
+    const currentTd = $(this);
+    const currentTr = currentTd.closest("tr");
+    const type = currentTd.data("type");
+
+    if (e.key === "Enter" || e.key === "ArrowDown") {
+      e.preventDefault();
+      const nextTr = currentTr.next("tr");
+      if (nextTr.length) {
+        nextTr.find(`.km-editable[data-type="${type}"]`).focus();
+      } else {
+        $(this).blur();
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const prevTr = currentTr.prev("tr");
+      if (prevTr.length) {
+        prevTr.find(`.km-editable[data-type="${type}"]`).focus();
+      }
+    } else if (e.key === "ArrowRight" && type === "baslangic") {
+      // Check if cursor is at the end of text? Or just jump? Jump is easier for "excel-like"
+      if (window.getSelection().anchorOffset === $(this).text().length) {
+        e.preventDefault();
+        currentTr.find('.km-editable[data-type="bitis"]').focus();
+      }
+    } else if (e.key === "ArrowLeft" && type === "bitis") {
+      if (window.getSelection().anchorOffset === 0) {
+        e.preventDefault();
+        currentTr.find('.km-editable[data-type="baslangic"]').focus();
+      }
+    }
+  });
+
+  $(document).on("input", ".km-editable", function () {
+    const tr = $(this).closest("tr");
+    const table = tr.closest("table");
+
+    // Modal içindeki geniş tabloda ise zincirleme hesapla
+    if (table.hasClass("report-table")) {
+      AracTakip.recalculateModalChain(tr);
+    } else {
+      // Ana puantaj tablosundaki basit satır hesaplaması
+      const baslangic =
+        parseInt(
+          tr
+            .find('.km-editable[data-type="baslangic"]')
+            .text()
+            .replace(/\D/g, ""),
+        ) || 0;
+      const bitis =
+        parseInt(
+          tr.find('.km-editable[data-type="bitis"]').text().replace(/\D/g, ""),
+        ) || 0;
+      const yapilan = bitis - baslangic;
+
+      const yapilanTd = tr.find(".yapilan-km");
+      if (bitis > 0 && bitis < baslangic) {
+        yapilanTd
+          .text("Hata")
+          .addClass("text-danger")
+          .removeClass("text-primary");
+      } else if (yapilan >= 0) {
+        yapilanTd
+          .text(AracTakip.formatNumber(yapilan))
+          .addClass("text-primary")
+          .removeClass("text-danger");
+      } else {
+        yapilanTd.text("-").removeClass("text-primary text-danger");
+      }
+    }
+  });
+
+  $(document).on("blur", ".km-editable", function () {
+    const td = $(this);
+    const tr = td.closest("tr");
+    const aracId = tr.data("arac-id");
+    const date = tr.data("date");
+    const kmId = tr.data("id");
+    const currentValRaw = td.text().trim().replace(/\D/g, "");
+
+    // Değişiklik yoksa çık
+    if (td.data("old-val") === currentValRaw) return;
+
+    const baslangic = tr
+      .find('.km-editable[data-type="baslangic"]')
+      .text()
+      .trim()
+      .replace(/\D/g, "");
+    const bitis = tr
+      .find('.km-editable[data-type="bitis"]')
+      .text()
+      .trim()
+      .replace(/\D/g, "");
+
+    const bVal = baslangic === "" ? 0 : parseInt(baslangic);
+    const eVal = bitis === "" ? 0 : parseInt(bitis);
+
+    if (isNaN(bVal) || isNaN(eVal)) return;
+
+    if (eVal > 0 && eVal < bVal) {
+      td.addClass("bg-soft-danger");
+      setTimeout(() => td.removeClass("bg-soft-danger"), 2000);
+      return;
+    }
+
+    // Görsel geri bildirim (Kaydediliyor...)
+    td.addClass("bg-soft-warning");
+
+    $.post(
+      AracTakip.apiUrl,
+      {
+        action: "km-kaydet-inline",
+        id: kmId,
+        arac_id: aracId,
+        tarih: date,
+        baslangic_km: bVal,
+        bitis_km: eVal,
+      },
+      function (response) {
+        td.removeClass("bg-soft-warning");
+        if (response.status === "success") {
+          td.addClass("bg-soft-success");
+          setTimeout(() => td.removeClass("bg-soft-success"), 1000);
+          td.data("old-val", currentValRaw);
+
+          // Modal kapandığında tabloyu yenilemek için flag
+          window._kmModalChanged = true;
+
+          // ID'yi güncelle
+          if (response.id) {
+            tr.attr("data-id", response.id).data("id", response.id);
+          }
+
+          // Ana puantaj tablosunu (arka plandakini) güncelle
+          const aracEncrypt = tr.data("arac-encrypt");
+          const day = tr.data("day");
+          const type = td.data("type");
+          const formattedVal = AracTakip.formatNumber(parseInt(currentValRaw));
+
+          if (aracEncrypt && day) {
+            const backgroundCell = $(
+              `#puantajTable td[data-arac-id="${aracEncrypt}"][data-day="${day}"][data-type="${type}"]`,
+            );
+            if (backgroundCell.length) {
+              backgroundCell.text(formattedVal).addClass("bg-soft-success");
+              setTimeout(
+                () => backgroundCell.removeClass("bg-soft-success"),
+                1000,
+              );
+            }
+          }
+
+          // Backend'den gelen yapılan KM'yi her iki tabloda da güncelle
+          if (response.yapilan !== undefined) {
+            const yapilanTd = tr.find(".yapilan-km");
+            const formattedYapilan =
+              response.yapilan > 0
+                ? AracTakip.formatNumber(response.yapilan)
+                : "-";
+
+            yapilanTd
+              .text(formattedYapilan)
+              .toggleClass("text-primary", response.yapilan > 0);
+
+            if (aracEncrypt && day) {
+              const backgroundYapilanCell = $(
+                `#puantajTable td[data-arac-id="${aracEncrypt}"][data-day="${day}"][data-type="yapilan"]`,
+              );
+              if (backgroundYapilanCell.length) {
+                backgroundYapilanCell
+                  .text(formattedYapilan)
+                  .toggleClass("text-primary", response.yapilan > 0)
+                  .addClass("bg-soft-success");
+                setTimeout(
+                  () => backgroundYapilanCell.removeClass("bg-soft-success"),
+                  1000,
+                );
+              }
+            }
+          }
+
+          // Otomatik Başlangıç KM taşıma (Eğer Bitiş girildiyse sonraki günün başlangıcına yaz)
+          if (type === "bitis" && currentValRaw > 0) {
+            const nextTr = tr.next("tr.km-quick-row");
+            if (nextTr.length) {
+              const nextBaslangicTd = nextTr.find(
+                '.km-editable[data-type="baslangic"]',
+              );
+              const nextBaslangicVal = nextBaslangicTd
+                .text()
+                .trim()
+                .replace(/\D/g, "");
+              // Eğer sonraki günün başlangıcı boşsa veya güncellenebilir durumdaysa otomatik doldur
+              if (nextBaslangicVal === "" || nextBaslangicVal == 0) {
+                nextBaslangicTd.text(
+                  AracTakip.formatNumber(parseInt(currentValRaw)),
+                );
+                // Not: Blur tetiklemiyoruz çünkü kullanıcı henüz oraya dokunmadı, sadece görsel kolaylık.
+              }
+            }
+          }
+
+          // Tablo genel toplamlarını yeniden hesapla
+          AracTakip.recalculatePuantajTable();
+
+          // Zincirleme kaydet (Diğer etkilenen günleri de veritabanına yaz)
+          AracTakip.kmKaydetChain(tr);
+        } else {
+          td.addClass("bg-soft-danger");
+          console.error("KM Kaydetme Hatası:", response.message);
+          // Toast hata mesajı (eğer toast kütüphanesi varsa)
+          if (window.toastr) {
+            toastr.error(response.message);
+          } else if (window.Swal) {
+            Swal.fire({
+              icon: "error",
+              title: "Hata",
+              text: response.message,
+              toast: true,
+              position: "top-end",
+              showConfirmButton: false,
+              timer: 3000,
+            });
+          }
+        }
+      },
+    ).fail(function () {
+      td.removeClass("bg-soft-warning").addClass("bg-soft-danger");
+    });
   });
 
   // İstatistik Modal

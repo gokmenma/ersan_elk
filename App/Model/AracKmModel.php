@@ -309,6 +309,7 @@ class AracKmModel extends Model
                 a.plaka,
                 a.marka,
                 a.model,
+                k.id,
                 k.tarih,
                 DAY(k.tarih) as gun,
                 k.baslangic_km,
@@ -355,6 +356,7 @@ class AracKmModel extends Model
             }
             if ($row->gun) {
                 $data[$row->arac_id]['gunler'][$row->gun] = [
+                    'id' => $row->id,
                     'baslangic' => $row->baslangic_km,
                     'bitis' => $row->bitis_km,
                     'yapilan' => $row->yapilan_km
@@ -374,7 +376,7 @@ class AracKmModel extends Model
 
         // Araç ve Şoför Bilgisi
         $sqlInfo = "
-            SELECT a.plaka, a.marka, a.model, p.adi_soyadi as sofor_adi
+            SELECT a.plaka, a.marka, a.model, a.baslangic_km, p.adi_soyadi as sofor_adi
             FROM araclar a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id 
                 AND az.durum = 'aktif' 
@@ -397,7 +399,7 @@ class AracKmModel extends Model
 
         // Günlük Veriler
         $sqlKm = "
-            SELECT tarih, DAY(tarih) as gun, baslangic_km, bitis_km, yapilan_km
+            SELECT id, tarih, DAY(tarih) as gun, baslangic_km, bitis_km, yapilan_km
             FROM {$this->table}
             WHERE arac_id = :arac_id
             AND tarih BETWEEN :baslangic AND :bitis
@@ -418,6 +420,7 @@ class AracKmModel extends Model
         $gunler = [];
         foreach ($kmData as $row) {
             $gunler[$row->gun] = [
+                'id' => $row->id,
                 'baslangic' => $row->baslangic_km,
                 'bitis' => $row->bitis_km,
                 'yapilan' => $row->yapilan_km

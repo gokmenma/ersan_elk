@@ -296,6 +296,9 @@ for ($m = 1; $m <= 12; $m++) {
             const year = $('select[name="year"]').val();
             const month = $('select[name="month"]').val();
 
+            // Modal içinde değişiklik yapılıp yapılmadığını takip et
+            window._kmModalChanged = false;
+
             $('#aracOzelPuantajContent').html('<div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Rapor hazırlanıyor...</p></div>');
             const modal = new bootstrap.Modal(document.getElementById('aracOzelPuantajModal'));
             modal.show();
@@ -316,6 +319,13 @@ for ($m = 1; $m <= 12; $m++) {
                     $('#aracOzelPuantajContent').html('<div class="alert alert-danger m-3">Hata: ' + xhr.responseText + '</div>');
                 }
             });
+        });
+
+        // Modal kapandığında puantaj tablosunu yenile
+        $('#aracOzelPuantajModal').on('hidden.bs.modal', function () {
+            if (window._kmModalChanged) {
+                loadReport();
+            }
         });
 
         $('#btnExportExcel').on('click', function () {
@@ -357,3 +367,5 @@ for ($m = 1; $m <= 12; $m++) {
         loadReport();
     });
 </script>
+
+<script src="views/arac-takip/js/arac-takip.js"></script>

@@ -158,6 +158,20 @@
         const baslangic = parseInt($('#kmForm #baslangic_km').val()) || 0;
         const bitis = parseInt($('#kmForm #bitis_km').val()) || 0;
         const yapilan = bitis - baslangic;
-        $('#yapilan_km').val(yapilan > 0 ? yapilan + ' km' : '0 km');
+
+        const yapilanInput = $('#yapilan_km');
+        const bitisInput = $('#kmForm #bitis_km');
+        const saveBtn = $('#btnKmKaydet');
+
+        if (bitis > 0 && bitis < baslangic) {
+            yapilanInput.val('Hatalı KM (Bitiş < Başlangıç)').addClass('is-invalid').removeClass('text-primary');
+            bitisInput.addClass('is-invalid');
+            saveBtn.prop('disabled', true);
+        } else {
+            yapilanInput.val(yapilan >= 0 ? yapilan + ' km' : '0 km').removeClass('is-invalid');
+            bitisInput.removeClass('is-invalid');
+            saveBtn.prop('disabled', false);
+            if (yapilan > 0) yapilanInput.addClass('text-primary');
+        }
     });
 </script>
