@@ -1330,12 +1330,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         </tfoot>
                     </table>
                 </div>
+                <?php $prefix = isset($_GET['full_print']) ? '' : 'views/arac-takip/'; ?>
                 <div class="text-end mt-3 no-print">
                     <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Kapat</button>
-                    <button type="button" class="btn btn-primary" onclick="window.print()">
+                    <a href="<?= $prefix ?>export-cetvel.php?id=<?= $_GET['id'] ?>&year=<?= $yil ?>&month=<?= $ay ?>"
+                        class="btn btn-success me-2">
+                        <i class="mdi mdi-file-excel me-1"></i> Excel'e Aktar
+                    </a>
+                    <button type="button" class="btn btn-primary"
+                        onclick="window.open('<?= $prefix ?>api.php?action=get-arac-ozel-puantaj&id=<?= $_GET['id'] ?>&year=<?= $yil ?>&month=<?= $ay ?>&full_print=1', '_blank')">
                         <i class="mdi mdi-printer me-1"></i> Yazdır
                     </button>
                 </div>
+                <?php if (isset($_GET['full_print'])): ?>
+                    <script>
+                        window.onload = function () {
+                            setTimeout(() => {
+                                window.print();
+                                window.onafterprint = function () { window.close(); }
+                            }, 500);
+                        }
+                    </script>
+                <?php endif; ?>
                 <style>
                     /* Modal/Screen Styles */
                     .report-header {
@@ -1411,122 +1427,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     @media print {
                         @page {
                             size: A4 portrait;
-                            margin: 5mm !important;
+                            margin: 10mm !important;
                         }
 
-                        html,
                         body {
-                            margin: 0 !important;
-                            padding: 0 !important;
-                            height: 100%;
+                            background: #fff !important;
                         }
 
-                        /* Reset all parent containers to allow full page utilization */
-                        .modal,
-                        .modal-dialog,
-                        .modal-content,
-                        .modal-body,
-                        .main-wrapper,
-                        #layout-wrapper {
-                            display: block !important;
-                            overflow: visible !important;
-                            margin: 0 !important;
-                            padding: 0 !important;
-                            border: none !important;
-                            height: auto !important;
-                        }
-
-                        /* Hide everything else */
-                        body * {
-                            visibility: hidden !important;
-                        }
-
-                        #printableArea,
-                        #printableArea * {
-                            visibility: visible !important;
-                        }
-
-                        #printableArea {
-                            position: static !important;
-                            /* Changed from absolute */
-                            left: auto !important;
-                            top: auto !important;
+                        .container,
+                        .container-fluid {
                             width: 100% !important;
+                            max-width: none !important;
+                            padding: 0 !important;
                             margin: 0 !important;
-                            padding: 5mm !important;
-                            /* Internal page buffer */
-                            box-sizing: border-box !important;
                         }
 
                         .report-header {
-                            margin-bottom: 20px !important;
                             border-bottom: 3px solid #000 !important;
-                            padding-bottom: 15px !important;
-                        }
-
-                        .report-title {
-                            font-size: 24px !important;
-                            font-weight: 800 !important;
-                            text-align: center !important;
-                            margin-bottom: 20px !important;
-                            text-transform: uppercase !important;
-                            letter-spacing: 1px;
-                        }
-
-                        .report-info-grid {
-                            display: grid !important;
-                            grid-template-columns: repeat(3, 1fr) !important;
-                            gap: 15px !important;
-                            margin-bottom: 10px !important;
                         }
 
                         .info-item {
-                            padding: 12px 15px !important;
                             border: 2px solid #000 !important;
-                            background: #fcfcfc !important;
+                            background: #fff !important;
                             -webkit-print-color-adjust: exact;
                             print-color-adjust: exact;
-                        }
-
-                        .info-label {
-                            font-size: 10px !important;
-                            font-weight: 800 !important;
-                        }
-
-                        .info-value {
-                            font-size: 15px !important;
-                            font-weight: 800 !important;
                         }
 
                         .report-table {
-                            width: 100% !important;
                             border: 2px solid #000 !important;
-                            border-collapse: collapse !important;
                         }
 
-                        .report-table th {
-                            background: #f0f0f0 !important;
-                            font-size: 12px !important;
-                            padding: 10px 5px !important;
-                            border: 1px solid #000 !important;
-                            -webkit-print-color-adjust: exact;
-                            print-color-adjust: exact;
-                        }
-
+                        .report-table th,
                         .report-table td {
-                            font-size: 12px !important;
-                            padding: 6px 8px !important;
                             border: 1px solid #000 !important;
-                            height: 28px !important;
-                            /* Increased for better page coverage */
-                        }
-
-                        .report-table tfoot td {
-                            font-size: 14px !important;
-                            padding: 12px !important;
-                            background: #f0f0f0 !important;
-                            -webkit-print-color-adjust: exact;
-                            print-color-adjust: exact;
                         }
 
                         .no-print {
@@ -1536,7 +1469,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 </style>
                 <?php
                 $html = ob_get_clean();
-                header('Content-Type: text/html');
+                if (isset($_GET['full_print'])) {
+                    header('Content-Type: text/html; charset=UTF-8');
+                    ?>
+                    <!DOCTYPE html>
+                    <html lang="tr">
+
+                    <head>
+                        <meta charset="UTF-8">
+                        <title><?= $yil ?>                     <?= $monthName ?> Araç Puantaj Cetveli</title>
+                        <link href="../../assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+                        <style>
+                            body {
+                                background: #fff !important;
+                            }
+
+                            @media print {
+                                body {
+                                    background: #fff !important;
+                                }
+
+                                .no-print {
+                                    display: none !important;
+                                }
+                            }
+                        </style>
+                    </head>
+
+                    <body class="bg-white">
+                        <div class="container py-4">
+                            <?= $html ?>
+                        </div>
+                    </body>
+
+                    </html>
+                    <?php
+                    exit;
+                }
+                header('Content-Type: text/html; charset=UTF-8');
                 die($html);
                 break;
 

@@ -126,7 +126,7 @@ for ($m = 1; $m <= 12; $m++) {
 
 <!-- Araç Özel Puantaj Modal -->
 <div class="modal fade" id="aracOzelPuantajModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-body" id="aracOzelPuantajContent">
                 <!-- AJAX ile dolacak -->
@@ -323,7 +323,7 @@ for ($m = 1; $m <= 12; $m++) {
             const month = $('select[name="month"]').val();
             const arac_id = $('select[name="arac_id"]').val();
             const show_km = $('#toggleKmCols').is(':checked') ? 1 : 0;
- let url = 'views/arac-takip/export-excel.php?year=' + year + '&month=' + month + '&show_km=' + show_km;
+            let url = 'views/arac-takip/export-excel.php?year=' + year + '&month=' + month + '&show_km=' + show_km;
             if (arac_id) {
                 url += '&arac_id=' + arac_id;
             }
@@ -331,8 +331,8 @@ for ($m = 1; $m <= 12; $m++) {
         });
 
         $(document).on('keyup', '.table-filter', function () {
-   const filters = {};
-            $('.table-filter').each(function() {
+            const filters = {};
+            $('.table-filter').each(function () {
                 const val = $(this).val().toLowerCase();
                 const col = $(this).data('col');
                 if (val) filters[col] = val;
@@ -340,7 +340,7 @@ for ($m = 1; $m <= 12; $m++) {
 
             $('#puantajTable tbody tr').each(function () {
                 if ($(this).find('td').length < 3) return; // Kayıt bulunamadı satırı vb. için
-                
+
                 let show = true;
                 for (const col in filters) {
                     const text = $(this).find('td').eq(col).text().toLowerCase();
