@@ -231,8 +231,7 @@ $title = 'Nöbet Planlama';
                                 <hr class="dropdown-divider">
                             </li>
                             <?php foreach ($departments as $dept): ?>
-                                <li><a class="dropdown-item <?php echo $dept == \App\Helper\Helper::DEPARTMAN['Kesme Açma'] ? 'active' : ''; ?>"
-                                        href="javascript:void(0)"
+                                <li><a class="dropdown-item" href="javascript:void(0)"
                                         data-dept="<?php echo htmlspecialchars($dept); ?>"><?php echo htmlspecialchars($dept); ?></a>
                                 </li>
                             <?php endforeach; ?>
@@ -1167,7 +1166,8 @@ $title = 'Nöbet Planlama';
         // PERSONEL FİLTRELEME
         // ============================================
         const searchInput = document.getElementById('personel-search');
-        let selectedDept = '<?php echo \App\Helper\Helper::DEPARTMAN['Kesme Açma']; ?>';
+        const defaultDept = '<?php echo \App\Helper\Helper::DEPARTMAN['Kesme Açma']; ?>';
+        let selectedDept = localStorage.getItem('nobet_selected_dept') || defaultDept;
 
         // Departman Dropdown Takibi
         const deptDropdownItems = document.querySelectorAll('#dept-filter-dropdown .dropdown-item');
@@ -1178,6 +1178,9 @@ $title = 'Nöbet Planlama';
                 this.classList.add('active');
 
                 selectedDept = this.dataset.dept;
+
+                // localStorage'a kaydet
+                localStorage.setItem('nobet_selected_dept', selectedDept);
 
                 // Buton Rengini Değiştir
                 const filterBtn = document.getElementById('dept-filter-btn');
@@ -1191,14 +1194,29 @@ $title = 'Nöbet Planlama';
             });
         });
 
-        // Varsayılan Filtreyi Uygula
-        if (selectedDept !== 'all') {
+        // Sayfa açılışında kayıtlı departmanı aktif yap
+        (function applyStoredDept() {
+            // Dropdown'da aktif olanı işaretle
+            deptDropdownItems.forEach(i => {
+                if (i.dataset.dept === selectedDept) {
+                    i.classList.add('active');
+                } else {
+                    i.classList.remove('active');
+                }
+            });
+
+            // Buton stilini güncelle
             const filterBtn = document.getElementById('dept-filter-btn');
-            if (filterBtn) {
-                filterBtn.classList.replace('btn-outline-light', 'btn-primary');
+            if (filterBtn && selectedDept !== 'all') {
+                filterBtn.classList.remove('btn-outline-light');
+                filterBtn.classList.add('btn-primary');
             }
-            filterPersonel();
-        }
+
+            // Filtreyi uygula
+            if (selectedDept !== 'all') {
+                filterPersonel();
+            }
+        })();
 
         function filterPersonel() {
             const searchTerm = searchInput.value.toLowerCase();

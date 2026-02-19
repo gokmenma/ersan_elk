@@ -283,6 +283,100 @@ class AracKmModel extends Model
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
     /**
+     * Belirli bir araç ve tarih için önceki (en yakın) KM kaydını getirir
+     */
+    public function getOncekiKayit($aracId, $tarih, $excludeId = null)
+    {
+        $sql = "SELECT * FROM {$this->table} 
+                WHERE arac_id = :arac_id 
+                AND tarih < :tarih 
+                AND firma_id = :firma_id 
+                AND silinme_tarihi IS NULL";
+        $params = [
+            'arac_id' => $aracId,
+            'tarih' => $tarih,
+            'firma_id' => $_SESSION['firma_id']
+        ];
+        if ($excludeId) {
+            $sql .= " AND id != :exclude_id";
+            $params['exclude_id'] = $excludeId;
+        }
+        $sql .= " ORDER BY tarih DESC, id DESC LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Belirli bir araç ve tarih için sonraki (en yakın) KM kaydını getirir
+     */
+    public function getSonrakiKayit($aracId, $tarih, $excludeId = null)
+    {
+        $sql = "SELECT * FROM {$this->table} 
+                WHERE arac_id = :arac_id 
+                AND tarih > :tarih 
+                AND firma_id = :firma_id 
+                AND silinme_tarihi IS NULL";
+        $params = [
+            'arac_id' => $aracId,
+            'tarih' => $tarih,
+            'firma_id' => $_SESSION['firma_id']
+        ];
+        if ($excludeId) {
+            $sql .= " AND id != :exclude_id";
+            $params['exclude_id'] = $excludeId;
+        }
+        $sql .= " ORDER BY tarih ASC, id ASC LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Bir KM kaydının başlangıç KM'sini günceller ve yapılan KM'yi yeniden hesaplar
+     */
+    public function zincirlemeGuncelle($kayitId, $yeniBaslangicKm)
+    {
+        // Önce mevcut kaydı al
+        $kayit = $this->find($kayitId);
+        if (!$kayit)
+            return false;
+
+        $bitisKm = intval($kayit->bitis_km);
+        $yapilanKm = ($bitisKm > 0 && $yeniBaslangicKm > 0) ? ($bitisKm - $yeniBaslangicKm) : 0;
+
+        $sql = "UPDATE {$this->table} 
+                SET baslangic_km = :baslangic_km, yapilan_km = :yapilan_km 
+                WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            'baslangic_km' => $yeniBaslangicKm,
+            'yapilan_km' => $yapilanKm,
+            'id' => $kayitId
+        ]);
+    }
+
+    /**
+     * Bir araç için en son bitiş KM değerini getirir
+     */
+    public function getEnSonBitisKm($aracId)
+    {
+        $sql = "SELECT bitis_km FROM {$this->table} 
+                WHERE arac_id = :arac_id 
+                AND firma_id = :firma_id 
+                AND silinme_tarihi IS NULL 
+                AND bitis_km > 0
+                ORDER BY tarih DESC, id DESC LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            'arac_id' => $aracId,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+        $result = $stmt->fetch(PDO::FETCH_OBJ);
+        return $result ? intval($result->bitis_km) : 0;
+    }
+
+    /**
      * Tüm araçlar için en yüksek bitiş KM'lerini getirir
      */
     public function getAllMaxBitisKm()

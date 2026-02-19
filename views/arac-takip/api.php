@@ -349,9 +349,48 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     throw new Exception("Geçersiz KM kaydı ID.");
                 }
 
+                // Silmeden önce kaydın bilgilerini al
+                $silinecekKayit = $Km->find($id);
+                if (!$silinecekKayit) {
+                    throw new Exception("KM kaydı bulunamadı.");
+                }
+
+                $silinecekAracId = $silinecekKayit->arac_id;
+                $silinecekTarih = $silinecekKayit->tarih;
+                $silinecekBitisKm = intval($silinecekKayit->bitis_km);
+
+                // Önce soft delete yap
                 $Km->softDelete($id);
-                echo json_encode(['status' => 'success', 'message' => 'KM kaydı silindi.']);
+
+                // Silinen kaydın ardından gelen sonraki kaydı bul
+                $sonrakiKayit = $Km->getSonrakiKayit($silinecekAracId, $silinecekTarih);
+
+                if ($sonrakiKayit) {
+                    // Silinen kaydın öncesindeki kaydı bul
+                    $oncekiKayit = $Km->getOncekiKayit($silinecekAracId, $silinecekTarih, $id);
+
+                    if ($oncekiKayit && intval($oncekiKayit->bitis_km) > 0) {
+                        // Önceki kaydın bitiş KM'sini sonraki kaydın başlangıcı yap
+                        $yeniBaslangic = intval($oncekiKayit->bitis_km);
+                    } else {
+                        // Önceki kayıt yoksa araç tablosundaki başlangıç KM'yi kullan
+                        $aracBilgi = $Arac->getById($silinecekAracId);
+                        $yeniBaslangic = intval($aracBilgi->baslangic_km ?? 0);
+                    }
+
+                    // Sonraki kaydın başlangıç KM'sini ve yapılan KM'sini güncelle
+                    $Km->zincirlemeGuncelle($sonrakiKayit->id, $yeniBaslangic);
+                }
+
+                // Araç güncel KM'yi güncelle (silme sonrası kalan en son bitiş KM)
+                $enSonBitisKm = $Km->getEnSonBitisKm($silinecekAracId);
+                if ($enSonBitisKm > 0) {
+                    $Arac->updateKm($silinecekAracId, $enSonBitisKm);
+                }
+
+                echo json_encode(['status' => 'success', 'message' => 'KM kaydı silindi ve zincir güncellendi.']);
                 break;
+
 
             case 'km-listesi':
                 $arac_id = isset($_POST['arac_id']) && $_POST['arac_id'] !== '' ? intval($_POST['arac_id']) : null;
