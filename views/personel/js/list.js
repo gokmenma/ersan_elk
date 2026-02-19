@@ -5,6 +5,13 @@ $(document).ready(function () {
       ...getDatatableOptions(),
       serverSide: true,
       colReorder: true,
+      stateSave: true,
+      stateSaveParams: function (settings, data) {
+        // Global stateSaveParams'ı taklit et ama sıralama ve görünürlüğü KORU
+        data.start = 0;
+        data.search.search = "";
+        // data.ColReorder ve data.columns (visible durumu) burada korunur
+      },
       order: [[3, "asc"]],
       ajax: {
         url: "views/personel/api.php",
@@ -12,6 +19,27 @@ $(document).ready(function () {
         data: function (d) {
           d.action = "personel-list";
         },
+      },
+      initComplete: function (settings, json) {
+        // Mevcut global initComplete varsa onu da çağır
+        let options = getDatatableOptions();
+        if (options.initComplete) {
+          options.initComplete.call(this, settings, json);
+        }
+
+        // Tabloyu göster (sütunlar reorder edildikten sonra)
+        $("#membersTable").addClass("ready");
+
+        // Sütunları bir kez daha hizala
+        this.api().columns.adjust();
+
+        // Sütun listesini başlat (Tablo hazır olduğunda)
+        initColumnToggle();
+      },
+      drawCallback: function () {
+        if (typeof feather !== "undefined") {
+          feather.replace();
+        }
       },
       columns: [
         {
@@ -169,16 +197,25 @@ $(document).ready(function () {
   const factoryDefaults = Array.from({ length: 13 }, (_, i) => i);
 
   // Sütun gösterme/gizleme listesini oluştur
+  let columnSortable = null;
+  let isInternalReorder = false;
+
   function initColumnToggle() {
     let columnList = $("#columnList");
     columnList.empty();
 
     // Mevcut görsel sırayı al
     let currentOrder = [];
-    if (table.colReorder) {
-      currentOrder = table.colReorder.order();
-    } else {
-      // Plugin yüklenmemişse varsayılan sırayı kullan
+    try {
+      if (table.colReorder && typeof table.colReorder.order === "function") {
+        currentOrder = table.colReorder.order();
+      }
+    } catch (e) {
+      console.warn("ColReorder order fetch failed:", e);
+    }
+
+    if (!currentOrder || currentOrder.length === 0) {
+      // Plugin yüklenmemişse veya hata verdiyse varsayılan sırayı kullan
       currentOrder = table.columns().indexes().toArray();
     }
 
@@ -210,33 +247,76 @@ $(document).ready(function () {
       }
     });
 
+    // Prevent Bootstrap from closing dropdown or interfering with drag
+    columnList
+      .off("mousedown touchstart", ".drag-handle")
+      .on("mousedown touchstart", ".drag-handle", function (e) {
+        e.stopPropagation();
+      });
+
     // Initialize SortableJS
     if (typeof Sortable !== "undefined") {
-      new Sortable(columnList[0], {
+      if (columnSortable) {
+        columnSortable.destroy();
+      }
+
+      columnSortable = new Sortable(columnList[0], {
         animation: 150,
         handle: ".drag-handle",
+        draggable: ".column-order-item",
+        forceFallback: true,
+        fallbackOnBody: true,
+        ghostClass: "bg-primary-subtle",
+        onStart: function () {
+          columnList.closest(".dropdown-menu").addClass("sorting-active");
+        },
         onEnd: function () {
-          let newVisualOrder = [];
+          columnList.closest(".dropdown-menu").removeClass("sorting-active");
 
-          // Mevcut dropdown sırasını al
-          $(".column-order-item").each(function () {
-            newVisualOrder.push(parseInt($(this).data("column")));
-          });
-
-          // Dropdown'da olmayan kolonları (örn index 0) en başta koru
-          let finalOrder = [];
-          currentOrder.forEach((idx) => {
-            if ($(`.column-order-item[data-column="${idx}"]`).length === 0) {
-              finalOrder.push(idx);
+          let newDropdownIndexOrder = [];
+          columnList.find(".column-order-item").each(function () {
+            let colIdx = parseInt($(this).attr("data-column"));
+            if (!isNaN(colIdx)) {
+              newDropdownIndexOrder.push(colIdx);
             }
           });
 
-          finalOrder = finalOrder.concat(newVisualOrder);
+          if (
+            table.colReorder &&
+            typeof table.colReorder.order === "function" &&
+            newDropdownIndexOrder.length > 0
+          ) {
+            isInternalReorder = true;
 
-          if (table.colReorder) {
-            table.colReorder.order(finalOrder, true);
+            // Mevcut tam görsel sıralamayı al
+            let currentFullOrder = table.colReorder.order();
+            let finalFullOrder = [...currentFullOrder];
+
+            // Dropdown'daki indekslerin mevcut görsel slotlarını bul
+            let dropdownIdxSet = new Set(newDropdownIndexOrder);
+            let availableSlots = [];
+            currentFullOrder.forEach((origIdx, visIdx) => {
+              if (dropdownIdxSet.has(origIdx)) {
+                availableSlots.push(visIdx);
+              }
+            });
+
+            // Bu slotlara, sürükle-bırak sonrası oluşan yeni göreli sırayı yerleştir
+            if (availableSlots.length === newDropdownIndexOrder.length) {
+              newDropdownIndexOrder.forEach((origIdx, i) => {
+                finalFullOrder[availableSlots[i]] = origIdx;
+              });
+
+              // Tabloyu güncelle
+              table.colReorder.order(finalFullOrder, true);
+
+              // Responsive ve diğer ayarları yenile
+              if (table.responsive) table.responsive.recalc();
+              table.columns.adjust().draw(false);
+            }
+
+            isInternalReorder = false;
           }
-          table.columns.adjust().draw(false);
         },
       });
     }
@@ -250,27 +330,27 @@ $(document).ready(function () {
 
         let btn = $(this);
         let icon = btn.find("i");
-        icon.addClass("mdi-spin"); // Başarı hissi için döndür
+        icon.addClass("mdi-spin");
 
         setTimeout(() => {
-          // Orijinal sırayı geri yükle
+          isInternalReorder = true;
           if (table.colReorder) {
             table.colReorder.reset();
           }
 
+          // Varsayılan görünürlüğü uygula
           table.columns().every(function () {
             let column = this;
             let idx = column.index();
             let shouldBeVisible = factoryDefaults.includes(idx);
-            column.visible(shouldBeVisible);
+            column.visible(shouldBeVisible, false); // false: Redraw beklet
           });
 
           table.columns.adjust().draw(false);
-
-          // Listeyi yeniden oluştur (sıralama resetlendiği için)
           initColumnToggle();
+          isInternalReorder = false;
 
-          icon.removeClass("mdi-spin");
+          icon.removeClass("mdi-spin font-size-14");
         }, 300);
       });
 
@@ -294,10 +374,12 @@ $(document).ready(function () {
 
   // Sütunlar manuel olarak tabloda yer değiştirirse listeyi güncelle
   table.on("column-reorder", function () {
-    initColumnToggle();
+    if (!isInternalReorder) {
+      initColumnToggle();
+    }
   });
 
-  initColumnToggle();
+  // Not: initColumnToggle() artık DataTable initComplete içinde çağrılıyor.
 
   // Satır seçimi
   table.on("click", "tbody tr", (e) => {

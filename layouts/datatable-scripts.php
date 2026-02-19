@@ -19,5 +19,10 @@
     href="assets/css/datatable-filters.css?v=<?php echo filemtime("assets/css/datatable-filters.css"); ?>">
 <script src="assets/js/datatable-filters.js?v=<?php echo filemtime("assets/js/datatable-filters.js"); ?>"></script>
 
+<!-- DataTables Column Reorder & SortableJS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/colreorder/1.7.0/css/colReorder.bootstrap4.min.css">
+<script src="https://cdn.datatables.net/colreorder/1.7.0/js/dataTables.colReorder.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
 <!-- Datatable init js -->
 <script src="assets/js/datatables.init.js?v=<?php echo filemtime("assets/js/datatables.init.js"); ?>"></script>

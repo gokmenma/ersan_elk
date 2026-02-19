@@ -11,11 +11,6 @@ if (Gate::canWithMessage("personel_listesi")) {
 
     $personeller = $Personel->all();
     ?>
-    <!-- ColReorder & SortableJS -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/colreorder/1.7.0/css/colReorder.bootstrap4.min.css">
-    <script src="https://cdn.datatables.net/colreorder/1.7.0/js/dataTables.colReorder.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-
     <div class="container-fluid">
 
         <!-- start page title -->
@@ -113,19 +108,70 @@ if (Gate::canWithMessage("personel_listesi")) {
                             color: inherit !important;
                         }
 
-                        .column-order-item { transition: background-color 0.2s; }
-                        .column-order-item:hover { background-color: rgba(0,0,0,0.03); }
-                        .drag-handle { color: #adb5bd; transition: all 0.2s; cursor: grab; }
-                        .drag-handle:active { cursor: grabbing; }
-                        .drag-handle:hover { color: #556ee6; background-color: rgba(85, 110, 230, 0.1); border-radius: 4px; }
-                        
+                        .column-order-item {
+                            transition: background-color 0.2s;
+                            user-select: none;
+                        }
+
+                        .column-order-item:hover {
+                            background-color: rgba(0, 0, 0, 0.03);
+                        }
+
+                        .drag-handle {
+                            color: #adb5bd;
+                            transition: all 0.2s;
+                            cursor: grab !important;
+                            position: relative;
+                            z-index: 10;
+                        }
+
+                        .drag-handle:active {
+                            cursor: grabbing !important;
+                        }
+
+                        .drag-handle:hover {
+                            color: #556ee6;
+                            background-color: rgba(85, 110, 230, 0.1);
+                            border-radius: 4px;
+                        }
+
+                        .sorting-active .dropdown-item {
+                            pointer-events: none;
+                        }
+
+                        .sorting-active .drag-handle {
+                            pointer-events: auto;
+                        }
+
+                        .sortable-fallback {
+                            opacity: 0.9 !important;
+                            background: white !important;
+                            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1) !important;
+                            cursor: grabbing !important;
+                        }
+
+                        #membersTable {
+                            opacity: 0;
+                            transition: opacity 0.3s ease-in-out;
+                        }
+
+                        #membersTable.ready {
+                            opacity: 1;
+                        }
+
                         .animate-spin {
                             animation: spin 1s infinite linear;
                             display: inline-block;
                         }
+
                         @keyframes spin {
-                            from { transform: rotate(0deg); }
-                            to { transform: rotate(360deg); }
+                            from {
+                                transform: rotate(0deg);
+                            }
+
+                            to {
+                                transform: rotate(360deg);
+                            }
                         }
                     </style>
 
