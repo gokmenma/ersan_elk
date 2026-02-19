@@ -133,201 +133,316 @@ foreach ($regionList as $r) {
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
 
-    <div class="row mb-3">
-        <div class="col-12">
-            <form method="GET" action="" id="filterForm">
-                <div class="card">
-                    <div class="card-body p-2">
-                        <div class="accordion" id="filterAccordion">
-                            <div class="accordion-item border-0">
-                                <h2 class="accordion-header position-relative" id="headingOne">
-                                    <button class="accordion-button collapsed py-2" type="button"
-                                        data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false"
-                                        aria-controls="collapseOne">
-                                        <i class="bx bx-filter-alt me-2 text-primary"></i> Filtreleme Seçenekleri
-                                    </button>
+    <!-- ========== ANA MOD SEKMELERİ ========== -->
+    <div class="d-flex align-items-center gap-2 mb-3" id="mainModeTabs">
+        <button
+            class="btn btn-sm fw-bold d-flex align-items-center gap-1 main-mode-btn <?= $activeTab !== 'karsilastirma' ? 'active' : '' ?>"
+            data-mode="rapor" id="btnModeRapor">
+            <i class="bx bx-table"></i> Özet Raporlar
+        </button>
+        <button
+            class="btn btn-sm fw-bold d-flex align-items-center gap-1 main-mode-btn <?= $activeTab === 'karsilastirma' ? 'active' : '' ?>"
+            data-mode="karsilastirma" id="btnModeKarsilastirma">
+            <i class="bx bx-git-compare"></i> Karşılaştırma
+        </button>
+    </div>
 
-                                    <div class="only-show-open animate__animated animate__fadeIn position-absolute"
-                                        style="left: 210px; top: 50%; transform: translateY(-50%); z-index: 5;">
-                                        <div class="filter-type-switcher">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" name="filter_type"
-                                                    id="typePeriod" value="period" <?= $filterType === 'period' ? 'checked' : '' ?>>
-                                                <label class="form-check-label" for="typePeriod">
-                                                    <i class="bx bx-calendar-event"></i> Dönem Bazlı
-                                                </label>
-                                            </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" name="filter_type"
-                                                    id="typeRange" value="range" <?= $filterType === 'range' ? 'checked' : '' ?>>
-                                                <label class="form-check-label" for="typeRange">
-                                                    <i class="bx bx-calendar-week"></i> Tarih Aralığı
-                                                </label>
+    <!-- =================== ÖZET RAPORLAR İÇERİĞİ =================== -->
+    <div id="modeRaporContent" <?= $activeTab === 'karsilastirma' ? 'style="display:none"' : '' ?>>
+
+        <div class="row mb-3">
+            <div class="col-12">
+                <form method="GET" action="" id="filterForm">
+                    <div class="card">
+                        <div class="card-body p-2">
+                            <div class="accordion" id="filterAccordion">
+                                <div class="accordion-item border-0">
+                                    <h2 class="accordion-header position-relative" id="headingOne">
+                                        <button class="accordion-button collapsed py-2" type="button"
+                                            data-bs-toggle="collapse" data-bs-target="#collapseOne"
+                                            aria-expanded="false" aria-controls="collapseOne">
+                                            <i class="bx bx-filter-alt me-2 text-primary"></i> Filtreleme Seçenekleri
+                                        </button>
+
+                                        <div class="only-show-open animate__animated animate__fadeIn position-absolute"
+                                            style="left: 210px; top: 50%; transform: translateY(-50%); z-index: 5;">
+                                            <div class="filter-type-switcher">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="filter_type"
+                                                        id="typePeriod" value="period" <?= $filterType === 'period' ? 'checked' : '' ?>>
+                                                    <label class="form-check-label" for="typePeriod">
+                                                        <i class="bx bx-calendar-event"></i> Dönem Bazlı
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="filter_type"
+                                                        id="typeRange" value="range" <?= $filterType === 'range' ? 'checked' : '' ?>>
+                                                    <label class="form-check-label" for="typeRange">
+                                                        <i class="bx bx-calendar-week"></i> Tarih Aralığı
+                                                    </label>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div id="filterSummary" class="d-none d-md-flex gap-2 position-absolute"
-                                        style="right: 60px; top: 50%; transform: translateY(-50%); z-index: 5;">
-                                        <!-- JS ile doldurulacak -->
-                                    </div>
-                                </h2>
+                                        <div id="filterSummary" class="d-none d-md-flex gap-2 position-absolute"
+                                            style="right: 60px; top: 50%; transform: translateY(-50%); z-index: 5;">
+                                            <!-- JS ile doldurulacak -->
+                                        </div>
+                                    </h2>
+                                </div>
                             </div>
-                        </div>
 
-                        <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne"
-                            data-bs-parent="#filterAccordion">
-                            <div class="accordion-body pt-3 pb-2">
-                                <div class="row g-3">
-                                    <div class="col-md-2 filter-group-period" <?= $filterType === 'range' ? 'style="display:none"' : '' ?>>
-                                        <?php echo Form::FormSelect2("year", $yearOptions, $year, "Yıl Seçiniz", "bx bx-calendar-event", "key", "", "form-select select2"); ?>
-                                    </div>
-                                    <div class="col-md-2 filter-group-period" <?= $filterType === 'range' ? 'style="display:none"' : '' ?>>
-                                        <?php echo Form::FormSelect2("month", $monthOptions, $month, "Ay Seçiniz", "bx bx-calendar-check", "key", "", "form-select select2"); ?>
-                                    </div>
-
-                                    <div class="col-md-2 filter-group-range" <?= $filterType === 'period' ? 'style="display:none"' : '' ?>>
-                                        <?php
-                                        $startDateFormatted = !empty($startDate) ? date('d.m.Y', strtotime($startDate)) : '';
-                                        echo Form::FormFloatInput("text", "start_date", $startDateFormatted, "gg.aa.yyyy", "Başlangıç Tarihi", "bx bx-calendar", "form-control flatpickr");
-                                        ?>
-                                    </div>
-                                    <div class="col-md-2 filter-group-range" <?= $filterType === 'period' ? 'style="display:none"' : '' ?>>
-                                        <?php
-                                        $endDateFormatted = !empty($endDate) ? date('d.m.Y', strtotime($endDate)) : '';
-                                        echo Form::FormFloatInput("text", "end_date", $endDateFormatted, "gg.aa.yyyy", "Bitiş Tarihi", "bx bx-calendar", "form-control flatpickr");
-                                        ?>
-                                    </div>
-
-                                    <div class="col-md-2">
-                                        <?php echo Form::FormSelect2("personel_id", $personelOptions, $personel_id, "Personel", "bx bx-user", "grid", "key", "form-control-sm select2"); ?>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <?php echo Form::FormSelect2("region", $regionOptions, $region, "Bölge", "bx bx-map-pin", "grid", "key", "form-control-sm select2"); ?>
-                                    </div>
-
-                                    <div class="col-md-2 d-flex align-items-end">
-                                        <div
-                                            class="action-button-container d-flex align-items-center border rounded shadow-sm p-1 gap-1 w-100 bg-white">
-                                            <button type="submit" class="btn btn-primary btn-sm flex-grow-1 fw-bold">
-                                                <i class="mdi mdi-magnify me-1"></i> Sorgula
-                                            </button>
-                                            <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-                                            <button type="button"
-                                                class="btn btn-link btn-sm text-secondary text-decoration-none px-2"
-                                                id="btnClearFilters">
-                                                <i class="mdi mdi-filter-remove"></i>
-                                            </button>
+                            <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne"
+                                data-bs-parent="#filterAccordion">
+                                <div class="accordion-body pt-3 pb-2">
+                                    <div class="row g-3">
+                                        <div class="col-md-2 filter-group-period" <?= $filterType === 'range' ? 'style="display:none"' : '' ?>>
+                                            <?php echo Form::FormSelect2("year", $yearOptions, $year, "Yıl Seçiniz", "bx bx-calendar-event", "key", "", "form-select select2"); ?>
                                         </div>
-                                    </div>
+                                        <div class="col-md-2 filter-group-period" <?= $filterType === 'range' ? 'style="display:none"' : '' ?>>
+                                            <?php echo Form::FormSelect2("month", $monthOptions, $month, "Ay Seçiniz", "bx bx-calendar-check", "key", "", "form-select select2"); ?>
+                                        </div>
 
+                                        <div class="col-md-2 filter-group-range" <?= $filterType === 'period' ? 'style="display:none"' : '' ?>>
+                                            <?php
+                                            $startDateFormatted = !empty($startDate) ? date('d.m.Y', strtotime($startDate)) : '';
+                                            echo Form::FormFloatInput("text", "start_date", $startDateFormatted, "gg.aa.yyyy", "Başlangıç Tarihi", "bx bx-calendar", "form-control flatpickr");
+                                            ?>
+                                        </div>
+                                        <div class="col-md-2 filter-group-range" <?= $filterType === 'period' ? 'style="display:none"' : '' ?>>
+                                            <?php
+                                            $endDateFormatted = !empty($endDate) ? date('d.m.Y', strtotime($endDate)) : '';
+                                            echo Form::FormFloatInput("text", "end_date", $endDateFormatted, "gg.aa.yyyy", "Bitiş Tarihi", "bx bx-calendar", "form-control flatpickr");
+                                            ?>
+                                        </div>
+
+                                        <div class="col-md-2">
+                                            <?php echo Form::FormSelect2("personel_id", $personelOptions, $personel_id, "Personel", "bx bx-user", "grid", "key", "form-control-sm select2"); ?>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <?php echo Form::FormSelect2("region", $regionOptions, $region, "Bölge", "bx bx-map-pin", "grid", "key", "form-control-sm select2"); ?>
+                                        </div>
+
+                                        <div class="col-md-2 d-flex align-items-end">
+                                            <div
+                                                class="action-button-container d-flex align-items-center border rounded shadow-sm p-1 gap-1 w-100 bg-white">
+                                                <button type="submit"
+                                                    class="btn btn-primary btn-sm flex-grow-1 fw-bold">
+                                                    <i class="mdi mdi-magnify me-1"></i> Sorgula
+                                                </button>
+                                                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                                                <button type="button"
+                                                    class="btn btn-link btn-sm text-secondary text-decoration-none px-2"
+                                                    id="btnClearFilters">
+                                                    <i class="mdi mdi-filter-remove"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <ul class="nav nav-tabs nav-tabs-custom nav-success mb-0" role="tablist" id="raporTabs">
-            <li class="nav-item">
-                <a class="nav-link <?= $activeTab === 'okuma' ? 'active' : '' ?>" href="javascript:void(0);"
-                    data-tab="okuma">
-                    <span class="d-block d-sm-none"><i class="fas fa-home"></i></span>
-                    <span class="d-none d-sm-block">Endeks Okuma</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link <?= $activeTab === 'kesme' ? 'active' : '' ?>" href="javascript:void(0);"
-                    data-tab="kesme">
-                    <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
-                    <span class="d-none d-sm-block">Kesme/Açma İşlm.</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link <?= $activeTab === 'sokme_takma' ? 'active' : '' ?>" href="javascript:void(0);"
-                    data-tab="sokme_takma">
-                    <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
-                    <span class="d-none d-sm-block">Sayaç Sökme Takma</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link <?= $activeTab === 'muhurleme' ? 'active' : '' ?>" href="javascript:void(0);"
-                    data-tab="muhurleme">
-                    <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
-                    <span class="d-none d-sm-block">Mühürleme</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link <?= $activeTab === 'kacakkontrol' ? 'active' : '' ?>" href="javascript:void(0);"
-                    data-tab="kacakkontrol">
-                    <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
-                    <span class="d-none d-sm-block">Kaçak Kontrol</span>
-                </a>
-            </li>
-        </ul>
-        <div class="action-button-container d-flex align-items-center border rounded shadow-sm p-1 gap-1">
-            <button type="button"
-                class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
-                id="btnFullScreen">
-                <i class="mdi mdi-fullscreen fs-5 me-1"></i> Tam Ekran
-            </button>
-            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-            <button type="button"
-                class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center"
-                id="btnExportExcel">
-                <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel'e Aktar
-            </button>
-            <div class="vr mx-1 vr-online-sorgula <?= in_array($activeTab, ['okuma', 'kesme', 'sokme_takma', 'muhurleme']) ? '' : 'd-none' ?>"
-                style="height: 25px; align-self: center;"></div>
-            <button type="button"
-                class="btn btn-link btn-sm text-info text-decoration-none px-2 align-items-center btn-online-sorgula <?= $activeTab === 'okuma' ? 'd-flex' : 'd-none' ?>"
-                id="btnOnlineSorgulaEndeks" data-bs-toggle="modal" data-bs-target="#importOnlineIcmalRaporuModal">
-                <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Endeks Sorgula
-            </button>
-            <button type="button"
-                class="btn btn-link btn-sm text-info text-decoration-none px-2 align-items-center btn-online-sorgula <?= $activeTab === 'kesme' ? 'd-flex' : 'd-none' ?>"
-                id="btnOnlineSorgulaPuantaj" data-bs-toggle="modal" data-bs-target="#importOnlinePuantajModal">
-                <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Puantaj Sorgula
-            </button>
-            <button type="button"
-                class="btn btn-link btn-sm text-info text-decoration-none px-2 align-items-center btn-online-sorgula <?= $activeTab === 'sokme_takma' ? 'd-flex' : 'd-none' ?>"
-                id="btnOnlineSorgulaSayac" data-bs-toggle="modal" data-bs-target="#importOnlineSayacModal">
-                <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Sayaç Sorgula
-            </button>
-            <button type="button"
-                class="btn btn-link btn-sm text-info text-decoration-none px-2 align-items-center btn-online-sorgula <?= $activeTab === 'muhurleme' ? 'd-flex' : 'd-none' ?>"
-                id="btnOnlineSorgulaMuhurleme" data-bs-toggle="modal" data-bs-target="#importOnlineMuhurlemeModal">
-                <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Mühürleme Sorgula
-            </button>
-        </div>
-    </div>
-
-    <div class="row" id="reportCardRow">
-        <div class="col-12">
-            <div id="kacakHelpInfo" class="alert alert-soft-primary alert-dismissible fade show mb-2 p-2" role="alert"
-                style="display: none;">
-                <div class="d-flex align-items-center">
-                    <i class="bx bxs-info-circle fs-5 me-2"></i>
-                    <div>
-                        <strong>İpucu:</strong> Kaçak Kontrol tablosunda gün kutucuklarına <strong>çift
-                            tıklayarak</strong> o tarih ve o ekip için hızlıca yeni kayıt oluşturabilirsiniz.
-                    </div>
-                </div>
-                <button type="button" class="btn-close p-2" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            <div class="card">
-                <div class="card-body" id="reportContent">
-                    <div class="text-center p-5">
-                        <div class="spinner-border text-primary" role="status"></div>
-                        <p class="mt-2">Rapor hazırlanıyor...</p>
-                    </div>
-                </div>
+                </form>
             </div>
         </div>
-    </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <ul class="nav nav-tabs nav-tabs-custom nav-success mb-0" role="tablist" id="raporTabs">
+                <li class="nav-item">
+                    <a class="nav-link <?= ($activeTab === 'okuma' || !in_array($activeTab, ['okuma', 'kesme', 'sokme_takma', 'muhurleme', 'kacakkontrol'])) ? 'active' : '' ?>"
+                        href="javascript:void(0);" data-tab="okuma">
+                        <span class="d-block d-sm-none"><i class="fas fa-home"></i></span>
+                        <span class="d-none d-sm-block">Endeks Okuma</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?= $activeTab === 'kesme' ? 'active' : '' ?>" href="javascript:void(0);"
+                        data-tab="kesme">
+                        <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
+                        <span class="d-none d-sm-block">Kesme/Açma İşlm.</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?= $activeTab === 'sokme_takma' ? 'active' : '' ?>" href="javascript:void(0);"
+                        data-tab="sokme_takma">
+                        <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
+                        <span class="d-none d-sm-block">Sayaç Sökme Takma</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?= $activeTab === 'muhurleme' ? 'active' : '' ?>" href="javascript:void(0);"
+                        data-tab="muhurleme">
+                        <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
+                        <span class="d-none d-sm-block">Mühürleme</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?= $activeTab === 'kacakkontrol' ? 'active' : '' ?>" href="javascript:void(0);"
+                        data-tab="kacakkontrol">
+                        <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
+                        <span class="d-none d-sm-block">Kaçak Kontrol</span>
+                    </a>
+                </li>
+            </ul>
+            <div class="action-button-container d-flex align-items-center border rounded shadow-sm p-1 gap-1">
+                <button type="button"
+                    class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
+                    id="btnFullScreen">
+                    <i class="mdi mdi-fullscreen fs-5 me-1"></i> Tam Ekran
+                </button>
+                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                <button type="button"
+                    class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center"
+                    id="btnExportExcel">
+                    <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel'e Aktar
+                </button>
+                <div class="vr mx-1 vr-online-sorgula <?= in_array($activeTab, ['okuma', 'kesme', 'sokme_takma', 'muhurleme']) ? '' : 'd-none' ?>"
+                    style="height: 25px; align-self: center;"></div>
+                <button type="button"
+                    class="btn btn-link btn-sm text-info text-decoration-none px-2 align-items-center btn-online-sorgula <?= $activeTab === 'okuma' ? 'd-flex' : 'd-none' ?>"
+                    id="btnOnlineSorgulaEndeks" data-bs-toggle="modal" data-bs-target="#importOnlineIcmalRaporuModal">
+                    <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Endeks Sorgula
+                </button>
+                <button type="button"
+                    class="btn btn-link btn-sm text-info text-decoration-none px-2 align-items-center btn-online-sorgula <?= $activeTab === 'kesme' ? 'd-flex' : 'd-none' ?>"
+                    id="btnOnlineSorgulaPuantaj" data-bs-toggle="modal" data-bs-target="#importOnlinePuantajModal">
+                    <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Puantaj Sorgula
+                </button>
+                <button type="button"
+                    class="btn btn-link btn-sm text-info text-decoration-none px-2 align-items-center btn-online-sorgula <?= $activeTab === 'sokme_takma' ? 'd-flex' : 'd-none' ?>"
+                    id="btnOnlineSorgulaSayac" data-bs-toggle="modal" data-bs-target="#importOnlineSayacModal">
+                    <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Sayaç Sorgula
+                </button>
+                <button type="button"
+                    class="btn btn-link btn-sm text-info text-decoration-none px-2 align-items-center btn-online-sorgula <?= $activeTab === 'muhurleme' ? 'd-flex' : 'd-none' ?>"
+                    id="btnOnlineSorgulaMuhurleme" data-bs-toggle="modal" data-bs-target="#importOnlineMuhurlemeModal">
+                    <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Mühürleme Sorgula
+                </button>
+            </div>
+        </div>
+
+        <div class="row" id="reportCardRow">
+            <div class="col-12">
+                <div id="kacakHelpInfo" class="alert alert-soft-primary alert-dismissible fade show mb-2 p-2"
+                    role="alert" style="display: none;">
+                    <div class="d-flex align-items-center">
+                        <i class="bx bxs-info-circle fs-5 me-2"></i>
+                        <div>
+                            <strong>İpucu:</strong> Kaçak Kontrol tablosunda gün kutucuklarına <strong>çift
+                                tıklayarak</strong> o tarih ve o ekip için hızlıca yeni kayıt oluşturabilirsiniz.
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close p-2" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <div class="card">
+                    <div class="card-body" id="reportContent">
+                        <div class="text-center p-5">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2">Rapor hazırlanıyor...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /modeRaporContent -->
+
+    <!-- =================== KARŞILAŞTIRMA İÇERİĞİ =================== -->
+    <div id="modeKarsilastirmaContent" <?= $activeTab === 'karsilastirma' ? '' : 'style="display:none"' ?>>
+
+        <!-- Dönem Seçici (üstte - filtreleme gibi) -->
+        <div class="row mb-3" id="comparePeriodRow">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body py-3 px-4">
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bx bx-calendar-event text-primary fs-5"></i>
+                                <span class="fw-semibold text-muted" style="font-size: 12px;">Karşılaştırma
+                                    Dönemleri:</span>
+                            </div>
+                            <div id="selectedPeriods" class="d-flex gap-2 flex-wrap"></div>
+                            <div class="d-flex align-items-center gap-2">
+                                <select id="addPeriodYear" class="form-select form-select-sm" style="width: 90px;">
+                                    <?php for ($y = date('Y'); $y >= 2020; $y--): ?>
+                                        <option value="<?= $y ?>" <?= $y == date('Y') ? 'selected' : '' ?>><?= $y ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                                <select id="addPeriodMonth" class="form-select form-select-sm" style="width: 120px;">
+                                    <?php for ($m = 1; $m <= 12; $m++):
+                                        $m_val = str_pad($m, 2, '0', STR_PAD_LEFT); ?>
+                                        <option value="<?= $m_val ?>" <?= $m_val == date('m') ? 'selected' : '' ?>>
+                                            <?= $monthOptions[$m_val] ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                                <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1"
+                                    id="btnAddPeriod">
+                                    <i class="bx bx-plus"></i> Ekle
+                                </button>
+                            </div>
+                            <div class="ms-auto d-flex gap-2">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnClearPeriods">
+                                    <i class="bx bx-trash me-1"></i>Temizle
+                                </button>
+                                <button type="button" class="btn btn-success btn-sm fw-bold" id="btnCompare">
+                                    <i class="bx bx-git-compare me-1"></i>Karşılaştır
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Karşılaştırma Alt Sekmeleri (altta - rapor sekmeleri gibi) -->
+        <div class="d-flex align-items-center mb-3">
+            <ul class="nav nav-tabs nav-tabs-custom nav-success mb-0" role="tablist" id="compareTabs">
+                <li class="nav-item">
+                    <a class="nav-link active" href="javascript:void(0);" data-tab="okuma">
+                        <span class="d-none d-sm-block">Endeks Okuma</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="javascript:void(0);" data-tab="kesme">
+                        <span class="d-none d-sm-block">Kesme/Açma</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="javascript:void(0);" data-tab="sokme_takma">
+                        <span class="d-none d-sm-block">Sayaç Sökme Takma</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="javascript:void(0);" data-tab="muhurleme">
+                        <span class="d-none d-sm-block">Mühürleme</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="javascript:void(0);" data-tab="kacakkontrol">
+                        <span class="d-none d-sm-block">Kaçak Kontrol</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Karşılaştırma Rapor İçeriği -->
+        <div class="row" id="compareCardRow">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body" id="compareContent">
+                        <div class="text-center p-5 text-muted">
+                            <i class="bx bx-git-compare" style="font-size: 48px; opacity: 0.3;"></i>
+                            <p class="mt-2">Dönemleri seçip <strong>Karşılaştır</strong> butonuna basın.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /modeKarsilastirmaContent -->
+
 </div>
 
 <script>
@@ -553,18 +668,48 @@ foreach ($regionList as $r) {
             adjustTableHeight();
         });
 
+        // ========== ANA MOD VE SEKME YÖNETİMİ ==========
+        let currentMode = '<?= $activeTab === 'karsilastirma' ? 'karsilastirma' : 'rapor' ?>';
+
+        // Ana mod sekmesi tıklaması (Özet Raporlar / Karşılaştırma)
+        $('.main-mode-btn').on('click', function () {
+            $('.main-mode-btn').removeClass('active');
+            $(this).addClass('active');
+            currentMode = $(this).data('mode');
+
+            if (currentMode === 'karsilastirma') {
+                $('#modeRaporContent').hide();
+                $('#modeKarsilastirmaContent').show();
+                // İlk yüklemede default dönemleri ekle
+                if (comparisonPeriods.length === 0) {
+                    addDefaultPeriods();
+                } else {
+                    renderPeriodChips();
+                }
+                loadComparisonReport();
+            } else {
+                $('#modeKarsilastirmaContent').hide();
+                $('#modeRaporContent').show();
+                updateOnlineSorgulaVisibility();
+                loadReport();
+            }
+        });
+
+        // Rapor alt sekme tıklaması (sadece rapor modu)
         $('#raporTabs .nav-link').on('click', function () {
             $('#raporTabs .nav-link').removeClass('active');
             $(this).addClass('active');
             currentTab = $(this).data('tab');
-
-            // Reset filters on tab change (except year/month) - BU KISMI USER İSTEDİĞİ İÇİN KALDIRIYORUZ VEYA PERSONEL KALSIN MI?
-            // "ay,yıl ve sekme kalmalı" dediği temizle butonu içindi. 
-            // Tab değişiminde personel/bölge sıfırlanmalı mı? 
-            // Genelde kullanıcılar tüm sekmelerde aynı personeli görmek ister.
-
             updateOnlineSorgulaVisibility();
             loadReport();
+        });
+
+        // Karşılaştırma alt sekme tıklaması (sadece karşılaştırma modu)
+        $('#compareTabs .nav-link').on('click', function () {
+            $('#compareTabs .nav-link').removeClass('active');
+            $(this).addClass('active');
+            currentCompareTab = $(this).data('tab');
+            loadComparisonReport();
         });
 
         $(document).on('dblclick', '.kacak-quick-cell', function () {
@@ -635,10 +780,143 @@ foreach ($regionList as $r) {
             }
         });
 
+        // ========== KARŞILAŞTIRMA BÖLÜMÜ ==========
+        let comparisonPeriods = []; // ['2026-01', '2026-02', ...]
+        let currentCompareTab = 'okuma';
+        let currentCompareMode = 'personel';
+
+        const COMPARE_STORAGE_KEY = 'comparison_periods';
+        const monthNamesTr = {
+            '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
+            '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
+            '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
+        };
+
+        function addDefaultPeriods() {
+            const now = new Date();
+            comparisonPeriods = [];
+            // Son 3 ay
+            for (let i = 2; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                comparisonPeriods.push(key);
+            }
+            renderPeriodChips();
+        }
+
+        function renderPeriodChips() {
+            const container = $('#selectedPeriods');
+            container.empty();
+            comparisonPeriods.forEach(function (p) {
+                const parts = p.split('-');
+                const label = (monthNamesTr[parts[1]] || parts[1]) + ' ' + parts[0];
+                container.append(
+                    `<div class="badge bg-primary-subtle text-primary d-flex align-items-center gap-1 py-2 px-3" style="font-size: 12px; font-weight: 600; border-radius: 8px; border: 1px solid rgba(81,86,190,0.2);">
+                        <i class="bx bx-calendar-event"></i>
+                        ${label}
+                        <button type="button" class="btn-close btn-close-sm ms-1" style="font-size: 8px; filter: none; opacity: 0.7;" data-period="${p}"></button>
+                    </div>`
+                );
+            });
+            // Save to storage
+            localStorage.setItem(COMPARE_STORAGE_KEY, JSON.stringify(comparisonPeriods));
+        }
+
+        // Period chip remove
+        $(document).on('click', '#selectedPeriods .btn-close', function () {
+            const period = $(this).data('period');
+            comparisonPeriods = comparisonPeriods.filter(p => p !== period);
+            renderPeriodChips();
+        });
+
+        // Add period button
+        $('#btnAddPeriod').on('click', function () {
+            const year = $('#addPeriodYear').val();
+            const month = $('#addPeriodMonth').val();
+            const key = year + '-' + month;
+            if (!comparisonPeriods.includes(key)) {
+                comparisonPeriods.push(key);
+                // Sort chronologically
+                comparisonPeriods.sort();
+                renderPeriodChips();
+            } else {
+                Swal.fire({ icon: 'info', title: 'Bilgi', text: 'Bu dönem zaten ekli!', timer: 1500, showConfirmButton: false });
+            }
+        });
+
+        // Clear periods
+        $('#btnClearPeriods').on('click', function () {
+            comparisonPeriods = [];
+            renderPeriodChips();
+        });
+
+        // Compare button
+        $('#btnCompare').on('click', function () {
+            loadComparisonReport();
+        });
+
+        // Load comparison report
+        window.loadComparisonReport = function (mode, tab) {
+            if (mode) currentCompareMode = mode;
+            if (tab) currentCompareTab = tab;
+
+            if (comparisonPeriods.length < 2) {
+                $('#compareContent').html(
+                    '<div class="alert alert-warning d-flex align-items-center gap-2 m-3">'
+                    + '<i class="bx bx-info-circle fs-4"></i>'
+                    + '<div>Karşılaştırma yapmak için en az <strong>2 dönem</strong> seçmelisiniz. Yukarıdaki dönem seçiciden ay ekleyip <strong>Karşılaştır</strong> butonuna basın.</div>'
+                    + '</div>'
+                );
+                return;
+            }
+
+            $('#compareContent').html('<div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Karşılaştırma raporu hazırlanıyor...</p></div>');
+
+            // Build query string
+            let params = 'action=get-comparison-report';
+            params += '&compare_tab=' + currentCompareTab;
+            params += '&compare_mode=' + currentCompareMode;
+            comparisonPeriods.forEach(function (p) {
+                params += '&periods[]=' + encodeURIComponent(p);
+            });
+
+            $.ajax({
+                url: 'views/puantaj/api.php?' + params,
+                type: 'GET',
+                success: function (html) {
+                    $('#compareContent').html(html);
+                    saveFiltersToStorage();
+                },
+                error: function () {
+                    $('#compareContent').html('<div class="alert alert-danger">Karşılaştırma raporu yüklenirken bir hata oluştu.</div>');
+                }
+            });
+        };
+
+        // Load saved periods from storage
+        const savedPeriods = localStorage.getItem(COMPARE_STORAGE_KEY);
+        if (savedPeriods) {
+            try {
+                comparisonPeriods = JSON.parse(savedPeriods);
+            } catch (e) { }
+        }
+
+        // ========== /KARŞILAŞTIRMA BÖLÜMÜ ==========
+
         // Initial load
         loadFiltersFromStorage();
         updateOnlineSorgulaVisibility();
-        loadReport();
+
+        if (currentMode === 'karsilastirma') {
+            if (comparisonPeriods.length === 0) {
+                addDefaultPeriods();
+            } else {
+                renderPeriodChips();
+            }
+            loadComparisonReport();
+        } else {
+            loadReport();
+        }
 
         window.openKacakModal = function (tarih, pIds, sayi, ekipAdi) {
             $('#kacakManualForm input[name="id"]').val(0);
@@ -1379,6 +1657,42 @@ foreach ($personelList as $p) {
 <style>
     body {
         overflow-x: hidden;
+    }
+
+    /* Ana mod sekmeleri (Özet Raporlar / Karşılaştırma) */
+    .main-mode-btn {
+        padding: 7px 18px;
+        border-radius: 8px;
+        border: 1.5px solid var(--bs-border-color, #e2e5e9);
+        background: var(--bs-card-bg, #fff);
+        color: var(--bs-body-color, #6c757d);
+        font-size: 13px;
+        transition: all 0.25s ease;
+    }
+
+    .main-mode-btn:hover {
+        border-color: #5156be;
+        color: #5156be;
+        background: rgba(81, 86, 190, 0.04);
+    }
+
+    .main-mode-btn.active {
+        background: linear-gradient(135deg, #5156be 0%, #3f43a0 100%);
+        border-color: #5156be;
+        color: #fff !important;
+        box-shadow: 0 3px 10px rgba(81, 86, 190, 0.3);
+    }
+
+    [data-bs-theme="dark"] .main-mode-btn {
+        background: #282f36;
+        border-color: #3b445e;
+        color: #adb5bd;
+    }
+
+    [data-bs-theme="dark"] .main-mode-btn.active {
+        background: linear-gradient(135deg, #5156be 0%, #3f43a0 100%);
+        border-color: #5156be;
+        color: #fff !important;
     }
 
 

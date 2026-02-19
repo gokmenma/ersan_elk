@@ -563,4 +563,157 @@ class PuantajModel extends Model
         $stmt->execute([$firmaId, $buAy, $sonGun]);
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
+
+    /**
+     * Karşılaştırma raporu için çoklu dönem verileri (Kesme/Açma, Sökme Takma, Mühürleme)
+     * @param array $periods [['start' => 'Y-m-d', 'end' => 'Y-m-d', 'label' => 'Ocak 2026'], ...]
+     * @param string $raporTuru 'kesme', 'sokme_takma', 'muhurleme'
+     * @return array ['personel' => [...], 'bolge' => [...], 'firma' => [...]]
+     */
+    public function getComparisonByPeriods(array $periods, string $raporTuru = ''): array
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $result = ['personel' => [], 'bolge' => [], 'firma' => []];
+
+        // İlgili iş türlerini bul
+        $workTypeFilter = [];
+        if (!empty($raporTuru)) {
+            $sqlWT = "SELECT TRIM(is_emri_sonucu) as is_emri_sonucu FROM tanimlamalar WHERE grup = 'is_turu' AND rapor_sekmesi = ? AND silinme_tarihi IS NULL";
+            $stmtWT = $this->db->prepare($sqlWT);
+            $stmtWT->execute([$raporTuru]);
+            $workTypeFilter = $stmtWT->fetchAll(PDO::FETCH_COLUMN);
+
+            if (empty($workTypeFilter) && $raporTuru === 'sokme_takma') {
+                $stmtWT->execute(['sokme']);
+                $workTypeFilter = $stmtWT->fetchAll(PDO::FETCH_COLUMN);
+            }
+            if (empty($workTypeFilter) && $raporTuru === 'kesme') {
+                $sqlWT2 = "SELECT TRIM(is_emri_sonucu) as is_emri_sonucu FROM tanimlamalar WHERE grup = 'is_turu' AND is_turu_ucret > 0 AND silinme_tarihi IS NULL";
+                $stmtWT2 = $this->db->prepare($sqlWT2);
+                $stmtWT2->execute();
+                $workTypeFilter = $stmtWT2->fetchAll(PDO::FETCH_COLUMN);
+            }
+        }
+
+        foreach ($periods as $idx => $period) {
+            $params = [$firmaId, $period['start'], $period['end']];
+            $wtClause = '';
+            if (!empty($workTypeFilter)) {
+                $placeholders = implode(',', array_fill(0, count($workTypeFilter), '?'));
+                $wtClause = " AND TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) IN ($placeholders)";
+                $params = array_merge($params, $workTypeFilter);
+            }
+
+            $sql = "SELECT t.personel_id, t.ekip_kodu_id,
+                        p.adi_soyadi as personel_adi,
+                        def.tur_adi as ekip_adi,
+                        def.ekip_bolge as bolge,
+                        SUM(t.sonuclanmis) as toplam,
+                        COUNT(DISTINCT t.tarih) as gun_sayisi
+                    FROM {$this->table} t
+                    LEFT JOIN personel p ON t.personel_id = p.id
+                    LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                    LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                    WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
+                    $wtClause
+                    GROUP BY t.personel_id, t.ekip_kodu_id, p.adi_soyadi, def.tur_adi, def.ekip_bolge";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+            $periodLabel = $period['label'];
+            $periodTotal = 0;
+            $periodPersonelSayisi = 0;
+
+            foreach ($rows as $row) {
+                $pKey = $row->personel_id . '_' . $row->ekip_kodu_id;
+
+                // Personel bazlı
+                if (!isset($result['personel'][$pKey])) {
+                    $result['personel'][$pKey] = [
+                        'personel_adi' => $row->personel_adi ?: '-',
+                        'ekip_adi' => $row->ekip_adi ?: '-',
+                        'bolge' => $row->bolge ?: '-',
+                        'periods' => []
+                    ];
+                }
+                $result['personel'][$pKey]['periods'][$periodLabel] = [
+                    'toplam' => (int) $row->toplam,
+                    'gun_sayisi' => (int) $row->gun_sayisi
+                ];
+
+                // Bölge bazlı
+                $bolgeName = $row->bolge ?: 'TANIMSIZ';
+                if (!isset($result['bolge'][$bolgeName])) {
+                    $result['bolge'][$bolgeName] = ['periods' => []];
+                }
+                if (!isset($result['bolge'][$bolgeName]['periods'][$periodLabel])) {
+                    $result['bolge'][$bolgeName]['periods'][$periodLabel] = ['toplam' => 0, 'personel_sayisi' => 0];
+                }
+                $result['bolge'][$bolgeName]['periods'][$periodLabel]['toplam'] += (int) $row->toplam;
+                $result['bolge'][$bolgeName]['periods'][$periodLabel]['personel_sayisi']++;
+
+                $periodTotal += (int) $row->toplam;
+                $periodPersonelSayisi++;
+            }
+
+            // Firma toplam
+            $result['firma'][$periodLabel] = [
+                'toplam' => $periodTotal,
+                'personel_sayisi' => $periodPersonelSayisi
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Kaçak kontrol karşılaştırma raporu (ekip bazlı)
+     */
+    public function getKacakComparisonByPeriods(array $periods): array
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $result = ['personel' => [], 'bolge' => [], 'firma' => []];
+
+        foreach ($periods as $period) {
+            $sql = "SELECT k.ekip_adi, SUM(k.sayi) as toplam, COUNT(DISTINCT k.tarih) as gun_sayisi
+                    FROM kacak_kontrol k
+                    WHERE k.firma_id = ? AND k.tarih BETWEEN ? AND ? AND k.silinme_tarihi IS NULL
+                    GROUP BY k.ekip_adi";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$firmaId, $period['start'], $period['end']]);
+            $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+            $periodLabel = $period['label'];
+            $periodTotal = 0;
+
+            foreach ($rows as $row) {
+                $teamName = $row->ekip_adi ?: 'TANIMSIZ';
+
+                if (!isset($result['personel'][$teamName])) {
+                    $result['personel'][$teamName] = [
+                        'personel_adi' => $teamName,
+                        'ekip_adi' => $teamName,
+                        'bolge' => '-',
+                        'periods' => []
+                    ];
+                }
+                $result['personel'][$teamName]['periods'][$periodLabel] = [
+                    'toplam' => (int) $row->toplam,
+                    'gun_sayisi' => (int) $row->gun_sayisi
+                ];
+
+                $periodTotal += (int) $row->toplam;
+            }
+
+            $result['firma'][$periodLabel] = [
+                'toplam' => $periodTotal,
+                'personel_sayisi' => count($rows)
+            ];
+        }
+
+        return $result;
+    }
 }

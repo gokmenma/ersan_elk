@@ -327,11 +327,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     }
                 }
 
+                // Yapılan KM hesapla (Eğer gönderilmemişse veya hatalıysa)
+                $b = intval($data['baslangic_km'] ?? 0);
+                $e = intval($data['bitis_km'] ?? 0);
+                $data['yapilan_km'] = ($e > 0 && $b > 0) ? ($e - $b) : 0;
+
                 $Km->saveWithAttr($data);
 
                 // Araç güncel KM güncelle
-                if (!empty($data['bitis_km'])) {
-                    $Arac->updateKm($arac_id, $data['bitis_km']);
+                if ($e > 0) {
+                    $Arac->updateKm($arac_id, $e);
                 }
 
                 $message = $km_id > 0 ? "KM kaydı güncellendi." : "KM kaydı eklendi.";
@@ -394,6 +399,137 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 echo json_encode(['status' => 'success', 'data' => $kayit]);
                 break;
 
+            case 'km-excel-yukle':
+                require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
+
+                if (!isset($_FILES['excel_file']) || $_FILES['excel_file']['error'] !== 0) {
+                    throw new Exception("Dosya yüklenemedi. Lütfen tekrar deneyin.");
+                }
+
+                $ext = strtolower(pathinfo($_FILES['excel_file']['name'], PATHINFO_EXTENSION));
+                if (!in_array($ext, ['xlsx', 'xls'])) {
+                    throw new Exception("Sadece .xlsx ve .xls dosyaları kabul edilmektedir.");
+                }
+
+                $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($_FILES['excel_file']['tmp_name']);
+                $excelSheet = $spreadsheet->getActiveSheet();
+                $excelRows = $excelSheet->toArray(null, true, true, true);
+
+                $success = 0;
+                $skip = 0;
+                $errors = [];
+                $unmatchedPlates = [];
+
+                // Tüm araçları plaka => id map'i oluştur
+                $pdo = $Arac->getDb();
+                $stmtAraclar = $pdo->prepare(
+                    "SELECT id, plaka FROM araclar WHERE firma_id = :firma_id AND aktif_mi = 1 AND silinme_tarihi IS NULL"
+                );
+                $stmtAraclar->execute(['firma_id' => $_SESSION['firma_id']]);
+                $aracMap = [];
+                foreach ($stmtAraclar->fetchAll(\PDO::FETCH_OBJ) as $a) {
+                    $normalized = strtoupper(str_replace(' ', '', $a->plaka));
+                    $aracMap[$normalized] = $a->id;
+                }
+
+                $rowNum = 0;
+                foreach ($excelRows as $row) {
+                    $rowNum++;
+                    if ($rowNum <= 1)
+                        continue; // Sadece 1. satır (başlık) atla
+
+                    $plaka = trim($row['A'] ?? '');
+                    $tarihRaw = trim($row['B'] ?? '');
+                    $baslangicKm = trim($row['C'] ?? '');
+                    $bitisKm = trim($row['D'] ?? '');
+
+                    if (empty($plaka) && empty($bitisKm)) {
+                        $skip++;
+                        continue;
+                    }
+                    if (empty($plaka)) {
+                        $errors[] = "Satır $rowNum: Plaka eksik.";
+                        continue;
+                    }
+                    if (empty($bitisKm) || $bitisKm === '0') {
+                        $skip++;
+                        continue;
+                    }
+
+                    $plakaNorm = strtoupper(str_replace(' ', '', $plaka));
+                    if (!isset($aracMap[$plakaNorm])) {
+                        if (!in_array($plaka, $unmatchedPlates)) {
+                            $unmatchedPlates[] = $plaka;
+                        }
+                        continue;
+                    }
+                    $arac_id_yukle = $aracMap[$plakaNorm];
+
+                    // Tarihi dönüştür
+                    $tarih = null;
+                    if (!empty($tarihRaw)) {
+                        if (strpos($tarihRaw, '.') !== false) {
+                            $parts = explode('.', $tarihRaw);
+                            if (count($parts) === 3) {
+                                $tarih = $parts[2] . '-' . str_pad($parts[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($parts[0], 2, '0', STR_PAD_LEFT);
+                            }
+                        } elseif (strpos($tarihRaw, '-') !== false) {
+                            $tarih = $tarihRaw;
+                        } elseif (is_numeric($tarihRaw)) {
+                            // Excel serial date
+                            $unixDate = ($tarihRaw - 25569) * 86400;
+                            $tarih = date('Y-m-d', $unixDate);
+                        }
+                    }
+                    if (!$tarih || !strtotime($tarih)) {
+                        $errors[] = "Satır $rowNum ($plaka): Geçersiz tarih '$tarihRaw'.";
+                        continue;
+                    }
+                    $tarih = date('Y-m-d', strtotime($tarih));
+
+                    $bVal = intval(str_replace(['.', ',', ' '], '', $baslangicKm));
+                    $eVal = intval(str_replace(['.', ',', ' '], '', $bitisKm));
+
+                    if ($eVal <= 0) {
+                        $skip++;
+                        continue;
+                    }
+                    if ($bVal > 0 && $eVal < $bVal) {
+                        $errors[] = "Satır $rowNum ($plaka, $tarih): Bitiş KM ({$eVal}) başlangıçtan ({$bVal}) küçük.";
+                        continue;
+                    }
+
+                    $mevcutKayit = $Km->kayitVarMi($arac_id_yukle, $tarih, null, true);
+                    $saveData = [
+                        'firma_id' => $_SESSION['firma_id'],
+                        'arac_id' => $arac_id_yukle,
+                        'tarih' => $tarih,
+                        'baslangic_km' => $bVal,
+                        'bitis_km' => $eVal,
+                        'yapilan_km' => ($eVal > 0 && $bVal > 0) ? ($eVal - $bVal) : 0,
+                        'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null,
+                        'silinme_tarihi' => null // Eğer silinmişse geri getir
+                    ];
+                    if ($mevcutKayit) {
+                        $saveData['id'] = $mevcutKayit->id;
+                    }
+                    $Km->saveWithAttr($saveData);
+                    if ($eVal > 0) {
+                        $Arac->updateKm($arac_id_yukle, $eVal);
+                    }
+                    $success++;
+                }
+
+                echo json_encode([
+                    'status' => 'success',
+                    'success' => $success,
+                    'skip' => $skip,
+                    'errors' => $errors,
+                    'unmatchedPlates' => $unmatchedPlates,
+                    'message' => "$success kayıt başarıyla işlendi."
+                ]);
+                break;
+
             case 'km-kaydet-inline':
                 $data = $_POST;
                 $arac_id = intval($data['arac_id'] ?? 0);
@@ -422,10 +558,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                 // ID yoksa tarihten bulmayı dene
                 if ($km_id <= 0) {
-                    $mevcutKayit = $Km->kayitVarMi($arac_id, $tarih);
+                    $mevcutKayit = $Km->kayitVarMi($arac_id, $tarih, null, true);
                     if ($mevcutKayit) {
                         $km_id = $mevcutKayit->id;
                     }
+                }
+
+                // Kayıt yoksa ve bitiş KM de girilmemişse => yeni kayıt oluşturma
+                // Sadece görsel zincir güncellemesi için başarılı dön
+                if ($km_id <= 0 && $bitis_km <= 0) {
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Kayıt gerekmedi (bitiş KM girilmemiş).',
+                        'yapilan' => 0,
+                        'id' => null
+                    ]);
+                    break;
                 }
 
                 $saveData = [
@@ -435,7 +583,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     'baslangic_km' => $baslangic_km,
                     'bitis_km' => $bitis_km,
                     'yapilan_km' => ($bitis_km > 0 && $baslangic_km > 0) ? ($bitis_km - $baslangic_km) : 0,
-                    'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null
+                    'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null,
+                    'silinme_tarihi' => null // Geri yükleme ihtimaline karşı
                 ];
 
                 if ($km_id > 0) {
@@ -1458,205 +1607,205 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 </div>
                 <?php if (isset($_GET['full_print'])): ?>
                     <script>
-                                            window.onload = function () {
-                                                setTimeout(() => {
-                                                    window.print();
-                                                    window.onafterprint = function () { window.close(); }
-                                                }, 500);
-                                            }
-                                        </script>
-                                <?php endif; ?>
-                                <style>
-                                    /* Modal/Screen Styles */
-                                    .report-header {
-                                        margin-bottom: 20px;
-                                        border-bottom: 2px solid #333;
-                                        padding-bottom: 10px;
-                                    }
+                        window.onload = function () {
+                            setTimeout(() => {
+                                window.print();
+                                window.onafterprint = function () { window.close(); }
+                            }, 500);
+                        }
+                    </script>
+                <?php endif; ?>
+                <style>
+                    /* Modal/Screen Styles */
+                    .report-header {
+                        margin-bottom: 20px;
+                        border-bottom: 2px solid #333;
+                        padding-bottom: 10px;
+                    }
 
-                                    .report-title {
-                                        font-size: 20px;
-                                        font-weight: 800;
-                                        text-align: center;
-                                        margin-bottom: 15px;
-                                        text-transform: uppercase;
-                                        color: #1a1a1a;
-                                    }
+                    .report-title {
+                        font-size: 20px;
+                        font-weight: 800;
+                        text-align: center;
+                        margin-bottom: 15px;
+                        text-transform: uppercase;
+                        color: #1a1a1a;
+                    }
 
-                                    .report-info-grid {
-                                        display: grid;
-                                        grid-template-columns: repeat(3, 1fr);
-                                        gap: 10px;
-                                    }
+                    .report-info-grid {
+                        display: grid;
+                        grid-template-columns: repeat(3, 1fr);
+                        gap: 10px;
+                    }
 
-                                    .info-item {
-                                        background: #f8f9fa;
-                                        border: 1px solid #dee2e6;
-                                        padding: 8px 12px;
-                                        border-radius: 4px;
-                                        display: flex;
-                                        flex-direction: column;
-                                    }
+                    .info-item {
+                        background: #f8f9fa;
+                        border: 1px solid #dee2e6;
+                        padding: 8px 12px;
+                        border-radius: 4px;
+                        display: flex;
+                        flex-direction: column;
+                    }
 
-                                    .info-label {
-                                        font-size: 10px;
-                                        font-weight: 700;
-                                        color: #6c757d;
-                                        margin-bottom: 2px;
-                                    }
+                    .info-label {
+                        font-size: 10px;
+                        font-weight: 700;
+                        color: #6c757d;
+                        margin-bottom: 2px;
+                    }
 
-                                    .info-value {
-                                        font-size: 14px;
-                                        font-weight: 700;
-                                        color: #333;
-                                    }
+                    .info-value {
+                        font-size: 14px;
+                        font-weight: 700;
+                        color: #333;
+                    }
 
-                                    .report-table {
-                                        width: 100%;
-                                        border-collapse: collapse;
-                                        margin-top: 10px;
-                                        border: 1px solid #333;
-                                    }
+                    .report-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 10px;
+                        border: 1px solid #333;
+                    }
 
-                                    .report-table th {
-                                        background: #333;
-                                        color: #fff;
-                                        padding: 8px;
-                                        font-size: 12px;
-                                        text-align: center;
-                                        border: 1px solid #333;
-                                    }
+                    .report-table th {
+                        background: #333;
+                        color: #fff;
+                        padding: 8px;
+                        font-size: 12px;
+                        text-align: center;
+                        border: 1px solid #333;
+                    }
 
-                                    .km-editable {
-                                        cursor: cell;
-                                        transition: background-color 0.2s;
-                                    }
+                    .km-editable {
+                        cursor: cell;
+                        transition: background-color 0.2s;
+                    }
 
-                                    .km-editable:hover {
-                                        background-color: #fff8e1 !important;
-                                    }
+                    .km-editable:hover {
+                        background-color: #fff8e1 !important;
+                    }
 
-                                    .km-editable:focus {
-                                        background-color: #fff !important;
-                                        outline: 2px solid #556ee6 !important;
-                                        outline-offset: -2px;
-                                        z-index: 10;
-                                        box-shadow: 0 0 10px rgba(85, 110, 230, 0.3) !important;
-                                    }
+                    .km-editable:focus {
+                        background-color: #fff !important;
+                        outline: 2px solid #556ee6 !important;
+                        outline-offset: -2px;
+                        z-index: 10;
+                        box-shadow: 0 0 10px rgba(85, 110, 230, 0.3) !important;
+                    }
 
-                                    .km-editable:empty::before {
-                                        content: '-';
-                                        color: #ccc;
-                                    }
+                    .km-editable:empty::before {
+                        content: '-';
+                        color: #ccc;
+                    }
 
-                                    .bg-soft-success {
-                                        background-color: #d4edda !important;
-                                    }
+                    .bg-soft-success {
+                        background-color: #d4edda !important;
+                    }
 
-                                    .bg-soft-warning {
-                                        background-color: #fff3cd !important;
-                                    }
+                    .bg-soft-warning {
+                        background-color: #fff3cd !important;
+                    }
 
-                                    .bg-soft-danger {
-                                        background-color: #f8d7da !important;
-                                    }
+                    .bg-soft-danger {
+                        background-color: #f8d7da !important;
+                    }
 
-                                    .report-table td {
-                                        padding: 5px 8px;
-                                        border: 1px solid #333;
-                                        font-size: 12px;
-                                        height: 24px;
-                                    }
+                    .report-table td {
+                        padding: 5px 8px;
+                        border: 1px solid #333;
+                        font-size: 12px;
+                        height: 24px;
+                    }
 
-                                    .report-table .text-primary {
-                                        color: #0062cc !important;
-                                    }
+                    .report-table .text-primary {
+                        color: #0062cc !important;
+                    }
 
-                                    @media print {
-                                        @page {
-                                            size: A4 portrait;
-                                            margin: 10mm !important;
-                                        }
+                    @media print {
+                        @page {
+                            size: A4 portrait;
+                            margin: 10mm !important;
+                        }
 
-                                        body {
-                                            background: #fff !important;
-                                        }
+                        body {
+                            background: #fff !important;
+                        }
 
-                                        .container,
-                                        .container-fluid {
-                                            width: 100% !important;
-                                            max-width: none !important;
-                                            padding: 0 !important;
-                                            margin: 0 !important;
-                                        }
+                        .container,
+                        .container-fluid {
+                            width: 100% !important;
+                            max-width: none !important;
+                            padding: 0 !important;
+                            margin: 0 !important;
+                        }
 
-                                        .report-header {
-                                            border-bottom: 3px solid #000 !important;
-                                        }
+                        .report-header {
+                            border-bottom: 3px solid #000 !important;
+                        }
 
-                                        .info-item {
-                                            border: 2px solid #000 !important;
-                                            background: #fff !important;
-                                            -webkit-print-color-adjust: exact;
-                                            print-color-adjust: exact;
-                                        }
+                        .info-item {
+                            border: 2px solid #000 !important;
+                            background: #fff !important;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
+                        }
 
-                                        .report-table {
-                                            border: 2px solid #000 !important;
-                                        }
+                        .report-table {
+                            border: 2px solid #000 !important;
+                        }
 
-                                        .report-table th,
-                                        .report-table td {
-                                            border: 1px solid #000 !important;
-                                        }
+                        .report-table th,
+                        .report-table td {
+                            border: 1px solid #000 !important;
+                        }
 
-                                        .no-print {
-                                            display: none !important;
-                                        }
-                                    }
-                                </style>
-                                <?php
-                                $html = ob_get_clean();
-                                if (isset($_GET['full_print'])) {
-                                    header('Content-Type: text/html; charset=UTF-8');
-                                    ?>
-                                        <!DOCTYPE html>
-                                        <html lang="tr">
+                        .no-print {
+                            display: none !important;
+                        }
+                    }
+                </style>
+                <?php
+                $html = ob_get_clean();
+                if (isset($_GET['full_print'])) {
+                    header('Content-Type: text/html; charset=UTF-8');
+                    ?>
+                    <!DOCTYPE html>
+                    <html lang="tr">
 
-                                        <head>
-                                            <meta charset="UTF-8">
-                                            <title><?= $yil ?>                                         <?= $monthName ?> Araç Puantaj Cetveli</title>
-                                            <link href="../../assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
-                                            <style>
-                                                body {
-                                                    background: #fff !important;
-                                                }
+                    <head>
+                        <meta charset="UTF-8">
+                        <title><?= $yil ?>                     <?= $monthName ?> Araç Puantaj Cetveli</title>
+                        <link href="../../assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+                        <style>
+                            body {
+                                background: #fff !important;
+                            }
 
-                                                @media print {
-                                                    body {
-                                                        background: #fff !important;
-                                                    }
-
-                                                    .no-print {
-                                                        display: none !important;
-                                                    }
-                                                }
-                                            </style>
-                                        </head>
-
-                                        <body class="bg-white">
-                                            <div class="container py-4">
-                                                <?= $html ?>
-                                            </div>
-                                        </body>
-
-                                        </html>
-                                        <?php
-                                        exit;
+                            @media print {
+                                body {
+                                    background: #fff !important;
                                 }
-                                header('Content-Type: text/html; charset=UTF-8');
-                                die($html);
-                                break;
+
+                                .no-print {
+                                    display: none !important;
+                                }
+                            }
+                        </style>
+                    </head>
+
+                    <body class="bg-white">
+                        <div class="container py-4">
+                            <?= $html ?>
+                        </div>
+                    </body>
+
+                    </html>
+                    <?php
+                    exit;
+                }
+                header('Content-Type: text/html; charset=UTF-8');
+                die($html);
+                break;
 
             default:
                 throw new Exception("Geçersiz işlem.");

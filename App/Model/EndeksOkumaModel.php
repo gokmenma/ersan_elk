@@ -227,4 +227,79 @@ class EndeksOkumaModel extends Model
         $result = $stmt->fetch(PDO::FETCH_OBJ);
         return $result->toplam ?? 0;
     }
+
+    /**
+     * Karşılaştırma raporu için çoklu dönem verileri
+     * @param array $periods [['start' => 'Y-m-d', 'end' => 'Y-m-d', 'label' => 'Ocak 2026'], ...]
+     * @return array ['personel' => [...], 'bolge' => [...], 'firma' => [...]]
+     */
+    public function getComparisonByPeriods(array $periods): array
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $result = ['personel' => [], 'bolge' => [], 'firma' => []];
+
+        foreach ($periods as $idx => $period) {
+            $sql = "SELECT t.personel_id, t.ekip_kodu_id, 
+                        p.adi_soyadi as personel_adi,
+                        def.tur_adi as ekip_adi,
+                        def.ekip_bolge as bolge,
+                        SUM(t.okunan_abone_sayisi) as toplam,
+                        COUNT(DISTINCT t.tarih) as gun_sayisi
+                    FROM {$this->table} t
+                    LEFT JOIN personel p ON t.personel_id = p.id
+                    LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                    WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
+                    AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?(10[1-9]|1[1-9][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3,})'
+                    GROUP BY t.personel_id, t.ekip_kodu_id, p.adi_soyadi, def.tur_adi, def.ekip_bolge";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$firmaId, $period['start'], $period['end']]);
+            $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+            $periodLabel = $period['label'];
+            $periodTotal = 0;
+            $periodGun = 0;
+            $periodPersonelSayisi = 0;
+
+            foreach ($rows as $row) {
+                $pKey = $row->personel_id . '_' . $row->ekip_kodu_id;
+
+                // Personel bazlı
+                if (!isset($result['personel'][$pKey])) {
+                    $result['personel'][$pKey] = [
+                        'personel_adi' => $row->personel_adi ?: '-',
+                        'ekip_adi' => $row->ekip_adi ?: '-',
+                        'bolge' => $row->bolge ?: '-',
+                        'periods' => []
+                    ];
+                }
+                $result['personel'][$pKey]['periods'][$periodLabel] = [
+                    'toplam' => (int) $row->toplam,
+                    'gun_sayisi' => (int) $row->gun_sayisi
+                ];
+
+                // Bölge bazlı
+                $bolge = $row->bolge ?: 'TANIMSIZ';
+                if (!isset($result['bolge'][$bolge])) {
+                    $result['bolge'][$bolge] = ['periods' => []];
+                }
+                if (!isset($result['bolge'][$bolge]['periods'][$periodLabel])) {
+                    $result['bolge'][$bolge]['periods'][$periodLabel] = ['toplam' => 0, 'personel_sayisi' => 0];
+                }
+                $result['bolge'][$bolge]['periods'][$periodLabel]['toplam'] += (int) $row->toplam;
+                $result['bolge'][$bolge]['periods'][$periodLabel]['personel_sayisi']++;
+
+                $periodTotal += (int) $row->toplam;
+                $periodPersonelSayisi++;
+            }
+
+            // Firma toplam
+            $result['firma'][$periodLabel] = [
+                'toplam' => $periodTotal,
+                'personel_sayisi' => $periodPersonelSayisi
+            ];
+        }
+
+        return $result;
+    }
 }

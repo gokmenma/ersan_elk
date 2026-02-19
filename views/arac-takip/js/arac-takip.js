@@ -187,11 +187,14 @@ const AracTakip = {
     tr.find('.km-editable[data-type="baslangic"]').removeClass("text-info");
 
     // Sadece mevcut kaydı olan satırları güncelle (yeni boş kayıt yaratma)
-    if (!kmId && eVal === 0) {
+    if (!kmId && eVal <= 0) {
       // Kayıt yok ve bitiş de girilmemiş - sadece görsel güncelleme, atla
       this.kmKaydetSequential(rows);
       return;
     }
+
+    // Eğer bVal ve eVal ikisi de 0 ise (ve ID varsa) bu da gereksiz bir update olabilir,
+    // ancak kullanıcı belki temizlemek istemiştir. Yine de bitis 0 ise yapılan 0 gidecek.
 
     $.post(
       AracTakip.apiUrl,
@@ -260,8 +263,13 @@ const AracTakip = {
             baslangicTd
               .text(AracTakip.formatNumber(lastBitis))
               .addClass("text-info");
-            tr.attr("data-needs-update", "true");
             currentBaslangic = lastBitis;
+
+            // Sadece mevcut kaydı olanları veya kullanıcının bitiş girdiği yeni kayıtları işaretle
+            const kmId = tr.data("id");
+            if (kmId || currentBitis > 0) {
+              tr.attr("data-needs-update", "true");
+            }
           }
         }
       }
@@ -1431,6 +1439,172 @@ const AracTakip = {
       .find(".modal-title")
       .html('<i class="bx bx-wrench me-2"></i>Yeni Servis Kaydı');
   },
+
+  // KM Excel Yükleme İşlemleri
+  initKmExcelUpload: function () {
+    const self = this;
+    const kmFileInput = document.getElementById("kmExcelFile");
+    const kmUploadZone = document.getElementById("kmUploadZone");
+
+    if (!kmUploadZone || !kmFileInput) return;
+
+    $("#kmExcelYukleModal").on("show.bs.modal", function () {
+      // Reset state
+      $("#kmUploadDefault").removeClass("d-none");
+      $("#kmUploadSelected").addClass("d-none");
+      $("#kmUploadProgress").addClass("d-none");
+      $("#kmUploadResult").addClass("d-none").html("");
+      $("#btnKmExcelYukleSubmit").prop("disabled", true);
+      $("#kmExcelFile").val("");
+    });
+
+    kmFileInput.addEventListener("change", function () {
+      if (this.files.length > 0) {
+        onKmFileSelected(this.files[0]);
+      }
+    });
+
+    // Drag-and-drop
+    kmUploadZone.addEventListener("dragover", function (e) {
+      e.preventDefault();
+      $(this).addClass("dragover");
+    });
+    kmUploadZone.addEventListener("dragleave", function () {
+      $(this).removeClass("dragover");
+    });
+    kmUploadZone.addEventListener("drop", function (e) {
+      e.preventDefault();
+      $(this).removeClass("dragover");
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        kmFileInput.files = e.dataTransfer.files;
+        onKmFileSelected(file);
+      }
+    });
+
+    function onKmFileSelected(file) {
+      const allowed = ["xlsx", "xls"];
+      const ext = file.name.split(".").pop().toLowerCase();
+      if (!allowed.includes(ext)) {
+        showKmResult(
+          "danger",
+          '<i class="mdi mdi-alert-circle me-1"></i>Sadece .xlsx veya .xls dosyası kabul edilir.',
+        );
+        return;
+      }
+      $("#kmUploadDefault").addClass("d-none");
+      $("#kmUploadSelected").removeClass("d-none");
+      $("#kmUploadFileName").text(
+        file.name + " (" + (file.size / 1024).toFixed(1) + " KB)",
+      );
+      $("#btnKmExcelYukleSubmit").prop("disabled", false);
+    }
+
+    $("#btnKmExcelYukleSubmit").on("click", function () {
+      const file = kmFileInput.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append("action", "km-excel-yukle");
+      formData.append("excel_file", file);
+
+      $("#kmUploadProgress").removeClass("d-none");
+      $("#kmUploadResult").addClass("d-none").html("");
+      $(this).prop("disabled", true);
+
+      $.ajax({
+        url: self.apiUrl,
+        type: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function (response) {
+          $("#kmUploadProgress").addClass("d-none");
+
+          if (response.status === "success") {
+            let html = `<div class="alert alert-success py-2 mb-2">
+                                <i class="mdi mdi-check-circle me-1"></i>
+                                <strong>${response.success} kayıt</strong> başarıyla kaydedildi.
+                                ${response.skip > 0 ? `<span class="text-muted"> (${response.skip} satır atlandı)</span>` : ""}
+                            </div>`;
+
+            if (
+              response.unmatchedPlates &&
+              response.unmatchedPlates.length > 0
+            ) {
+              html += `<div class="alert alert-warning py-2 mb-2">
+                                    <strong><i class="mdi mdi-car-off me-1"></i>Eşleşmeyen Plakalar (${response.unmatchedPlates.length}):</strong>
+                                    <div class="mt-1 d-flex flex-wrap gap-1">
+                                        ${response.unmatchedPlates.map((p) => `<span class="badge bg-warning text-dark">${p}</span>`).join("")}
+                                    </div>
+                                    <small class="text-muted d-block mt-1">Bu plakalar sistemde bulunamadı veya pasif durumda.</small>
+                                </div>`;
+            }
+
+            if (response.errors && response.errors.length > 0) {
+              html += `<div class="alert alert-danger py-2 mb-0">
+                                    <strong><i class="mdi mdi-alert me-1"></i>Hatalar (${response.errors.length}):</strong>
+                                    <ul class="mb-0 mt-1 ps-3 small">
+                                        ${response.errors.map((e) => `<li>${e}</li>`).join("")}
+                                    </ul>
+                                </div>`;
+            }
+
+            if (response.success > 0) {
+              html += `<div class="mt-2 text-end">
+                                    <button type="button" class="btn btn-sm btn-primary" id="btnKmYukleSonrasiYenile">
+                                        <i class="mdi mdi-refresh me-1"></i> Tabloyu Yenile
+                                    </button>
+                                </div>`;
+            }
+
+            showKmResult(null, html);
+          } else {
+            showKmResult(
+              "danger",
+              '<i class="mdi mdi-alert-circle me-1"></i>' +
+                (response.message || "Bilinmeyen hata."),
+            );
+          }
+          $("#btnKmExcelYukleSubmit").prop("disabled", false);
+        },
+        error: function (xhr) {
+          $("#kmUploadProgress").addClass("d-none");
+          showKmResult(
+            "danger",
+            '<i class="mdi mdi-alert-circle me-1"></i>Sunucu hatası: ' +
+              xhr.responseText.substring(0, 200),
+          );
+          $("#btnKmExcelYukleSubmit").prop("disabled", false);
+        },
+      });
+    });
+
+    $(document).on("click", "#btnKmYukleSonrasiYenile", function () {
+      $("#kmExcelYukleModal").modal("hide");
+      if (typeof loadReport === "function") {
+        loadReport();
+      } else if (self.activeTab === "km" || $("#kmTable").length > 0) {
+        self.kmListesiYukle(
+          $("#km-filtre-arac").val(),
+          $("#km-filtre-baslangic").val(),
+          $("#km-filtre-bitis").val(),
+        );
+      } else {
+        location.reload();
+      }
+    });
+
+    function showKmResult(type, html) {
+      const el = $("#kmUploadResult");
+      el.removeClass("d-none");
+      if (type) {
+        el.html(`<div class="alert alert-${type} py-2 mb-0">${html}</div>`);
+      } else {
+        el.html(html);
+      }
+    }
+  },
 };
 
 // =============================================
@@ -1439,6 +1613,7 @@ const AracTakip = {
 $(document).ready(function () {
   // DataTable başlat
   AracTakip.initDataTable("#aracTable");
+  AracTakip.initKmExcelUpload();
 
   // Sekme bazlı UI güncellemeleri
   function updateAracTakipUI() {
@@ -1451,11 +1626,23 @@ $(document).ready(function () {
 
     const tabName = target.replace("#", "").replace("Content", "");
 
-    // Excel menüsü görünürlüğü (Sadece yakıt sekmesinde)
+    // Excel menüsü görünürlüğü
     if (tabName === "yakit") {
-      $("#liExcelYakitYukle").attr("style", "display: block !important");
+      $("#liExcelYakitYukle").show();
+      $("#liExcelAracYukle").hide();
+      $("#liExcelKmYukle").hide();
+    } else if (tabName === "arac") {
+      $("#liExcelYakitYukle").hide();
+      $("#liExcelAracYukle").show();
+      $("#liExcelKmYukle").hide();
+    } else if (tabName === "km") {
+      $("#liExcelYakitYukle").hide();
+      $("#liExcelAracYukle").hide();
+      $("#liExcelKmYukle").show();
     } else {
-      $("#liExcelYakitYukle").attr("style", "display: none !important");
+      $("#liExcelYakitYukle").hide();
+      $("#liExcelAracYukle").hide();
+      $("#liExcelKmYukle").hide();
     }
 
     // Yeni Ekle butonu görünürlüğü (Rapor sekmesinde gizle)

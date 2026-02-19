@@ -107,6 +107,12 @@ for ($m = 1; $m <= 12; $m++) {
                 id="btnExportExcel">
                 <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel'e Aktar
             </button>
+            <div class="vr mx-1" style="height: 25px;"></div>
+            <button type="button"
+                class="btn btn-link btn-sm text-warning text-decoration-none px-2 d-flex align-items-center"
+                id="btnKmExcelYukle" data-bs-toggle="modal" data-bs-target="#kmExcelYukleModal">
+                <i class="mdi mdi-upload fs-5 me-1"></i> Excel'den Yükle
+            </button>
         </div>
     </div>
 
@@ -134,6 +140,8 @@ for ($m = 1; $m <= 12; $m++) {
         </div>
     </div>
 </div>
+
+<?php include_once "modal/km-excel-yukle-modal.php"; ?>
 
 <style>
     .filter-summary-badge {

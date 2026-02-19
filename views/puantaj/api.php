@@ -1044,6 +1044,12 @@ if (isset($_GET["action"]) && $_GET["action"] == "get-report-table") {
     exit;
 }
 
+// Karşılaştırma Raporu Getir
+if (isset($_GET["action"]) && $_GET["action"] == "get-comparison-report") {
+    require_once 'karsilastirma-getir.php';
+    exit;
+}
+
 // Online Puantaj (Kesme/Açma İşlemleri) Sorgulama
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'online-puantaj-sorgula') {
     ob_start();

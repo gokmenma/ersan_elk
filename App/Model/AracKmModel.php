@@ -261,9 +261,12 @@ class AracKmModel extends Model
     /**
      * Belirli tarih için kayıt var mı kontrolü
      */
-    public function kayitVarMi($aracId, $tarih, $excludeId = null)
+    public function kayitVarMi($aracId, $tarih, $excludeId = null, $includeDeleted = false)
     {
-        $sql = "SELECT id FROM {$this->table} WHERE arac_id = :arac_id AND tarih = :tarih AND firma_id = :firma_id AND silinme_tarihi IS NULL";
+        $sql = "SELECT * FROM {$this->table} WHERE arac_id = :arac_id AND tarih = :tarih AND firma_id = :firma_id";
+        if (!$includeDeleted) {
+            $sql .= " AND silinme_tarihi IS NULL";
+        }
         $params = [
             'arac_id' => $aracId,
             'tarih' => $tarih,

@@ -206,6 +206,10 @@ if ($filter === 'muayene') {
                                             data-bs-target="#aracExcelModal">
                                             <i class="bx bx-upload me-2"></i> Excel'den Araç Yükle
                                         </a></li>
+                                    <li id="liExcelKmYukle" <?php echo $activeTab === 'km' ? '' : 'style="display: none;"'; ?>><a class="dropdown-item" href="#" data-bs-toggle="modal"
+                                            data-bs-target="#kmExcelYukleModal">
+                                            <i class="bx bx-upload me-2"></i> Excel'den KM Yükle
+                                        </a></li>
                                 </ul>
                             </div>
                         </div>
@@ -240,7 +244,8 @@ if ($filter === 'muayene') {
                                             <div class="d-flex justify-content-between align-items-center mt-3">
                                                 <span class="text-primary fw-bold">Toplam Araç</span>
                                                 <h4 class="mb-0 fw-bold text-primary">
-                                                    <?php echo $aracStats->toplam_arac ?? 0; ?></h4>
+                                                    <?php echo $aracStats->toplam_arac ?? 0; ?>
+                                                </h4>
                                             </div>
                                         </div>
                                     </div>
@@ -264,14 +269,16 @@ if ($filter === 'muayene') {
                                                     <span class="text-danger fw-bold"><i
                                                             class="bx bx-error-circle me-1"></i>Süresi Geçen</span>
                                                     <h5 class="mb-0 fw-bold text-danger">
-                                                        <?php echo $evrakStats->muayene_biten ?? 0; ?></h5>
+                                                        <?php echo $evrakStats->muayene_biten ?? 0; ?>
+                                                    </h5>
                                                 </a>
                                                 <a href="index.php?p=arac-takip/list&filter=muayene_yaklasan"
                                                     class="d-flex justify-content-between align-items-center text-decoration-none border-top pt-1">
                                                     <span class="text-warning fw-bold"><i
                                                             class="bx bx-time-five me-1"></i>Yaklaşan (30 G)</span>
                                                     <h5 class="mb-0 fw-bold text-warning">
-                                                        <?php echo $evrakStats->muayene_yaklasan ?? 0; ?></h5>
+                                                        <?php echo $evrakStats->muayene_yaklasan ?? 0; ?>
+                                                    </h5>
                                                 </a>
                                             </div>
                                         </div>
@@ -296,14 +303,16 @@ if ($filter === 'muayene') {
                                                     <span class="text-danger fw-bold"><i
                                                             class="bx bx-error-circle me-1"></i>Süresi Geçen</span>
                                                     <h5 class="mb-0 fw-bold text-danger">
-                                                        <?php echo $evrakStats->sigorta_biten ?? 0; ?></h5>
+                                                        <?php echo $evrakStats->sigorta_biten ?? 0; ?>
+                                                    </h5>
                                                 </a>
                                                 <a href="index.php?p=arac-takip/list&filter=sigorta_yaklasan"
                                                     class="d-flex justify-content-between align-items-center text-decoration-none border-top pt-1">
                                                     <span class="text-primary fw-bold"><i
                                                             class="bx bx-time-five me-1"></i>Yaklaşan (30 G)</span>
                                                     <h5 class="mb-0 fw-bold text-primary">
-                                                        <?php echo $evrakStats->sigorta_yaklasan ?? 0; ?></h5>
+                                                        <?php echo $evrakStats->sigorta_yaklasan ?? 0; ?>
+                                                    </h5>
                                                 </a>
                                             </div>
                                         </div>
@@ -328,14 +337,16 @@ if ($filter === 'muayene') {
                                                     <span class="text-danger fw-bold"><i
                                                             class="bx bx-error-circle me-1"></i>Süresi Geçen</span>
                                                     <h5 class="mb-0 fw-bold text-danger">
-                                                        <?php echo $evrakStats->kasko_biten ?? 0; ?></h5>
+                                                        <?php echo $evrakStats->kasko_biten ?? 0; ?>
+                                                    </h5>
                                                 </a>
                                                 <a href="index.php?p=arac-takip/list&filter=kasko_yaklasan"
                                                     class="d-flex justify-content-between align-items-center text-decoration-none border-top pt-1">
                                                     <span class="text-dark fw-bold"><i
                                                             class="bx bx-time-five me-1"></i>Yaklaşan (30 G)</span>
                                                     <h5 class="mb-0 fw-bold text-dark">
-                                                        <?php echo $evrakStats->kasko_yaklasan ?? 0; ?></h5>
+                                                        <?php echo $evrakStats->kasko_yaklasan ?? 0; ?>
+                                                    </h5>
                                                 </a>
                                             </div>
                                         </div>
@@ -1000,6 +1011,7 @@ if ($filter === 'muayene') {
 <?php include_once "modal/excel-modal.php"; ?>
 <?php include_once "modal/arac-excel-modal.php"; ?>
 <?php include_once "modal/servis-modal.php"; ?>
+<?php include_once "modal/km-excel-yukle-modal.php"; ?>
 
 <!-- İstatistik Modal -->
 <div class="modal fade" id="istatistikModal" tabindex="-1" aria-hidden="true">
