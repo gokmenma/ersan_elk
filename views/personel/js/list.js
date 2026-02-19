@@ -4,6 +4,7 @@ $(document).ready(function () {
     applyLengthStateSave({
       ...getDatatableOptions(),
       serverSide: true,
+      colReorder: true,
       order: [[3, "asc"]],
       ajax: {
         url: "views/personel/api.php",
@@ -126,6 +127,30 @@ $(document).ready(function () {
             return data == 1 ? "Aktif" : "Pasif";
           },
         },
+        // Hidden columns
+        { data: "dogum_tarihi", visible: false },
+        { data: "cinsiyet", visible: false },
+        { data: "medeni_durum", visible: false },
+        { data: "kan_grubu", visible: false },
+        { data: "adres", visible: false },
+        { data: "ehliyet_sinifi", visible: false },
+        { data: "iban_numarasi", visible: false },
+        { data: "banka", visible: false },
+        {
+          data: "maas_tutari",
+          visible: false,
+          render: function (data) {
+            return data
+              ? parseFloat(data).toLocaleString("tr-TR", {
+                  style: "currency",
+                  currency: "TRY",
+                })
+              : "";
+          },
+        },
+        { data: "sgk_no", visible: false },
+        { data: "sodexo_kart_no", visible: false },
+        { data: "cep_telefonu_2", visible: false },
       ],
       createdRow: function (row, data, dataIndex) {
         $(row).attr("data-id", data.id);
@@ -139,6 +164,140 @@ $(document).ready(function () {
       },
     }),
   );
+
+  // Factory default: First 13 columns (0 to 12) are visible, others are hidden
+  const factoryDefaults = Array.from({ length: 13 }, (_, i) => i);
+
+  // Sütun gösterme/gizleme listesini oluştur
+  function initColumnToggle() {
+    let columnList = $("#columnList");
+    columnList.empty();
+
+    // Mevcut görsel sırayı al
+    let currentOrder = [];
+    if (table.colReorder) {
+      currentOrder = table.colReorder.order();
+    } else {
+      // Plugin yüklenmemişse varsayılan sırayı kullan
+      currentOrder = table.columns().indexes().toArray();
+    }
+
+    currentOrder.forEach(function (columnIdx) {
+      let column = table.column(columnIdx);
+      let title = $(column.header()).text().trim();
+
+      // Checkbox ve label
+      if (title && title !== "#") {
+        let isVisible = column.visible();
+
+        let item = $(`
+          <div class="dropdown-item py-1 d-flex align-items-center column-order-item" data-column="${columnIdx}" style="cursor: default; gap: 8px;">
+            <div class="drag-handle text-muted cursor-move" style="width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">
+                <i class="bx bx-menu font-size-16"></i>
+            </div>
+            <div class="form-check flex-grow-1 mb-0">
+              <input class="form-check-input col-toggle-check" type="checkbox" 
+                id="colCheck${columnIdx}" data-column="${columnIdx}" ${
+                  isVisible ? "checked" : ""
+                }>
+              <label class="form-check-label w-100 cursor-pointer fw-medium font-size-13 mb-0" for="colCheck${columnIdx}">
+                ${title}
+              </label>
+            </div>
+          </div>
+        `);
+        columnList.append(item);
+      }
+    });
+
+    // Initialize SortableJS
+    if (typeof Sortable !== "undefined") {
+      new Sortable(columnList[0], {
+        animation: 150,
+        handle: ".drag-handle",
+        onEnd: function () {
+          let newVisualOrder = [];
+
+          // Mevcut dropdown sırasını al
+          $(".column-order-item").each(function () {
+            newVisualOrder.push(parseInt($(this).data("column")));
+          });
+
+          // Dropdown'da olmayan kolonları (örn index 0) en başta koru
+          let finalOrder = [];
+          currentOrder.forEach((idx) => {
+            if ($(`.column-order-item[data-column="${idx}"]`).length === 0) {
+              finalOrder.push(idx);
+            }
+          });
+
+          finalOrder = finalOrder.concat(newVisualOrder);
+
+          if (table.colReorder) {
+            table.colReorder.order(finalOrder, true);
+          }
+          table.columns.adjust().draw(false);
+        },
+      });
+    }
+
+    // Reset button logic
+    $("#btnResetColumns")
+      .off("click")
+      .on("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        let btn = $(this);
+        let icon = btn.find("i");
+        icon.addClass("mdi-spin"); // Başarı hissi için döndür
+
+        setTimeout(() => {
+          // Orijinal sırayı geri yükle
+          if (table.colReorder) {
+            table.colReorder.reset();
+          }
+
+          table.columns().every(function () {
+            let column = this;
+            let idx = column.index();
+            let shouldBeVisible = factoryDefaults.includes(idx);
+            column.visible(shouldBeVisible);
+          });
+
+          table.columns.adjust().draw(false);
+
+          // Listeyi yeniden oluştur (sıralama resetlendiği için)
+          initColumnToggle();
+
+          icon.removeClass("mdi-spin");
+        }, 300);
+      });
+
+    // Dropdown kapandığında kapanmaması için
+    columnList.on("click", function (e) {
+      e.stopPropagation();
+    });
+
+    // Toggle işlemi
+    $(".col-toggle-check")
+      .off("change")
+      .on("change", function () {
+        let columnIdx = $(this).data("column");
+        let column = table.column(columnIdx);
+        column.visible(!column.visible());
+
+        // DataTable responsive ise yeniden hesapla
+        table.columns.adjust().draw(false);
+      });
+  }
+
+  // Sütunlar manuel olarak tabloda yer değiştirirse listeyi güncelle
+  table.on("column-reorder", function () {
+    initColumnToggle();
+  });
+
+  initColumnToggle();
 
   // Satır seçimi
   table.on("click", "tbody tr", (e) => {
@@ -179,17 +338,6 @@ $(document).ready(function () {
       buttons.prop("disabled", true);
     }
   }
-
-  // // Seçili ID'yi alma fonksiyonu
-  // function getSelectedId() {
-  //   var selectedRow = table.row(".selected");
-  //   if (selectedRow.any()) {
-  //     var data = selectedRow.data();
-  //     // Index 1: ID sütunu (0: Checkbox)
-  //     return data.id;
-  //   }
-  //   return null;
-  // }
 
   function getSelectedId() {
     var selectedRow = table.row(".selected");

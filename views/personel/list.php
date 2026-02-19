@@ -11,6 +11,11 @@ if (Gate::canWithMessage("personel_listesi")) {
 
     $personeller = $Personel->all();
     ?>
+    <!-- ColReorder & SortableJS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/colreorder/1.7.0/css/colReorder.bootstrap4.min.css">
+    <script src="https://cdn.datatables.net/colreorder/1.7.0/js/dataTables.colReorder.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
     <div class="container-fluid">
 
         <!-- start page title -->
@@ -96,6 +101,32 @@ if (Gate::canWithMessage("personel_listesi")) {
                         #membersTable tbody tr.row-pasif>td {
                             background-color: #FFCDC9 !important;
                         }
+
+                        /* Column toggle checkboxes color */
+                        .col-toggle-check:checked {
+                            background-color: #556ee6 !important;
+                            border-color: #556ee6 !important;
+                        }
+
+                        .dropdown-item:active {
+                            background-color: rgba(85, 110, 230, 0.1) !important;
+                            color: inherit !important;
+                        }
+
+                        .column-order-item { transition: background-color 0.2s; }
+                        .column-order-item:hover { background-color: rgba(0,0,0,0.03); }
+                        .drag-handle { color: #adb5bd; transition: all 0.2s; cursor: grab; }
+                        .drag-handle:active { cursor: grabbing; }
+                        .drag-handle:hover { color: #556ee6; background-color: rgba(85, 110, 230, 0.1); border-radius: 4px; }
+                        
+                        .animate-spin {
+                            animation: spin 1s infinite linear;
+                            display: inline-block;
+                        }
+                        @keyframes spin {
+                            from { transform: rotate(0deg); }
+                            to { transform: rotate(360deg); }
+                        }
                     </style>
 
                     <div class="card-body overflow-auto">
@@ -112,6 +143,34 @@ if (Gate::canWithMessage("personel_listesi")) {
                                 </button>
                             </div>
                             <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                                <div class="dropdown d-inline-block">
+                                    <button type="button"
+                                        class="btn btn-link btn-sm text-secondary text-decoration-none px-2 d-flex align-items-center"
+                                        id="columnToggle" data-bs-toggle="dropdown" aria-haspopup="true"
+                                        aria-expanded="false" title="Sütunları Göster/Gizle">
+                                        <i class="mdi mdi-view-column fs-5 me-1"></i> Sütunlar
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end p-0 shadow-lg border-0"
+                                        aria-labelledby="columnToggle" style="min-width: 250px;">
+                                        <div
+                                            class="p-2 border-bottom d-flex justify-content-between align-items-center bg-light bg-opacity-50">
+                                            <span class="fw-semibold font-size-12 text-muted uppercase">SÜTUN
+                                                GÖRÜNÜMÜ</span>
+                                            <button type="button" id="btnResetColumns"
+                                                class="btn btn-sm btn-link text-primary text-decoration-none p-0 font-size-12 fw-bold">
+                                                <i class="mdi mdi-refresh me-1"></i>VARSAYILAN
+                                            </button>
+                                        </div>
+                                        <div class="p-2 text-center" style="max-height: 400px; overflow-y: auto;"
+                                            id="columnList">
+                                            <div class="text-primary py-5">
+                                                <i class="bx bx-loader-alt bx-spin fs-1"></i>
+                                                <div class="mt-2 font-size-13 fw-semibold text-muted">Yükleniyor...</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
                                 <a href="index?p=personel/manage" id="saveButton"
                                     class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
                                     <i class="mdi mdi-plus-circle fs-5 me-1"></i> Yeni Personel</a>
@@ -153,6 +212,19 @@ if (Gate::canWithMessage("personel_listesi")) {
                                     <th style="min-width: 160px; width: 160px;" data-filter="string">EKİP / BÖLGE</th>
                                     <th class="text-center" data-filter="select">BİLDİRİM</th>
                                     <th data-filter="select">DURUM</th>
+                                    <!-- Additional columns (hidden by default) -->
+                                    <th data-filter="date">DOĞUM TARİHİ</th>
+                                    <th data-filter="select">CİNSİYET</th>
+                                    <th data-filter="select">MEDENİ DURUM</th>
+                                    <th data-filter="select">KAN GRUBU</th>
+                                    <th data-filter="string">ADRES</th>
+                                    <th data-filter="select">EHLİYET</th>
+                                    <th data-filter="string">IBAN</th>
+                                    <th data-filter="string">BANKA</th>
+                                    <th data-filter="string">MAAŞ</th>
+                                    <th data-filter="string">SGK NO</th>
+                                    <th data-filter="string">SODEXO NO</th>
+                                    <th data-filter="string">2. TELEFON</th>
                                 </tr>
                             </thead>
                             <tbody>

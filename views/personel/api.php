@@ -827,23 +827,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             foreach ($result['data'] as $row) {
                 $enc_id = Security::encrypt($row->id);
 
-                $formattedData[] = [
-                    'id' => $enc_id,
-                    'tc_kimlik_no' => $row->tc_kimlik_no,
-                    'adi_soyadi' => $row->adi_soyadi,
+                $dataRow = (array) $row;
+                $dataRow['id'] = $enc_id;
 
-                    'ise_giris_tarihi' => (!empty($row->ise_giris_tarihi) && $row->ise_giris_tarihi != '0000-00-00') ? Date::dmY($row->ise_giris_tarihi) : '',
-                    'isten_cikis_tarihi' => (!empty($row->isten_cikis_tarihi) && $row->isten_cikis_tarihi != '0000-00-00') ? Date::dmY($row->isten_cikis_tarihi) : '',
-                    'cep_telefonu' => $row->cep_telefonu,
-                    'email_adresi' => $row->email_adresi,
-                    'gorev' => $row->gorev,
-                    'departman' => $row->departman,
-                    'ekip_adi' => $row->ekip_adi ?? 'YOK',
-                    'ekip_bolge' => $row->ekip_bolge ?? '---',
-                    'bildirim_abonesi' => $row->bildirim_abonesi,
-                    'aktif_mi' => $row->aktif_mi,
-                    'resim_yolu' => $row->resim_yolu
-                ];
+                // Format specific fields
+                $dataRow['ise_giris_tarihi'] = (!empty($row->ise_giris_tarihi) && $row->ise_giris_tarihi != '0000-00-00') ? Date::dmY($row->ise_giris_tarihi) : '';
+                $dataRow['isten_cikis_tarihi'] = (!empty($row->isten_cikis_tarihi) && $row->isten_cikis_tarihi != '0000-00-00') ? Date::dmY($row->isten_cikis_tarihi) : '';
+                $dataRow['dogum_tarihi'] = (!empty($row->dogum_tarihi) && $row->dogum_tarihi != '0000-00-00') ? Date::dmY($row->dogum_tarihi) : '';
+                $dataRow['ekip_adi'] = $row->ekip_adi ?? 'YOK';
+                $dataRow['ekip_bolge'] = $row->ekip_bolge ?? '---';
+
+                $formattedData[] = $dataRow;
             }
 
             $result['data'] = $formattedData;

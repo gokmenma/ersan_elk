@@ -214,4 +214,156 @@ class AracModel extends Model
         ]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
+
+    /**
+     * Evrak istatistiklerini getirir (Biten ve Yaklaşan)
+     */
+    public function getAracEvrakStats($gunRange = 30)
+    {
+        $sql = $this->db->prepare("
+            SELECT 
+                SUM(CASE WHEN muayene_bitis_tarihi IS NOT NULL AND muayene_bitis_tarihi < CURDATE() THEN 1 ELSE 0 END) as muayene_biten,
+                SUM(CASE WHEN muayene_bitis_tarihi IS NOT NULL AND DATEDIFF(muayene_bitis_tarihi, CURDATE()) <= :g1 AND DATEDIFF(muayene_bitis_tarihi, CURDATE()) >= 0 THEN 1 ELSE 0 END) as muayene_yaklasan,
+                
+                SUM(CASE WHEN sigorta_bitis_tarihi IS NOT NULL AND sigorta_bitis_tarihi < CURDATE() THEN 1 ELSE 0 END) as sigorta_biten,
+                SUM(CASE WHEN sigorta_bitis_tarihi IS NOT NULL AND DATEDIFF(sigorta_bitis_tarihi, CURDATE()) <= :g2 AND DATEDIFF(sigorta_bitis_tarihi, CURDATE()) >= 0 THEN 1 ELSE 0 END) as sigorta_yaklasan,
+                
+                SUM(CASE WHEN kasko_bitis_tarihi IS NOT NULL AND kasko_bitis_tarihi < CURDATE() THEN 1 ELSE 0 END) as kasko_biten,
+                SUM(CASE WHEN kasko_bitis_tarihi IS NOT NULL AND DATEDIFF(kasko_bitis_tarihi, CURDATE()) <= :g3 AND DATEDIFF(kasko_bitis_tarihi, CURDATE()) >= 0 THEN 1 ELSE 0 END) as kasko_yaklasan
+            FROM {$this->table}
+            WHERE firma_id = :firma_id
+            AND aktif_mi = 1
+            AND silinme_tarihi IS NULL
+        ");
+        $sql->execute([
+            'firma_id' => $_SESSION['firma_id'],
+            'g1' => $gunRange,
+            'g2' => $gunRange,
+            'g3' => $gunRange
+        ]);
+        return $sql->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Muayenesi yaklaşan araçları getirir
+     */
+    public function getMuayeneYaklasanlar($gunRange = 30)
+    {
+        $sql = $this->db->prepare("
+            SELECT a.*, p.adi_soyadi as zimmetli_personel_adi
+            FROM {$this->table} a
+            LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
+            LEFT JOIN personel p ON az.personel_id = p.id
+            WHERE a.firma_id = :firma_id 
+            AND a.aktif_mi = 1
+            AND a.silinme_tarihi IS NULL
+            AND a.muayene_bitis_tarihi >= CURDATE()
+            AND DATEDIFF(a.muayene_bitis_tarihi, CURDATE()) <= :g
+            ORDER BY a.muayene_bitis_tarihi ASC
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id'], 'g' => $gunRange]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Sigortası yaklaşan araçları getirir
+     */
+    public function getSigortaYaklasanlar($gunRange = 30)
+    {
+        $sql = $this->db->prepare("
+            SELECT a.*, p.adi_soyadi as zimmetli_personel_adi
+            FROM {$this->table} a
+            LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
+            LEFT JOIN personel p ON az.personel_id = p.id
+            WHERE a.firma_id = :firma_id 
+            AND a.aktif_mi = 1
+            AND a.silinme_tarihi IS NULL
+            AND a.sigorta_bitis_tarihi >= CURDATE()
+            AND DATEDIFF(a.sigorta_bitis_tarihi, CURDATE()) <= :g
+            ORDER BY a.sigorta_bitis_tarihi ASC
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id'], 'g' => $gunRange]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Kaskosu yaklaşan araçları getirir
+     */
+    public function getKaskoYaklasanlar($gunRange = 30)
+    {
+        $sql = $this->db->prepare("
+            SELECT a.*, p.adi_soyadi as zimmetli_personel_adi
+            FROM {$this->table} a
+            LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
+            LEFT JOIN personel p ON az.personel_id = p.id
+            WHERE a.firma_id = :firma_id 
+            AND a.aktif_mi = 1
+            AND a.silinme_tarihi IS NULL
+            AND a.kasko_bitis_tarihi >= CURDATE()
+            AND DATEDIFF(a.kasko_bitis_tarihi, CURDATE()) <= :g
+            ORDER BY a.kasko_bitis_tarihi ASC
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id'], 'g' => $gunRange]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Muayenesi biten araçları getirir
+     */
+    public function getMuayeneBitenler()
+    {
+        $sql = $this->db->prepare("
+            SELECT a.*, p.adi_soyadi as zimmetli_personel_adi
+            FROM {$this->table} a
+            LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
+            LEFT JOIN personel p ON az.personel_id = p.id
+            WHERE a.firma_id = :firma_id 
+            AND a.aktif_mi = 1
+            AND a.silinme_tarihi IS NULL
+            AND a.muayene_bitis_tarihi < CURDATE()
+            ORDER BY a.muayene_bitis_tarihi ASC
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Sigortası biten araçları getirir
+     */
+    public function getSigortaBitenler()
+    {
+        $sql = $this->db->prepare("
+            SELECT a.*, p.adi_soyadi as zimmetli_personel_adi
+            FROM {$this->table} a
+            LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
+            LEFT JOIN personel p ON az.personel_id = p.id
+            WHERE a.firma_id = :firma_id 
+            AND a.aktif_mi = 1
+            AND a.silinme_tarihi IS NULL
+            AND a.sigorta_bitis_tarihi < CURDATE()
+            ORDER BY a.sigorta_bitis_tarihi ASC
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Kaskosu biten araçları getirir
+     */
+    public function getKaskoBitenler()
+    {
+        $sql = $this->db->prepare("
+            SELECT a.*, p.adi_soyadi as zimmetli_personel_adi
+            FROM {$this->table} a
+            LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
+            LEFT JOIN personel p ON az.personel_id = p.id
+            WHERE a.firma_id = :firma_id 
+            AND a.aktif_mi = 1
+            AND a.silinme_tarihi IS NULL
+            AND a.kasko_bitis_tarihi < CURDATE()
+            ORDER BY a.kasko_bitis_tarihi ASC
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
 }

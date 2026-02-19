@@ -149,18 +149,37 @@ const AracTakip = {
 
         // Form alanlarını doldur
         Object.keys(data).forEach(function (key) {
-          const input = $('[name="' + key + '"]');
-          if (input.length) {
-            if (input.is("select")) {
-              input.val(data[key]);
-              // Sadece Select2 ise change tetikle
+          const val = data[key];
+          const inputs = $("#aracModal").find('[name="' + key + '"]');
+
+          inputs.each(function () {
+            const input = $(this);
+            if (input.hasClass("flatpickr") && val) {
+              let formattedDate = val;
+              // Eğer veri yyyy-mm-dd formatındaysa dd.mm.yyyy'ye çevir
+              if (val.includes("-") && !val.includes(".")) {
+                const parts = val.split(" ")[0].split("-");
+                if (parts.length === 3) {
+                  formattedDate = `${parts[2]}.${parts[1]}.${parts[0]}`;
+                }
+              }
+
+              // Önce input değerini ayarla (mask ve görüntü için)
+              input.val(formattedDate);
+
+              // Sonra varsa Flatpickr'ı güncelle
+              if (this._flatpickr) {
+                this._flatpickr.setDate(formattedDate, false);
+              }
+            } else if (input.is("select")) {
+              input.val(val);
               if (input.hasClass("select2")) {
-                //input.trigger("change");
+                input.trigger("change");
               }
             } else {
-              input.val(data[key]);
+              input.val(val);
             }
-          }
+          });
         });
 
         $("#aracModal").modal("show");
@@ -786,10 +805,13 @@ const AracTakip = {
         Object.keys(data).forEach(function (key) {
           const input = $("#yakitModal").find('[name="' + key + '"]');
           if (input.length) {
-            if (input.hasClass("flatpickr")) {
+            if (input.hasClass("flatpickr") && data[key]) {
               // Flatpickr tarih formatı
-              const date = new Date(data[key]);
-              input[0]._flatpickr.setDate(date);
+              if (input[0]._flatpickr) {
+                input[0]._flatpickr.setDate(data[key]);
+              } else {
+                input.val(self.formatDate(data[key]));
+              }
             } else if (input.is("select")) {
               input.val(data[key]).trigger("change");
             } else {
@@ -818,9 +840,13 @@ const AracTakip = {
         Object.keys(data).forEach(function (key) {
           const input = $("#kmModal").find('[name="' + key + '"]');
           if (input.length) {
-            if (input.hasClass("flatpickr")) {
-              const date = new Date(data[key]);
-              input[0]._flatpickr.setDate(date);
+            if (input.hasClass("flatpickr") && data[key]) {
+              // Flatpickr tarih formatı
+              if (input[0]._flatpickr) {
+                input[0]._flatpickr.setDate(data[key]);
+              } else {
+                input.val(self.formatDate(data[key]));
+              }
             } else if (input.is("select")) {
               input.val(data[key]).trigger("change");
             } else {
@@ -950,11 +976,19 @@ const AracTakip = {
             if (input.length) {
               if (input.hasClass("flatpickr") && data[key]) {
                 const dateVal = data[key];
-                // dd.mm.yyyy formatını ayrıştır
-                const parts = dateVal.split(".");
-                if (parts.length === 3) {
-                  const date = new Date(parts[2], parts[1] - 1, parts[0]);
-                  input[0]._flatpickr.setDate(date);
+                if (input[0]._flatpickr) {
+                  // Eğer tarih dmY (dd.mm.yyyy) ise parçala, değilse direkt setDate
+                  if (dateVal.includes(".")) {
+                    const parts = dateVal.split(".");
+                    if (parts.length === 3) {
+                      const date = new Date(parts[2], parts[1] - 1, parts[0]);
+                      input[0]._flatpickr.setDate(date);
+                    }
+                  } else {
+                    input[0]._flatpickr.setDate(dateVal);
+                  }
+                } else {
+                  input.val(dateVal);
                 }
               } else if (input.is("select")) {
                 input.val(data[key]).trigger("change");
@@ -1183,18 +1217,23 @@ $(document).ready(function () {
 
     switch (activeTabId) {
       case "arac-tab":
+        AracTakip.resetAracModal();
         modalId = "#aracModal";
         break;
       case "zimmet-tab":
+        AracTakip.resetZimmetModal();
         modalId = "#zimmetModal";
         break;
       case "yakit-tab":
+        AracTakip.resetYakitModal();
         modalId = "#yakitModal";
         break;
       case "km-tab":
+        AracTakip.resetKmModal();
         modalId = "#kmModal";
         break;
       case "servis-tab":
+        AracTakip.resetServisModal();
         modalId = "#servisModal";
         break;
     }

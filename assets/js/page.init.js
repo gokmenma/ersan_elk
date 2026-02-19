@@ -29,10 +29,10 @@ if ($(".flatpickr").length > 0) {
     $(this).inputmask("datetime", {
       alias: "datetime",
       inputFormat: "dd.mm.yyyy",
-      placeholder: "gg.aa.yyyy ss:dd",
+      placeholder: "gg.aa.yyyy",
       showMaskOnHover: false,
       showMaskOnFocus: false,
-      regex: "[0-9.: ]", // rakam, nokta, iki nokta ve boşluk
+      regex: "[0-9.]", // rakam ve nokta
     });
   });
 }

@@ -192,6 +192,36 @@ if (Gate::allows("ana_sayfa")) {
     $toplam_gider = 30000;
     $toplam_bakiye = 20000;
 
+    // Araç Verilerini Çek (Dashboard Hatırlatıcı için)
+    $aracModelHome = new \App\Model\AracModel();
+    $expiredCounts = $aracModelHome->getAracEvrakStats();
+    $aracNotifText = "";
+    $hasExpired = false;
+
+    if ($expiredCounts) {
+        $parts = [];
+        if ($expiredCounts->muayene_biten > 0) {
+            $parts[] = '<a href="index.php?p=arac-takip/list&filter=muayene" class="text-white fw-bold" style="text-decoration:underline">' . $expiredCounts->muayene_biten . ' muayene</a>';
+            $hasExpired = true;
+        }
+        if ($expiredCounts->sigorta_biten > 0) {
+            $parts[] = '<a href="index.php?p=arac-takip/list&filter=sigorta" class="text-white fw-bold" style="text-decoration:underline">' . $expiredCounts->sigorta_biten . ' sigorta</a>';
+            $hasExpired = true;
+        }
+        if ($expiredCounts->kasko_biten > 0) {
+            $parts[] = '<a href="index.php?p=arac-takip/list&filter=kasko" class="text-white fw-bold" style="text-decoration:underline">' . $expiredCounts->kasko_biten . ' kasko</a>';
+            $hasExpired = true;
+        }
+
+        if (!empty($parts)) {
+            $aracNotifText = implode(', ', $parts) . ' süresi dolan araçlar bulunmaktadır.';
+        }
+    }
+
+    if (!$aracNotifText) {
+        $aracNotifText = "Tüm araçların evrakları (Muayene, Sigorta, Kasko) günceldir.";
+    }
+
     // Slider Örnek Verileri
     $slider_notifications = [
         [
@@ -201,10 +231,10 @@ if (Gate::allows("ana_sayfa")) {
             'gradient' => 'linear-gradient(135deg, #0f172a 0%, #334155 100%)'
         ],
         [
-            'title' => 'Araç Muayene Hatırlatması',
-            'description' => '34 ABC 123 plakalı aracın muayene tarihi 25.02.2026 tarihinde sona erecektir.',
+            'title' => 'Araç Evrak Hatırlatması',
+            'description' => $aracNotifText,
             'icon' => 'bx-car',
-            'gradient' => 'linear-gradient(135deg, #1e293b 0%, #2563eb 100%)'
+            'gradient' => $hasExpired ? 'linear-gradient(135deg, #7f1d1d 0%, #ef4444 100%)' : 'linear-gradient(135deg, #1e293b 0%, #2563eb 100%)'
         ],
         [
             'title' => 'Personel Eğitim Toplantısı',

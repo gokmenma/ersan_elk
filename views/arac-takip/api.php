@@ -93,9 +93,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
             case 'arac-detay':
                 $id = intval($_POST['id'] ?? 0);
                 $arac = $Arac->getById($id);
+                if ($arac) {
+                    $arac->muayene_bitis_tarihi = Date::dmY($arac->muayene_bitis_tarihi);
+                    $arac->sigorta_bitis_tarihi = Date::dmY($arac->sigorta_bitis_tarihi);
+                    $arac->kasko_bitis_tarihi = Date::dmY($arac->kasko_bitis_tarihi);
 
-                if (!$arac) {
-                    throw new Exception("Araç bulunamadı.");
+                    // Debug Log
+                    file_put_contents(dirname(__DIR__, 2) . '/debug_arac_detay.txt', "ID: $id | Muayene: $arac->muayene_bitis_tarihi | Sigorta: $arac->sigorta_bitis_tarihi | Kasko: $arac->kasko_bitis_tarihi\n", FILE_APPEND);
                 }
 
                 echo json_encode(['status' => 'success', 'data' => $arac]);
@@ -715,9 +719,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     'arac_tipi' => ['araç tipi', 'arac tipi', 'tip'],
                     'yakit_tipi' => ['yakıt tipi', 'yakit tipi', 'yakıt'],
                     'guncel_km' => ['güncel km', 'guncel km', 'km', 'kilometre'],
-                    'muayene_bitis_tarihi' => ['muayene bitiş tarihi', 'muayene bitis tarihi', 'muayene tarihi', 'muayene'],
-                    'sigorta_bitis_tarihi' => ['sigorta bitiş', 'sigorta bitis', 'sigorta'],
-                    'kasko_bitis_tarihi' => ['kasko bitiş', 'kasko bitis', 'kasko'],
+                    'muayene_bitis_tarihi' => ['muayene bitiş', 'muayene bitis', 'muayene bitiş tarihi', 'muayene bitis tarihi', 'muayene tarihi', 'muayene'],
+                    'sigorta_bitis_tarihi' => ['sigorta bitiş', 'sigorta bitis', 'sigorta bitiş tarihi', 'sigorta bitis tarihi', 'sigorta'],
+                    'kasko_bitis_tarihi' => ['kasko bitiş', 'kasko bitis', 'kasko bitiş tarihi', 'kasko bitis tarihi', 'kasko'],
                     'mulkiyet' => ['mülkiyet', 'mulkiyet', 'mülkiyet durumu', 'mulkiyet durumu'],
                     'notlar' => ['not', 'notlar', 'açıklama']
                 ];
@@ -772,16 +776,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                                 // Tarih alanları
                                 if (in_array($dbCol, ['muayene_bitis_tarihi', 'sigorta_bitis_tarihi', 'kasko_bitis_tarihi'])) {
-                                    if ($val !== '') {
-                                        if (is_numeric($val)) {
-                                            $val = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($val)->format('Y-m-d');
-                                        } else {
-                                            $timestamp = strtotime(str_replace(['.', '/'], '-', $val));
-                                            $val = $timestamp ? date('Y-m-d', $timestamp) : null;
-                                        }
-                                    } else {
-                                        $val = null;
-                                    }
+                                    $val = Date::convertExcelDate($val);
+                                }
+
+                                // Sayısal alanlar
+                                if (in_array($dbCol, ['guncel_km', 'model_yili'])) {
+                                    $val = preg_replace('/[^0-9]/', '', $val);
                                 }
 
                                 // Tip eşleştirmeleri
