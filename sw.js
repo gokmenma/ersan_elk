@@ -3,19 +3,19 @@
  * Offline desteği ve önbellekleme
  */
 
-const CACHE_NAME = "yonetici-pwa-v2";
+const CACHE_NAME = "yonetici-pwa-v4";
 const OFFLINE_URL = "offline-admin.html";
 
 // Önbelleğe alınacak dosyalar
 const PRECACHE_ASSETS = [
-  "./",
-  "./index.php",
   "./manifest.json",
   "./offline-admin.html",
   "./assets/icons/icon-72-new.png",
   "./assets/icons/icon-144-new.png",
   "./assets/icons/icon-192-new.png",
   "./assets/icons/icon-512-new.png",
+  "./assets/images/screenshot-desktop.jpg",
+  "./assets/images/screenshot-mobile.jpg",
 ];
 
 // Install event - önbellekleme

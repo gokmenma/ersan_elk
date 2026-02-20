@@ -374,7 +374,8 @@ foreach ($regionList as $r) {
                                     <?php for ($m = 1; $m <= 12; $m++):
                                         $m_val = str_pad($m, 2, '0', STR_PAD_LEFT); ?>
                                         <option value="<?= $m_val ?>" <?= $m_val == date('m') ? 'selected' : '' ?>>
-                                            <?= $monthOptions[$m_val] ?></option>
+                                            <?= $monthOptions[$m_val] ?>
+                                        </option>
                                     <?php endfor; ?>
                                 </select>
                                 <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1"
@@ -924,6 +925,9 @@ foreach ($regionList as $r) {
 
             $('#kacakModalTitle').text('Hızlı Kaçak Kontrol Kaydı');
 
+            // Force ID to 0 for new entry from cell
+            $('#kacak_id').val(0);
+
             // Convert to array of strings for Select2 compatibility
             let pIdsArr = [];
             if (pIds && typeof pIds === 'string' && pIds.trim() !== '') {
@@ -932,26 +936,39 @@ foreach ($regionList as $r) {
 
             console.log('Opening Kacak Modal - Date:', tarih, 'Personnel IDs:', pIdsArr, 'Sayi:', sayi);
 
-            // Initialize Select2 with pre-selected values
-            initPersonelSelect2(pIdsArr);
+            // Set Date - Handle Y-m-d to d.m.Y conversion for display
+            let displayDate = tarih;
+            if (tarih && tarih.indexOf('-') !== -1) {
+                let parts = tarih.split('-');
+                if (parts.length === 3) {
+                    displayDate = parts[2] + '.' + parts[1] + '.' + parts[0];
+                }
+            }
 
-            // Set Date
-            $('#kacakManualForm input[name="tarih"]').val(tarih);
+            let dateInput = $('#kacakManualForm input[name="tarih"]');
+            dateInput.val(displayDate);
+
+            // Initialize/Update Flatpickr
+            if (dateInput.length > 0) {
+                if (dateInput[0]._flatpickr) {
+                    dateInput[0]._flatpickr.setDate(displayDate);
+                } else {
+                    dateInput.flatpickr({
+                        dateFormat: "d.m.Y",
+                        locale: "tr",
+                        allowInput: true
+                    });
+                }
+            }
 
             // Set Sayi (number)
-            $('#kacakManualForm input[name="sayi"]').val(sayi || '');
+            $('#kacakManualForm input[name="sayi"]').val(sayi > 0 ? sayi : '');
 
             // Set Ekip Adi
             $('#kacakManualForm input[name="ekip_adi"]').val(ekipAdi || '');
 
-            // Initialize flatpickr if available
-            if (typeof flatpickr !== 'undefined' && $('#kacakManualForm .flatpickr').length > 0) {
-                $('#kacakManualForm .flatpickr').flatpickr({
-                    dateFormat: "d.m.Y",
-                    locale: "tr",
-                    allowInput: true
-                });
-            }
+            // Initialize Select2 with pre-selected values
+            initPersonelSelect2(pIdsArr);
 
             $('#kacakModal').modal('show');
 

@@ -625,16 +625,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $colMap = [];
         foreach ($rows as $index => $row) {
             $rowStr = implode(' ', array_map('strval', $row));
-            // Expecting: Ekip Adı, Sayı, Açıklama
-            if (stripos($rowStr, 'Ekip') !== false && (stripos($rowStr, 'Sayı') !== false || stripos($rowStr, 'Sayi') !== false)) {
+            // Expecting: Ekip Adı, Sayı, Açıklama (Using mb_stripos for Turkish characters)
+            if (mb_stripos($rowStr, 'Ekip', 0, 'UTF-8') !== false && (mb_stripos($rowStr, 'Sayı', 0, 'UTF-8') !== false || mb_stripos($rowStr, 'Sayi', 0, 'UTF-8') !== false)) {
                 $headerRowIndex = $index;
                 foreach ($row as $colIndex => $cellValue) {
                     $cellValue = trim($cellValue);
-                    if (stripos($cellValue, 'Ekip') !== false)
+                    if (mb_stripos($cellValue, 'Ekip', 0, 'UTF-8') !== false)
                         $colMap['ekip'] = $colIndex;
-                    elseif (stripos($cellValue, 'Sayı') !== false || stripos($cellValue, 'Sayi') !== false)
+                    elseif (mb_stripos($cellValue, 'Sayı', 0, 'UTF-8') !== false || mb_stripos($cellValue, 'Sayi', 0, 'UTF-8') !== false)
                         $colMap['sayi'] = $colIndex;
-                    elseif (stripos($cellValue, 'Açıklama') !== false || stripos($cellValue, 'Aciklama') !== false)
+                    elseif (mb_stripos($cellValue, 'Açıklama', 0, 'UTF-8') !== false || mb_stripos($cellValue, 'Aciklama', 0, 'UTF-8') !== false)
                         $colMap['aciklama'] = $colIndex;
                 }
                 break;
@@ -662,10 +662,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if (empty($ekipStr))
                 continue;
 
-            // Ekip adındaki virgülle ayrılmış isimleri personel tablosunda ara
+            // Ekip adındaki virgülle veya tire ile ayrılmış isimleri personel tablosunda ara
             $personelIds = [];
             $unmatchedInRow = []; // Bu satırdaki eşleşmeyen isimler
-            $isimler = array_map('trim', explode(',', $ekipStr));
+            $isimler = array_map('trim', preg_split('/[,-]/', $ekipStr));
 
             foreach ($isimler as $isim) {
                 if (empty($isim))
@@ -792,9 +792,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // personel_ids'i virgülle ayrılmış string yap
         $personelIdsStr = is_array($personelIdsArr) ? implode(',', $personelIdsArr) : $personelIdsArr;
 
-        // Ekip adını belirle (Önce varsa parametreden al, yoksa isimlerden oluştur)
-        $ekipAdi = $passedEkipAdi;
-        if (empty($ekipAdi) && !empty($personelIdsArr) && is_array($personelIdsArr)) {
+        // Her zaman en güncel isimleri çekerek ekip adını oluştur (Encoding sorunlarını önlemek için)
+        if (!empty($personelIdsArr) && is_array($personelIdsArr)) {
             $Personel = new PersonelModel();
             $isimler = [];
             foreach ($personelIdsArr as $pId) {
@@ -803,41 +802,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     $isimler[] = $p->adi_soyadi;
                 }
             }
-            $ekipAdi = implode(', ', $isimler);
+            if (!empty($isimler)) {
+                $ekipAdi = implode(', ', $isimler);
+            }
+        }
+
+        if ($id == 0) {
+            // Aynı gün ve aynı personel(ler) için kayıt var mı kontrol et (Hızlı düzenleme için)
+            $stmt = $Puantaj->db->prepare("SELECT id FROM kacak_kontrol WHERE firma_id = ? AND tarih = ? AND personel_ids = ? AND silinme_tarihi IS NULL LIMIT 1");
+            $stmt->execute([$firmaId, $dbTarih, $personelIdsStr]);
+            $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($existing) {
+                $id = $existing['id'];
+            }
         }
 
         if ($id > 0) {
-            // Explicit update by ID
+            // Explicit update or found existing
             $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET tarih = ?, personel_ids = ?, ekip_adi = ?, sayi = ?, aciklama = ? WHERE id = ?");
             $result = $stmt->execute([$dbTarih, $personelIdsStr, $ekipAdi, $sayi, $aciklama, $id]);
         } else {
-            // Check if a record with the same tarih and personel_ids OR the same tarih and ekip_adi already exists
-            // Since kacak_kontrol is team-based, if we have the same date and same team name (ekip_adi), it's likely the same record
-            $checkSql = "SELECT id FROM kacak_kontrol WHERE firma_id = ? AND tarih = ? AND silinme_tarihi IS NULL";
-            $checkParams = [$firmaId, $dbTarih];
-
-            if (!empty($passedEkipAdi)) {
-                $checkSql .= " AND ekip_adi = ?";
-                $checkParams[] = $passedEkipAdi;
-            } else {
-                $checkSql .= " AND personel_ids = ?";
-                $checkParams[] = $personelIdsStr;
-            }
-
-            $checkStmt = $Puantaj->db->prepare($checkSql);
-            $checkStmt->execute($checkParams);
-            $existingRecord = $checkStmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($existingRecord) {
-                // Update existing record
-                $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET sayi = ?, aciklama = ?, personel_ids = ?, ekip_adi = ? WHERE id = ?");
-                $result = $stmt->execute([$sayi, $aciklama, $personelIdsStr, $ekipAdi, $existingRecord['id']]);
-            } else {
-                // Insert new record
-                $islemId = md5($dbTarih . '|' . $personelIdsStr . '|' . $sayi . '|' . $aciklama . '|' . microtime());
-                $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $result = $stmt->execute([$firmaId, $personelIdsStr, $dbTarih, $ekipAdi, $sayi, $aciklama, $islemId]);
-            }
+            // Insert new record
+            $islemId = md5($dbTarih . '|' . $personelIdsStr . '|' . $sayi . '|' . $aciklama . '|' . microtime());
+            $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $result = $stmt->execute([$firmaId, $personelIdsStr, $dbTarih, $ekipAdi, $sayi, $aciklama, $islemId]);
         }
         $response = ['status' => $result ? 'success' : 'error'];
     } catch (Exception $e) {
@@ -997,7 +985,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             $params[] = $ekipKodu;
         }
 
-        $sql .= " ORDER BY k.tarih DESC";
+        $sql .= " ORDER BY k.tarih DESC, k.id DESC";
         $stmt = $Puantaj->db->prepare($sql);
         $stmt->execute($params);
         $records = $stmt->fetchAll(PDO::FETCH_OBJ);

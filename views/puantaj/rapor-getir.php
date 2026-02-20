@@ -1094,7 +1094,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
         $(this).toggleClass('active-filter');
 
         const activeFilters = $('#workTypeLegend .legend-item.active-filter');
-        const totalDays = <?= $daysInMonth ?>;
+        const totalDays = <?= $daysCount ?>;
         const defaultSubColCount = <?= $subColCount ?>;
 
         if (activeFilters.length === 0) {

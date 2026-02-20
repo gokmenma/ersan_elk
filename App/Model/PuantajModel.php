@@ -534,7 +534,7 @@ class PuantajModel extends Model
     public function getKacakDailyStats()
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $dun = date('Y-m-d', strtotime('-1 day'));
+        $bugun = date('Y-m-d');
 
         $sql = "SELECT SUM(sayi) as toplam 
                 FROM kacak_kontrol 
@@ -543,7 +543,7 @@ class PuantajModel extends Model
                 AND silinme_tarihi IS NULL";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $dun]);
+        $stmt->execute([$firmaId, $bugun]);
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
 
