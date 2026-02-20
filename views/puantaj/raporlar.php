@@ -501,7 +501,7 @@ foreach ($regionList as $r) {
             }
         };
 
-        const loadReport = function () {
+        window.loadReport = function () {
             $('#reportContent').html('<div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Rapor hazırlanıyor...</p></div>');
             updateFilterSummary();
 
@@ -944,7 +944,6 @@ foreach ($regionList as $r) {
                     displayDate = parts[2] + '.' + parts[1] + '.' + parts[0];
                 }
             }
-
             let dateInput = $('#kacakManualForm input[name="tarih"]');
             dateInput.val(displayDate);
 
@@ -1944,7 +1943,62 @@ foreach ($personelList as $p) {
     .btn-clear-filter i {
         pointer-events: none;
     }
+
+    /* Context Menu Styles */
+    .kacak-context-menu {
+        position: fixed;
+        z-index: 10000;
+        display: none;
+        min-width: 150px;
+        background-color: var(--bs-card-bg, #fff);
+        border: 1px solid var(--bs-border-color, #dee2e6);
+        border-radius: 8px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+        padding: 5px 0;
+    }
+
+    .kacak-context-menu-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 15px;
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--bs-body-color, #495057);
+        transition: all 0.2s ease;
+    }
+
+    .kacak-context-menu-item:hover {
+        background-color: rgba(var(--bs-primary-rgb), 0.1);
+        color: var(--bs-primary);
+    }
+
+    .kacak-context-menu-item.text-danger:hover {
+        background-color: rgba(var(--bs-danger-rgb), 0.1);
+        color: var(--bs-danger);
+    }
+
+    .kacak-context-menu-item i {
+        font-size: 16px;
+    }
+
+    .kacak-context-menu-divider {
+        height: 1px;
+        background-color: var(--bs-border-color, #dee2e6);
+        margin: 5px 0;
+    }
 </style>
+
+<!-- Kaçak Kontrol Sağ Tık Menüsü -->
+<div id="kacakContextMenu" class="kacak-context-menu">
+    <div class="kacak-context-menu-item" onclick="handleKacakContextAction('edit')">
+        <i class="bx bx-edit"></i> Düzenle / Ekle
+    </div>
+    <div class="kacak-context-menu-divider"></div>
+    <div class="kacak-context-menu-item text-danger" onclick="handleKacakContextAction('delete')">
+        <i class="bx bx-trash"></i> Bu Hücreyi Sil
+    </div>
+</div>
 
 <div class="modal fade" id="reportSettingsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -2034,9 +2088,104 @@ foreach ($personelList as $p) {
                     Swal.fire('Hata', 'Sunucuya bağlanılamadı.', 'error');
                 },
                 complete: function () {
-                    btn.prop('disabled', false).text('Ayarları Kaydet');
+                    btn.prop('disabled', false).text('Kaydet');
                 }
             });
         });
+
+        // Context Menu Logic
+        let selectedCellData = null;
+
+        $(document).on('contextmenu', '.kacak-quick-cell', function (e) {
+            e.preventDefault();
+
+            // Remove previous selection
+            $('.kacak-quick-cell').removeClass('kacak-cell-selected');
+            // Add selection to current cell
+            $(this).addClass('kacak-cell-selected');
+
+            selectedCellData = {
+                tarih: $(this).attr('data-date'),
+                pIds: $(this).attr('data-personel-ids'),
+                ekipAdi: $(this).attr('data-ekip-adi'),
+                sayi: $(this).text().trim(),
+                el: $(this)
+            };
+
+            const menu = $('#kacakContextMenu');
+            const menuWidth = menu.outerWidth();
+            const menuHeight = menu.outerHeight();
+            const windowWidth = $(window).width();
+            const windowHeight = $(window).height();
+
+            let left = e.pageX;
+            let top = e.pageY;
+
+            if (left + menuWidth > windowWidth) left = left - menuWidth;
+            if (top + menuHeight > windowHeight) top = top - menuHeight;
+
+            menu.css({
+                left: left,
+                top: top
+            }).fadeIn(100);
+        });
+
+        $(document).on('click', function (e) {
+            $('#kacakContextMenu').fadeOut(100);
+            if (!$(e.target).closest('.kacak-quick-cell').length) {
+                // $('.kacak-quick-cell').removeClass('kacak-cell-selected');
+            }
+        });
+
+        window.handleKacakContextAction = function (action) {
+            if (!selectedCellData) return;
+
+            if (action === 'edit') {
+                window.openKacakModal(selectedCellData.tarih, selectedCellData.pIds, selectedCellData.sayi, selectedCellData.ekipAdi);
+            } else if (action === 'delete') {
+                if (!selectedCellData.sayi || selectedCellData.sayi == 0) {
+                    Swal.fire('Bilgi', 'Silinecek veri bulunamadı.', 'info');
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Emin misiniz?',
+                    text: selectedCellData.tarih + " tarihindeki " + selectedCellData.ekipAdi + " kaydı silinecek!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Evet, Sil!',
+                    cancelButtonText: 'Vazgeç'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: 'views/puantaj/api.php',
+                            type: 'POST',
+                            data: {
+                                action: 'kacak-hucre-sil',
+                                tarih: selectedCellData.tarih,
+                                personel_ids: selectedCellData.pIds,
+                                ekip_adi: selectedCellData.ekipAdi
+                            },
+                            success: function (response) {
+                                try {
+                                    const res = JSON.parse(response);
+                                    if (res.status === 'success') {
+                                        Swal.fire('Başarılı', 'Kayıt başarıyla silindi.', 'success');
+                                        loadReport(); // Refresh report
+                                    } else {
+                                        Swal.fire('Hata', res.message || 'Silme işlemi başarısız.', 'error');
+                                    }
+                                } catch (e) {
+                                    Swal.fire('Hata', 'İşlem sırasında hata oluştu.', 'error');
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+            $('#kacakContextMenu').fadeOut(100);
+        };
     });
 </script>

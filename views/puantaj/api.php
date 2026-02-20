@@ -753,9 +753,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'kacak-sil') {
     $id = $_POST['id'] ?? 0;
+    $Puantaj = new PuantajModel();
     $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET silinme_tarihi = NOW() WHERE id = ?");
     $result = $stmt->execute([$id]);
     echo json_encode(['status' => $result ? 'success' : 'error']);
+    exit;
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'kacak-hucre-sil') {
+    $tarih = $_POST['tarih'] ?? '';
+    $personelIds = $_POST['personel_ids'] ?? '';
+    $ekipAdi = $_POST['ekip_adi'] ?? '';
+    $firmaId = $_SESSION['firma_id'] ?? 0;
+
+    if (empty($tarih) || (empty($personelIds) && empty($ekipAdi))) {
+        echo json_encode(['status' => 'error', 'message' => 'Eksik parametre.']);
+        exit;
+    }
+
+    $Puantaj = new PuantajModel();
+    // Hem ekip_adi hem de personel_ids üzerinden silme yapalım (Daha güvenli eşleşme için)
+    // Rapor hücresi ekip_adi üzerinden gruplandığı için ekip_adi eşleşmesi esastır.
+    $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih = ? AND (ekip_adi = ? OR personel_ids = ?) AND silinme_tarihi IS NULL");
+    $result = $stmt->execute([$firmaId, $tarih, $ekipAdi, $personelIds]);
+
+    echo json_encode(['status' => $result ? 'success' : 'error', 'message' => $result ? 'Başarıyla silindi.' : 'Silme hatası.']);
     exit;
 }
 
