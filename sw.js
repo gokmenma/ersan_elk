@@ -3,17 +3,19 @@
  * Offline desteği ve önbellekleme
  */
 
-const CACHE_NAME = "personel-pwa-v2";
-const OFFLINE_URL = "offline.html";
+const CACHE_NAME = "yonetici-pwa-v2";
+const OFFLINE_URL = "offline-admin.html";
 
 // Önbelleğe alınacak dosyalar
 const PRECACHE_ASSETS = [
   "./",
   "./index.php",
-  "./assets/css/pwa-style.css",
-  "./assets/js/pwa-app.js",
   "./manifest.json",
-  "./offline.html",
+  "./offline-admin.html",
+  "./assets/icons/icon-72-new.png",
+  "./assets/icons/icon-144-new.png",
+  "./assets/icons/icon-192-new.png",
+  "./assets/icons/icon-512-new.png",
 ];
 
 // Install event - önbellekleme
@@ -123,11 +125,11 @@ self.addEventListener("push", (event) => {
 
   console.log("Push Data Received:", data);
 
-  const title = data.title || "Ersan | Personel Yönetim";
+  const title = data.title || "Ersan | Yönetici Paneli";
   const options = {
     body: data.body || "Yeni bildiriminiz var",
-    icon: "./assets/icons/icon-192.png",  // Her zaman varsayılan logo
-    badge: "./assets/icons/badge-72.png",
+    icon: "./assets/icons/icon-192-new.png", // Her zaman varsayılan logo
+    badge: "./assets/icons/icon-72-new.png",
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -140,7 +142,7 @@ self.addEventListener("push", (event) => {
   };
 
   // Resim varsa ekle - Android Chrome'da büyük resim olarak görünür
-  if (data.image && data.image.startsWith('http')) {
+  if (data.image && data.image.startsWith("http")) {
     options.image = data.image;
     console.log("Push Notification Image:", data.image);
   }

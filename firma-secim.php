@@ -89,6 +89,10 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Firma Seçimi | Ersan Elektrik</title>
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#135bec">
+    <link rel="apple-touch-icon" href="assets/icons/icon-192-new.png">
 
     <script>
         (function () {
@@ -787,6 +791,17 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
         }
     </script>
 
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('./sw.js').then(function (registration) {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }, function (err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
 </body>
 
 </html>

@@ -199,3 +199,15 @@ if ($page == "kasa/duzenle" || $page == "kasa/list") {
 <script src="assets/js/page.init.js"></script>
 <!-- Functions and declarations-->
 <script src="assets/js/app.js?v=<?php echo filemtime('assets/js/app.js'); ?>"></script>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register('./sw.js').then(function (registration) {
+                console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            }, function (err) {
+                console.log('ServiceWorker registration failed: ', err);
+            });
+        });
+    }
+</script>

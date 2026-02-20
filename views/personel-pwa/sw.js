@@ -3,7 +3,7 @@
  * Offline desteği ve önbellekleme
  */
 
-const CACHE_NAME = "personel-pwa-v3";
+const CACHE_NAME = "personel-pwa-v4";
 const OFFLINE_URL = "offline.html";
 
 // Önbelleğe alınacak dosyalar
@@ -14,6 +14,8 @@ const PRECACHE_ASSETS = [
   "./assets/js/pwa-app.js",
   "./manifest.json",
   "./offline.html",
+  "./assets/icons/icon-144-new.png",
+  "./assets/icons/icon-192-new.png",
 ];
 
 // Install event - önbellekleme
@@ -126,8 +128,8 @@ self.addEventListener("push", (event) => {
   const title = data.title || "Ersan | Personel Yönetim";
   const options = {
     body: data.body || "Yeni bildiriminiz var",
-    icon: "./assets/icons/icon-192.png", // Her zaman varsayılan logo
-    badge: "./assets/icons/badge-72.png",
+    icon: "./assets/icons/icon-192-new.png", // Her zaman varsayılan logo
+    badge: "./assets/icons/icon-72.png",
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),

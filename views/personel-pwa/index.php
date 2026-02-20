@@ -81,8 +81,8 @@ if (!in_array($page, $allowed_pages)) {
     <link rel="manifest" href="manifest.json">
 
     <!-- Favicon & App Icons -->
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
-    <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192-new.png">
+    <link rel="apple-touch-icon" href="assets/icons/icon-192-new.png">
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap"
