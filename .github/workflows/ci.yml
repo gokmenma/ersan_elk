@@ -82,24 +82,26 @@ jobs:
       run: npx playwright test tests/e2e/e2e.spec.ts --project=chromium --reporter=list
 
   deploy:
-    name: Uretime (Production) Dagitim YAP
+    name: Uretime (Production) Dagitim YAP (FTP)
     needs: run-tests # YALNIZCA TESTLER BASARILIYSA BU ASAMAYA GECILIR
     runs-on: ubuntu-latest
     # Yalnizca master veya main dalina (branch) merge/push edildiginde calisir
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
     
     steps:
-    - name: SSH ile Sunucuya Baglan ve Kodlari Cek (Git Pull)
-      uses: appleboy/ssh-action@v1.0.3
+    - name: Kodu Klonla
+      uses: actions/checkout@v4
+
+    - name: PHP Bagimliliklarini Uretim Icin Yukle
+      run: composer install --no-dev --optimize-autoloader
+
+    - name: FTP ile Sunucuya Yukle
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
-        host: ${{ secrets.SERVER_HOST }}     # Ornek: 192.168.1.1 (Github Secrets'tan alinir)
-        username: ${{ secrets.SERVER_USER }} # Ornek: root veya mbeyazil
-        password: ${{ secrets.SERVER_PASS }} # Sunucu Sifreniz
-        # Sifre yerine SSH dosyasi ile (pem key) baglanacaksaniz asagidaki satiri aktif edin
-        # key: ${{ secrets.SERVER_SSH_KEY }}
-        script: |
-          cd /home/mbeyazil/repositories/ersan_elk
-          git pull origin master
-          composer install --no-dev --optimize-autoloader
-          # php bin/console cache:clear (Veya herhangi bir onbellegi temizleme kodunuz)
+        server: ${{ secrets.FTP_SERVER }}       # Ornek: ftp.siteadiniz.com
+        username: ${{ secrets.FTP_USERNAME }}   # Hosting FTP Kullanici Adiniz
+        password: ${{ secrets.FTP_PASSWORD }}   # Hosting FTP Sifreniz
+        # Sunucudaki web ana dizininiz (Paylasimli hostinglerde genelde public_html/ veya httpdocs/ seklindedir)
+        # Eger ana dizine atilacaksa: / seklinde de birakabilirsiniz.
+        server-dir: /
 
