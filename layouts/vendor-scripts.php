@@ -127,6 +127,8 @@ if ($page == "mail-sms/mail-gonder") {
     echo '<script src="views/mail-sms/js/mail.js"></script>';
 }
 
+// QA test skip test
+
 if ($page == "kasa/duzenle" || $page == "kasa/list") {
     echo '<script src="views/kasa/js/kasa.js"></script>';
 }
