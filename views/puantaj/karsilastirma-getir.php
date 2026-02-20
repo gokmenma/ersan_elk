@@ -774,52 +774,74 @@ $changeIcon = $totalChange > 0 ? 'bx-trending-up' : ($totalChange < 0 ? 'bx-tren
         const chartColors = <?= json_encode($chartColors) ?>;
         const chartBorderColors = <?= json_encode($chartBorderColors) ?>;
 
+        let chartLabels = []; // X-axis labels (personel/bölge names)
         let chartDatasets = [];
 
         <?php if ($compareMode === 'personel'): ?>
             <?php
-            $chartPersonel = array_slice($data['personel'], 0, 10, true); // Top 10
-            $idx = 0;
-            foreach ($chartPersonel as $key => $pData):
+            // Sort by total descending and take top 10
+            $chartPersonel = $data['personel'];
+            uasort($chartPersonel, function ($a, $b) use ($periodLabels) {
+                $totalA = array_sum(array_column($a['periods'], 'toplam'));
+                $totalB = array_sum(array_column($b['periods'], 'toplam'));
+                return $totalB - $totalA;
+            });
+            $chartPersonel = array_slice($chartPersonel, 0, 10, true);
+
+            // Collect person names for X-axis
+            $personNames = [];
+            foreach ($chartPersonel as $pData) {
+                $personNames[] = $pData['personel_adi'];
+            }
+            ?>
+            chartLabels = <?= json_encode(array_values($personNames)) ?>;
+
+            <?php
+            // Each dataset = a period
+            $pIdx = 0;
+            foreach ($periodLabels as $label):
+                $periodValues = [];
+                foreach ($chartPersonel as $pData) {
+                    $periodValues[] = $pData['periods'][$label]['toplam'] ?? 0;
+                }
                 ?>
                 chartDatasets.push({
-                    label: '<?= addslashes($pData['personel_adi']) ?>',
-                    data: [<?php
-                    $vals = [];
-                    foreach ($periodLabels as $l) {
-                        $vals[] = $pData['periods'][$l]['toplam'] ?? 0;
-                    }
-                    echo implode(',', $vals);
-                    ?>],
-                    backgroundColor: chartColors[<?= $idx % count($chartColors) ?>],
-                    borderColor: chartBorderColors[<?= $idx % count($chartColors) ?>],
+                    label: '<?= addslashes($label) ?>',
+                    data: <?= json_encode($periodValues) ?>,
+                    backgroundColor: chartColors[<?= $pIdx % count($chartColors) ?>],
+                    borderColor: chartBorderColors[<?= $pIdx % count($chartColors) ?>],
                     borderWidth: 1,
                     borderRadius: 4
                 });
-                <?php $idx++; endforeach; ?>
+                <?php $pIdx++; endforeach; ?>
 
         <?php elseif ($compareMode === 'bolge'): ?>
             <?php
-            $idx = 0;
-            foreach ($data['bolge'] as $bolgeName => $bData):
+            $bolgeNames = array_keys($data['bolge']);
+            sort($bolgeNames);
+            ?>
+            chartLabels = <?= json_encode($bolgeNames) ?>;
+
+            <?php
+            $pIdx = 0;
+            foreach ($periodLabels as $label):
+                $periodValues = [];
+                foreach ($bolgeNames as $bName) {
+                    $periodValues[] = $data['bolge'][$bName]['periods'][$label]['toplam'] ?? 0;
+                }
                 ?>
                 chartDatasets.push({
-                    label: '<?= addslashes($bolgeName) ?>',
-                    data: [<?php
-                    $vals = [];
-                    foreach ($periodLabels as $l) {
-                        $vals[] = $bData['periods'][$l]['toplam'] ?? 0;
-                    }
-                    echo implode(',', $vals);
-                    ?>],
-                    backgroundColor: chartColors[<?= $idx % count($chartColors) ?>],
-                    borderColor: chartBorderColors[<?= $idx % count($chartColors) ?>],
+                    label: '<?= addslashes($label) ?>',
+                    data: <?= json_encode($periodValues) ?>,
+                    backgroundColor: chartColors[<?= $pIdx % count($chartColors) ?>],
+                    borderColor: chartBorderColors[<?= $pIdx % count($chartColors) ?>],
                     borderWidth: 1,
                     borderRadius: 4
                 });
-                <?php $idx++; endforeach; ?>
+                <?php $pIdx++; endforeach; ?>
 
         <?php else: // firma ?>
+            chartLabels = periodLabels;
             chartDatasets.push({
                 label: 'Toplam <?= $valueLabel ?>',
                 data: [<?php
@@ -868,11 +890,11 @@ $changeIcon = $totalChange > 0 ? 'bx-trending-up' : ($totalChange < 0 ? 'bx-tren
 
             const config = {
                 type: 'bar',
-                data: { labels: periodLabels, datasets: chartDatasets },
+                data: { labels: chartLabels, datasets: chartDatasets },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: { intersect: false, mode: 'index' },
+                    interaction: { intersect: true, mode: 'nearest' },
                     plugins: {
                         legend: {
                             position: 'bottom',
@@ -899,7 +921,7 @@ $changeIcon = $totalChange > 0 ? 'bx-trending-up' : ($totalChange < 0 ? 'bx-tren
                     scales: {
                         x: {
                             grid: { display: false },
-                            ticks: { font: { size: 11, weight: '600' } }
+                            ticks: { font: { size: 11, weight: '600' }, maxRotation: 45, minRotation: 0 }
                         },
                         y: {
                             beginAtZero: true,
@@ -921,7 +943,7 @@ $changeIcon = $totalChange > 0 ? 'bx-trending-up' : ($totalChange < 0 ? 'bx-tren
                                     callback: function (v) { return v + ' kişi'; }
                                 }
                             }
-                <?php endif; ?>
+                        <?php endif; ?>
                     }
                 }
             };

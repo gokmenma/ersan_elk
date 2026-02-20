@@ -347,7 +347,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $result = $Nobet->deleteNobet($id);
 
                 if ($result) {
-                    $SystemLog->logAction($userId, 'Nöbet Silme', "{$nobet->adi_soyadi}'nin {$nobet->nobet_tarihi} tarihli nöbeti silindi.");
+                    $SystemLog->logAction($userId, 'Nöbet Silme', "{$nobet->adi_soyadi}'nin {$nobet->nobet_tarihi} tarihli nöbeti silindi.", SystemLogModel::LEVEL_IMPORTANT);
                     echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Nöbet silindi.']);
                 } else {
                     throw new Exception("Silme işlemi başarısız.");

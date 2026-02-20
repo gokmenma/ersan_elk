@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use App\Helper\Date;
 use App\Model\UserModel;
+use App\Model\SystemLogModel;
 use App\Helper\Helper;
 use App\Model\SettingsModel;
 use App\InterFaces\LoggerInterface;
@@ -212,6 +213,20 @@ class AuthController
             'ip' => $_SERVER['REMOTE_ADDR']
         ]);
 
+        // SystemLogModel ile dashboard'da gösterilecek log
+        try {
+            $systemLog = new SystemLogModel();
+            $ip = $_SERVER['REMOTE_ADDR'] ?? 'Bilinmiyor';
+            $userName = $user->adi_soyadi ?? $user->full_name ?? 'Bilinmiyor';
+            $systemLog->logAction(
+                $user->id,
+                'Kullanıcı Girişi',
+                "{$userName} sisteme giriş yaptı. IP: {$ip}",
+                SystemLogModel::LEVEL_IMPORTANT
+            );
+        } catch (\Exception $e) { /* Sessiz geç */
+        }
+
 
         // SÜPER ADMIN KONTROLÜ
         $rolesArray = explode(',', $user->roles ?? '');
@@ -256,6 +271,21 @@ class AuthController
                 'user_id' => $userId,
                 'ip' => $_SERVER['REMOTE_ADDR']
             ]);
+
+            // SystemLogModel ile dashboard'da gösterilecek log
+            try {
+                $systemLog = new SystemLogModel();
+                $ip = $_SERVER['REMOTE_ADDR'] ?? 'Bilinmiyor';
+                $userName = $_SESSION['user']->adi_soyadi ?? $_SESSION['full_name'] ?? 'Bilinmiyor';
+                $systemLog->logAction(
+                    is_numeric($userId) ? $userId : 0,
+                    'Kullanıcı Çıkışı',
+                    "{$userName} sistemden çıkış yaptı. IP: {$ip}",
+                    SystemLogModel::LEVEL_IMPORTANT
+                );
+            } catch (\Exception $e) { /* Sessiz geç */
+            }
+
             session_unset();
             session_destroy();
             // --- DEĞİŞİKLİK BURADA ---

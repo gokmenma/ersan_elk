@@ -3,6 +3,7 @@
 require_once __DIR__ . '/Autoloader.php';
 use App\Core\Db;
 use App\Model\UserModel;
+use App\Model\SystemLogModel;
 use App\Helper\Helper;
 use App\Helper\Security;
 
@@ -106,10 +107,35 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             } else {
                 // Display an error message if password is not valid
                 $password_err = "Hatalı şifre girdiniz.";
+
+                // Başarısız giriş denemesini logla
+                try {
+                    $SystemLog = new SystemLogModel();
+                    $ip = $_SERVER['REMOTE_ADDR'] ?? 'Bilinmiyor';
+                    $SystemLog->logAction(
+                        $user->id,
+                        'Başarısız Giriş',
+                        "{$user->adi_soyadi} ({$username}) için hatalı şifre denemesi. IP: {$ip}",
+                        SystemLogModel::LEVEL_IMPORTANT
+                    );
+                } catch (\Exception $e) { /* Loglama hatası sessiz geçilir */
+                }
             }
         } else {
             $username_err = "Kullanıcı bulunamadı";
 
+            // Bulunamayan kullanıcı denemesini logla
+            try {
+                $SystemLog = new SystemLogModel();
+                $ip = $_SERVER['REMOTE_ADDR'] ?? 'Bilinmiyor';
+                $SystemLog->logAction(
+                    0,
+                    'Bilinmeyen Giriş Denemesi',
+                    "'{$username}' kullanıcı adıyla giriş denemesi yapıldı (kullanıcı bulunamadı). IP: {$ip}",
+                    SystemLogModel::LEVEL_IMPORTANT
+                );
+            } catch (\Exception $e) { /* Loglama hatası sessiz geçilir */
+            }
         }
 
     }

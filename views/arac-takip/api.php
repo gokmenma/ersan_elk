@@ -10,6 +10,7 @@ use App\Model\AracZimmetModel;
 use App\Model\AracYakitModel;
 use App\Model\AracKmModel;
 use App\Model\AracServisModel;
+use App\Model\SystemLogModel;
 use App\Helper\Security;
 use App\Helper\Date;
 
@@ -86,7 +87,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     throw new Exception("Geçersiz araç ID.");
                 }
 
+                // Silmeden önce araç bilgisini al
+                $silinecekArac = $Arac->getById($id);
                 $Arac->softDelete($id);
+
+                // Logla
+                $SystemLog = new SystemLogModel();
+                $userId = $_SESSION['user_id'] ?? 0;
+                $plaka = $silinecekArac->plaka ?? 'Bilinmiyor';
+                $SystemLog->logAction($userId, 'Araç Silme', "{$plaka} plakalı araç silindi.", SystemLogModel::LEVEL_IMPORTANT);
+
                 echo json_encode(['status' => 'success', 'message' => 'Araç başarıyla silindi.']);
                 break;
 
@@ -237,7 +247,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     throw new Exception("Geçersiz yakıt kaydı ID.");
                 }
 
+                // Silmeden önce yakıt kaydı bilgisini al
+                $silinecekYakit = $Yakit->find($id);
                 $Yakit->softDelete($id);
+
+                // Logla
+                $SystemLog = new SystemLogModel();
+                $userId = $_SESSION['user_id'] ?? 0;
+                $yakitTarih = $silinecekYakit->tarih ?? '';
+                $SystemLog->logAction($userId, 'Yakıt Kaydı Silme', "ID: {$id}, Tarih: {$yakitTarih} yakıt kaydı silindi.", SystemLogModel::LEVEL_IMPORTANT);
+
                 echo json_encode(['status' => 'success', 'message' => 'Yakıt kaydı silindi.']);
                 break;
 
@@ -389,6 +408,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 }
 
                 echo json_encode(['status' => 'success', 'message' => 'KM kaydı silindi ve zincir güncellendi.']);
+
+                // Logla
+                $SystemLog = new SystemLogModel();
+                $userId = $_SESSION['user_id'] ?? 0;
+                $SystemLog->logAction($userId, 'KM Kaydı Silme', "Araç ID: {$silinecekAracId}, Tarih: {$silinecekTarih}, Bitiş KM: {$silinecekBitisKm} KM kaydı silindi.", SystemLogModel::LEVEL_IMPORTANT);
+
                 break;
 
 
@@ -558,6 +583,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     }
                     $success++;
                 }
+
+                // KM Excel yükleme logla
+                $SystemLog = new SystemLogModel();
+                $userId = $_SESSION['user_id'] ?? 0;
+                $SystemLog->logAction($userId, 'KM Excel Yükleme', "Excel'den {$success} adet KM kaydı yüklendi, {$skip} atlandı.", SystemLogModel::LEVEL_IMPORTANT);
 
                 echo json_encode([
                     'status' => 'success',
@@ -938,6 +968,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $responseMessage .= ", Hatalı: " . count($errorDetails);
                 }
 
+                // Yakıt Excel yükleme logla
+                $SystemLog = new SystemLogModel();
+                $userId = $_SESSION['user_id'] ?? 0;
+                $SystemLog->logAction($userId, 'Yakıt Excel Yükleme', "Excel'den {$addedCount} adet yakıt kaydı eklendi, {$updatedCount} adet güncellendi.", SystemLogModel::LEVEL_IMPORTANT);
+
                 echo json_encode([
                     'status' => 'success',
                     'message' => $responseMessage,
@@ -1107,6 +1142,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $responseMessage .= ", Hatalı: " . count($errorDetails);
                 }
 
+                // Araç Excel yükleme logla
+                $SystemLog = new SystemLogModel();
+                $userId = $_SESSION['user_id'] ?? 0;
+                $SystemLog->logAction($userId, 'Araç Excel Yükleme', "Excel'den {$addedCount} adet araç eklendi, {$updatedCount} adet güncellendi.", SystemLogModel::LEVEL_IMPORTANT);
+
                 echo json_encode([
                     'status' => 'success',
                     'message' => $responseMessage,
@@ -1162,7 +1202,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     throw new Exception("Geçersiz servis kaydı ID.");
                 }
 
+                // Silmeden önce servis bilgisini al
+                $silinecekServis = $Servis->find($id);
                 $Servis->softDelete($id);
+
+                // Logla
+                $SystemLog = new SystemLogModel();
+                $userId = $_SESSION['user_id'] ?? 0;
+                $servisTarih = $silinecekServis->tarih ?? '';
+                $SystemLog->logAction($userId, 'Servis Kaydı Silme', "ID: {$id}, Tarih: {$servisTarih} servis kaydı silindi.", SystemLogModel::LEVEL_IMPORTANT);
+
                 echo json_encode(['status' => 'success', 'message' => 'Servis kaydı silindi.']);
                 break;
 

@@ -306,7 +306,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // Log Action
         $SystemLog = new SystemLogModel();
         $userId = $_SESSION['user_id'] ?? 0;
-        $SystemLog->logAction($userId, 'Puantaj Yükleme', "Excel'den $insertedCount adet puantaj kaydı yüklendi, $updatedCount adet güncellendi.");
+        $SystemLog->logAction($userId, 'Puantaj Yükleme', "Excel'den $insertedCount adet puantaj kaydı yüklendi, $updatedCount adet güncellendi.", SystemLogModel::LEVEL_IMPORTANT);
 
     } catch (Exception $e) {
         $response['message'] = $e->getMessage();
@@ -595,7 +595,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         $SystemLog = new SystemLogModel();
         $userId = $_SESSION['user_id'] ?? 0;
-        $SystemLog->logAction($userId, 'Endeks Okuma Yükleme', "$extension dosyasından $insertedCount adet endeks okuma kaydı yüklendi.");
+        $SystemLog->logAction($userId, 'Endeks Okuma Yükleme', "$extension dosyasından $insertedCount adet endeks okuma kaydı yüklendi.", SystemLogModel::LEVEL_IMPORTANT);
 
     } catch (Exception $e) {
         $response['message'] = $e->getMessage();
@@ -742,7 +742,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         $SystemLog = new SystemLogModel();
         $userId = $_SESSION['user_id'] ?? 0;
-        $SystemLog->logAction($userId, 'Kaçak Kontrol Yükleme', "Excel'den $insertedCount adet kaçak kontrol kaydı yüklendi.");
+        $SystemLog->logAction($userId, 'Kaçak Kontrol Yükleme', "Excel'den $insertedCount adet kaçak kontrol kaydı yüklendi.", SystemLogModel::LEVEL_IMPORTANT);
 
     } catch (Exception $e) {
         $response['message'] = $e->getMessage();
@@ -1356,7 +1356,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // Log kaydet
         $SystemLog = new SystemLogModel();
         $userId = $_SESSION['user_id'] ?? 0;
-        $SystemLog->logAction($userId, 'Online Kesme/Açma Sorgulama', "API Sorgu, Tarih: $baslangicTarihiAPI - $bitisTarihiAPI. $yeniKayit yeni, $guncellenenKayit güncellenen kayıt.");
+        $SystemLog->logAction($userId, 'Online Kesme/Açma Sorgulama', "API Sorgu, Tarih: $baslangicTarihiAPI - $bitisTarihiAPI. $yeniKayit yeni, $guncellenenKayit güncellenen kayıt.", SystemLogModel::LEVEL_IMPORTANT);
 
         $response['status'] = 'success';
         $response['yeni_kayit'] = $yeniKayit;
@@ -1622,7 +1622,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // Log kaydet
         $SystemLog = new SystemLogModel();
         $userId = $_SESSION['user_id'] ?? 0;
-        $SystemLog->logAction($userId, 'Online Endeks Okuma Sorgulama', "API Sorgu, Tarih: $baslangicTarihiAPI - $bitisTarihiAPI. $silinenKayit eski kayıt silindi, $yeniKayit yeni kayıt eklendi.");
+        $SystemLog->logAction($userId, 'Online Endeks Okuma Sorgulama', "API Sorgu, Tarih: $baslangicTarihiAPI - $bitisTarihiAPI. $silinenKayit eski kayıt silindi, $yeniKayit yeni kayıt eklendi.", SystemLogModel::LEVEL_IMPORTANT);
 
         $response['status'] = 'success';
         $response['yeni_kayit'] = $yeniKayit;

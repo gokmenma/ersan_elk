@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'donem_id' => $donemId
                 ]);
 
-                $SystemLog->logAction($userId, 'Maaş Dönem Açma', "$donem_adi dönemi oluşturuldu.");
+                $SystemLog->logAction($userId, 'Maaş Dönem Açma', "$donem_adi dönemi oluşturuldu.", SystemLogModel::LEVEL_IMPORTANT);
                 break;
 
             // Dönem Güncelle
@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'message' => 'Dönem adı başarıyla güncellendi.',
                         'donem_adi' => $donem_adi
                     ]);
-                    $SystemLog->logAction($userId, 'Maaş Dönem Güncelleme', "Dönem adı güncellendi: $donem_adi (ID: $donem_id)");
+                    $SystemLog->logAction($userId, 'Maaş Dönem Güncelleme', "Dönem adı güncellendi: $donem_adi (ID: $donem_id)", SystemLogModel::LEVEL_IMPORTANT);
                 } else {
                     throw new Exception('Güncelleme işlemi başarısız.');
                 }
@@ -180,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     if ($kesintiInfo) {
                         $logDetay = "{$kesintiInfo->adi_soyadi} isimli personelin " . number_format($kesintiInfo->tutar, 2, ',', '.') . " ₺ tutarındaki kesintisi ({$kesintiInfo->aciklama}) silindi.";
-                        $SystemLog->logAction($userId, 'Bordro Kesinti Silindi', $logDetay);
+                        $SystemLog->logAction($userId, 'Bordro Kesinti Silindi', $logDetay, SystemLogModel::LEVEL_IMPORTANT);
                     }
 
                     echo json_encode(['status' => 'success', 'message' => 'Kesinti silindi.']);
@@ -221,7 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     if ($odemeInfo) {
                         $logDetay = "{$odemeInfo->adi_soyadi} isimli personelin " . number_format($odemeInfo->tutar, 2, ',', '.') . " ₺ tutarındaki ek ödemesi ({$odemeInfo->aciklama}) silindi.";
-                        $SystemLog->logAction($userId, 'Bordro Ek Ödeme Silindi', $logDetay);
+                        $SystemLog->logAction($userId, 'Bordro Ek Ödeme Silindi', $logDetay, SystemLogModel::LEVEL_IMPORTANT);
                     }
 
                     echo json_encode(['status' => 'success', 'message' => 'Ek ödeme silindi.']);
@@ -280,7 +280,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 if ($personelInfo) {
                     $logDetay = "{$personelInfo->adi_soyadi} isimli personel {$personelInfo->donem_adi} döneminden çıkarıldı.";
-                    $SystemLog->logAction($userId, 'Bordro Personel Çıkarıldı', $logDetay);
+                    $SystemLog->logAction($userId, 'Bordro Personel Çıkarıldı', $logDetay, SystemLogModel::LEVEL_IMPORTANT);
                 }
 
                 echo json_encode([
@@ -397,7 +397,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'icra_uyarilari' => $BordroPersonel->icra_uyarilari
                 ]);
 
-                $SystemLog->logAction($userId, 'Maaş Hesaplama', "$hesaplananSayisi personelin maaşı hesaplandı.");
+                $SystemLog->logAction($userId, 'Maaş Hesaplama', "$hesaplananSayisi personelin maaşı hesaplandı.", SystemLogModel::LEVEL_IMPORTANT);
                 break;
 
             // İcra Kesinti Detayı
@@ -975,7 +975,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'message' => $message
                 ]);
 
-                $SystemLog->logAction($userId, 'Maaş Dönem Kapama', "Dönem kapatıldı (ID: $donem_id).");
+                $SystemLog->logAction($userId, 'Maaş Dönem Kapama', "Dönem kapatıldı (ID: $donem_id).", SystemLogModel::LEVEL_IMPORTANT);
                 break;
 
             // Dönemi Aç
@@ -994,7 +994,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'message' => 'Dönem açıldı. Artık bu dönemde değişiklik yapılabilir.'
                 ]);
 
-                $SystemLog->logAction($userId, 'Maaş Dönem Açma', "Dönem tekrar açıldı (ID: $donem_id).");
+                $SystemLog->logAction($userId, 'Maaş Dönem Açma', "Dönem tekrar açıldı (ID: $donem_id).", SystemLogModel::LEVEL_IMPORTANT);
                 break;
 
             // Ödeme Dağıt

@@ -251,14 +251,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $changesStr = !empty($changes) ? implode(', ', $changes) : 'Değişiklik yok';
                 $tcNo = $data['tc_kimlik_no'] ?? ($oldData->tc_kimlik_no ?? 'Bilinmeyen');
                 $adiSoyadi = $data['adi_soyadi'] ?? ($oldData->adi_soyadi ?? '');
-                $SystemLog->logAction($userId, 'Personel Güncelleme', "$tcNo kimlik numaralı $adiSoyadi isimli personelin verileri güncellendi (Güncellenen veriler: { $changesStr })");
+                $SystemLog->logAction($userId, 'Personel Güncelleme', "$tcNo kimlik numaralı $adiSoyadi isimli personelin verileri güncellendi (Güncellenen veriler: { $changesStr })", SystemLogModel::LEVEL_IMPORTANT);
 
                 $message = "Personel başarıyla güncellendi.";
             } else {
                 // Yeni Kayıt Logu
                 $tcNo = $data['tc_kimlik_no'] ?? 'Bilinmeyen';
                 $adiSoyadi = $data['adi_soyadi'] ?? '';
-                $SystemLog->logAction($userId, 'Personel Kayıt', "Yeni personel eklendi: $tcNo - $adiSoyadi");
+                $SystemLog->logAction($userId, 'Personel Kayıt', "Yeni personel eklendi: $tcNo - $adiSoyadi", SystemLogModel::LEVEL_IMPORTANT);
 
                 $message = "Personel başarıyla kaydedildi.";
             }
@@ -275,7 +275,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $tcNo = $personel->tc_kimlik_no ?? 'Bilinmeyen';
             $adiSoyadi = $personel->adi_soyadi ?? 'Bilinmeyen';
             $Personel->delete($id, false); // false: decrypt işlemi yapılmasın (id direkt geliyorsa)
-            $SystemLog->logAction($userId, 'Personel Silme', "$tcNo kimlik numaralı $adiSoyadi isimli personel silindi.");
+            $SystemLog->logAction($userId, 'Personel Silme', "$tcNo kimlik numaralı $adiSoyadi isimli personel silindi.", SystemLogModel::LEVEL_IMPORTANT);
             echo json_encode(['status' => 'success', 'message' => 'Personel başarıyla silindi.']);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -302,7 +302,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $personel = $Personel->find($data['personel_id']);
             $adiSoyadi = $personel->adi_soyadi ?? 'Bilinmeyen';
             $tutar = number_format($saveData['tutar'], 2, ',', '.') . ' ₺';
-            $SystemLog->logAction($userId, 'Ek Ödeme Ekleme', "$adiSoyadi isimli personele $tutar tutarında ek ödeme eklendi ({$saveData['aciklama']})");
+            $SystemLog->logAction($userId, 'Ek Ödeme Ekleme', "$adiSoyadi isimli personele $tutar tutarında ek ödeme eklendi ({$saveData['aciklama']})", SystemLogModel::LEVEL_IMPORTANT);
 
             echo json_encode(['status' => 'success', 'message' => 'Gelir başarıyla eklendi.']);
         } catch (Exception $e) {
@@ -330,7 +330,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $personel = $Personel->find($data['personel_id']);
             $adiSoyadi = $personel->adi_soyadi ?? 'Bilinmeyen';
             $tutar = number_format($saveData['tutar'], 2, ',', '.') . ' ₺';
-            $SystemLog->logAction($userId, 'Kesinti Ekleme', "$adiSoyadi isimli personelden $tutar tutarında kesinti tanımlandı ({$saveData['aciklama']})");
+            $SystemLog->logAction($userId, 'Kesinti Ekleme', "$adiSoyadi isimli personelden $tutar tutarında kesinti tanımlandı ({$saveData['aciklama']})", SystemLogModel::LEVEL_IMPORTANT);
 
             echo json_encode(['status' => 'success', 'message' => 'Kesinti başarıyla eklendi.']);
         } catch (Exception $e) {
@@ -744,6 +744,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $totalErrors = count($errorDetails);
                 $responseMessage .= "\nAtlanan/Hatalı: " . $totalErrors;
             }
+
+            // Personel Excel yükleme logla
+            $SystemLog->logAction($userId, 'Personel Excel Yükleme', "Excel'den {$addedCount} personel eklendi, {$updatedCount} güncellendi.", SystemLogModel::LEVEL_IMPORTANT);
 
             // Hata detaylarını da gönder
             echo json_encode([

@@ -391,6 +391,6 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         cronLog("HATA: " . $e->getMessage());
     }
 
-    $SystemLog->logAction(0, 'Cron - Online Kesme/Açma Sorgulama', "Firma ID: $firmaId, Tarih: $tarih. $yeniKayit yeni kayıt, $silinenKayit silinen.");
+    $SystemLog->logAction(0, 'Cron - Online Kesme/Açma Sorgulama', "Firma ID: $firmaId, Tarih: $tarih. $yeniKayit yeni kayıt, $silinenKayit silinen.", SystemLogModel::LEVEL_IMPORTANT);
     return ['yeni_kayit' => $yeniKayit, 'silinen_kayit' => $silinenKayit, 'guncellenen_kayit' => 0, 'atlanAn' => $atlanAnKayitlar, 'atlanAnListesi' => array_unique($atlanAnListesi), 'bos_sonuc' => $bosSonucSayisi, 'toplam_api' => count($apiData ?? [])];
 }

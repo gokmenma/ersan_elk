@@ -32,6 +32,17 @@ use App\Exceptions\AuthorizationException;
 $dotenv = Dotenv\Dotenv::createImmutable(PROJECT_ROOT);
 $dotenv->load();
 
+// --- SENTRY HATA YAKALAMA (ERROR TRACKING) KURULUMU ---
+// .env dosyanıza SENTRY_DSN=https://... şeklinde DSN adresinizi eklemeniz yeterlidir.
+if (isset($_ENV['SENTRY_DSN']) && !empty($_ENV['SENTRY_DSN'])) {
+    \Sentry\init([
+        'dsn' => $_ENV['SENTRY_DSN'],
+        'traces_sample_rate' => 1.0,
+        // Ortam bilgisi eklenebilir
+        'environment' => $_ENV['APP_ENV'] ?? 'production',
+    ]);
+}
+
 // --- MERKEZİ VERİTABANI BAĞLANTISI ---
 /**
  * Proje genelinde kullanılacak tekil PDO bağlantı nesnesini döndürür.

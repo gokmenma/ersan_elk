@@ -1,0 +1,102 @@
+name: Ersan Elektrik CI Pipeline
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  pull_request:
+    branches: [ "master", "main" ]
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: ersan_elk_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+    - name: Kodu Klonla (Checkout)
+      uses: actions/checkout@v4
+
+    - name: PHP 8.2 Ortamini Kur
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, pdo, pdo_mysql, curl, zip
+        coverage: none
+
+    - name: Node.js Ortamini Kur
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    - name: Önbelleklenmis Composer Paketlerini Getir
+      id: composer-cache
+      uses: actions/cache@v3
+      with:
+        path: vendor
+        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-php-
+
+    - name: PHP Bagimliliklarini Yukle
+      if: steps.composer-cache.outputs.cache-hit != 'true'
+      run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+    - name: .env.example Dosyasini Yarat
+      run: cp .env.example .env || true # Eğer example yoksa hata vermemesini sağlar (geçici)
+      # Burada gercek ortam degiskenlerinizi orneklendireceksiniz. KESINLIKLE GERCEK SIFRELERI YAZMAYIN!
+      # Örnek: DB_HOST=127.0.0.1, DB_NAME=ersan_elk_test vb.
+
+    - name: Npm Paketlerini ve Playwright Bagimliliklarini Yukle
+      run: |
+        npm install
+        npx playwright install --with-deps chromium
+
+    - name: Backend PHP Unit & Integration Testlerini Kos (Pest)
+      run: vendor/bin/pest
+    
+    # E2E testleri icin projenizin ayaga kalkmasi gerekmektedir (Yani localhost:8000).
+    # Bu adimda Xampp'teki isleyisi simule etmek adina projeyi PHP'nin dahlili sunucusu ile ayaga kaldirabiliriz.
+    - name: E2E Testleri Icin PHP Sunucusunu Baslat
+      run: php -S localhost:8000 -t ./ & 
+
+    - name: Playwright E2E UI Testlerini Kos
+      # Burada projenizin `localhost:8000` uzerinden test edilmesini saglayan ENV degiskeni veriyoruz.
+      # Playwright konfigürasyonunuzda "if env.CI_BASE_URL exists use it" mantigini kurmustuk (ya da kurmaliyiz).
+      env:
+        PLAYWRIGHT_BASE_URL: "http://localhost:8000"
+      run: npx playwright test tests/e2e/e2e.spec.ts --project=chromium --reporter=list
+
+  deploy:
+    name: Uretime (Production) Dagitim YAP
+    needs: run-tests # YALNIZCA TESTLER BASARILIYSA BU ASAMAYA GECILIR
+    runs-on: ubuntu-latest
+    # Yalnizca master veya main dalina (branch) merge/push edildiginde calisir
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: SSH ile Sunucuya Baglan ve Kodlari Cek (Git Pull)
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SERVER_HOST }}     # Ornek: 192.168.1.1 (Github Secrets'tan alinir)
+        username: ${{ secrets.SERVER_USER }} # Ornek: root veya mbeyazil
+        password: ${{ secrets.SERVER_PASS }} # Sunucu Sifreniz
+        # Sifre yerine SSH dosyasi ile (pem key) baglanacaksaniz asagidaki satiri aktif edin
+        # key: ${{ secrets.SERVER_SSH_KEY }}
+        script: |
+          cd /home/mbeyazil/repositories/ersan_elk
+          git pull origin master
+          composer install --no-dev --optimize-autoloader
+          # php bin/console cache:clear (Veya herhangi bir onbellegi temizleme kodunuz)
+

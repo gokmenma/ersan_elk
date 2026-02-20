@@ -409,7 +409,7 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
     }
 
     // Log kaydet
-    $SystemLog->logAction(0, 'Cron - Online Endeks Sorgulama', "Firma $ilkFirma-$sonFirma, Tarih: $tarih. $silinenKayit eski silindi, $yeniKayit yeni eklendi.");
+    $SystemLog->logAction(0, 'Cron - Online Endeks Sorgulama', "Firma $ilkFirma-$sonFirma, Tarih: $tarih. $silinenKayit eski silindi, $yeniKayit yeni eklendi.", SystemLogModel::LEVEL_IMPORTANT);
 
     return [
         'yeni_kayit' => $yeniKayit,

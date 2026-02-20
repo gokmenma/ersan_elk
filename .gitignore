@@ -11,3 +11,11 @@ uploads/*
 .agents/*
 
 debug_date.txt
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
