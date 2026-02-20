@@ -53,11 +53,14 @@ jobs:
       if: steps.composer-cache.outputs.cache-hit != 'true'
       run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
-    - name: .env.example Dosyasini Yarat
-      run: cp .env.example .env || true # Eğer example yoksa hata vermemesini sağlar (geçici)
-      # Burada gercek ortam degiskenlerinizi orneklendireceksiniz. KESINLIKLE GERCEK SIFRELERI YAZMAYIN!
-      # Örnek: DB_HOST=127.0.0.1, DB_NAME=ersan_elk_test vb.
-
+    - name: CI iCİN ENV DOSYASINI HAZIRLA (Test DB Baglantisi)
+      run: |
+        touch .env
+        echo "APP_ENV=testing" >> .env
+        echo "DB_HOST=127.0.0.1" >> .env
+        echo "DB_NAME=ersan_elk_test" >> .env
+        echo "DB_USER=root" >> .env
+        echo "DB_PASS=root" >> .env
     - name: Npm Paketlerini ve Playwright Bagimliliklarini Yukle
       run: |
         npm install
