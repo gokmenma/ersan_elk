@@ -103,5 +103,5 @@ jobs:
         password: ${{ secrets.FTP_PASSWORD }}   # Hosting FTP Sifreniz
         # Sunucudaki web ana dizininiz (Paylasimli hostinglerde genelde public_html/ veya httpdocs/ seklindedir)
         # Eger ana dizine atilacaksa: / seklinde de birakabilirsiniz.
-        server-dir: /
+        server-dir: /repositories/ersan_elk/
 
