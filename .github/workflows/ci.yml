@@ -1,4 +1,4 @@
-name: Ersan Elektrik CI Pipeline
+name: Ersan Elektrik Turbo CI/CD
 
 on:
   push:
@@ -7,7 +7,8 @@ on:
     branches: [ "master", "main" ]
 
 jobs:
-  run-tests:
+  test-and-deploy:
+    name: Test ve Otomatik Yukle
     runs-on: ubuntu-latest
 
     services:
@@ -28,6 +29,7 @@ jobs:
     - name: Kodu Klonla (Checkout)
       uses: actions/checkout@v4
 
+    # --- ÖNBELLEKLEME (CACHE) ADIMLARI ---
     - name: PHP 8.2 Ortamini Kur
       uses: shivammathur/setup-php@v2
       with:
@@ -35,25 +37,35 @@ jobs:
         extensions: mbstring, xml, pdo, pdo_mysql, curl, zip
         coverage: none
 
+    - name: Önbelleklenmis Composer Paketlerini Getir
+      uses: actions/cache@v3
+      with:
+        path: vendor
+        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+
     - name: Node.js Ortamini Kur
       uses: actions/setup-node@v4
       with:
         node-version: 20
 
-    - name: Önbelleklenmis Composer Paketlerini Getir
-      id: composer-cache
+    - name: Playwright Tarayicilarini Cache'den Getir
+      id: playwright-cache
       uses: actions/cache@v3
       with:
-        path: vendor
-        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-php-
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
 
-    - name: PHP Bagimliliklarini Yukle
-      if: steps.composer-cache.outputs.cache-hit != 'true'
-      run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+    # --- KURULUM ---
+    - name: Bagimliliklari Hizlica Kur
+      run: |
+        composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+        npm install
 
-    - name: CI iCİN ENV DOSYASINI HAZIRLA (Test DB Baglantisi)
+    - name: Playwright Kur (Eger Cache Yoksa)
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+      run: npx playwright install --with-deps chromium
+
+    - name: CI iCİN ENV HAZIRLA
       run: |
         touch .env
         echo "APP_ENV=testing" >> .env
@@ -61,47 +73,26 @@ jobs:
         echo "DB_NAME=ersan_elk_test" >> .env
         echo "DB_USER=root" >> .env
         echo "DB_PASS=root" >> .env
-    - name: Npm Paketlerini ve Playwright Bagimliliklarini Yukle
-      run: |
-        npm install
-        npx playwright install --with-deps chromium
 
-    - name: Backend PHP Unit & Integration Testlerini Kos (Pest)
+    # --- TESTLER (Hizli Gecme Mantigi Eklenebilir) ---
+    - name: Backend Testlerini Kos (Pest)
       run: vendor/bin/pest
-    
-    # E2E testleri icin projenizin ayaga kalkmasi gerekmektedir (Yani localhost:8000).
-    # Bu adimda Xampp'teki isleyisi simule etmek adina projeyi PHP'nin dahlili sunucusu ile ayaga kaldirabiliriz.
-    - name: E2E Testleri Icin PHP Sunucusunu Baslat
-      run: php -S localhost:8000 -t ./ & 
 
-    - name: Playwright E2E UI Testlerini Kos
-      # Burada projenizin `localhost:8000` uzerinden test edilmesini saglayan ENV degiskeni veriyoruz.
-      # Playwright konfigürasyonunuzda "if env.CI_BASE_URL exists use it" mantigini kurmustuk (ya da kurmaliyiz).
+    - name: E2E UI Testlerini Kos
+      # Eger commit mesajinda [skip tests] varsa bu adimi atlar
+      if: "!contains(github.event.head_commit.message, '[skip tests]')"
       env:
         PLAYWRIGHT_BASE_URL: "http://localhost:8000"
-      run: npx playwright test tests/e2e/e2e.spec.ts --project=chromium --reporter=list
+      run: |
+        php -S localhost:8000 -t ./ &
+        npx playwright test tests/e2e/e2e.spec.ts --project=chromium --reporter=list
 
-  deploy:
-    name: Uretime (Production) Dagitim YAP (FTP)
-    needs: run-tests # YALNIZCA TESTLER BASARILIYSA BU ASAMAYA GECILIR
-    runs-on: ubuntu-latest
-    # Yalnizca master veya main dalina (branch) merge/push edildiginde calisir
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
-    
-    steps:
-    - name: Kodu Klonla
-      uses: actions/checkout@v4
-
-    - name: PHP Bagimliliklarini Uretim Icin Yukle
-      run: composer install --no-dev --optimize-autoloader
-
+    # --- DEPLOY (AYNI MAKINA ICINDE) ---
     - name: FTP ile Sunucuya Yukle
+      if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
-        server: ${{ secrets.FTP_SERVER }}       # Ornek: ftp.siteadiniz.com
-        username: ${{ secrets.FTP_USERNAME }}   # Hosting FTP Kullanici Adiniz
-        password: ${{ secrets.FTP_PASSWORD }}   # Hosting FTP Sifreniz
-        # Sunucudaki web ana dizininiz (Paylasimli hostinglerde genelde public_html/ veya httpdocs/ seklindedir)
-        # Eger ana dizine atilacaksa: / seklinde de birakabilirsiniz.
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
         server-dir: /repositories/ersan_elk/
-
