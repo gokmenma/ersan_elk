@@ -41,6 +41,80 @@ document.addEventListener("DOMContentLoaded", function () {
   // Alıcı input'unda tuşa basıldığında (Enter veya Virgül) etiketi oluştur
   recipientsInput.addEventListener("keydown", handleRecipientInput);
 
+  // --- AUTOCOMPLETE: API'den verileri çek ve listele ---
+  const autocompleteContainer = document.createElement("div");
+  autocompleteContainer.className =
+    "autocomplete-dropdown list-group shadow position-absolute w-100";
+  autocompleteContainer.style.display = "none";
+  autocompleteContainer.style.zIndex = "1000";
+  autocompleteContainer.style.maxHeight = "250px";
+  autocompleteContainer.style.overflowY = "auto";
+  autocompleteContainer.style.top = "100%";
+  autocompleteContainer.style.left = "0";
+  autocompleteContainer.style.marginTop = "2px";
+
+  // Tag input wrapper'ın position ayarını yapalım ki absolute elementler düzgün dursun
+  recipientsContainer.style.position = "relative";
+  recipientsContainer.appendChild(autocompleteContainer);
+
+  let debounceTimer;
+
+  recipientsInput.addEventListener("input", function () {
+    const q = this.value.trim();
+    if (q.length < 2) {
+      autocompleteContainer.style.display = "none";
+      return;
+    }
+
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      fetch(
+        `views/mail-sms/api/get_contacts.php?type=mail&q=${encodeURIComponent(q)}`,
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          autocompleteContainer.innerHTML = "";
+          if (data.length === 0) {
+            autocompleteContainer.style.display = "none";
+            return;
+          }
+
+          data.forEach((item) => {
+            const div = document.createElement("a");
+            div.className =
+              "list-group-item list-group-item-action cursor-pointer d-flex justify-content-between align-items-center";
+            div.style.cursor = "pointer";
+            div.innerHTML = `<div><span class="fw-semibold">${item.name}</span><br><small class="text-muted">${item.value}</small></div><span class="badge bg-light text-dark">${item.desc}</span>`;
+
+            div.onclick = function () {
+              if (!isEmailAlreadyAdded(item.value)) {
+                createTag(item.value);
+                updateRecipientsPreview();
+              } else {
+                Toastify({
+                  text: "Bu e-posta zaten eklenmiş.",
+                  backgroundColor: "#ffc107",
+                }).showToast();
+              }
+              recipientsInput.value = "";
+              autocompleteContainer.style.display = "none";
+              recipientsInput.focus();
+            };
+            autocompleteContainer.appendChild(div);
+          });
+          autocompleteContainer.style.display = "block";
+        })
+        .catch((err) => console.error("Autocomplete fetch error: ", err));
+    }, 300);
+  });
+
+  // Dışarı tıklanınca listeyi gizle
+  document.addEventListener("click", function (e) {
+    if (!recipientsContainer.contains(e.target)) {
+      autocompleteContainer.style.display = "none";
+    }
+  });
+
   // Alıcıları temizle
   document
     .getElementById("clear-recipients")
@@ -55,22 +129,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Form gönderimi
   mailForm.addEventListener("submit", handleFormSubmit);
-
-  // --- MODALDAN SEÇİLENLERİ EKLEME ---
-  window.addEventListener("message", function (event) {
-    if (
-      event.data &&
-      event.data.type === "addRecipients" &&
-      Array.isArray(event.data.emails)
-    ) {
-      event.data.emails.forEach(function (email) {
-        if (!isEmailAlreadyAdded(email)) {
-          createTag(email);
-        }
-      });
-      updateRecipientsPreview();
-    }
-  });
 
   // --- FONKSİYONLAR ---
 
@@ -200,7 +258,7 @@ document.addEventListener("DOMContentLoaded", function () {
     formData.append("recipients", JSON.stringify(recipients));
     formData.append("message", message);
 
-    const submitBtn = mailForm.querySelector('button[type="submit"]');
+    const submitBtn = document.querySelector('button[form="mailForm"]');
     if (submitBtn) submitBtn.disabled = true;
 
     swal.fire({
@@ -265,16 +323,6 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Modal İşlemleri
-  $(".kisilerden-sec").on("click", function (e) {
-    e.preventDefault();
-    $.get(
-      "/views/mail-sms/modal/kisi_sec_modal.php?type=mail",
-      function (data) {
-        $(".kisilerdenSecModalContent").html(data);
-        $("#kisilerdenSecModal").modal("show");
-      },
-    );
-  });
 
   $(".sablon-kullan").on("click", function (e) {
     e.preventDefault();

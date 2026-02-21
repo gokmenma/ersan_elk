@@ -204,10 +204,6 @@ use App\Helper\Form;
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <label class="form-label mb-0">Alıcılar</label>
                             <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-dark btn-sm kisilerden-sec"
-                                    style="border-radius: 6px;">
-                                    <i class="fas fa-address-book me-1"></i> Kişilerden Seç
-                                </button>
                                 <button type="button" class="btn btn-outline-danger btn-sm" id="clear-recipients"
                                     style="border-radius: 6px;">
                                     <i class="fas fa-trash-alt me-1"></i> Temizle
@@ -343,14 +339,7 @@ use App\Helper\Form;
 
 
 <!-- Modallar -->
-<div class="modal fade" id="kisilerdenSecModal" tabindex="-1" aria-labelledby="kisilerdenSecModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content kisilerdenSecModalContent">
-            <!-- İçerik AJAX ile yüklenecek -->
-        </div>
-    </div>
-</div>
+
 
 <div class="modal fade" id="sablondanSecModal" tabindex="-1" aria-labelledby="sablondanSecModalLabel"
     aria-hidden="true">
@@ -400,16 +389,7 @@ use App\Helper\Form;
 
 <script>
     $(document).ready(function () {
-        //kisilerden seç linkine tıklanınca modal açma
-        $(".kisilerden-sec").on("click", function (e) {
-            e.preventDefault();
-            $.get('/views/mail-sms/modal/kisi_sec_modal.php?type=sms', function (data) {
 
-                $(".kisilerdenSecModalContent").html(data);
-            });
-
-            $("#kisilerdenSecModal").modal("show");
-        });
 
         //şablondan seç linkine tıklanınca modal açma
         $(".sablon-kullan").on("click", function (e) {

@@ -94,12 +94,12 @@ $logs = $MesajLogModel->getLogs($filters);
                             <tbody>
                                 <?php foreach ($logs as $log): ?>
                                     <?php
-                                    $recipients = json_decode($log->recipients, true);
+                                    $recipients = json_decode($log->recipients ?? '', true);
                                     $recipientCount = is_array($recipients) ? count($recipients) : 1;
-                                    $recipientText = is_array($recipients) ? implode(', ', array_slice($recipients, 0, 3)) . ($recipientCount > 3 ? " (+$recipientCount)" : "") : $log->recipients;
+                                    $recipientText = is_array($recipients) ? implode(', ', array_slice($recipients, 0, 3)) . ($recipientCount > 3 ? " (+$recipientCount)" : "") : ($log->recipients ?? '');
 
-                                    $messagePreview = mb_substr(strip_tags($log->message), 0, 50) . '...';
-                                    $subject = $log->type == 'email' ? $log->subject : $messagePreview;
+                                    $messagePreview = mb_substr(strip_tags($log->message ?? ''), 0, 50) . '...';
+                                    $subject = $log->type == 'email' ? ($log->subject ?? '') : $messagePreview;
 
                                     $statusBadge = $log->status == 'success'
                                         ? '<span class="badge bg-success">Başarılı</span>'
@@ -119,19 +119,19 @@ $logs = $MesajLogModel->getLogs($filters);
                                     <tr>
                                         <td><?php echo $log->id; ?></td>
                                         <td class="text-center"><?php echo $icon; ?></td>
-                                        <td><?php echo htmlspecialchars($log->sender); ?></td>
-                                        <td><?php echo htmlspecialchars($recipientText); ?></td>
-                                        <td><?php echo htmlspecialchars($subject); ?></td>
+                                        <td><?php echo htmlspecialchars($log->sender ?? ''); ?></td>
+                                        <td><?php echo htmlspecialchars($recipientText ?? ''); ?></td>
+                                        <td><?php echo htmlspecialchars($subject ?? ''); ?></td>
                                         <td class="text-center"><?php echo $statusBadge; ?></td>
                                         <td><?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?></td>
                                         <td class="text-center">
                                             <button type="button" class="btn btn-info btn-sm view-details"
                                                 data-id="<?php echo $log->id; ?>" data-type="<?php echo $log->type; ?>"
-                                                data-sender="<?php echo htmlspecialchars($log->sender); ?>"
-                                                data-recipients='<?php echo htmlspecialchars($log->recipients, ENT_QUOTES); ?>'
-                                                data-subject="<?php echo htmlspecialchars($log->subject); ?>"
-                                                data-message='<?php echo htmlspecialchars($log->message, ENT_QUOTES); ?>'
-                                                data-attachments='<?php echo htmlspecialchars($log->attachments, ENT_QUOTES); ?>'
+                                                data-sender="<?php echo htmlspecialchars($log->sender ?? ''); ?>"
+                                                data-recipients='<?php echo htmlspecialchars($log->recipients ?? '', ENT_QUOTES); ?>'
+                                                data-subject="<?php echo htmlspecialchars($log->subject ?? ''); ?>"
+                                                data-message='<?php echo htmlspecialchars($log->message ?? '', ENT_QUOTES); ?>'
+                                                data-attachments='<?php echo htmlspecialchars($log->attachments ?? '', ENT_QUOTES); ?>'
                                                 data-date="<?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?>">
                                                 <i class="fas fa-eye"></i> Detay
                                             </button>

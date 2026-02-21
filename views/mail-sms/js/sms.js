@@ -13,21 +13,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const messagePreview = document.getElementById("message-preview");
   const phoneScreen = document.querySelector(".phone-screen");
 
-  // --- MODALDAN SEÇİLENLERİ EKLEME (window.postMessage dinleyicisi) ---
-  window.addEventListener("message", function(event) {
-    if (event.data && event.data.type === "addRecipients" && Array.isArray(event.data.numbers)) {
-      event.data.numbers.forEach(function(number) {
-        // Zaten ekli değilse ekle
-        // Sadece telefon numarasını içeren tag metnini kontrol etmek için regex kullanılabilir
-        // Basitlik için şu anki metin kontrolü yeterli olabilir
-        if (!recipientsContainer.textContent.includes(number)) {
-          createTag(number);
-        }
-      });
-    }
-  });
-
-
   // --- OLAY DİNLEYİCİLERİNİ (EVENT LISTENERS) AYARLAMA ---
 
   // Gönderen Adı değiştiğinde önizlemeyi güncelle
@@ -46,6 +31,79 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Alıcı input'unda tuşa basıldığında (Enter veya Virgül) etiketi oluştur
   recipientsInput.addEventListener("keydown", handleRecipientInput);
+
+  // --- AUTOCOMPLETE: API'den verileri çek ve listele ---
+  const autocompleteContainer = document.createElement("div");
+  autocompleteContainer.className =
+    "autocomplete-dropdown list-group shadow position-absolute w-100";
+  autocompleteContainer.style.display = "none";
+  autocompleteContainer.style.zIndex = "1000";
+  autocompleteContainer.style.maxHeight = "250px";
+  autocompleteContainer.style.overflowY = "auto";
+  autocompleteContainer.style.top = "100%";
+  autocompleteContainer.style.left = "0";
+  autocompleteContainer.style.marginTop = "2px";
+
+  // Tag input wrapper'ın position ayarını yapalım ki absolute elementler düzgün dursun
+  recipientsContainer.style.position = "relative";
+  recipientsContainer.appendChild(autocompleteContainer);
+
+  let debounceTimer;
+
+  recipientsInput.addEventListener("input", function () {
+    const q = this.value.trim();
+    if (q.length < 2) {
+      autocompleteContainer.style.display = "none";
+      return;
+    }
+
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      fetch(
+        `views/mail-sms/api/get_contacts.php?type=sms&q=${encodeURIComponent(q)}`,
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          autocompleteContainer.innerHTML = "";
+          if (data.length === 0) {
+            autocompleteContainer.style.display = "none";
+            return;
+          }
+
+          data.forEach((item) => {
+            const div = document.createElement("a");
+            div.className =
+              "list-group-item list-group-item-action cursor-pointer d-flex justify-content-between align-items-center";
+            div.style.cursor = "pointer";
+            div.innerHTML = `<div><span class="fw-semibold">${item.name}</span><br><small class="text-muted">${item.value}</small></div><span class="badge bg-light text-dark">${item.desc}</span>`;
+
+            div.onclick = function () {
+              if (!isNumberAlreadyAdded(item.value)) {
+                createTag(item.value);
+              } else {
+                Toastify({
+                  text: "Bu numara zaten eklenmiş.",
+                  backgroundColor: "#ffc107",
+                }).showToast();
+              }
+              recipientsInput.value = "";
+              autocompleteContainer.style.display = "none";
+              recipientsInput.focus();
+            };
+            autocompleteContainer.appendChild(div);
+          });
+          autocompleteContainer.style.display = "block";
+        })
+        .catch((err) => console.error("Autocomplete fetch error: ", err));
+    }, 300);
+  });
+
+  // Dışarı tıklanınca listeyi gizle
+  document.addEventListener("click", function (e) {
+    if (!recipientsContainer.contains(e.target)) {
+      autocompleteContainer.style.display = "none";
+    }
+  });
 
   // Form gönderildiğinde verileri topla (ve şimdilik konsola yazdır)
   smsForm.addEventListener("submit", handleFormSubmit);
@@ -72,14 +130,15 @@ document.addEventListener("DOMContentLoaded", function () {
     phoneScreen.scrollTop = phoneScreen.scrollHeight;
   }
 
-
   /**recipients-container alanını temizle */
   function clearRecipients() {
     recipientsContainer.innerHTML = "";
   }
 
   /** Alıcıları temizle butonuna tıklandığında çağrılır */
-  document.getElementById("clear-recipients").addEventListener("click", clearRecipients);
+  document
+    .getElementById("clear-recipients")
+    .addEventListener("click", clearRecipients);
 
   /**
    * Karakter ve SMS sayacını günceller.
@@ -159,7 +218,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (isValidPhoneNumber(finalNumber)) {
         //Eğer aynı numara eklenmediyse ekle
-        if (!recipientsContainer.textContent.includes(finalNumber)) {
+        if (!isNumberAlreadyAdded(finalNumber)) {
           createTag(finalNumber);
           recipientsInput.value = ""; // Input'u temizle
           return;
@@ -194,6 +253,13 @@ document.addEventListener("DOMContentLoaded", function () {
     recipientsContainer.insertBefore(tag, wrapper);
   }
 
+  function isNumberAlreadyAdded(number) {
+    const tags = recipientsContainer.querySelectorAll(".tag");
+    return Array.from(tags).some(
+      (tag) => tag.textContent.replace("×", "").trim() === number,
+    );
+  }
+
   /**
    * Basit bir telefon numarası formatı kontrolü yapar.
    * @param {string} number - Kontrol edilecek numara
@@ -215,13 +281,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const tags = recipientsContainer.querySelectorAll(".tag");
     const recipients = Array.from(tags).map((tag) =>
-      tag.textContent.slice(0, -1)
+      tag.textContent.slice(0, -1),
     ); // Son karakter olan '×' işaretini kaldır
 
     const formData = {
       senderId: senderIdSelect.value,
       message: messageTextarea.value,
-      recipients: recipients
+      recipients: recipients,
     };
 
     // Verilerin kontrolü
@@ -244,9 +310,9 @@ document.addEventListener("DOMContentLoaded", function () {
     fetch("views/mail-sms/api/sms.php", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(formData)
+      body: JSON.stringify(formData),
     })
       .then((response) => response.json())
       .then((data) => {
@@ -256,7 +322,7 @@ document.addEventListener("DOMContentLoaded", function () {
               title: "Başarılı!",
               text: "SMS başarıyla gönderildi.",
               icon: "success",
-              confirmButtonText: "Tamam"
+              confirmButtonText: "Tamam",
             })
             .then(() => {
               // Formu temizle
@@ -274,11 +340,11 @@ document.addEventListener("DOMContentLoaded", function () {
           title: "Hata!",
           text: "SMS gönderilirken bir sorun oluştu.",
           icon: "error",
-          confirmButtonText: "Tamam"
+          confirmButtonText: "Tamam",
         });
       });
   }
-  
+
   // Sayfa ilk yüklendiğinde durumu başlat
   updatePreview();
   updateCharCounter();

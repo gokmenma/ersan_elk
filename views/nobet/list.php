@@ -1702,7 +1702,7 @@ $title = 'Nöbet Planlama';
                 const eventDate = new Date(event.start);
                 const dayOfWeek = eventDate.getDay();
 
-                if (dayOfWeek === 0 || dayOfWeek === 6) {
+                if (dayOfWeek === 0) {
                     weekendCount++;
                 }
 
