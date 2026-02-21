@@ -86,8 +86,8 @@ class BordroPersonelModel extends Model
         /** Firma id'yi Session'dan al */
         $firma_id = $_SESSION['firma_id'];
 
-        // Maaş hesaplanmayan (aktif_mi = 2) veya artık uygun olmayan personelleri dönemden çıkar (soft delete)
-        // Sadece aktif_mi = 2 ise veya tarihleri uymuyorsa çıkarılır. aktif_mi = 0 (pasif) olsa bile çıkış tarihi uygunsa kalır.
+        // Maaş hesaplanmayan (aktif_mi = 2 veya maas_durumu = 'Maaş Hesaplanmayan') veya artık uygun olmayan personelleri dönemden çıkar (soft delete)
+        // Sadece aktif_mi = 2 ise, maaş durumu 'Maaş Hesaplanmayan' ise veya tarihleri uymuyorsa çıkarılır. aktif_mi = 0 (pasif) olsa bile çıkış tarihi uygunsa kalır.
         $sqlRemove = $this->db->prepare("
         UPDATE {$this->table} bp
         INNER JOIN personel p ON bp.personel_id = p.id
@@ -96,6 +96,7 @@ class BordroPersonelModel extends Model
         AND bp.silinme_tarihi IS NULL
         AND (
             p.aktif_mi = 2 
+            OR p.maas_durumu = 'Maaş Hesaplanmayan'
             OR (p.ise_giris_tarihi IS NOT NULL AND p.ise_giris_tarihi != '0000-00-00' AND p.ise_giris_tarihi > ?)
             OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '' AND p.isten_cikis_tarihi != '0000-00-00' AND p.isten_cikis_tarihi < ?)
             OR (p.aktif_mi = 0 AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00'))
@@ -110,6 +111,7 @@ class BordroPersonelModel extends Model
         FROM personel 
         WHERE firma_id = :firma_id
         AND aktif_mi != 2
+        AND (maas_durumu IS NULL OR maas_durumu != 'Maaş Hesaplanmayan')
         AND (
             ise_giris_tarihi IS NULL 
             OR ise_giris_tarihi = ''

@@ -268,7 +268,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Log detaylarını almak için kaydı çekelim
                 $personelBak = $BordroPersonel->getDb()->prepare("
                     SELECT p.adi_soyadi, d.donem_adi 
-                    FROM bordro_personelleri bp 
+                    FROM bordro_personel bp 
                     JOIN personel p ON bp.personel_id = p.id 
                     JOIN bordro_donemi d ON bp.donem_id = d.id 
                     WHERE bp.id = ?

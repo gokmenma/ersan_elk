@@ -478,7 +478,8 @@ $(document).ready(function () {
   $(document).on("click", ".btn-remove", function () {
     const id = $(this).data("id");
     const row = $(this).closest("tr");
-    const personelAdi = row.find("td:eq(1)").text().trim();
+    const personelAdi =
+      $(this).data("ad") || row.find("td:eq(4)").find("a").text().trim();
 
     Swal.fire({
       title: "Emin misiniz?",

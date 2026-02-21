@@ -835,7 +835,8 @@ $ek_odeme_turleri = [
                                                             </li>
                                                             <li>
                                                                 <a class="dropdown-item btn-remove text-danger<?= $donemKapali ? ' disabled' : '' ?>"
-                                                                    href="javascript:void(0);" data-id="<?= $personel->id ?>">
+                                                                    href="javascript:void(0);" data-id="<?= $personel->id ?>"
+                                                                    data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>">
                                                                     <i class="mdi mdi-trash-can-outline me-2"></i> Dönemden Çıkar
                                                                 </a>
                                                             </li>
