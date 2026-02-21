@@ -21,6 +21,8 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
 $donemId = $_GET['donem_id'] ?? null;
 $ids = $_GET['ids'] ?? null;
@@ -87,15 +89,16 @@ try {
         $toplamBankaOdemesi += (float) ($p->banka_odemesi ?? 0);
     }
 
-    $odemeTarihi = date('d/m/Y'); // Varsayılan bugün, istenirse dönem sonu veya başka tarih olabilir
+    $odemeTarihiExcel = ExcelDate::PHPToExcel(time()); // Bugünün tarihini Excel Timestamp'ine çeviriyoruz (isteğe bağlı dönem sonu olabilir)
 
     $sheet->setCellValue('A2', 'M');
-    $sheet->setCellValue('B2', $odemeTarihi);
+    $sheet->setCellValue('B2', $odemeTarihiExcel);
     $sheet->setCellValueExplicit('C2', $firma->firma_iban ?? '', DataType::TYPE_STRING);
     $sheet->setCellValue('D2', $toplamBankaOdemesi);
     $sheet->setCellValue('E2', $firma->firma_unvan ?? $firma->firma_adi ?? '');
 
-    // Tutar formatı
+    // Tarih ve Tutar formatları
+    $sheet->getStyle('B2')->getNumberFormat()->setFormatCode('dd/mm/yyyy');
     $sheet->getStyle('D2')->getNumberFormat()->setFormatCode('#,##0.00');
 
     // --- BÖLÜM 2: PERSONEL LİSTESİ ---
@@ -115,13 +118,14 @@ try {
         // if ($bankaOdemesi <= 0) continue; 
 
         $sheet->setCellValue('A' . $satir, 'M');
-        $sheet->setCellValue('B' . $satir, $odemeTarihi);
+        $sheet->setCellValue('B' . $satir, $odemeTarihiExcel);
         $sheet->setCellValueExplicit('C' . $satir, $personel->iban_numarasi ?? '', DataType::TYPE_STRING);
         $sheet->setCellValue('D' . $satir, $bankaOdemesi);
         $sheet->setCellValue('E' . $satir, $personel->adi_soyadi ?? '');
         $sheet->setCellValueExplicit('F' . $satir, $personel->tc_kimlik_no ?? '', DataType::TYPE_STRING);
 
         // Stil ve formatlar
+        $sheet->getStyle('B' . $satir)->getNumberFormat()->setFormatCode('dd/mm/yyyy');
         $sheet->getStyle('D' . $satir)->getNumberFormat()->setFormatCode('#,##0.00');
 
         $satir++;

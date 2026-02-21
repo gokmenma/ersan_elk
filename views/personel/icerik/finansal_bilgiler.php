@@ -19,7 +19,7 @@ use App\Helper\Helper;
                     </div>
                     
                     <div class="col-md-2 mb-2">
-                        <?php echo Form::FormSelect2("maas_durumu", ['Brüt' => 'Brüt', 'Net' => 'Net', 'Prim Usülü' => 'Prim Usülü'], $personel->maas_durumu ?? 'Brüt', "Maaş Tipi", "dollar-sign"); ?>
+                        <?php echo Form::FormSelect2("maas_durumu", Helper::MAAS_HESAPLAMA_TIPI, $personel->maas_durumu ?? 'Brüt', "Maaş Tipi", "dollar-sign"); ?>
                     </div>
                     <div class="col-md-2 mb-2">
                         <?php echo Form::FormFloatInput("text", "maas_tutari", Helper::formattedMoney($personel->maas_tutari ?? 0), "Maaş Tutarı", "Maaş Tutarı", "dollar-sign", "form-control money"); ?>

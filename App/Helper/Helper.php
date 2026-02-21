@@ -11,9 +11,11 @@ class Helper
         '3' => '€',
     ];
 
-    const EVRAK_TANIMI = [
-        '1' => "Giden Evrak",
-        '2' => "Gelen Evrak",
+    const MAAS_HESAPLAMA_TIPI = [
+        'Net' => "Net",
+        'Brüt' => "Brüt",
+        'Prim Usülü' => 'Prim Usülü',
+        'Maaş Hesaplanmayan' => 'Maaş Hesaplanmayan'
     ];
 
     const DEPARTMAN = [
