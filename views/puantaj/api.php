@@ -205,7 +205,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 }
             }
 
-            // Skip if personel not found as per user request
+            // Artık personeli bulamasa da (personelId = 0) ekliyoruz. Rapor ekranında 'Personel Eşleşmedi' olarak göstereceğiz.
+            /*
             if ($personelId == 0) {
                 $skippedCount++;
                 $skippedRows[] = [
@@ -215,6 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 ];
                 continue;
             }
+            */
 
             /**İş Emri Tipi ve iş Emri Sonucuna göre Tanımlamlar tablosundan id'yi getir */
             /** Tanımlı is id'sini al,tanımlı değilse yeni kayıt ekle onun id'sini al */
@@ -561,7 +563,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 }
             }
 
-            // Skip if personel not found as per user request
+            // Artık personeli bulamasa da (personelId = 0) ekliyoruz. Rapor ekranında 'Personel Eşleşmedi' olarak göstereceğiz.
+            /*
             if ($personelId == 0) {
                 $skippedCount++;
                 $skippedRows[] = [
@@ -571,6 +574,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 ];
                 continue;
             }
+            */
 
             $stmt = $EndeksOkuma->db->prepare("INSERT INTO endeks_okuma (personel_id, ekip_kodu_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $result = $stmt->execute([$personelId, $defId, $firmaId, $bolge, $kullanici_adi, $sarfiyat, $ort_sarfiyat, $tahakkuk, $ort_tahakkuk, $okunan_gun, $okunan_abone, $ort_okunan_abone, $performans, $uploadDate]);

@@ -359,10 +359,17 @@ if (true) { // Always use unified logic for all standard tabs
             $regionName = $team->ekip_bolge ?: 'TANIMSIZ BÖLGE';
         } else {
             $p = $personelById[$pId] ?? null;
-            if (!$p)
-                continue;
-
             $team = $teamById[$tId] ?? (object) ['id' => 0, 'tur_adi' => '-', 'ekip_bolge' => 'TANIMSIZ BÖLGE'];
+
+            if (!$p) {
+                // Determine missing team
+                $p = (object) [
+                    'id' => 0,
+                    'adi_soyadi' => '<span class="text-danger fw-bold"><i class="bx bx-error-circle"></i> Eşleşmeyen Ekip: ' . htmlspecialchars($team->tur_adi) . '</span>',
+                    'ekip_no' => $team->id
+                ];
+            }
+
             $regionName = $team->ekip_bolge ?: 'TANIMSIZ BÖLGE';
         }
 
@@ -940,10 +947,14 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                 }
                                 ?>
                             <?php else: ?>
-                                <a class="fw-bold text-primary" target="_blank"
-                                    href="index?p=personel/manage&id=<?= Security::encrypt($pId) ?>">
-                                    <?= htmlspecialchars($personel->adi_soyadi) ?>
-                                </a>
+                                <?php if ($pId == 0): ?>
+                                    <?= $personel->adi_soyadi ?>
+                                <?php else: ?>
+                                    <a class="fw-bold text-primary" target="_blank"
+                                        href="index?p=personel/manage&id=<?= Security::encrypt($pId) ?>">
+                                        <?= htmlspecialchars($personel->adi_soyadi) ?>
+                                    </a>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </td>
 
