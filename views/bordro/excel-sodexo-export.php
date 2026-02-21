@@ -65,15 +65,15 @@ try {
 
     // Sodexo formatı başlıkları (Resimden alınan sıralama)
     $basliklar = [
-        'A' => 'Adı Soyadı',
-        'B' => 'Kart No',
+        'A' => 'Adı Soyadı *',
+        'B' => 'Kart No *',
         'C' => 'Kullanıcı Adı',
         'D' => 'Telefon No',
         'E' => 'Cep Telefonu',
         'F' => 'Email',
-        'G' => 'Kart Tipi',
-        'H' => 'Şube',
-        'I' => 'Yükleme Tutarı'
+        'G' => 'Kart Tipi *',
+        'H' => 'Şube *',
+        'I' => 'Yükleme Tutarı *'
     ];
 
     // Başlık satırını ayarla

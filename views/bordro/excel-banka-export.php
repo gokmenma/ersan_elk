@@ -87,7 +87,7 @@ try {
         $toplamBankaOdemesi += (float) ($p->banka_odemesi ?? 0);
     }
 
-    $odemeTarihi = date('d.m.Y'); // Varsayılan bugün, istenirse dönem sonu veya başka tarih olabilir
+    $odemeTarihi = date('d/m/Y'); // Varsayılan bugün, istenirse dönem sonu veya başka tarih olabilir
 
     $sheet->setCellValue('A2', 'M');
     $sheet->setCellValue('B2', $odemeTarihi);
@@ -134,7 +134,7 @@ try {
 
     // Dosya adı
     $donemAdiSlug = preg_replace('/[^a-zA-Z0-9]/', '_', $donem->donem_adi);
-    $dosyaAdi = 'banka_listesi_' . $donemAdiSlug . '_' . date('Y-m-d') . '.xlsx';
+    $dosyaAdi = 'Maas_IBAN.xlsx';
 
     // HTTP başlıkları
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
