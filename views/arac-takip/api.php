@@ -1339,17 +1339,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                             $aylikToplam += $yapilan;
                                             $isSunday = date('N', strtotime("$yil-$ay-$i")) == 7;
                                             $cellClass = $isSunday ? 'weekend-cell' : '';
+
+                                            $tooltip = '';
+                                            if ($gunData && (!empty($gunData['created_at']) || !empty($gunData['giren_kullanici']))) {
+                                                $tarihStr = !empty($gunData['created_at']) ? date('d.m.Y H:i', strtotime($gunData['created_at'])) : '-';
+                                                $kisiStr = !empty($gunData['giren_kullanici']) ? htmlspecialchars($gunData['giren_kullanici'], ENT_QUOTES, 'UTF-8') : '-';
+                                                $tooltip = 'data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="<div class=\'text-center\'><span class=\'fw-bold\'>' . $kisiStr . '</span><br><small class=\'opacity-75\'>' . $tarihStr . '</small></div>"';
+                                            }
                                             ?>
                                             <td class="text-center km-col km-start-col d-none bg-light <?= $cellClass ?>"
-                                                data-arac-id="<?= Security::encrypt($arac_id) ?>" data-day="<?= $i ?>" data-type="baslangic">
+                                                data-arac-id="<?= Security::encrypt($arac_id) ?>" data-day="<?= $i ?>" data-type="baslangic"
+                                                <?= $tooltip ?>>
                                                 <?= $gunData ? number_format($gunData['baslangic'], 0, ',', '.') : '-' ?>
                                             </td>
                                             <td class="text-center km-col km-end-col d-none bg-light <?= $cellClass ?>"
-                                                data-arac-id="<?= Security::encrypt($arac_id) ?>" data-day="<?= $i ?>" data-type="bitis">
+                                                data-arac-id="<?= Security::encrypt($arac_id) ?>" data-day="<?= $i ?>" data-type="bitis" <?= $tooltip ?>>
                                                 <?= $gunData ? number_format($gunData['bitis'], 0, ',', '.') : '-' ?>
                                             </td>
                                             <td class="text-center km-total-col fw-bold <?= $yapilan > 0 ? 'text-dark' : 'text-muted opacity-50' ?> <?= $cellClass ?>"
-                                                data-arac-id="<?= Security::encrypt($arac_id) ?>" data-day="<?= $i ?>" data-type="yapilan">
+                                                data-arac-id="<?= Security::encrypt($arac_id) ?>" data-day="<?= $i ?>" data-type="yapilan"
+                                                <?= $tooltip ?>>
                                                 <?= $yapilan > 0 ? number_format($yapilan, 0, ',', '.') : '-' ?>
                                             </td>
                                         <?php endfor; ?>
@@ -1649,10 +1658,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                 }
 
                                 $tarih = str_pad($i, 2, '0', STR_PAD_LEFT) . '.' . $ay . '.' . $yil;
+
+                                $tooltip = '';
+                                if ($gunData && (!empty($gunData['created_at']) || !empty($gunData['giren_kullanici']))) {
+                                    $tarihStr = !empty($gunData['created_at']) ? date('d.m.Y H:i', strtotime($gunData['created_at'])) : '-';
+                                    $kisiStr = !empty($gunData['giren_kullanici']) ? htmlspecialchars($gunData['giren_kullanici'], ENT_QUOTES, 'UTF-8') : '-';
+                                    $tooltip = 'data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="<div class=\'text-center\'><span class=\'fw-bold\'>' . $kisiStr . '</span><br><small class=\'opacity-75\'>' . $tarihStr . '</small></div>"';
+                                }
                                 ?>
                                 <tr class="km-quick-row" data-date="<?= $tarih ?>" data-arac-id="<?= $arac_id ?>"
                                     data-arac-encrypt="<?= Security::encrypt($arac_id) ?>" data-day="<?= $i ?>"
-                                    data-id="<?= $gunData['id'] ?? '' ?>">
+                                    data-id="<?= $gunData['id'] ?? '' ?>" <?= $tooltip ?>>
                                     <td class="text-center fw-bold"><?= $tarih ?></td>
                                     <td class="text-center km-editable" data-type="baslangic" data-day="<?= $i ?>" contenteditable="true">
                                         <?= $baslangicGoster > 0 ? (int) $baslangicGoster : '' ?>

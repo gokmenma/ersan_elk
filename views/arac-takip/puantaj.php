@@ -231,6 +231,12 @@ for ($m = 1; $m <= 12; $m++) {
                 success: function (html) {
                     $('#reportContent').html(html);
                     applyKmToggle();
+
+                    // Initialize tooltips
+                    const tooltipTriggerList = [].slice.call(document.querySelectorAll('#reportContent [data-bs-toggle="tooltip"]'));
+                    tooltipTriggerList.map(function (tooltipTriggerEl) {
+                        return new bootstrap.Tooltip(tooltipTriggerEl);
+                    });
                 },
                 error: function (xhr) {
                     console.error("Puantaj Error:", xhr.responseText);
@@ -322,6 +328,12 @@ for ($m = 1; $m <= 12; $m++) {
                 },
                 success: function (html) {
                     $('#aracOzelPuantajContent').html(html);
+
+                    // Initialize tooltips
+                    const tooltipTriggerList = [].slice.call(document.querySelectorAll('#aracOzelPuantajContent [data-bs-toggle="tooltip"]'));
+                    tooltipTriggerList.map(function (tooltipTriggerEl) {
+                        return new bootstrap.Tooltip(tooltipTriggerEl);
+                    });
                 },
                 error: function (xhr) {
                     $('#aracOzelPuantajContent').html('<div class="alert alert-danger m-3">Hata: ' + xhr.responseText + '</div>');

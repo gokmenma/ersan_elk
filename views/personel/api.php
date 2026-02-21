@@ -271,6 +271,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } elseif ($action == 'personel-sil') {
         try {
             $id = Security::decrypt($_POST['id']);
+
+            $dependencyMessage = $Personel->checkDependencies($id);
+            if ($dependencyMessage) {
+                throw new Exception("Bu personel silinemez. " . $dependencyMessage);
+            }
+
             $personel = $Personel->find($id);
             $tcNo = $personel->tc_kimlik_no ?? 'Bilinmeyen';
             $adiSoyadi = $personel->adi_soyadi ?? 'Bilinmeyen';

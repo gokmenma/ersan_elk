@@ -271,13 +271,48 @@ $title = 'Nöbet Planlama';
                 <?php endforeach; ?>
             </div>
 
-            <div class="legend-container">
-                <?php foreach ($deptColorMap as $normName => $color): ?>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: <?php echo $color; ?>;"></div>
-                        <span><?php echo htmlspecialchars($deptOriginalNames[$normName]); ?></span>
+            <style>
+                #btn-departman-legend .bx-chevron-down {
+                    transition: transform 0.3s ease;
+                }
+
+                #btn-departman-legend[aria-expanded="true"] .bx-chevron-down {
+                    transform: rotate(180deg);
+                }
+
+                [data-bs-theme="dark"] #btn-departman-legend {
+                    background: #27272a !important;
+                    border-color: #3f3f46 !important;
+                    color: #a1a1aa !important;
+                }
+
+                [data-bs-theme="dark"] .departman-isim-text {
+                    color: #a1a1aa !important;
+                }
+            </style>
+            <div class="p-3 border-top border-light">
+                <button id="btn-departman-legend"
+                    class="btn btn-sm w-100 d-flex justify-content-between align-items-center text-muted rounded-2"
+                    type="button" data-bs-toggle="collapse" data-bs-target="#departmanLegend" aria-expanded="false"
+                    aria-controls="departmanLegend"
+                    style="font-size: 12px; font-weight: 600; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s;">
+                    <span class="d-flex align-items-center"><i class="bx bx-palette me-2"
+                            style="font-size: 16px;"></i>Departman Renkleri</span>
+                    <i class="bx bx-chevron-down" style="font-size: 18px;"></i>
+                </button>
+                <div class="collapse" id="departmanLegend">
+                    <div class="d-flex flex-wrap gap-2 pt-3">
+                        <?php foreach ($deptColorMap as $normName => $color): ?>
+                            <div class="d-flex align-items-center gap-2" style="font-size: 11px; width: calc(50% - 4px);">
+                                <div
+                                    style="background: <?php echo $color; ?>; width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0;">
+                                </div>
+                                <span class="text-truncate departman-isim-text" style="color: #4b5563;"
+                                    title="<?php echo htmlspecialchars($deptOriginalNames[$normName]); ?>"><?php echo htmlspecialchars($deptOriginalNames[$normName]); ?></span>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
-                <?php endforeach; ?>
+                </div>
             </div>
         </div>
     </div>

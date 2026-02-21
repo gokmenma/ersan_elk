@@ -411,11 +411,14 @@ class AracKmModel extends Model
                 DAY(k.tarih) as gun,
                 k.baslangic_km,
                 k.bitis_km,
-                k.yapilan_km
+                k.yapilan_km,
+                k.olusturma_tarihi as created_at,
+                u.adi_soyadi as giren_kullanici
             FROM araclar a
             LEFT JOIN {$this->table} k ON a.id = k.arac_id 
                 AND k.tarih BETWEEN :baslangic AND :bitis
                 AND k.silinme_tarihi IS NULL
+            LEFT JOIN users u ON k.olusturan_kullanici_id = u.id
             WHERE a.firma_id = :firma_id
             AND a.silinme_tarihi IS NULL
             AND a.aktif_mi = 1
@@ -456,7 +459,9 @@ class AracKmModel extends Model
                     'id' => $row->id,
                     'baslangic' => $row->baslangic_km,
                     'bitis' => $row->bitis_km,
-                    'yapilan' => $row->yapilan_km
+                    'yapilan' => $row->yapilan_km,
+                    'giren_kullanici' => $row->giren_kullanici,
+                    'created_at' => $row->created_at
                 ];
             }
         }
@@ -496,13 +501,15 @@ class AracKmModel extends Model
 
         // Günlük Veriler
         $sqlKm = "
-            SELECT id, tarih, DAY(tarih) as gun, baslangic_km, bitis_km, yapilan_km
-            FROM {$this->table}
-            WHERE arac_id = :arac_id
-            AND tarih BETWEEN :baslangic AND :bitis
-            AND firma_id = :firma_id
-            AND silinme_tarihi IS NULL
-            ORDER BY tarih ASC
+            SELECT k.id, k.tarih, DAY(k.tarih) as gun, k.baslangic_km, k.bitis_km, k.yapilan_km,
+                   k.olusturma_tarihi as created_at, u.adi_soyadi as giren_kullanici
+            FROM {$this->table} k
+            LEFT JOIN users u ON k.olusturan_kullanici_id = u.id
+            WHERE k.arac_id = :arac_id
+            AND k.tarih BETWEEN :baslangic AND :bitis
+            AND k.firma_id = :firma_id
+            AND k.silinme_tarihi IS NULL
+            ORDER BY k.tarih ASC
         ";
 
         $stmtKm = $this->db->prepare($sqlKm);
@@ -520,7 +527,9 @@ class AracKmModel extends Model
                 'id' => $row->id,
                 'baslangic' => $row->baslangic_km,
                 'bitis' => $row->bitis_km,
-                'yapilan' => $row->yapilan_km
+                'yapilan' => $row->yapilan_km,
+                'giren_kullanici' => $row->giren_kullanici,
+                'created_at' => $row->created_at
             ];
         }
 

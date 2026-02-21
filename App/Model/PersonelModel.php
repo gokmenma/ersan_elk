@@ -14,6 +14,34 @@ class PersonelModel extends Model
     {
         parent::__construct($this->table);
     }
+
+    /**
+     * Personelin silinmeden önce bağlı kayıtları olup olmadığını kontrol eder
+     * @param int $id
+     * @return string|false
+     */
+    public function checkDependencies($id)
+    {
+        $tables = [
+            'yapilan_isler' => 'Personelin Yapılan İşler tablosunda verisi bulunmaktadır.',
+            'endeks_okuma' => 'Personelin Endeks Okuma tablosunda verisi bulunmaktadır.',
+            'personel_izinleri' => 'Personelin İzinler tablosunda verisi bulunmaktadır.',
+            'personel_kesintileri' => 'Personelin Kesinti tablosunda verisi bulunmaktadır.'
+        ];
+
+        foreach ($tables as $table => $message) {
+            try {
+                $stmt = $this->db->prepare("SELECT id FROM $table WHERE personel_id = ? LIMIT 1");
+                $stmt->execute([$id]);
+                if ($stmt->fetch()) {
+                    return $message;
+                }
+            } catch (\Exception $e) {
+                // Table might not exist or other DB error, skip check for this table
+            }
+        }
+        return false;
+    }
     /**Personeli Ekip Kodu ile beraber getirir */
     public function findByEkipNo($id)
     {
