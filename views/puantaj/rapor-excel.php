@@ -515,9 +515,15 @@ foreach ($validPairs as $pair) {
     $pId = $pair['pId'];
     $tId = $pair['tId'];
     $p = $personelById[$pId] ?? null;
-    if (!$p)
-        continue;
     $team = $teamById[$tId] ?? (object) ['id' => 0, 'tur_adi' => '-', 'ekip_bolge' => 'TANIMSIZ BÖLGE'];
+
+    if (!$p) {
+        $p = (object) [
+            'id' => 0,
+            'adi_soyadi' => 'Eşleşmeyen Ekip: ' . $team->tur_adi,
+            'ekip_no' => $team->id
+        ];
+    }
     $regionName = $team->ekip_bolge ?: 'TANIMSIZ BÖLGE';
     if ($filterRegion && $regionName != $filterRegion)
         continue;

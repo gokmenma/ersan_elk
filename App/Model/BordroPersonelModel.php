@@ -87,41 +87,41 @@ class BordroPersonelModel extends Model
         $firma_id = $_SESSION['firma_id'];
 
         // Maaş hesaplanmayan (aktif_mi = 2) veya artık uygun olmayan personelleri dönemden çıkar (soft delete)
+        // Sadece aktif_mi = 2 ise veya tarihleri uymuyorsa çıkarılır. aktif_mi = 0 (pasif) olsa bile çıkış tarihi uygunsa kalır.
         $sqlRemove = $this->db->prepare("
-            UPDATE {$this->table} bp
-            INNER JOIN personel p ON bp.personel_id = p.id
-            SET bp.silinme_tarihi = NOW()
-            WHERE bp.donem_id = ? 
-            AND bp.silinme_tarihi IS NULL
-            AND (
-                p.aktif_mi = 2 
-                OR p.aktif_mi = 0
-                OR (p.ise_giris_tarihi IS NOT NULL AND p.ise_giris_tarihi != '0000-00-00' AND p.ise_giris_tarihi > ?)
-                OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '' AND p.isten_cikis_tarihi != '0000-00-00' AND p.isten_cikis_tarihi < ?)
-            )
-        ");
+        UPDATE {$this->table} bp
+        INNER JOIN personel p ON bp.personel_id = p.id
+        SET bp.silinme_tarihi = NOW()
+        WHERE bp.donem_id = ? 
+        AND bp.silinme_tarihi IS NULL
+        AND (
+            p.aktif_mi = 2 
+            OR (p.ise_giris_tarihi IS NOT NULL AND p.ise_giris_tarihi != '0000-00-00' AND p.ise_giris_tarihi > ?)
+            OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '' AND p.isten_cikis_tarihi != '0000-00-00' AND p.isten_cikis_tarihi < ?)
+            OR (p.aktif_mi = 0 AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00'))
+        )
+    ");
         $sqlRemove->execute([$donem_id, $bitis_tarihi, $baslangic_tarihi]);
 
-        // Uygun personelleri bul (Sadece aktif_mi = 1 olanlar)
+        // Uygun personelleri bul (aktif_mi = 1 olanlar veya çıkış tarihi döneme uyan aktif_mi = 0 olanlar)
         // İşten çıkış tarihi: NULL, '0000-00-00', boş string veya dönem başlangıcından büyük/eşit olanlar
         $sql = $this->db->prepare("
-            SELECT id, adi_soyadi, ise_giris_tarihi, isten_cikis_tarihi 
-            FROM personel 
-            WHERE aktif_mi = 1
-            AND firma_id = :firma_id
-            AND (
-                ise_giris_tarihi IS NULL 
-                OR ise_giris_tarihi = ''
-                OR ise_giris_tarihi = '0000-00-00'
-                OR ise_giris_tarihi <= :bitis_tarihi
-            )
-            AND (
-                isten_cikis_tarihi IS NULL 
-                OR isten_cikis_tarihi = ''
-                OR isten_cikis_tarihi = '0000-00-00'
-                OR isten_cikis_tarihi >= :baslangic_tarihi
-            )
-        ");
+        SELECT id, adi_soyadi, ise_giris_tarihi, isten_cikis_tarihi, aktif_mi
+        FROM personel 
+        WHERE firma_id = :firma_id
+        AND aktif_mi != 2
+        AND (
+            ise_giris_tarihi IS NULL 
+            OR ise_giris_tarihi = ''
+            OR ise_giris_tarihi = '0000-00-00'
+            OR ise_giris_tarihi <= :bitis_tarihi
+        )
+        AND (
+            (aktif_mi = 1 AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '' OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi >= :baslangic_tarihi))
+            OR
+            (aktif_mi = 0 AND isten_cikis_tarihi IS NOT NULL AND isten_cikis_tarihi != '' AND isten_cikis_tarihi != '0000-00-00' AND isten_cikis_tarihi >= :baslangic_tarihi)
+        )
+    ");
         $sql->bindParam(':baslangic_tarihi', $baslangic_tarihi);
         $sql->bindParam(':bitis_tarihi', $bitis_tarihi);
         $sql->bindParam(':firma_id', $firma_id);
@@ -626,23 +626,17 @@ class BordroPersonelModel extends Model
             $birimUcret = $isEmriSonucuMap[$isEmriSonucu]['birim_ucret'];
 
             if ($adet > 0) {
-                $PersonelEkOdemelerModel = new \App\Model\PersonelEkOdemelerModel();
                 $toplamTutar = round($adet * $birimUcret, 2);
                 // Açıklama formatı: [Puantaj] Sonuç (Adet x Birim ₺)
                 $aciklama = "[Puantaj] $isEmriSonucu (" . round($adet) . " Adet x " . number_format($birimUcret, 2, ',', '.') . " ₺)";
 
-                // Ek ödeme oluştur
-                $PersonelEkOdemelerModel->saveWithAttr([
-                    'personel_id' => $personel_id,
-                    'donem_id' => $donem_id,
-                    'tur' => 'prim',
-                    'aciklama' => $aciklama,
-                    'tutar' => $toplamTutar,
-                    'tekrar_tipi' => 'tek_sefer',
-                    'durum' => 'onaylandi',
-                    'aktif' => 1,
-                    'created_at' => date('Y-m-d H:i:s')
-                ]);
+                // Aynı DB bağlantısı üzerinden doğrudan INSERT yap
+                $insertSql = $this->db->prepare("
+                    INSERT INTO personel_ek_odemeler 
+                    (personel_id, donem_id, tur, aciklama, tutar, tekrar_tipi, durum, aktif, created_at)
+                    VALUES (?, ?, 'prim', ?, ?, 'tek_sefer', 'onaylandi', 1, NOW())
+                ");
+                $insertSql->execute([$personel_id, $donem_id, $aciklama, $toplamTutar]);
             }
         }
     }
@@ -695,8 +689,6 @@ class BordroPersonelModel extends Model
             'ozel' => floatval($haftaSonuParam->varsayilan_tutar ?? 0)
         ];
 
-        $PersonelEkOdemelerModel = new \App\Model\PersonelEkOdemelerModel();
-
         foreach ($nobetGruplari as $nobet) {
             $tip = $nobet->nobet_tipi ?: 'standart';
             $adet = intval($nobet->adet);
@@ -717,18 +709,15 @@ class BordroPersonelModel extends Model
                 $paramId = ($tip === 'standart') ? ($haftaIciParam->id ?? null) : ($haftaSonuParam->id ?? null);
                 $paramKod = ($tip === 'standart') ? 'hafta_ici_nobet' : 'hafta_sonu_nobet';
 
-                $PersonelEkOdemelerModel->saveWithAttr([
-                    'personel_id' => $personel_id,
-                    'donem_id' => $donem_id,
-                    'tur' => $paramKod,
-                    'parametre_id' => $paramId,
-                    'aciklama' => $aciklama,
-                    'tutar' => $toplamTutar,
-                    'tekrar_tipi' => 'tek_sefer',
-                    'durum' => 'onaylandi',
-                    'aktif' => 1,
-                    'created_at' => date('Y-m-d H:i:s')
-                ]);
+                // Aynı DB bağlantısı ($this->db) üzerinden doğrudan INSERT yap
+                // PersonelEkOdemelerModel ayrı bağlantı kullandığı için hesaplama sırasında
+                // kayıtlar görünemeyebiliyordu
+                $insertSql = $this->db->prepare("
+                    INSERT INTO personel_ek_odemeler 
+                    (personel_id, donem_id, tur, parametre_id, aciklama, tutar, tekrar_tipi, durum, aktif, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, 'tek_sefer', 'onaylandi', 1, NOW())
+                ");
+                $insertSql->execute([$personel_id, $donem_id, $paramKod, $paramId, $aciklama, $toplamTutar]);
             }
         }
     }
@@ -825,23 +814,18 @@ class BordroPersonelModel extends Model
         $sonuc['net_prim'] = $netPrim;
 
         // 7. Ek ödeme oluştur
-        $PersonelEkOdemelerModel = new \App\Model\PersonelEkOdemelerModel();
-
         // Muaf işlem sayısını hesapla: Muaf tutar / varsayılan tutar
         $muafIslem = ($birimTutar > 0) ? round($aylikMuafLimit / $birimTutar) : 0;
 
         $aciklama = "[Kaçak Kontrol] (" . round($toplamIslem) . " işlem Toplam)(" . $muafIslem . " işlem Muaf)";
 
-        $PersonelEkOdemelerModel->saveWithAttr([
-            'personel_id' => $personel_id,
-            'donem_id' => $donem_id,
-            'tur' => 'prim',
-            'aciklama' => $aciklama,
-            'tutar' => $netPrim,
-            'tekrar_tipi' => 'tek_sefer',
-            'aktif' => 1,
-            'created_at' => date('Y-m-d H:i:s')
-        ]);
+        // Aynı DB bağlantısı üzerinden doğrudan INSERT yap
+        $insertSql = $this->db->prepare("
+            INSERT INTO personel_ek_odemeler 
+            (personel_id, donem_id, tur, aciklama, tutar, tekrar_tipi, durum, aktif, created_at)
+            VALUES (?, ?, 'prim', ?, ?, 'tek_sefer', 'onaylandi', 1, NOW())
+        ");
+        $insertSql->execute([$personel_id, $donem_id, $aciklama, $netPrim]);
 
         return $sonuc;
     }
@@ -874,25 +858,37 @@ class BordroPersonelModel extends Model
 
 
             // Bu avans için zaten kesinti var mı kontrol et
-            // Soft-delete yapılan kayıtları dikkate alma (yeniden oluşturulacak)
+            // Maaş hesaplanırken soft-delete yapılan (ve daha önce onaylanmış olabilecek)
+            // kayıtları bulup geri getiriyoruz ki onay durumu (durum=onaylandi) kaybolmasın.
             $mevcutKontrol = $this->db->prepare("
-                SELECT id FROM personel_kesintileri
-                WHERE personel_id = ? AND donem_id = ? AND tur = 'avans' 
-                AND aciklama LIKE ?
-                AND silinme_tarihi IS NULL
-            ");
+            SELECT id, durum FROM personel_kesintileri
+            WHERE personel_id = ? AND donem_id = ? AND tur = 'avans' 
+            AND aciklama LIKE ?
+            ORDER BY id DESC LIMIT 1
+        ");
             $mevcutKontrol->execute([$personel_id, $donem_id, $aciklamaPattern]);
+            $mevcut = $mevcutKontrol->fetch();
 
-            if ($mevcutKontrol->fetch()) {
-                // Mevcut kesinti var (veya silinmiş), yeniden oluşturma
+            if ($mevcut) {
+                // Mevcut kesinti var (muhtemelen az önce soft-delete edildi), geri getir
+                $restoreSql = $this->db->prepare("
+                UPDATE personel_kesintileri 
+                SET silinme_tarihi = NULL, tutar = ? 
+                WHERE id = ?
+            ");
+                $restoreSql->execute([$tutar, $mevcut['id']]);
                 $toplamAvans += $tutar;
                 continue;
             }
 
-            // Mevcut kesinti yok, yeni oluştur
+            // Mevcut kesinti hiç yok, yeni oluştur
             $aciklama = "[Avans] $tarih - " . ($avans->aciklama ?? 'Avans Talebi');
-            // Avans kesintileri "beklemede" olarak oluşturulur, yönetici onayı gerekir
-            $this->addKesinti($personel_id, $donem_id, $aciklama, $tutar, 'avans', 'beklemede');
+            // Avans zaten onaylı olduğu için kesintiyi de otomatik 'onaylandi' olarak oluşturabiliriz
+            // veya mevcut yapıdaki gibi 'beklemede' bırakabiliriz. Kullanıcı "avans onaylı olduğu halde" 
+            // dediği için bunu onaylandı olarak kaydetmek de mantıklı olabilir.
+            // Şimdilik sadece geri getirme işlemi yapıldığı için eski onayları koruyacağız.
+            // Yeni oluşturulacak ise "onaylandi" olarak oluşturulması daha mantıklı (çünkü avans onaylı).
+            $this->addKesinti($personel_id, $donem_id, $aciklama, $tutar, 'avans', 'onaylandi');
             $toplamAvans += $tutar;
         }
 

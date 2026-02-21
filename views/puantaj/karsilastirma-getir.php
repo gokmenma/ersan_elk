@@ -516,7 +516,13 @@ $changeIcon = $totalChange > 0 ? 'bx-trending-up' : ($totalChange < 0 ? 'bx-tren
                                     <?= $sira ?>
                                 </td>
                                 <td class="fw-semibold">
-                                    <?= htmlspecialchars($pData['personel_adi']) ?>
+                                    <?php
+                                    if ($pData['personel_adi'] === '-' || strpos($pData['personel_adi'], 'Eşleşmeyen Ekip') !== false) {
+                                        echo '<span class="text-danger fw-bold"><i class="bx bx-error-circle"></i> Eşleşmeyen Ekip: ' . htmlspecialchars($pData['ekip_adi']) . '</span>';
+                                    } else {
+                                        echo htmlspecialchars($pData['personel_adi']);
+                                    }
+                                    ?>
                                 </td>
                                 <td><span class="badge bg-primary-subtle text-primary">
                                         <?= htmlspecialchars($pData['ekip_adi']) ?>

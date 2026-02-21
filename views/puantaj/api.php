@@ -206,17 +206,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
 
             // Artık personeli bulamasa da (personelId = 0) ekliyoruz. Rapor ekranında 'Personel Eşleşmedi' olarak göstereceğiz.
-            /*
             if ($personelId == 0) {
-                $skippedCount++;
+                $hatali_neden = ($defId == 0) ? "Sistemde bulunamadı (Eşleşmeyen Ekip eklendi)" : "O tarihte ataması yok (Eşleşmeyen Ekip eklendi)";
                 $skippedRows[] = [
                     'satir' => $excelRowNum,
                     'ekip' => $ekip,
-                    'neden' => 'Bu ekipte o tarihte aktif personel bulunamadı'
+                    'neden' => $hatali_neden
                 ];
-                continue;
+                // continue yapmıyoruz, içeri aktarılması için!
             }
-            */
 
             /**İş Emri Tipi ve iş Emri Sonucuna göre Tanımlamlar tablosundan id'yi getir */
             /** Tanımlı is id'sini al,tanımlı değilse yeni kayıt ekle onun id'sini al */
@@ -564,17 +562,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
 
             // Artık personeli bulamasa da (personelId = 0) ekliyoruz. Rapor ekranında 'Personel Eşleşmedi' olarak göstereceğiz.
-            /*
             if ($personelId == 0) {
-                $skippedCount++;
+                $hatali_neden = ($defId == 0) ? "Sistemde bulunamadı (Eşleşmeyen Ekip eklendi)" : "O tarihte ataması yok (Eşleşmeyen Ekip eklendi)";
                 $skippedRows[] = [
                     'satir' => $excelRowNum,
                     'ekip' => $kullanici_adi,
-                    'neden' => "EKİP-$teamNo: O tarihte aktif personel bulunamadı"
+                    'neden' => "EKİP: $teamNo - $hatali_neden"
                 ];
-                continue;
+                // continue yapmıyoruz, içeri aktarılması için!
             }
-            */
 
             $stmt = $EndeksOkuma->db->prepare("INSERT INTO endeks_okuma (personel_id, ekip_kodu_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $result = $stmt->execute([$personelId, $defId, $firmaId, $bolge, $kullanici_adi, $sarfiyat, $ort_sarfiyat, $tahakkuk, $ort_tahakkuk, $okunan_gun, $okunan_abone, $ort_okunan_abone, $performans, $uploadDate]);
@@ -1130,8 +1126,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // Sayaçları ve dizileri başlat (Hata almamak için)
         $yeniKayit = 0;
         $guncellenenKayit = 0;
-        $silinenKayit = 0;
-        $atlanAnKayitlar = 0;
+        $bosSonucSayisi = 0;
+        $atlanAnKayitlar = [];
         $atlanAnListesi = [];
         $mevcutHatalar = []; // Eşleşmeyen ekipleri unique yapmak için
         $bosSonucSayisi = 0;
@@ -1246,7 +1242,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             // 1. İş Emri Sonucu / Ücretli iş kontrolü (USER: Sadece ücretli iş türlerini ver)
             if (!empty($filterArray) && !in_array($isEmriSonucu, $filterArray)) {
-                $atlanAnKayitlar++;
                 $uniqKey = "FILTER|" . $isEmriSonucu;
                 if (!isset($mevcutHatalar[$uniqKey])) {
                     $atlanAnListesi[] = "Filtreye Takıldı: $isEmriSonucu (Ekip: $ekipKoduStr)";
@@ -1313,13 +1308,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             // Eşleşmeyen ekip toplama (Hata listesi)
             // Not: defId 0 ise ekip sistemde yok demektir.
             if ($defId === 0 && !empty($ekipKoduStrClean)) {
-                $atlanAnKayitlar++;
                 $uniqKey = "EKIP|" . $ekipKoduStrClean;
                 if (!isset($mevcutHatalar[$uniqKey])) {
-                    $atlanAnListesi[] = "Ekip Bulunamadı: $ekipKoduStrClean";
+                    $atlanAnKayitlar[] = [
+                        'ekip_kodu' => "Sistemde Ekip Yok (Eklendi): " . $ekipKoduStrClean,
+                        'tarih' => date('d.m.Y', strtotime($normDate))
+                    ];
                     $mevcutHatalar[$uniqKey] = true;
                 }
-                continue;
+                // continue YAPMIYORUZ! (artık eşleşmeyeni de yüklüyoruz)
+            } elseif ($personelId === 0 && !empty($ekipKoduStrClean)) {
+                $uniqKey = "PERS|" . $ekipKoduStrClean . "|" . $normDate;
+                if (!isset($mevcutHatalar[$uniqKey])) {
+                    $atlanAnKayitlar[] = [
+                        'ekip_kodu' => "Ataması Yok (Eklendi): " . $ekipKoduStrClean,
+                        'tarih' => date('d.m.Y', strtotime($normDate))
+                    ];
+                    $mevcutHatalar[$uniqKey] = true;
+                }
             }
 
             // İş Türü ID Bul/Oluştur
@@ -1585,12 +1591,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
 
             if ($ekipKoduId === 0) {
-                $atlanAnKayitlar[] = [
-                    'kullanici_adi' => $okuyucuAdi,
-                    'okuyucu_no' => $okuyucuNo ?: '-',
-                    'bolge' => $bolge
-                ];
-                continue;
+                // Ekip tamamen bulunamazsa ekrana atlanan olarak gönderiyoruz
+                $uniqKey = "EKIP|" . $okuyucuAdi;
+                if (!isset($mevcutHatalar[$uniqKey])) {
+                    $atlanAnKayitlar[] = [
+                        'kullanici_adi' => "Sistemde Ekip Yok (Eklendi): " . $okuyucuAdi,
+                        'okuyucu_no' => $okuyucuNo ?: '-',
+                        'bolge' => $bolge
+                    ];
+                    $mevcutHatalar[$uniqKey] = true;
+                }
+            } elseif ($personelId === 0) {
+                // Ekip var ama personel atanmamışsa
+                $uniqKey = "PERS|" . $okuyucuAdi;
+                if (!isset($mevcutHatalar[$uniqKey])) {
+                    $atlanAnKayitlar[] = [
+                        'kullanici_adi' => "Ataması Yok (Eklendi): " . $okuyucuAdi,
+                        'okuyucu_no' => $okuyucuNo ?: '-',
+                        'bolge' => $bolge
+                    ];
+                    $mevcutHatalar[$uniqKey] = true;
+                }
             }
 
             $insertBatch[] = [
