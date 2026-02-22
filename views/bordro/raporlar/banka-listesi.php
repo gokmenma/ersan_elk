@@ -22,7 +22,7 @@ if ($selectedDonemId) {
     $selectedDonem = $BordroDonem->getDonemById($selectedDonemId);
     if ($selectedDonem) {
         $personeller = $BordroPersonel->getPersonellerByDonemDetayli($selectedDonemId);
-        
+
         // Toplam banka ödemesini hesapla
         foreach ($personeller as $personel) {
             $toplamBankaOdemesi += floatval($personel->banka_odemesi ?? 0);
@@ -62,7 +62,7 @@ foreach ($donemler as $donem) {
                                 <span class="badge bg-primary"><?= htmlspecialchars($selectedDonem->donem_adi) ?></span>
                             <?php endif; ?>
                         </div>
-                        
+
                         <div class="d-flex align-items-center gap-2">
                             <?php echo Form::FormSelect2(
                                 name: 'yilSelectBanka',
@@ -72,7 +72,7 @@ foreach ($donemler as $donem) {
                                 icon: 'calendar',
                                 style: 'min-width: 120px;'
                             ); ?>
-                            
+
                             <?php echo Form::FormSelect2(
                                 name: 'donemSelectBanka',
                                 options: $donem_option,
@@ -81,16 +81,15 @@ foreach ($donemler as $donem) {
                                 icon: 'calendar',
                                 style: 'min-width: 180px;'
                             ); ?>
-                            
+
                             <?php if ($selectedDonem): ?>
-                                <a href="views/bordro/excel-banka-export.php?donem_id=<?= $selectedDonemId ?>" 
-                                   class="btn btn-success">
+                                <a href="views/bordro/excel-banka-export.php?donem_id=<?= $selectedDonemId ?>"
+                                    class="btn btn-success">
                                     <i class="bx bx-download me-1"></i> Excel İndir
                                 </a>
                             <?php endif; ?>
-                            
-                            <a href="index?p=bordro/raporlar&donem=<?= $selectedDonemId ?>" 
-                               class="btn btn-secondary">
+
+                            <a href="index?p=bordro/raporlar&donem=<?= $selectedDonemId ?>" class="btn btn-secondary">
                                 <i class="bx bx-arrow-back me-1"></i> Raporlara Dön
                             </a>
                         </div>
@@ -100,40 +99,107 @@ foreach ($donemler as $donem) {
                 <div class="card-body">
                     <?php if ($selectedDonem && !empty($personeller)): ?>
                         <!-- Özet Bilgiler -->
-                        <div class="row mb-4">
-                            <div class="col-md-3">
-                                <div class="card border-primary border-opacity-25 bg-primary bg-opacity-10">
-                                    <div class="card-body text-center py-3">
-                                        <h3 class="mb-1 text-primary"><?= count($personeller) ?></h3>
-                                        <small class="text-muted">Toplam Personel</small>
+                        <!-- Özet Bilgiler (Dashboard Stili) -->
+                        <div class="row g-3 mb-4">
+                            <!-- Toplam Personel -->
+                            <div class="col-xl col-md-3">
+                                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                                    style="--card-color: #f43f5e; border-bottom: 3px solid var(--card-color) !important;">
+                                    <div class="card-body p-3">
+                                        <div class="icon-label-container">
+                                            <div class="icon-box" style="background: rgba(244, 63, 94, 0.1);">
+                                                <i class="bx bx-user-circle fs-4 text-danger"></i>
+                                            </div>
+                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">SAYI</span>
+                                        </div>
+                                        <p class="text-muted mb-1 small fw-bold"
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM PERSONEL</p>
+                                        <h4 class="mb-0 fw-bold bordro-text-heading">
+                                            <?= count($personeller) ?>
+                                        </h4>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="card border-success border-opacity-25 bg-success bg-opacity-10">
-                                    <div class="card-body text-center py-3">
-                                        <h3 class="mb-1 text-success"><?= number_format($toplamBankaOdemesi, 2, ',', '.') ?> ₺</h3>
-                                        <small class="text-muted">Toplam Banka Ödemesi</small>
+
+                            <!-- Toplam Banka Ödemesi -->
+                            <div class="col-xl col-md-3">
+                                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                                    style="--card-color: #0ea5e9; border-bottom: 3px solid var(--card-color) !important;">
+                                    <div class="card-body p-3">
+                                        <div class="icon-label-container">
+                                            <div class="icon-box" style="background: rgba(14, 165, 233, 0.1);">
+                                                <i class="bx bxs-bank fs-4 text-info"></i>
+                                            </div>
+                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">TUTAR</span>
+                                        </div>
+                                        <p class="text-muted mb-1 small fw-bold"
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM BANKA ÖDEMESİ</p>
+                                        <h4 class="mb-0 fw-bold bordro-text-heading">
+                                            <?= number_format($toplamBankaOdemesi, 2, ',', '.') ?> <span
+                                                style="font-size: 0.85rem; font-weight: 600;">₺</span>
+                                        </h4>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="card border-info border-opacity-25 bg-info bg-opacity-10">
-                                    <div class="card-body text-center py-3">
-                                        <h3 class="mb-1 text-info"><?= date('d.m.Y', strtotime($selectedDonem->baslangic_tarihi)) ?></h3>
-                                        <small class="text-muted">Dönem Başlangıç</small>
+
+                            <!-- Dönem Başlangıç -->
+                            <div class="col-xl col-md-3">
+                                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                                    style="--card-color: #2a9d8f; border-bottom: 3px solid var(--card-color) !important;">
+                                    <div class="card-body p-3">
+                                        <div class="icon-label-container">
+                                            <div class="icon-box" style="background: rgba(42, 157, 143, 0.1);">
+                                                <i class="bx bx-calendar-check fs-4 text-success"></i>
+                                            </div>
+                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">TARİH</span>
+                                        </div>
+                                        <p class="text-muted mb-1 small fw-bold"
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">DÖNEM BAŞLANGIÇ</p>
+                                        <h4 class="mb-0 fw-bold bordro-text-heading">
+                                            <?= date('d.m.Y', strtotime($selectedDonem->baslangic_tarihi)) ?>
+                                        </h4>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="card border-warning border-opacity-25 bg-warning bg-opacity-10">
-                                    <div class="card-body text-center py-3">
-                                        <h3 class="mb-1 text-warning"><?= date('d.m.Y', strtotime($selectedDonem->bitis_tarihi)) ?></h3>
-                                        <small class="text-muted">Dönem Bitiş</small>
+
+                            <!-- Dönem Bitiş -->
+                            <div class="col-xl col-md-3">
+                                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                                    style="--card-color: #f59e0b; border-bottom: 3px solid var(--card-color) !important;">
+                                    <div class="card-body p-3">
+                                        <div class="icon-label-container">
+                                            <div class="icon-box" style="background: rgba(245, 158, 11, 0.1);">
+                                                <i class="bx bx-calendar-x fs-4 text-warning"></i>
+                                            </div>
+                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">TARİH</span>
+                                        </div>
+                                        <p class="text-muted mb-1 small fw-bold"
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">DÖNEM BİTİŞ</p>
+                                        <h4 class="mb-0 fw-bold bordro-text-heading">
+                                            <?= date('d.m.Y', strtotime($selectedDonem->bitis_tarihi)) ?>
+                                        </h4>
                                     </div>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Uyarılar -->
+                        <?php
+                        $ibanEksikSayisi = 0;
+                        foreach ($personeller as $p) {
+                            if (floatval($p->banka_odemesi ?? 0) > 0 && empty($p->iban_numarasi)) {
+                                $ibanEksikSayisi++;
+                            }
+                        }
+                        ?>
+                        <?php if ($ibanEksikSayisi > 0): ?>
+                            <div class="alert alert-warning mb-3">
+                                <i class="bx bx-error-circle me-2"></i>
+                                <strong>Dikkat:</strong> <?= $ibanEksikSayisi ?> personelin banka ödemesi var fakat IBAN bilgisi
+                                tanımlı değil.
+                                Lütfen personel bilgilerini güncelleyiniz.
+                            </div>
+                        <?php endif; ?>
 
                         <!-- Banka Listesi Tablosu -->
                         <div class="table-responsive">
@@ -149,19 +215,20 @@ foreach ($donemler as $donem) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php 
+                                    <?php
                                     $sira = 1;
-                                    foreach ($personeller as $personel): 
+                                    foreach ($personeller as $personel):
                                         $bankaOdemesi = floatval($personel->banka_odemesi ?? 0);
                                         $ibanDolu = !empty($personel->iban_numarasi);
-                                    ?>
+                                        ?>
                                         <tr class="<?= !$ibanDolu && $bankaOdemesi > 0 ? 'table-warning' : '' ?>">
                                             <td class="text-center"><?= $sira++ ?></td>
                                             <td>
                                                 <div class="d-flex align-items-center">
                                                     <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
-                                                         alt="" class="rounded-circle avatar-xs me-2">
-                                                    <span class="fw-medium"><?= htmlspecialchars($personel->adi_soyadi) ?></span>
+                                                        alt="" class="rounded-circle avatar-xs me-2">
+                                                    <span
+                                                        class="fw-medium"><?= htmlspecialchars($personel->adi_soyadi) ?></span>
                                                 </div>
                                             </td>
                                             <td>
@@ -169,7 +236,8 @@ foreach ($donemler as $donem) {
                                             </td>
                                             <td>
                                                 <?php if ($ibanDolu): ?>
-                                                    <code class="text-primary"><?= htmlspecialchars($personel->iban_numarasi) ?></code>
+                                                    <code
+                                                        class="text-primary"><?= htmlspecialchars($personel->iban_numarasi) ?></code>
                                                 <?php else: ?>
                                                     <span class="text-danger">
                                                         <i class="bx bx-error-circle me-1"></i>IBAN Tanımlı Değil
@@ -206,29 +274,14 @@ foreach ($donemler as $donem) {
                                 <tfoot class="table-light">
                                     <tr>
                                         <th colspan="4" class="text-end">Toplam Banka Ödemesi:</th>
-                                        <th class="text-end text-success fw-bold"><?= number_format($toplamBankaOdemesi, 2, ',', '.') ?> ₺</th>
+                                        <th class="text-end text-success fw-bold">
+                                            <?= number_format($toplamBankaOdemesi, 2, ',', '.') ?> ₺
+                                        </th>
                                         <th></th>
                                     </tr>
                                 </tfoot>
                             </table>
                         </div>
-
-                        <!-- Uyarılar -->
-                        <?php
-                        $ibanEksikSayisi = 0;
-                        foreach ($personeller as $p) {
-                            if (floatval($p->banka_odemesi ?? 0) > 0 && empty($p->iban_numarasi)) {
-                                $ibanEksikSayisi++;
-                            }
-                        }
-                        ?>
-                        <?php if ($ibanEksikSayisi > 0): ?>
-                            <div class="alert alert-warning mt-3">
-                                <i class="bx bx-error-circle me-2"></i>
-                                <strong>Dikkat:</strong> <?= $ibanEksikSayisi ?> personelin banka ödemesi var fakat IBAN bilgisi tanımlı değil. 
-                                Lütfen personel bilgilerini güncelleyiniz.
-                            </div>
-                        <?php endif; ?>
 
                     <?php elseif ($selectedDonem): ?>
                         <div class="text-center py-5">
@@ -250,49 +303,49 @@ foreach ($donemler as $donem) {
 </div>
 
 <style>
-.avatar-xs {
-    width: 2rem;
-    height: 2rem;
-}
+    .avatar-xs {
+        width: 2rem;
+        height: 2rem;
+    }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // DataTable başlat
-    if (document.getElementById('bankaListesiTable')) {
-        $('#bankaListesiTable').DataTable({
-            language: {
-                url: 'assets/libs/datatables/Turkish.json'
-            },
-            pageLength: 25,
-            order: [[1, 'asc']],
-            dom: 'Bfrtip',
-            buttons: [
-                {
-                    extend: 'print',
-                    text: '<i class="bx bx-printer me-1"></i> Yazdır',
-                    className: 'btn btn-sm btn-outline-secondary',
-                    title: 'Banka Listesi - <?= $selectedDonem ? htmlspecialchars($selectedDonem->donem_adi) : '' ?>'
-                }
-            ]
-        });
-    }
-    
-    // Yıl değişince
-    const yilSelect = document.querySelector('[name="yilSelectBanka"]');
-    const donemSelect = document.querySelector('[name="donemSelectBanka"]');
-    
-    if (yilSelect) {
-        yilSelect.addEventListener('change', function() {
-            window.location.href = 'index?p=bordro/raporlar/banka-listesi&yil=' + this.value;
-        });
-    }
-    
-    // Dönem değişince
-    if (donemSelect) {
-        donemSelect.addEventListener('change', function() {
-            window.location.href = 'index?p=bordro/raporlar/banka-listesi&donem=' + this.value;
-        });
-    }
-});
+    document.addEventListener('DOMContentLoaded', function () {
+        // DataTable başlat
+        if (document.getElementById('bankaListesiTable')) {
+            $('#bankaListesiTable').DataTable({
+                language: {
+                    url: 'assets/libs/datatables/Turkish.json'
+                },
+                pageLength: 25,
+                order: [[1, 'asc']],
+                dom: 'Bfrtip',
+                buttons: [
+                    {
+                        extend: 'print',
+                        text: '<i class="bx bx-printer me-1"></i> Yazdır',
+                        className: 'btn btn-sm btn-outline-secondary',
+                        title: 'Banka Listesi - <?= $selectedDonem ? htmlspecialchars($selectedDonem->donem_adi) : '' ?>'
+                    }
+                ]
+            });
+        }
+
+        // Yıl değişince
+        const yilSelect = document.querySelector('[name="yilSelectBanka"]');
+        const donemSelect = document.querySelector('[name="donemSelectBanka"]');
+
+        if (yilSelect) {
+            yilSelect.addEventListener('change', function () {
+                window.location.href = 'index?p=bordro/raporlar/banka-listesi&yil=' + this.value;
+            });
+        }
+
+        // Dönem değişince
+        if (donemSelect) {
+            donemSelect.addEventListener('change', function () {
+                window.location.href = 'index?p=bordro/raporlar/banka-listesi&donem=' + this.value;
+            });
+        }
+    });
 </script>

@@ -36,7 +36,8 @@ foreach ($kesintiler as $k) {
                     </h5>
                     <span class="badge bg-danger">Toplam: <?= number_format($toplamKesinti, 2, ',', '.') ?> TL</span>
                     <?php if ($bekleyenKesinti > 0): ?>
-                        <span class="badge bg-warning text-dark"><i class="bx bx-time me-1"></i><?= $bekleyenKesinti ?> Onay Bekliyor</span>
+                        <span class="badge bg-warning text-dark"><i class="bx bx-time me-1"></i><?= $bekleyenKesinti ?> Onay
+                            Bekliyor</span>
                     <?php endif; ?>
                     <?php if ($aktifSurekliKesinti > 0): ?>
                         <span class="badge bg-warning text-dark"><i
@@ -108,12 +109,12 @@ foreach ($kesintiler as $k) {
                                                 <?= $k->bitis_donemi ? date('d.m.Y', strtotime($k->bitis_donemi)) : '<span class="text-success">Süresiz</span>' ?>
                                             </small>
                                         <?php else: ?>
-                                            <?= App\Helper\Helper::getDonemAdi($k->donem_id) ?>
+                                            <?= $k->donem_adi ?? App\Helper\Helper::getDonemAdi($k->donem_id) ?>
                                         <?php endif; ?>
                                     </td>
                                     <td><?= htmlspecialchars($k->aciklama ?? '-') ?></td>
                                     <td>
-                                        <?php 
+                                        <?php
                                         $durum = $k->durum ?? 'beklemede';
                                         $durumBadges = [
                                             'beklemede' => '<span class="badge bg-warning text-dark"><i class="bx bx-time me-1"></i>Beklemede</span>',

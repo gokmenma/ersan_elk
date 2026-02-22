@@ -213,3 +213,5 @@ if ($page == "kasa/duzenle" || $page == "kasa/list") {
         });
     }
 </script>
+
+<?php include_once __DIR__ . '/destek-chat.php'; ?>

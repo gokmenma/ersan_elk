@@ -204,6 +204,19 @@ use App\Helper\Date;
                 </label>
             </div>
 
+            <div class="flex items-start gap-4 p-4 border-b border-slate-100 dark:border-slate-800"
+                id="theme-color-setting">
+                <div
+                    class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-indigo-600">palette</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-slate-900 dark:text-white">Tema Rengi</p>
+                    <p class="text-xs text-slate-500 mb-3">Uygulama rengini değiştir</p>
+                    <div class="flex items-center gap-2.5 flex-wrap" id="theme-color-swatches"></div>
+                </div>
+            </div>
+
             <button onclick="Modal.open('password-modal')" class="flex items-center gap-4 p-4 w-full text-left">
                 <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
                     <span class="material-symbols-outlined text-amber-600">lock</span>
@@ -317,6 +330,9 @@ use App\Helper\Date;
         const darkModeToggle = document.getElementById('dark-mode-toggle');
         darkModeToggle.checked = App.darkMode;
         updateThemeIcon();
+
+        // Render theme color swatches
+        Theme.renderSwatches('theme-color-swatches');
 
         // Password form
         document.getElementById('password-form').addEventListener('submit', async function (e) {

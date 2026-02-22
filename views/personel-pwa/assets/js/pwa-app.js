@@ -62,6 +62,92 @@ const App = {
   },
 };
 
+// ===== Theme Management =====
+const Theme = {
+  colors: {
+    blue: {
+      primary: "#135bec",
+      dark: "#0d47c1",
+      light: "#4a87f5",
+      label: "Mavi",
+    },
+    purple: {
+      primary: "#7c3aed",
+      dark: "#6d28d9",
+      light: "#a78bfa",
+      label: "Mor",
+    },
+    green: {
+      primary: "#059669",
+      dark: "#047857",
+      light: "#34d399",
+      label: "Yeşil",
+    },
+    red: {
+      primary: "#dc2626",
+      dark: "#b91c1c",
+      light: "#f87171",
+      label: "Kırmızı",
+    },
+    orange: {
+      primary: "#ea580c",
+      dark: "#c2410c",
+      light: "#fb923c",
+      label: "Turuncu",
+    },
+    pink: {
+      primary: "#db2777",
+      dark: "#be185d",
+      light: "#f472b6",
+      label: "Pembe",
+    },
+    teal: {
+      primary: "#0d9488",
+      dark: "#0f766e",
+      light: "#2dd4bf",
+      label: "Teal",
+    },
+    slate: {
+      primary: "#475569",
+      dark: "#334155",
+      light: "#94a3b8",
+      label: "Gri",
+    },
+  },
+
+  current: localStorage.getItem("themeColor") || "blue",
+
+  apply(themeName) {
+    if (!this.colors[themeName] || themeName === this.current) return;
+    localStorage.setItem("themeColor", themeName);
+    window.location.reload();
+  },
+
+  renderSwatches(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = "";
+    Object.entries(this.colors).forEach(([name, color]) => {
+      const swatch = document.createElement("button");
+      swatch.type = "button";
+      swatch.className =
+        "theme-swatch" + (name === this.current ? " active" : "");
+      swatch.style.background = color.primary;
+      swatch.setAttribute("aria-label", color.label);
+      swatch.setAttribute("title", color.label);
+      swatch.onclick = () => this.apply(name);
+
+      if (name === this.current) {
+        swatch.innerHTML =
+          '<span class="material-symbols-outlined" style="font-size:14px;color:white;">check</span>';
+      }
+
+      container.appendChild(swatch);
+    });
+  },
+};
+
 // ===== Navigation Functions =====
 const Navigation = {
   pages: ["ana-sayfa", "bordro", "izin", "talep", "puantaj"],

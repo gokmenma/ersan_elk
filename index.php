@@ -29,7 +29,7 @@ include 'layouts/session.php';
 <?php
 
 //require_once __DIR__ . '/Autoloader.php';
- require __DIR__ . '/vendor/autoload.php';
+require __DIR__ . '/vendor/autoload.php';
 setlocale(LC_CTYPE, 'tr_TR.UTF-8');
 
 use App\Helper\Route;
@@ -45,7 +45,7 @@ $dotenv->load();
 $Menus = new MenuModel();
 
 //Eğer oturum açmamışsa giriş sayfasına yönlendir
-if (!isset($_SESSION['id'] ) || !isset($_SESSION['firma_id'])) {
+if (!isset($_SESSION['id']) || !isset($_SESSION['firma_id'])) {
     header("Location: " . "/logout.php");
     exit();
 }

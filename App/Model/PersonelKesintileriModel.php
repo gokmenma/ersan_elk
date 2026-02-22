@@ -23,10 +23,11 @@ class PersonelKesintileriModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT pk.*, pi.dosya_no, pi.icra_dairesi, bp.etiket as parametre_adi, bp.kod as parametre_kodu,
-                   COALESCE(pk.durum, 'beklemede') as durum
+                   COALESCE(pk.durum, 'beklemede') as durum, bd.donem_adi
             FROM {$this->table} pk
             LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
             LEFT JOIN bordro_parametreleri bp ON pk.parametre_id = bp.id
+            LEFT JOIN bordro_donemi bd ON pk.donem_id = bd.id
             WHERE pk.personel_id = ? 
               AND pk.silinme_tarihi IS NULL 
               AND pk.ana_kesinti_id IS NULL

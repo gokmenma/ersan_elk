@@ -56,6 +56,13 @@ $settings = (object) $Settings->getAllSettingsAsKeyValue();
                                 <span class="d-none d-sm-block">SGK Vizite Ayarları</span>
                             </a>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" data-bs-toggle="tab" href="#canli_destek_ayarlari" role="tab"
+                                aria-selected="false">
+                                <span class="d-block d-sm-none"><i class="bx bx-support"></i></span>
+                                <span class="d-none d-sm-block">Canlı Destek Ayarları</span>
+                            </a>
+                        </li>
                     </ul>
 
 
@@ -69,6 +76,9 @@ $settings = (object) $Settings->getAllSettingsAsKeyValue();
                         </div>
                         <div class="tab-pane" id="sgk_vizite_ayarlari" role="tabpanel">
                             <?php include_once "icerik/sgk-vizite-ayarlari.php"; ?>
+                        </div>
+                        <div class="tab-pane" id="canli_destek_ayarlari" role="tabpanel">
+                            <?php include_once "icerik/canli-destek-ayarlari.php"; ?>
                         </div>
                     </div>
 

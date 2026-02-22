@@ -2013,20 +2013,27 @@ class BordroPersonelModel extends Model
 
                 // Borç bu kesintiyle bitiyorsa uyarı ekle
                 if ($tutar >= $kalanBorc && $kalanBorc > 0) {
-                    $alreadyAdded = false;
-                    foreach ($this->icra_uyarilari as $uyari) {
-                        if ($uyari['personel_id'] == $kayit->personel_id && $uyari['icra_id'] == $kesinti->icra_id) {
-                            $alreadyAdded = true;
-                            break;
+                    // Start: check if there are any pending/active icra files remaining
+                    $sqlOther = $this->db->prepare("SELECT COUNT(*) as adet FROM personel_icralari WHERE personel_id = ? AND id != ? AND durum IN ('bekliyor', 'devam_ediyor') AND silinme_tarihi IS NULL");
+                    $sqlOther->execute([$kayit->personel_id, $kesinti->icra_id]);
+                    $hasNextIcra = ($sqlOther->fetch(PDO::FETCH_OBJ)->adet ?? 0) > 0;
+
+                    if ($hasNextIcra) {
+                        $alreadyAdded = false;
+                        foreach ($this->icra_uyarilari as $uyari) {
+                            if ($uyari['personel_id'] == $kayit->personel_id && $uyari['icra_id'] == $kesinti->icra_id) {
+                                $alreadyAdded = true;
+                                break;
+                            }
                         }
-                    }
-                    if (!$alreadyAdded) {
-                        $this->icra_uyarilari[] = [
-                            'personel_id' => $kayit->personel_id,
-                            'icra_id' => $kesinti->icra_id,
-                            'dosya_no' => $icraData->dosya_no,
-                            'icra_dairesi' => $icraData->icra_dairesi
-                        ];
+                        if (!$alreadyAdded) {
+                            $this->icra_uyarilari[] = [
+                                'personel_id' => $kayit->personel_id,
+                                'icra_id' => $kesinti->icra_id,
+                                'dosya_no' => $icraData->dosya_no,
+                                'icra_dairesi' => $icraData->icra_dairesi
+                            ];
+                        }
                     }
                 }
 

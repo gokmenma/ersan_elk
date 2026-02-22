@@ -937,22 +937,23 @@ $changeIcon = $totalChange > 0 ? 'bx-trending-up' : ($totalChange < 0 ? 'bx-tren
                                 callback: function (v) { return new Intl.NumberFormat('tr-TR').format(v); }
                             }
                         }
-                        <?php if ($compareMode === 'firma'): ?>,
-                            y1: {
-                                type: 'linear',
-                                display: true,
-                                position: 'right',
-                                beginAtZero: true,
-                                grid: { drawOnChartArea: false },
-                                ticks: {
-                                    font: { size: 11 },
-                                    callback: function (v) { return v + ' kişi'; }
-                                }
-                            }
-                        <?php endif; ?>
                     }
                 }
             };
+
+            if (compareMode === 'firma') {
+                config.options.scales.y1 = {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    beginAtZero: true,
+                    grid: { drawOnChartArea: false },
+                    ticks: {
+                        font: { size: 11 },
+                        callback: function (v) { return v + ' kişi'; }
+                    }
+                };
+            }
 
             compareChartInstance = new Chart(ctx, config);
         }

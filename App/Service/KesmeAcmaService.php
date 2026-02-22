@@ -38,31 +38,56 @@ class KesmeAcmaService
             'offset' => $offset
         ];
 
-        $ch = curl_init($this->apiUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . $apiKey
-        ]);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        $maxRetries = 2; // İlk deneme başarısız olursa 1 kez daha dene
+        $attempt = 0;
+        $response = false;
+        $httpCode = 0;
+        $error_msg = '';
 
-        $response = curl_exec($ch);
+        while ($attempt < $maxRetries) {
+            $ch = curl_init($this->apiUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $apiKey
+            ]);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
 
-        if (curl_errno($ch)) {
-            $error_msg = curl_error($ch);
+            $response = curl_exec($ch);
+
+            if (curl_errno($ch)) {
+                $error_msg = curl_error($ch);
+            }
+
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
-            throw new Exception("cURL Hatası: " . $error_msg);
+
+            if ($httpCode === 200) {
+                break; // Başarılı, döngüden çık
+            }
+
+            $attempt++;
+            if ($attempt < $maxRetries) {
+                sleep(2); // Yeniden denemeden önce kısa bir bekleme (sunucu ısınıyor olabilir)
+            }
         }
 
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
         if ($httpCode !== 200) {
-            throw new Exception("API Yetkilendirme Hatası (HTTP $httpCode): " . $response);
+            $errorTitle = "API Hatası";
+            if ($httpCode === 401 || $httpCode === 403) {
+                $errorTitle = "API Yetkilendirme Hatası";
+            } elseif ($httpCode === 504 || $httpCode === 502) {
+                $errorTitle = "Zaman Aşımı (Gateway Timeout)";
+            }
+
+            if ($error_msg) {
+                throw new Exception("cURL Hatası: " . $error_msg);
+            }
+            throw new Exception("$errorTitle (HTTP $httpCode): " . $response);
         }
 
         $decodedResponse = json_decode($response, true);

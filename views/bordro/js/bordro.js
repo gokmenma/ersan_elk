@@ -34,14 +34,20 @@ const monthMap = {
 
 $(document).ready(function () {
   // Bordro Tablosunu Başlat
-  $("#bordroTable").DataTable(
-    applyLengthStateSave({
-      ...getDatatableOptions(),
-      columnDefs: [{ orderable: false, targets: [0, 10] }],
-      order: [[1, "asc"]],
-      pageLength: 25,
-    }),
-  );
+  var bordroOpts = getDatatableOptions();
+  var originalInitComplete = bordroOpts.initComplete;
+  bordroOpts.columnDefs = [{ orderable: false, targets: [0, 10] }];
+  bordroOpts.order = [[1, "asc"]];
+  bordroOpts.pageLength = 25;
+  bordroOpts.initComplete = function (settings, json) {
+    // Önce orijinal initComplete'i çalıştır (filtreler, arama kutuları vb.)
+    if (typeof originalInitComplete === "function") {
+      originalInitComplete.call(this, settings, json);
+    }
+    // Sonra preloader'ı kapat
+    $("#bordro-loader").fadeOut(300);
+  };
+  $("#bordroTable").DataTable(applyLengthStateSave(bordroOpts));
 
   // Yıl değiştiğinde sayfayı yenile
   $("#yilSelect").on("change", function () {
@@ -1060,12 +1066,8 @@ $(document).ready(function () {
       // Listeyi getir
       loadKesintiListesi(id, donemId);
 
-      // Accordion'ı aç (ekle butonuysa) veya kapat (detay butonuysa)
-      if ($(this).hasClass("btn-detail-kesinti")) {
-        $("#collapseKesinti").removeClass("show");
-      } else {
-        $("#collapseKesinti").addClass("show");
-      }
+      // Accordion'ı kapalı getir
+      $("#collapseKesinti").removeClass("show");
 
       showModal("modalPersonelKesintiEkle");
     },
@@ -1546,7 +1548,24 @@ function loadKesintiListesi(personelId, donemId) {
           html =
             '<div class="text-center text-muted py-3"><i class="bx bx-info-circle fs-1 mb-2"></i><br>Kayıtlı kesinti bulunamadı.</div>';
         } else {
+          const kesintiMap = {
+            İZİN_KESİNTİ: "Ücretsiz İzin",
+            DİĞER_KESİNTİ: "Diğer Kesinti",
+            ÖZEL_KESİNTİ: "Özel Kesinti",
+            AVANS: "Avans",
+            İCRA: "İcra",
+            NAFAKA: "Nafaka",
+            izin_kesinti: "Ücretsiz İzin",
+            diger: "Diğer Kesinti",
+            ozel_kesinti: "Özel Kesinti",
+            icra: "İcra",
+            avans: "Avans",
+            nafaka: "Nafaka",
+          };
+
           response.data.forEach((item) => {
+            const turLabel =
+              kesintiMap[item.tur] || item.tur.replace(/_/g, " ");
             html += `
                         <div class="card mb-2 border shadow-sm">
                             <div class="card-body p-3">
@@ -1559,7 +1578,7 @@ function loadKesintiListesi(personelId, donemId) {
                                         </div>
                                     </div>
                                     <div class="flex-grow-1">
-                                        <h6 class="mb-1 text-uppercase text-danger fw-bold">${item.tur}</h6>
+                                        <h6 class="mb-1 text-uppercase text-danger fw-bold">${turLabel}</h6>
                                         <p class="text-muted mb-0 small">${item.aciklama || "Açıklama yok"}</p>
                                     </div>
                                     <div class="flex-shrink-0 text-end mx-3">

@@ -1151,7 +1151,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 } else {
                     // Ekleme
-                    if ($BordroPersonel->addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur)) {
+                    if ($BordroPersonel->addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur, 'onaylandi')) {
                         // Otomatik maaş hesapla
                         $BordroPersonel->hesaplaMaasByPersonelDonem($personel_id, $donem_id);
 
@@ -1726,7 +1726,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 ")->execute([$personel_id, $donem_id, $kod]);
 
                                 // Yeni kaydı ekle
-                                if ($BordroPersonel->addKesinti($personel_id, $donem_id, "Excel'den yüklendi", $tutar, $kod)) {
+                                if ($BordroPersonel->addKesinti($personel_id, $donem_id, "Excel'den yüklendi", $tutar, $kod, 'onaylandi')) {
                                     $rowHasData = true;
                                 }
                             }

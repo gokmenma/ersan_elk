@@ -947,11 +947,11 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                 }
                                 ?>
                             <?php else: ?>
-                                <?php if ($pId == 0): ?>
+                                <?php if (empty($personel->id)): ?>
                                     <?= $personel->adi_soyadi ?>
                                 <?php else: ?>
                                     <a class="fw-bold text-primary" target="_blank"
-                                        href="index?p=personel/manage&id=<?= Security::encrypt($pId) ?>">
+                                        href="index?p=personel/manage&id=<?= Security::encrypt($personel->id) ?>">
                                         <?= htmlspecialchars($personel->adi_soyadi) ?>
                                     </a>
                                 <?php endif; ?>

@@ -2224,9 +2224,336 @@ try {
             }
             break;
 
+        // =====================================================
+        // CANLI DESTEK İŞLEMLERİ
+        // =====================================================
+        case 'check-chat':
+            $DestekModel = new \App\Model\DestekModel();
+            $isWorkingHours = $DestekModel->isWorkingHours();
+            $outOfHoursMsg = $DestekModel->getOutOfHoursMessage();
+
+            // Aktif konuşma var mı? (yeni oluşturma!)
+            $existing = $DestekModel->getActiveConversation($personel_id);
+            if ($existing) {
+                $messages = $DestekModel->getMessages($existing->id);
+                $DestekModel->markMessagesAsRead($existing->id, 'personel');
+                response(true, [
+                    'has_conversation' => true,
+                    'konusma_id' => $existing->id,
+                    'messages' => $messages,
+                    'is_working_hours' => $isWorkingHours,
+                    'out_of_hours_message' => $outOfHoursMsg
+                ]);
+            } else {
+                response(true, [
+                    'has_conversation' => false,
+                    'is_working_hours' => $isWorkingHours,
+                    'out_of_hours_message' => $outOfHoursMsg
+                ]);
+            }
+            break;
+
+        case 'start-chat':
+            $DestekModel = new \App\Model\DestekModel();
+            $konu = $_POST['konu'] ?? 'Destek Talebi';
+            $isWorkingHours = $DestekModel->isWorkingHours();
+            $outOfHoursMsg = $DestekModel->getOutOfHoursMessage();
+
+            if (!$isWorkingHours) {
+                response(false, ['is_working_hours' => false, 'out_of_hours_message' => $outOfHoursMsg], 'Mesai saatleri dışında yeni destek talebi başlatılamaz.');
+                break;
+            }
+
+            // Aktif konuşma var mı?
+            $existing = $DestekModel->getActiveConversation($personel_id);
+            if ($existing) {
+                $messages = $DestekModel->getMessages($existing->id);
+                $DestekModel->markMessagesAsRead($existing->id, 'personel');
+                response(true, [
+                    'konusma_id' => $existing->id,
+                    'messages' => $messages,
+                    'is_new' => false,
+                    'is_working_hours' => $isWorkingHours,
+                    'out_of_hours_message' => $outOfHoursMsg
+                ]);
+                break;
+            }
+
+            // Yeni konuşma başlat
+            $konusmaId = $DestekModel->startConversation($personel_id, $konu);
+
+            // Hoşgeldin mesajı
+            $DestekModel->sendSystemMessage($konusmaId, 'Merhaba ' . ($personel->adi_soyadi ?? '') . '! 👋 Size nasıl yardımcı olabiliriz?');
+
+            // Mesai dışı kontrolü
+            if (!$DestekModel->isWorkingHours()) {
+                $DestekModel->sendSystemMessage($konusmaId, $DestekModel->getOutOfHoursMessage());
+            }
+
+            $messages = $DestekModel->getMessages($konusmaId);
+
+            // Yöneticiye bildirim
+            try {
+                $BildirimModel = new \App\Model\BildirimModel();
+                $BildirimModel->createNotification(
+                    1,
+                    'Yeni Destek Talebi',
+                    ($personel->adi_soyadi ?? 'Bir personel') . ' canlı destek başlattı.',
+                    'index.php?p=home',
+                    'chat',
+                    'info'
+                );
+            } catch (Exception $e) {
+            }
+
+            response(true, [
+                'konusma_id' => $konusmaId,
+                'messages' => $messages,
+                'is_new' => true
+            ]);
+            break;
+
+        case 'send-chat-message':
+            $DestekModel = new \App\Model\DestekModel();
+            $konusmaId = (int) ($_POST['konusma_id'] ?? 0);
+            $mesaj = trim($_POST['mesaj'] ?? '');
+
+            if (!$DestekModel->isWorkingHours()) {
+                response(false, ['is_working_hours' => false, 'out_of_hours_message' => $DestekModel->getOutOfHoursMessage()], 'Mesai saatleri dışında mesaj gönderilemez.');
+                break;
+            }
+
+            if (!$konusmaId || empty($mesaj)) {
+                response(false, null, 'Mesaj boş olamaz');
+                break;
+            }
+
+            // Kapalı/çözülmüş konuşmaya mesaj göndermeyi engelle
+            $conversation = $DestekModel->getConversation($konusmaId);
+            if ($conversation && in_array($conversation->durum, ['kapali', 'cozuldu'])) {
+                response(false, null, 'Bu konuşma kapatılmış. Yeni bir destek talebi oluşturabilirsiniz.');
+                break;
+            }
+
+            $mesajId = $DestekModel->sendMessage($konusmaId, [
+                'tip' => 'personel',
+                'id' => $personel_id
+            ], $mesaj);
+
+            // Mesai dışıysa ve ilk mesajsa otomatik yanıt gönder (sadece ilk mesajda)
+            $conversation = $DestekModel->getConversation($konusmaId);
+            if (!$DestekModel->isWorkingHours()) {
+                // Son 5 dakika içinde sistem mesajı gönderilmiş mi?
+                $recentMessages = $DestekModel->getMessages($konusmaId);
+                $hasSysMsg = false;
+                foreach ($recentMessages as $m) {
+                    if (
+                        $m->gonderen_tip === 'sistem' &&
+                        strtotime($m->created_at) > strtotime('-5 minutes')
+                    ) {
+                        $hasSysMsg = true;
+                        break;
+                    }
+                }
+                if (!$hasSysMsg) {
+                    $DestekModel->sendSystemMessage($konusmaId, $DestekModel->getOutOfHoursMessage());
+                }
+            } else {
+                // Mesai içindeyiz, yönetici durumunu kontrol et
+                $Settings = new \App\Model\SettingsModel();
+                $adminDurum = $Settings->getSettings('canli_destek_admin_durum') ?: 'cevrimici';
+
+                if ($adminDurum !== 'cevrimici') {
+                    // Son 5 dakika içinde sistem mesajı gönderilmiş mi?
+                    $recentMessages = $DestekModel->getMessages($konusmaId);
+                    $hasSysMsg = false;
+                    foreach ($recentMessages as $m) {
+                        if (
+                            $m->gonderen_tip === 'sistem' &&
+                            strtotime($m->created_at) > strtotime('-5 minutes')
+                        ) {
+                            $hasSysMsg = true;
+                            break;
+                        }
+                    }
+                    if (!$hasSysMsg) {
+                        $durumLabel = $adminDurum === 'mesgul' ? 'meşgul' : 'çevrimdışı';
+                        $sysMsg = "🕐 Şu anda destek ekibimiz {$durumLabel}. Mesajınız bize ulaştı, müsait olunduğunda yanıt verilecektir.";
+                        $DestekModel->sendSystemMessage($konusmaId, $sysMsg);
+                    }
+                }
+            }
+
+            response(true, ['message_id' => $mesajId]);
+            break;
+
+        case 'get-chat-messages':
+            $DestekModel = new \App\Model\DestekModel();
+            $konusmaId = (int) ($_POST['konusma_id'] ?? 0);
+            $afterId = (int) ($_POST['after_id'] ?? 0);
+
+            if (!$konusmaId) {
+                response(false, null, 'Konuşma ID gerekli');
+                break;
+            }
+
+            $messages = $DestekModel->getMessages($konusmaId, $afterId);
+            $DestekModel->markMessagesAsRead($konusmaId, 'personel');
+
+            $isWorkingHours = $DestekModel->isWorkingHours();
+            $outOfHoursMsg = $DestekModel->getOutOfHoursMessage();
+
+            response(true, [
+                'messages' => $messages,
+                'is_working_hours' => $isWorkingHours,
+                'out_of_hours_message' => $outOfHoursMsg
+            ]);
+            break;
+
+        case 'poll-chat':
+            $DestekModel = new \App\Model\DestekModel();
+            $konusmaId = (int) ($_POST['konusma_id'] ?? 0);
+            $afterId = (int) ($_POST['after_id'] ?? 0);
+
+            if (!$konusmaId) {
+                response(false, null, 'Konuşma ID gerekli');
+                break;
+            }
+
+            $newMessages = $DestekModel->getMessages($konusmaId, $afterId);
+            if (!empty($newMessages)) {
+                $DestekModel->markMessagesAsRead($konusmaId, 'personel');
+            }
+
+            response(true, [
+                'messages' => $newMessages,
+                'has_new' => !empty($newMessages)
+            ]);
+            break;
+
+        case 'get-chat-unread':
+            $DestekModel = new \App\Model\DestekModel();
+            $unread = $DestekModel->getUnreadForPersonel($personel_id);
+            response(true, ['count' => $unread]);
+            break;
+
+        case 'get-chat-history':
+            $DestekModel = new \App\Model\DestekModel();
+            $conversations = $DestekModel->getConversationHistory($personel_id, 20);
+            response(true, ['conversations' => $conversations]);
+            break;
+
+        case 'send-chat-image':
+            $DestekModel = new \App\Model\DestekModel();
+            $konusmaId = (int) ($_POST['konusma_id'] ?? 0);
+
+            if (!$konusmaId) {
+                response(false, null, 'Konuşma ID gerekli');
+                break;
+            }
+
+            if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
+                response(false, null, 'Resim dosyası gerekli');
+                break;
+            }
+
+            // Dosya yükleme
+            $uploadDir = dirname(dirname(__DIR__)) . '/uploads/destek/';
+            if (!is_dir($uploadDir))
+                mkdir($uploadDir, 0755, true);
+
+            $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mimeType = finfo_file($finfo, $_FILES['image']['tmp_name']);
+            finfo_close($finfo);
+
+            if (!in_array($mimeType, $allowedTypes)) {
+                response(false, null, 'Sadece resim dosyaları yüklenebilir');
+                break;
+            }
+
+            if ($_FILES['image']['size'] > 5 * 1024 * 1024) {
+                response(false, null, 'Dosya boyutu 5MB\'dan büyük olamaz');
+                break;
+            }
+
+            $ext = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+            $fileName = 'chat_' . uniqid() . '_' . time() . '.' . $ext;
+            $filePath = $uploadDir . $fileName;
+
+            if (!move_uploaded_file($_FILES['image']['tmp_name'], $filePath)) {
+                response(false, null, 'Dosya yüklenirken hata oluştu');
+                break;
+            }
+
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'];
+            $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/\\');
+            $relPath = str_replace($docRoot, '', $uploadDir);
+            $relPath = '/' . ltrim(str_replace('\\', '/', $relPath), '/');
+            $fileUrl = "{$protocol}://{$host}{$relPath}{$fileName}";
+
+            $mesajId = $DestekModel->sendMessage($konusmaId, [
+                'tip' => 'personel',
+                'id' => $personel_id
+            ], '📷 Resim', $fileUrl, $mimeType);
+
+            response(true, [
+                'message_id' => $mesajId,
+                'file_url' => $fileUrl
+            ]);
+            break;
+
+        case 'close-chat':
+            $DestekModel = new \App\Model\DestekModel();
+            $konusmaId = (int) ($_POST['konusma_id'] ?? 0);
+
+            if (!$konusmaId) {
+                response(false, null, 'Konuşma ID gerekli');
+                break;
+            }
+
+            $DestekModel->updateStatus($konusmaId, 'kapali');
+            $DestekModel->sendSystemMessage($konusmaId, '✅ Konuşma kapatıldı. İyi günler dileriz!');
+
+            response(true, null, 'Konuşma kapatıldı');
+            break;
+
         case 'logout':
             session_destroy();
             response(true, null, 'Çıkış yapıldı');
+            break;
+
+        case 'update-chat-status':
+            $DestekModel = new \App\Model\DestekModel();
+            $konusmaId = (int) ($_POST['konusma_id'] ?? 0);
+            $durum = $_POST['durum'] ?? '';
+
+            if (!$konusmaId) {
+                response(false, null, 'Konuşma ID gerekli');
+                break;
+            }
+
+            if (!in_array($durum, ['cozuldu', 'kapali'])) {
+                response(false, null, 'Geçersiz durum');
+                break;
+            }
+
+            $DestekModel->updateStatus($konusmaId, $durum);
+
+            if ($durum === 'cozuldu') {
+                $DestekModel->sendSystemMessage($konusmaId, '✅ Konuşma personel tarafından çözüldü olarak işaretlendi.');
+            } else {
+                $DestekModel->sendSystemMessage($konusmaId, '🔒 Konuşma personel tarafından kapatıldı.');
+            }
+
+            response(true, null, $durum === 'cozuldu' ? 'Konuşma çözüldü' : 'Konuşma kapatıldı');
+            break;
+
+        case 'get-admin-status':
+            $settingsModel = new \App\Model\SettingsModel();
+            $adminStatus = $settingsModel->getSettings('canli_destek_admin_durum') ?: 'cevrimici';
+            response(true, ['status' => $adminStatus]);
             break;
 
         default:

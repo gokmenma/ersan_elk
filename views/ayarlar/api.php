@@ -33,7 +33,7 @@ switch ($action) {
         $firma_id = !empty($_POST['firma_id']) ? (int) $_POST['firma_id'] : null;
 
         // Checkbox'lar işaretlenmediğinde POST içinde gönderilmez. 
-        $checkboxKeys = ['email_gonderim_aktif', 'sms_gonderim_aktif', 'online_sorgulama_aktif'];
+        $checkboxKeys = ['email_gonderim_aktif', 'sms_gonderim_aktif', 'online_sorgulama_aktif', 'canli_destek_aktif'];
         foreach ($checkboxKeys as $cbKey) {
             if (!isset($settingsToUpdate[$cbKey])) {
                 $settingsToUpdate[$cbKey] = '0';
