@@ -83,14 +83,18 @@ class NobetModel extends Model
     /**
      * Personelin nöbetlerini getirir
      */
-    public function getPersonelNobetleri($personel_id, $baslangic = null, $bitis = null)
+    public function getPersonelNobetleri($personel_id, $baslangic = null, $bitis = null, $include_deleted = false)
     {
         $sql = "SELECT n.*, p.adi_soyadi, p.departman
                 FROM {$this->table} n
                 LEFT JOIN personel p ON n.personel_id = p.id
-                WHERE n.personel_id = :personel_id 
-                AND n.silinme_tarihi IS NULL
-                AND (n.durum IS NULL OR n.durum NOT IN ('talep_edildi', 'reddedildi'))";
+                WHERE n.personel_id = :personel_id ";
+
+        if (!$include_deleted) {
+            $sql .= " AND n.silinme_tarihi IS NULL";
+        }
+
+        $sql .= " AND (n.durum IS NULL OR n.durum NOT IN ('talep_edildi', 'reddedildi'))";
 
         $params = ['personel_id' => $personel_id];
 

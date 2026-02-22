@@ -1844,7 +1844,7 @@ try {
             $baslangic = "$yil-" . str_pad($ay, 2, '0', STR_PAD_LEFT) . "-01";
             $bitis = date('Y-m-t', strtotime($baslangic));
 
-            $nobetler = $NobetModel->getPersonelNobetleri($personel_id, $baslangic, $bitis);
+            $nobetler = $NobetModel->getPersonelNobetleri($personel_id, $baslangic, $bitis, true);
 
             $data = [];
             foreach ($nobetler as $nobet) {
@@ -1855,6 +1855,7 @@ try {
                     'bitis_saati' => $nobet->bitis_saati,
                     'nobet_tipi' => $nobet->nobet_tipi,
                     'aciklama' => $nobet->aciklama,
+                    'silinmis_mi' => !empty($nobet->silinme_tarihi),
                     'durum' => $nobet->durum ?? 'aktif'
                 ];
             }

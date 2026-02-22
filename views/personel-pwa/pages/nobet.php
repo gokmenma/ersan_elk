@@ -114,7 +114,7 @@
         </div>
 
         <!-- Calendar Legend -->
-        <div class="flex items-center justify-center gap-6 mt-6 px-2">
+        <div class="flex flex-wrap items-center justify-center gap-4 mt-6 px-2">
             <div class="flex items-center gap-2">
                 <span class="w-3 h-3 rounded-full bg-blue-500"></span>
                 <span class="text-[11px] text-slate-600 dark:text-slate-400 font-medium">Atanmış Nöbet</span>
@@ -122,6 +122,10 @@
             <div class="flex items-center gap-2">
                 <span class="w-3 h-3 rounded-full bg-amber-500"></span>
                 <span class="text-[11px] text-slate-600 dark:text-slate-400 font-medium">Onay Bekleyen Talep</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-red-300"></span>
+                <span class="text-[11px] text-slate-600 dark:text-slate-400 font-medium">İptal Edilmiş</span>
             </div>
         </div>
     </div>
@@ -493,12 +497,13 @@
     // ============ İSTATİSTİKLER ============
     function updateStats() {
         const now = new Date();
-        const toplam = nobetlerData.length;
-        const haftaSonu = nobetlerData.filter(n => {
+        const aktifNobetler = nobetlerData.filter(n => !n.silinmis_mi);
+        const toplam = aktifNobetler.length;
+        const haftaSonu = aktifNobetler.filter(n => {
             const gun = new Date(n.nobet_tarihi).getDay();
             return gun === 0 || gun === 6;
         }).length;
-        const yaklasan = nobetlerData.filter(n => {
+        const yaklasan = aktifNobetler.filter(n => {
             const nobetTarihi = new Date(n.nobet_tarihi);
             return nobetTarihi >= now;
         }).length;
@@ -618,7 +623,11 @@
 
             if (nobet) {
                 hasNobet = true;
-                if (isPast) {
+                if (nobet.silinmis_mi) {
+                    dayClass = 'bg-red-50 dark:bg-red-900/20';
+                    textClass = 'text-red-400 dark:text-red-500 line-through';
+                    opacityClass = 'opacity-60';
+                } else if (isPast) {
                     dayClass = isWeekend ? 'bg-purple-200 dark:bg-purple-900/40' : 'bg-blue-200 dark:bg-blue-900/40';
                     textClass = isWeekend ? 'text-purple-400 dark:text-purple-600' : 'text-blue-400 dark:text-blue-600';
                     opacityClass = 'opacity-60';
@@ -638,7 +647,7 @@
                      class="aspect-square p-1 rounded-lg ${dayClass} ${opacityClass} flex flex-col items-center justify-center cursor-pointer transition-transform active:scale-95">
                     <span class="text-sm ${textClass}">${day}</span>
                     <div class="flex gap-0.5 mt-0.5">
-                        ${hasNobet ? `<span class="w-1.5 h-1.5 ${isPast ? 'bg-slate-400' : 'bg-white'} rounded-full"></span>` : ''}
+                        ${hasNobet ? `<span class="w-1.5 h-1.5 ${nobet.silinmis_mi ? 'bg-red-300' : (isPast ? 'bg-slate-400' : 'bg-white')} rounded-full"></span>` : ''}
                         ${pendingTalep ? `<span class="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>` : ''}
                     </div>
                 </div>
@@ -679,19 +688,36 @@
             const gunAdi = gunler[date.getDay()];
             const isWeekend = date.getDay() === 0 || date.getDay() === 6;
             const isPast = date < today;
+            const isDeleted = nobet.silinmis_mi;
 
-            // Geçmiş nöbetler için pasif stiller
-            const cardOpacity = isPast ? 'opacity-60' : '';
-            const bgClass = isPast
-                ? (isWeekend ? 'bg-purple-100/50 dark:bg-purple-900/20' : 'bg-blue-100/50 dark:bg-blue-900/20')
-                : (isWeekend ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-blue-100 dark:bg-blue-900/30');
-            const textClass = isPast
-                ? (isWeekend ? 'text-purple-400' : 'text-blue-400')
-                : (isWeekend ? 'text-purple-600' : 'text-blue-600');
-            const subTextClass = isPast
-                ? (isWeekend ? 'text-purple-300' : 'text-blue-300')
-                : (isWeekend ? 'text-purple-500' : 'text-blue-500');
-            const titleClass = isPast ? 'text-slate-500 dark:text-slate-500' : 'text-slate-900 dark:text-white';
+            let cardOpacity = isPast || isDeleted ? 'opacity-60 grayscale-[0.5]' : '';
+            let bgClass, textClass, subTextClass, titleClass, badgeHtml;
+
+            if (isDeleted) {
+                bgClass = 'bg-red-50 dark:bg-red-900/20';
+                textClass = 'text-red-400';
+                subTextClass = 'text-red-300';
+                titleClass = 'text-slate-500 line-through';
+                badgeHtml = '<span class="badge bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">İptal Edildi</span>';
+            } else {
+                bgClass = isPast
+                    ? (isWeekend ? 'bg-purple-100/50 dark:bg-purple-900/20' : 'bg-blue-100/50 dark:bg-blue-900/20')
+                    : (isWeekend ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-blue-100 dark:bg-blue-900/30');
+                textClass = isPast
+                    ? (isWeekend ? 'text-purple-400' : 'text-blue-400')
+                    : (isWeekend ? 'text-purple-600' : 'text-blue-600');
+                subTextClass = isPast
+                    ? (isWeekend ? 'text-purple-300' : 'text-blue-300')
+                    : (isWeekend ? 'text-purple-500' : 'text-blue-500');
+                titleClass = isPast ? 'text-slate-500 dark:text-slate-500' : 'text-slate-900 dark:text-white';
+
+                badgeHtml = `
+                    <span class="badge ${isPast ? 'bg-slate-200/50 text-slate-400 dark:bg-slate-700/30 dark:text-slate-500' : (isWeekend ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400')}">
+                        ${isWeekend ? 'Hafta Sonu' : 'Hafta İçi'}
+                    </span>
+                    ${isPast ? '<span class="badge bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400">Geçmiş</span>' : ''}
+                `;
+            }
 
             return `
                 <div class="card p-4 ${cardOpacity}" onclick="showNobetDetay('${nobet.id}')">
@@ -702,15 +728,12 @@
                         </div>
                         <div class="flex-1">
                             <p class="font-bold ${titleClass}">${gunAdi}</p>
-                            <p class="text-sm text-slate-500">${nobet.baslangic_saati?.substring(0, 5) || '18:00'} - ${nobet.bitis_saati?.substring(0, 5) || '08:00'}</p>
+                            <p class="text-sm text-slate-500 ${isDeleted ? 'line-through' : ''}">${nobet.baslangic_saati?.substring(0, 5) || '18:00'} - ${nobet.bitis_saati?.substring(0, 5) || '08:00'}</p>
                             <div class="flex items-center gap-2 mt-1">
-                                <span class="badge ${isPast ? 'bg-slate-200/50 text-slate-400 dark:bg-slate-700/30 dark:text-slate-500' : (isWeekend ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400')}">
-                                    ${isWeekend ? 'Hafta Sonu' : 'Hafta İçi'}
-                                </span>
-                                ${isPast ? '<span class="badge bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400">Geçmiş</span>' : ''}
+                                ${badgeHtml}
                             </div>
                         </div>
-                        <span class="material-symbols-outlined ${isPast ? 'text-slate-300' : 'text-slate-400'}">chevron_right</span>
+                        <span class="material-symbols-outlined ${isPast || isDeleted ? 'text-slate-300' : 'text-slate-400'}">chevron_right</span>
                     </div>
                 </div>
             `;
@@ -802,6 +825,16 @@
                     <p class="text-sm text-red-600 dark:text-red-400 mt-1">Bu nöbet için mazeret bildirilmiştir. Yönetici tarafından işlem bekleniyor.</p>
                 </div>
                 ` : ''}
+
+                ${nobet.silinmis_mi ? `
+                <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 p-4 rounded-xl">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-red-500">cancel</span>
+                        <p class="font-semibold text-red-700 dark:text-red-400">İptal Edilmiş Nöbet</p>
+                    </div>
+                    <p class="text-sm text-red-600 dark:text-red-400 mt-1">Bu nöbet yönetici tarafından iptal edildi.</p>
+                </div>
+                ` : ''}
             </div>
         `;
 
@@ -809,7 +842,14 @@
         const actionsContainer = document.getElementById('nobet-detay-actions');
         const isMazeretBildirildi = nobet.durum === 'mazeret_bildirildi';
 
-        if (!isPast && !isMazeretBildirildi) {
+        if (nobet.silinmis_mi) {
+            actionsContainer.innerHTML = `
+                <button onclick="Modal.close('nobet-detay-modal')" 
+                    class="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
+                    Kapat
+                </button>
+            `;
+        } else if (!isPast && !isMazeretBildirildi) {
             actionsContainer.innerHTML = `
                 <button onclick="openDegisimModal('${nobetId}')" 
                     class="w-full py-3 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-semibold rounded-xl flex items-center justify-center gap-2">
