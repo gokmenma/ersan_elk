@@ -731,6 +731,18 @@ if (!$_destekModel->isWorkingHours()) {
         color: #94a3b8;
         padding: 8px;
     }
+
+    .achat-read-icon {
+        font-size: 15px;
+        color: #94a3b8;
+        vertical-align: middle;
+        transition: color 0.3s ease;
+    }
+
+    .achat-read-icon.done-all {
+        color: #3b82f6;
+        /* Okundu tik */
+    }
 </style>
 
 <!-- Chat Toggle Button -->
@@ -1167,6 +1179,10 @@ if (!$_destekModel->isWorkingHours()) {
                 // Pencere oluştur
                 this.createChatWindow(konusmaId, conv, messages, rightPos);
 
+                if (response.opponent_last_read_id) {
+                    this.markMessagesAsReadUI(konusmaId, response.opponent_last_read_id);
+                }
+
                 // Kaydet
                 this.openWindows[konusmaId] = {
                     lastMessageId: messages.length > 0 ? messages[messages.length - 1].id : 0,
@@ -1289,19 +1305,46 @@ if (!$_destekModel->isWorkingHours()) {
             }
 
             const time = msg.created_at ? this.formatTime(msg.created_at) : '';
+            let readIcon = '';
+            if (type === 'outgoing') {
+                if (msg.okundu == 1) {
+                    readIcon = `<i class='bx bx-check-double achat-read-icon done-all'></i>`;
+                } else {
+                    readIcon = `<i class='bx bx-check achat-read-icon'></i>`;
+                }
+            }
 
             return `
             <div class="achat-msg ${type}" data-msg-id="${msg.id || ''}">
                 ${content}
-                ${time ? `<span class="achat-msg-time">${time}</span>` : ''}
+                ${time || readIcon ? `
+                <div style="display:flex; justify-content:flex-end; align-items:center; gap:2px; margin-top:2px;">
+                    ${time ? `<span class="achat-msg-time" style="margin-top:0;">${time}</span>` : ''}
+                    ${readIcon}
+                </div>` : ''}
             </div>`;
         },
 
         // ===== Send Message =====
+        markMessagesAsReadUI(konusmaId, lastReadId) {
+            const container = document.getElementById(`achat-msgs-${konusmaId}`);
+            if (!container) return;
+            const msgs = container.querySelectorAll('.achat-msg.outgoing');
+            msgs.forEach(msgEl => {
+                const id = parseInt(msgEl.dataset.msgId || "0");
+                if (id > 0 && id <= lastReadId) {
+                    const icon = msgEl.querySelector('.achat-read-icon');
+                    if (icon && !icon.classList.contains('bx-check-double')) {
+                        icon.className = "bx bx-check-double achat-read-icon done-all";
+                    }
+                }
+            });
+        },
+
         disableChatWindowInput(konusmaId, reason) {
             const win = document.getElementById(`achat-win-${konusmaId}`);
             if (!win) return;
-            
+
             // Remove status bar buttons
             const statusBar = win.querySelector('.achat-status-bar');
             if (statusBar) {
@@ -1327,20 +1370,28 @@ if (!$_destekModel->isWorkingHours()) {
 
             // Optimistic UI
             const msgContainer = document.getElementById(`achat-msgs-${konusmaId}`);
+            const tempId = "temp-" + Date.now();
             if (msgContainer) {
                 msgContainer.insertAdjacentHTML('beforeend', `
-                <div class="achat-msg outgoing">
+                <div class="achat-msg outgoing" data-msg-id="${tempId}">
                     <div class="achat-msg-bubble">${this.escapeHtml(mesaj)}</div>
-                    <span class="achat-msg-time">Az önce</span>
+                    <div style="display:flex; justify-content:flex-end; align-items:center; gap:2px; margin-top:2px;">
+                        <span class="achat-msg-time" style="margin-top:0;">Az önce</span>
+                        <i class='bx bx-check achat-read-icon'></i>
+                    </div>
                 </div>`);
                 this.scrollToBottom(konusmaId);
             }
 
             try {
-                await this.apiRequest('send-message', {
+                const response = await this.apiRequest('send-message', {
                     konusma_id: konusmaId,
                     mesaj: mesaj
                 });
+                if (response.status === 'success' && response.message_id) {
+                    const el = document.querySelector(`.achat-msg[data-msg-id="${tempId}"]`);
+                    if (el) el.dataset.msgId = response.message_id;
+                }
             } catch (e) {
                 console.error('Send message error:', e);
             }
@@ -1365,15 +1416,25 @@ if (!$_destekModel->isWorkingHours()) {
                 if (result.status === 'success') {
                     const msgContainer = document.getElementById(`achat-msgs-${konusmaId}`);
                     if (msgContainer) {
+                        const tempImgId = "temp-" + Date.now();
                         msgContainer.insertAdjacentHTML('beforeend', `
-                        <div class="achat-msg outgoing">
+                        <div class="achat-msg outgoing" data-msg-id="${tempImgId}">
                             <div class="achat-msg-bubble">
-                                <img src="${result.file_url}" class="achat-msg-image" 
-                                     onclick="window.open('${result.file_url}', '_blank')">
+                                <img src="${result.file_url}" class="achat-msg-image" alt="Resim" onclick="window.open('${result.file_url}', '_blank')">
                             </div>
-                            <span class="achat-msg-time">Az önce</span>
+                            <div style="display:flex; justify-content:flex-end; align-items:center; gap:2px; margin-top:2px;">
+                                <span class="achat-msg-time" style="margin-top:0;">Az önce</span>
+                                <i class='bx bx-check achat-read-icon'></i>
+                            </div>
                         </div>`);
                         this.scrollToBottom(konusmaId);
+
+                        if (result.message_id) {
+                            setTimeout(() => {
+                                const el = document.querySelector(`.achat-msg[data-msg-id="${tempImgId}"]`);
+                                if (el) el.dataset.msgId = result.message_id;
+                            }, 50);
+                        }
                     }
                 }
             } catch (e) {
@@ -1529,27 +1590,33 @@ if (!$_destekModel->isWorkingHours()) {
                     after_id: this.openWindows[konusmaId].lastMessageId || 0
                 });
 
-                if (response.status === 'success' && response.messages?.length > 0) {
-                    const msgContainer = document.getElementById(`achat-msgs-${konusmaId}`);
-                    if (!msgContainer) return;
+                if (response.status === 'success') {
+                    if (response.opponent_last_read_id) {
+                        this.markMessagesAsReadUI(konusmaId, response.opponent_last_read_id);
+                    }
 
-                    response.messages.forEach(msg => {
-                        if (msg.gonderen_tip !== 'yonetici' && !msgContainer.querySelector(`[data-msg-id="${msg.id}"]`)) {
-                            msgContainer.insertAdjacentHTML('beforeend', this.renderMessage(msg, konusmaId));
-                            if (msg.id > this.openWindows[konusmaId].lastMessageId) {
-                                this.openWindows[konusmaId].lastMessageId = msg.id;
-                            }
+                    if (response.messages?.length > 0) {
+                        const msgContainer = document.getElementById(`achat-msgs-${konusmaId}`);
+                        if (!msgContainer) return;
 
-                            if (msg.gonderen_tip === 'sistem' && msg.mesaj) {
-                                const lowerMsg = msg.mesaj.toLowerCase();
-                                if (lowerMsg.includes('kapatıldı') || lowerMsg.includes('çözüldü')) {
-                                    this.disableChatWindowInput(konusmaId, lowerMsg.includes('çözüldü') ? 'çözüldü' : 'kapatıldı');
+                        response.messages.forEach(msg => {
+                            if (msg.gonderen_tip !== 'yonetici' && !msgContainer.querySelector(`[data-msg-id="${msg.id}"]`)) {
+                                msgContainer.insertAdjacentHTML('beforeend', this.renderMessage(msg, konusmaId));
+                                if (msg.id > this.openWindows[konusmaId].lastMessageId) {
+                                    this.openWindows[konusmaId].lastMessageId = msg.id;
+                                }
+
+                                if (msg.gonderen_tip === 'sistem' && msg.mesaj) {
+                                    const lowerMsg = msg.mesaj.toLowerCase();
+                                    if (lowerMsg.includes('kapatıldı') || lowerMsg.includes('çözüldü')) {
+                                        this.disableChatWindowInput(konusmaId, lowerMsg.includes('çözüldü') ? 'çözüldü' : 'kapatıldı');
+                                    }
                                 }
                             }
-                        }
-                    });
+                        });
 
-                    this.scrollToBottom(konusmaId);
+                        this.scrollToBottom(konusmaId);
+                    }
                 }
             } catch (e) {
                 // Sessiz

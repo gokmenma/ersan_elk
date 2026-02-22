@@ -278,6 +278,18 @@ class DestekModel extends Model
     }
 
     /**
+     * Gönderdiğim son okunan mesajın ID'sini getirir
+     */
+    public function getOpponentLastReadId($konusmaId, $myType)
+    {
+        $sql = "SELECT MAX(id) as last_read_id FROM destek_mesajlar WHERE konusma_id = ? AND gonderen_tip = ? AND okundu = 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$konusmaId, $myType]);
+        $res = $stmt->fetch(PDO::FETCH_OBJ);
+        return $res->last_read_id ? (int) $res->last_read_id : 0;
+    }
+
+    /**
      * Son mesaj ID'sini getir (SSE için)
      */
     public function getLastMessageId($konusmaId)

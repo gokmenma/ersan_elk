@@ -2384,7 +2384,12 @@ try {
                 }
             }
 
-            response(true, ['message_id' => $mesajId]);
+            $opponentLastReadId = $DestekModel->getOpponentLastReadId($konusmaId, 'personel');
+
+            response(true, [
+                'message_id' => $mesajId,
+                'opponent_last_read_id' => $opponentLastReadId
+            ]);
             break;
 
         case 'get-chat-messages':
@@ -2403,10 +2408,13 @@ try {
             $isWorkingHours = $DestekModel->isWorkingHours();
             $outOfHoursMsg = $DestekModel->getOutOfHoursMessage();
 
+            $opponentLastReadId = $DestekModel->getOpponentLastReadId($konusmaId, 'personel');
+
             response(true, [
                 'messages' => $messages,
                 'is_working_hours' => $isWorkingHours,
-                'out_of_hours_message' => $outOfHoursMsg
+                'out_of_hours_message' => $outOfHoursMsg,
+                'opponent_last_read_id' => $opponentLastReadId
             ]);
             break;
 
@@ -2425,9 +2433,12 @@ try {
                 $DestekModel->markMessagesAsRead($konusmaId, 'personel');
             }
 
+            $opponentLastReadId = $DestekModel->getOpponentLastReadId($konusmaId, 'personel');
+
             response(true, [
                 'messages' => $newMessages,
-                'has_new' => !empty($newMessages)
+                'has_new' => !empty($newMessages),
+                'opponent_last_read_id' => $opponentLastReadId
             ]);
             break;
 
@@ -2498,9 +2509,12 @@ try {
                 'id' => $personel_id
             ], '📷 Resim', $fileUrl, $mimeType);
 
+            $opponentLastReadId = $DestekModel->getOpponentLastReadId($konusmaId, 'personel');
+
             response(true, [
                 'message_id' => $mesajId,
-                'file_url' => $fileUrl
+                'file_url' => $fileUrl,
+                'opponent_last_read_id' => $opponentLastReadId
             ]);
             break;
 

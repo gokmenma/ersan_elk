@@ -73,10 +73,13 @@ try {
             // Mesajları okundu olarak işaretle
             $destekModel->markMessagesAsRead($konusmaId, 'yonetici');
 
+            $opponentLastReadId = $destekModel->getOpponentLastReadId($konusmaId, 'yonetici');
+
             echo json_encode([
                 'status' => 'success',
                 'conversation' => $conversation,
-                'messages' => $messages
+                'messages' => $messages,
+                'opponent_last_read_id' => $opponentLastReadId
             ]);
             break;
 
@@ -220,9 +223,12 @@ try {
                 $destekModel->markMessagesAsRead($konusmaId, 'yonetici');
             }
 
+            $opponentLastReadId = $destekModel->getOpponentLastReadId($konusmaId, 'yonetici');
+
             echo json_encode([
                 'status' => 'success',
-                'messages' => $messages
+                'messages' => $messages,
+                'opponent_last_read_id' => $opponentLastReadId
             ]);
             break;
 

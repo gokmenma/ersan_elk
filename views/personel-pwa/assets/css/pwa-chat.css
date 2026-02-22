@@ -659,3 +659,14 @@
     transform: rotate(360deg);
   }
 }
+
+/* Okundu İkonları */
+.chat-read-icon {
+  font-size: 14px;
+  color: #94a3b8;
+  transition: color 0.3s ease;
+}
+
+.chat-read-icon.done-all {
+  color: #3b82f6; /* Blue tick */
+}

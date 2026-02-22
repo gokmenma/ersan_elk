@@ -279,6 +279,9 @@ const LiveChat = {
         if (response.data.messages) {
           this.renderMessages(response.data.messages);
         }
+        if (response.data.opponent_last_read_id) {
+          this.markMessagesAsReadUI(response.data.opponent_last_read_id);
+        }
 
         if (inputArea) {
           if (durum === "cozuldu" || durum === "kapali") {
@@ -326,6 +329,10 @@ const LiveChat = {
             container.innerHTML = "";
             if (welcome) container.appendChild(welcome);
             this.renderMessages(response.data.messages);
+          }
+
+          if (response.data.opponent_last_read_id) {
+            this.markMessagesAsReadUI(response.data.opponent_last_read_id);
           }
 
           // Input yetkilerini düzenle
@@ -439,6 +446,13 @@ const LiveChat = {
       });
 
       if (response.success) {
+        if (response.data && response.data.message_id) {
+          const el = document.querySelector(
+            `.chat-msg[data-msg-id="${optimisticId}"]`,
+          );
+          if (el) el.dataset.msgId = response.data.message_id;
+        }
+
         // Polling'i hemen tetikle
         this.pollNewMessages();
       } else {
@@ -522,6 +536,13 @@ const LiveChat = {
       const result = await response.json();
 
       if (result.success) {
+        if (result.data && result.data.message_id) {
+          const el = document.querySelector(
+            `.chat-msg[data-msg-id="${optimisticId}"]`,
+          );
+          if (el) el.dataset.msgId = result.data.message_id;
+        }
+
         this.pollNewMessages();
       } else {
         document.querySelector(`[data-msg-id="${optimisticId}"]`)?.remove();
@@ -623,7 +644,18 @@ const LiveChat = {
     // Zaman
     if (msg.created_at) {
       const time = this.formatTime(msg.created_at);
-      content += `<span class="chat-msg-time">${time}</span>`;
+      let readIcon = "";
+      if (type === "outgoing") {
+        if (msg.okundu == 1) {
+          readIcon = `<span class="material-symbols-outlined chat-read-icon done-all">done_all</span>`;
+        } else {
+          readIcon = `<span class="material-symbols-outlined chat-read-icon">done</span>`;
+        }
+      }
+      content += `<div style="display:flex; justify-content:flex-end; align-items:center; gap:2px; margin-top:2px;">
+                    <span class="chat-msg-time" style="margin-top:0;">${time}</span>
+                    ${readIcon}
+                  </div>`;
     }
 
     msgEl.innerHTML = content;
@@ -636,6 +668,25 @@ const LiveChat = {
 
     // Scroll aşağı
     this.scrollToBottom();
+  },
+
+  /**
+   * PWA'da okunan giden mesajların ikonlarını günceller
+   */
+  markMessagesAsReadUI(lastReadId) {
+    const container = document.getElementById("chat-messages");
+    if (!container) return;
+    const msgs = container.querySelectorAll(".chat-msg.outgoing");
+    msgs.forEach((msgEl) => {
+      const id = parseInt(msgEl.dataset.msgId || "0");
+      if (id > 0 && id <= lastReadId) {
+        const icon = msgEl.querySelector(".chat-read-icon");
+        if (icon && !icon.classList.contains("done-all")) {
+          icon.textContent = "done_all";
+          icon.classList.add("done-all");
+        }
+      }
+    });
   },
 
   /**
@@ -670,36 +721,41 @@ const LiveChat = {
         after_id: this.lastMessageId,
       });
 
-      if (response.success && response.data?.messages?.length > 0) {
-        // Sadece yeni mesajları (gönderen_tip personel değil) render et
-        const newMessages = response.data.messages.filter(
-          (m) =>
-            m.gonderen_tip !== "personel" &&
-            !document.querySelector(`[data-msg-id="${m.id}"]`),
-        );
+      if (response.success && response.data) {
+        if (response.data.opponent_last_read_id) {
+          this.markMessagesAsReadUI(response.data.opponent_last_read_id);
+        }
 
-        if (newMessages.length > 0) {
-          this.playSound();
-          this.renderMessages(newMessages);
+        if (response.data.messages?.length > 0) {
+          const newMessages = response.data.messages.filter(
+            (m) =>
+              m.gonderen_tip !== "personel" &&
+              !document.querySelector(`[data-msg-id="${m.id}"]`),
+          );
 
-          // Sistem mesajında kapatma/çözülme var mı kontrol et
-          newMessages.forEach((m) => {
-            if (m.gonderen_tip === "sistem" && m.mesaj) {
-              const msg = m.mesaj.toLowerCase();
-              if (
-                msg.includes("kapatıldı") ||
-                msg.includes("çözüldü") ||
-                msg.includes("kapatıldı")
-              ) {
-                this.disableInput(
-                  "Bu konuşma " +
-                    (msg.includes("çözüldü") ? "çözüldü" : "kapatıldı"),
-                  "lock",
-                );
-                this.stopPolling();
+          if (newMessages.length > 0) {
+            this.playSound();
+            this.renderMessages(newMessages);
+
+            // Sistem mesajında kapatma/çözülme var mı kontrol et
+            newMessages.forEach((m) => {
+              if (m.gonderen_tip === "sistem" && m.mesaj) {
+                const msg = m.mesaj.toLowerCase();
+                if (
+                  msg.includes("kapatıldı") ||
+                  msg.includes("çözüldü") ||
+                  msg.includes("kapatıldı")
+                ) {
+                  this.disableInput(
+                    "Bu konuşma " +
+                      (msg.includes("çözüldü") ? "çözüldü" : "kapatıldı"),
+                    "lock",
+                  );
+                  this.stopPolling();
+                }
               }
-            }
-          });
+            });
+          }
         }
       }
     } catch (error) {
