@@ -44,17 +44,20 @@ function loadKalemler() {
             html += `
                         <tr id="kalem_row_${kalem.id}">
                             <td class="text-center fw-bold">${index + 1}</td>
-                            <td><div class="text-wrap" style="width: 250px;">${kalem.kalem_adi}</div></td>
-                            <td>${kalem.birim}</td>
-                            <td class="text-end">${birimFiyat.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺</td>
+                            <td class="td-kalem-adi"><div class="text-wrap" style="width: 250px;">${kalem.kalem_adi}</div></td>
+                            <td class="td-birim">${kalem.birim}</td>
+                            <td class="text-end td-fiyat">${birimFiyat.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺</td>
                             <td class="text-center" title="Geçmiş hakedişlerden gelen toplan">${oncekiMiktar.toLocaleString("tr-TR")}</td>
                             <td style="width:120px;">
                                 <input type="number" step="0.01" class="form-control form-control-sm miktar-input" data-kalem-id="${kalem.id}" value="${buAyMiktar}" placeholder="0">
                             </td>
                             <td class="text-center table-warning fw-bold">${toplamMiktar.toLocaleString("tr-TR")}</td>
                             <td class="text-end fw-bold text-success">${rowTotal.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺</td>
-                            <td>
-                                <button class="btn btn-sm btn-danger" onclick="deleteKalem(${kalem.id})" title="Kaldır"><i class="bx bx-trash"></i></button>
+                            <td class="text-center actions-container">
+                                <div class="d-flex gap-1 justify-content-center">
+                                    <button class="btn btn-sm btn-info" onclick="editKalemRow(this, ${kalem.id})" title="Düzenle"><i class="bx bx-edit"></i></button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteKalem(${kalem.id})" title="Kaldır"><i class="bx bx-trash"></i></button>
+                                </div>
                             </td>
                         </tr>
                     `;
@@ -150,6 +153,89 @@ function saveInlineKalem(btn) {
           timer: 3000,
           icon: "success",
           title: "Yeni kalem satırı eklendi",
+        });
+        loadKalemler();
+      } else {
+        Swal.fire("Hata", res.message, "error");
+      }
+    },
+    "json",
+  );
+}
+
+function editKalemRow(btn, id) {
+  const tr = $(btn).closest("tr");
+  const kalemAdi = tr.find(".td-kalem-adi .text-wrap").text().trim();
+  const birim = tr.find(".td-birim").text().trim();
+  const rawFiyat = tr
+    .find(".td-fiyat")
+    .text()
+    .replace(/[^0-9,-]+/g, "")
+    .replace(",", ".");
+  const floatFiyat = parseFloat(rawFiyat) || 0;
+
+  let unitOptions = [
+    "Adet",
+    "Metre",
+    "Km",
+    "Gün",
+    "Ay",
+    "Saat",
+    "Ton",
+    "Litre",
+  ];
+  let selectHtml = `<select class="form-select form-select-sm edit-birim">`;
+  unitOptions.forEach((op) => {
+    let sel = op === birim ? "selected" : "";
+    selectHtml += `<option value="${op}" ${sel}>${op}</option>`;
+  });
+  selectHtml += `</select>`;
+
+  tr.find(".td-kalem-adi").html(
+    `<input type="text" class="form-control form-control-sm edit-kalem-adi" value="${kalemAdi}">`,
+  );
+  tr.find(".td-birim").html(selectHtml);
+  tr.find(".td-fiyat").html(
+    `<input type="number" step="0.01" class="form-control form-control-sm text-end edit-fiyat" value="${floatFiyat}">`,
+  );
+
+  tr.find(".actions-container").html(`
+      <div class="d-flex gap-1 justify-content-center">
+          <button class="btn btn-sm btn-success" onclick="saveEditedKalem(this, ${id})" title="Kaydet"><i class="bx bx-check"></i></button>
+          <button class="btn btn-sm btn-secondary" onclick="loadKalemler()" title="İptal"><i class="bx bx-x"></i></button>
+      </div>
+  `);
+}
+
+function saveEditedKalem(btn, id) {
+  const tr = $(btn).closest("tr");
+  const kalemAdi = tr.find(".edit-kalem-adi").val();
+  const birim = tr.find(".edit-birim").val();
+  const teklifFiyat = tr.find(".edit-fiyat").val();
+
+  if (!kalemAdi || !teklifFiyat) {
+    Swal.fire("Uyarı", "Kalem Adı ve Birim Fiyat zorunludur.", "warning");
+    return;
+  }
+
+  $.post(
+    "views/hakedisler/online-api.php",
+    {
+      type: "updateKalem",
+      kalem_id: id,
+      kalem_adi: kalemAdi,
+      birim: birim,
+      teklif_edilen_birim_fiyat: teklifFiyat,
+    },
+    function (res) {
+      if (res.status == "success") {
+        Swal.fire({
+          toast: true,
+          position: "top-end",
+          showConfirmButton: false,
+          timer: 3000,
+          icon: "success",
+          title: "Kalem güncellendi",
         });
         loadKalemler();
       } else {
@@ -271,4 +357,23 @@ function exportHakedisToExcel(id) {
     text: "Orijinal Excel şablonuna yazdırma özelliği bir sonraki aşamada (PhpSpreadsheet entegrasyonu ile) devreye alınacaktır.",
     icon: "info",
   });
+}
+
+function addEndeksRow(containerId, type) {
+  let bgClass =
+    type === "temel"
+      ? "bg-light text-muted"
+      : "bg-soft-warning text-warning border-warning";
+  let borderClass = type === "temel" ? "" : "border-warning";
+
+  const html = `
+    <div class="input-group mt-1 ek-param-row ${type === "guncel" ? "border-warning" : ""}">
+        <input type="text" class="form-control ${bgClass} fw-bold" style="max-width: 120px;" placeholder="Adı..." onkeyup="$(this).next('input[type=number]').attr('name', 'ekstra_${type}[' + this.value.trim() + ']')">
+        <input type="number" step="any" class="form-control ${borderClass}" placeholder="Değer giriniz...">
+        <button type="button" class="btn btn-outline-danger btn-sm ${borderClass}" onclick="$(this).closest('.input-group').remove()"><i class="bx bx-trash"></i></button>
+    </div>
+  `;
+
+  $(`#${containerId}`).append(html);
+  $(`#${containerId} .ek-param-row`).last().find('input[type="text"]').focus();
 }

@@ -282,6 +282,17 @@ try {
                     $params["?$f"] = $_POST[$f] === '' ? null : $_POST[$f];
                 }
             }
+
+            // Handle ekstra parametreler
+            $ekstra = [
+                'temel' => $_POST['ekstra_temel'] ?? [],
+                'guncel' => $_POST['ekstra_guncel'] ?? []
+            ];
+
+            $jsonEkstra = !empty($ekstra['temel']) || !empty($ekstra['guncel']) ? json_encode($ekstra, JSON_UNESCAPED_UNICODE) : null;
+            $set[] = "ekstra_parametreler = ?ekstra_parametreler";
+            $params["?ekstra_parametreler"] = $jsonEkstra;
+
             // replace variables to bindings manually
             $setStr = "";
             $vals = [];
@@ -319,6 +330,35 @@ try {
             $cols = implode(", ", array_keys($data));
             $vals = ":" . implode(", :", array_keys($data));
             $sql = "INSERT INTO hakedis_kalemleri ($cols) VALUES ($vals)";
+            $stmt = $db->prepare($sql);
+            $stmt->execute($data);
+
+            echo json_encode(['status' => 'success']);
+            break;
+
+        case 'updateKalem':
+            $model = new HakedisKalemModel();
+            $db = $model->getDb();
+
+            $id = $_POST['kalem_id'] ?? 0;
+            if (!$id) {
+                echo json_encode(['status' => 'error', 'message' => 'Kalem ID bulunamadı']);
+                exit;
+            }
+
+            $data = [
+                'kalem_adi' => $_POST['kalem_adi'] ?? '',
+                'birim' => $_POST['birim'] ?? '',
+                'teklif_edilen_birim_fiyat' => floatval($_POST['teklif_edilen_birim_fiyat'] ?? 0)
+            ];
+
+            $set = [];
+            foreach ($data as $k => $v) {
+                $set[] = "$k = :$k";
+            }
+            $data['id'] = $id;
+
+            $sql = "UPDATE hakedis_kalemleri SET " . implode(", ", $set) . " WHERE id = :id";
             $stmt = $db->prepare($sql);
             $stmt->execute($data);
 

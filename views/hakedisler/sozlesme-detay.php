@@ -48,12 +48,12 @@ $aylar = [
 <div class="row">
     <div class="col-xl-4">
         <div class="card overflow-hidden">
-            <div class="bg-primary bg-soft">
+            <div class="bg-primary">
                 <div class="row">
                     <div class="col-12">
-                        <div class="text-primary p-3">
-                            <h5 class="text-primary"><?= htmlspecialchars($sozlesme->isin_yuklenicisi) ?></h5>
-                            <p><?= htmlspecialchars($sozlesme->isin_adi) ?></p>
+                        <div class="text-white p-3">
+                            <h5 class="text-white"><?= htmlspecialchars($sozlesme->isin_yuklenicisi) ?></h5>
+                            <p class="mb-0"><?= htmlspecialchars($sozlesme->isin_adi) ?></p>
                         </div>
                     </div>
                 </div>
@@ -72,7 +72,7 @@ $aylar = [
                             </tr>
                             <tr>
                                 <th scope="row">İşin Süresi :</th>
-                                <td><?= htmlspecialchars($sozlesme->isin_suresi) ?> Gün</td>
+                                <td><?= htmlspecialchars($sozlesme->isin_suresi ?? '') ?> Gün</td>
                             </tr>
                             <tr>
                                 <th scope="row">Bitiş Tarihi :</th>
