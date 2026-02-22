@@ -68,7 +68,7 @@
         <!-- Content Area -->
         <div class="flex-1 px-4 py-4">
             <!-- Bordro List -->
-          <!--  <div id="bordro-tab" class="tab-content">
+            <!--  <div id="bordro-tab" class="tab-content">
                 <div class="flex flex-col gap-3" id="bordro-list">
                      Bordro items will be loaded here 
                     <div class="shimmer h-20 rounded-xl"></div>
@@ -184,8 +184,8 @@
 
 <style>
     .tab-btn.active {
-        background: rgba(19, 91, 236, 0.1);
-        color: #135bec;
+        background: rgba(var(--primary-rgb), 0.1);
+        color: var(--primary);
     }
 </style>
 

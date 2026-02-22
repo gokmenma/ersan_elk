@@ -211,7 +211,7 @@
                 <button onclick="Modal.close('talep-detay-modal')"
                     class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                     <span class="material-symbols-outlined text-slate-600">close</span>
-                    </button>
+                </button>
             </div>
         </div>
 
@@ -232,7 +232,7 @@
 <style>
     .talep-tab-btn.active {
         background: white;
-        color: #135bec;
+        color: var(--primary);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
@@ -241,14 +241,14 @@
     }
 
     .kategori-chip.active {
-        background: rgba(19, 91, 236, 0.1);
-        border-color: #135bec;
-        color: #135bec;
+        background: rgba(var(--primary-rgb), 0.1);
+        border-color: var(--primary);
+        color: var(--primary);
     }
 
     .oncelik-btn.active {
-        background: rgba(19, 91, 236, 0.1);
-        border-color: #135bec;
+        background: rgba(var(--primary-rgb), 0.1);
+        border-color: var(--primary);
     }
 </style>
 
