@@ -94,7 +94,7 @@ $settings = (object) $Settings->getAllSettingsAsKeyValue();
                             <?php endif ?>
                         </div>
                         <div class="tab-pane" id="canli_destek_ayarlari" role="tabpanel">
-                            <?php if (Gate::allows('canli_destek_ayarlari_sekmesi')): ?>
+                            <?php if (Gate::allows('canli_sohbet_ayarlari_sekmesi')): ?>
                             <?php include_once "icerik/canli-destek-ayarlari.php"; ?>
                             <?php endif ?>
                         </div>
