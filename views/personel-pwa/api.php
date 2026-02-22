@@ -2231,6 +2231,8 @@ try {
             $DestekModel = new \App\Model\DestekModel();
             $isWorkingHours = $DestekModel->isWorkingHours();
             $outOfHoursMsg = $DestekModel->getOutOfHoursMessage();
+            $Settings = new \App\Model\SettingsModel();
+            $adminDurum = $Settings->getSettings('canli_destek_admin_durum') ?: 'cevrimici';
 
             // Aktif konuşma var mı? (yeni oluşturma!)
             $existing = $DestekModel->getActiveConversation($personel_id);
@@ -2242,13 +2244,15 @@ try {
                     'konusma_id' => $existing->id,
                     'messages' => $messages,
                     'is_working_hours' => $isWorkingHours,
-                    'out_of_hours_message' => $outOfHoursMsg
+                    'out_of_hours_message' => $outOfHoursMsg,
+                    'admin_durum' => $adminDurum
                 ]);
             } else {
                 response(true, [
                     'has_conversation' => false,
                     'is_working_hours' => $isWorkingHours,
-                    'out_of_hours_message' => $outOfHoursMsg
+                    'out_of_hours_message' => $outOfHoursMsg,
+                    'admin_durum' => $adminDurum
                 ]);
             }
             break;
@@ -2264,6 +2268,9 @@ try {
                 break;
             }
 
+            $Settings = new \App\Model\SettingsModel();
+            $adminDurum = $Settings->getSettings('canli_destek_admin_durum') ?: 'cevrimici';
+
             // Aktif konuşma var mı?
             $existing = $DestekModel->getActiveConversation($personel_id);
             if ($existing) {
@@ -2274,7 +2281,8 @@ try {
                     'messages' => $messages,
                     'is_new' => false,
                     'is_working_hours' => $isWorkingHours,
-                    'out_of_hours_message' => $outOfHoursMsg
+                    'out_of_hours_message' => $outOfHoursMsg,
+                    'admin_durum' => $adminDurum
                 ]);
                 break;
             }
@@ -2309,7 +2317,8 @@ try {
             response(true, [
                 'konusma_id' => $konusmaId,
                 'messages' => $messages,
-                'is_new' => true
+                'is_new' => true,
+                'admin_durum' => $adminDurum
             ]);
             break;
 
@@ -2410,11 +2419,15 @@ try {
 
             $opponentLastReadId = $DestekModel->getOpponentLastReadId($konusmaId, 'personel');
 
+            $Settings = new \App\Model\SettingsModel();
+            $adminDurum = $Settings->getSettings('canli_destek_admin_durum') ?: 'cevrimici';
+
             response(true, [
                 'messages' => $messages,
                 'is_working_hours' => $isWorkingHours,
                 'out_of_hours_message' => $outOfHoursMsg,
-                'opponent_last_read_id' => $opponentLastReadId
+                'opponent_last_read_id' => $opponentLastReadId,
+                'admin_durum' => $adminDurum
             ]);
             break;
 
@@ -2434,11 +2447,14 @@ try {
             }
 
             $opponentLastReadId = $DestekModel->getOpponentLastReadId($konusmaId, 'personel');
+            $Settings = new \App\Model\SettingsModel();
+            $adminDurum = $Settings->getSettings('canli_destek_admin_durum') ?: 'cevrimici';
 
             response(true, [
                 'messages' => $newMessages,
                 'has_new' => !empty($newMessages),
-                'opponent_last_read_id' => $opponentLastReadId
+                'opponent_last_read_id' => $opponentLastReadId,
+                'admin_durum' => $adminDurum
             ]);
             break;
 

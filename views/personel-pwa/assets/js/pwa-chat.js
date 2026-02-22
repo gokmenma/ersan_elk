@@ -283,6 +283,10 @@ const LiveChat = {
           this.markMessagesAsReadUI(response.data.opponent_last_read_id);
         }
 
+        if (response.data.admin_durum) {
+          this.updateAdminStatus(response.data.admin_durum);
+        }
+
         if (inputArea) {
           if (durum === "cozuldu" || durum === "kapali") {
             this.disableInput(
@@ -317,6 +321,10 @@ const LiveChat = {
       const response = await this.apiRequest("check-chat");
 
       if (response.success && response.data) {
+        if (response.data.admin_durum) {
+          this.updateAdminStatus(response.data.admin_durum);
+        }
+
         if (response.data.has_conversation) {
           // Mevcut konuşma var - yükle
           this.konusmaId = response.data.konusma_id;
@@ -413,6 +421,9 @@ const LiveChat = {
         });
 
         if (startResponse.success && startResponse.data) {
+          if (startResponse.data.admin_durum) {
+            this.updateAdminStatus(startResponse.data.admin_durum);
+          }
           this.konusmaId = startResponse.data.konusma_id;
           // Action bar göster
           this.showActionBar(true);
@@ -690,6 +701,26 @@ const LiveChat = {
   },
 
   /**
+   * Yönetici Durumunu Güncelle
+   */
+  updateAdminStatus(durum) {
+    const statusText = document.getElementById("chat-status");
+    const statusDot = document.querySelector(".chat-online-dot");
+    if (!statusText || !statusDot) return;
+
+    if (durum === "cevrimici") {
+      statusText.textContent = "Çevrimiçi";
+      statusDot.style.background = "#22c55e";
+    } else if (durum === "mesgul") {
+      statusText.textContent = "Meşgul";
+      statusDot.style.background = "#f59e0b";
+    } else {
+      statusText.textContent = "Çevrimdışı";
+      statusDot.style.background = "#94a3b8";
+    }
+  },
+
+  /**
    * Polling başlat
    */
   startPolling() {
@@ -722,6 +753,10 @@ const LiveChat = {
       });
 
       if (response.success && response.data) {
+        if (response.data.admin_durum) {
+          this.updateAdminStatus(response.data.admin_durum);
+        }
+
         if (response.data.opponent_last_read_id) {
           this.markMessagesAsReadUI(response.data.opponent_last_read_id);
         }

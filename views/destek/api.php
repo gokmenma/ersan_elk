@@ -108,6 +108,10 @@ try {
                 'id' => $userId
             ], $mesaj, $dosyaUrl, $dosyaTip);
 
+            // Yönetici mesaj attığında durumu otomatikman çevrimiçi yap
+            $settingsModel = new \App\Model\SettingsModel();
+            $settingsModel->upsertSetting('canli_destek_admin_durum', 'cevrimici');
+
             // Push bildirim gönder
             try {
                 $conversation = $destekModel->getConversation($konusmaId);
@@ -149,6 +153,10 @@ try {
                 'tip' => 'yonetici',
                 'id' => $userId
             ], '📷 Resim', $uploadResult['url'], $uploadResult['type']);
+
+            // Yönetici mesaj attığında durumu otomatikman çevrimiçi yap
+            $settingsModel = new \App\Model\SettingsModel();
+            $settingsModel->upsertSetting('canli_destek_admin_durum', 'cevrimici');
 
             echo json_encode([
                 'status' => 'success',
