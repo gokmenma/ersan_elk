@@ -154,7 +154,10 @@ if ($page == "kasa/duzenle" || $page == "kasa/list") {
     $page == "mail-sms/mail-gonder" || $page == "arac-takip/list" || $page == "arac-takip/duzenle" ||
     $page == "personel-takip/list" || $page == "nobet/talepler" || $page == "talepler/list" ||
     $page == "tanimlamalar/unvan-ucret" ||
-    $page == "gorev-bildirimler"
+    $page == "gorev-bildirimler" ||
+    $page == "hakedisler/index" ||
+    $page == "hakedisler/sozlesme-detay" ||
+    $page == "hakedisler/hakedis-detay"
 
 ) { ?>
 

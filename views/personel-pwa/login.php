@@ -14,6 +14,7 @@ use App\Helper\Helper;
 use App\Model\PersonelModel;
 use App\Model\SettingsModel;
 use App\Model\MesajLogModel;
+use App\Model\PersonelGirisLogModel;
 
 // Zaten giriş yapmışsa ana sayfaya yönlendir
 if (isset($_SESSION['personel_id'])) {
@@ -53,8 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $phone = normalizePhone($phone);
 
         // Başında 0 varsa veya yoksa diye kontrol et
-        $stmt = $db->prepare("SELECT * FROM personel WHERE cep_telefonu = :phone");
-        $stmt->execute(['phone' => $phone]); // Son 10 hanesine bak
+        $stmt = $db->prepare("SELECT * FROM personel WHERE cep_telefonu = :phone OR cep_telefonu = :phone_with_zero");
+        $stmt->execute(['phone' => $phone, 'phone_with_zero' => '0' . $phone]); // Son 10 hanesine ve sıfırlı haline bak
         $personel = $stmt->fetch(PDO::FETCH_OBJ);
 
 
@@ -147,8 +148,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 
         $db = $PersonelModel->getDb();
-        $stmt = $db->prepare("SELECT * FROM personel WHERE tc_kimlik_no = :input OR cep_telefonu = :telefon");
-        $stmt->execute(['input' => $login_input, 'telefon' => $phone]);
+        $stmt = $db->prepare("SELECT * FROM personel WHERE tc_kimlik_no = :input OR cep_telefonu = :telefon OR cep_telefonu = :telefon_with_zero");
+        $stmt->execute(['input' => $login_input, 'telefon' => $phone, 'telefon_with_zero' => '0' . $phone]);
         $personel = $stmt->fetch(PDO::FETCH_OBJ);
 
         if ($personel) {
@@ -164,6 +165,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['personel_id'] = $personel->id;
                 $_SESSION['personel_tc'] = $personel->tc_kimlik_no;
                 $_SESSION['personel_adi'] = $personel->adi_soyadi;
+
+                // Log the successful login
+                try {
+                    $girisLogModel = new PersonelGirisLogModel();
+                    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+                    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                    $girisLogModel->logLogin($personel->id, $ip, $userAgent);
+                } catch (\Exception $e) {
+                    error_log("Login log error: " . $e->getMessage());
+                }
 
                 // Beni Hatırla
                 if (isset($_POST['remember'])) {

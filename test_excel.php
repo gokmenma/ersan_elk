@@ -1,18 +1,39 @@
 <?php
-session_start();
-$_SESSION['firma_id'] = 1;
-$_SERVER['REQUEST_METHOD'] = 'POST';
-$_POST = [
-    'action' => 'kacak-excel-kaydet',
-    'upload_date' => '20.02.2026'
-];
-$_FILES = [
-    'excel_file' => [
-        'name' => 'test_kacak.xlsx',
-        'type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'tmp_name' => __DIR__ . '/test_kacak.xlsx',
-        'error' => UPLOAD_ERR_OK,
-        'size' => filesize(__DIR__ . '/test_kacak.xlsx')
-    ]
-];
-require 'views/puantaj/api.php';
+require 'vendor/autoload.php';
+
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+
+$inputFileName = 'c:/xampp/htdocs/ersan_elk/views/hakedis/Hakediş 4.xlsx';
+
+try {
+    $spreadsheet = IOFactory::load($inputFileName);
+    $sheets = $spreadsheet->getAllSheets();
+
+    foreach ($sheets as $sheet) {
+        $sheetName = $sheet->getTitle();
+        echo "====================================\n";
+        echo "Sheet: $sheetName\n";
+        echo "====================================\n";
+
+        $highestRow = min(30, $sheet->getHighestRow());
+        $highestColIndex = Coordinate::columnIndexFromString($sheet->getHighestColumn());
+
+        for ($row = 1; $row <= $highestRow; $row++) {
+            $rowData = [];
+            for ($col = 1; $col <= $highestColIndex; $col++) {
+                $colStr = Coordinate::stringFromColumnIndex($col);
+                $cellValue = $sheet->getCell($colStr . $row)->getCalculatedValue();
+                if ($cellValue !== null && $cellValue !== '') {
+                    $rowData[] = $cellValue;
+                }
+            }
+            if (!empty($rowData)) {
+                echo "Row $row: " . implode(" | ", $rowData) . "\n";
+            }
+        }
+        echo "\n";
+    }
+} catch (\Exception $e) {
+    die('Error: ' . $e->getMessage());
+}

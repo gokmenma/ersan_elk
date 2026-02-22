@@ -64,6 +64,7 @@ if ($id > 0) {
         'finansal_islemler' => ['label' => 'Hesap Hareketleri', 'icon' => 'bx bx-lira'],
         'evraklar' => ['label' => 'Evraklar', 'icon' => 'bx bx-file'],
         'puantaj' => ['label' => 'İş Takip', 'icon' => 'bx bx-time-five'],
+        'giris_loglari' => ['label' => 'Giriş Logları', 'icon' => 'bx bx-history'],
     ];
 }
 ?>
@@ -486,6 +487,15 @@ if ($id > 0) {
                         <div class="tab-pane <?php echo $activeTab === 'puantaj' ? 'active show' : ''; ?>" id="puantaj"
                             role="tabpanel" data-loaded="false"
                             data-url="views/personel/get-tab-content.php?tab=puantaj&id=<?php echo $id; ?>">
+                            <div class="text-center p-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Yükleniyor...</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane <?php echo $activeTab === 'giris_loglari' ? 'active show' : ''; ?>"
+                            id="giris_loglari" role="tabpanel" data-loaded="false"
+                            data-url="views/personel/get-tab-content.php?tab=giris_loglari&id=<?php echo $id; ?>">
                             <div class="text-center p-5">
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">Yükleniyor...</span>

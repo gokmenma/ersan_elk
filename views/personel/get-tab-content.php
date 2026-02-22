@@ -17,6 +17,7 @@ use App\Model\BordroDonemModel;
 use App\Model\UserModel;
 use App\Model\AvansModel;
 use App\Model\BordroPersonelModel;
+use App\Model\PersonelGirisLogModel;
 use App\Helper\Security;
 
 $id = $_GET['id'] ?? 0;
@@ -133,6 +134,14 @@ switch ($tab) {
 
     case 'puantaj':
         include_once __DIR__ . "/icerik/puantaj.php";
+        break;
+    case 'giris_loglari':
+        $GirisLogModel = new PersonelGirisLogModel();
+        $db = $GirisLogModel->getDb();
+        $stmt = $db->prepare("SELECT * FROM personel_giris_loglari WHERE personel_id = ? ORDER BY giris_tarihi DESC");
+        $stmt->execute([$id]);
+        $logs = $stmt->fetchAll(PDO::FETCH_OBJ);
+        include_once __DIR__ . "/icerik/giris_loglari.php";
         break;
     default:
         echo "Geçersiz tab.";
