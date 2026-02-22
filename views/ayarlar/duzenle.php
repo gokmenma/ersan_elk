@@ -64,7 +64,7 @@ $settings = (object) $Settings->getAllSettingsAsKeyValue();
                             </a>
                         </li>
                         <?php endif ?>
-                        <?php if (Gate::allows('canli_destek_ayarlari_sekmesi')): ?>
+                        <?php if (Gate::allows('canli_sohbet_ayarlari_sekmesi')): ?>
                         <li class="nav-item" role="presentation">
                             <a class="nav-link" data-bs-toggle="tab" href="#canli_destek_ayarlari" role="tab"
                                 aria-selected="false">
