@@ -211,19 +211,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap"
         rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block"
         rel="stylesheet">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Theme Pre-init -->
+    <script>
+        (function () {
+            const themes = {
+                blue: { primary: '#135bec', dark: '#0d47c1' },
+                purple: { primary: '#7c3aed', dark: '#6d28d9' },
+                green: { primary: '#059669', dark: '#047857' },
+                red: { primary: '#dc2626', dark: '#b91c1c' },
+                orange: { primary: '#ea580c', dark: '#c2410c' },
+                pink: { primary: '#db2777', dark: '#be185d' },
+                teal: { primary: '#0d9488', dark: '#0f766e' },
+                slate: { primary: '#475569', dark: '#334155' },
+            };
+            const saved = localStorage.getItem('themeColor') || 'blue';
+            const t = themes[saved] || themes.blue;
+            window.__activeTheme = t;
+
+            const r = document.documentElement;
+            r.style.setProperty('--primary', t.primary);
+            r.style.setProperty('--primary-dark', t.dark);
+
+            const meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute('content', t.primary);
+        })();
+    </script>
 
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        "primary": "#135bec",
-                        "primary-dark": "#0d47c1",
+                        "primary": window.__activeTheme.primary,
+                        "primary-dark": window.__activeTheme.dark,
                     },
                     fontFamily: {
                         "display": ["Roboto Condensed", "sans-serif"]
