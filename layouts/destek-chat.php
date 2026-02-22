@@ -1298,6 +1298,26 @@ if (!$_destekModel->isWorkingHours()) {
         },
 
         // ===== Send Message =====
+        disableChatWindowInput(konusmaId, reason) {
+            const win = document.getElementById(`achat-win-${konusmaId}`);
+            if (!win) return;
+            
+            // Remove status bar buttons
+            const statusBar = win.querySelector('.achat-status-bar');
+            if (statusBar) {
+                statusBar.remove();
+            }
+
+            // Replace input area with disabled message
+            const inputArea = win.querySelector('.achat-chat-input-area');
+            if (inputArea) {
+                inputArea.className = 'achat-chat-input-area achat-input-disabled';
+                inputArea.innerHTML = `
+                <div class="achat-input-hint">
+                    <i class='bx bx-lock-alt'></i> Bu konuşma ${reason}
+                </div>`;
+            }
+        },
         async sendMessage(konusmaId) {
             const input = document.getElementById(`achat-input-${konusmaId}`);
             const mesaj = input?.value?.trim();
@@ -1518,6 +1538,13 @@ if (!$_destekModel->isWorkingHours()) {
                             msgContainer.insertAdjacentHTML('beforeend', this.renderMessage(msg, konusmaId));
                             if (msg.id > this.openWindows[konusmaId].lastMessageId) {
                                 this.openWindows[konusmaId].lastMessageId = msg.id;
+                            }
+
+                            if (msg.gonderen_tip === 'sistem' && msg.mesaj) {
+                                const lowerMsg = msg.mesaj.toLowerCase();
+                                if (lowerMsg.includes('kapatıldı') || lowerMsg.includes('çözüldü')) {
+                                    this.disableChatWindowInput(konusmaId, lowerMsg.includes('çözüldü') ? 'çözüldü' : 'kapatıldı');
+                                }
                             }
                         }
                     });
