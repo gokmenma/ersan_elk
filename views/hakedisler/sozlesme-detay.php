@@ -1,6 +1,7 @@
 <?php
 use App\Model\HakedisSozlesmeModel;
 use App\Model\HakedisKalemModel;
+use App\Helper\Form;
 
 $sozlesmeId = $_GET['id'] ?? 0;
 if (!$sozlesmeId) {
@@ -92,9 +93,17 @@ $aylar = [
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h4 class="card-title">Hakediş Dönemleri</h4>
-                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#yeniHakedisModal">
-                        <i class="bx bx-plus me-1"></i> Yeni Hakediş Ekle
-                    </button>
+                    <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                        <a href="?p=hakedisler/index"
+                            class="btn btn-link btn-sm text-secondary text-decoration-none px-3 fw-bold border-end rounded-0">
+                            <i class="bx bx-arrow-back me-1"></i> Sözleşmelere Dön
+                        </a>
+                        <button
+                            class="btn btn-primary btn-sm text-white shadow-primary px-3 fw-bold d-flex align-items-center"
+                            data-bs-toggle="modal" data-bs-target="#yeniHakedisModal">
+                            <i class="bx bx-plus fs-5 me-1"></i> Yeni Hakediş Ekle
+                        </button>
+                    </div>
                 </div>
 
                 <div class="table-responsive">
@@ -122,12 +131,20 @@ $aylar = [
 <div class="modal fade" id="yeniHakedisModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-success">
-                <h5 class="modal-title text-white">Yeni Hakediş Oluştur</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                    aria-label="Close"></button>
+            <div class="modal-header">
+                <div class="d-flex align-items-center">
+                    <div class="bg-success-subtle rounded-3 p-2 me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                        <i data-feather="edit-3" class="text-success" style="width: 20px; height: 20px;"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title mb-0" id="hakedisModalTitle">Hakediş Oluştur/Düzenle</h5>
+                        <small class="text-muted">Kayıt bilgilerini aşağıdan güncelleyebilirsiniz.</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="yeniHakedisForm">
+                <input type="hidden" name="id" id="hakedis_id">
                 <input type="hidden" name="sozlesme_id" value="<?= $sozlesme->id ?>">
                 <div class="modal-body">
                     <div class="alert alert-info">
@@ -136,44 +153,29 @@ $aylar = [
                     </div>
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Hakediş No <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" name="hakedis_no" required>
+                            <?= Form::FormFloatInput('number', 'hakedis_no', '', 'Hakediş No', 'Hakediş No', icon: 'hash', required: true) ?>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Hakediş Ayı <span class="text-danger">*</span></label>
-                            <select class="form-select" name="hakedis_tarihi_ay" required>
-                                <?php foreach ($aylar as $k => $v): ?>
-                                    <option value="<?= $k ?>" <?= date('n') == $k ? 'selected' : '' ?>><?= $v ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <?= Form::FormSelect2('hakedis_tarihi_ay', $aylar, date('n'), 'Hakediş Ayı', icon: 'calendar', required: true) ?>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Hakediş Yılı <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" name="hakedis_tarihi_yil" value="<?= date('Y') ?>"
-                                required>
+                            <?= Form::FormFloatInput('number', 'hakedis_tarihi_yil', date('Y'), 'Hakediş Yılı', 'Hakediş Yılı', icon: 'calendar', required: true) ?>
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Temel Endeks Ayı <span class="text-muted">(Sözleşme başı - Örn:
-                                    Eylül 2025)</span></label>
-                            <input type="text" class="form-control" name="temel_endeks_ayi" placeholder="Eylül 2025"
-                                required>
+                            <?= Form::FormFloatInput('text', 'temel_endeks_ayi', '', 'Eylül 2025', 'Temel Endeks Ayı (Sözleşme başı)', icon: 'activity', required: true) ?>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Güncel Endeks Ayı <span class="text-muted">(Hakediş ayı - Örn:
-                                    Şubat 2026)</span></label>
-                            <input type="text" class="form-control" name="guncel_endeks_ayi" placeholder="Şubat 2026"
-                                required>
+                            <?= Form::FormFloatInput('text', 'guncel_endeks_ayi', '', 'Şubat 2026', 'Güncel Endeks Ayı (Hakediş ayı)', icon: 'trending-up', required: true) ?>
                         </div>
                         <div class="col-md-12 mb-3">
-                            <label class="form-label">İş Yapılan Ayın Son Günü</label>
-                            <input type="date" class="form-control" name="is_yapilan_ayin_son_gunu">
+                            <?= Form::FormFloatInput('date', 'is_yapilan_ayin_son_gunu', '', '', 'İş Yapılan Ayın Son Günü', icon: 'calendar') ?>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="submit" class="btn btn-success">Oluştur ve Detaya Git</button>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-secondary px-4 fw-bold rounded-3" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-success px-4 fw-bold rounded-3 shadow-success" id="btnHakedisSave">Kaydet ve Detaya Git</button>
                 </div>
             </form>
         </div>
@@ -183,4 +185,3 @@ $aylar = [
 <script>
     var currentSozlesmeId = <?= $sozlesme->id ?>;
 </script>
-<script src="views/hakedisler/js/sozlesme-detay.js?v=<?= time() ?>"></script>

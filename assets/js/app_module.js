@@ -474,7 +474,19 @@ File: Main Js File
                     document.documentElement.getAttribute("data-theme-mode") ==
                       "ersan"
                   ? updateRadio("theme-ersan")
-                  : updateRadio("theme-default");
+                  : document.documentElement.hasAttribute("data-theme-mode") &&
+                      document.documentElement.getAttribute(
+                        "data-theme-mode",
+                      ) == "teal"
+                    ? updateRadio("theme-teal")
+                    : document.documentElement.hasAttribute(
+                          "data-theme-mode",
+                        ) &&
+                        document.documentElement.getAttribute(
+                          "data-theme-mode",
+                        ) == "cyan"
+                      ? updateRadio("theme-cyan")
+                      : updateRadio("theme-default");
 
     html.hasAttribute("data-bs-theme") &&
     html.getAttribute("data-bs-theme") == "dark"
@@ -493,6 +505,28 @@ File: Main Js File
       updateRadio("topbar-color-light");
     } else if (body.getAttribute("data-topbar") == "dark") {
       updateRadio("topbar-color-dark");
+    } else if (body.getAttribute("data-topbar") == "brand") {
+      updateRadio("topbar-color-brand");
+    } else if (body.getAttribute("data-topbar") == "red") {
+      updateRadio("topbar-red");
+    } else if (body.getAttribute("data-topbar") == "purple") {
+      updateRadio("topbar-purple");
+    } else if (body.getAttribute("data-topbar") == "slate") {
+      updateRadio("topbar-slate");
+    } else if (body.getAttribute("data-topbar") == "emerald") {
+      updateRadio("topbar-emerald");
+    } else if (body.getAttribute("data-topbar") == "orange") {
+      updateRadio("topbar-orange");
+    } else if (body.getAttribute("data-topbar") == "rose") {
+      updateRadio("topbar-rose");
+    } else if (body.getAttribute("data-topbar") == "ersan") {
+      updateRadio("topbar-ersan");
+    } else if (body.getAttribute("data-topbar") == "teal") {
+      updateRadio("topbar-teal");
+    } else if (body.getAttribute("data-topbar") == "cyan") {
+      updateRadio("topbar-cyan");
+    } else if (body.getAttribute("data-topbar") == "default") {
+      updateRadio("topbar-default");
     } else {
       updateRadio("topbar-color-light");
     }
@@ -510,7 +544,37 @@ File: Main Js File
       : body.hasAttribute("data-sidebar") &&
           body.getAttribute("data-sidebar") == "dark"
         ? updateRadio("sidebar-color-dark")
-        : updateRadio("sidebar-color-light");
+        : body.hasAttribute("data-sidebar") &&
+            body.getAttribute("data-sidebar") == "red"
+          ? updateRadio("sidebar-red")
+          : body.hasAttribute("data-sidebar") &&
+              body.getAttribute("data-sidebar") == "purple"
+            ? updateRadio("sidebar-purple")
+            : body.hasAttribute("data-sidebar") &&
+                body.getAttribute("data-sidebar") == "slate"
+              ? updateRadio("sidebar-slate")
+              : body.hasAttribute("data-sidebar") &&
+                  body.getAttribute("data-sidebar") == "emerald"
+                ? updateRadio("sidebar-emerald")
+                : body.hasAttribute("data-sidebar") &&
+                    body.getAttribute("data-sidebar") == "orange"
+                  ? updateRadio("sidebar-orange")
+                  : body.hasAttribute("data-sidebar") &&
+                      body.getAttribute("data-sidebar") == "rose"
+                    ? updateRadio("sidebar-rose")
+                    : body.hasAttribute("data-sidebar") &&
+                        body.getAttribute("data-sidebar") == "ersan"
+                      ? updateRadio("sidebar-ersan")
+                      : body.hasAttribute("data-sidebar") &&
+                          body.getAttribute("data-sidebar") == "teal"
+                        ? updateRadio("sidebar-teal")
+                        : body.hasAttribute("data-sidebar") &&
+                            body.getAttribute("data-sidebar") == "cyan"
+                          ? updateRadio("sidebar-cyan")
+                          : body.hasAttribute("data-sidebar") &&
+                              body.getAttribute("data-sidebar") == "default"
+                            ? updateRadio("sidebar-default")
+                            : updateRadio("sidebar-color-light");
     document.getElementsByTagName("html")[0].hasAttribute("dir") &&
     document.getElementsByTagName("html")[0].getAttribute("dir") == "rtl"
       ? updateRadio("layout-direction-rtl")

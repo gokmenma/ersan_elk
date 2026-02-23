@@ -137,6 +137,16 @@ if ($page == "bordro/parametreler") {
     echo '<script src="views/bordro/js/parametreler.js"></script>';
 }
 
+if ($page == "hakedisler/index") {
+    echo '<script src="views/hakedisler/js/sozlesmeler.js?v=' . time() . '"></script>';
+}
+if ($page == "hakedisler/sozlesme-detay") {
+    echo '<script src="views/hakedisler/js/sozlesme-detay.js?v=' . time() . '"></script>';
+}
+if ($page == "hakedisler/hakedis-detay") {
+    echo '<script src="views/hakedisler/js/hakedis-detay.js?v=' . time() . '"></script>';
+}
+
 ?>
 
 <!-- Datatable Scripts -->
@@ -175,6 +185,7 @@ if ($page == "bordro/parametreler") {
 
 
 <!-- Required Vendor Scripts -->
+<script src="assets/libs/moment/min/moment-with-locales.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 

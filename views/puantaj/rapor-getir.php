@@ -802,6 +802,10 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                 <?php if ($hasSubCols): ?>
                     <th colspan="<?= $subColCount ?>" id="actionTotalsHeader">İŞLEM TOPLAMLARI</th><?php endif; ?>
                 <th>TOPLAM</th>
+                <?php if ($activeTab === 'kesme'): ?>
+                    <th>DÜŞÜLECEK SAYI</th>
+                    <th>KALAN TOPLAM</th>
+                <?php endif; ?>
                 <th>BÖLGE TOP.</th>
                 <th>BÖLGE ADI</th>
             </tr>
@@ -854,6 +858,10 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                 class="vertical-text"><?= $wt['code'] ?></span></th><?php endforeach; ?>
                 <?php endif; ?>
                 <th></th>
+                <?php if ($activeTab === 'kesme'): ?>
+                    <th></th>
+                    <th></th>
+                <?php endif; ?>
                 <th></th>
                 <th></th>
             </tr>
@@ -1022,6 +1030,26 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                         <?php endif; ?>
 
                         <td class="table-light fw-bold row-total-cell"><?= $personelTotal ?: '' ?></td>
+                        <?php if ($activeTab === 'kesme'): ?>
+                            <?php
+                            $dusum = 0;
+                            if (isset($summary[$pId][$tId])) {
+                                foreach ($summary[$pId][$tId] as $dayData) {
+                                    if (isset($dayData['Manuel Düşüm'])) {
+                                        $dusum += abs($dayData['Manuel Düşüm']);
+                                    }
+                                }
+                            }
+                            ?>
+                            <td class="table-danger" style="width: 80px;">
+                                <input type="number" class="form-control form-control-sm text-center fw-bold manual-dusum-input"
+                                    data-pid="<?= $pId ?>" data-tid="<?= $tId ?>" value="<?= $dusum ?: '' ?>" min="0"
+                                    style="width: 70px; display:inline-block; padding: 2px;">
+                            </td>
+                            <td class="table-success fw-bold kalan-toplam-cell">
+                                <?= $personelTotal - $dusum ?>
+                            </td>
+                        <?php endif; ?>
                         <?php if ($firstRow): ?>
                             <td rowspan="<?= count($item['teams']) ?>" class="fw-bold region-total-cell"
                                 data-region-id="<?= $regionId ?>"><?= $regionTotal ?: '' ?></td>
@@ -1070,6 +1098,9 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     <?php endforeach; ?>
                     <td class="table-warning fw-bold action-types-grand-total"><?= $allActionTypesGrandTotal ?: '' ?>
                     </td>
+                    <?php if ($activeTab === 'kesme'): ?>
+                        <td colspan="2"></td>
+                    <?php endif; ?>
                     <td colspan="2"></td>
                 </tr>
             <?php endif; ?>
@@ -1094,6 +1125,10 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     </td>
                 <?php endif; ?>
                 <td class="grand-total-cell"><?= $grandTotal ?: '' ?></td>
+                <?php if ($activeTab === 'kesme'): ?>
+                    <td class="grand-dusum-cell table-danger"></td>
+                    <td class="grand-kalan-cell table-success"></td>
+                <?php endif; ?>
                 <td colspan="2"></td>
             </tr>
         </tfoot>
@@ -1190,12 +1225,38 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
         window.location.href = url;
     });
 
+    $(document).off('change', '.manual-dusum-input').on('change', '.manual-dusum-input', function () {
+        const $input = $(this);
+        const pId = $input.data('pid');
+        const tId = $input.data('tid');
+        const dusumValue = parseInt($input.val()) || 0;
+
+        updateDynamicTotals();
+
+        $.ajax({
+            url: 'views/puantaj/api.php',
+            type: 'POST',
+            data: {
+                action: 'save-manuel-dusum',
+                personel_id: pId,
+                ekip_kodu_id: tId,
+                dusum_value: dusumValue,
+                year: '<?= $year ?>',
+                month: '<?= $month ?>'
+            },
+            success: function (res) { }
+        });
+    });
+
     function updateDynamicTotals() {
         const reportDates = <?= json_encode($reportDates) ?>;
         const workTypeTotals = {}; // legend totals
         const dateTypeTotals = {}; // footer row 1 totals [date][code]
         const dailyGrandTotals = {}; // footer row 2 totals [date]
         let overallGrandTotal = 0;
+        let overallGrandDusum = 0;
+        let overallGrandKalan = 0;
+        const hasSubCols = <?= $hasSubCols ? 'true' : 'false' ?>;
 
         // Initialize structures
         $('#workTypeLegend .legend-item').each(function () {
@@ -1259,6 +1320,14 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             // Update row total cell
             $row.find('.row-total-cell').text(rowTotal || '');
             overallGrandTotal += rowTotal;
+
+            <?php if ($activeTab === 'kesme'): ?>
+                const dusumVal = parseInt($row.find('.manual-dusum-input').val()) || 0;
+                overallGrandDusum += dusumVal;
+                const kalanVal = rowTotal - dusumVal;
+                $row.find('.kalan-toplam-cell').text(kalanVal);
+                overallGrandKalan += kalanVal;
+            <?php endif; ?>
         });
 
         // Update Legend Badges
@@ -1293,6 +1362,11 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
 
         // Update Grand Total and Region Totals
         $('.grand-total-cell').text(overallGrandTotal || '');
+
+        <?php if ($activeTab === 'kesme'): ?>
+            $('.grand-dusum-cell').text(overallGrandDusum || '0');
+            $('.grand-kalan-cell').text(overallGrandKalan || '0');
+        <?php endif; ?>
 
         $('.region-total-cell').each(function () {
             const regionId = $(this).data('region-id');

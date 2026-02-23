@@ -532,7 +532,6 @@ class BordroPersonelModel extends Model
                 $netMaas
             );
         }
-
         return ['kesinti' => $toplamKesinti, 'ek_odeme' => $toplamEkOdeme];
     }
 
@@ -615,8 +614,78 @@ class BordroPersonelModel extends Model
             return;
         }
 
-        // 5. is_emri_sonucu bazlı hesapla
+        // 5. Manuel Düşüm İşlemi
+        $manuelDusumTotal = 0;
+        $gecerliIsler = [];
+
+        // "Manuel Düşüm" bul ve diğerlerinden ayır
         foreach ($yapilanIsler as $is) {
+            if ($is->is_emri_sonucu === 'Manuel Düşüm') {
+                // "Manuel Düşüm" ler eksi (-) olarak kaydedildiği için abs() alıyoruz
+                $manuelDusumTotal += abs(floatval($is->adet));
+            } else {
+                $gecerliIsler[] = $is;
+            }
+        }
+
+        // Eğer düşülecek sayı varsa, işlerin sayılarından düş
+        if ($manuelDusumTotal > 0) {
+            // Ayarlardan hangi kalemden düşüleceğini al
+            $SettingsModel = new \App\Model\SettingsModel();
+            $firmaId = $personel->firma_id ?? $_SESSION['firma_id'] ?? 0;
+            $reportSettings = $SettingsModel->getAllSettingsAsKeyValue($firmaId);
+            $dusulecekIsTuru = $reportSettings['dusulecek_is_turu'] ?? 'Ödeme Yaptırıldı';
+
+            // 1. Önce seçilen iş türünden düşmeye çalış
+            foreach ($gecerliIsler as &$is) {
+                if ($is->is_emri_sonucu === $dusulecekIsTuru) {
+                    $mevcutAdet = floatval($is->adet);
+                    if ($mevcutAdet > 0) {
+                        if ($mevcutAdet >= $manuelDusumTotal) {
+                            $is->adet = $mevcutAdet - $manuelDusumTotal;
+                            $manuelDusumTotal = 0;
+                        } else {
+                            $manuelDusumTotal -= $mevcutAdet;
+                            $is->adet = 0;
+                        }
+                    }
+                    break;
+                }
+            }
+            unset($is);
+
+            // 2. Eğer hala düşülecek sayı kalmışsa (veya seçilen tür bulunamadıysa), 
+            // en yüksek adeti olandan başlayarak düş (Sıralama yaparak)
+            if ($manuelDusumTotal > 0) {
+                usort($gecerliIsler, function ($a, $b) {
+                    return floatval($b->adet) <=> floatval($a->adet);
+                });
+
+                foreach ($gecerliIsler as &$is) {
+                    if ($manuelDusumTotal <= 0)
+                        break;
+
+                    // Sadece ücretlendirilen işlerden düş
+                    if (!isset($isEmriSonucuMap[$is->is_emri_sonucu]))
+                        continue;
+
+                    $mevcutAdet = floatval($is->adet);
+                    if ($mevcutAdet > 0) {
+                        if ($mevcutAdet >= $manuelDusumTotal) {
+                            $is->adet = $mevcutAdet - $manuelDusumTotal;
+                            $manuelDusumTotal = 0;
+                        } else {
+                            $manuelDusumTotal -= $mevcutAdet;
+                            $is->adet = 0;
+                        }
+                    }
+                }
+                unset($is); // Referans hatasını önlemek için
+            }
+        }
+
+        // 6. is_emri_sonucu bazlı hesapla
+        foreach ($gecerliIsler as $is) {
             $isEmriSonucu = $is->is_emri_sonucu;
             $adet = floatval($is->adet);
 

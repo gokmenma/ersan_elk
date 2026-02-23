@@ -99,13 +99,17 @@ if (!in_array($page, $allowed_pages)) {
         (function () {
             const themes = {
                 blue: { primary: '#135bec', dark: '#0d47c1', light: '#4a87f5' },
-                purple: { primary: '#7c3aed', dark: '#6d28d9', light: '#a78bfa' },
+                purple: { primary: '#5156be', dark: '#414598', light: '#868ae0' },
                 green: { primary: '#059669', dark: '#047857', light: '#34d399' },
-                red: { primary: '#dc2626', dark: '#b91c1c', light: '#f87171' },
-                orange: { primary: '#ea580c', dark: '#c2410c', light: '#fb923c' },
+                red: { primary: '#f46a6a', dark: '#c35555', light: '#f89a9a' },
+                orange: { primary: '#f97316', dark: '#c75c12', light: '#fb9a5c' },
                 pink: { primary: '#db2777', dark: '#be185d', light: '#f472b6' },
-                teal: { primary: '#0d9488', dark: '#0f766e', light: '#2dd4bf' },
-                slate: { primary: '#475569', dark: '#334155', light: '#94a3b8' },
+                teal: { primary: '#0d9488', dark: '#0a766d', light: '#3dbbb1' },
+                cyan: { primary: '#06b6d4', dark: '#0592aa', light: '#38d1e9' },
+                emerald: { primary: '#10b981', dark: '#0d9467', light: '#40d5a7' },
+                rose: { primary: '#ec003f', dark: '#bc0032', light: '#f24d79' },
+                ersan: { primary: '#e2bd61', dark: '#b5974d', light: '#ebcc85' },
+                slate: { primary: '#252526', dark: '#1e1e1f', light: '#4d4d4f' },
             };
             const saved = localStorage.getItem('themeColor') || 'blue';
             const t = themes[saved] || themes.blue;

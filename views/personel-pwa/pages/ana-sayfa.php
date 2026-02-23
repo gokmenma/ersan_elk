@@ -91,13 +91,13 @@ use App\Helper\Helper;
                     </div>
 
                     <!-- Konum İzni Uyarı -->
-                    <div id="konum-izni-uyari"
-                        class="hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 mb-4">
+                    <div id="konum-izni-uyari" onclick="requestKonumIzni()"
+                        class="hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 mb-4 cursor-pointer active:scale-[0.98] transition-all">
                         <div class="flex items-start gap-2">
                             <span class="material-symbols-outlined text-amber-600 text-lg">warning</span>
                             <div>
                                 <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Konum İzni Gerekli</p>
-                                <p class="text-xs text-amber-600 dark:text-amber-400">Göreve başlamak için konum izni
+                                <p class="text-xs text-amber-600 dark:text-amber-400">Göreve başlamak için buraya tıklayarak konum izni
                                     vermeniz gerekmektedir.</p>
                             </div>
                         </div>
@@ -182,47 +182,83 @@ use App\Helper\Helper;
         </div>
     </section>
 
+    <!-- Performance Summary -->
+    <section class="px-4 mt-6">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Performans Özeti</h2>
+            <div class="flex bg-slate-200/50 dark:bg-slate-800 p-1 rounded-xl shadow-inner border border-slate-300/30">
+                <button onclick="changeWorkStatsType('day')" id="stats-day-btn"
+                    class="px-5 py-2 text-xs font-bold rounded-lg transition-all stats-toggle-btn active-stats-btn bg-white dark:bg-primary shadow-md text-primary dark:text-white">
+                    Gün
+                </button>
+                <button onclick="changeWorkStatsType('month')" id="stats-month-btn"
+                    class="px-5 py-2 text-xs font-bold rounded-lg transition-all stats-toggle-btn text-slate-600 dark:text-slate-400">
+                    Ay
+                </button>
+            </div>
+        </div>
+
+        <div id="work-stats-container" class="grid grid-cols-2 gap-3">
+            <!-- Loading -->
+            <div class="col-span-2 py-8 flex justify-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+        </div>
+    </section>
+
     <!-- Quick Actions -->
     <section class="px-4 mt-6">
         <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-3">Hızlı İşlemler</h2>
-        <div class="grid grid-cols-2 gap-3">
-            <a href="?page=izin" class="quick-action">
-                <div class="quick-action-icon">
-                    <span class="material-symbols-outlined text-slate-600 dark:text-slate-300">event_busy</span>
+        <div class="grid grid-cols-2 gap-3 pb-8">
+            <a href="?page=izin" class="quick-action group border-none shadow-indigo-200/50 bg-gradient-to-br from-indigo-500 to-indigo-700 p-5 transition-all active:scale-95">
+                <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
+                    <span class="material-symbols-outlined text-white text-2xl filled">event_busy</span>
                 </div>
                 <div>
-                    <h3 class="font-bold text-sm text-slate-900 dark:text-white">İzin Talebi</h3>
-                    <p class="text-xs text-slate-500">Yeni izin planla</p>
+                    <h3 class="font-bold text-sm text-white">İzin Talebi</h3>
+                    <p class="text-[10px] text-indigo-100/80 font-medium">Yeni izin planla</p>
+                </div>
+                <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                    <span class="material-symbols-outlined text-7xl text-white">event_busy</span>
                 </div>
             </a>
 
-            <a href="?page=talep" class="quick-action">
-                <div class="quick-action-icon">
-                    <span class="material-symbols-outlined text-slate-600 dark:text-slate-300">assignment</span>
+            <a href="?page=talep" class="quick-action group border-none shadow-emerald-200/50 bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 transition-all active:scale-95">
+                <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
+                    <span class="material-symbols-outlined text-white text-2xl filled">assignment</span>
                 </div>
                 <div>
-                    <h3 class="font-bold text-sm text-slate-900 dark:text-white">Talep Oluştur</h3>
-                    <p class="text-xs text-slate-500">Talep, öneri, şikayet</p>
+                    <h3 class="font-bold text-sm text-white">Talep Oluştur</h3>
+                    <p class="text-[10px] text-emerald-100/80 font-medium">Öneri ve Şikayet</p>
+                </div>
+                <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                    <span class="material-symbols-outlined text-7xl text-white">assignment</span>
                 </div>
             </a>
 
-            <a href="?page=bordro" class="quick-action">
-                <div class="quick-action-icon">
-                    <span class="material-symbols-outlined text-slate-600 dark:text-slate-300">receipt_long</span>
+            <a href="?page=bordro" class="quick-action group border-none shadow-orange-200/50 bg-gradient-to-br from-orange-500 to-orange-700 p-5 transition-all active:scale-95">
+                <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
+                    <span class="material-symbols-outlined text-white text-2xl filled">receipt_long</span>
                 </div>
                 <div>
-                    <h3 class="font-bold text-sm text-slate-900 dark:text-white">Avanslar</h3>
-                    <p class="text-xs text-slate-500">Avans Talebi Yap</p>
+                    <h3 class="font-bold text-sm text-white">Avanslar</h3>
+                    <p class="text-[10px] text-orange-100/80 font-medium">Avans Talebi Yap</p>
+                </div>
+                <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                    <span class="material-symbols-outlined text-7xl text-white">receipt_long</span>
                 </div>
             </a>
 
-            <a href="?page=profil" class="quick-action">
-                <div class="quick-action-icon">
-                    <span class="material-symbols-outlined text-slate-600 dark:text-slate-300">person_search</span>
+            <a href="?page=profil" class="quick-action group border-none shadow-rose-200/50 bg-gradient-to-br from-rose-500 to-rose-700 p-5 transition-all active:scale-95">
+                <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
+                    <span class="material-symbols-outlined text-white text-2xl filled">person_search</span>
                 </div>
                 <div>
-                    <h3 class="font-bold text-sm text-slate-900 dark:text-white">Profilim</h3>
-                    <p class="text-xs text-slate-500">Bilgileri güncelle</p>
+                    <h3 class="font-bold text-sm text-white">Profilim</h3>
+                    <p class="text-[10px] text-rose-100/80 font-medium">Bilgileri Güncelle</p>
+                </div>
+                <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                    <span class="material-symbols-outlined text-7xl text-white">person_search</span>
                 </div>
             </a>
         </div>
@@ -314,6 +350,8 @@ use App\Helper\Helper;
             loadNotificationCount();
             // Load events slider
             loadEtkinlikSlider();
+            // Load work stats
+            loadWorkStats('day');
 
             // --- ANLIK KONUM İSTEĞİ KONTROLÜ ---
             // Uygulama açık olduğu sürece her 2 dakikada bir kontrol et
@@ -464,6 +502,20 @@ use App\Helper\Helper;
 
         function hideKonumUyari() {
             document.getElementById('konum-izni-uyari').classList.add('hidden');
+        }
+
+        async function requestKonumIzni() {
+            try {
+                // getKonum() navigator.geolocation.getCurrentPosition() çağrısı yaptığı için 
+                // tarayıcının izin penceresini tetikler.
+                await getKonum();
+                // İzin verildikten sonra kontrolü tekrar çalıştır
+                checkKonumIzni();
+            } catch (error) {
+                console.error('Konum izni isteği hatası:', error);
+                // Hata mesajını kullanıcıya göster (Reddedildi vs)
+                Toast.show(error.message, 'error');
+            }
         }
 
         function disableGorevButton() {
@@ -638,6 +690,63 @@ use App\Helper\Helper;
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
             }
+        }
+
+        async function loadWorkStats(type) {
+            var container = document.getElementById('work-stats-container');
+            // Show loading if container is empty or has items (to show refresh)
+            if (container.children.length > 1 || container.querySelector('.animate-spin') === null) {
+                container.innerHTML = '<div class="col-span-2 py-8 flex justify-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>';
+            }
+
+            try {
+                var response = await API.request('getWorkStats', { type: type });
+                if (response.success && response.data && response.data.length > 0) {
+                    container.innerHTML = response.data.map(function (stat) {
+                        return `
+                            <div class="card p-4 flex flex-col gap-2 relative overflow-hidden group">
+                                <div class="absolute -right-2 -bottom-2 opacity-[0.05] group-hover:opacity-[0.1] transition-opacity">
+                                    <span class="material-symbols-outlined text-6xl">${stat.ikon}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-primary text-lg">${stat.ikon}</span>
+                                    </div>
+                                    <p class="text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider">${stat.baslik}</p>
+                                </div>
+                                <div class="mt-1">
+                                    <p class="text-2xl font-black text-slate-900 dark:text-white">${stat.toplam}</p>
+                                    <p class="text-[10px] text-slate-400 font-medium">Tamamlanan İş</p>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    container.innerHTML = '<div class="col-span-2 card p-8 flex flex-col items-center justify-center text-center opacity-60"><span class="material-symbols-outlined text-4xl mb-2 text-slate-300">history_toggle_off</span><p class="text-sm text-slate-500">Bu dönemde henüz iş kaydı bulunmamaktadır.</p></div>';
+                }
+            } catch (error) {
+                console.error('Work stats load error:', error);
+                container.innerHTML = '<div class="col-span-2 card p-6 text-center text-red-500 text-sm">Veriler yüklenirken bir hata oluştu.</div>';
+            }
+        }
+
+        function changeWorkStatsType(type) {
+            const dayBtn = document.getElementById('stats-day-btn');
+            const monthBtn = document.getElementById('stats-month-btn');
+
+            if (type === 'day') {
+                dayBtn.classList.add('bg-white', 'dark:bg-primary', 'shadow-sm', 'text-primary', 'dark:text-white');
+                dayBtn.classList.remove('text-slate-500');
+                monthBtn.classList.remove('bg-white', 'dark:bg-primary', 'shadow-sm', 'text-primary', 'dark:text-white');
+                monthBtn.classList.add('text-slate-500');
+            } else {
+                monthBtn.classList.add('bg-white', 'dark:bg-primary', 'shadow-sm', 'text-primary', 'dark:text-white');
+                monthBtn.classList.remove('text-slate-500');
+                dayBtn.classList.remove('bg-white', 'dark:bg-primary', 'shadow-sm', 'text-primary', 'dark:text-white');
+                dayBtn.classList.add('text-slate-500');
+            }
+
+            loadWorkStats(type);
         }
 
         async function loadDashboardData() {

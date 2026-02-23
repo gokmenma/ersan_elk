@@ -555,6 +555,300 @@ body[data-sidebar="brand"] .navbar-brand-box {
   --bs-primary: #5156be;
   --bs-primary-rgb: 81, 86, 190;
 }
+
+[data-theme-mode="teal"] {
+  --bs-primary: #0d9488;
+  --bs-primary-rgb: 13, 148, 136;
+}
+
+[data-theme-mode="cyan"] {
+  --bs-primary: #06b6d4;
+  --bs-primary-rgb: 6, 182, 212;
+}
+
+/* Custom Color Selectors for Right Sidebar/Settings etc */
+.color-selector-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.color-selector-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.165, 0.84, 0.44, 1);
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+  margin: 0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+.color-selector-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.18);
+}
+.color-selector-btn:checked {
+  border-color: var(--bs-card-bg);
+  box-shadow: 0 0 0 3px var(--bs-primary, #6c757d);
+  transform: scale(1.15);
+}
+.color-selector-btn:checked::after {
+  content: "\f012c";
+  font-family: "Material Design Icons";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 16px;
+}
+.color-selector-btn.color-default {
+  background-color: #1c84ee;
+}
+.color-selector-btn.color-red {
+  background-color: #f46a6a;
+}
+.color-selector-btn.color-purple {
+  background-color: #5156be;
+}
+.color-selector-btn.color-slate {
+  background-color: #252526;
+}
+.color-selector-btn.color-emerald {
+  background-color: #10b981;
+}
+.color-selector-btn.color-orange {
+  background-color: #f97316;
+}
+.color-selector-btn.color-rose {
+  background-color: #ec003f;
+}
+.color-selector-btn.color-ersan {
+  background-color: #e2bd61;
+}
+.color-selector-btn.color-teal {
+  background-color: #0d9488;
+}
+.color-selector-btn.color-cyan {
+  background-color: #06b6d4;
+}
+
+/* Custom topbar and sidebar background support */
+body[data-sidebar="red"] .vertical-menu,
+body[data-topbar="red"] #page-topbar,
+body[data-topbar="red"] .navbar-brand-box {
+  background-color: #f46a6a !important;
+  border-color: #f46a6a !important;
+}
+body[data-sidebar="purple"] .vertical-menu,
+body[data-topbar="purple"] #page-topbar,
+body[data-topbar="purple"] .navbar-brand-box {
+  background-color: #5156be !important;
+  border-color: #5156be !important;
+}
+body[data-sidebar="slate"] .vertical-menu,
+body[data-topbar="slate"] #page-topbar,
+body[data-topbar="slate"] .navbar-brand-box {
+  background-color: #252526 !important;
+  border-color: #252526 !important;
+}
+body[data-sidebar="emerald"] .vertical-menu,
+body[data-topbar="emerald"] #page-topbar,
+body[data-topbar="emerald"] .navbar-brand-box {
+  background-color: #10b981 !important;
+  border-color: #10b981 !important;
+}
+body[data-sidebar="orange"] .vertical-menu,
+body[data-topbar="orange"] #page-topbar,
+body[data-topbar="orange"] .navbar-brand-box {
+  background-color: #f97316 !important;
+  border-color: #f97316 !important;
+}
+body[data-sidebar="rose"] .vertical-menu,
+body[data-topbar="rose"] #page-topbar,
+body[data-topbar="rose"] .navbar-brand-box {
+  background-color: #ec003f !important;
+  border-color: #ec003f !important;
+}
+body[data-sidebar="ersan"] .vertical-menu,
+body[data-topbar="ersan"] #page-topbar,
+body[data-topbar="ersan"] .navbar-brand-box {
+  background-color: #e2bd61 !important;
+  border-color: #e2bd61 !important;
+}
+body[data-sidebar="teal"] .vertical-menu,
+body[data-topbar="teal"] #page-topbar,
+body[data-topbar="teal"] .navbar-brand-box {
+  background-color: #0d9488 !important;
+  border-color: #0d9488 !important;
+}
+body[data-sidebar="cyan"] .vertical-menu,
+body[data-topbar="cyan"] #page-topbar,
+body[data-topbar="cyan"] .navbar-brand-box {
+  background-color: #06b6d4 !important;
+  border-color: #06b6d4 !important;
+}
+body[data-sidebar="default"] .vertical-menu,
+body[data-topbar="default"] #page-topbar,
+body[data-topbar="default"] .navbar-brand-box {
+  background-color: #1c84ee !important;
+  border-color: #1c84ee !important;
+}
+
+body[data-topbar="brand"] #page-topbar,
+body[data-topbar="brand"] .navbar-brand-box {
+  background-color: var(--bs-primary) !important;
+  border-color: transparent !important;
+}
+
+/* Fix text and icon colors when using dark backgrounds (all these custom colors act like dark mode for text) */
+body[data-topbar="red"] .header-item,
+body[data-topbar="purple"] .header-item,
+body[data-topbar="slate"] .header-item,
+body[data-topbar="emerald"] .header-item,
+body[data-topbar="orange"] .header-item,
+body[data-topbar="rose"] .header-item,
+body[data-topbar="ersan"] .header-item,
+body[data-topbar="teal"] .header-item,
+body[data-topbar="cyan"] .header-item,
+body[data-topbar="default"] .header-item,
+body[data-topbar="brand"] .header-item {
+  color: #e9ecef !important;
+}
+body[data-topbar="red"] .app-search span,
+body[data-topbar="purple"] .app-search span,
+body[data-topbar="slate"] .app-search span,
+body[data-topbar="emerald"] .app-search span,
+body[data-topbar="orange"] .app-search span,
+body[data-topbar="rose"] .app-search span,
+body[data-topbar="ersan"] .app-search span,
+body[data-topbar="teal"] .app-search span,
+body[data-topbar="cyan"] .app-search span,
+body[data-topbar="default"] .app-search span,
+body[data-topbar="brand"] .app-search span {
+  color: #e9ecef !important;
+}
+body[data-topbar="red"] .logo-dark,
+body[data-topbar="purple"] .logo-dark,
+body[data-topbar="slate"] .logo-dark,
+body[data-topbar="emerald"] .logo-dark,
+body[data-topbar="orange"] .logo-dark,
+body[data-topbar="rose"] .logo-dark,
+body[data-topbar="ersan"] .logo-dark,
+body[data-topbar="teal"] .logo-dark,
+body[data-topbar="cyan"] .logo-dark,
+body[data-topbar="default"] .logo-dark,
+body[data-topbar="brand"] .logo-dark {
+  display: none !important;
+}
+body[data-topbar="red"] .logo-light,
+body[data-topbar="purple"] .logo-light,
+body[data-topbar="slate"] .logo-light,
+body[data-topbar="emerald"] .logo-light,
+body[data-topbar="orange"] .logo-light,
+body[data-topbar="rose"] .logo-light,
+body[data-topbar="ersan"] .logo-light,
+body[data-topbar="teal"] .logo-light,
+body[data-topbar="cyan"] .logo-light,
+body[data-topbar="default"] .logo-light,
+body[data-topbar="brand"] .logo-light {
+  display: block !important;
+}
+
+body[data-sidebar="red"] #sidebar-menu ul li a,
+body[data-sidebar="purple"] #sidebar-menu ul li a,
+body[data-sidebar="slate"] #sidebar-menu ul li a,
+body[data-sidebar="emerald"] #sidebar-menu ul li a,
+body[data-sidebar="orange"] #sidebar-menu ul li a,
+body[data-sidebar="rose"] #sidebar-menu ul li a,
+body[data-sidebar="ersan"] #sidebar-menu ul li a,
+body[data-sidebar="teal"] #sidebar-menu ul li a,
+body[data-sidebar="cyan"] #sidebar-menu ul li a,
+body[data-sidebar="default"] #sidebar-menu ul li a {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+body[data-sidebar="red"] #sidebar-menu ul li a i,
+body[data-sidebar="purple"] #sidebar-menu ul li a i,
+body[data-sidebar="slate"] #sidebar-menu ul li a i,
+body[data-sidebar="emerald"] #sidebar-menu ul li a i,
+body[data-sidebar="orange"] #sidebar-menu ul li a i,
+body[data-sidebar="rose"] #sidebar-menu ul li a i,
+body[data-sidebar="ersan"] #sidebar-menu ul li a i,
+body[data-sidebar="teal"] #sidebar-menu ul li a i,
+body[data-sidebar="cyan"] #sidebar-menu ul li a i,
+body[data-sidebar="default"] #sidebar-menu ul li a i {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+body[data-sidebar="red"] #sidebar-menu ul li a:hover,
+body[data-sidebar="red"] #sidebar-menu ul li.mm-active > a,
+body[data-sidebar="red"] #sidebar-menu ul li a.active,
+body[data-sidebar="purple"] #sidebar-menu ul li a:hover,
+body[data-sidebar="purple"] #sidebar-menu ul li.mm-active > a,
+body[data-sidebar="purple"] #sidebar-menu ul li a.active,
+body[data-sidebar="slate"] #sidebar-menu ul li a:hover,
+body[data-sidebar="slate"] #sidebar-menu ul li.mm-active > a,
+body[data-sidebar="slate"] #sidebar-menu ul li a.active,
+body[data-sidebar="emerald"] #sidebar-menu ul li a:hover,
+body[data-sidebar="emerald"] #sidebar-menu ul li.mm-active > a,
+body[data-sidebar="emerald"] #sidebar-menu ul li a.active,
+body[data-sidebar="orange"] #sidebar-menu ul li a:hover,
+body[data-sidebar="orange"] #sidebar-menu ul li.mm-active > a,
+body[data-sidebar="orange"] #sidebar-menu ul li a.active,
+body[data-sidebar="rose"] #sidebar-menu ul li a:hover,
+body[data-sidebar="rose"] #sidebar-menu ul li.mm-active > a,
+body[data-sidebar="rose"] #sidebar-menu ul li a.active,
+body[data-sidebar="ersan"] #sidebar-menu ul li a:hover,
+body[data-sidebar="ersan"] #sidebar-menu ul li.mm-active > a,
+body[data-sidebar="ersan"] #sidebar-menu ul li a.active,
+body[data-sidebar="teal"] #sidebar-menu ul li a:hover,
+body[data-sidebar="teal"] #sidebar-menu ul li.mm-active > a,
+body[data-sidebar="teal"] #sidebar-menu ul li a.active,
+body[data-sidebar="cyan"] #sidebar-menu ul li a:hover,
+body[data-sidebar="cyan"] #sidebar-menu ul li.mm-active > a,
+body[data-sidebar="cyan"] #sidebar-menu ul li a.active,
+body[data-sidebar="default"] #sidebar-menu ul li a:hover,
+body[data-sidebar="default"] #sidebar-menu ul li.mm-active > a,
+body[data-sidebar="default"] #sidebar-menu ul li a.active {
+  color: #fff !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+body[data-sidebar="red"] #sidebar-menu ul li a:hover i,
+body[data-sidebar="red"] #sidebar-menu ul li.mm-active > a i,
+body[data-sidebar="red"] #sidebar-menu ul li a.active i,
+body[data-sidebar="purple"] #sidebar-menu ul li a:hover i,
+body[data-sidebar="purple"] #sidebar-menu ul li.mm-active > a i,
+body[data-sidebar="purple"] #sidebar-menu ul li a.active i,
+body[data-sidebar="slate"] #sidebar-menu ul li a:hover i,
+body[data-sidebar="slate"] #sidebar-menu ul li.mm-active > a i,
+body[data-sidebar="slate"] #sidebar-menu ul li a.active i,
+body[data-sidebar="emerald"] #sidebar-menu ul li a:hover i,
+body[data-sidebar="emerald"] #sidebar-menu ul li.mm-active > a i,
+body[data-sidebar="emerald"] #sidebar-menu ul li a.active i,
+body[data-sidebar="orange"] #sidebar-menu ul li a:hover i,
+body[data-sidebar="orange"] #sidebar-menu ul li.mm-active > a i,
+body[data-sidebar="orange"] #sidebar-menu ul li a.active i,
+body[data-sidebar="rose"] #sidebar-menu ul li a:hover i,
+body[data-sidebar="rose"] #sidebar-menu ul li.mm-active > a i,
+body[data-sidebar="rose"] #sidebar-menu ul li a.active i,
+body[data-sidebar="ersan"] #sidebar-menu ul li a:hover i,
+body[data-sidebar="ersan"] #sidebar-menu ul li.mm-active > a i,
+body[data-sidebar="ersan"] #sidebar-menu ul li a.active i,
+body[data-sidebar="teal"] #sidebar-menu ul li a:hover i,
+body[data-sidebar="teal"] #sidebar-menu ul li.mm-active > a i,
+body[data-sidebar="teal"] #sidebar-menu ul li a.active i,
+body[data-sidebar="cyan"] #sidebar-menu ul li a:hover i,
+body[data-sidebar="cyan"] #sidebar-menu ul li.mm-active > a i,
+body[data-sidebar="cyan"] #sidebar-menu ul li a.active i,
+body[data-sidebar="default"] #sidebar-menu ul li a:hover i,
+body[data-sidebar="default"] #sidebar-menu ul li.mm-active > a i,
+body[data-sidebar="default"] #sidebar-menu ul li a.active i {
+  color: #fff !important;
+}
+
 html,
 body {
   overflow-x: hidden;

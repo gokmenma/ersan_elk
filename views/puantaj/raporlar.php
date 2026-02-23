@@ -47,6 +47,17 @@ foreach ($regionList as $r) {
     $regionOptions[$r] = $r;
 }
 
+$kesmeWorkTypes = $Tanimlamalar->getIsTurleriByRaporTuru('kesme');
+$kesmeIsTurleriOptions = [];
+foreach ($kesmeWorkTypes as $wt) {
+    if (!empty($wt->is_emri_sonucu)) {
+        $kesmeIsTurleriOptions[$wt->is_emri_sonucu] = $wt->is_emri_sonucu;
+    }
+}
+if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
+    $kesmeIsTurleriOptions['Ödeme Yaptırıldı'] = 'Ödeme Yaptırıldı';
+}
+
 ?>
 <style>
     .accordion-button.collapsed~.only-show-open {
@@ -2024,6 +2035,10 @@ foreach ($personelList as $p) {
                         <div class="col-md-6 mb-3" data-settings-group="kesme">
                             <?= \App\Helper\Form::FormFloatInput('text', 'ekip_aralik_kesme_ilce', $reportSettings['ekip_aralik_kesme_ilce'] ?? '31-40', '31-40', '↳ Kesme (İlçe)', 'bx bx-map-alt') ?>
                         </div>
+                        <div class="col-md-12 mb-3" data-settings-group="kesme">
+                            <label class="form-label fw-bold" style="font-size: 13px;">Düşülecek İş Türü</label>
+                            <?php echo Form::FormSelect2("dusulecek_is_turu", $kesmeIsTurleriOptions, $reportSettings['dusulecek_is_turu'] ?? 'Ödeme Yaptırıldı', "Düşülecek İş Türü Seçiniz", "bx bx-minus-circle", "key", "", "form-select select2"); ?>
+                        </div>
                         <div class="col-md-12 mb-3" data-settings-group="sokme_takma">
                             <?= \App\Helper\Form::FormFloatInput('text', 'ekip_aralik_sayac_degisimi', $reportSettings['ekip_aralik_sayac_degisimi'] ?? '41-50', '41-50', 'Sayaç Değişimi Ekibi', 'bx bx-reset') ?>
                         </div>
@@ -2059,6 +2074,14 @@ foreach ($personelList as $p) {
             $('#reportSettingsModal [data-settings-group="' + tab + '"]').show();
 
             $('#reportSettingsModal').modal('show');
+
+            // Select2 dropdown clipping fix
+            setTimeout(function () {
+                $('#reportSettingsModal .select2').select2({
+                    dropdownParent: $('#reportSettingsModal'),
+                    width: '100%'
+                });
+            }, 200);
         });
 
         $('#reportSettingsForm').on('submit', function (e) {

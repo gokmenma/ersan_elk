@@ -245,6 +245,7 @@ if (Gate::allows("ana_sayfa")) {
     $duyuruSql = "SELECT id, baslik, icerik, resim, hedef_sayfa, tarih, etkinlik_tarihi 
                   FROM duyurular 
                   WHERE silinme_tarihi IS NULL 
+                  AND durum = 'Yayında'
                   AND (etkinlik_tarihi IS NULL OR etkinlik_tarihi >= CURDATE())
                   ORDER BY id DESC LIMIT 5";
     $stmt = $db->prepare($duyuruSql);

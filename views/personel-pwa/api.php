@@ -110,6 +110,71 @@ try {
             ]);
             break;
 
+        case 'getWorkStats':
+            $type = $_POST['type'] ?? 'day'; // day or month
+            $today = date('Y-m-d');
+            $startOfMonth = date('Y-m-01');
+            $endOfMonth = date('Y-m-t');
+
+            $db = (new \App\Model\Model('tanimlamalar'))->getDb();
+
+            $where = "t.personel_id = ? AND t.silinme_tarihi IS NULL";
+            $params = [$personel_id];
+
+            if ($type === 'day') {
+                $where .= " AND t.tarih = ?";
+                $params[] = $today;
+            } else {
+                $where .= " AND t.tarih BETWEEN ? AND ?";
+                $params[] = $startOfMonth;
+                $params[] = $endOfMonth;
+            }
+
+            // Yapılan İşler - Tanimlamalardaki tur_adi'na göre grupla
+            // COALESCE ile hem yeni hem eski alanları kontrol ediyoruz
+            $sqlIsler = "SELECT 
+                            COALESCE(tn.tur_adi, t.is_emri_tipi, 'Diğer İşler') as baslik, 
+                            SUM(t.sonuclanmis) as toplam 
+                        FROM yapilan_isler t
+                        LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                        WHERE $where
+                        GROUP BY COALESCE(tn.tur_adi, t.is_emri_tipi, 'Diğer İşler')
+                        HAVING toplam > 0";
+
+            $stmtIsler = $db->prepare($sqlIsler);
+            $stmtIsler->execute($params);
+            $isler = $stmtIsler->fetchAll(PDO::FETCH_OBJ);
+
+            // Endeks Okuma
+            $sqlEndeks = "SELECT 
+                            'Endeks Okuma' as baslik, 
+                            SUM(okunan_abone_sayisi) as toplam 
+                        FROM endeks_okuma t
+                        WHERE $where";
+
+            $stmtEndeks = $db->prepare($sqlEndeks);
+            $stmtEndeks->execute($params);
+            $endeks = $stmtEndeks->fetch(PDO::FETCH_OBJ);
+
+            $data = [];
+            foreach ($isler as $i) {
+                $data[] = [
+                    'baslik' => $i->baslik,
+                    'toplam' => (int) $i->toplam,
+                    'ikon' => 'task_alt'
+                ];
+            }
+            if ($endeks && $endeks->toplam > 0) {
+                $data[] = [
+                    'baslik' => 'Endeks Okuma',
+                    'toplam' => (int) $endeks->toplam,
+                    'ikon' => 'speed'
+                ];
+            }
+
+            response(true, $data);
+            break;
+
         // ===== Bordro İşlemleri =====
         case 'getBordroStats':
             $AvansModel = new AvansModel();
@@ -2047,6 +2112,7 @@ try {
                     AND aktif_mi = 1 
                     AND silinme_tarihi IS NULL 
                     AND id != :personel_id 
+                    AND (departman LIKE '%Kesme%' OR departman LIKE '%Açma%')
                     ORDER BY adi_soyadi ASC";
             $stmt = $db->db->prepare($sql);
             $stmt->execute([':firma_id' => $firma_id, ':personel_id' => $personel_id]);

@@ -14,13 +14,32 @@ $donemModel = new HakedisDonemModel();
 $db = $donemModel->getDb();
 
 // Hakediş ve Sözleşme bilgisini alalım
-$sql = "SELECT d.*, s.idare_adi, s.isin_adi, s.sozlesme_bedeli, s.isin_yuklenicisi 
+$sql = "SELECT d.*, s.idare_adi, s.isin_adi, s.sozlesme_bedeli, s.isin_yuklenicisi,
+               s.a1_katsayisi as s_a1, s.b1_katsayisi as s_b1, s.b2_katsayisi as s_b2, s.c_katsayisi as s_c,
+               s.asgari_ucret_temel as s_asgari, s.motorin_temel as s_motorin, s.ufe_genel_temel as s_ufe, s.makine_ekipman_temel as s_makine,
+               s.kdv_orani as s_kdv, s.tevkifat_orani as s_tevkifat
         FROM hakedis_donemleri d
         JOIN hakedis_sozlesmeler s ON d.sozlesme_id = s.id
         WHERE d.id = ? AND s.firma_id = ? AND d.silinme_tarihi IS NULL";
 $stmt = $db->prepare($sql);
 $stmt->execute([$hakedisId, $_SESSION['firma_id']]);
 $hakedis = $stmt->fetch(PDO::FETCH_OBJ);
+
+if ($hakedis) {
+    // Sözleşme bazlı varsayılan değerleri bas (Eğer hakedişte henüz girilmemişse)
+    $hakedis->a1_katsayisi = $hakedis->a1_katsayisi ?: $hakedis->s_a1;
+    $hakedis->b1_katsayisi = $hakedis->b1_katsayisi ?: $hakedis->s_b1;
+    $hakedis->b2_katsayisi = $hakedis->b2_katsayisi ?: $hakedis->s_b2;
+    $hakedis->c_katsayisi = $hakedis->c_katsayisi ?: $hakedis->s_c;
+
+    $hakedis->asgari_ucret_temel = $hakedis->asgari_ucret_temel ?: $hakedis->s_asgari;
+    $hakedis->motorin_temel = $hakedis->motorin_temel ?: $hakedis->s_motorin;
+    $hakedis->ufe_genel_temel = $hakedis->ufe_genel_temel ?: $hakedis->s_ufe;
+    $hakedis->makine_ekipman_temel = $hakedis->makine_ekipman_temel ?: $hakedis->s_makine;
+
+    $hakedis->kdv_orani = $hakedis->kdv_orani ?: $hakedis->s_kdv;
+    $hakedis->tevkifat_orani = $hakedis->tevkifat_orani ?: $hakedis->s_tevkifat;
+}
 
 if (!$hakedis) {
     echo "<div class='alert alert-danger'>Geçerli bir hakediş bulunamadı veya yetkiniz yok.</div>";
@@ -97,11 +116,29 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
 
                     <h6 class="text-primary"><i class="bx bx-cog me-1"></i> Fiyat Farkı Çarpanları</h6>
                     <!-- Burada excel formatındaki Pn, Asgari ücret, vb girişleri dinamik alacağız -->
-                    <div class="mb-3">
-                        <label class="form-label" title="İşçilik Katsayısı (Genelde 0.28)">a1 (İşçilik)
-                            Katsayısı</label>
-                        <input type="number" step="0.00001" class="form-control" name="a1_katsayisi"
-                            value="<?= $hakedis->a1_katsayisi ?>">
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label" title="İşçilik Katsayısı (a1)">a1 Katsayısı</label>
+                            <input type="number" step="0.00001" class="form-control form-control-sm" name="a1_katsayisi"
+                                value="<?= $hakedis->a1_katsayisi ?>">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label" title="Motorin Katsayısı (b1)">b1 Katsayısı</label>
+                            <input type="number" step="0.00001" class="form-control form-control-sm" name="b1_katsayisi"
+                                value="<?= $hakedis->b1_katsayisi ?>">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label" title="Yİ-ÜFE Katsayısı (b2)">b2 Katsayısı</label>
+                            <input type="number" step="0.00001" class="form-control form-control-sm" name="b2_katsayisi"
+                                value="<?= $hakedis->b2_katsayisi ?>">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label" title="Makine-Ekipman Katsayısı (c)">c Katsayısı</label>
+                            <input type="number" step="0.00001" class="form-control form-control-sm" name="c_katsayisi"
+                                value="<?= $hakedis->c_katsayisi ?>">
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -110,74 +147,103 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-muted" style="width: 80px;">A.Ücret</span>
                                 <input type="number" step="0.01" class="form-control" name="asgari_ucret_temel"
-                                    value="<?= $hakedis->asgari_ucret_temel ?>" placeholder="Örn: 26005.50">
+                                    value="<?= $hakedis->asgari_ucret_temel ?>" placeholder="Io">
                             </div>
                             <div class="input-group mt-1">
                                 <span class="input-group-text bg-light text-muted" style="width: 80px;">Motorin</span>
                                 <input type="number" step="0.00001" class="form-control" name="motorin_temel"
-                                    value="<?= $hakedis->motorin_temel ?>" placeholder="Örn: 54.13308">
+                                    value="<?= $hakedis->motorin_temel ?>" placeholder="Mo">
                             </div>
                             <div class="input-group mt-1">
                                 <span class="input-group-text bg-light text-muted" style="width: 80px;">TÜFE</span>
                                 <input type="number" step="0.01" class="form-control" name="ufe_genel_temel"
-                                    value="<?= $hakedis->ufe_genel_temel ?>" placeholder="Örn: 4632.89">
+                                    value="<?= $hakedis->ufe_genel_temel ?>" placeholder="ÜFEo">
+                            </div>
+                            <div class="input-group mt-1">
+                                <span class="input-group-text bg-light text-muted" style="width: 80px;">Makine</span>
+                                <input type="number" step="0.00001" class="form-control" name="makine_ekipman_temel"
+                                    value="<?= $hakedis->makine_ekipman_temel ?>" placeholder="Eo">
                             </div>
                             <!-- Ekstra parametreler yüklendiğinde buraya gelir -->
                             <?php
                             $ekstraParamlar = json_decode($hakedis->ekstra_parametreler ?? '{}', true);
-                            if(isset($ekstraParamlar['temel']) && is_array($ekstraParamlar['temel'])):
-                                foreach($ekstraParamlar['temel'] as $key => $val):
-                            ?>
-                            <div class="input-group mt-1 ek-param-row">
-                                <span class="input-group-text bg-light text-muted" style="width: 80px;" title="<?= htmlspecialchars($key) ?>">
-                                    <?= htmlspecialchars(mb_substr($key, 0, 8)) ?>
-                                </span>
-                                <input type="number" step="any" class="form-control" name="ekstra_temel[<?= htmlspecialchars($key) ?>]" value="<?= htmlspecialchars($val) ?>">
-                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="$(this).closest('.input-group').remove()"><i class="bx bx-trash"></i></button>
-                            </div>
-                            <?php endforeach; endif; ?>
+                            if (isset($ekstraParamlar['temel']) && is_array($ekstraParamlar['temel'])):
+                                foreach ($ekstraParamlar['temel'] as $key => $val):
+                                    ?>
+                                    <div class="input-group mt-1 ek-param-row">
+                                        <span class="input-group-text bg-light text-muted" style="width: 80px;"
+                                            title="<?= htmlspecialchars($key) ?>">
+                                            <?= htmlspecialchars(mb_substr($key, 0, 8)) ?>
+                                        </span>
+                                        <input type="number" step="any" class="form-control"
+                                            name="ekstra_temel[<?= htmlspecialchars($key) ?>]"
+                                            value="<?= htmlspecialchars($val) ?>">
+                                        <button type="button" class="btn btn-outline-danger btn-sm"
+                                            onclick="$(this).closest('.input-group').remove()"><i
+                                                class="bx bx-trash"></i></button>
+                                    </div>
+                                <?php endforeach; endif; ?>
                         </div>
                         <div class="mt-2 text-end">
-                            <button type="button" class="btn btn-sm btn-soft-secondary" onclick="addEndeksRow('temelEndeksAlanda', 'temel')"><i class="bx bx-plus"></i> Ek Alan Ekle</button>
+                            <button type="button" class="btn btn-sm btn-soft-secondary"
+                                onclick="addEndeksRow('temelEndeksAlanda', 'temel')"><i class="bx bx-plus"></i> Ek Alan
+                                Ekle</button>
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label text-warning" title="Uygulama Ayı">Güncel (Hakediş Ayı) Endeksi</label>
                         <div id="guncelEndeksAlanda">
-                            <div class="input-group border-warning">
+                            <div class="input-group border border-warning rounded-2 overflow-hidden">
                                 <span class="input-group-text bg-soft-warning text-warning border-warning"
                                     style="width: 80px;">A.Ücret</span>
-                                <input type="number" step="0.01" class="form-control border-warning" name="asgari_ucret_guncel"
-                                    value="<?= $hakedis->asgari_ucret_guncel ?>" placeholder="Örn: 33075.50">
+                                <input type="number" step="0.01" class="form-control border-warning"
+                                    name="asgari_ucret_guncel" value="<?= $hakedis->asgari_ucret_guncel ?>"
+                                    placeholder="In">
                             </div>
-                            <div class="input-group mt-1">
+                            <div class="input-group mt-1 border border-warning rounded-2 overflow-hidden">
                                 <span class="input-group-text bg-soft-warning text-warning border-warning"
                                     style="width: 80px;">Motorin</span>
-                                <input type="number" step="0.00001" class="form-control border-warning" name="motorin_guncel"
-                                    value="<?= $hakedis->motorin_guncel ?>">
+                                <input type="number" step="0.00001" class="form-control border-warning"
+                                    name="motorin_guncel" value="<?= $hakedis->motorin_guncel ?>" placeholder="Mn">
                             </div>
-                            <div class="input-group mt-1">
-                                <span class="input-group-text bg-soft-warning text-warning border-warning" style="width: 80px;">TÜFE</span>
-                                <input type="number" step="0.01" class="form-control border-warning" name="ufe_genel_guncel"
-                                    value="<?= $hakedis->ufe_genel_guncel ?>">
+                            <div class="input-group mt-1 border border-warning rounded-2 overflow-hidden">
+                                <span class="input-group-text bg-soft-warning text-warning border-warning"
+                                    style="width: 80px;">TÜFE</span>
+                                <input type="number" step="0.01" class="form-control border-warning"
+                                    name="ufe_genel_guncel" value="<?= $hakedis->ufe_genel_guncel ?>"
+                                    placeholder="ÜFEn">
+                            </div>
+                            <div class="input-group mt-1 border border-warning rounded-2 overflow-hidden">
+                                <span class="input-group-text bg-soft-warning text-warning border-warning"
+                                    style="width: 80px;">Makine</span>
+                                <input type="number" step="0.00001" class="form-control border-warning"
+                                    name="makine_ekipman_guncel" value="<?= $hakedis->makine_ekipman_guncel ?>"
+                                    placeholder="En">
                             </div>
                             <!-- Ekstra parametreler yüklendiğinde buraya gelir -->
                             <?php
-                            if(isset($ekstraParamlar['guncel']) && is_array($ekstraParamlar['guncel'])):
-                                foreach($ekstraParamlar['guncel'] as $key => $val):
-                            ?>
-                            <div class="input-group mt-1 border-warning ek-param-row">
-                                <span class="input-group-text bg-soft-warning text-warning border-warning" style="width: 80px;" title="<?= htmlspecialchars($key) ?>">
-                                    <?= htmlspecialchars(mb_substr($key, 0, 8)) ?>
-                                </span>
-                                <input type="number" step="any" class="form-control border-warning" name="ekstra_guncel[<?= htmlspecialchars($key) ?>]" value="<?= htmlspecialchars($val) ?>">
-                                <button type="button" class="btn btn-outline-danger btn-sm border-warning" onclick="$(this).closest('.input-group').remove()"><i class="bx bx-trash"></i></button>
-                            </div>
-                            <?php endforeach; endif; ?>
+                            if (isset($ekstraParamlar['guncel']) && is_array($ekstraParamlar['guncel'])):
+                                foreach ($ekstraParamlar['guncel'] as $key => $val):
+                                    ?>
+                                    <div class="input-group mt-1 border-warning ek-param-row">
+                                        <span class="input-group-text bg-soft-warning text-warning border-warning"
+                                            style="width: 80px;" title="<?= htmlspecialchars($key) ?>">
+                                            <?= htmlspecialchars(mb_substr($key, 0, 8)) ?>
+                                        </span>
+                                        <input type="number" step="any" class="form-control border-warning"
+                                            name="ekstra_guncel[<?= htmlspecialchars($key) ?>]"
+                                            value="<?= htmlspecialchars($val) ?>">
+                                        <button type="button" class="btn btn-outline-danger btn-sm border-warning"
+                                            onclick="$(this).closest('.input-group').remove()"><i
+                                                class="bx bx-trash"></i></button>
+                                    </div>
+                                <?php endforeach; endif; ?>
                         </div>
                         <div class="mt-2 text-end">
-                            <button type="button" class="btn btn-sm btn-soft-warning" onclick="addEndeksRow('guncelEndeksAlanda', 'guncel')"><i class="bx bx-plus"></i> Ek Alan Ekle</button>
+                            <button type="button" class="btn btn-sm btn-soft-warning"
+                                onclick="addEndeksRow('guncelEndeksAlanda', 'guncel')"><i class="bx bx-plus"></i> Ek
+                                Alan Ekle</button>
                         </div>
                     </div>
 
@@ -214,9 +280,6 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                         <button type="button" class="btn btn-success waves-effect waves-light"
                             onclick="exportHakedisToExcel(<?= $hakedis->id ?>)">
                             <i class="bx bx-file me-1"></i> Excel Çıktısı Al
-                        </button>
-                        <button type="button" class="btn btn-primary" onclick="addNewKalemRow()">
-                            <i class="bx bx-plus me-1"></i> Listeye Kalem Ekle
                         </button>
                     </div>
                 </div>
@@ -272,4 +335,3 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
     var currentHakedisId = <?= $hakedis->id ?>;
     var currentSozlesmeId = <?= $hakedis->sozlesme_id ?>;
 </script>
-<script src="views/hakedisler/js/hakedis-detay.js?v=<?= time() ?>"></script>

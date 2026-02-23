@@ -15,50 +15,27 @@
 
         <div class="p-4">
             <h6 class="mb-3">Tema Rengi Seçin</h6>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input theme-color" type="radio" name="theme-mode" id="theme-default"
-                    value="default" checked>
-                <label class="form-check-label" for="theme-default">Varsayılan</label>
-            </div>
-
-            <div class="form-check form-check-inline">
-                <input class="form-check-input theme-color" type="radio" name="theme-mode" id="theme-red" value="red">
-                <label class="form-check-label" for="theme-red">Kırmızı</label>
-            </div>
-
-            <div class="form-check form-check-inline">
-                <input class="form-check-input theme-color" type="radio" name="theme-mode" id="theme-purple"
-                    value="purple">
-                <label class="form-check-label" for="theme-purple">Mor</label>
-            </div>
-
-            <div class="form-check form-check-inline">
-                <input class="form-check-input theme-color" type="radio" name="theme-mode" id="theme-slate"
-                    value="slate">
-                <label class="form-check-label" for="theme-slate">Slate</label>
-            </div>
-
-            <div class="form-check form-check-inline">
-                <input class="form-check-input theme-color" type="radio" name="theme-mode" id="theme-emerald"
-                    value="emerald">
-                <label class="form-check-label" for="theme-emerald">Zümrüt</label>
-            </div>
-
-            <div class="form-check form-check-inline">
-                <input class="form-check-input theme-color" type="radio" name="theme-mode" id="theme-orange"
-                    value="orange">
-                <label class="form-check-label" for="theme-orange">Turuncu</label>
-            </div>
-
-            <div class="form-check form-check-inline">
-                <input class="form-check-input theme-color" type="radio" name="theme-mode" id="theme-rose" value="rose">
-                <label class="form-check-label" for="theme-rose">Rose</label>
-            </div>
-
-            <div class="form-check form-check-inline">
-                <input class="form-check-input theme-color" type="radio" name="theme-mode" id="theme-ersan"
-                    value="ersan">
-                <label class="form-check-label" for="theme-ersan">Ersan</label>
+            <div class="color-selector-group">
+                <input class="color-selector-btn color-default" type="radio" name="theme-mode" id="theme-default"
+                    value="default" checked data-bs-toggle="tooltip" data-bs-placement="top" title="Varsayılan">
+                <input class="color-selector-btn color-red" type="radio" name="theme-mode" id="theme-red" value="red"
+                    data-bs-toggle="tooltip" data-bs-placement="top" title="Kırmızı">
+                <input class="color-selector-btn color-purple" type="radio" name="theme-mode" id="theme-purple"
+                    value="purple" data-bs-toggle="tooltip" data-bs-placement="top" title="Mor">
+                <input class="color-selector-btn color-slate" type="radio" name="theme-mode" id="theme-slate"
+                    value="slate" data-bs-toggle="tooltip" data-bs-placement="top" title="Slate">
+                <input class="color-selector-btn color-emerald" type="radio" name="theme-mode" id="theme-emerald"
+                    value="emerald" data-bs-toggle="tooltip" data-bs-placement="top" title="Zümrüt">
+                <input class="color-selector-btn color-orange" type="radio" name="theme-mode" id="theme-orange"
+                    value="orange" data-bs-toggle="tooltip" data-bs-placement="top" title="Turuncu">
+                <input class="color-selector-btn color-rose" type="radio" name="theme-mode" id="theme-rose" value="rose"
+                    data-bs-toggle="tooltip" data-bs-placement="top" title="Rose">
+                <input class="color-selector-btn color-ersan" type="radio" name="theme-mode" id="theme-ersan"
+                    value="ersan" data-bs-toggle="tooltip" data-bs-placement="top" title="Ersan">
+                <input class="color-selector-btn color-teal" type="radio" name="theme-mode" id="theme-teal" value="teal"
+                    data-bs-toggle="tooltip" data-bs-placement="top" title="Teal">
+                <input class="color-selector-btn color-cyan" type="radio" name="theme-mode" id="theme-cyan" value="cyan"
+                    data-bs-toggle="tooltip" data-bs-placement="top" title="Cyan">
             </div>
 
             <h6 class="mt-4 mb-3 pt-2">Görünüm</h6>
@@ -116,6 +93,32 @@
                 <input class="form-check-input" type="radio" name="topbar-color" id="topbar-color-dark" value="dark">
                 <label class="form-check-label" for="topbar-color-dark">Koyu</label>
             </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="topbar-color" id="topbar-color-brand" value="brand">
+                <label class="form-check-label" for="topbar-color-brand">Marka Rengi</label>
+            </div>
+            <div class="color-selector-group mt-2">
+                <input class="color-selector-btn color-default" type="radio" name="topbar-color" id="topbar-default"
+                    value="default" data-bs-toggle="tooltip" data-bs-placement="top" title="Varsayılan">
+                <input class="color-selector-btn color-red" type="radio" name="topbar-color" id="topbar-red" value="red"
+                    data-bs-toggle="tooltip" data-bs-placement="top" title="Kırmızı">
+                <input class="color-selector-btn color-purple" type="radio" name="topbar-color" id="topbar-purple"
+                    value="purple" data-bs-toggle="tooltip" data-bs-placement="top" title="Mor">
+                <input class="color-selector-btn color-slate" type="radio" name="topbar-color" id="topbar-slate"
+                    value="slate" data-bs-toggle="tooltip" data-bs-placement="top" title="Slate">
+                <input class="color-selector-btn color-emerald" type="radio" name="topbar-color" id="topbar-emerald"
+                    value="emerald" data-bs-toggle="tooltip" data-bs-placement="top" title="Zümrüt">
+                <input class="color-selector-btn color-orange" type="radio" name="topbar-color" id="topbar-orange"
+                    value="orange" data-bs-toggle="tooltip" data-bs-placement="top" title="Turuncu">
+                <input class="color-selector-btn color-rose" type="radio" name="topbar-color" id="topbar-rose"
+                    value="rose" data-bs-toggle="tooltip" data-bs-placement="top" title="Rose">
+                <input class="color-selector-btn color-ersan" type="radio" name="topbar-color" id="topbar-ersan"
+                    value="ersan" data-bs-toggle="tooltip" data-bs-placement="top" title="Ersan">
+                <input class="color-selector-btn color-teal" type="radio" name="topbar-color" id="topbar-teal"
+                    value="teal" data-bs-toggle="tooltip" data-bs-placement="top" title="Teal">
+                <input class="color-selector-btn color-cyan" type="radio" name="topbar-color" id="topbar-cyan"
+                    value="cyan" data-bs-toggle="tooltip" data-bs-placement="top" title="Cyan">
+            </div>
 
             <h6 class="mt-4 mb-3 pt-2 sidebar-setting">Yan Menü Boyutu</h6>
 
@@ -136,19 +139,41 @@
 
             <h6 class="mt-4 mb-3 pt-2 sidebar-setting">Yan Menü Rengi</h6>
 
-            <div class="form-check sidebar-setting">
+            <div class="form-check sidebar-setting d-inline-block me-2">
                 <input class="form-check-input" type="radio" name="sidebar-color" id="sidebar-color-light"
                     value="light">
                 <label class="form-check-label" for="sidebar-color-light">Açık</label>
             </div>
-            <div class="form-check sidebar-setting">
+            <div class="form-check sidebar-setting d-inline-block me-2">
                 <input class="form-check-input" type="radio" name="sidebar-color" id="sidebar-color-dark" value="dark">
                 <label class="form-check-label" for="sidebar-color-dark">Koyu</label>
             </div>
-            <div class="form-check sidebar-setting">
+            <div class="form-check sidebar-setting d-inline-block">
                 <input class="form-check-input" type="radio" name="sidebar-color" id="sidebar-color-brand"
                     value="brand">
                 <label class="form-check-label" for="sidebar-color-brand">Marka Rengi</label>
+            </div>
+            <div class="color-selector-group mt-2 sidebar-setting">
+                <input class="color-selector-btn color-default" type="radio" name="sidebar-color" id="sidebar-default"
+                    value="default" data-bs-toggle="tooltip" data-bs-placement="top" title="Varsayılan">
+                <input class="color-selector-btn color-red" type="radio" name="sidebar-color" id="sidebar-red"
+                    value="red" data-bs-toggle="tooltip" data-bs-placement="top" title="Kırmızı">
+                <input class="color-selector-btn color-purple" type="radio" name="sidebar-color" id="sidebar-purple"
+                    value="purple" data-bs-toggle="tooltip" data-bs-placement="top" title="Mor">
+                <input class="color-selector-btn color-slate" type="radio" name="sidebar-color" id="sidebar-slate"
+                    value="slate" data-bs-toggle="tooltip" data-bs-placement="top" title="Slate">
+                <input class="color-selector-btn color-emerald" type="radio" name="sidebar-color" id="sidebar-emerald"
+                    value="emerald" data-bs-toggle="tooltip" data-bs-placement="top" title="Zümrüt">
+                <input class="color-selector-btn color-orange" type="radio" name="sidebar-color" id="sidebar-orange"
+                    value="orange" data-bs-toggle="tooltip" data-bs-placement="top" title="Turuncu">
+                <input class="color-selector-btn color-rose" type="radio" name="sidebar-color" id="sidebar-rose"
+                    value="rose" data-bs-toggle="tooltip" data-bs-placement="top" title="Rose">
+                <input class="color-selector-btn color-ersan" type="radio" name="sidebar-color" id="sidebar-ersan"
+                    value="ersan" data-bs-toggle="tooltip" data-bs-placement="top" title="Ersan">
+                <input class="color-selector-btn color-teal" type="radio" name="sidebar-color" id="sidebar-teal"
+                    value="teal" data-bs-toggle="tooltip" data-bs-placement="top" title="Teal">
+                <input class="color-selector-btn color-cyan" type="radio" name="sidebar-color" id="sidebar-cyan"
+                    value="cyan" data-bs-toggle="tooltip" data-bs-placement="top" title="Cyan">
             </div>
 
             <h6 class="mt-4 mb-3 pt-2">Yön</h6>

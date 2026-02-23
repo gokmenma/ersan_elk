@@ -95,7 +95,17 @@ try {
                 'kontrol_teskilati' => $_POST['kontrol_teskilati'] ?? '',
                 'idare_onaylayan' => $_POST['idare_onaylayan'] ?? '',
                 'idare_onaylayan_unvan' => $_POST['idare_onaylayan_unvan'] ?? '',
-                'durum' => $_POST['durum'] ?? 'aktif'
+                'durum' => $_POST['durum'] ?? 'aktif',
+                'a1_katsayisi' => !empty($_POST['a1_katsayisi']) ? floatval($_POST['a1_katsayisi']) : 0.28,
+                'b1_katsayisi' => !empty($_POST['b1_katsayisi']) ? floatval($_POST['b1_katsayisi']) : 0.22,
+                'b2_katsayisi' => !empty($_POST['b2_katsayisi']) ? floatval($_POST['b2_katsayisi']) : 0.25,
+                'c_katsayisi' => !empty($_POST['c_katsayisi']) ? floatval($_POST['c_katsayisi']) : 0.25,
+                'asgari_ucret_temel' => !empty($_POST['asgari_ucret_temel']) ? floatval($_POST['asgari_ucret_temel']) : null,
+                'motorin_temel' => !empty($_POST['motorin_temel']) ? floatval($_POST['motorin_temel']) : null,
+                'ufe_genel_temel' => !empty($_POST['ufe_genel_temel']) ? floatval($_POST['ufe_genel_temel']) : null,
+                'makine_ekipman_temel' => !empty($_POST['makine_ekipman_temel']) ? floatval($_POST['makine_ekipman_temel']) : null,
+                'kdv_orani' => !empty($_POST['kdv_orani']) ? floatval($_POST['kdv_orani']) : 20.00,
+                'tevkifat_orani' => $_POST['tevkifat_orani'] ?? '4/10'
             ];
 
             if (isset($_POST['id']) && $_POST['id'] > 0) {
@@ -119,9 +129,66 @@ try {
                 $sql = "INSERT INTO hakedis_sozlesmeler ($cols) VALUES ($vals)";
                 $stmt = $db->prepare($sql);
                 $stmt->execute($data);
+
+                $sozlesme_id = $db->lastInsertId();
             }
 
+
+            // Kalemleri Kaydet (Birim Fiyat Cetveli Tabı)
+            if (!empty($_POST['kalem_verileri'])) {
+                $kalemler = json_decode($_POST['kalem_verileri'], true);
+                $sid = $sozlesme_id ?? $_POST['id'];
+
+                if (is_array($kalemler)) {
+                    $islenen_idleri = [];
+                    foreach ($kalemler as $k) {
+                        $k_id = isset($k['id']) && $k['id'] > 0 ? (int) $k['id'] : 0;
+
+                        if ($k_id > 0) {
+                            // Güncelle
+                            $stmtExt = $db->prepare("UPDATE hakedis_kalemleri SET kalem_adi = ?, birim = ?, miktari = ?, teklif_edilen_birim_fiyat = ? WHERE id = ? AND sozlesme_id = ?");
+                            $stmtExt->execute([$k['kalem_adi'], $k['birim'], floatval($k['miktari']), floatval($k['teklif_edilen_birim_fiyat']), $k_id, $sid]);
+                            $islenen_idleri[] = $k_id;
+                        } else {
+                            // Yeni ekle
+                            $stmtExt = $db->prepare("INSERT INTO hakedis_kalemleri (sozlesme_id, kalem_adi, birim, miktari, teklif_edilen_birim_fiyat) VALUES (?, ?, ?, ?, ?)");
+                            $stmtExt->execute([$sid, $k['kalem_adi'], $k['birim'], floatval($k['miktari']), floatval($k['teklif_edilen_birim_fiyat'])]);
+                            $islenen_idleri[] = $db->lastInsertId();
+                        }
+                    }
+
+                    // Gönderilmeyen (silinen) kalemleri temizle
+                    if (!empty($islenen_idleri)) {
+                        $in = str_repeat('?,', count($islenen_idleri) - 1) . '?';
+                        $sql = "DELETE FROM hakedis_kalemleri WHERE sozlesme_id = ? AND id NOT IN ($in)";
+                        $stmt = $db->prepare($sql);
+                        $stmt->execute(array_merge([$sid], $islenen_idleri));
+                    }
+                }
+            }
             echo json_encode(['status' => 'success']);
+            break;
+
+        case 'getSozlesme':
+            $id = $_POST['id'] ?? 0;
+            if ($id) {
+                $db = (new HakedisSozlesmeModel())->getDb();
+                $stmt = $db->prepare("SELECT * FROM hakedis_sozlesmeler WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL");
+                $stmt->execute([$id, $firma_id]);
+                $sozlesme = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($sozlesme) {
+                    $stmtK = $db->prepare("SELECT * FROM hakedis_kalemleri WHERE sozlesme_id = ? ORDER BY id ASC");
+                    $stmtK->execute([$id]);
+                    $kalemler = $stmtK->fetchAll(PDO::FETCH_ASSOC);
+
+                    echo json_encode(['status' => 'success', 'data' => $sozlesme, 'kalemler' => $kalemler]);
+                } else {
+                    echo json_encode(['status' => 'error', 'message' => 'Sözleşme bulunamadı veya yetkiniz yok.']);
+                }
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'ID eksik']);
+            }
             break;
 
         case 'deleteSozlesme':
@@ -192,6 +259,7 @@ try {
             $model = new HakedisDonemModel();
             $db = $model->getDb();
             $sozlesme_id = $_POST['sozlesme_id'] ?? 0;
+            $hakedis_id = $_POST['id'] ?? 0;
 
             // Verify sozlesme belongs to firma
             $stmt = $db->prepare("SELECT id FROM hakedis_sozlesmeler WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL");
@@ -213,15 +281,68 @@ try {
                 'durum' => 'taslak'
             ];
 
-            $data['olusturma_tarihi'] = date('Y-m-d H:i:s');
-            $cols = implode(", ", array_keys($data));
-            $vals = ":" . implode(", :", array_keys($data));
-            $sql = "INSERT INTO hakedis_donemleri ($cols) VALUES ($vals)";
-            $stmt = $db->prepare($sql);
-            $stmt->execute($data);
-            $hakedisId = $db->lastInsertId();
+            if (!$hakedis_id) {
+                // New Hakedis: Inherit parameters from contract
+                $stmtS = $db->prepare("SELECT a1_katsayisi, b1_katsayisi, b2_katsayisi, c_katsayisi, asgari_ucret_temel, motorin_temel, ufe_genel_temel, makine_ekipman_temel, kdv_orani, tevkifat_orani FROM hakedis_sozlesmeler WHERE id = ?");
+                $stmtS->execute([$sozlesme_id]);
+                if ($soz = $stmtS->fetch(PDO::FETCH_ASSOC)) {
+                    $data['a1_katsayisi'] = $soz['a1_katsayisi'];
+                    $data['b1_katsayisi'] = $soz['b1_katsayisi'];
+                    $data['b2_katsayisi'] = $soz['b2_katsayisi'];
+                    $data['c_katsayisi'] = $soz['c_katsayisi'];
+                    $data['asgari_ucret_temel'] = $soz['asgari_ucret_temel'];
+                    $data['motorin_temel'] = $soz['motorin_temel'];
+                    $data['ufe_genel_temel'] = $soz['ufe_genel_temel'];
+                    $data['makine_ekipman_temel'] = $soz['makine_ekipman_temel'];
+                    $data['kdv_orani'] = $soz['kdv_orani'];
+                    $data['tevkifat_orani'] = $soz['tevkifat_orani'];
+                }
+            }
 
-            echo json_encode(['status' => 'success', 'hakedis_id' => $hakedisId]);
+            if ($hakedis_id) {
+                // Update
+                $set = [];
+                $params = [];
+                foreach ($data as $k => $v) {
+                    $set[] = "$k = :$k";
+                    $params[":$k"] = $v;
+                }
+                $params[':id'] = $hakedis_id;
+                $sql = "UPDATE hakedis_donemleri SET " . implode(", ", $set) . " WHERE id = :id";
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
+                $resultId = $hakedis_id;
+            } else {
+                // Insert
+                $data['olusturma_tarihi'] = date('Y-m-d H:i:s');
+                $cols = implode(", ", array_keys($data));
+                $vals = ":" . implode(", :", array_keys($data));
+                $sql = "INSERT INTO hakedis_donemleri ($cols) VALUES ($vals)";
+                $stmt = $db->prepare($sql);
+                $stmt->execute($data);
+                $resultId = $db->lastInsertId();
+            }
+
+            echo json_encode(['status' => 'success', 'hakedis_id' => $resultId]);
+            break;
+
+        case 'getHakedis':
+            $id = $_POST['id'] ?? 0;
+            if ($id) {
+                $db = (new HakedisDonemModel())->getDb();
+                $stmt = $db->prepare("
+                    SELECT hd.* FROM hakedis_donemleri hd
+                    JOIN hakedis_sozlesmeler hs ON hd.sozlesme_id = hs.id
+                    WHERE hd.id = ? AND hs.firma_id = ?
+                ");
+                $stmt->execute([$id, $firma_id]);
+                $hakedis = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($hakedis) {
+                    echo json_encode(['status' => 'success', 'data' => $hakedis]);
+                } else {
+                    echo json_encode(['status' => 'error', 'message' => 'Hakediş bulunamadı.']);
+                }
+            }
             break;
 
         case 'deleteHakedis':
@@ -270,6 +391,8 @@ try {
                 'motorin_guncel',
                 'ufe_genel_temel',
                 'ufe_genel_guncel',
+                'makine_ekipman_temel',
+                'makine_ekipman_guncel',
                 'tevkifat_orani',
                 'kdv_orani'
             ];
@@ -324,7 +447,7 @@ try {
                 'kalem_adi' => $_POST['kalem_adi'] ?? '',
                 'birim' => $_POST['birim'] ?? '',
                 'teklif_edilen_birim_fiyat' => floatval($_POST['teklif_edilen_birim_fiyat'] ?? 0),
-                'miktari' => floatval($_POST['hedef_miktari'] ?? 0)
+                'miktari' => floatval($_POST['miktari'] ?? 0)
             ];
 
             $cols = implode(", ", array_keys($data));
@@ -369,18 +492,22 @@ try {
             $db = (new HakedisMiktarModel())->getDb();
             $hakedis_id = $_POST['hakedis_id'] ?? 0;
             $kalem_id = $_POST['kalem_id'] ?? 0;
-            $miktar = floatval($_POST['miktar'] ?? 0);
-            $bolge = $_POST['bolge'] ?? 'Genel'; // Excel'deki gibi KASKİ1 vs olabilir
+            $miktar = isset($_POST['miktar']) ? floatval($_POST['miktar']) : null;
+            $onceki_miktar = isset($_POST['onceki_miktar']) ? floatval($_POST['onceki_miktar']) : null;
+            $bolge = $_POST['bolge'] ?? 'Genel';
 
-            // Eğer daha evvel bu dönemde bu kalem için girildiyse update, yoksa insert
-            $stmt = $db->prepare("SELECT id FROM hakedis_miktarlari WHERE hakedis_donem_id = ? AND kalem_id = ? AND bolge_adi = ?");
+            $stmt = $db->prepare("SELECT id, miktar, onceki_miktar FROM hakedis_miktarlari WHERE hakedis_donem_id = ? AND kalem_id = ? AND bolge_adi = ?");
             $stmt->execute([$hakedis_id, $kalem_id, $bolge]);
+
             if ($row = $stmt->fetch()) {
-                $stmt2 = $db->prepare("UPDATE hakedis_miktarlari SET miktar = ? WHERE id = ?");
-                $stmt2->execute([$miktar, $row['id']]);
+                $m = $miktar !== null ? $miktar : $row['miktar'];
+                $om = $onceki_miktar !== null ? $onceki_miktar : $row['onceki_miktar'];
+
+                $stmt2 = $db->prepare("UPDATE hakedis_miktarlari SET miktar = ?, onceki_miktar = ? WHERE id = ?");
+                $stmt2->execute([$m, $om, $row['id']]);
             } else {
-                $stmt2 = $db->prepare("INSERT INTO hakedis_miktarlari (hakedis_donem_id, kalem_id, bolge_adi, miktar) VALUES (?, ?, ?, ?)");
-                $stmt2->execute([$hakedis_id, $kalem_id, $bolge, $miktar]);
+                $stmt2 = $db->prepare("INSERT INTO hakedis_miktarlari (hakedis_donem_id, kalem_id, bolge_adi, miktar, onceki_miktar) VALUES (?, ?, ?, ?, ?)");
+                $stmt2->execute([$hakedis_id, $kalem_id, $bolge, $miktar ?? 0, $onceki_miktar ?? 0]);
             }
             echo json_encode(['status' => 'success']);
             break;
@@ -390,12 +517,7 @@ try {
             $sozlesme_id = $_POST['sozlesme_id'] ?? 0;
             $hakedis_id = $_POST['hakedis_id'] ?? 0;
 
-            // Sözleşmeye ait tüm kalemleri çek
-            // Her kalem için İki bilgi lazım:
-            // 1) Aynı sözleşmede, bu hakedişten (tarih/sıra olarak) "önceki" hakedişlerde gerçekleşmiş olan toplam miktar (Önceki İcmal)
-            // 2) Bu hakedişte gerçekleşen miktar (Bu Ayki)
-
-            // Hakediş bilgisini bul, özellikle no'ya göre önceki dönemi filtreleyeceğz
+            // 1. Mevcut hakediş bilgisini al
             $stmtHakedis = $db->prepare("SELECT hakedis_no FROM hakedis_donemleri WHERE id = ?");
             $stmtHakedis->execute([$hakedis_id]);
             $hNo = $stmtHakedis->fetchColumn();
@@ -405,38 +527,49 @@ try {
                 exit;
             }
 
-            // Önce kalemleri alalım
+            // 2. Bir önceki hakedişi bul (Varsa)
+            $stmtPrev = $db->prepare("SELECT id FROM hakedis_donemleri WHERE sozlesme_id = ? AND hakedis_no < ? AND silinme_tarihi IS NULL ORDER BY hakedis_no DESC LIMIT 1");
+            $stmtPrev->execute([$sozlesme_id, $hNo]);
+            $prevHakedisId = $stmtPrev->fetchColumn();
+
+            // 3. Sözleşmeye ait tüm kalemleri çek
             $stmtKalem = $db->prepare("SELECT * FROM hakedis_kalemleri WHERE sozlesme_id = :sid");
             $stmtKalem->execute([':sid' => $sozlesme_id]);
             $kalemler = $stmtKalem->fetchAll(PDO::FETCH_ASSOC);
 
-            // Tüm Miktarları tek seferde çekip map yapalım (Sözleşmeye ait tüm hakedişleri bul)
-            $sqlMiktar = "
-               SELECT 
-                    m.kalem_id, 
-                    d.hakedis_no, 
-                    m.miktar 
-               FROM hakedis_miktarlari m
-               JOIN hakedis_donemleri d ON m.hakedis_donem_id = d.id
-               WHERE d.sozlesme_id = ? AND d.silinme_tarihi IS NULL
-            ";
-            $stmtMiktar = $db->prepare($sqlMiktar);
-            $stmtMiktar->execute([$sozlesme_id]);
-            $allMiktar = $stmtMiktar->fetchAll(PDO::FETCH_ASSOC);
-
-            // Calculate sums
-            $sonuc = [];
-            foreach ($kalemler as $k) {
-                $onceki_toplam = 0;
-                $buay_toplam = 0;
+            // 4. Miktarları çek (Mevcut ve bir önceki dönem için)
+            $relevantDonemIds = array_filter([$hakedis_id, $prevHakedisId]);
+            $miktarlarMap = [];
+            if (!empty($relevantDonemIds)) {
+                $placeholders = implode(',', array_fill(0, count($relevantDonemIds), '?'));
+                $stmtMiktar = $db->prepare("SELECT * FROM hakedis_miktarlari WHERE hakedis_donem_id IN ($placeholders)");
+                $stmtMiktar->execute(array_values($relevantDonemIds));
+                $allMiktar = $stmtMiktar->fetchAll(PDO::FETCH_ASSOC);
 
                 foreach ($allMiktar as $m) {
-                    if ($m['kalem_id'] == $k['id']) {
-                        if ($m['hakedis_no'] < $hNo) {
-                            $onceki_toplam += $m['miktar'];
-                        } elseif ($m['hakedis_no'] == $hNo) {
-                            $buay_toplam += $m['miktar'];
-                        }
+                    $miktarlarMap[$m['hakedis_donem_id']][$m['kalem_id']] = $m;
+                }
+            }
+
+            // 5. Sonuçları oluştur
+            $sonuc = [];
+            foreach ($kalemler as $k) {
+                $kalem_id = $k['id'];
+
+                // Bu ayki miktar
+                $curMiktarRow = $miktarlarMap[$hakedis_id][$kalem_id] ?? null;
+                $buay_toplam = floatval($curMiktarRow['miktar'] ?? 0);
+
+                // Önceki toplam miktar
+                // Eğer bu ay için bir manuel override girildiyse (onceki_miktar) onu kullan
+                // Yoksa bir önceki hakedişin (onceki + mevcut) toplamını kullan
+                $onceki_toplam = 0;
+                if ($curMiktarRow && isset($curMiktarRow['onceki_miktar']) && $curMiktarRow['onceki_miktar'] != 0) {
+                    $onceki_toplam = floatval($curMiktarRow['onceki_miktar']);
+                } else if ($prevHakedisId) {
+                    $prevMiktarRow = $miktarlarMap[$prevHakedisId][$kalem_id] ?? null;
+                    if ($prevMiktarRow) {
+                        $onceki_toplam = floatval($prevMiktarRow['onceki_miktar'] ?? 0) + floatval($prevMiktarRow['miktar'] ?? 0);
                     }
                 }
 
@@ -445,23 +578,41 @@ try {
                 $sonuc[] = $k;
             }
 
-            // --- Fiyat Farkı Hesabı (Basit Simülasyon / Mockup) ---
-            // Genelde KASKİ Excelinde (Pn - 1) * Tutar formülü bulunur
-            // Pn = a1*(G/Go) + b1*(M/Mo) + c*(ÜFE/ÜFEo)
+            // --- Fiyat Farkı Hesabı (Pn Katsayısı) ---
+            // Pn = a1*(In/Io) + b1*(Mn/Mo) + b2*(ÜFEn/ÜFEo) + c*(En/Eo)
             $fiyat_farki = 0;
+            $pn = 1;
 
             // Önce hakediş paramlarını okuyalım
             $stmtParam = $db->prepare("SELECT * FROM hakedis_donemleri WHERE id = ?");
             $stmtParam->execute([$hakedis_id]);
             $params = $stmtParam->fetch(PDO::FETCH_ASSOC);
 
-            if ($params && floatval($params['asgari_ucret_temel']) > 0 && floatval($params['asgari_ucret_guncel']) > 0) {
-                $a1 = floatval($params['a1_katsayisi'] ?? 0.28);
+            if ($params) {
+                // Her bir çarpanın pay/payda kontrolünü yaparak Pn hesapla
+                $p1 = 0;
 
-                $I = floatval($params['asgari_ucret_guncel']);
-                $Io = floatval($params['asgari_ucret_temel']);
+                // a1 (İşçilik)
+                if (floatval($params['asgari_ucret_temel']) > 0) {
+                    $p1 += floatval($params['a1_katsayisi'] ?? 0.28) * (floatval($params['asgari_ucret_guncel']) / floatval($params['asgari_ucret_temel']));
+                }
 
-                $pn = $a1 * ($I / $Io);
+                // b1 (Motorin)
+                if (floatval($params['motorin_temel']) > 0) {
+                    $p1 += floatval($params['b1_katsayisi'] ?? 0.22) * (floatval($params['motorin_guncel']) / floatval($params['motorin_temel']));
+                }
+
+                // b2 (Yİ-ÜFE)
+                if (floatval($params['ufe_genel_temel']) > 0) {
+                    $p1 += floatval($params['b2_katsayisi'] ?? 0.25) * (floatval($params['ufe_genel_guncel']) / floatval($params['ufe_genel_temel']));
+                }
+
+                // c (Makine-Ekipman)
+                if (floatval($params['makine_ekipman_temel']) > 0) {
+                    $p1 += floatval($params['c_katsayisi'] ?? 0.25) * (floatval($params['makine_ekipman_guncel']) / floatval($params['makine_ekipman_temel']));
+                }
+
+                $pn = $p1;
 
                 // Calculate bu ay imalat total
                 $imalatBuAy = 0;
@@ -470,6 +621,7 @@ try {
                 }
 
                 if ($pn > 1) {
+                    // Fiyat Farkı = Tutar * 0.90 * (Pn - 1)
                     $fiyat_farki = $imalatBuAy * 0.90 * ($pn - 1);
                 }
             }
