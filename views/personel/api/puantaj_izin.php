@@ -49,9 +49,16 @@ try {
         $startDate = "$yil-$ay-01";
         $endDate = date("Y-m-t", strtotime($startDate));
 
-        // Aktif personelleri getir
-        $personeller = $Personel->db->prepare("SELECT id, adi_soyadi, resim_yolu, ekip_no, tc_kimlik_no FROM personel WHERE firma_id = ? AND aktif_mi = 1 AND silinme_tarihi IS NULL ORDER BY adi_soyadi ASC");
-        $personeller->execute([$firma_id]);
+        // Aktif personelleri ve o ay veya sonrasında işten çıkanları getir
+        $personeller = $Personel->db->prepare("
+            SELECT id, adi_soyadi, resim_yolu, ekip_no, tc_kimlik_no, isten_cikis_tarihi 
+            FROM personel 
+            WHERE firma_id = ? 
+            AND silinme_tarihi IS NULL 
+            AND (aktif_mi = 1 OR (isten_cikis_tarihi IS NOT NULL AND isten_cikis_tarihi >= ?))
+            ORDER BY adi_soyadi ASC
+        ");
+        $personeller->execute([$firma_id, $startDate]);
         $personel_list = $personeller->fetchAll(PDO::FETCH_OBJ);
 
         // Puantaj ve İzin verilerini getir
@@ -65,6 +72,7 @@ try {
                 'adi_soyadi' => $p->adi_soyadi,
                 'tc_kimlik_no' => $p->tc_kimlik_no ?? '',
                 'resim' => $p->resim_yolu ?: 'assets/images/users/user-dummy-img.jpg',
+                'isten_cikis_tarihi' => $p->isten_cikis_tarihi,
                 'entries' => []
             ];
 
@@ -715,9 +723,16 @@ try {
         $daysCount = date('t', strtotime($startDate));
         $endDate = "$yil-$ay-$daysCount";
 
-        // Aktif personelleri getir
-        $personeller = $Personel->db->prepare("SELECT id, adi_soyadi, tc_kimlik_no FROM personel WHERE firma_id = ? AND aktif_mi = 1 AND silinme_tarihi IS NULL ORDER BY adi_soyadi ASC");
-        $personeller->execute([$firma_id]);
+        // Aktif personelleri ve o ay veya sonrasında işten çıkanları getir
+        $personeller = $Personel->db->prepare("
+            SELECT id, adi_soyadi, tc_kimlik_no, isten_cikis_tarihi 
+            FROM personel 
+            WHERE firma_id = ? 
+            AND silinme_tarihi IS NULL 
+            AND (aktif_mi = 1 OR (isten_cikis_tarihi IS NOT NULL AND isten_cikis_tarihi >= ?))
+            ORDER BY adi_soyadi ASC
+        ");
+        $personeller->execute([$firma_id, $startDate]);
         $personel_list = $personeller->fetchAll(PDO::FETCH_OBJ);
 
         // Ücretsiz izin türlerini getir

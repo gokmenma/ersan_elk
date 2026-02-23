@@ -475,13 +475,16 @@ use App\Service\Gate;
         body.puantaj-fullscreen .card-izin-turleri {
             top: 70px !important;
         }
+        footer{
+            display: none;
+        }
 
         body.puantaj-fullscreen .puantaj-table-wrapper {
             max-height: calc(100vh - 200px) !important;
         }
 
         .puantaj-table-wrapper {
-            max-height: calc(100vh - 420px);
+            max-height: calc(100vh - 395px);
             overflow: auto;
             background: #fff;
             scroll-snap-type: y mandatory;
@@ -517,6 +520,54 @@ use App\Service\Gate;
             height: 40px;
             /* 1px boşluk için beyaz alt çizgi */
             box-shadow: 0 1px 0 0 #fff;
+        }
+
+        /* Footer sticky - wrapper içinde, ekranın altında sabit kalır */
+        .table-puantaj tfoot {
+            position: sticky;
+            bottom: 0;
+            z-index: 50;
+        }
+
+        .table-puantaj tfoot tr {
+            background-color: #f7f7f7;
+            height: 40px;
+        }
+
+        [data-bs-theme="dark"] .table-puantaj tfoot tr {
+            background-color: #282f36 !important;
+        }
+
+        .table-puantaj tfoot td {
+            background-color: #f8f9fa !important;
+            vertical-align: middle;
+            border: 1px solid #ced4da !important;
+            height: 40px;
+            box-shadow: 0 -1px 0 0 #fff;
+        }
+
+        /* Footer sol ve sağ kolonlar */
+        .table-puantaj tfoot td.sticky-col {
+            z-index: 60;
+            background-color: #f8f9fa !important;
+            border-bottom-left-radius: 8px;
+        }
+
+        .table-puantaj tfoot td.sticky-col-right-1 {
+            z-index: 60;
+            background-color: #f8f9fa !important;
+        }
+
+        .table-puantaj tfoot td.sticky-col-right-2 {
+            z-index: 60;
+            background-color: #f8f9fa !important;
+            border-bottom-right-radius: 8px;
+        }
+
+        [data-bs-theme="dark"] .table-puantaj tfoot td.sticky-col,
+        [data-bs-theme="dark"] .table-puantaj tfoot td.sticky-col-right-1,
+        [data-bs-theme="dark"] .table-puantaj tfoot td.sticky-col-right-2 {
+            background-color: #282f36 !important;
         }
 
         /* Header'daki sol ve sağ kolonun z-index'i en yüksek olmalı */
@@ -737,6 +788,9 @@ use App\Service\Gate;
                                 <tbody id="table-body">
                                     <!-- Personeller ve veriler dinamik gelecek -->
                                 </tbody>
+                                <tfoot id="table-footer" class="table-light fw-bold">
+                                    <!-- Toplamlar dinamik gelecek -->
+                                </tfoot>
                             </table>
                         </div>
                     </div>

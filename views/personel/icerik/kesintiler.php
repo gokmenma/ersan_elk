@@ -141,10 +141,12 @@ foreach ($kesintiler as $k) {
                                                 <i class="bx bx-stop"></i>
                                             </button>
                                         <?php endif; ?>
-                                        <button type="button" class="btn btn-sm btn-danger btn-personel-kesinti-sil"
-                                            data-id="<?= $k->id ?>" title="Sil">
-                                            <i class="bx bx-trash"></i>
-                                        </button>
+                                        <?php if (!($k->kapali_mi ?? 0)): ?>
+                                            <button type="button" class="btn btn-sm btn-danger btn-personel-kesinti-sil"
+                                                data-id="<?= $k->id ?>" title="Sil">
+                                                <i class="bx bx-trash"></i>
+                                            </button>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

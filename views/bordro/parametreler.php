@@ -113,6 +113,18 @@ $kategoriOptions = [
     'gelir' => 'Gelir (Ek Ödeme)',
     'kesinti' => 'Kesinti'
 ];
+
+$donemOptions = [];
+if (!empty($donemler)) {
+    foreach ($donemler as $donem) {
+        $donemOptions[$donem] = getDonemLabel($donem);
+    }
+}
+
+$vergiYillariOptions = [];
+for ($y = date('Y') + 1; $y >= 2020; $y--) {
+    $vergiYillariOptions[$y] = $y;
+}
 ?>
 
 <div class="container-fluid">
@@ -145,325 +157,152 @@ $kategoriOptions = [
         <!-- Gelir/Kesinti Parametreleri Tab -->
         <div class="tab-pane active" id="tabParametreler" role="tabpanel">
             <div class="card">
-                <div class="card-header">
+                <div class="card-header border-bottom-0 pb-3">
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                         <h5 class="card-title mb-0">
-                            <i class="bx bx-list-ul me-1"></i> Gelir ve Kesinti Türleri
+                            <i class="bx bx-list-ul me-1"></i> Tüm Gelir ve Kesinti Türleri
                         </h5>
-
-                        <div class="d-flex align-items-center gap-3">
-                            <!-- Dönem Filtresi Toggle -->
-                            <div class="btn-group" role="group">
-                                <a href="?p=bordro/parametreler"
-                                    class="btn btn-sm <?= !$showAll ? 'btn-primary' : 'btn-outline-primary' ?>">
-                                    <i class="bx bx-calendar-check me-1"></i> Bugün Geçerli
-                                </a>
-                                <a href="?p=bordro/parametreler&tum_donemler=1"
-                                    class="btn btn-sm <?= $showAll ? 'btn-primary' : 'btn-outline-primary' ?>">
-                                    <i class="bx bx-calendar me-1"></i> Tüm Dönemler
-                                </a>
-                            </div>
-
-                            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal"
-                                data-bs-target="#modalParametreEkle">
-                                <i class="bx bx-plus me-1"></i> Yeni Parametre
+                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                            <button type="button" id="exportExcelParametreler"
+                                class="btn btn-link text-success text-decoration-none px-2 d-flex align-items-center"
+                                title="Excel'e Aktar">
+                                <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel'e Aktar
+                            </button>
+                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                            <button type="button"
+                                class="btn btn-dark text-white shadow-sm text-decoration-none px-3 d-flex align-items-center"
+                                data-bs-toggle="modal" data-bs-target="#modalParametreEkle">
+                                <i class="bx bx-plus me-1 text-white fs-5"></i> Yeni Parametre
                             </button>
                         </div>
                     </div>
+                    <!-- Filtre Alanları -->
+                    <div class="row mt-3">
+                        <div class="col-md-3">
+                            <?= Form::FormSelect2(
+                                name: "filtreDonem",
+                                options: [
+                                    "aktif" => "Sadece Aktif Dönemler (Bugün Geçerli)",
+                                    "tumu" => "Tüm Dönemler (Geçmiş ve Gelecek Dahil)"
+                                ],
+                                selectedValue: ($showAll ? "tumu" : "aktif"),
+                                label: "Dönem Filtresi",
+                                icon: "calendar"
+                            ) ?>
+                        </div>
+                        <div class="col-md-3">
+                            <?= Form::FormSelect2(
+                                name: "filtreKategori",
+                                options: [
+                                    "" => "Tümü",
+                                    "Gelir" => "Gelir (Ek Ödeme)",
+                                    "Kesinti" => "Kesinti"
+                                ],
+                                selectedValue: "",
+                                label: "Kategori Filtresi",
+                                icon: "filter"
+                            ) ?>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <?php if ($showAll): ?>
-                        <div class="alert alert-info mb-3">
-                            <i class="bx bx-info-circle me-1"></i>
-                            <strong>Tüm dönemler</strong> görüntüleniyor. Aktif dönemler
-                            <span class="badge bg-success">yeşil</span> ile işaretlenmiştir.
-                        </div>
-                    <?php endif; ?>
-
-                    <div class="row">
-                        <!-- Gelir Türleri -->
-                        <div class="col-lg-6">
-                            <div class="card border-success mb-3">
-                                <div class="card-header bg-success text-white">
-                                    <i class="bx bx-plus-circle me-1"></i> Gelir Türleri (Ek ödemeler)
-                                    <span class="badge bg-light text-success float-end">
-                                        <?= count($gelirGruplu) ?> tür
-                                    </span>
-                                </div>
-                                <div class="card-body p-0">
-                                    <?php if (empty($gelirGruplu)): ?>
-                                        <div class="text-center text-muted py-4">
-                                            <i class="bx bx-folder-open fs-1 d-block mb-2"></i>
-                                            Henüz gelir türü tanımlanmamış.
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="accordion accordion-flush" id="accordionGelirler">
-                                            <?php foreach ($gelirGruplu as $kod => $parametreler): ?>
-                                                <?php
-                                                // Bugün geçerli olanı bul
-                                                $aktifParam = null;
-                                                foreach ($parametreler as $p) {
-                                                    if (bugunGecerliMi($p, $bugun)) {
-                                                        $aktifParam = $p;
-                                                        break;
-                                                    }
-                                                }
-                                                $ilkParam = $parametreler[0];
-                                                $donemSayisi = count($parametreler);
-
-                                                // Tüm dönemler modunda değilse ve aktif yoksa atla
-                                                if (!$showAll && !$aktifParam)
-                                                    continue;
-                                                ?>
-                                                <div class="accordion-item">
-                                                    <h2 class="accordion-header">
-                                                        <button
-                                                            class="accordion-button <?= $donemSayisi <= 1 && !$showAll ? 'collapsed' : '' ?>"
-                                                            type="button" data-bs-toggle="collapse"
-                                                            data-bs-target="#collapse_gelir_<?= $kod ?>">
-                                                            <div
-                                                                class="d-flex align-items-center justify-content-between w-100 me-3">
-                                                                <div>
-                                                                    <strong><?= htmlspecialchars($ilkParam->etiket) ?></strong>
-                                                                    <br>
-                                                                    <code class="me-2"><?= htmlspecialchars($kod) ?></code>
-                                                                </div>
-                                                                <div class="d-flex align-items-center gap-2">
-                                                                    <?php
-                                                                    $badge = match ($ilkParam->hesaplama_tipi) {
-                                                                        'brut', 'gunluk_brut', 'aylik_gun_brut' => 'bg-primary',
-                                                                        'net', 'gunluk_net', 'aylik_gun_net' => 'bg-success',
-                                                                        'kismi_muaf', 'gunluk_kismi_muaf' => 'bg-warning text-dark',
-                                                                        default => 'bg-secondary'
-                                                                    };
-                                                                    ?>
-                                                                    <span class="badge <?= $badge ?>">
-                                                                        <?= $hesaplamaTipleri[$ilkParam->hesaplama_tipi] ?? ($ilkParam->hesaplama_tipi ?: 'Tanımsız') ?>
-                                                                    </span>
-                                                                    <?php if ($donemSayisi > 1): ?>
-                                                                        <span class="badge bg-info"><?= $donemSayisi ?> dönem</span>
-                                                                    <?php endif; ?>
-                                                                </div>
-                                                            </div>
-                                                        </button>
-                                                    </h2>
-                                                    <div id="collapse_gelir_<?= $kod ?>"
-                                                        class="accordion-collapse collapse <?= $showAll || $donemSayisi > 1 ? 'show' : '' ?>">
-                                                        <div class="accordion-body p-0">
-                                                            <table class="table table-sm mb-0">
-                                                                <thead class="table-light">
-                                                                    <tr>
-                                                                        <th>Geçerlilik Dönemi</th>
-                                                                        <th>Muaf Limit</th>
-                                                                        <th>SGK</th>
-                                                                        <th>G.V.</th>
-                                                                        <th class="text-center">İşlem</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    <?php foreach ($parametreler as $param): ?>
-                                                                        <?php
-                                                                        $aktifMi = bugunGecerliMi($param, $bugun);
-                                                                        if (!$showAll && !$aktifMi)
-                                                                            continue;
-                                                                        ?>
-                                                                        <tr class="<?= $aktifMi ? 'table-success' : '' ?>">
-                                                                            <td>
-                                                                                <?php if ($aktifMi): ?>
-                                                                                    <span class="badge bg-success me-1">Aktif</span>
-                                                                                <?php endif; ?>
-                                                                                <?php if ($param->gecerlilik_baslangic): ?>
-                                                                                    <?= date('d.m.Y', strtotime($param->gecerlilik_baslangic)) ?>
-                                                                                    <?= $param->gecerlilik_bitis ? ' - ' . date('d.m.Y', strtotime($param->gecerlilik_bitis)) : ' - Süresiz' ?>
-                                                                                <?php else: ?>
-                                                                                    <span class="text-muted">Tüm dönemler</span>
-                                                                                <?php endif; ?>
-                                                                            </td>
-                                                                            <td>
-                                                                                <?php if ($param->hesaplama_tipi === 'kismi_muaf' && $param->gunluk_muaf_limit > 0): ?>
-                                                                                    <strong class="text-primary">
-                                                                                        <?= number_format($param->gunluk_muaf_limit, 2, ',', '.') ?>
-                                                                                        ?/gün
-                                                                                    </strong>
-                                                                                <?php else: ?>
-                                                                                    <span class="text-muted">-</span>
-                                                                                <?php endif; ?>
-                                                                            </td>
-                                                                            <td>
-                                                                                <?= $param->sgk_matrahi_dahil ? '<i class="bx bx-check text-success fs-5"></i>' : '<i class="bx bx-x text-danger fs-5"></i>' ?>
-                                                                            </td>
-                                                                            <td>
-                                                                                <?= $param->gelir_vergisi_dahil ? '<i class="bx bx-check text-success fs-5"></i>' : '<i class="bx bx-x text-danger fs-5"></i>' ?>
-                                                                            </td>
-                                                                            <td class="text-center">
-                                                                                <button
-                                                                                    class="btn btn-sm btn-outline-primary btn-edit-param"
-                                                                                    data-id="<?= $param->id ?>"
-                                                                                    data-param='<?= htmlspecialchars(json_encode($param), ENT_QUOTES, 'UTF-8') ?>'>
-                                                                                    <i class="bx bx-edit-alt"></i>
-                                                                                </button>
-                                                                                <button
-                                                                                    class="btn btn-sm btn-outline-success btn-copy-param"
-                                                                                    data-param='<?= htmlspecialchars(json_encode($param), ENT_QUOTES, 'UTF-8') ?>'
-                                                                                    title="Yeni dönem olarak kopyala">
-                                                                                    <i class="bx bx-copy"></i>
-                                                                                </button>
-                                                                                <button
-                                                                                    class="btn btn-sm btn-outline-danger btn-delete-param"
-                                                                                    data-id="<?= $param->id ?>"
-                                                                                    data-etiket="<?= htmlspecialchars($param->etiket) ?>"
-                                                                                    title="Sil">
-                                                                                    <i class="bx bx-trash"></i>
-                                                                                </button>
-                                                                            </td>
-                                                                        </tr>
-                                                                    <?php endforeach; ?>
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Kesinti Türleri -->
-                        <div class="col-lg-6">
-                            <div class="card border-danger mb-3">
-                                <div class="card-header bg-danger text-white">
-                                    <i class="bx bx-minus-circle me-1"></i> Kesinti Türleri
-                                    <span class="badge bg-light text-danger float-end">
-                                        <?= count($kesintiGruplu) ?> tür
-                                    </span>
-                                </div>
-                                <div class="card-body p-0">
-                                    <?php if (empty($kesintiGruplu)): ?>
-                                        <div class="text-center text-muted py-4">
-                                            <i class="bx bx-folder-open fs-1 d-block mb-2"></i>
-                                            Henüz kesinti türü tanımlanmamış.
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="accordion accordion-flush" id="accordionKesintiler">
-                                            <?php foreach ($kesintiGruplu as $kod => $parametreler): ?>
-                                                <?php
-                                                $aktifParam = null;
-                                                foreach ($parametreler as $p) {
-                                                    if (bugunGecerliMi($p, $bugun)) {
-                                                        $aktifParam = $p;
-                                                        break;
-                                                    }
-                                                }
-                                                $ilkParam = $parametreler[0];
-                                                $donemSayisi = count($parametreler);
-
-                                                if (!$showAll && !$aktifParam)
-                                                    continue;
-                                                ?>
-                                                <div class="accordion-item">
-                                                    <h2 class="accordion-header">
-                                                        <button
-                                                            class="accordion-button <?= $donemSayisi <= 1 && !$showAll ? 'collapsed' : '' ?>"
-                                                            type="button" data-bs-toggle="collapse"
-                                                            data-bs-target="#collapse_kesinti_<?= $kod ?>">
-                                                            <div
-                                                                class="d-flex align-items-center justify-content-between w-100 me-3">
-                                                                <div>
-                                                                    <strong><?= htmlspecialchars($ilkParam->etiket) ?></strong>
-                                                                    <br>
-                                                                    <code class="me-2"><?= htmlspecialchars($kod) ?></code>
-                                                                </div>
-                                                                <div class="d-flex align-items-center gap-2">
-                                                                    <?php
-                                                                    $badge = match ($ilkParam->hesaplama_tipi) {
-                                                                        'netten' => 'bg-secondary',
-                                                                        'brutten', 'gunluk_kesinti', 'aylik_gun_kesinti' => 'bg-danger',
-                                                                        'sgk_matrahindan' => 'bg-warning text-dark',
-                                                                        'oran_bazli_vergi' => 'bg-info',
-                                                                        'oran_bazli_sgk' => 'bg-primary',
-                                                                        'oran_bazli_net' => 'bg-dark',
-                                                                        default => 'bg-secondary'
-                                                                    };
-                                                                    ?>
-                                                                    <span class="badge <?= $badge ?>">
-                                                                        <?= $hesaplamaTipleri[$ilkParam->hesaplama_tipi] ?? ($ilkParam->hesaplama_tipi ?: 'Tanımsız') ?>
-                                                                    </span>
-                                                                    <?php if ($donemSayisi > 1): ?>
-                                                                        <span class="badge bg-info"><?= $donemSayisi ?> dönem</span>
-                                                                    <?php endif; ?>
-                                                                </div>
-                                                            </div>
-                                                        </button>
-                                                    </h2>
-                                                    <div id="collapse_kesinti_<?= $kod ?>"
-                                                        class="accordion-collapse collapse <?= $showAll || $donemSayisi > 1 ? 'show' : '' ?>">
-                                                        <div class="accordion-body p-0">
-                                                            <table class="table table-sm mb-0">
-                                                                <thead class="table-light">
-                                                                    <tr>
-                                                                        <th>Geçerlilik Dönemi</th>
-                                                                        <th>Açıklama</th>
-                                                                        <th class="text-center">İşlem</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    <?php foreach ($parametreler as $param): ?>
-                                                                        <?php
-                                                                        $aktifMi = bugunGecerliMi($param, $bugun);
-                                                                        if (!$showAll && !$aktifMi)
-                                                                            continue;
-                                                                        ?>
-                                                                        <tr class="<?= $aktifMi ? 'table-success' : '' ?>">
-                                                                            <td>
-                                                                                <?php if ($aktifMi): ?>
-                                                                                    <span class="badge bg-success me-1">Aktif</span>
-                                                                                <?php endif; ?>
-                                                                                <?php if ($param->gecerlilik_baslangic): ?>
-                                                                                    <?= date('d.m.Y', strtotime($param->gecerlilik_baslangic)) ?>
-                                                                                    <?= $param->gecerlilik_bitis ? ' - ' . date('d.m.Y', strtotime($param->gecerlilik_bitis)) : ' - Süresiz' ?>
-                                                                                <?php else: ?>
-                                                                                    <span class="text-muted">Tüm dönemler</span>
-                                                                                <?php endif; ?>
-                                                                            </td>
-                                                                            <td class="text-muted small">
-                                                                                <?= htmlspecialchars($param->aciklama ?? '-') ?>
-                                                                            </td>
-                                                                            <td class="text-center">
-                                                                                <button
-                                                                                    class="btn btn-sm btn-outline-primary btn-edit-param"
-                                                                                    data-id="<?= $param->id ?>"
-                                                                                    data-param='<?= htmlspecialchars(json_encode($param), ENT_QUOTES, 'UTF-8') ?>'>
-                                                                                    <i class="bx bx-edit-alt"></i>
-                                                                                </button>
-                                                                                <button
-                                                                                    class="btn btn-sm btn-outline-success btn-copy-param"
-                                                                                    data-param='<?= htmlspecialchars(json_encode($param), ENT_QUOTES, 'UTF-8') ?>'
-                                                                                    title="Yeni dönem olarak kopyala">
-                                                                                    <i class="bx bx-copy"></i>
-                                                                                </button>
-                                                                                <button
-                                                                                    class="btn btn-sm btn-outline-danger btn-delete-param"
-                                                                                    data-id="<?= $param->id ?>"
-                                                                                    data-etiket="<?= htmlspecialchars($param->etiket) ?>"
-                                                                                    title="Sil">
-                                                                                    <i class="bx bx-trash"></i>
-                                                                                </button>
-                                                                            </td>
-                                                                        </tr>
-                                                                    <?php endforeach; ?>
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
+                <div class="card-body pt-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-bordered w-100 align-middle" id="dtParametreler">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Kategori</th>
+                                    <th>Tür Kodu</th>
+                                    <th>Etiket (Adı)</th>
+                                    <th>Hesaplama Tipi</th>
+                                    <th>Başlangıç</th>
+                                    <th>Bitiş</th>
+                                    <th class="text-center">Durum</th>
+                                    <th class="text-center" style="width: 120px;">İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($tumParametreler as $param): ?>
+                                    <?php
+                                    $aktifMi = bugunGecerliMi($param, $bugun);
+                                    ?>
+                                    <tr data-aktif="<?= $aktifMi ? '1' : '0' ?>"
+                                        data-kategori="<?= htmlspecialchars($param->kategori === 'gelir' ? 'Gelir' : 'Kesinti') ?>">
+                                        <td>
+                                            <?php if ($param->kategori === 'gelir'): ?>
+                                                <span class="badge bg-success bg-opacity-10 text-success"><i
+                                                        class="bx bx-plus-circle me-1"></i> Gelir</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-danger bg-opacity-10 text-danger"><i
+                                                        class="bx bx-minus-circle me-1"></i> Kesinti</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><code><?= htmlspecialchars($param->kod) ?></code></td>
+                                        <td>
+                                            <strong><?= htmlspecialchars($param->etiket) ?></strong>
+                                            <?php if (!empty($param->aciklama)): ?>
+                                                <br><small class="text-muted"><?= htmlspecialchars($param->aciklama) ?></small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php
+                                            $badge = match ($param->hesaplama_tipi) {
+                                                'brut', 'gunluk_brut', 'aylik_gun_brut' => 'bg-primary',
+                                                'net', 'gunluk_net', 'aylik_gun_net' => 'bg-success',
+                                                'kismi_muaf', 'gunluk_kismi_muaf' => 'bg-warning text-dark',
+                                                'netten' => 'bg-secondary',
+                                                'brutten', 'gunluk_kesinti', 'aylik_gun_kesinti' => 'bg-danger',
+                                                'sgk_matrahindan' => 'bg-warning text-dark',
+                                                'oran_bazli_vergi' => 'bg-info',
+                                                'oran_bazli_sgk' => 'bg-primary',
+                                                'oran_bazli_net' => 'bg-dark',
+                                                default => 'bg-secondary'
+                                            };
+                                            ?>
+                                            <span class="badge <?= $badge ?>">
+                                                <?= $hesaplamaTipleri[$param->hesaplama_tipi] ?? ($param->hesaplama_tipi ?: 'Tanımsız') ?>
+                                            </span>
+                                            <?php if ($param->hesaplama_tipi === 'kismi_muaf' && $param->gunluk_muaf_limit > 0): ?>
+                                                <br><small class="text-primary mt-1 d-inline-block">Limit:
+                                                    <?= number_format($param->gunluk_muaf_limit, 2, ',', '.') ?> ₺/gün</small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?= $param->gecerlilik_baslangic ? date('d.m.Y', strtotime($param->gecerlilik_baslangic)) : '<span class="text-muted">Tüm Dönemler</span>' ?>
+                                        </td>
+                                        <td>
+                                            <?= $param->gecerlilik_bitis ? date('d.m.Y', strtotime($param->gecerlilik_bitis)) : '<span class="text-muted">Süresiz</span>' ?>
+                                        </td>
+                                        <td class="text-center">
+                                            <?php if ($aktifMi): ?>
+                                                <span class="badge bg-success">Aktif</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-secondary">Pasif</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="d-flex justify-content-center gap-1">
+                                                <button class="btn btn-sm btn-outline-primary btn-edit-param"
+                                                    data-id="<?= $param->id ?>"
+                                                    data-param='<?= htmlspecialchars(json_encode($param), ENT_QUOTES, 'UTF-8') ?>'
+                                                    title="Düzenle">
+                                                    <i class="bx bx-edit-alt"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-success btn-copy-param"
+                                                    data-param='<?= htmlspecialchars(json_encode($param), ENT_QUOTES, 'UTF-8') ?>'
+                                                    title="Yeni dönem olarak kopyala">
+                                                    <i class="bx bx-copy"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger btn-delete-param"
+                                                    data-id="<?= $param->id ?>"
+                                                    data-etiket="<?= htmlspecialchars($param->etiket) ?>" title="Sil">
+                                                    <i class="bx bx-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -491,24 +330,36 @@ $kategoriOptions = [
                         <h5 class="card-title mb-0">
                             <i class="bx bx-slider me-1"></i> Genel Bordro Ayarları
                         </h5>
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-2">
                             <?php if (!empty($donemler)): ?>
-                                <select id="donemSecimi" class="form-select" style="width: 200px;">
-                                    <?php foreach ($donemler as $donem): ?>
-                                        <option value="<?= $donem ?>" <?= $seciliDonem === $donem ? 'selected' : '' ?>>
-                                            <?= getDonemLabel($donem) ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
+                                <div style="min-width: 200px;">
+                                    <select id="donemSecimi" class="form-select" style="width: 100%;">
+                                        <?php foreach ($donemler as $donem): ?>
+                                            <option value="<?= $donem ?>" <?= $seciliDonem === $donem ? 'selected' : '' ?>>
+                                                <?= getDonemLabel($donem) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
                             <?php endif; ?>
 
-                            <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal"
-                                data-bs-target="#modalYeniDonem">
-                                <i class="bx bx-copy me-1"></i> Yeni Dönem Oluştur
+                            <button type="button" id="exportExcelGenelAyar"
+                                class="btn btn-link text-success text-decoration-none px-2 d-flex align-items-center"
+                                title="Excel'e Aktar">
+                                <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel'e Aktar
                             </button>
-                            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal"
-                                data-bs-target="#modalGenelAyarEkle">
-                                <i class="bx bx-plus me-1"></i> Yeni Ayar
+                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                            <button type="button"
+                                class="btn btn-link text-info text-decoration-none px-2 d-flex align-items-center"
+                                data-bs-toggle="modal" data-bs-target="#modalYeniDonem">
+                                <i class="bx bx-copy me-1 fs-5"></i> Yeni Dönem Oluştur
+                            </button>
+                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                            <button type="button"
+                                class="btn btn-dark text-white shadow-sm text-decoration-none px-3 d-flex align-items-center"
+                                data-bs-toggle="modal" data-bs-target="#modalGenelAyarEkle">
+                                <i class="bx bx-plus me-1 fs-5 text-white"></i> Yeni Ayar
                             </button>
                         </div>
                     </div>
@@ -525,8 +376,8 @@ $kategoriOptions = [
                         </div>
                     <?php else: ?>
                         <div class="table-responsive">
-                            <table class="table table-hover table-bordered">
-                                <thead class="table-primary">
+                            <table class="table table-hover table-bordered w-100 align-middle" id="dtGenelAyarlar">
+                                <thead class="table-light">
                                     <tr>
                                         <th>Ayar Adı</th>
                                         <th>Kod</th>
@@ -538,7 +389,7 @@ $kategoriOptions = [
                                 </thead>
                                 <tbody>
                                     <?php foreach ($filtreliAyarlar as $ayar): ?>
-                                        <tr class="<?= !$ayar->aktif ? 'table-secondary text-muted' : '' ?>">
+                                        <tr>
                                             <td>
                                                 <strong><?= htmlspecialchars($ayar->parametre_adi) ?></strong>
                                             </td>
@@ -596,24 +447,34 @@ $kategoriOptions = [
                             <i class="bx bx-chart me-1"></i>
                             <span id="vergiDilimiBaslik"><?= $seciliVergiYili ?></span> Yılı Gelir Vergisi Dilimleri
                         </h5>
-                        <div class="d-flex align-items-center gap-2">
-                            <select id="vergiYiliSecimi" class="form-select" style="width: 120px;">
-                                <?php for ($y = date('Y') + 1; $y >= 2020; $y--): ?>
-                                    <option value="<?= $y ?>" <?= $seciliVergiYili == $y ? 'selected' : '' ?>><?= $y ?>
-                                    </option>
-                                <?php endfor; ?>
-                            </select>
-                            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal"
-                                data-bs-target="#modalVergiDilimiEkle">
-                                <i class="bx bx-plus me-1"></i> Dilim Ekle
+                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-2">
+                            <div style="min-width: 120px;">
+                                <select id="vergiYiliSecimi" class="form-select" style="width: 100%;">
+                                    <?php for ($y = date('Y') + 1; $y >= 2020; $y--): ?>
+                                        <option value="<?= $y ?>" <?= $seciliVergiYili == $y ? 'selected' : '' ?>><?= $y ?>
+                                        </option>
+                                    <?php endfor; ?>
+                                </select>
+                            </div>
+                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                            <button type="button" id="exportExcelVergiDilimleri"
+                                class="btn btn-link text-success text-decoration-none px-2 d-flex align-items-center"
+                                title="Excel'e Aktar">
+                                <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel'e Aktar
+                            </button>
+                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                            <button type="button"
+                                class="btn btn-dark text-white shadow-sm text-decoration-none px-3 d-flex align-items-center"
+                                data-bs-toggle="modal" data-bs-target="#modalVergiDilimiEkle">
+                                <i class="bx bx-plus me-1 text-white fs-5"></i> Dilim Ekle
                             </button>
                         </div>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-hover" id="tblVergiDilimleri">
-                            <thead class="table-primary">
+                        <table class="table table-hover table-bordered w-100 align-middle" id="dtVergiDilimleri">
+                            <thead class="table-light">
                                 <tr class="text-center">
                                     <th>Dilim</th>
                                     <th>Alt Limit</th>
@@ -624,13 +485,7 @@ $kategoriOptions = [
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if (empty($vergiDilimleri)): ?>
-                                    <tr class="vergi-dilim-empty">
-                                        <td colspan="6" class="text-center text-muted py-4">
-                                            <?= $seciliVergiYili ?> yılı için vergi dilimi tanımlanmamış.
-                                        </td>
-                                    </tr>
-                                <?php else: ?>
+                                <?php if (!empty($vergiDilimleri)): ?>
                                     <?php foreach ($vergiDilimleri as $dilim): ?>
                                         <tr>
                                             <td class="text-center fw-bold"><?= $dilim->dilim_no ?>. Dilim</td>
@@ -675,158 +530,189 @@ $kategoriOptions = [
 <!-- Parametre Ekle/Düzenle Modal -->
 <div class="modal fade" id="modalParametreEkle" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="bx bx-plus-circle me-2"></i>Yeni Parametre Ekle</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header modal-header-primary p-3">
+                <div class="modal-icon-box">
+                    <i class="bx bx-plus"></i>
+                </div>
+                <div class="modal-title-group">
+                    <h5 class="modal-title">Yeni Parametre Ekle</h5>
+                    <p class="modal-subtitle">Yeni kayıt oluşturmak için bilgileri doldurun.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="formParametre">
                 <input type="hidden" name="id" id="param_id">
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <?= Form::FormFloatInput("text", "kod", "", "Örn: yemek_yardimi", "Kod", "bx bx-hash", "form-control", true) ?>
+                <div class="modal-body p-4">
+                    <!-- Temel Bilgiler Section -->
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="badge bg-primary-subtle text-primary rounded-circle p-2 me-2">
+                                <i class="bx bx-info-circle fs-5"></i>
+                            </span>
+                            <h6 class="mb-0 fw-bold">Temel Bilgiler</h6>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <?= Form::FormFloatInput("text", "etiket", "", "Örn: Yemek Yardımı", "Etiket", "bx bx-label", "form-control", true) ?>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <?= Form::FormSelect2(
-                                name: "kategori",
-                                options: $kategoriOptions,
-                                selectedValue: 'gelir',
-                                label: "Kategori",
-                                icon: "bx bx-category",
-                                required: true
-                            ) ?>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <?= Form::FormSelect2(
-                                name: "hesaplama_tipi",
-                                options: $hesaplamaTipleri,
-                                selectedValue: 'net',
-                                label: "Hesaplama Tipi",
-                                icon: "bx bx-calculator",
-                                required: true
-                            ) ?>
-                        </div>
-                    </div>
-
-                    <div id="muafiyetAyarlari" class="row" style="display: none;">
-                        <div class="col-md-4 mb-3">
-                            <?= Form::FormSelect2(
-                                name: "muaf_limit_tipi",
-                                options: $muafLimitTipleri,
-                                selectedValue: 'yok',
-                                label: "Muafiyet Tipi",
-                                icon: "bx bx-shield"
-                            ) ?>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <?= Form::FormFloatInput("number", "gunluk_muaf_limit", "0", "0.00", "Günlük Muaf Limit", "bx bx-money", "form-control", false, null, "off", false, 'step="0.01"') ?>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <?= Form::FormFloatInput("number", "aylik_muaf_limit", "0", "0.00", "Aylık Muaf Limit", "bx bx-money", "form-control", false, null, "off", false, 'step="0.01"') ?>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <?= Form::FormFloatInput("text", "kod", "", "Örn: yemek_yardimi", "Kod", "hash", "form-control", true) ?>
+                            </div>
+                            <div class="col-md-6">
+                                <?= Form::FormFloatInput("text", "etiket", "", "Örn: Yemek Yardımı", "Etiket", "tag", "form-control", true) ?>
+                            </div>
+                            <div class="col-md-6">
+                                <?= Form::FormSelect2(
+                                    name: "kategori",
+                                    options: $kategoriOptions,
+                                    selectedValue: 'gelir',
+                                    label: "Kategori",
+                                    icon: "grid",
+                                    required: true
+                                ) ?>
+                            </div>
+                            <div class="col-md-6">
+                                <?= Form::FormSelect2(
+                                    name: "hesaplama_tipi",
+                                    options: $hesaplamaTipleri,
+                                    selectedValue: 'net',
+                                    label: "Hesaplama Tipi",
+                                    icon: "sliders",
+                                    required: true
+                                ) ?>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-12 mb-3">
-                            <label class="form-label">Vergi/SGK Dahil Mi?</label>
-                            <div class="d-flex gap-4">
-                                <div class="form-check">
+                    <!-- Hesaplama Ayarları Section -->
+                    <div class="mb-4 pt-3 border-top">
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="badge bg-success-subtle text-success rounded-circle p-2 me-2">
+                                <i class="bx bx-calculator fs-5"></i>
+                            </span>
+                            <h6 class="mb-0 fw-bold">Hesaplama ve Vergi Ayarları</h6>
+                        </div>
+
+                        <div id="muafiyetAyarlari" class="row g-3 mb-3" style="display: none;">
+                            <div class="col-md-4">
+                                <?= Form::FormSelect2(
+                                    name: "muaf_limit_tipi",
+                                    options: $muafLimitTipleri,
+                                    selectedValue: 'yok',
+                                    label: "Muafiyet Tipi",
+                                    icon: "shield"
+                                ) ?>
+                            </div>
+                            <div class="col-md-4">
+                                <?= Form::FormFloatInput("number", "gunluk_muaf_limit", "0", "0.00", "Günlük Muaf Limit", "dollar-sign", "form-control", false, null, "off", false, 'step="0.01"') ?>
+                            </div>
+                            <div class="col-md-4">
+                                <?= Form::FormFloatInput("number", "aylik_muaf_limit", "0", "0.00", "Aylık Muaf Limit", "dollar-sign", "form-control", false, null, "off", false, 'step="0.01"') ?>
+                            </div>
+                        </div>
+
+                        <div class="bg-light rounded p-3 mb-3 border border-dashed">
+                            <label class="form-label d-block text-muted small fw-bold text-uppercase mb-2">Vergi/SGK
+                                Dahil Mi?</label>
+                            <div class="d-flex flex-wrap gap-4">
+                                <div class="form-check custom-checkbox">
                                     <input class="form-check-input" type="checkbox" id="sgk_matrahi_dahil"
                                         name="sgk_matrahi_dahil" value="1">
-                                    <label class="form-check-label" for="sgk_matrahi_dahil" id="sgk_matrah_label">SGK
-                                        Matrahına Dahil</label>
+                                    <label class="form-check-label fw-medium" for="sgk_matrahi_dahil"
+                                        id="sgk_matrah_label">SGK Matrahı</label>
                                 </div>
-                                <div class="form-check">
+                                <div class="form-check custom-checkbox">
                                     <input class="form-check-input" type="checkbox" id="gelir_vergisi_dahil"
                                         name="gelir_vergisi_dahil" value="1" checked>
-                                    <label class="form-check-label" for="gelir_vergisi_dahil"
-                                        id="gelir_vergisi_label">Gelir Vergisine
-                                        Dahil</label>
+                                    <label class="form-check-label fw-medium" for="gelir_vergisi_dahil"
+                                        id="gelir_vergisi_label">Gelir Vergisi</label>
                                 </div>
-                                <div class="form-check">
+                                <div class="form-check custom-checkbox">
                                     <input class="form-check-input" type="checkbox" id="damga_vergisi_dahil"
                                         name="damga_vergisi_dahil" value="1">
-                                    <label class="form-check-label" for="damga_vergisi_dahil"
-                                        id="damga_vergisi_label">Damga Vergisine
-                                        Dahil</label>
+                                    <label class="form-check-label fw-medium" for="damga_vergisi_dahil"
+                                        id="damga_vergisi_label">Damga Vergisi</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6" id="divTutar">
+                                <?= Form::FormFloatInput("text", "varsayilan_tutar", "0", "0.00", "Varsayılan Tutar", "dollar-sign", "form-control money", false, null, "off", false) ?>
+                            </div>
+                            <div class="col-md-6" id="divGunlukTutar" style="display: none;">
+                                <?= Form::FormFloatInput("text", "gunluk_tutar", "0", "0.00", "Günlük Tutar", "calendar", "form-control money", false, null, "off", false) ?>
+                            </div>
+                            <div class="col-md-6" id="divOran" style="display: none;">
+                                <?= Form::FormFloatInput("number", "oran", "0", "0", "Oran (%)", "percent", "form-control", false, null, "off", false, 'step="0.01"') ?>
+                            </div>
+                            <div class="col-md-6">
+                                <?= Form::FormFloatInput("number", "sira", "0", "0", "Sıralama", "list", "form-control") ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Geçerlilik Ayarları Section -->
+                    <div class="mb-4 pt-3 border-top">
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="badge bg-warning-subtle text-warning rounded-circle p-2 me-2">
+                                <i class="bx bx-calendar fs-5"></i>
+                            </span>
+                            <h6 class="mb-0 fw-bold">Geçerlilik Tarihleri</h6>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <?= Form::FormFloatInput("date", "gecerlilik_baslangic", "", "", "Geçerlilik Başlangıç", "calendar", "form-control") ?>
+                                <div class="text-muted mt-1" style="font-size: 11px;">Boş bırakılırsa tüm dönemler için
+                                    geçerli</div>
+                            </div>
+                            <div class="col-md-6">
+                                <?= Form::FormFloatInput("date", "gecerlilik_bitis", "", "", "Geçerlilik Bitiş", "calendar", "form-control") ?>
+                                <div class="text-muted mt-1" style="font-size: 11px;">Boş bırakılırsa süresiz geçerli
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <?= Form::FormFloatInput("date", "gecerlilik_baslangic", "", "", "Geçerlilik Başlangıç", "bx bx-calendar", "form-control") ?>
-                            <small class="text-muted">Boş bırakılırsa tüm dönemler için geçerli</small>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <?= Form::FormFloatInput("date", "gecerlilik_bitis", "", "", "Geçerlilik Bitiş", "bx bx-calendar", "form-control") ?>
-                            <small class="text-muted">Boş bırakılırsa süresiz geçerli</small>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3" id="divTutar">
-                            <?= Form::FormFloatInput("text", "varsayilan_tutar", "0", "0.00", "Varsayılan Tutar", "dollar-sign", "form-control money", false, null, "off", false) ?>
-                        </div>
-                        <div class="col-md-6 mb-3" id="divGunlukTutar" style="display: none;">
-                            <?= Form::FormFloatInput("text", "gunluk_tutar", "0", "0.00", "Günlük Tutar", "bx bx-calendar-check", "form-control money", false, null, "off", false) ?>
-                        </div>
-                        <div class="col-md-6 mb-3" id="divOran" style="display: none;">
-                            <?= Form::FormFloatInput("number", "oran", "0", "0", "Oran (%)", "bx bx-percentage", "form-control", false, null, "off", false, 'step="0.01"') ?>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <?= Form::FormFloatInput("number", "sira", "0", "0", "Sıralama", "bx bx-sort-amount-up", "form-control") ?>
-                        </div>
-                    </div>
-
-                    <!-- Günlük Hesaplama Ayarları -->
-                    <div id="gunlukAyarlar" class="row" style="display: none;">
-                        <div class="col-12 mb-3">
-                            <div class="alert alert-info mb-0">
-                                <i class="bx bx-info-circle me-1"></i>
-                                <strong>Günlük Bazlı Hesaplama:</strong> Tutar = Günlük Tutar × Hesaplanan Gün Sayısı
+                    <!-- Günluk Hesaplama Ayarları -->
+                    <div id="gunlukAyarlar" class="mb-4 pt-3 border-top" style="display: none;">
+                        <div class="alert alert-info border-0 shadow-sm d-flex mb-3">
+                            <i class="bx bx-info-circle fs-4 me-2"></i>
+                            <div>
+                                <strong>Günlük Bazlı Hesaplama:</strong><br>
+                                <span class="small">Tutar = Günlük Tutar × Hesaplanan Gün Sayısı</span>
                             </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Gün Sayısı Hesaplama</label>
-                            <div class="d-flex gap-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" id="gun_otomatik"
-                                        name="gun_sayisi_otomatik" value="1">
-                                    <label class="form-check-label" for="gun_otomatik">
-                                        <i class="bx bx-git-branch text-success"></i> Otomatik (Puantajdan)
-                                    </label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" id="gun_manuel"
-                                        name="gun_sayisi_otomatik" value="0" checked>
-                                    <label class="form-check-label" for="gun_manuel">
-                                        <i class="bx bx-edit text-primary"></i> Manuel/Sabit
-                                    </label>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">GÜN SAYISI HESAPLAMA</label>
+                                <div class="d-flex gap-3 mt-1">
+                                    <div class="form-check custom-radio">
+                                        <input class="form-check-input" type="radio" id="gun_otomatik"
+                                            name="gun_sayisi_otomatik" value="1">
+                                        <label class="form-check-label" for="gun_otomatik">Otomatik</label>
+                                    </div>
+                                    <div class="form-check custom-radio">
+                                        <input class="form-check-input" type="radio" id="gun_manuel"
+                                            name="gun_sayisi_otomatik" value="0" checked>
+                                        <label class="form-check-label" for="gun_manuel">Manuel</label>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-md-6 mb-3" id="divVarsayilanGun">
-                            <?= Form::FormFloatInput("number", "varsayilan_gun_sayisi", "26", "26", "Varsayılan Gün Sayısı", "bx bx-calendar", "form-control") ?>
-                            <small class="text-muted">Manuel hesaplama için kullanılır</small>
+                            <div class="col-md-6" id="divVarsayilanGun">
+                                <?= Form::FormFloatInput("number", "varsayilan_gun_sayisi", "26", "26", "Varsayılan Gün Sayısı", "calendar", "form-control") ?>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama...", "Açıklama", "bx bx-message-detail", "form-control") ?>
+                    <div class="pt-3 border-top">
+                        <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama...", "Açıklama", "message-square", "form-control") ?>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="submit" class="btn btn-success"><i class="bx bx-save me-1"></i>Kaydet</button>
+                <div class="modal-footer bg-light border-top-0 px-4 py-3">
+                    <button type="button" class="btn btn-link text-muted fw-bold text-decoration-none me-auto"
+                        data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-success px-4 py-2 fw-bold shadow-sm">
+                        <i class="bx bx-save me-1"></i> Kaydet
+                    </button>
                 </div>
             </form>
         </div>
@@ -836,52 +722,58 @@ $kategoriOptions = [
 <!-- Yeni Dönem Oluştur Modal -->
 <div class="modal fade" id="modalYeniDonem" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="bx bx-copy me-2"></i>Yeni Dönem Oluştur</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header modal-header-info p-3">
+                <div class="modal-icon-box">
+                    <i class="bx bx-copy"></i>
+                </div>
+                <div class="modal-title-group">
+                    <h5 class="modal-title">Yeni Dönem Oluştur</h5>
+                    <p class="modal-subtitle">Mevcut ayarları yeni bir döneme kopyalayarak hızlıca yeni dönem oluşturun.
+                    </p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="formYeniDonem">
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i class="bx bx-info-circle me-1"></i>
-                        Mevcut ayarları yeni bir döneme kopyalayabilirsiniz. Değişen değerleri güncelleyin.
+                <div class="modal-body p-4">
+                    <div class="alert alert-info border-0 shadow-sm d-flex mb-4">
+                        <i class="bx bx-info-circle fs-4 me-2"></i>
+                        <div class="small">Mevcut ayarları yeni bir döneme kopyalayabilirsiniz. Lütfen değişen değerleri
+                            kontrol edip güncelleyin.</div>
                     </div>
 
-                    <div class="row mb-3">
+                    <div class="row g-3 mb-4">
                         <div class="col-md-4">
-                            <label class="form-label">Kaynak Dönem</label>
-                            <select name="kaynak_donem" id="kaynakDonemSecimi" class="form-select" required>
-                                <?php foreach ($donemler as $donem): ?>
-                                    <option value="<?= $donem ?>" <?= $seciliDonem === $donem ? 'selected' : '' ?>>
-                                        <?= getDonemLabel($donem) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                            <?= Form::FormSelect2(
+                                name: "kaynak_donem",
+                                options: $donemOptions,
+                                selectedValue: $seciliDonem,
+                                label: "Kaynak Dönem",
+                                icon: "copy",
+                                required: true,
+                                attributes: 'id="kaynakDonemSecimi"'
+                            ) ?>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Yeni Geçerlilik Başlangıç Tarihi</label>
-                            <input type="date" name="yeni_gecerlilik" class="form-control" required>
+                            <?= Form::FormFloatInput("date", "yeni_gecerlilik", "", "", "Yeni Başlangıç Tarihi", "calendar", "form-control", true) ?>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Açıklama</label>
-                            <input type="text" name="donem_aciklama" class="form-control"
-                                placeholder="Örn: 2026 Temmuz güncellemesi">
+                            <?= Form::FormFloatInput("text", "donem_aciklama", "", "Örn: 2026 Temmuz güncellemesi", "Açıklama", "message-square", "form-control") ?>
                         </div>
                     </div>
 
-                    <hr>
-
-                    <div class="table-responsive" style="max-height: 400px;">
-                        <table class="table table-sm table-hover">
+                    <div class="table-responsive rounded border shadow-sm" style="max-height: 400px;">
+                        <table class="table table-sm table-hover mb-0">
                             <thead class="table-light sticky-top">
                                 <tr>
-                                    <th style="width: 30px;">
-                                        <input type="checkbox" id="selectAllAyar" checked>
+                                    <th class="ps-3" style="width: 40px;">
+                                        <div class="form-check">
+                                            <input type="checkbox" class="form-check-input" id="selectAllAyar" checked>
+                                        </div>
                                     </th>
                                     <th>Ayar Adı</th>
                                     <th>Mevcut Değer</th>
-                                    <th>Yeni Değer</th>
+                                    <th style="width: 150px;">Yeni Değer</th>
                                 </tr>
                             </thead>
                             <tbody id="donemAyarListesi">
@@ -890,10 +782,11 @@ $kategoriOptions = [
                         </table>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="submit" class="btn btn-info">
-                        <i class="bx bx-copy me-1"></i>Seçilenleri Kopyala
+                <div class="modal-footer bg-light border-top-0 px-4 py-3">
+                    <button type="button" class="btn btn-link text-muted fw-bold text-decoration-none me-auto"
+                        data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-info px-4 py-2 fw-bold shadow-sm text-white">
+                        <i class="bx bx-copy me-1"></i> Dönemi Oluştur
                     </button>
                 </div>
             </form>
@@ -904,33 +797,44 @@ $kategoriOptions = [
 <!-- Genel Ayar Ekle Modal -->
 <div class="modal fade" id="modalGenelAyarEkle" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="bx bx-slider me-2"></i>Genel Ayar Ekle</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header modal-header-primary p-3">
+                <div class="modal-icon-box">
+                    <i class="bx bx-slider"></i>
+                </div>
+                <div class="modal-title-group">
+                    <h5 class="modal-title">Genel Ayar Ekle</h5>
+                    <p class="modal-subtitle">Yeni bir bordro hesaplama parametresi tanımlayın.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="formGenelAyar">
                 <input type="hidden" name="id" id="ayar_id">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <?= Form::FormFloatInput("text", "parametre_kodu", "", "Örn: asgari_ucret_brut", "Parametre Kodu", "hash", "form-control", true) ?>
-                    </div>
-                    <div class="mb-3">
-                        <?= Form::FormFloatInput("text", "parametre_adi", "", "Örn: Asgari Ücret (Brüt)", "Parametre Adı", "tag", "form-control", true) ?>
-                    </div>
-                    <div class="mb-3">
-                        <?= Form::FormFloatInput("text", "deger", "", "0.00", "Değer", "dollar-sign", "form-control money", true, null, "off", false) ?>
-                    </div>
-                    <div class="mb-3">
-                        <?= Form::FormFloatInput("date", "ayar_gecerlilik_baslangic", date('Y-m-d'), "", "Geçerlilik Başlangıç", "calendar", "form-control", true) ?>
-                    </div>
-                    <div class="mb-3">
-                        <?= Form::FormFloatInput("text", "ayar_aciklama", "", "Açıklama...", "Açıklama", "file-text", "form-control") ?>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <?= Form::FormFloatInput("text", "parametre_kodu", "", "Örn: asgari_ucret_brut", "Parametre Kodu", "hash", "form-control", true) ?>
+                        </div>
+                        <div class="col-12">
+                            <?= Form::FormFloatInput("text", "parametre_adi", "", "Örn: Asgari Ücret (Brüt)", "Parametre Adı", "tag", "form-control", true) ?>
+                        </div>
+                        <div class="col-12">
+                            <?= Form::FormFloatInput("text", "deger", "", "0.00", "Değer", "dollar-sign", "form-control money", true, null, "off", false) ?>
+                        </div>
+                        <div class="col-12">
+                            <?= Form::FormFloatInput("date", "ayar_gecerlilik_baslangic", date('Y-m-d'), "", "Geçerlilik Başlangıç", "calendar", "form-control", true) ?>
+                        </div>
+                        <div class="col-12">
+                            <?= Form::FormFloatInput("text", "ayar_aciklama", "", "Açıklama...", "Açıklama", "file-text", "form-control") ?>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="submit" class="btn btn-primary"><i class="bx bx-save me-1"></i>Kaydet</button>
+                <div class="modal-footer bg-light border-top-0 px-4 py-3">
+                    <button type="button" class="btn btn-link text-muted fw-bold text-decoration-none me-auto"
+                        data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary px-4 py-2 fw-bold shadow-sm">
+                        <i class="bx bx-save me-1"></i> Kaydet
+                    </button>
                 </div>
             </form>
         </div>
@@ -940,55 +844,55 @@ $kategoriOptions = [
 <!-- Vergi Dilimi Ekle/Düzenle Modal -->
 <div class="modal fade" id="modalVergiDilimiEkle" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="bx bx-chart me-2"></i>Vergi Dilimi Ekle</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header modal-header-success p-3">
+                <div class="modal-icon-box">
+                    <i class="bx bx-chart"></i>
+                </div>
+                <div class="modal-title-group">
+                    <h5 class="modal-title">Vergi Dilimi Ekle</h5>
+                    <p class="modal-subtitle">Gelir vergisi hesaplama dilimlerini güncelleyin.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="formVergiDilimi">
                 <input type="hidden" name="id" id="dilim_id">
-                <div class="modal-body">
-                    <div class="row mb-3">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">Yıl</label>
-                            <select name="dilim_yili" id="dilim_yili" class="form-select" required>
-                                <?php for ($y = date('Y') + 1; $y >= 2020; $y--): ?>
-                                    <option value="<?= $y ?>" <?= $seciliVergiYili == $y ? 'selected' : '' ?>><?= $y ?>
-                                    </option>
-                                <?php endfor; ?>
-                            </select>
+                            <?= Form::FormSelect2(
+                                name: "dilim_yili",
+                                options: $vergiYillariOptions,
+                                selectedValue: $seciliVergiYili,
+                                label: "Uygulama Yılı",
+                                icon: "calendar",
+                                required: true,
+                                attributes: 'id="dilim_yili"'
+                            ) ?>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Dilim No</label>
-                            <input type="number" name="dilim_no" class="form-control" required min="1" max="10"
-                                placeholder="1-10">
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Alt Limit (₺)</label>
-                            <input type="text" name="alt_limit" class="form-control money" required placeholder="0,00">
+                            <?= Form::FormFloatInput("number", "dilim_no", "", "Örn: 1", "Dilim Sırası", "hash", "form-control", true, null, "on", false, 'min="1" max="10"') ?>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Üst Limit (₺)</label>
-                            <input type="text" name="ust_limit" class="form-control money" placeholder="Boş = Sınırsız">
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Vergi Oranı (%)</label>
-                            <input type="number" name="vergi_orani" class="form-control" required min="0" max="100"
-                                step="0.01" placeholder="15">
+                            <?= Form::FormFloatInput("text", "alt_limit", "", "0.00", "Alt Limit (₺)", "dollar-sign", "form-control money", true) ?>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Açıklama</label>
-                            <input type="text" name="dilim_aciklama" class="form-control" placeholder="Opsiyonel">
+                            <?= Form::FormFloatInput("text", "ust_limit", "", "Boş = Sınırsız", "Üst Limit (₺)", "dollar-sign", "form-control money") ?>
+                        </div>
+                        <div class="col-md-6">
+                            <?= Form::FormFloatInput("number", "vergi_orani", "", "15", "Vergi Oranı (%)", "percent", "form-control", true, null, "on", false, 'min="0" max="100" step="0.01"') ?>
+                        </div>
+                        <div class="col-md-6">
+                            <?= Form::FormFloatInput("text", "dilim_aciklama", "", "Opsiyonel", "Açıklama", "message-square", "form-control") ?>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="submit" class="btn btn-success"><i class="bx bx-save me-1"></i>Kaydet</button>
+                <div class="modal-footer bg-light border-top-0 px-4 py-3">
+                    <button type="button" class="btn btn-link text-muted fw-bold text-decoration-none me-auto"
+                        data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-success px-4 py-2 fw-bold shadow-sm">
+                        <i class="bx bx-save me-1"></i> Kaydet
+                    </button>
                 </div>
             </form>
         </div>
@@ -1022,9 +926,9 @@ $kategoriOptions = [
             // Header rengini güncelle
             const modalHeader = $('#modalParametreEkle .modal-header');
             if (kategori === 'kesinti') {
-                modalHeader.removeClass('bg-success').addClass('bg-danger');
+                modalHeader.removeClass('modal-header-primary modal-header-success').addClass('modal-header-danger');
             } else {
-                modalHeader.removeClass('bg-danger').addClass('bg-success');
+                modalHeader.removeClass('modal-header-danger modal-header-primary').addClass('modal-header-success');
             }
 
             const $hesaplamaTipi = $('select[name="hesaplama_tipi"]');
@@ -1128,16 +1032,15 @@ $kategoriOptions = [
 
             $('#modalParametreEkle .modal-title').html('<i class="bx bx-edit me-2"></i>Parametre Düzenle');
 
-            /**Kesinti Modalda Lalbellar değiştir */
+            /**Kesinti Modalda Labellar değiştir */
             if (param.kategori === 'gelir') {
-                $("#sgk_matrah_label").html("SGK Matrahına Dahil");
-                $("#gelir_vergisi_label").html("Gelir Vergisine Dahil");
-                $("#damga_vergisi_label").html("Damga Vergisine Dahil");
+                $("#sgk_matrah_label").html("SGK Matrahı (Dahil)");
+                $("#gelir_vergisi_label").html("Gelir Vergisi (Dahil)");
+                $("#damga_vergisi_label").html("Damga Vergisi (Dahil)");
             } else {
-
-                $("#sgk_matrah_label").html("SGK Matrahından Düşülür");
-                $("#gelir_vergisi_label").html("Gelir Vergisinden Düşülür");
-                $("#damga_vergisi_label").html("Damga Vergisinden Düşülür");
+                $("#sgk_matrah_label").html("SGK Matrahı (Düşülür)");
+                $("#gelir_vergisi_label").html("Gelir Vergisi (Düşülür)");
+                $("#damga_vergisi_label").html("Damga Vergisi (Düşülür)");
             }
 
             $('#modalParametreEkle').modal('show');
@@ -1571,4 +1474,9 @@ $kategoriOptions = [
             $('#modalVergiDilimiEkle .modal-title').html('<i class="bx bx-chart me-2"></i>Vergi Dilimi Ekle');
         });
     });
+
+    // PHP'den JS'e veri aktarımı
+    const hesaplamaTipleriGelir = <?= json_encode($hesaplamaTipleriGelir) ?>;
+    const hesaplamaTipleriKesinti = <?= json_encode($hesaplamaTipleriKesinti) ?>;
+    const genelAyarlar = <?= json_encode($genelAyarlar) ?>;
 </script>

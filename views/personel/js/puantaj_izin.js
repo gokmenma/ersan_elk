@@ -53,6 +53,7 @@ $(document).ready(function () {
   $("#personel-filter").on("keyup", function () {
     localStorage.setItem("puantaj_filter", $(this).val());
     applyFilter();
+    calculateTotals();
   });
 
   // Tam Ekran Modu
@@ -255,6 +256,27 @@ $(document).ready(function () {
                     const sundayClass = isSunday ? "is-sunday" : "";
 
                     const dateStr = `${yil}-${ay}-${d.toString().padStart(2, "0")}`;
+
+                    let disabledStyle = "";
+                    let disabledClass = "";
+                    if (
+                      p.isten_cikis_tarihi &&
+                      p.isten_cikis_tarihi !== "0000-00-00" &&
+                      p.isten_cikis_tarihi !== null
+                    ) {
+                      const cikisParts = p.isten_cikis_tarihi.split("-");
+                      const cikisDate = new Date(
+                        parseInt(cikisParts[0]),
+                        parseInt(cikisParts[1]) - 1,
+                        parseInt(cikisParts[2]),
+                      );
+                      if (dateObj > cikisDate) {
+                        disabledClass = "disabled bg-light cursor-not-allowed";
+                        disabledStyle =
+                          "pointer-events: none; opacity: 0.5; background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 10px) !important;";
+                      }
+                    }
+
                     const key = `${p.id}-${dateStr}`;
                     const unsaved = unsavedChanges[key];
 
@@ -318,8 +340,8 @@ $(document).ready(function () {
                                 </div>`;
                     }
 
-                    bodyHtml += `<td class="day-cell ${hasEntryClass} ${sundayClass}" 
-                                         style="${cellStyle}"
+                    bodyHtml += `<td class="day-cell ${hasEntryClass} ${sundayClass} ${disabledClass}" 
+                                         style="${cellStyle} ${disabledStyle}"
                                          data-personel-id="${p.id}" 
                                          data-date="${dateStr}">
                                         ${cellContent}
@@ -354,7 +376,102 @@ $(document).ready(function () {
       })
       .always(function () {
         $("#puantaj-loader").fadeOut(200);
+        calculateTotals();
       });
+  }
+
+  function calculateTotals() {
+    const ay = $("#select-ay").val();
+    const yil = $("#select-yil").val();
+    const daysCount = getDaysInMonth(ay, yil);
+
+    let secilenPersonelSayisi = 0;
+    $("#table-body tr").each(function () {
+      if ($(this).css("display") !== "none") {
+        secilenPersonelSayisi++;
+      }
+    });
+
+    let footerHtml = `<tr>
+            <td class="sticky-col px-3" style="display: table-cell; vertical-align: middle;">
+                <div class="d-flex w-100 justify-content-between align-items-center">
+                <span>Toplam Personel:</span>
+                <span class="fw-bold">${secilenPersonelSayisi}</span>
+                </div>
+            </td>`;
+
+    let totalGenelCalisma = 0;
+    let totalFiiliCalisma = 0;
+    for (let d = 1; d <= daysCount; d++) {
+      let typeCounts = {};
+      let totalEntries = 0;
+
+      const dateStr = `${yil}-${ay}-${d.toString().padStart(2, "0")}`;
+
+      $("#table-body tr").each(function () {
+        if ($(this).css("display") === "none") return;
+
+        let cell = $(this).find(`.day-cell[data-date="${dateStr}"]`);
+        if (cell.length && cell.hasClass("has-entry")) {
+          const content = cell.find(".cell-content");
+          if (content.length) {
+            const shortcode = content.data("shortcode");
+            const name = content.data("name");
+            const idStr = content.data("id")?.toString();
+
+            if (!typeCounts[shortcode]) {
+              typeCounts[shortcode] = { count: 0, name: name, typeId: idStr };
+            }
+            typeCounts[shortcode].count++;
+            totalEntries++;
+          }
+        }
+      });
+
+      let tooltipText = "";
+      Object.keys(typeCounts).forEach(function (code) {
+        tooltipText += `${typeCounts[code].name}(${code}) : ${typeCounts[code].count}<br>`;
+      });
+
+      const dateObj = new Date(yil, ay - 1, d);
+      const isSunday = dateObj.getDay() === 0;
+      const sundayClass = isSunday ? "is-sunday" : "";
+
+      if (totalEntries > 0) {
+        footerHtml += `<td class="text-center ${sundayClass} position-relative">
+                <span tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="top" data-bs-container="body" title="İzin Dağılımı" data-bs-content="${tooltipText}" style="cursor:help;">${totalEntries}</span>
+           </td>`;
+      } else {
+        footerHtml += `<td class="text-center ${sundayClass}">0</td>`;
+      }
+    }
+
+    $("#table-body tr").each(function () {
+      if ($(this).css("display") === "none") return;
+      totalGenelCalisma +=
+        parseInt($(this).find(".toplam-calisma-gunu").text()) || 0;
+      totalFiiliCalisma +=
+        parseInt($(this).find(".fiili-calisma-gunu").text()) || 0;
+    });
+
+    footerHtml += `<td class="sticky-col-right-1 text-center">${totalGenelCalisma}</td>`;
+    footerHtml += `<td class="sticky-col-right-2 text-center">${totalFiiliCalisma}</td>`;
+    footerHtml += `</tr>`;
+
+    $("#table-footer").html(footerHtml);
+    initPopovers();
+  }
+
+  function initPopovers() {
+    var popoverTriggerList = [].slice.call(
+      document.querySelectorAll('[data-bs-toggle="popover"]'),
+    );
+    popoverTriggerList.map(function (popoverTriggerEl) {
+      if (bootstrap.Popover.getInstance(popoverTriggerEl)) {
+        bootstrap.Popover.getInstance(popoverTriggerEl).dispose();
+      }
+      return new bootstrap.Popover(popoverTriggerEl);
+    });
   }
 
   // Table Interaction Events
@@ -504,6 +621,9 @@ $(document).ready(function () {
 
     $row.find(".toplam-calisma-gunu").text(daysCount - unpaidCount);
     $row.find(".fiili-calisma-gunu").text(daysCount - allCount);
+
+    // Satır toplamı değiştiyse genel toplamı da güncelle
+    calculateTotals();
   }
 
   window.removeUnsaved = function (key, e) {

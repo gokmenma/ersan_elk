@@ -203,4 +203,93 @@ $(document).ready(function () {
       }, 100);
     }
   }
+
+  /**
+   * Premium Modal Header Auto-Upgrade
+   * Restructures any standard Bootstrap modal header to the premium design.
+   */
+  $(document).on("show.bs.modal", ".modal", function () {
+    const $modal = $(this);
+    const $header = $modal.find(".modal-header");
+
+    // Skip if already upgraded or specially excluded
+    if (
+      $header.hasClass("premium-modal-header") ||
+      $header.find(".modal-title-section").length ||
+      $modal.hasClass("no-upgrade")
+    ) {
+      return;
+    }
+
+    const title = $header.find(".modal-title").text() || "İşlem";
+    const $closeBtn = $header.find(".btn-close").detach();
+
+    // Get specific data from modal attributes if they exist
+    let icon = $modal.data("modal-icon") || "bx bx-layer";
+    let subtitle =
+      $modal.data("modal-subtitle") || "Lütfen formu eksiksiz doldurun.";
+    let iconClass = "";
+
+    // Specific logic for known modals
+    const modalId = $modal.attr("id");
+    const titleLower = title.toLowerCase();
+
+    // Default variant
+    let headerVariant = "modal-header-primary";
+
+    if (
+      modalId === "excelImportModal" ||
+      titleLower.includes("excel") ||
+      titleLower.includes("yükle")
+    ) {
+      icon = "bx bx-upload";
+      subtitle = "Excel dosyanızı seçerek verileri hızlıca aktarın.";
+      headerVariant = "modal-header-warning";
+    } else if (titleLower.includes("sil") || titleLower.includes("iptal")) {
+      icon = "bx bx-trash";
+      subtitle = "Bu işlem verilerinizde kalıcı değişiklik yapabilir.";
+      headerVariant = "modal-header-danger";
+    } else if (
+      titleLower.includes("düzenle") ||
+      titleLower.includes("güncelle")
+    ) {
+      icon = "bx bx-edit";
+      subtitle = "Kayıt bilgilerini aşağıdan güncelleyebilirsiniz.";
+      headerVariant = "modal-header-info";
+    } else if (titleLower.includes("ekle") || titleLower.includes("yeni")) {
+      icon = "bx bx-plus-circle";
+      subtitle = "Yeni kayıt oluşturmak için bilgileri doldurun.";
+      headerVariant = "modal-header-success";
+    }
+
+    // Clear and restucture
+    $header
+      .empty()
+      .removeClass(function (index, className) {
+        return (className.match(/(^|\s)bg-\S+/g) || []).join(" ");
+      })
+      .removeClass(function (index, className) {
+        return (className.match(/(^|\s)text-\S+/g) || []).join(" ");
+      })
+      .addClass("premium-modal-header")
+      .addClass(headerVariant);
+
+    // Clean up close button
+    $closeBtn.removeClass("btn-close-white");
+
+    const premiumHeaderHtml = `
+            <div class="modal-title-section">
+                <div class="modal-icon-box ${iconClass}">
+                    <i class="${icon}"></i>
+                </div>
+                <div class="modal-title-group">
+                    <h5 class="modal-title">${title}</h5>
+                    <p class="modal-subtitle">${subtitle}</p>
+                </div>
+            </div>
+        `;
+
+    $header.append(premiumHeaderHtml);
+    $header.append($closeBtn);
+  });
 });

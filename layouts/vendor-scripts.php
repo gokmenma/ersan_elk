@@ -133,6 +133,10 @@ if ($page == "kasa/duzenle" || $page == "kasa/list") {
     echo '<script src="views/kasa/js/kasa.js"></script>';
 }
 
+if ($page == "bordro/parametreler") {
+    echo '<script src="views/bordro/js/parametreler.js"></script>';
+}
+
 ?>
 
 <!-- Datatable Scripts -->
@@ -157,7 +161,8 @@ if ($page == "kasa/duzenle" || $page == "kasa/list") {
     $page == "gorev-bildirimler" ||
     $page == "hakedisler/index" ||
     $page == "hakedisler/sozlesme-detay" ||
-    $page == "hakedisler/hakedis-detay"
+    $page == "hakedisler/hakedis-detay" ||
+    $page == "bordro/parametreler"
 
 ) { ?>
 
