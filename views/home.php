@@ -222,27 +222,73 @@ if (Gate::allows("ana_sayfa")) {
         $aracNotifText = "Tüm araçların evrakları (Muayene, Sigorta, Kasko) günceldir.";
     }
 
-    // Slider Örnek Verileri
-    $slider_notifications = [
-        [
-            'title' => 'Motorlu Taşıtlar Vergisi Taksit Ödemesi',
-            'description' => 'Motorlu Taşıtlar Vergisinin 1. taksit ödemesi için son tarih 02/02/2026.',
-            'icon' => 'bx-credit-card',
-            'gradient' => 'linear-gradient(135deg, #0f172a 0%, #334155 100%)'
-        ],
-        [
-            'title' => 'Araç Evrak Hatırlatması',
+    // Slider Duyuruları
+    $slider_notifications = [];
+
+    // Sabit araç hatırlatması da bir slider elemanı olsun (Eğer gösterilecekse)
+    if ($hasExpired || $aracNotifText !== "Tüm araçların evrakları (Muayene, Sigorta, Kasko) günceldir.") {
+        $slider_notifications[] = [
+            'id' => 0,
+            'title' => $hasExpired ? 'Araç Evrak Hatırlatması' : 'Araçlar Güncel',
             'description' => $aracNotifText,
-            'icon' => 'bx-car',
-            'gradient' => $hasExpired ? 'linear-gradient(135deg, #7f1d1d 0%, #ef4444 100%)' : 'linear-gradient(135deg, #1e293b 0%, #2563eb 100%)'
-        ],
-        [
-            'title' => 'Personel Eğitim Toplantısı',
-            'description' => 'Yarın saat 10:00\'da tüm personel için iş sağlığı ve güvenliği eğitimi yapılacaktır.',
-            'icon' => 'bx-group',
-            'gradient' => 'linear-gradient(135deg, #0f172a 0%, #10b981 100%)'
-        ]
+            'icon' => $hasExpired ? 'bx-error-circle' : 'bx-check-shield',
+            'gradient' => $hasExpired ? 'linear-gradient(135deg, #7f1d1d 0%, #ef4444 100%)' : 'linear-gradient(135deg, #1e293b 0%, #2563eb 100%)',
+            'link_action' => '',
+            'link_class' => ''
+        ];
+    }
+
+    $db = $personelModel->getDb();
+
+    // Hem geçmiş gönderimleri kapatmak, hem de geçerli olanları listelemenin sorgusu
+    // (etkinlik_tarihi NULL ise geçerlidir, atanmışsa CURDATE() veya sonrası olmalıdır)
+    $duyuruSql = "SELECT id, baslik, icerik, resim, hedef_sayfa, tarih, etkinlik_tarihi 
+                  FROM duyurular 
+                  WHERE silinme_tarihi IS NULL 
+                  AND (etkinlik_tarihi IS NULL OR etkinlik_tarihi >= CURDATE())
+                  ORDER BY id DESC LIMIT 5";
+    $stmt = $db->prepare($duyuruSql);
+    $stmt->execute();
+    $duyurular = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $gradients = [
+        'linear-gradient(135deg, #0f172a 0%, #10b981 100%)',
+        'linear-gradient(135deg, #0f172a 0%, #8b5cf6 100%)',
+        'linear-gradient(135deg, #1e293b 0%, #f59e0b 100%)',
+        'linear-gradient(135deg, #0f172a 0%, #ec4899 100%)',
+        'linear-gradient(135deg, #1e1b4b 0%, #3b82f6 100%)'
     ];
+
+    foreach ($duyurular as $idx => $d) {
+        $icon = 'bx-bell';
+        if (strpos(strtolower($d['baslik']), 'toplantı') !== false) {
+            $icon = 'bx-group';
+        }
+
+        $grad = $gradients[$idx % count($gradients)];
+        $bgStyle = $d['resim'] ? "linear-gradient(to right, rgba(0,0,0,0.8), rgba(0,0,0,0.3)), url('{$d['resim']}')" : $grad;
+
+        // Ensure background renders correctly without overriding gradient rules entirely
+        $bgStyle = $d['resim'] ? $bgStyle . " center/cover no-repeat" : $grad;
+
+        $desc = mb_strimwidth(strip_tags($d['icerik']), 0, 150, "...");
+        if ($d['etkinlik_tarihi']) {
+            $desc .= '<br><small class="text-warning fw-bold mt-1 d-inline-block"><i class="bx bx-time-five"></i> Son Tarih: ' . date('d.m.Y', strtotime($d['etkinlik_tarihi'])) . '</small>';
+        }
+
+        $linkClass = $d['hedef_sayfa'] ? 'cursor-pointer' : '';
+        $onClick = $d['hedef_sayfa'] ? "onclick=\"window.location.href='" . htmlspecialchars($d['hedef_sayfa']) . "'\"" : "";
+
+        $slider_notifications[] = [
+            'id' => $d['id'],
+            'title' => $d['baslik'],
+            'description' => $desc,
+            'icon' => $icon,
+            'gradient' => $bgStyle,
+            'link_action' => $onClick,
+            'link_class' => $linkClass
+        ];
+    }
 
     // Widget İçeriklerini Tanımla
     $widgets = [];
@@ -269,7 +315,8 @@ if (Gate::allows("ana_sayfa")) {
             <div class="carousel-inner shadow-sm rounded-3 overflow-hidden border-0">
                 <?php foreach ($slider_notifications as $index => $notif): ?>
                     <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
-                        <div class="carousel-content p-4 px-5 d-flex align-items-center"
+                        <div class="carousel-content p-4 px-5 d-flex align-items-center <?= $notif['link_class'] ?>"
+                            <?= $notif['link_action'] ?>
                             style="background: <?php echo $notif['gradient']; ?>; min-height: 230px; position: relative; overflow: hidden;">
                             <div class="circles" style="opacity: 0.12;">
                                 <div></div>

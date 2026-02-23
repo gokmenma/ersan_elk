@@ -161,13 +161,24 @@ const Navigation = {
     let touchStartY = 0;
     let touchEndX = 0;
     let touchEndY = 0;
+    let ignoreSwipe = false;
 
-    const minSwipeDistance = 50; // Reduced from 75
-    const maxVerticalDistance = 100; // Increased from 50 to allow diagonal swipes
+    const minSwipeDistance = 50;
+    const maxVerticalDistance = 100;
 
     document.addEventListener(
       "touchstart",
       (e) => {
+        // Slider vb. elementlerdeysen sayfa kaydırmasını iptal et
+        if (
+          e.target.closest("#etkinlik-slider-container") ||
+          e.target.closest(".overflow-x-auto") ||
+          e.target.closest(".swipe-ignore")
+        ) {
+          ignoreSwipe = true;
+          return;
+        }
+        ignoreSwipe = false;
         touchStartX = e.changedTouches[0].clientX;
         touchStartY = e.changedTouches[0].clientY;
       },
@@ -177,6 +188,7 @@ const Navigation = {
     document.addEventListener(
       "touchend",
       (e) => {
+        if (ignoreSwipe) return;
         touchEndX = e.changedTouches[0].clientX;
         touchEndY = e.changedTouches[0].clientY;
         this.handleSwipe(

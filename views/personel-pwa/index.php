@@ -58,7 +58,7 @@ if (!$personel) {
 
 // Sayfa yönlendirmesi
 $page = $_GET['page'] ?? 'ana-sayfa';
-$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'nobet'];
+$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'nobet', 'etkinlikler'];
 
 if (!in_array($page, $allowed_pages)) {
     $page = 'ana-sayfa';
@@ -270,6 +270,14 @@ if (!in_array($page, $allowed_pages)) {
                     </div>
                     <span class="font-medium text-slate-900 dark:text-white text-sm">Çıkış
                         Yap</span>
+                </a>
+                <a href="?page=etkinlikler"
+                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'etkinlikler' ? 'bg-primary/10' : ''; ?>">
+                    <div class="w-9 h-9 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-green-600 text-lg">event</span>
+                    </div>
+                    <span class="font-medium text-slate-900 dark:text-white text-sm">Etkinlikler</span>
+                    <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
                 </a>
                 <a href="?page=profil"
                     class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'profil' ? 'bg-primary/10' : ''; ?>">

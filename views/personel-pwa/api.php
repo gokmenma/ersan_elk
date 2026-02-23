@@ -1588,10 +1588,12 @@ try {
                             baslik as title,
                             icerik as description,
                             'yeni' as status,
-                            tarih as activity_date
+                            tarih as activity_date,
+                            etkinlik_tarihi
                         FROM duyurular
                         WHERE silinme_tarihi IS NULL
                         AND (alici_tipi = 'toplu' OR FIND_IN_SET(?, alici_ids))
+                        AND (etkinlik_tarihi IS NULL OR etkinlik_tarihi >= CURDATE())
                         ORDER BY activity_date DESC
                         LIMIT $limit";
 
@@ -1708,11 +1710,12 @@ try {
             $PersonelModel = new PersonelModel();
             $db = $PersonelModel->getDb();
             // Duyuruları son eklenenden geriye doğru al
-            $duyuruSql = "SELECT id, baslik, icerik, resim, hedef_sayfa, tarih
+            $duyuruSql = "SELECT id, baslik, icerik, resim, hedef_sayfa, tarih, etkinlik_tarihi
                         FROM duyurular
                         WHERE silinme_tarihi IS NULL
                         AND (alici_tipi = 'toplu' OR FIND_IN_SET(?, alici_ids))
-                        ORDER BY tarih DESC
+                        AND (etkinlik_tarihi IS NULL OR etkinlik_tarihi >= CURDATE())
+                        ORDER BY id DESC
                         LIMIT 5";
             $stmt = $db->prepare($duyuruSql);
             $stmt->execute([$personel_id]);
@@ -1720,12 +1723,84 @@ try {
 
             // Resim URL formatı (varsa) ve içerik kısaltması vb. işlemleri yapabiliriz
             $formattedDuyurular = array_map(function ($d) {
+                $tarih_metni = date('d.m.Y H:i', strtotime($d['tarih']));
+                $kalan_gun = null;
+                $kalan_gun_text = null;
+
+                if ($d['etkinlik_tarihi']) {
+                    $tarih_metni = "Son: " . date('d.m.Y', strtotime($d['etkinlik_tarihi']));
+
+                    // Kalan günü hesapla
+                    $etkinlikDateTime = new DateTime($d['etkinlik_tarihi']);
+                    $etkinlikDateTime->setTime(0, 0, 0);
+                    $bugun = new DateTime();
+                    $bugun->setTime(0, 0, 0);
+
+                    if ($etkinlikDateTime >= $bugun) {
+                        $diff = $bugun->diff($etkinlikDateTime);
+                        $kalan_gun = $diff->days;
+                        $kalan_gun_text = sprintf("%02d", $kalan_gun);
+                    }
+                }
+
                 return [
                     'id' => $d['id'],
                     'baslik' => $d['baslik'],
                     'icerik' => $d['icerik'],
                     'resim' => $d['resim'] ?? '',
-                    'tarih' => date('d.m.Y H:i', strtotime($d['tarih'])),
+                    'tarih' => $tarih_metni,
+                    'kalan_gun' => $kalan_gun_text,
+                    'hedef_sayfa' => $d['hedef_sayfa']
+                ];
+            }, $duyurular);
+
+            response(true, $formattedDuyurular);
+            break;
+
+        case 'getAllEtkinlikler':
+            $PersonelModel = new PersonelModel();
+            $db = $PersonelModel->getDb();
+
+            $duyuruSql = "SELECT id, baslik, icerik, resim, hedef_sayfa, tarih, etkinlik_tarihi
+                        FROM duyurular
+                        WHERE silinme_tarihi IS NULL
+                        AND (alici_tipi = 'toplu' OR FIND_IN_SET(?, alici_ids))
+                        ORDER BY id DESC";
+            $stmt = $db->prepare($duyuruSql);
+            $stmt->execute([$personel_id]);
+            $duyurular = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $formattedDuyurular = array_map(function ($d) {
+                $tarih_metni = date('d.m.Y H:i', strtotime($d['tarih']));
+                $kalan_gun = null;
+                $kalan_gun_text = null;
+                $gecmis = false;
+
+                if ($d['etkinlik_tarihi']) {
+                    $tarih_metni = "Son: " . date('d.m.Y', strtotime($d['etkinlik_tarihi']));
+
+                    $etkinlikDateTime = new DateTime($d['etkinlik_tarihi']);
+                    $etkinlikDateTime->setTime(0, 0, 0);
+                    $bugun = new DateTime();
+                    $bugun->setTime(0, 0, 0);
+
+                    if ($etkinlikDateTime >= $bugun) {
+                        $diff = $bugun->diff($etkinlikDateTime);
+                        $kalan_gun = $diff->days;
+                        $kalan_gun_text = sprintf("%02d", $kalan_gun);
+                    } else {
+                        $gecmis = true;
+                    }
+                }
+
+                return [
+                    'id' => $d['id'],
+                    'baslik' => $d['baslik'],
+                    'icerik' => $d['icerik'],
+                    'resim' => $d['resim'] ?? '',
+                    'tarih' => $tarih_metni,
+                    'kalan_gun' => $kalan_gun_text,
+                    'gecmis' => $gecmis,
                     'hedef_sayfa' => $d['hedef_sayfa']
                 ];
             }, $duyurular);

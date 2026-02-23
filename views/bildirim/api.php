@@ -206,10 +206,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $alici_ids_str = implode(',', $_POST['personel_ids'] ?? []);
                     }
 
+                    $etkinlik_tarihi = !empty($_POST['etkinlik_tarihi']) ? date('Y-m-d', strtotime($_POST['etkinlik_tarihi'])) : null;
+
                     $stmtDuyuru = $duyuruDb->prepare("
                         INSERT INTO duyurular 
-                        (firma_id, baslik, icerik, resim, hedef_sayfa, alici_tipi, alici_ids, tarih) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+                        (firma_id, baslik, icerik, resim, hedef_sayfa, alici_tipi, alici_ids, tarih, etkinlik_tarihi) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)
                     ");
                     $stmtDuyuru->execute([
                         $_SESSION['firma_id'] ?? 0,
@@ -218,7 +220,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $imageUrl ?? null,
                         $hedef_sayfa,
                         $alici_tipi,
-                        $alici_ids_str
+                        $alici_ids_str,
+                        $etkinlik_tarihi
                     ]);
                 }
                 // ---------------------------------------------------

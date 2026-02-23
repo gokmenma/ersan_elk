@@ -280,6 +280,23 @@ $logs = $mesajLogModel->getLogs(['type' => 'push']);
                                 </div>
                             </div>
 
+                            <!-- Bitiş (Hedef) Tarihi -->
+                            <div class="col-12" id="etkinlikTarihiContainer">
+                                <?= Form::FormFloatInput(
+                                    'date',
+                                    'etkinlik_tarihi',
+                                    '',
+                                    'Yayın Bitiş veya Etkinlik Tarihi (İsteğe Bağlı)',
+                                    'Son Gösterim Tarihi',
+                                    'calendar',
+                                    'form-control',
+                                    // Make it not-required by passing false for required
+                                    false
+                                ) ?>
+                                <small class="text-muted" style="font-size:0.75rem">Bu tarihten sonra slider formunda
+                                    gösterilmez. Boş bırakırsanız sürekli görünür.</small>
+                            </div>
+
                             <!-- Gönder Butonu -->
                             <div class="col-12 text-end">
                                 <button type="submit" class="btn btn-primary btn-send">
@@ -317,6 +334,16 @@ $logs = $mesajLogModel->getLogs(['type' => 'push']);
                     this.value === 'tekli' ? 'block' : 'none';
             });
         });
+
+        // Etkinlik secimini dinle
+        const etkinlikKaydet = document.getElementById('etkinlikKaydet');
+        const etkinlikTarihiContainer = document.getElementById('etkinlikTarihiContainer');
+
+        etkinlikKaydet.addEventListener('change', function () {
+            etkinlikTarihiContainer.style.display = this.checked ? 'block' : 'none';
+        });
+        // initial state
+        etkinlikTarihiContainer.style.display = etkinlikKaydet.checked ? 'block' : 'none';
 
         // Form gönderimi
         document.getElementById('formBildirimGonder').addEventListener('submit', function (e) {
