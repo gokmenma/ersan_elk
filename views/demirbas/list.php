@@ -62,7 +62,7 @@ $ayarYapilmisDemirbaslar = $sqlAyarlar->fetchAll(PDO::FETCH_OBJ);
                                     <i class="bx bx-transfer me-1"></i> Zimmet Kayıtları
                                 </button>
                             </li>
-                         
+
                         </ul>
 
                         <div class="vr mx-2 d-none d-md-block"></div>
@@ -96,7 +96,8 @@ $ayarYapilmisDemirbaslar = $sqlAyarlar->fetchAll(PDO::FETCH_OBJ);
                             </button>
 
                             <div class="dropdown">
-                                <button class="btn btn-secondary dropdown-toggle waves-effect waves-light" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <button class="btn btn-secondary dropdown-toggle waves-effect waves-light" type="button"
+                                    data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bx bx-cog me-1"></i> İşlemler
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
@@ -105,7 +106,8 @@ $ayarYapilmisDemirbaslar = $sqlAyarlar->fetchAll(PDO::FETCH_OBJ);
                                             <i class="bx bx-export me-2"></i> Excele Aktar
                                         </a>
                                     </li>
-                                    <li id="importExcelLi" style="<?php echo $activeTab !== 'demirbas' ? 'display: none;' : ''; ?>">
+                                    <li id="importExcelLi"
+                                        style="<?php echo $activeTab !== 'demirbas' ? 'display: none;' : ''; ?>">
                                         <a class="dropdown-item" href="javascript:void(0);" id="importExcel">
                                             <i class="bx bx-import me-2"></i> Excelden Yükle
                                         </a>
@@ -171,7 +173,12 @@ $ayarYapilmisDemirbaslar = $sqlAyarlar->fetchAll(PDO::FETCH_OBJ);
                                                             <?php echo $demirbas->demirbas_adi ?>
                                                         </a>
                                                     </td>
-                                                    <td><?php echo ($demirbas->marka ?? '-') . ' ' . ($demirbas->model ?? '') ?>
+                                                    <td>
+                                                        <div>
+                                                            <?php echo ($demirbas->marka ?? '-') . ' ' . ($demirbas->model ?? '') ?>
+                                                        </div>
+                                                        <small
+                                                            class="text-muted"><?php echo $demirbas->seri_no ? 'SN: ' . $demirbas->seri_no : '' ?></small>
                                                     </td>
                                                     <td class="text-center"><?php echo $stokBadge ?></td>
                                                     <td class="text-end">
@@ -206,7 +213,8 @@ $ayarYapilmisDemirbaslar = $sqlAyarlar->fetchAll(PDO::FETCH_OBJ);
                         </div>
 
                         <!-- Zimmet Kayıtları Tab -->
-                        <div class="tab-pane fade <?php echo $activeTab === 'zimmet' ? 'show active' : ''; ?>" id="zimmetContent" role="tabpanel">
+                        <div class="tab-pane fade <?php echo $activeTab === 'zimmet' ? 'show active' : ''; ?>"
+                            id="zimmetContent" role="tabpanel">
                             <div class="table-responsive">
                                 <table id="zimmetTable" class="table table-hover table-bordered nowrap w-100">
                                     <thead class="table-light">

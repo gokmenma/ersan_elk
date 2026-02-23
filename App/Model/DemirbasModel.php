@@ -147,7 +147,10 @@ class DemirbasModel extends Model
                 <a href="#" data-id="' . $enc_id . '" class="dropdown-item duzenle">
                     ' . $data->demirbas_adi . '</a>
             </td>
-            <td>' . ($data->marka ?? '-') . ' ' . ($data->model ?? '') . '</td>
+            <td>
+                <div>' . ($data->marka ?? '-') . ' ' . ($data->model ?? '') . '</div>
+                <small class="text-muted">' . ($data->seri_no ? 'SN: ' . $data->seri_no : '') . '</small>
+            </td>
             <td class="text-center">' . $stokBadge . '</td>
             <td class="text-end">' . Helper::formattedMoney($data->edinme_tutari ?? 0) . '</td>
             <td>' . ($data->edinme_tarihi ?? '-') . '</td>

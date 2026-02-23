@@ -13,6 +13,7 @@ use App\Helper\Alert;
 use App\Helper\Helper;
 use App\Model\PermissionsModel;
 use App\Model\DuyuruModel;
+use App\Model\AracModel;
 
 $personelModel = new PersonelModel();
 $avansModel = new AvansModel();
@@ -20,6 +21,7 @@ $izinModel = new PersonelIzinleriModel();
 $talepModel = new TalepModel();
 $systemLogModel = new SystemLogModel();
 $duyuruModel = new DuyuruModel();
+$aracModel = new AracModel();
 
 if (Gate::allows("ana_sayfa")) {
 
@@ -133,6 +135,38 @@ if (Gate::allows("ana_sayfa")) {
                 'gradient' => 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)',
                 'image' => $d->resim,
                 'link' => $d->hedef_sayfa
+            ];
+        }
+    }
+
+    // Araç Yaklaşan Tarihlerini Ekle
+    $yaklasanAraclar = $aracModel->getYaklasanTarihler(30);
+    foreach ($yaklasanAraclar as $arac) {
+        if ($arac->muayene_kalan_gun !== null && $arac->muayene_kalan_gun <= 30) {
+            $slider_notifications[] = [
+                'title' => 'Muayene Yaklaşıyor: ' . $arac->plaka,
+                'description' => $arac->marka . ' ' . $arac->model . ' aracının muayene bitişine ' . $arac->muayene_kalan_gun . ' gün kaldı.',
+                'icon' => 'bx-car',
+                'gradient' => 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                'link' => 'arac-takip'
+            ];
+        }
+        if ($arac->sigorta_kalan_gun !== null && $arac->sigorta_kalan_gun <= 30) {
+            $slider_notifications[] = [
+                'title' => 'Sigorta Yaklaşıyor: ' . $arac->plaka,
+                'description' => $arac->marka . ' ' . $arac->model . ' aracının sigorta bitişine ' . $arac->sigorta_kalan_gun . ' gün kaldı.',
+                'icon' => 'bx-shield-quarter',
+                'gradient' => 'linear-gradient(135deg, #5ee7df 0%, #b490ca 100%)',
+                'link' => 'arac-takip'
+            ];
+        }
+        if ($arac->kasko_kalan_gun !== null && $arac->kasko_kalan_gun <= 30) {
+            $slider_notifications[] = [
+                'title' => 'Kasko Yaklaşıyor: ' . $arac->plaka,
+                'description' => $arac->marka . ' ' . $arac->model . ' aracının kasko bitişine ' . $arac->kasko_kalan_gun . ' gün kaldı.',
+                'icon' => 'bx-lock-alt',
+                'gradient' => 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                'link' => 'arac-takip'
             ];
         }
     }

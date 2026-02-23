@@ -1,5 +1,5 @@
-let zimmetUrl = "views/demirbas/api.php";
-let zimmetTable;
+var zimmetUrl = "views/demirbas/api.php";
+var demirbasTable, zimmetTable;
 
 // ============== SAYFA YÜKLENDİĞİNDE ==============
 $(document).ready(function () {
@@ -11,7 +11,7 @@ $(document).ready(function () {
   demirbasOptions.language.emptyTable =
     '<div class="text-center text-muted py-4"><i class="bx bx-package display-4 d-block mb-2"></i>Henüz demirbaş eklenmemiş.<br><small>"Yeni Demirbaş" butonuna tıklayarak ekleyebilirsiniz.</small></div>';
 
-  table = $("#demirbasTable").DataTable(demirbasOptions);
+  demirbasTable = $("#demirbasTable").DataTable(demirbasOptions);
 
   // Zimmet tablosu DataTable
   zimmetTable = $("#zimmetTable").DataTable({
@@ -238,12 +238,12 @@ $(document).on("click", "#demirbasKaydet", function () {
     .then((data) => {
       if (data.status === "success") {
         if (demirbas_id == 0) {
-          table.row.add($(data.son_kayit)).draw(false);
+          demirbasTable.row.add($(data.son_kayit)).draw(false);
         } else {
-          let rowNode = table.$(`tr[data-id="${demirbas_id}"]`)[0];
+          let rowNode = demirbasTable.$(`tr[data-id="${demirbas_id}"]`)[0];
           if (rowNode) {
-            table.row(rowNode).remove().draw();
-            table.row.add($(data.son_kayit)).draw(false);
+            demirbasTable.row(rowNode).remove().draw();
+            demirbasTable.row.add($(data.son_kayit)).draw(false);
           }
         }
         $("#demirbasModal").modal("hide");
@@ -358,8 +358,10 @@ $(document).on("click", ".demirbas-sil", function (e) {
         .then((response) => response.json())
         .then((data) => {
           if (data.status === "success") {
-            table.row(row).remove().draw();
-            Swal.fire("Silindi!", data.message, "success");
+            demirbasTable.row(row).remove().draw();
+            Swal.fire("Silindi!", data.message, "success").then(() => {
+              location.reload();
+            });
           } else {
             Swal.fire("Hata!", data.message, "error");
           }
@@ -773,7 +775,7 @@ $(document).on("click", "#btnUploadExcel", function () {
 $(document).on("click", "#exportExcel", function () {
   let activeTab = $("#demirbasTab button.active").attr("id");
   let tabName = activeTab === "zimmet-tab" ? "zimmet" : "demirbas";
-  let currentTable = tabName === "zimmet" ? zimmetTable : table;
+  let currentTable = tabName === "zimmet" ? zimmetTable : demirbasTable;
 
   let searchTerm = currentTable.search();
   let url = "views/demirbas/export-excel.php";

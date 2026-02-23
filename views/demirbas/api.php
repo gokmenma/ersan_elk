@@ -105,12 +105,9 @@ if ($action == "demirbas-sil") {
     $id = $_POST["id"] ?? null;
 
     try {
-        // Önce zimmet kontrolü
         $zimmetler = $Zimmet->getByDemirbas(Security::decrypt($id));
-        $aktifZimmet = array_filter($zimmetler, fn($z) => $z->durum === 'teslim');
-
-        if (count($aktifZimmet) > 0) {
-            jsonResponse("error", "Bu demirbaşın aktif zimmet kaydı bulunmaktadır. Önce zimmetleri iade alın.");
+        if (count($zimmetler) > 0) {
+            jsonResponse("error", "Bu demirbaşın zimmet geçmişi (aktif veya eski) bulunmaktadır. Geçmiş verilerin korunması için silme işlemine izin verilmez. Bunun yerine durumunu 'pasif' olarak güncelleyebilirsiniz.");
         }
 
         $result = $Demirbas->delete($id);
@@ -170,7 +167,7 @@ if ($action == "zimmet-listesi") {
                 "enc_id" => $enc_id,
                 "kategori_adi" => '<span class="badge bg-soft-primary text-primary">' . ($z->kategori_adi ?? '-') . '</span>',
                 "demirbas_adi" => ($z->demirbas_adi ?? '-'),
-                "marka_model" => ($z->marka ?? '-') . ' ' . ($z->model ?? ''),
+                "marka_model" => '<div>' . ($z->marka ?? '-') . ' ' . ($z->model ?? '') . '</div>' . ($z->seri_no ? '<small class="text-muted">SN: ' . $z->seri_no . '</small>' : ''),
                 "personel_adi" => ($z->personel_adi ?? '-'),
                 "teslim_miktar" => '<div class="text-center">' . $z->teslim_miktar . '</div>',
                 "teslim_tarihi" => $teslimTarihi,
@@ -245,11 +242,9 @@ if ($action == "zimmet-sil") {
             jsonResponse("error", "Zimmet kaydı bulunamadı.");
         }
 
-        // Eğer teslim durumundaysa, stoku geri ekle
+        // Eğer teslim durumundaysa, silmeye izin verme (iade alınmalı)
         if ($zimmet->durum === 'teslim') {
-            $db = $Demirbas->getDb();
-            $sql = $db->prepare("UPDATE demirbas SET kalan_miktar = kalan_miktar + ? WHERE id = ?");
-            $sql->execute([$zimmet->teslim_miktar, $zimmet->demirbas_id]);
+            jsonResponse("error", "Aktif (teslim edilmiş) durumdaki bir zimmet kaydını silemezsiniz. Lütfen önce 'İade Al' işlemini gerçekleştiriniz.");
         }
 
         $result = $Zimmet->delete($id);
