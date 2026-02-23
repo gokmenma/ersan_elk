@@ -688,26 +688,26 @@ use App\Helper\Helper;
 
                     container.innerHTML = response.data.map(function (duyuru) {
                         var bgImg = duyuru.resim ? 'background-image: linear-gradient(to right, rgba(0,0,0,0.8), rgba(0,0,0,0.3)), url(\'' + escapeHtml(duyuru.resim) + '\'); background-size: cover; background-position: center;'
-                            : 'background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);';
+                            : 'background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);';
 
-                        var onClick = duyuru.hedef_sayfa ? 'window.location.href=\'' + escapeHtml(duyuru.hedef_sayfa) + '\';' : '';
-                        var cursorClass = duyuru.hedef_sayfa ? 'cursor-pointer' : '';
+                        var onClick = duyuru.hedef_sayfa ? 'window.location.href=\'' + escapeHtml(duyuru.hedef_sayfa) + '\';' : 'window.location.href=\'?page=etkinlikler\';';
+                        var cursorClass = 'cursor-pointer';
 
                         var kalan_gun_html = '';
                         if (duyuru.kalan_gun !== null && duyuru.kalan_gun !== undefined) {
-                            kalan_gun_html = '<div class="absolute top-4 right-4 bg-black/40 backdrop-blur-md border border-white/20 rounded-xl px-4 py-2 text-center shadow-2xl z-20 flex flex-col justify-center items-center shadow-[0_0_15px_rgba(255,255,255,0.2)]">' +
-                                '<span class="block text-3xl font-black text-white leading-[1] tracking-tighter" style="text-shadow: 0 2px 4px rgba(0,0,0,0.5);">-' + escapeHtml(duyuru.kalan_gun) + '</span>' +
-                                '<span class="block text-[9px] font-bold text-white/90 uppercase tracking-widest mt-1">GÜN KALDI</span>' +
+                            kalan_gun_html = '<div class="absolute -top-6 -right-2 pointer-events-none select-none z-0 flex flex-col items-end opacity-80">' +
+                                '<span class="text-[9rem] font-black leading-[0.8] tracking-tighter bg-gradient-to-bl from-white/70 to-white/0 text-transparent bg-clip-text">' + escapeHtml(duyuru.kalan_gun) + '</span>' +
+                                '<span class="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] relative -top-6 pr-6">GÜN KALDI</span>' +
                                 '</div>';
                         }
 
                         return '<div class="snap-center shrink-0 w-[85%] sm:w-[300px] rounded-2xl p-4 text-white shadow-lg relative overflow-hidden transition-transform active:scale-[0.98] ' + cursorClass + '" ' +
                             'style="' + bgImg + '" onclick="' + onClick + '">' +
                             kalan_gun_html +
-                            '<div class="relative z-10 pr-16">' + // padding for kalan_gun badge
+                            '<div class="relative z-10 pr-2">' + // removed large pr-16 padding to let text flow
                             '<span class="badge badge-primary bg-white/20 text-white border-none mb-2 text-[10px]">' + escapeHtml(duyuru.tarih) + '</span>' +
-                            '<h3 class="font-bold text-lg leading-tight mb-1 line-clamp-1 text-white pr-4">' + escapeHtml(duyuru.baslik) + '</h3>' +
-                            '<p class="text-xs text-white/80 line-clamp-2">' + escapeHtml(duyuru.icerik) + '</p>' +
+                            '<h3 class="font-bold text-lg leading-tight mb-1 text-white truncate max-w-[85%]">' + escapeHtml(duyuru.baslik) + '</h3>' +
+                            '<p class="text-xs text-white/80 line-clamp-2 max-w-[85%]">' + escapeHtml(duyuru.icerik) + '</p>' +
                             '</div>' +
                             '</div>';
                     }).join('');
@@ -875,12 +875,5 @@ use App\Helper\Helper;
             } catch (error) {
                 Toast.show('Bir hata oluştu', 'error');
             }
-        }
-
-        function escapeHtml(text) {
-            if (!text) return '';
-            var div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
         }
     </script>

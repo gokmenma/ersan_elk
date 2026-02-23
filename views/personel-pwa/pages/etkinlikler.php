@@ -57,24 +57,24 @@
                     var opacityClass = duyuru.gecmis ? 'opacity-60 saturate-50' : '';
 
                     var bgImg = duyuru.resim ? 'background-image: linear-gradient(to right, rgba(0,0,0,0.8), rgba(0,0,0,0.3)), url(\'' + escapeHtml(duyuru.resim) + '\'); background-size: cover; background-position: center;'
-                        : 'background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);';
+                        : 'background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);';
 
                     var kalan_gun_html = '';
                     if (duyuru.kalan_gun !== null && duyuru.kalan_gun !== undefined && !duyuru.gecmis) {
-                        kalan_gun_html = '<div class="absolute top-4 right-4 bg-black/40 backdrop-blur-md border border-white/20 rounded-xl px-3 py-1 text-center shadow-[0_0_10px_rgba(255,255,255,0.1)] z-20 flex flex-col items-center justify-center">' +
-                            '<span class="block text-2xl font-black text-white leading-none tracking-tighter" style="text-shadow: 0 1px 3px rgba(0,0,0,0.5);">-' + escapeHtml(duyuru.kalan_gun) + '</span>' +
-                            '<span class="block text-[8px] font-bold text-white/90 uppercase tracking-widest mt-1">GÜN KALDI</span>' +
+                        kalan_gun_html = '<div class="absolute -top-6 -right-2 pointer-events-none select-none z-0 flex flex-col items-end opacity-80">' +
+                            '<span class="text-[9rem] font-black leading-[0.8] tracking-tighter bg-gradient-to-bl from-white/70 to-white/0 text-transparent bg-clip-text">' + escapeHtml(duyuru.kalan_gun) + '</span>' +
+                            '<span class="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] relative -top-6 pr-6">GÜN KALDI</span>' +
                             '</div>';
                     }
 
                     return '<div class="rounded-2xl p-4 text-white shadow-lg relative overflow-hidden transition-transform active:scale-[0.98] ' + cursorClass + ' ' + opacityClass + '" ' +
                         'style="' + bgImg + '" onclick="' + onClick + '">' +
                         kalan_gun_html +
-                        '<div class="relative z-10 pr-12">' +
+                        '<div class="relative z-10 pr-2">' +
                         '<span class="badge badge-primary bg-white/20 text-white border-none mb-2 text-[10px]">' + escapeHtml(duyuru.tarih) + '</span>' +
                         (duyuru.gecmis ? '<span class="badge badge-danger bg-red-500/80 text-white border-none mb-2 ml-2 text-[10px]">Geçmiş Etkinlik</span>' : '') +
-                        '<h3 class="font-bold text-lg leading-tight mb-2 text-white">' + escapeHtml(duyuru.baslik) + '</h3>' +
-                        '<p class="text-xs text-white/80 line-clamp-3 leading-relaxed">' + escapeHtml(duyuru.icerik) + '</p>' +
+                        '<h3 class="font-bold text-lg leading-tight mb-2 text-white max-w-[85%]">' + escapeHtml(duyuru.baslik) + '</h3>' +
+                        '<p class="text-xs text-white/80 line-clamp-3 leading-relaxed max-w-[85%]">' + escapeHtml(duyuru.icerik) + '</p>' +
                         '</div>' +
                         '</div>';
                 }).join('');
