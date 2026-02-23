@@ -197,34 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $message .= ", Hatalı: $hata";
                 }
 
-                // --------- ETKİNLİK / DUYURU KAYIT İŞLEMİ ----------
-                if (isset($_POST['etkinlik_kaydet']) && $_POST['etkinlik_kaydet'] == '1') {
-                    $duyuruDb = $subscriptionModel->getDb();
 
-                    $alici_ids_str = '';
-                    if ($alici_tipi === 'tekli') {
-                        $alici_ids_str = implode(',', $_POST['personel_ids'] ?? []);
-                    }
-
-                    $etkinlik_tarihi = !empty($_POST['etkinlik_tarihi']) ? date('Y-m-d', strtotime($_POST['etkinlik_tarihi'])) : null;
-
-                    $stmtDuyuru = $duyuruDb->prepare("
-                        INSERT INTO duyurular 
-                        (firma_id, baslik, icerik, resim, hedef_sayfa, alici_tipi, alici_ids, tarih, etkinlik_tarihi) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)
-                    ");
-                    $stmtDuyuru->execute([
-                        $_SESSION['firma_id'] ?? 0,
-                        $baslik,
-                        $mesaj,
-                        $imageUrl ?? null,
-                        $hedef_sayfa,
-                        $alici_tipi,
-                        $alici_ids_str,
-                        $etkinlik_tarihi
-                    ]);
-                }
-                // ---------------------------------------------------
 
                 $response = [
                     'status' => 'success',

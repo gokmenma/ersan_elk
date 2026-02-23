@@ -687,10 +687,10 @@ use App\Helper\Helper;
                     section.style.display = 'block';
 
                     container.innerHTML = response.data.map(function (duyuru) {
-                        var bgImg = duyuru.resim ? 'background-image: linear-gradient(to right, rgba(0,0,0,0.8), rgba(0,0,0,0.3)), url(\'' + escapeHtml(duyuru.resim) + '\'); background-size: cover; background-position: center;'
-                            : 'background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);';
+                        var bgImg = 'background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);';
 
-                        var onClick = duyuru.hedef_sayfa ? 'window.location.href=\'' + escapeHtml(duyuru.hedef_sayfa) + '\';' : 'window.location.href=\'?page=etkinlikler\';';
+                        var duyuruJson = JSON.stringify(duyuru).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+                        var onClick = "showEtkinlikFullScreen('" + duyuruJson + "');";
                         var cursorClass = 'cursor-pointer';
 
                         var kalan_gun_html = '';

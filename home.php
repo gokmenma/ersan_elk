@@ -12,12 +12,14 @@ use App\Service\Gate;
 use App\Helper\Alert;
 use App\Helper\Helper;
 use App\Model\PermissionsModel;
+use App\Model\DuyuruModel;
 
 $personelModel = new PersonelModel();
 $avansModel = new AvansModel();
 $izinModel = new PersonelIzinleriModel();
 $talepModel = new TalepModel();
 $systemLogModel = new SystemLogModel();
+$duyuruModel = new DuyuruModel();
 
 if (Gate::allows("ana_sayfa")) {
 
@@ -119,27 +121,32 @@ if (Gate::allows("ana_sayfa")) {
     $toplam_gider = 30000;
     $toplam_bakiye = 20000;
 
-    // Slider Örnek Verileri
-    $slider_notifications = [
-        [
-            'title' => 'Motorlu Taşıtlar Vergisi Taksit Ödemesi',
-            'description' => 'Motorlu Taşıtlar Vergisinin 1. taksit ödemesi için son tarih 02/02/2026.',
-            'icon' => 'bx-credit-card',
-            'gradient' => 'linear-gradient(135deg, #009688 0%, #1a237e 100%)'
-        ],
-        [
-            'title' => 'Araç Muayene Hatırlatması',
-            'description' => '34 ABC 123 plakalı aracın muayene tarihi 25.02.2026 tarihinde sona erecektir.',
-            'icon' => 'bx-car',
-            'gradient' => 'linear-gradient(135deg, #7b1fa2 0%, #4527a0 100%)'
-        ],
-        [
-            'title' => 'Personel Eğitim Toplantısı',
-            'description' => 'Yarın saat 10:00\'da tüm personel için iş sağlığı ve güvenliği eğitimi yapılacaktır.',
-            'icon' => 'bx-group',
-            'gradient' => 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)'
-        ]
-    ];
+    // Slider Örnek Verileri (Veritabanından çek)
+    $duyurular_db = $duyuruModel->getAll(true); // Aktif olanları getir
+    $slider_notifications = [];
+    foreach ($duyurular_db as $d) {
+        if ($d->ana_sayfada_goster == 1) {
+            $slider_notifications[] = [
+                'title' => $d->baslik,
+                'description' => $d->icerik,
+                'icon' => 'bx-news',
+                'gradient' => 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)',
+                'image' => $d->resim,
+                'link' => $d->hedef_sayfa
+            ];
+        }
+    }
+
+    if (empty($slider_notifications)) {
+        $slider_notifications = [
+            [
+                'title' => 'Duyuru Bulunmamaktadır',
+                'description' => 'Şu an için yayında olan aktif bir duyuru veya etkinlik bulunmamaktadır.',
+                'icon' => 'bx-info-circle',
+                'gradient' => 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+            ]
+        ];
+    }
 
     // Widget İçeriklerini Tanımla
     $widgets = [];
@@ -169,11 +176,23 @@ if (Gate::allows("ana_sayfa")) {
                             </div>
                             <div class="flex-grow-1 position-relative" style="z-index: 2;">
                                 <h2 class="text-white fw-bold mb-3"><?php echo $notif['title']; ?></h2>
-                                <p class="text-white-50 fs-5 mb-0"><?php echo $notif['description']; ?></p>
+                                <p class="text-white fs-5 mb-0" style="opacity:0.9;"><?php echo $notif['description']; ?></p>
+                                <?php if (!empty($notif['link'])): ?>
+                                    <a href="<?= $notif['link'] ?>"
+                                        class="btn btn-light btn-sm mt-3 px-4 rounded-pill fw-bold">Detay Gör <i
+                                            class="bx bx-right-arrow-alt"></i></a>
+                                <?php endif; ?>
                             </div>
-                            <div class="flex-shrink-0 ms-4 d-none d-md-block opacity-25 position-relative" style="z-index: 1;">
-                                <i class='bx <?php echo $notif['icon']; ?>' style="font-size: 150px; color: white;"></i>
-                            </div>
+                            <?php if (!empty($notif['image'])): ?>
+                                <div class="flex-shrink-0 ms-4 d-none d-md-block" style="z-index: 1;">
+                                    <img src="<?= $notif['image'] ?>" class="rounded-3 shadow-lg"
+                                        style="max-height: 150px; width: auto; max-width: 250px; object-fit: cover; border: 3px solid rgba(255,255,255,0.2);">
+                                </div>
+                            <?php else: ?>
+                                <div class="flex-shrink-0 ms-4 d-none d-md-block opacity-25 position-relative" style="z-index: 1;">
+                                    <i class='bx <?php echo $notif['icon']; ?>' style="font-size: 150px; color: white;"></i>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endforeach; ?>

@@ -96,6 +96,11 @@ $(document).ready(function () {
           const th = $('<th class="search">').append(input);
           $("#" + tableId + " .search-input-row").append(th);
 
+          // Stop propagation of click/mousedown event to prevent sorting
+          $(th).on("click mousedown", function (e) {
+            e.stopPropagation();
+          });
+
           // Event listener for user input
           $(input).on("keyup change", function () {
             if (column.search() !== this.value) {

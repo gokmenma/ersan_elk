@@ -262,6 +262,11 @@
       if (!column.visible()) $th.hide();
       $filterRow.append($th);
 
+      // FIX: Stop propagation to prevent sorting when clicking the filter cell
+      $th.on("click mousedown", function (e) {
+        e.stopPropagation();
+      });
+
       const isActionCol = [
         "SEC",
         "SEÇ",

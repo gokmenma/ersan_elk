@@ -66,6 +66,11 @@ function getDatatableOptions() {
             const th = $('<th class="search">').append(input);
             $searchRow.append(th);
 
+            // FIX: Stop propagation to prevent sorting when clicking the search box
+            th.on("click mousedown", function (e) {
+              e.stopPropagation();
+            });
+
             // Eski tip Tarih sütunu desteği
             if (title === "Tarih") {
               $(input).addClass("flatpickr-datatable");

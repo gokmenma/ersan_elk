@@ -264,38 +264,9 @@ $logs = $mesajLogModel->getLogs(['type' => 'push']);
                                 ) ?>
                             </div>
 
-                            <!-- Etkinlik / Duyuru Olarak Kaydet -->
-                            <div class="col-12 mb-2 mt-2">
-                                <div
-                                    class="form-check form-switch p-0 m-0 d-flex align-items-center gap-2 bg-light rounded p-2 border">
-                                    <input class="form-check-input m-0 ms-1" type="checkbox" name="etkinlik_kaydet"
-                                        id="etkinlikKaydet" value="1" checked>
-                                    <label class="form-check-label flex-grow-1" style="cursor:pointer;"
-                                        for="etkinlikKaydet">
-                                        <strong>Ana Sayfada Yayınla</strong>
-                                        <small class="text-muted d-block" style="font-size:0.75rem;">Seçilen
-                                            personellerin ana sayfasında etkinlik/duyuru ve slider olarak
-                                            gösterilir.</small>
-                                    </label>
-                                </div>
-                            </div>
 
-                            <!-- Bitiş (Hedef) Tarihi -->
-                            <div class="col-12" id="etkinlikTarihiContainer">
-                                <?= Form::FormFloatInput(
-                                    'date',
-                                    'etkinlik_tarihi',
-                                    '',
-                                    'Yayın Bitiş veya Etkinlik Tarihi (İsteğe Bağlı)',
-                                    'Son Gösterim Tarihi',
-                                    'calendar',
-                                    'form-control',
-                                    // Make it not-required by passing false for required
-                                    false
-                                ) ?>
-                                <small class="text-muted" style="font-size:0.75rem">Bu tarihten sonra slider formunda
-                                    gösterilmez. Boş bırakırsanız sürekli görünür.</small>
-                            </div>
+
+
 
                             <!-- Gönder Butonu -->
                             <div class="col-12 text-end">
@@ -335,15 +306,7 @@ $logs = $mesajLogModel->getLogs(['type' => 'push']);
             });
         });
 
-        // Etkinlik secimini dinle
-        const etkinlikKaydet = document.getElementById('etkinlikKaydet');
-        const etkinlikTarihiContainer = document.getElementById('etkinlikTarihiContainer');
 
-        etkinlikKaydet.addEventListener('change', function () {
-            etkinlikTarihiContainer.style.display = this.checked ? 'block' : 'none';
-        });
-        // initial state
-        etkinlikTarihiContainer.style.display = etkinlikKaydet.checked ? 'block' : 'none';
 
         // Form gönderimi
         document.getElementById('formBildirimGonder').addEventListener('submit', function (e) {

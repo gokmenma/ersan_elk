@@ -182,6 +182,32 @@
     </div>
 </div>
 
+<!-- Avans Detay Modal -->
+<div id="avans-detay-modal" class="modal-overlay">
+    <div class="modal-content p-6 pt-3">
+        <div class="modal-handle"></div>
+
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Avans Detayı</h3>
+            <button onclick="Modal.close('avans-detay-modal')"
+                class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <span class="material-symbols-outlined text-slate-600">close</span>
+            </button>
+        </div>
+
+        <div id="avans-detay-content">
+            <!-- Content will be loaded dynamically -->
+        </div>
+
+        <div class="flex gap-3 mt-6">
+            <button onclick="Modal.close('avans-detay-modal')"
+                class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl w-full">
+                Kapat
+            </button>
+        </div>
+    </div>
+</div>
+
 <style>
     .tab-btn.active {
         background: rgba(var(--primary-rgb), 0.1);
@@ -278,7 +304,7 @@
 
             if (response.success && response.data.length > 0) {
                 container.innerHTML = response.data.map(avans => `
-                <div class="card p-4">
+                <div class="card p-4 cursor-pointer" onclick='showAvansDetay(${JSON.stringify(avans).replace(/'/g, "&#39;")})'>
                     <div class="flex items-center gap-4 mb-3">
                         <div class="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
                             <span class="material-symbols-outlined text-orange-600">request_quote</span>
@@ -294,11 +320,11 @@
                     
                     ${avans.durum === 'beklemede' ? `
                     <div class="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                        <button onclick='editAvans(${JSON.stringify(avans)})' class="flex-1 py-2 text-xs font-semibold text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center gap-1">
+                        <button onclick='event.stopPropagation(); editAvans(${JSON.stringify(avans).replace(/'/g, "&#39;")})' class="flex-1 py-2 text-xs font-semibold text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center gap-1">
                             <span class="material-symbols-outlined text-sm">edit</span>
                             Düzenle
                         </button>
-                        <button onclick="deleteAvans(${avans.id})" class="flex-1 py-2 text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center justify-center gap-1">
+                        <button onclick="event.stopPropagation(); deleteAvans(${avans.id})" class="flex-1 py-2 text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center justify-center gap-1">
                             <span class="material-symbols-outlined text-sm">delete</span>
                             Sil
                         </button>
@@ -364,6 +390,44 @@
         } catch (error) {
             console.error('Bordro detail error:', error);
         }
+    }
+
+    function showAvansDetay(avans) {
+        document.getElementById('avans-detay-content').innerHTML = `
+            <div class="flex flex-col gap-4">
+                <div class="flex items-center justify-center py-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl mb-2">
+                    <div class="text-center">
+                        <p class="text-xs text-orange-600 dark:text-orange-400 font-medium mb-1 uppercase tracking-wider">Talep Edilen Tutar</p>
+                        <h2 class="text-3xl font-bold text-slate-900 dark:text-white">${Format.currency(avans.tutar)}</h2>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-800">
+                    <span class="text-slate-500 text-sm">Talep Tarihi</span>
+                    <span class="font-bold text-slate-800 dark:text-slate-200">${avans.tarih}</span>
+                </div>
+                
+                <div class="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-800">
+                    <span class="text-slate-500 text-sm">Durum</span>
+                    <span class="badge ${getStatusBadge(avans.durum)}">${avans.durum_text}</span>
+                </div>
+                
+                <div class="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-800">
+                    <span class="text-slate-500 text-sm">Ödeme Şekli</span>
+                    <span class="font-medium text-slate-800 dark:text-slate-200">
+                        ${avans.odeme_sekli === 'tek' ? 'Tek Seferde' : avans.odeme_sekli + ' Taksit'}
+                    </span>
+                </div>
+                
+                <div class="flex flex-col gap-2 py-3">
+                    <span class="text-slate-500 text-sm">Açıklama / Sebep</span>
+                    <div class="bg-slate-50 dark:bg-background-dark p-3 rounded-lg text-sm text-slate-700 dark:text-slate-300 min-h-[60px]">
+                        ${avans.aciklama ? escapeHtml(avans.aciklama) : '<em class="text-slate-400">Belirtilmemiş</em>'}
+                    </div>
+                </div>
+            </div>
+        `;
+        Modal.open('avans-detay-modal');
     }
 
     function openNewAvansModal() {

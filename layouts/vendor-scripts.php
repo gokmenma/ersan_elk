@@ -162,7 +162,8 @@ if ($page == "bordro/parametreler") {
     $page == "hakedisler/index" ||
     $page == "hakedisler/sozlesme-detay" ||
     $page == "hakedisler/hakedis-detay" ||
-    $page == "bordro/parametreler"
+    $page == "bordro/parametreler" ||
+    $page == "duyuru/list"
 
 ) { ?>
 

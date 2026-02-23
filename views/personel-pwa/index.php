@@ -418,6 +418,21 @@ if (!in_array($page, $allowed_pages)) {
     <!-- Toast Container -->
     <div id="toast-container" class="fixed top-4 left-4 right-4 z-[110] flex flex-col gap-2"></div>
 
+    <!-- Etkinlik Detay Tam Ekran Modal (Full Screen Layout) -->
+    <div id="etkinlik-detay-fullscreen"
+        class="fixed inset-0 z-[120] bg-slate-50 dark:bg-background-dark transform translate-y-full transition-transform duration-300 flex flex-col"
+        style="display:none;">
+        <!-- Close Button (Fixed at Bottom Right) -->
+        <button onclick="closeEtkinlikFullScreen()"
+            class="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-primary text-white shadow-2xl flex items-center justify-center z-[130] active:scale-90 transition-transform cursor-pointer border-none outline-none">
+            <span class="material-symbols-outlined text-3xl">close</span>
+        </button>
+
+        <!-- Container for dynamic content -->
+        <div id="etkinlik-fullscreen-content" class="flex-1 overflow-y-auto flex flex-col disable-scrollbar pb-24">
+        </div>
+    </div>
+
     <!-- Scripts -->
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -504,6 +519,131 @@ if (!in_array($page, $allowed_pages)) {
                 window.location.href = 'login.php';
             }
         }
+    </script>
+
+    <!-- ETKİNLİK DETAY TAM EKRAN MODAL MANTIĞI -->
+    <script>
+        function showEtkinlikFullScreen(duyuruStr) {
+            let duyuru;
+            try {
+                // Determine if it was passed as JSON string or object directly
+                duyuru = typeof duyuruStr === 'string' ? JSON.parse(duyuruStr) : duyuruStr;
+            } catch (e) {
+                console.error('JSON Parse error', e);
+                return;
+            }
+
+            const modal = document.getElementById('etkinlik-detay-fullscreen');
+            const container = document.getElementById('etkinlik-fullscreen-content');
+
+            // Apply selected UI themes as background for the header
+            const bgImg = `background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);`;
+
+            const hasImage = duyuru.resim ? true : false;
+            let fileAttachmentHtml = '';
+            if (hasImage) {
+                fileAttachmentHtml = `
+                    <div class="mt-8">
+                        <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 pl-1">EKLİ GÖRSEL / DOSYA</p>
+                        <div class="rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800 relative bg-slate-100 dark:bg-slate-800">
+                            <img src="${escapeHtml(duyuru.resim)}" class="w-full h-auto object-cover max-h-[400px]" alt="Etkinlik Görseli">
+                        </div>
+                    </div>
+                `;
+            }
+
+            let linkHtml = '';
+            if (duyuru.hedef_sayfa) {
+                linkHtml = `
+                <div class="mt-8">
+                    <a href="${escapeHtml(duyuru.hedef_sayfa)}" class="btn-primary w-full py-4 text-center rounded-2xl flex justify-center items-center gap-2 font-bold shadow-lg shadow-primary/30 active:scale-95 transition-transform">
+                        <span>İlgili Sayfaya Git</span>
+                        <span class="material-symbols-outlined">arrow_forward</span>
+                    </a>
+                </div>
+                `;
+            }
+
+            let kalanGunHtml = '';
+            if (duyuru.kalan_gun) {
+                kalanGunHtml = `
+                    <div class="absolute -top-4 -right-2 pointer-events-none select-none z-0 flex flex-col items-end opacity-20">
+                        <span class="text-[12rem] font-black leading-[0.8] tracking-tighter bg-gradient-to-bl from-white to-transparent text-transparent bg-clip-text">${escapeHtml(duyuru.kalan_gun)}</span>
+                    </div>
+                `;
+            } else if (duyuru.gecmis) {
+                kalanGunHtml = `<div class="mt-4"><span class="badge badge-danger bg-red-500/80 backdrop-blur-md text-white border-none py-1.5 px-3 shadow-md">Geçmiş Etkinlik</span></div>`;
+            }
+
+            container.innerHTML = `
+                <div class="header-main relative px-6 pt-10 pb-8 flex flex-col items-start shadow-xl rounded-b-[2.5rem] safe-area-top shrink-0 overflow-hidden" style="${bgImg}">
+                    <div class="absolute inset-0 opacity-10 overflow-hidden rounded-b-[2.5rem] pointer-events-none">
+                        <svg class="absolute -right-4 top-0 w-32 h-32" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="50" cy="50" r="50" />
+                        </svg>
+                        <svg class="absolute -left-12 -bottom-12 w-48 h-48" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="50" cy="50" r="50" />
+                        </svg>
+                    </div>
+                    
+                    ${kalanGunHtml}
+
+                    <div class="relative w-full z-10 flex flex-col h-full">
+                        <div class="flex items-center justify-between mb-6">
+                            <div class="w-10 h-10"></div> <!-- Placeholder for layout balance -->
+                            <span class="bg-white/20 backdrop-blur-md border border-white/10 text-white rounded-lg px-3 py-1 text-[11px] font-semibold tracking-wide shadow-sm">${escapeHtml(duyuru.tarih)}</span>
+                        </div>
+
+                        <div class="flex flex-col justify-end mt-2">
+                            <h1 class="text-white text-2xl font-black tracking-tight leading-[1.15] break-words" style="text-shadow: 0 4px 8px rgba(0,0,0,0.5);">${escapeHtml(duyuru.baslik)}</h1>
+                            ${duyuru.kalan_gun ? `<div class="mt-2 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                                <span class="text-[11px] font-bold text-white/90 uppercase tracking-[0.2em]">${escapeHtml(duyuru.kalan_gun)} GÜN KALDI</span>
+                            </div>` : ''}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-5 pb-8 flex-1 bg-transparent -mt-5 relative z-20">
+                    <div class="bg-white dark:bg-card-dark rounded-[2rem] p-6 shadow-xl shadow-black/5 dark:shadow-black/20 border border-slate-100 dark:border-slate-800">
+                        <p class="text-slate-700 dark:text-slate-300 text-[15px] leading-relaxed whitespace-pre-wrap">${escapeHtml(duyuru.icerik)}</p>
+                        ${fileAttachmentHtml}
+                    </div>
+                    ${linkHtml}
+                </div>
+            `;
+
+            modal.style.display = 'flex';
+            // Allow DOM state update before kicking off CSS transitions
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    modal.classList.remove('translate-y-full');
+                });
+            });
+
+            try {
+                window.history.pushState({ modal: 'etkinlik-detay-fullscreen' }, '', '');
+            } catch (err) { }
+        }
+
+        function closeEtkinlikFullScreen() {
+            const modal = document.getElementById('etkinlik-detay-fullscreen');
+            if (!modal) return;
+
+            modal.classList.add('translate-y-full');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                document.getElementById('etkinlik-fullscreen-content').innerHTML = ''; // memory clean
+            }, 300); // match transition duration
+        }
+
+        // Catch the native back button
+        window.addEventListener('popstate', function (e) {
+            const modalFS = document.getElementById('etkinlik-detay-fullscreen');
+            if (modalFS && modalFS.style.display !== 'none') {
+                closeEtkinlikFullScreen();
+            }
+        });
     </script>
 </body>
 

@@ -11,7 +11,7 @@ session_start();
 ini_set('error_log', dirname(dirname(__DIR__)) . '/pwa_api_error.log');
 ini_set('log_errors', 1);
 
-require_once dirname(dirname(__DIR__)) . '/Autoloader.php';
+require_once dirname(dirname(__DIR__)) . '/bootstrap.php';
 
 use App\Model\PersonelModel;
 use App\Model\BordroPersonelModel;
@@ -58,6 +58,28 @@ function response($success, $data = null, $message = '')
         'message' => $message
     ], JSON_UNESCAPED_UNICODE);
     exit;
+}
+
+/**
+ * Resim yollarını PWA için düzeltir
+ */
+function getPwaImageUrl($path)
+{
+    if (empty($path))
+        return '';
+
+    $host = $_SERVER['HTTP_HOST'];
+    $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https:' : 'http:';
+
+    // Eğer 'personel.' ile başlayan bir subdomain kullanılıyorsa (örn: personel.softran.online) 
+    // Ana dizin (parent domain) üzerinden dosyayı çekelim.
+    if (strpos($host, 'personel.') === 0) {
+        $mainHost = substr($host, 9);
+        return $protocol . '//' . $mainHost . '/' . $path;
+    }
+
+    // Subdomain yoksa veya local klasör yapısı ise klasik ../../uploads mantığı
+    return '../../' . $path;
 }
 
 try {
@@ -1712,7 +1734,8 @@ try {
             // Duyuruları son eklenenden geriye doğru al
             $duyuruSql = "SELECT id, baslik, icerik, resim, hedef_sayfa, tarih, etkinlik_tarihi
                         FROM duyurular
-                        WHERE silinme_tarihi IS NULL
+                        WHERE silinme_tarihi IS NULL 
+                        AND durum = 'Yayında'
                         AND (alici_tipi = 'toplu' OR FIND_IN_SET(?, alici_ids))
                         AND (etkinlik_tarihi IS NULL OR etkinlik_tarihi >= CURDATE())
                         ORDER BY id DESC
@@ -1747,7 +1770,7 @@ try {
                     'id' => $d['id'],
                     'baslik' => $d['baslik'],
                     'icerik' => $d['icerik'],
-                    'resim' => $d['resim'] ?? '',
+                    'resim' => getPwaImageUrl($d['resim']),
                     'tarih' => $tarih_metni,
                     'kalan_gun' => $kalan_gun_text,
                     'hedef_sayfa' => $d['hedef_sayfa']
@@ -1763,7 +1786,8 @@ try {
 
             $duyuruSql = "SELECT id, baslik, icerik, resim, hedef_sayfa, tarih, etkinlik_tarihi
                         FROM duyurular
-                        WHERE silinme_tarihi IS NULL
+                        WHERE silinme_tarihi IS NULL 
+                        AND durum = 'Yayında'
                         AND (alici_tipi = 'toplu' OR FIND_IN_SET(?, alici_ids))
                         ORDER BY id DESC";
             $stmt = $db->prepare($duyuruSql);
@@ -1797,7 +1821,7 @@ try {
                     'id' => $d['id'],
                     'baslik' => $d['baslik'],
                     'icerik' => $d['icerik'],
-                    'resim' => $d['resim'] ?? '',
+                    'resim' => getPwaImageUrl($d['resim']),
                     'tarih' => $tarih_metni,
                     'kalan_gun' => $kalan_gun_text,
                     'gecmis' => $gecmis,
