@@ -139,9 +139,9 @@ class PersonelIzinleriModel extends Model
     }
 
     /**
-     * Onaylanmış izin taleplerini personel bilgileriyle getirir
+     * İşlem yapılmış (onaylanmış veya reddedilmiş) izin taleplerini getirir
      */
-    public function getOnaylanmisIzinler($limit = 50)
+    public function getIslenmisIzinler($limit = 50)
     {
         $limit = (int) $limit;
         $sql = $this->db->prepare("
@@ -149,7 +149,26 @@ class PersonelIzinleriModel extends Model
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.onay_durumu = 'Onaylandı' AND p.firma_id = ?
+            WHERE pi.onay_durumu IN ('Onaylandı', 'Reddedildi') AND p.firma_id = ?
+            ORDER BY pi.talep_tarihi DESC
+            LIMIT {$limit}
+        ");
+        $sql->execute([$_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Reddedilmiş izin taleplerini personel bilgileriyle getirir
+     */
+    public function getReddedilmisIzinler($limit = 50)
+    {
+        $limit = (int) $limit;
+        $sql = $this->db->prepare("
+            SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
+            FROM {$this->table} pi 
+            JOIN personel p ON pi.personel_id = p.id 
+            LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            WHERE pi.onay_durumu = 'Reddedildi' AND p.firma_id = ?
             ORDER BY pi.talep_tarihi DESC
             LIMIT {$limit}
         ");

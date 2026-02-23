@@ -121,16 +121,34 @@ class AvansModel extends Model
     }
 
     /**
-     * Onaylanmış avans taleplerini personel bilgileriyle getirir
+     * İşlem yapılmış (onaylanmış veya reddedilmiş) avans taleplerini getirir
      */
-    public function getOnaylanmisAvanslar($limit = 50)
+    public function getIslenmisAvanslar($limit = 50)
     {
         $limit = (int) $limit;
         $sql = $this->db->prepare("
             SELECT pa.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, p.maas_tutari
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
-            WHERE pa.durum = 'onaylandi' AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE pa.durum IN ('onaylandi', 'reddedildi') AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            ORDER BY pa.onay_tarihi DESC
+            LIMIT {$limit}
+        ");
+        $sql->execute([$_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Reddedilmiş avans taleplerini personel bilgileriyle getirir
+     */
+    public function getReddedilmisAvanslar($limit = 50)
+    {
+        $limit = (int) $limit;
+        $sql = $this->db->prepare("
+            SELECT pa.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, p.maas_tutari
+            FROM {$this->table} pa 
+            JOIN personel p ON pa.personel_id = p.id 
+            WHERE pa.durum = 'reddedildi' AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
             ORDER BY pa.onay_tarihi DESC
             LIMIT {$limit}
         ");

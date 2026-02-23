@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 ]);
                 break;
 
-            // Tüm onaylanmış/çözülmüş talepleri getir
+            // Tüm işlem yapılmış/çözülmüş talepleri getir
             case 'get-all-approved':
                 $tip = $_POST['tip'] ?? 'all';
                 $limit = intval($_POST['limit'] ?? 50);
@@ -68,12 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $talepler = [];
 
                 if ($tip == 'all' || $tip == 'avans') {
-                    $avanslar = $avansModel->getOnaylanmisAvanslar($limit);
+                    $avanslar = $avansModel->getIslenmisAvanslar($limit);
                 }
 
                 if ($tip == 'all' || $tip == 'izin') {
                     try {
-                        $izinler = $izinModel->getOnaylanmisIzinler($limit);
+                        $izinler = $izinModel->getIslenmisIzinler($limit);
                     } catch (\Exception $e) {
                         $izinler = [];
                     }

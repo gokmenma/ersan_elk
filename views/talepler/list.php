@@ -24,11 +24,11 @@ try {
 $talepCount = $talepModel->getBekleyenTalepSayisi();
 $toplamCount = $avansCount + $izinCount + $talepCount;
 
-// Talepleri getir - bekleyen veya onaylanmış
+// Talepleri getir - bekleyen veya işlem yapılmış
 if ($showApproved) {
-    $avanslar = $avansModel->getOnaylanmisAvanslar(50);
+    $avanslar = $avansModel->getIslenmisAvanslar(50);
     try {
-        $izinler = $izinModel->getOnaylanmisIzinler(50);
+        $izinler = $izinModel->getIslenmisIzinler(50);
     } catch (\Exception $e) {
         $izinler = [];
     }
@@ -176,7 +176,7 @@ $izinTurleri = [
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
                 <a href="index?p=talepler/list&show=approved"
                     class="btn btn-sm px-3 rounded-pill <?= $showApproved ? 'btn-success text-white shadow-sm fw-bold' : 'btn-link text-muted text-decoration-none' ?>">
-                    <i class="bx bx-check-circle me-1"></i>Onaylananlar
+                    <i class="bx bx-check-circle me-1"></i>İşlem Yapılanlar
                 </a>
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
                 <button type="button" class="btn btn-sm btn-outline-success px-3 rounded-pill" id="btnExportExcel">
@@ -188,7 +188,8 @@ $izinTurleri = [
             <?php if ($showApproved): ?>
                 <div class="alert alert-success mb-3">
                     <i class="bx bx-check-circle me-1"></i>
-                    <strong>Onaylanmış Talepler</strong> görüntüleniyor. Son 50 kayıt listelenmektedir.
+                    <strong>İşlem Yapılmış Talepler</strong> (Onaylanan & Reddedilen) görüntüleniyor. Son 50 kayıt
+                    listelenmektedir.
                 </div>
             <?php endif; ?>
 
