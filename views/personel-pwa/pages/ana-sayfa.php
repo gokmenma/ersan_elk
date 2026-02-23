@@ -59,8 +59,16 @@ use App\Helper\Helper;
         </div>
     </header>
 
+    <!-- Etkinlik Slider -->
+    <section class="px-4 mt-[-20px] relative z-20 mb-4" id="etkinlik-slider-section" style="display: none;">
+        <div class="flex overflow-x-auto hide-scrollbar snap-x snap-mandatory gap-3 pb-2"
+            id="etkinlik-slider-container">
+            <!-- Slider öğeleri buraya yüklenecek -->
+        </div>
+    </section>
+
     <!-- Görev Takip Bileşeni -->
-    <section class="px-4 -mt-4 relative z-20 mb-4">
+    <section class="px-4 relative z-20 mb-4">
         <div id="gorev-takip-card" class="card overflow-hidden">
             <!-- Loading State -->
             <div id="gorev-loading" class="p-6 flex items-center justify-center">
@@ -333,6 +341,8 @@ use App\Helper\Helper;
         loadNotificationCount();
         // Load recent activities
         loadRecentActivities();
+        // Load events slider
+        loadEtkinlikSlider();
 
         // --- ANLIK KONUM İSTEĞİ KONTROLÜ ---
         // Uygulama açık olduğu sürece her 2 dakikada bir kontrol et
@@ -713,6 +723,41 @@ use App\Helper\Helper;
         } catch (error) {
             console.error('Activities load error:', error);
             container.innerHTML = '<div class="flex flex-col items-center justify-center py-8 text-center"><span class="material-symbols-outlined text-4xl text-red-300 mb-2">error</span><p class="text-sm text-slate-500">Etkinlikler yüklenemedi</p></div>';
+        }
+    }
+
+    async function loadEtkinlikSlider() {
+        var container = document.getElementById('etkinlik-slider-container');
+        var section = document.getElementById('etkinlik-slider-section');
+
+        try {
+            var response = await API.request('getEtkinlikSlider');
+
+            if (response.success && response.data && response.data.length > 0) {
+                section.style.display = 'block';
+
+                container.innerHTML = response.data.map(function (duyuru) {
+                    var bgImg = duyuru.resim ? 'background-image: linear-gradient(to right, rgba(0,0,0,0.8), rgba(0,0,0,0.3)), url(' + escapeHtml(duyuru.resim) + '); background-size: cover; background-position: center;'
+                        : 'background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);';
+
+                    var onClick = duyuru.hedef_sayfa ? 'window.location.href=\'' + escapeHtml(duyuru.hedef_sayfa) + '\';' : '';
+                    var cursorClass = duyuru.hedef_sayfa ? 'cursor-pointer' : '';
+
+                    return '<div class="snap-center shrink-0 w-[85%] sm:w-[300px] rounded-2xl p-4 text-white shadow-lg relative overflow-hidden transition-transform active:scale-[0.98] ' + cursorClass + '" ' +
+                        'style="' + bgImg + '" onclick="' + onClick + '">' +
+                        '<div class="relative z-10">' +
+                        '<span class="badge badge-primary bg-white/20 text-white border-none mb-2 text-[10px]">' + escapeHtml(duyuru.tarih) + '</span>' +
+                        '<h3 class="font-bold text-lg leading-tight mb-1 line-clamp-1 text-white">' + escapeHtml(duyuru.baslik) + '</h3>' +
+                        '<p class="text-xs text-white/80 line-clamp-2">' + escapeHtml(duyuru.icerik) + '</p>' +
+                        '</div>' +
+                        '</div>';
+                }).join('');
+            } else {
+                section.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Slider load error:', error);
+            section.style.display = 'none';
         }
     }
 

@@ -47,14 +47,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $imageUrl = null;
                 if (isset($_FILES['resim']) && $_FILES['resim']['error'] === UPLOAD_ERR_OK) {
                     $uploadDir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'notifications' . DIRECTORY_SEPARATOR;
-                    
+
                     // Klasör yoksa oluştur
                     if (!is_dir($uploadDir)) {
                         if (!@mkdir($uploadDir, 0755, true)) {
                             throw new Exception('Yükleme klasörü oluşturulamadı: ' . $uploadDir);
                         }
                     }
-                    
+
                     // Klasör yazılabilir mi kontrol et
                     if (!is_writable($uploadDir)) {
                         throw new Exception('Yükleme klasörü yazılabilir değil.');
@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $finfo = finfo_open(FILEINFO_MIME_TYPE);
                     $mimeType = finfo_file($finfo, $_FILES['resim']['tmp_name']);
                     finfo_close($finfo);
-                    
+
                     $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
                     if (!in_array($mimeType, $allowedMimes)) {
                         throw new Exception('Geçersiz dosya tipi: ' . $mimeType);
@@ -89,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         // URL oluştur - mutlak URL gerekli
                         $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
                         $host = $_SERVER['HTTP_HOST'];
-                        
+
                         // Base path'i DOCUMENT_ROOT'tan hesapla
                         $docRoot = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
                         $uploadPath = str_replace('\\', '/', dirname(__DIR__, 2) . '/uploads/notifications/');
@@ -197,18 +197,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $message .= ", Hatalı: $hata";
                 }
 
+                // --------- ETKİNLİK / DUYURU KAYIT İŞLEMİ ----------
+                if (isset($_POST['etkinlik_kaydet']) && $_POST['etkinlik_kaydet'] == '1') {
+                    $duyuruDb = $subscriptionModel->getDb();
+
+                    $alici_ids_str = '';
+                    if ($alici_tipi === 'tekli') {
+                        $alici_ids_str = implode(',', $_POST['personel_ids'] ?? []);
+                    }
+
+                    $stmtDuyuru = $duyuruDb->prepare("
+                        INSERT INTO duyurular 
+                        (firma_id, baslik, icerik, resim, hedef_sayfa, alici_tipi, alici_ids, tarih) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+                    ");
+                    $stmtDuyuru->execute([
+                        $_SESSION['firma_id'] ?? 0,
+                        $baslik,
+                        $mesaj,
+                        $imageUrl ?? null,
+                        $hedef_sayfa,
+                        $alici_tipi,
+                        $alici_ids_str
+                    ]);
+                }
+                // ---------------------------------------------------
+
                 $response = [
                     'status' => 'success',
                     'message' => $message,
                     'gonderildi' => $gonderildi,
                     'hata' => $hata
                 ];
-                
+
                 // Debug için image URL'i de ekle
                 if ($imageUrl) {
                     $response['debug_image_url'] = $imageUrl;
                 }
-                
+
                 echo json_encode($response);
                 break;
 

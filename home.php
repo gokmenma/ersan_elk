@@ -263,62 +263,303 @@ if (Gate::allows("ana_sayfa")) {
     </div>
     <?php $widgets['widget-bekleyen-talepler'] = ob_get_clean();
 
-    ob_start(); ?>
+    ob_start();
+    // Giriş kayıtları sorgusu
+    try {
+        $personelStmt = $db->prepare("
+            SELECT p.adi_soyadi, pg.giris_tarihi as tarih, pg.ip_adresi, pg.tarayici
+            FROM personel_giris_loglari pg JOIN personel p ON p.id = pg.personel_id
+            ORDER BY pg.giris_tarihi DESC LIMIT 10
+        ");
+        $personelStmt->execute();
+        $personelLogs = $personelStmt->fetchAll(PDO::FETCH_OBJ);
+
+        $kullaniciStmt = $db->prepare("
+            SELECT u.adi_soyadi, sl.created_at as tarih, SUBSTR(sl.description, LOCATE('IP:', sl.description) + 4) as ip_adresi, 'Sistem' as tarayici
+            FROM system_logs sl JOIN users u ON u.id = sl.user_id
+            WHERE sl.action_type = 'Başarılı Giriş' ORDER BY sl.created_at DESC LIMIT 10
+        ");
+        $kullaniciStmt->execute();
+        $kullaniciLogs = $kullaniciStmt->fetchAll(PDO::FETCH_OBJ);
+    } catch (\Exception $e) {
+        $personelLogs = [];
+        $kullaniciLogs = [];
+    }
+    ?>
     <div class="col-12 widget-item" id="widget-bildirimler">
-        <div class="card">
-            <div class="card-header">
-                <h5><i class='bx bx-grid-vertical drag-handle me-1'></i> Görev ve Bildirimler</h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-centered table-nowrap mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Bildirim Tipi</th>
-                                <th>Başlık</th>
-                                <th>İçerik</th>
-                                <th>Tarih</th>
-                                <th class="text-center">İşlem</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (empty($recent_logs)): ?>
-                                <tr>
-                                    <td colspan="5" class="text-center">Kayıt bulunmamaktadır.</td>
-                                </tr>
-                            <?php else: ?>
-                                <?php foreach ($recent_logs as $log): ?>
-                                    <tr>
-                                        <td>
-                                            <i class="bx bx-info-circle me-1"></i>
-                                            <?php echo htmlspecialchars($log->action_type); ?>
-                                        </td>
-                                        <td><?php echo htmlspecialchars($log->action_type); ?></td>
-                                        <td>
-                                            <?php
-                                            $user_name = $log->adi_soyadi ?? 'Sistem';
-                                            $full_desc = htmlspecialchars($log->description);
-                                            $short_desc = mb_strimwidth($full_desc, 0, 80, "...");
-                                            echo $short_desc . " <small class='text-muted'>($user_name tarafından)</small>";
-                                            ?>
-                                        </td>
-                                        <td><?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?></td>
-                                        <td class="text-center">
-                                            <button type="button" class="btn btn-sm btn-soft-primary btn-log-detay"
-                                                data-title="<?php echo htmlspecialchars($log->action_type); ?>"
-                                                data-user="<?php echo htmlspecialchars($user_name); ?>"
-                                                data-date="<?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?>"
-                                                data-content="<?php echo htmlspecialchars($log->description); ?>">
-                                                <i class="bx bx-show me-1"></i> Detay
-                                            </button>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+        <div class="card summary-card"
+            style="background: linear-gradient(145deg, rgba(255,255,255,0.98), rgba(248,250,252,0.99)); border: 1px solid rgba(226,232,240,0.8); border-radius: 12px; box-shadow: 0 4px 15px -3px rgba(0,0,0,0.05), 0 2px 5px -2px rgba(0,0,0,0.02);">
+            <div class="card-header align-items-center d-flex"
+                style="background: transparent; border-bottom: 1px solid rgba(226,232,240,0.8); padding: 0.75rem 1.25rem;">
+                <h5 class="card-title mb-0 flex-grow-1 d-flex align-items-center gap-2"
+                    style="color: #1e293b; font-weight: 700;">
+                    <i class='bx bx-grid-vertical drag-handle' style="color: #cbd5e1; font-size: 1.2rem;"></i>
+                </h5>
+                <div class="flex-shrink-0 flex-grow-1" style="margin-left: -20px;">
+                    <ul class="nav nav-tabs-custom rounded card-header-tabs" role="tablist"
+                        style="border:none; gap: 0.5rem; margin-bottom: -0.75rem;">
+                        <li class="nav-item">
+                            <a class="nav-link active px-4 py-2" data-bs-toggle="tab" href="#gorev-tab" role="tab"
+                                style="border-radius: 8px 8px 0 0; font-weight: 600; font-size: 0.95rem; color: #64748b; transition: all 0.2s;">
+                                Görev ve Bildirimler
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link px-4 py-2" data-bs-toggle="tab" href="#personel-giris-tab" role="tab"
+                                style="border-radius: 8px 8px 0 0; font-weight: 600; font-size: 0.95rem; color: #64748b; transition: all 0.2s;">
+                                Personel Girişleri
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link px-4 py-2" data-bs-toggle="tab" href="#kullanici-giris-tab" role="tab"
+                                style="border-radius: 8px 8px 0 0; font-weight: 600; font-size: 0.95rem; color: #64748b; transition: all 0.2s;">
+                                Yönetici Girişleri
+                            </a>
+                        </li>
+                    </ul>
                 </div>
             </div>
+            <div class="card-body" style="padding: 0;">
+                <div class="tab-content">
+                    <div class="tab-pane active" id="gorev-tab" role="tabpanel">
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-centered table-nowrap table-hover mb-0 align-middle">
+                                <thead style="background: rgba(248,250,252,0.8); position: sticky; top: 0; z-index: 10;">
+                                    <tr>
+                                        <th
+                                            style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
+                                            Seviye</th>
+                                        <th
+                                            style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
+                                            İşlem Tipi</th>
+                                        <th
+                                            style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
+                                            İçerik</th>
+                                        <th
+                                            style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
+                                            Tarih</th>
+                                        <th class="text-center"
+                                            style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
+                                            İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($recent_logs)): ?>
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4" style="color: #64748b;">
+                                                <div class="avatar-sm mx-auto mb-2">
+                                                    <div class="avatar-title rounded-circle bg-light text-muted"><i
+                                                            class="bx bx-x"></i></div>
+                                                </div>
+                                                Kayıt bulunmamaktadır.
+                                            </td>
+                                        </tr>
+                                    <?php else: ?>
+                                        <?php foreach ($recent_logs as $log): ?>
+                                            <tr style="border-bottom: 1px solid #f1f5f9; transition: all 0.2s;">
+                                                <td style="padding: 0.75rem 1rem;">
+                                                    <span class="badge bg-soft-warning text-warning px-2 py-1 border border-warning"
+                                                        style="border-radius: 4px;">
+                                                        <i class="bx bx-info-circle me-1"></i> Önemli
+                                                    </span>
+                                                </td>
+                                                <td style="padding: 0.75rem 1rem; color:#475569; font-weight:500;">
+                                                    <i class="bx bx-file me-1 text-muted"></i>
+                                                    <?php echo htmlspecialchars($log->action_type); ?>
+                                                </td>
+                                                <td style="padding: 0.75rem 1rem; color:#64748b;">
+                                                    <?php
+                                                    $user_name = $log->adi_soyadi ?? 'Sistem';
+                                                    $full_desc = htmlspecialchars($log->description);
+                                                    $short_desc = mb_strimwidth($full_desc, 0, 80, "...");
+                                                    echo $short_desc . " <small class='text-muted' style='opacity:0.7'>($user_name tarafından)</small>";
+                                                    ?>
+                                                </td>
+                                                <td
+                                                    style="padding: 0.75rem 1rem; color:#475569; font-weight:500; font-size:0.85rem;">
+                                                    <?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?>
+                                                </td>
+                                                <td class="text-center" style="padding: 0.75rem 1rem;">
+                                                    <button type="button" class="btn btn-sm btn-light btn-log-detay"
+                                                        style="border-radius: 6px; font-weight:500; color:#475569; border: 1px solid #e2e8f0; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                                                        data-title="<?php echo htmlspecialchars($log->action_type); ?>"
+                                                        data-user="<?php echo htmlspecialchars($user_name); ?>"
+                                                        data-date="<?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?>"
+                                                        data-content="<?php echo htmlspecialchars($log->description); ?>">
+                                                        <i class="bx bx-show me-1 text-primary"></i> Detay
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div><!-- end tab pane -->
+
+                    <div class="tab-pane" id="personel-giris-tab" role="tabpanel">
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-borderless table-nowrap align-middle mb-0">
+                                <thead style="background: rgba(248,250,252,0.8); position: sticky; top: 0; z-index: 10;">
+                                    <tr style="border-bottom: 2px solid #f1f5f9;">
+                                        <th
+                                            style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
+                                            Ad Soyad</th>
+                                        <th
+                                            style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
+                                            Tarih</th>
+                                        <th
+                                            style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
+                                            Tarayıcı</th>
+                                        <th
+                                            style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
+                                            IP</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($personelLogs)): ?>
+                                        <tr>
+                                            <td colspan="4" class="text-center py-4" style="color: #64748b;">
+                                                <div class="avatar-sm mx-auto mb-2">
+                                                    <div class="avatar-title rounded-circle bg-light text-muted"><i
+                                                            class="bx bx-x"></i></div>
+                                                </div>
+                                                Kayıt bulunamadı.
+                                            </td>
+                                        </tr>
+                                    <?php else: ?>
+                                        <?php foreach ($personelLogs as $ll): ?>
+                                            <tr style="border-bottom: 1px solid #f8fafc; transition: all 0.2s;"
+                                                onmouseover="this.style.background='#f8fafc'"
+                                                onmouseout="this.style.background='transparent'">
+                                                <td style="padding: 0.75rem 1rem;">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar-sm me-3">
+                                                            <span class="avatar-title rounded-circle"
+                                                                style="background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); color: #4f46e5; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                                                <?php echo mb_substr($ll->adi_soyadi, 0, 1, 'UTF-8'); ?>
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <h5 class="font-size-14 mb-0" style="color: #334155; font-weight: 600;">
+                                                                <?php echo htmlspecialchars($ll->adi_soyadi ?? ''); ?>
+                                                            </h5>
+                                                            <span class="badge bg-soft-info text-info font-size-11"
+                                                                style="border-radius: 4px;">Personel</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td style="padding: 0.75rem 1rem;">
+                                                    <div class="d-flex flex-column">
+                                                        <span
+                                                            style="color: #475569; font-weight: 500;"><?php echo date('d.m.Y', strtotime($ll->tarih)); ?></span>
+                                                        <span style="color: #94a3b8; font-size: 0.75rem;"><i
+                                                                class="bx bx-time-five me-1"></i><?php echo date('H:i', strtotime($ll->tarih)); ?></span>
+                                                    </div>
+                                                </td>
+                                                <td style="padding: 0.75rem 1rem;">
+                                                    <div
+                                                        style="background: rgba(241,245,249,0.8); padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; color: #475569; border: 1px solid #e2e8f0;">
+                                                        <?php echo htmlspecialchars($ll->tarayici ?? '-'); ?>
+                                                    </div>
+                                                </td>
+                                                <td style="padding: 0.75rem 1rem;"><span
+                                                        style="font-family: monospace; color: #64748b; font-size: 0.85rem; background: #f8fafc; padding: 2px 6px; border-radius: 4px; border: 1px solid #e2e8f0;"><?php echo htmlspecialchars($ll->ip_adresi ?? '-'); ?></span>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div><!-- end tab pane -->
+
+                    <div class="tab-pane" id="kullanici-giris-tab" role="tabpanel">
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-borderless table-nowrap align-middle mb-0">
+                                <thead style="background: rgba(248,250,252,0.8); position: sticky; top: 0; z-index: 10;">
+                                    <tr style="border-bottom: 2px solid #f1f5f9;">
+                                        <th
+                                            style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
+                                            Ad Soyad</th>
+                                        <th
+                                            style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
+                                            Tarih</th>
+                                        <th
+                                            style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
+                                            IP</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($kullaniciLogs)): ?>
+                                        <tr>
+                                            <td colspan="3" class="text-center py-4" style="color: #64748b;">
+                                                <div class="avatar-sm mx-auto mb-2">
+                                                    <div class="avatar-title rounded-circle bg-light text-muted"><i
+                                                            class="bx bx-x"></i></div>
+                                                </div>
+                                                Kayıt bulunamadı.
+                                            </td>
+                                        </tr>
+                                    <?php else: ?>
+                                        <?php foreach ($kullaniciLogs as $ll): ?>
+                                            <tr style="border-bottom: 1px solid #f8fafc; transition: all 0.2s;"
+                                                onmouseover="this.style.background='#f8fafc'"
+                                                onmouseout="this.style.background='transparent'">
+                                                <td style="padding: 0.75rem 1rem;">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar-sm me-3">
+                                                            <span class="avatar-title rounded-circle"
+                                                                style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); color: #16a34a; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                                                <?php echo mb_substr($ll->adi_soyadi, 0, 1, 'UTF-8'); ?>
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <h5 class="font-size-14 mb-0" style="color: #334155; font-weight: 600;">
+                                                                <?php echo htmlspecialchars($ll->adi_soyadi ?? ''); ?>
+                                                            </h5>
+                                                            <span class="badge bg-soft-success text-success font-size-11"
+                                                                style="border-radius: 4px;">Kullanıcı</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td style="padding: 0.75rem 1rem;">
+                                                    <div class="d-flex flex-column">
+                                                        <span
+                                                            style="color: #475569; font-weight: 500;"><?php echo date('d.m.Y', strtotime($ll->tarih)); ?></span>
+                                                        <span style="color: #94a3b8; font-size: 0.75rem;"><i
+                                                                class="bx bx-time-five me-1"></i><?php echo date('H:i', strtotime($ll->tarih)); ?></span>
+                                                    </div>
+                                                </td>
+                                                <td style="padding: 0.75rem 1rem;"><span
+                                                        style="font-family: monospace; color: #64748b; font-size: 0.85rem; background: #f8fafc; padding: 2px 6px; border-radius: 4px; border: 1px solid #e2e8f0;"><?php echo htmlspecialchars($ll->ip_adresi ?? '-'); ?></span>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div><!-- end tab pane -->
+                </div><!-- end tab content -->
+            </div>
+            <style>
+                #widget-bildirimler .nav-link.active {
+                    background: #fff !important;
+                    color: #4f46e5 !important;
+                    border-bottom: 2px solid #4f46e5 !important;
+                    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.02);
+                }
+
+                #widget-bildirimler .nav-link:hover:not(.active) {
+                    background: rgba(241, 245, 249, 0.8);
+                    color: #475569 !important;
+                }
+
+                #widget-bildirimler .nav-tabs-custom {
+                    border-bottom: 1px solid transparent !important;
+                }
+            </style>
         </div>
     </div>
     <?php $widgets['widget-bildirimler'] = ob_get_clean();
@@ -588,6 +829,8 @@ if (Gate::allows("ana_sayfa")) {
     </div>
     <?php $widgets['widget-is-emri-sonucu-istatistikleri'] = ob_get_clean();
 
+
+
     //ob_start(); ?>
     <!-- <div class="col-md-4 widget-item" id="widget-istatistikler">
         <div class="card ">
@@ -733,7 +976,8 @@ if (Gate::allows("ana_sayfa")) {
                                 style="background:#f8f9fc;border:1px solid #e9ecf3;border-radius:12px;padding:0.85rem 1rem;">
                                 <div
                                     style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#8a94ad;margin-bottom:3px;">
-                                    <i class="bx bx-tag me-1"></i>İşlem Tipi</div>
+                                    <i class="bx bx-tag me-1"></i>İşlem Tipi
+                                </div>
                                 <p id="logDetayTitle" style="font-size:0.925rem;font-weight:700;color:#2d3a56;margin:0;">-
                                 </p>
                             </div>
@@ -743,7 +987,8 @@ if (Gate::allows("ana_sayfa")) {
                                 style="background:#f8f9fc;border:1px solid #e9ecf3;border-radius:12px;padding:0.85rem 1rem;">
                                 <div
                                     style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#8a94ad;margin-bottom:3px;">
-                                    <i class="bx bx-user me-1"></i>İşlemi Yapan</div>
+                                    <i class="bx bx-user me-1"></i>İşlemi Yapan
+                                </div>
                                 <p id="logDetayUser" style="font-size:0.925rem;font-weight:700;color:#2d3a56;margin:0;">-
                                 </p>
                             </div>
@@ -753,7 +998,8 @@ if (Gate::allows("ana_sayfa")) {
                                 style="background:#f8f9fc;border:1px solid #e9ecf3;border-radius:12px;padding:0.85rem 1rem;">
                                 <div
                                     style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#8a94ad;margin-bottom:3px;">
-                                    <i class="bx bx-calendar me-1"></i>Tarih</div>
+                                    <i class="bx bx-calendar me-1"></i>Tarih
+                                </div>
                                 <p id="logDetayDate" style="font-size:0.82rem;font-weight:700;color:#2d3a56;margin:0;">-</p>
                             </div>
                         </div>
@@ -1419,7 +1665,7 @@ if (Gate::allows("ana_sayfa")) {
 
     <script src="https://code.jquery.com/ui/1.14.1/jquery-ui.js"></script>
     <script>
-        // Number Count                       er F           unction
+        // Num    be                          r Count                       er F           unction
         function animateValue(obj, start, end, duration) {
             let startTimestamp = null;
             const step = (timestamp) => {

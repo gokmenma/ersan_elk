@@ -103,6 +103,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 }
 
                 // Redirect user to welcome page
+                try {
+                    $SystemLog = new SystemLogModel();
+                    $ip = $_SERVER['REMOTE_ADDR'] ?? 'Bilinmiyor';
+                    $SystemLog->logAction(
+                        $user->id,
+                        'Başarılı Giriş',
+                        "{$user->adi_soyadi} ({$username}) sisteme giriş yaptı. IP: {$ip}",
+                        SystemLogModel::LEVEL_IMPORTANT
+                    );
+                } catch (\Exception $e) { /* Loglama hatası sessiz geçilir */
+                }
+
                 header("location: firma-secim.php");
             } else {
                 // Display an error message if password is not valid

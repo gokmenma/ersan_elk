@@ -1581,6 +1581,20 @@ try {
                         ORDER BY activity_date DESC
                         LIMIT $limit";
 
+            // Duyurular ve Etkinlikler
+            $duyuruSql = "SELECT
+                            'duyuru' as type,
+                            id,
+                            baslik as title,
+                            icerik as description,
+                            'yeni' as status,
+                            tarih as activity_date
+                        FROM duyurular
+                        WHERE silinme_tarihi IS NULL
+                        AND (alici_tipi = 'toplu' OR FIND_IN_SET(?, alici_ids))
+                        ORDER BY activity_date DESC
+                        LIMIT $limit";
+
             // Verileri çek
             $activities = [];
 
@@ -1608,6 +1622,12 @@ try {
             $bordrolar = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $activities = array_merge($activities, $bordrolar);
 
+            // Duyurular
+            $stmt = $db->prepare($duyuruSql);
+            $stmt->execute([$personel_id]);
+            $duyurular = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $activities = array_merge($activities, $duyurular);
+
             // Tarihe göre sırala (en yeni önce)
             usort($activities, function ($a, $b) {
                 return strtotime($b['activity_date']) - strtotime($a['activity_date']);
@@ -1623,7 +1643,8 @@ try {
                     'izin' => ['icon' => 'event_available', 'color' => 'blue'],
                     'avans' => ['icon' => 'payments', 'color' => 'green'],
                     'talep' => ['icon' => 'assignment', 'color' => 'orange'],
-                    'bordro' => ['icon' => 'receipt_long', 'color' => 'primary']
+                    'bordro' => ['icon' => 'receipt_long', 'color' => 'primary'],
+                    'duyuru' => ['icon' => 'campaign', 'color' => 'primary']
                 ];
 
                 $statusMap = [
@@ -1638,7 +1659,9 @@ try {
                     'devam' => ['text' => 'İnceleniyor', 'badge' => 'warning'],
                     'cozuldu' => ['text' => 'Çözüldü', 'badge' => 'success'],
                     // Bordro
-                    'tamamlandi' => ['text' => 'Tamamlandı', 'badge' => 'gray']
+                    'tamamlandi' => ['text' => 'Tamamlandı', 'badge' => 'gray'],
+                    // Duyuru
+                    'yeni' => ['text' => 'Duyuru', 'badge' => 'success']
                 ];
 
                 $type = $item['type'];
@@ -1679,6 +1702,35 @@ try {
             }, $activities);
 
             response(true, $formattedActivities);
+            break;
+
+        case 'getEtkinlikSlider':
+            $PersonelModel = new PersonelModel();
+            $db = $PersonelModel->getDb();
+            // Duyuruları son eklenenden geriye doğru al
+            $duyuruSql = "SELECT id, baslik, icerik, resim, hedef_sayfa, tarih
+                        FROM duyurular
+                        WHERE silinme_tarihi IS NULL
+                        AND (alici_tipi = 'toplu' OR FIND_IN_SET(?, alici_ids))
+                        ORDER BY tarih DESC
+                        LIMIT 5";
+            $stmt = $db->prepare($duyuruSql);
+            $stmt->execute([$personel_id]);
+            $duyurular = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Resim URL formatı (varsa) ve içerik kısaltması vb. işlemleri yapabiliriz
+            $formattedDuyurular = array_map(function ($d) {
+                return [
+                    'id' => $d['id'],
+                    'baslik' => $d['baslik'],
+                    'icerik' => $d['icerik'],
+                    'resim' => $d['resim'] ?? '',
+                    'tarih' => date('d.m.Y H:i', strtotime($d['tarih'])),
+                    'hedef_sayfa' => $d['hedef_sayfa']
+                ];
+            }, $duyurular);
+
+            response(true, $formattedDuyurular);
             break;
 
         // ===== GÖREV TAKİP İŞLEMLERİ =====

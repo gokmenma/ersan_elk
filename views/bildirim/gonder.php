@@ -22,12 +22,11 @@ try {
     $abonelikler = [];
 }
 
-// Abonelik olan personelleri filtrele
-$abonePersoneller = [];
+// PWA'da tüm personeller seçilebilmeli (Abonelik olsun olmasın)
+$tumPersonelListesi = [];
 foreach ($personeller as $personel) {
-    if (in_array($personel->id, $abonelikler)) {
-        $abonePersoneller[$personel->id] = $personel->adi_soyadi;
-    }
+    $aboneMi = in_array($personel->id, $abonelikler) ? ' (Abone)' : ' (Abonelik Yok)';
+    $tumPersonelListesi[$personel->id] = $personel->adi_soyadi . $aboneMi;
 }
 
 // Logları getir
@@ -182,8 +181,8 @@ $logs = $mesajLogModel->getLogs(['type' => 'push']);
                                     <div class="form-check">
                                         <input class="form-check-input" type="radio" name="alici_tipi" id="aliciToplu"
                                             value="toplu">
-                                        <label class="form-check-label" for="aliciToplu">Tüm Abonelere
-                                            (<?= count($abonelikler) ?>)</label>
+                                        <label class="form-check-label" for="aliciToplu">Tüm Personellere
+                                            (<?= count($personeller) ?>)</label>
                                     </div>
                                 </div>
                             </div>
@@ -192,7 +191,7 @@ $logs = $mesajLogModel->getLogs(['type' => 'push']);
                             <div class="col-12" id="personelSecimContainer">
                                 <?= Form::FormMultipleSelect2(
                                     'personel_ids',
-                                    $abonePersoneller,
+                                    $tumPersonelListesi,
                                     [],
                                     'Personel Seç',
                                     'users',
@@ -263,6 +262,22 @@ $logs = $mesajLogModel->getLogs(['type' => 'push']);
                                     '80px',
                                     3
                                 ) ?>
+                            </div>
+
+                            <!-- Etkinlik / Duyuru Olarak Kaydet -->
+                            <div class="col-12 mb-2 mt-2">
+                                <div
+                                    class="form-check form-switch p-0 m-0 d-flex align-items-center gap-2 bg-light rounded p-2 border">
+                                    <input class="form-check-input m-0 ms-1" type="checkbox" name="etkinlik_kaydet"
+                                        id="etkinlikKaydet" value="1" checked>
+                                    <label class="form-check-label flex-grow-1" style="cursor:pointer;"
+                                        for="etkinlikKaydet">
+                                        <strong>Ana Sayfada Yayınla</strong>
+                                        <small class="text-muted d-block" style="font-size:0.75rem;">Seçilen
+                                            personellerin ana sayfasında etkinlik/duyuru ve slider olarak
+                                            gösterilir.</small>
+                                    </label>
+                                </div>
                             </div>
 
                             <!-- Gönder Butonu -->
