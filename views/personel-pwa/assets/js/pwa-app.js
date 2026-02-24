@@ -142,9 +142,46 @@ const Theme = {
   current: localStorage.getItem("themeColor") || "blue",
 
   apply(themeName) {
-    if (!this.colors[themeName] || themeName === this.current) return;
+    if (
+      themeName !== "custom" &&
+      (!this.colors[themeName] || themeName === this.current)
+    )
+      return;
     localStorage.setItem("themeColor", themeName);
+    if (themeName !== "custom") {
+      localStorage.removeItem("customThemeColor");
+    }
     window.location.reload();
+  },
+
+  applyCustom(color) {
+    localStorage.setItem("themeColor", "custom");
+    localStorage.setItem("customThemeColor", color);
+    this.current = "custom";
+
+    // Real-time apply
+    const r = document.documentElement;
+    r.style.setProperty("--primary", color);
+    r.style.setProperty("--primary-dark", color);
+    r.style.setProperty("--primary-light", color);
+
+    const hex = color.replace("#", "");
+    const pr = parseInt(hex.substring(0, 2), 16),
+      pg = parseInt(hex.substring(2, 4), 16),
+      pb = parseInt(hex.substring(4, 6), 16);
+    r.style.setProperty("--primary-rgb", `${pr}, ${pg}, ${pb}`);
+
+    // Update meta theme-color
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", color);
+
+    // Update UI active states without reload
+    document.querySelectorAll(".theme-swatch").forEach((s) => {
+      s.classList.remove("active");
+      s.innerHTML = "";
+    });
+    const picker = document.querySelector(".color-picker-wrapper");
+    if (picker) picker.classList.add("active");
   },
 
   renderSwatches(containerId) {
@@ -169,6 +206,20 @@ const Theme = {
 
       container.appendChild(swatch);
     });
+
+    // Add Custom Color Picker
+    const pickerWrapper = document.createElement("div");
+    pickerWrapper.className =
+      "color-picker-wrapper" + (this.current === "custom" ? " active" : "");
+    pickerWrapper.setAttribute("title", "Özel Renk Seç");
+
+    const initialColor = localStorage.getItem("customThemeColor") || "#135bec";
+    pickerWrapper.innerHTML = `
+        <input type="color" value="${initialColor}" oninput="Theme.applyCustom(this.value)">
+        <span class="material-symbols-outlined">palette</span>
+    `;
+
+    container.appendChild(pickerWrapper);
   },
 };
 

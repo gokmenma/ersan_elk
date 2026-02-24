@@ -19,8 +19,9 @@ use App\Helper\Helper;
         <div class="relative z-10">
             <!-- User Info & Notification -->
             <div class="flex items-center justify-between mb-6">
-                <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+                <a href="?page=profil" class="flex items-center gap-3">
+                    <div
+                        class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center overflow-hidden active:scale-90 transition-transform">
                         <?php if (!empty($personel->foto)): ?>
                             <img src="<?php echo Helper::base_url('uploads/personel/' . $personel->foto); ?>" alt="Profil"
                                 class="w-full h-full object-cover">
@@ -32,7 +33,7 @@ use App\Helper\Helper;
                         <p class="text-white/80 text-sm">Hoş geldin,</p>
                         <h1 class="text-xl font-bold"><?php echo $personel->adi_soyadi ?? 'Personel'; ?></h1>
                     </div>
-                </div>
+                </a>
                 <button onclick="openNotificationModal()"
                     class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center relative">
                     <span class="material-symbols-outlined">notifications</span>
@@ -68,80 +69,82 @@ use App\Helper\Helper;
     </section>
 
     <!-- Görev Takip Bileşeni -->
-    <section class="px-4 relative z-20 mb-4">
-        <div id="gorev-takip-card" class="card overflow-hidden">
-            <!-- Loading State -->
-            <div id="gorev-loading" class="p-6 flex items-center justify-center">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-
-            <!-- Görev Durumu Container -->
-            <div id="gorev-durumu-container" class="hidden">
-                <!-- GÖREVE BAŞLA (Görev Yok) -->
-                <div id="gorev-basla-panel" class="p-4 hidden">
-                    <div class="flex items-center gap-3 mb-4">
-                        <div
-                            class="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-green-600 text-2xl">play_circle</span>
-                        </div>
-                        <div class="flex-1">
-                            <h3 class="font-bold text-slate-900 dark:text-white">Saha Görev Takibi</h3>
-                            <p class="text-xs text-slate-500">Konumunuz kayıt altına alınacaktır</p>
-                        </div>
-                    </div>
-
-                    <!-- Konum İzni Uyarı -->
-                    <div id="konum-izni-uyari" onclick="requestKonumIzni()"
-                        class="hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 mb-4 cursor-pointer active:scale-[0.98] transition-all">
-                        <div class="flex items-start gap-2">
-                            <span class="material-symbols-outlined text-amber-600 text-lg">warning</span>
-                            <div>
-                                <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Konum İzni Gerekli</p>
-                                <p class="text-xs text-amber-600 dark:text-amber-400">Göreve başlamak için buraya
-                                    tıklayarak konum izni
-                                    vermeniz gerekmektedir.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button id="btn-gorev-basla" onclick="gorevBasla()"
-                        class="w-full py-4 px-6 rounded-xl font-bold text-white text-lg transition-all duration-300 flex items-center justify-center gap-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/30 active:scale-[0.98]">
-                        <span class="material-symbols-outlined text-2xl">play_arrow</span>
-                        <span>Göreve Başla</span>
-                    </button>
+    <?php if (($personel->saha_takibi ?? 0) == 1): ?>
+        <section class="px-4 relative z-20 mb-4">
+            <div id="gorev-takip-card" class="card overflow-hidden">
+                <!-- Loading State -->
+                <div id="gorev-loading" class="p-6 flex items-center justify-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
 
-                <!-- GÖREVİ BİTİR (Görev Var) -->
-                <div id="gorev-bitir-panel" class="hidden">
-                    <!-- Aktif Görev Bilgi Kartı -->
-                    <div class="bg-gradient-to-r from-primary to-primary-dark text-white p-4 rounded-t-none">
-                        <div class="flex items-center gap-3">
+                <!-- Görev Durumu Container -->
+                <div id="gorev-durumu-container" class="hidden">
+                    <!-- GÖREVE BAŞLA (Görev Yok) -->
+                    <div id="gorev-basla-panel" class="p-4 hidden">
+                        <div class="flex items-center gap-3 mb-4">
                             <div
-                                class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center animate-pulse">
-                                <span class="material-symbols-outlined text-2xl">location_on</span>
+                                class="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                                <span class="material-symbols-outlined text-green-600 text-2xl">play_circle</span>
                             </div>
                             <div class="flex-1">
-                                <p class="text-white/80 text-xs">Aktif Görev Devam Ediyor</p>
-                                <p class="font-bold text-lg" id="gorev-baslangic-saat">--:--</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-white/80 text-xs">Geçen Süre</p>
-                                <p class="font-bold text-lg" id="gorev-gecen-sure">0 dk</p>
+                                <h3 class="font-bold text-slate-900 dark:text-white">Saha Görev Takibi</h3>
+                                <p class="text-xs text-slate-500">Konumunuz kayıt altına alınacaktır</p>
                             </div>
                         </div>
+
+                        <!-- Konum İzni Uyarı -->
+                        <div id="konum-izni-uyari" onclick="requestKonumIzni()"
+                            class="hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 mb-4 cursor-pointer active:scale-[0.98] transition-all">
+                            <div class="flex items-start gap-2">
+                                <span class="material-symbols-outlined text-amber-600 text-lg">warning</span>
+                                <div>
+                                    <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Konum İzni Gerekli</p>
+                                    <p class="text-xs text-amber-600 dark:text-amber-400">Göreve başlamak için buraya
+                                        tıklayarak konum izni
+                                        vermeniz gerekmektedir.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button id="btn-gorev-basla" onclick="gorevBasla()"
+                            class="w-full py-4 px-6 rounded-xl font-bold text-white text-lg transition-all duration-300 flex items-center justify-center gap-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/30 active:scale-[0.98]">
+                            <span class="material-symbols-outlined text-2xl">play_arrow</span>
+                            <span>Göreve Başla</span>
+                        </button>
                     </div>
 
-                    <div class="p-4">
-                        <button id="btn-gorev-bitir" onclick="gorevBitir()"
-                            class="w-full py-4 px-6 rounded-xl font-bold text-white text-lg transition-all duration-300 flex items-center justify-center gap-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/30 active:scale-[0.98]">
-                            <span class="material-symbols-outlined text-2xl">stop_circle</span>
-                            <span>Görevi Bitir</span>
-                        </button>
+                    <!-- GÖREVİ BİTİR (Görev Var) -->
+                    <div id="gorev-bitir-panel" class="hidden">
+                        <!-- Aktif Görev Bilgi Kartı -->
+                        <div class="bg-gradient-to-r from-primary to-primary-dark text-white p-4 rounded-t-none">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center animate-pulse">
+                                    <span class="material-symbols-outlined text-2xl">location_on</span>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-white/80 text-xs">Aktif Görev Devam Ediyor</p>
+                                    <p class="font-bold text-lg" id="gorev-baslangic-saat">--:--</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-white/80 text-xs">Geçen Süre</p>
+                                    <p class="font-bold text-lg" id="gorev-gecen-sure">0 dk</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4">
+                            <button id="btn-gorev-bitir" onclick="gorevBitir()"
+                                class="w-full py-4 px-6 rounded-xl font-bold text-white text-lg transition-all duration-300 flex items-center justify-center gap-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/30 active:scale-[0.98]">
+                                <span class="material-symbols-outlined text-2xl">stop_circle</span>
+                                <span>Görevi Bitir</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
+    <?php endif; ?>
 
     <!-- Stats Cards -->
     <section class="px-4 relative z-20">
@@ -212,7 +215,7 @@ use App\Helper\Helper;
         <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-3">Hızlı İşlemler</h2>
         <div class="grid grid-cols-2 gap-3 pb-8">
             <a href="?page=izin"
-                class="quick-action group border-none shadow-indigo-200/50 bg-gradient-to-br from-indigo-500 to-indigo-700 p-5 transition-all active:scale-95">
+                class="quick-action group border-2 neon-indigo bg-gradient-to-br from-indigo-500 to-indigo-700 p-5 transition-all active:scale-95">
                 <div
                     class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
                     <span class="material-symbols-outlined text-white text-2xl filled">event_busy</span>
@@ -228,7 +231,7 @@ use App\Helper\Helper;
             </a>
 
             <a href="?page=talep"
-                class="quick-action group border-none shadow-emerald-200/50 bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 transition-all active:scale-95">
+                class="quick-action group border-2 neon-emerald bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 transition-all active:scale-95">
                 <div
                     class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
                     <span class="material-symbols-outlined text-white text-2xl filled">assignment</span>
@@ -244,7 +247,7 @@ use App\Helper\Helper;
             </a>
 
             <a href="?page=bordro"
-                class="quick-action group border-none shadow-orange-200/50 bg-gradient-to-br from-orange-500 to-orange-700 p-5 transition-all active:scale-95">
+                class="quick-action group border-2 neon-orange bg-gradient-to-br from-orange-500 to-orange-700 p-5 transition-all active:scale-95">
                 <div
                     class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
                     <span class="material-symbols-outlined text-white text-2xl filled">receipt_long</span>
@@ -260,7 +263,7 @@ use App\Helper\Helper;
             </a>
 
             <a href="?page=zimmetler"
-                class="quick-action group border-none shadow-amber-200/50 bg-gradient-to-br from-amber-500 to-amber-700 p-5 transition-all active:scale-95">
+                class="quick-action group border-2 neon-amber bg-gradient-to-br from-amber-500 to-amber-700 p-5 transition-all active:scale-95">
                 <div
                     class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
                     <span class="material-symbols-outlined text-white text-2xl filled">inventory_2</span>
@@ -715,15 +718,25 @@ use App\Helper\Helper;
             try {
                 var response = await API.request('getWorkStats', { type: type });
                 if (response.success && response.data && response.data.length > 0) {
-                    container.innerHTML = response.data.map(function (stat) {
+                    container.innerHTML = response.data.map(function (stat, index) {
+                        const colors = [
+                            { neon: 'neon-blue', border: 'border-blue-500', bg: 'bg-blue-500/10', text: 'text-blue-500' },
+                            { neon: 'neon-purple', border: 'border-purple-500', bg: 'bg-purple-500/10', text: 'text-purple-500' },
+                            { neon: 'neon-emerald', border: 'border-emerald-500', bg: 'bg-emerald-500/10', text: 'text-emerald-500' },
+                            { neon: 'neon-orange', border: 'border-orange-500', bg: 'bg-orange-500/10', text: 'text-orange-500' },
+                            { neon: 'neon-pink', border: 'border-pink-500', bg: 'bg-pink-500/10', text: 'text-pink-500' },
+                            { neon: 'neon-amber', border: 'border-amber-500', bg: 'bg-amber-500/10', text: 'text-amber-500' }
+                        ];
+                        const color = colors[index % colors.length];
+
                         return `
-                            <div class="card p-4 flex flex-col gap-2 relative overflow-hidden group">
+                            <div class="card p-4 flex flex-col gap-2 relative overflow-hidden group border-t-4 ${color.border} ${color.neon}">
                                 <div class="absolute -right-2 -bottom-2 opacity-[0.05] group-hover:opacity-[0.1] transition-opacity">
-                                    <span class="material-symbols-outlined text-6xl">${stat.ikon}</span>
+                                    <span class="material-symbols-outlined text-6xl ${color.text}">${stat.ikon}</span>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                                        <span class="material-symbols-outlined text-primary text-lg">${stat.ikon}</span>
+                                    <div class="w-8 h-8 rounded-lg ${color.bg} flex items-center justify-center">
+                                        <span class="material-symbols-outlined ${color.text} text-lg">${stat.ikon}</span>
                                     </div>
                                     <p class="text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider">${stat.baslik}</p>
                                 </div>

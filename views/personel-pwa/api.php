@@ -28,7 +28,7 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 $MailGonderService = new MailGonderService();
 
-if ($action !== 'login' && !isset($_SESSION['personel_id'])) {
+if ($action !== 'login' && $action !== 'logout' && !isset($_SESSION['personel_id'])) {
     echo json_encode(['success' => false, 'message' => 'Oturum süresi doldu']);
     exit;
 }
@@ -92,6 +92,12 @@ try {
             $PersonelModel = new PersonelModel();
             $p = $PersonelModel->find($personel_id);
             response(true, $p);
+            break;
+
+        case 'logout':
+            session_destroy();
+            setcookie('remember_token', '', time() - 3600, "/");
+            response(true, null, 'Oturum kapatıldı');
             break;
 
         // ===== Dashboard =====
@@ -2826,10 +2832,7 @@ try {
             response(true, null, 'Konuşma kapatıldı');
             break;
 
-        case 'logout':
-            session_destroy();
-            response(true, null, 'Çıkış yapıldı');
-            break;
+
 
         case 'update-chat-status':
             $DestekModel = new \App\Model\DestekModel();

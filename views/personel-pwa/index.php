@@ -111,8 +111,16 @@ if (!in_array($page, $allowed_pages)) {
                 ersan: { primary: '#e2bd61', dark: '#b5974d', light: '#ebcc85' },
                 slate: { primary: '#252526', dark: '#1e1e1f', light: '#4d4d4f' },
             };
-            const saved = localStorage.getItem('themeColor') || 'blue';
-            const t = themes[saved] || themes.blue;
+            let saved = localStorage.getItem('themeColor') || 'blue';
+            let t = themes[saved] || themes.blue;
+
+            if (saved === 'custom') {
+                const customColor = localStorage.getItem('customThemeColor');
+                if (customColor) {
+                    t = { primary: customColor, dark: customColor, light: customColor };
+                }
+            }
+
             window.__themeColors = themes;
             window.__activeTheme = t;
             window.__activeThemeName = saved;
@@ -148,8 +156,8 @@ if (!in_array($page, $allowed_pages)) {
             theme: {
                 extend: {
                     colors: {
-                        "primary": window.__activeTheme.primary,
-                        "primary-dark": window.__activeTheme.dark,
+                        "primary": "var(--primary)",
+                        "primary-dark": "var(--primary-dark)",
                         "background-light": "#f6f6f8",
                         "background-dark": "#121212",
                         "card-dark": "#1e1e1e",
@@ -274,20 +282,21 @@ if (!in_array($page, $allowed_pages)) {
                     <span class="font-medium text-slate-900 dark:text-white text-sm">Çıkış
                         Yap</span>
                 </a>
-                <a href="?page=etkinlikler"
-                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'etkinlikler' ? 'bg-primary/10' : ''; ?>">
-                    <div class="w-9 h-9 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-green-600 text-lg">event</span>
-                    </div>
-                    <span class="font-medium text-slate-900 dark:text-white text-sm">Etkinlikler</span>
-                    <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
-                </a>
+
                 <a href="?page=profil"
                     class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'profil' ? 'bg-primary/10' : ''; ?>">
                     <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                         <span class="material-symbols-outlined text-blue-600 text-lg">person</span>
                     </div>
                     <span class="font-medium text-slate-900 dark:text-white text-sm">Profil</span>
+                    <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
+                </a>
+                <a href="?page=etkinlikler"
+                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'etkinlikler' ? 'bg-primary/10' : ''; ?>">
+                    <div class="w-9 h-9 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-green-600 text-lg">event</span>
+                    </div>
+                    <span class="font-medium text-slate-900 dark:text-white text-sm">Etkinlikler</span>
                     <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
                 </a>
                 <a href="?page=bordro"

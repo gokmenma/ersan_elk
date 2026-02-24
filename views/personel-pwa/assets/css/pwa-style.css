@@ -282,6 +282,12 @@ div:where(.swal2-container) .swal2-cancel {
   transform: scale(0.95);
 }
 
+.dark .nav-item.text-primary {
+  box-shadow: 0 0 20px -5px rgba(var(--primary-rgb), 0.3);
+  border: 1px solid rgba(var(--primary-rgb), 0.2);
+  background: rgba(var(--primary-rgb), 0.05);
+}
+
 /* ===== Card Styles ===== */
 .card {
   background: white;
@@ -292,8 +298,34 @@ div:where(.swal2-container) .swal2-cancel {
 }
 
 .dark .card {
-  background: var(--card-dark);
-  border-color: rgba(255, 255, 255, 0.05);
+  background:
+    linear-gradient(145deg, rgba(var(--primary-rgb), 0.05), rgba(0, 0, 0, 0.1)),
+    var(--card-dark);
+  border-color: rgba(var(--primary-rgb), 0.4);
+  box-shadow:
+    0 10px 40px -15px rgba(0, 0, 0, 0.8),
+    0 0 20px -2px rgba(var(--primary-rgb), 0.25),
+    0 0 40px -10px rgba(var(--primary-rgb), 0.15);
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark .card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 15px rgba(var(--primary-rgb), 0.08);
+  pointer-events: none;
+}
+
+.dark .card:active {
+  transform: scale(0.97);
+  border-color: rgba(var(--primary-rgb), 0.7);
+  box-shadow:
+    0 5px 20px -5px rgba(0, 0, 0, 0.9),
+    0 0 30px 0px rgba(var(--primary-rgb), 0.4),
+    0 0 50px -5px rgba(var(--primary-rgb), 0.25);
 }
 
 .card:active {
@@ -383,6 +415,18 @@ div:where(.swal2-container) .swal2-cancel {
 
 .btn-primary:active {
   transform: scale(0.97);
+}
+
+.dark .btn-primary {
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(var(--primary-rgb), 0.3);
+}
+
+.dark .btn-primary:active {
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(var(--primary-rgb), 0.5);
 }
 
 .btn-secondary {
@@ -833,9 +877,14 @@ div:where(.swal2-container) .swal2-cancel {
 }
 
 .dark .quick-action {
-  background: var(--card-dark);
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  background:
+    linear-gradient(145deg, rgba(var(--primary-rgb), 0.08), transparent),
+    var(--card-dark);
+  border-color: rgba(var(--primary-rgb), 0.45);
+  box-shadow:
+    0 15px 45px -12px rgba(0, 0, 0, 0.6),
+    0 0 30px -5px rgba(var(--primary-rgb), 0.3),
+    0 0 60px -15px rgba(var(--primary-rgb), 0.15);
 }
 
 .quick-action:active {
@@ -897,7 +946,71 @@ div:where(.swal2-container) .swal2-cancel {
 
 .dark .theme-swatch.active {
   border-color: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.5),
+    0 0 15px rgba(var(--primary-rgb), 0.4);
+  transform: scale(1.15) rotate(5deg);
+}
+
+.color-picker-wrapper {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: conic-gradient(
+    from 0deg,
+    red,
+    yellow,
+    lime,
+    aqua,
+    blue,
+    magenta,
+    red
+  );
+  color: white;
+  margin: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.color-picker-wrapper:active {
+  transform: scale(0.85);
+}
+
+.color-picker-wrapper.active {
+  border-color: white;
+  transform: scale(1.15);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);
+}
+
+.dark .color-picker-wrapper.active {
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.5),
+    0 0 15px rgba(var(--primary-rgb), 0.4);
+}
+
+.color-picker-wrapper input[type="color"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  padding: 0;
+  border: none;
+}
+
+.color-picker-wrapper span.material-symbols-outlined {
+  font-size: 16px !important;
+  pointer-events: none;
 }
 
 /* ===== Responsive Fixes ===== */
@@ -997,4 +1110,70 @@ div:where(.swal2-container) .swal2-cancel {
 
 .-space-x-2 > :not([hidden]) ~ :not([hidden]) {
   margin-left: -0.5rem;
+}
+
+/* ===== Colorful Neon Utilities (Subtle) ===== */
+.neon-blue {
+  border-color: rgba(59, 130, 246, 0.4) !important;
+  box-shadow: 0 4px 15px -5px rgba(59, 130, 246, 0.15) !important;
+}
+.neon-indigo {
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  box-shadow: 0 4px 15px -5px rgba(99, 102, 241, 0.15) !important;
+}
+.neon-emerald {
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  box-shadow: 0 4px 15px -5px rgba(16, 185, 129, 0.15) !important;
+}
+.neon-orange {
+  border-color: rgba(249, 115, 22, 0.4) !important;
+  box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.15) !important;
+}
+.neon-amber {
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  box-shadow: 0 4px 15px -5px rgba(245, 158, 11, 0.15) !important;
+}
+.neon-pink {
+  border-color: rgba(236, 72, 153, 0.4) !important;
+  box-shadow: 0 4px 15px -5px rgba(236, 72, 153, 0.15) !important;
+}
+.neon-purple {
+  border-color: rgba(168, 85, 247, 0.4) !important;
+  box-shadow: 0 4px 15px -5px rgba(168, 85, 247, 0.15) !important;
+}
+
+.dark .neon-blue {
+  box-shadow:
+    0 10px 30px -10px rgba(0, 0, 0, 0.4),
+    0 0 15px -2px rgba(59, 130, 246, 0.2) !important;
+}
+.dark .neon-indigo {
+  box-shadow:
+    0 10px 30px -10px rgba(0, 0, 0, 0.4),
+    0 0 15px -2px rgba(99, 102, 241, 0.2) !important;
+}
+.dark .neon-emerald {
+  box-shadow:
+    0 10px 30px -10px rgba(0, 0, 0, 0.4),
+    0 0 15px -2px rgba(16, 185, 129, 0.2) !important;
+}
+.dark .neon-orange {
+  box-shadow:
+    0 10px 30px -10px rgba(0, 0, 0, 0.4),
+    0 0 15px -2px rgba(249, 115, 22, 0.2) !important;
+}
+.dark .neon-amber {
+  box-shadow:
+    0 10px 30px -10px rgba(0, 0, 0, 0.4),
+    0 0 15px -2px rgba(245, 158, 11, 0.2) !important;
+}
+.dark .neon-pink {
+  box-shadow:
+    0 10px 30px -10px rgba(0, 0, 0, 0.4),
+    0 0 15px -2px rgba(236, 72, 153, 0.2) !important;
+}
+.dark .neon-purple {
+  box-shadow:
+    0 10px 30px -10px rgba(0, 0, 0, 0.4),
+    0 0 15px -2px rgba(168, 85, 247, 0.2) !important;
 }
