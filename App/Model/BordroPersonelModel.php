@@ -1788,6 +1788,9 @@ class BordroPersonelModel extends Model
                             $muafLimit = floatval($parametre->aylik_muaf_limit);
                         }
 
+                        $muafKisim = min($toplamTutar, $muafLimit);
+                        $vergiliKisim = max(0, $toplamTutar - $muafLimit);
+
                         $netEkOdemeler += $muafKisim;
                         $brutEkOdemeler += $vergiliKisim; // Vergili kısım brüt olarak eklenmelidir
 

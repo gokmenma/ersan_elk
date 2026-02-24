@@ -638,7 +638,16 @@ $ek_odeme_turleri = [
                                                 }
 
                                                 $isPrimUsulu = ($personel->maas_durumu ?? '') == 'Prim Usülü';
-                                                $toplamAlacagiPersonel = ($personel->maas_tutari ?? 0) + $hesaplananEkOdeme;
+                                                $pNetMaasRow = floatval($personel->net_maas ?? 0);
+                                                $pToplamKesRow = floatval($personel->kesinti_tutar ?? 0);
+
+                                                if ($pNetMaasRow > 0) {
+                                                    // Hesaplanmışsa kesin değer: net_maas + toplam_kesinti
+                                                    $toplamAlacagiPersonel = $pNetMaasRow + $pToplamKesRow;
+                                                } else {
+                                                    // Henüz hesaplanmamışsa tahmini: maaş + ek ödemeler
+                                                    $toplamAlacagiPersonel = ($personel->maas_tutari ?? 0) + $hesaplananEkOdeme;
+                                                }
 
                                                 // İcra kesintisini al
                                                 $icraKesintisi = 0;
@@ -647,8 +656,9 @@ $ek_odeme_turleri = [
                                                     $icraKesintisi = $detay['odeme_dagilimi']['icra_kesintisi'] ?? 0;
                                                 }
 
-                                                $kesintiHaricIcra = ($personel->kesinti_tutar ?? 0) - $icraKesintisi;
-                                                $netAlacagi = $toplamAlacagiPersonel - $kesintiHaricIcra;
+                                                $kesintiHaricIcra = $pToplamKesRow - $icraKesintisi;
+                                                // Net alacağı hesaplanmışsa net_maas, yoksa toplam - kesinti
+                                                $netAlacagi = ($pNetMaasRow > 0) ? $pNetMaasRow : ($toplamAlacagiPersonel - $kesintiHaricIcra);
                                                 ?>
                                                 <?php
                                                 // Elden ödeme artık model'de hesaplanıp kaydediliyor
