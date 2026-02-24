@@ -1473,6 +1473,88 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
             $('#dilim_id').val('');
             $('#modalVergiDilimiEkle .modal-title').html('<i class="bx bx-chart me-2"></i>Vergi Dilimi Ekle');
         });
+
+        // ========== DATATABLE BAŞLATMA ==========
+
+        // Filtreler için Select2 Initializer
+        $('#filtreDonem, #filtreKategori').select2({
+            minimumResultsForSearch: Infinity
+        });
+
+        // Parametreler Datatable Initializer
+        let dtParametreler;
+        if ($('#dtParametreler').length > 0) {
+            let options = getDatatableOptions();
+            options.order = [[1, 'asc']];
+            options.pageLength = 25;
+            options.columnDefs = [{ targets: -1, orderable: false }];
+            dtParametreler = $('#dtParametreler').DataTable(options);
+
+            // Filtreleme fonksiyonu
+            $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                if (settings.nTable.id !== 'dtParametreler') return true;
+
+                const filterKategori = $('#filtreKategori').val();
+                const filterDonem = $('#filtreDonem').val();
+
+                const row = $(settings.aoData[dataIndex].nTr);
+                const rowKategori = row.data('kategori');
+                const rowAktif = row.data('aktif') == '1';
+
+                if (filterKategori !== '' && rowKategori !== filterKategori) {
+                    return false;
+                }
+
+                if (filterDonem === 'aktif' && !rowAktif) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            // Filtre değiştiğinde tabloyu yeniden çiz
+            $('#filtreKategori, #filtreDonem').on('change', function () {
+                dtParametreler.draw();
+            });
+
+            dtParametreler.draw();
+        }
+
+        // Genel Ayarlar Datatable Initializer
+        if ($('#dtGenelAyarlar').length > 0) {
+            let optionsGenel = getDatatableOptions();
+            optionsGenel.order = [[0, 'asc']];
+            optionsGenel.pageLength = 25;
+            optionsGenel.columnDefs = [{ targets: -1, orderable: false }];
+            $('#dtGenelAyarlar').DataTable(optionsGenel);
+        }
+
+        // Vergi Dilimleri Datatable Initializer
+        if ($('#dtVergiDilimleri').length > 0) {
+            let optionsVergi = getDatatableOptions();
+            optionsVergi.order = [[0, 'asc']];
+            optionsVergi.pageLength = 25;
+            optionsVergi.columnDefs = [{ targets: -1, orderable: false }];
+            $('#dtVergiDilimleri').DataTable(optionsVergi);
+        }
+
+        // Excel Butonları
+        $('#exportExcelParametreler').on('click', function () {
+            if (dtParametreler) {
+                dtParametreler.button('.buttons-excel').trigger();
+            }
+        });
+
+        $('#exportExcelGenelAyar').on('click', function () {
+            $('#dtGenelAyarlar').DataTable().button('.buttons-excel').trigger();
+        });
+
+        $('#exportExcelVergiDilimleri').on('click', function () {
+            $('#dtVergiDilimleri').DataTable().button('.buttons-excel').trigger();
+        });
+
+        // Sayfa yüklendiğinde kategori change tetikle
+        $('select[name="kategori"]').trigger('change');
     });
 
     // PHP'den JS'e veri aktarımı

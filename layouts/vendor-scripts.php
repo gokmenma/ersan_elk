@@ -133,9 +133,8 @@ if ($page == "kasa/duzenle" || $page == "kasa/list") {
     echo '<script src="views/kasa/js/kasa.js"></script>';
 }
 
-if ($page == "bordro/parametreler") {
-    echo '<script src="views/bordro/js/parametreler.js"></script>';
-}
+// parametreler.js artık parametreler.php içinde inline olarak tanımlıdır
+// Harici JS kaldırıldı - çift handler çakışması tutar alanının kaydedilmemesine neden oluyordu
 
 if ($page == "hakedisler/index") {
     echo '<script src="views/hakedisler/js/sozlesmeler.js?v=' . time() . '"></script>';
