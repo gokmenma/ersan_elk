@@ -287,21 +287,21 @@ use App\Helper\Date;
                 <div class="relative z-10">
                     <div class="flex items-center justify-between">
                         <div class="flex flex-col">
-                            <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">${gunAdi}</span>
-                            <h4 class="font-bold text-slate-900 dark:text-white text-base">${formatDate(group.date)}</h4>
+                            <span class="text-[12px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">${gunAdi}</span>
+                            <h4 class="font-bold text-slate-900 dark:text-white text-lg">${formatDate(group.date)}</h4>
                         </div>
                         <div class="flex flex-col items-end">
-                            <div class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/50 px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-800">
-                                 <span class="text-[9px] font-bold text-primary">${group.total} İŞ</span>
+                            <div class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/50 px-2.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                                 <span class="text-[13px] font-bold text-primary">${group.total} İŞ</span>
                             </div>
-                            <div class="flex gap-2 mt-1.5">
-                                <div class="flex items-center gap-1 text-green-600">
-                                    <span class="material-symbols-outlined text-[12px] filled">check_circle</span>
-                                    <span class="text-[10px] font-bold">${group.sonuclanan}</span>
+                            <div class="flex gap-3 mt-2.5">
+                                <div class="flex items-center gap-1.5 text-green-600">
+                                    <span class="material-symbols-outlined text-[20px] filled">check_circle</span>
+                                    <span class="text-[15px] font-bold">${group.sonuclanan}</span>
                                 </div>
-                                <div class="flex items-center gap-1 text-amber-600">
-                                    <span class="material-symbols-outlined text-[12px] filled">schedule</span>
-                                    <span class="text-[10px] font-bold">${group.acik}</span>
+                                <div class="flex items-center gap-1.5 text-amber-600">
+                                    <span class="material-symbols-outlined text-[20px] filled">schedule</span>
+                                    <span class="text-[15px] font-bold">${group.acik}</span>
                                 </div>
                             </div>
                         </div>
@@ -315,7 +315,7 @@ use App\Helper\Date;
                                     </span>
                                 </div>
                             `).join('')}
-                            ${group.total > 4 ? `<div class="w-8 h-8 rounded-lg bg-slate-800 text-white text-[9px] font-bold flex items-center justify-center border border-white dark:border-slate-800 shadow-sm">+${group.total - 4}</div>` : ''}
+                            ${group.total > 4 ? `<div class="w-8 h-8 rounded-lg bg-slate-800 text-white text-[13px] font-bold flex items-center justify-center border border-white dark:border-slate-800 shadow-sm">+${group.total - 4}</div>` : ''}
                         </div>
                         <div class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
                             <span class="material-symbols-outlined text-sm">chevron_right</span>
@@ -361,8 +361,8 @@ use App\Helper\Date;
                             </div>
                             <div class="flex flex-col items-end">
                                 <div class="flex items-center gap-1.5 mb-1">
-                                    ${parseInt(item.sonuclanmis) > 0 ? `<span class="text-[10px] font-bold text-green-600 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded-lg border border-green-100 dark:border-green-800/30">${item.sonuclanmis}</span>` : ''}
-                                    ${parseInt(item.acik_olanlar) > 0 ? `<span class="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-lg border border-amber-100 dark:border-amber-800/30">${item.acik_olanlar}</span>` : ''}
+                                    ${parseInt(item.sonuclanmis) > 0 ? `<span class="text-[13px] font-bold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-lg border border-green-100 dark:border-green-800/30">${item.sonuclanmis}</span>` : ''}
+                                    ${parseInt(item.acik_olanlar) > 0 ? `<span class="text-[13px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-lg border border-amber-100 dark:border-amber-800/30">${item.acik_olanlar}</span>` : ''}
                                 </div>
                                 <span class="material-symbols-outlined text-slate-300 text-lg">chevron_right</span>
                             </div>
@@ -420,12 +420,12 @@ use App\Helper\Date;
                         </div>
                         <div class="grid grid-cols-2 gap-3 mt-1">
                             <div class="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-100 dark:border-green-800/30 text-center">
-                                <p class="text-[10px] text-green-600 dark:text-green-400 uppercase font-bold">Sonuçlanan</p>
-                                <p class="text-xl font-bold text-green-700 dark:text-green-300">${item.sonuclanmis || 0}</p>
+                                <p class="text-[11px] text-green-600 dark:text-green-400 uppercase font-bold">Sonuçlanan</p>
+                                <p class="text-2xl font-bold text-green-700 dark:text-green-300">${item.sonuclanmis || 0}</p>
                             </div>
                             <div class="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-800/30 text-center">
-                                <p class="text-[10px] text-amber-600 dark:text-amber-400 uppercase font-bold">Açık / Bekleyen</p>
-                                <p class="text-xl font-bold text-amber-700 dark:text-amber-300">${item.acik_olanlar || 0}</p>
+                                <p class="text-[11px] text-amber-600 dark:text-amber-400 uppercase font-bold">Açık / Bekleyen</p>
+                                <p class="text-2xl font-bold text-amber-700 dark:text-amber-300">${item.acik_olanlar || 0}</p>
                             </div>
                         </div>
                     </div>
