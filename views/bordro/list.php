@@ -307,7 +307,19 @@ $ek_odeme_turleri = [
                             }
 
                             // User definition: maas_tutari + ek_odemeler
-                            $pToplamAlacagi = ($p->maas_tutari ?? 0) + $hesaplananEkOdeme;
+                            // Hakediş (toplam alacağı) hesaplanmış net_maas + toplam_kesinti toplamıdır.
+                            // Bu yöntem nöbet vb. tüm ek ödemeleri garanti altına alır.
+                            $pMaasTutari = floatval($p->maas_tutari ?? 0);
+                            $pNetMaas = floatval($p->net_maas ?? 0);
+                            $pToplamKesinti = floatval($p->kesinti_tutar ?? 0);
+
+                            if ($pNetMaas > 0) {
+                                // Eğer maaş hesaplanmışsa, kesin olan "net hakediş + kesintiler"dir
+                                $pToplamAlacagi = $pNetMaas + $pToplamKesinti;
+                            } else {
+                                // Hesaplama henüz yapılmamışsa tahmini değer: maaş + o anki ek ödemeler
+                                $pToplamAlacagi = $pMaasTutari + $hesaplananEkOdeme;
+                            }
 
                             $pIcra = 0;
                             if (!empty($p->hesaplama_detay)) {
@@ -315,8 +327,10 @@ $ek_odeme_turleri = [
                                 $pIcra = $detay['odeme_dagilimi']['icra_kesintisi'] ?? 0;
                             }
 
-                            $pKesintiHaricIcra = ($p->kesinti_tutar ?? 0) - $pIcra;
-                            $pNetAlacagi = $pToplamAlacagi - $pKesintiHaricIcra;
+                            $pKesintiHaricIcra = $pToplamKesinti - $pIcra;
+
+                            // Net alacağı her zaman net_maas değerine eşit olmalıdır (eğer hesaplanmışsa)
+                            $pNetAlacagi = ($pNetMaas > 0) ? $pNetMaas : ($pToplamAlacagi - $pKesintiHaricIcra);
 
                             $toplamAlacagi += $pToplamAlacagi;
                             $toplamKesintiHaricIcra += $pKesintiHaricIcra;

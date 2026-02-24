@@ -1788,10 +1788,8 @@ class BordroPersonelModel extends Model
                             $muafLimit = floatval($parametre->aylik_muaf_limit);
                         }
 
-                        $muafKisim = min($toplamTutar, $muafLimit);
-                        $vergiliKisim = max(0, $toplamTutar - $muafLimit);
-
                         $netEkOdemeler += $muafKisim;
+                        $brutEkOdemeler += $vergiliKisim; // Vergili kısım brüt olarak eklenmelidir
 
                         if ($vergiliKisim > 0) {
                             if ($parametre->sgk_matrahi_dahil) {
@@ -1804,7 +1802,7 @@ class BordroPersonelModel extends Model
 
                         $detay['muaf_kisim'] = round($muafKisim, 2);
                         $detay['vergili_kisim'] = round($vergiliKisim, 2);
-                        $detay['net_etki'] = round($muafKisim, 2);
+                        $detay['net_etki'] = round($muafKisim + $vergiliKisim, 2); // Net etki toplam tutardır
                     }
                     break;
 
@@ -1822,6 +1820,8 @@ class BordroPersonelModel extends Model
 
                     // Muaf kısım net'e direkt eklenir
                     $netEkOdemeler += $muafKisim;
+                    // Vergili kısım brüt olarak eklenmelidir
+                    $brutEkOdemeler += $vergiliKisim;
 
                     // Vergili kısım hesaplamalara dahil
                     if ($vergiliKisim > 0) {
@@ -1838,7 +1838,7 @@ class BordroPersonelModel extends Model
                     $detay['aylik_limit'] = $muafLimit;
                     $detay['muaf_kisim'] = round($muafKisim, 2);
                     $detay['vergili_kisim'] = round($vergiliKisim, 2);
-                    $detay['net_etki'] = round($muafKisim, 2);
+                    $detay['net_etki'] = round($muafKisim + $vergiliKisim, 2);
                     break;
 
                 case 'net':
@@ -2130,7 +2130,7 @@ class BordroPersonelModel extends Model
             // ========== NET VE PRİM USULÜ İÇİN BASİT HESAPLAMA ==========
             // Net Maaş = Maaş Tutarı + Toplam Ek Ödemeler - (Toplam Kesintiler - İcra)
             // İcra kesintisi net hakedişten sonra elden ödemeden düşülür
-            $netMaas = $brutMaas + $toplamEkOdeme - ($toplamKesinti - $icraKesintisi);
+            $netMaas = $brutMaas + $toplamEkOdeme - ($toplamKesinti - ($icraKesintisi > 0 ? $icraKesintisi : 0));
         } else {
             // ========== BRÜT MAAŞ İÇİN TAM HESAPLAMA ==========
             // Net = Brüt - Ücretsiz İzin - Yasal Kesintiler + Net Ek Ödemeler + Brüt Ek Ödemeler - (Diğer Kesintiler - İcra)
@@ -2145,7 +2145,7 @@ class BordroPersonelModel extends Model
         // İşveren Maliyetleri (çalışılan brüt üzerinden)
         $sgkIsveren = $sgkMatrahi * $sgkIsverenOrani;
         $issizlikIsveren = $sgkMatrahi * $issizlikIsverenOrani;
-        $toplamMaliyet = $calisanBrutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler;
+        $toplamMaliyet = $calisanBrutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler + $netEkOdemeler;
 
         // ========== ÖDEME DAĞILIMI HESAPLAMA ==========
 

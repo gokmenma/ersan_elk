@@ -159,8 +159,8 @@ $firma_option = $FirmaModel->optionByUserPermission();
                     <span class="badge bg-danger rounded-pill" id="notification-badge" style="display: none;">0</span>
                 </button>
                 <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0"
-                    aria-labelledby="page-header-notifications-dropdown">
-                    <div class="p-3">
+                    aria-labelledby="page-header-notifications-dropdown" style="max-height: 500px; overflow: hidden;">
+                    <div class="p-3 border-bottom">
                         <div class="row align-items-center">
                             <div class="col">
                                 <h6 class="m-0"> Bildirimler</h6>
@@ -173,7 +173,8 @@ $firma_option = $FirmaModel->optionByUserPermission();
                             </div>
                         </div>
                     </div>
-                    <div data-simplebar style="max-height: 230px;" id="notification-list">
+                    <div data-simplebar style="max-height: 350px; overflow-y: auto !important;"
+                        id="topbar-notification-list">
                         <!-- Notifications will be loaded here -->
                     </div>
                     <div class="p-2 border-top d-grid">
@@ -285,7 +286,7 @@ $firma_option = $FirmaModel->optionByUserPermission();
                 });
             }
 
-            $('#notification-list').html(html);
+            $('#topbar-notification-list').html(html);
         }
 
         /**

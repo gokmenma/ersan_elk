@@ -174,7 +174,17 @@ const Theme = {
 
 // ===== Navigation Functions =====
 const Navigation = {
-  pages: ["ana-sayfa", "bordro", "izin", "talep", "puantaj"],
+  pages: [
+    "ana-sayfa",
+    "puantaj",
+    "nobet",
+    "talep",
+    "etkinlikler",
+    "profil",
+    "bordro",
+    "izin",
+    "zimmetler",
+  ],
 
   init() {
     this.setupSwipe();
