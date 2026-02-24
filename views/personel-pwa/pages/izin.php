@@ -55,35 +55,108 @@
         </div>
     </section>
 
-    <!-- Filter Tabs -->
+    <!-- View Toggle & Month Selector -->
     <div
-        class="px-4 py-3 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 overflow-x-auto sticky top-[73px] z-20">
-        <div class="flex gap-2 min-w-max">
-            <button onclick="filterIzinler('all')"
-                class="filter-btn active px-4 py-2 text-sm font-semibold rounded-full bg-primary text-white"
-                data-filter="all">
-                Tümü
-            </button>
-            <button onclick="filterIzinler('onaylandi')"
-                class="filter-btn px-4 py-2 text-sm font-medium rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                data-filter="onaylandi">
-                Onaylanan
-            </button>
-            <button onclick="filterIzinler('beklemede')"
-                class="filter-btn px-4 py-2 text-sm font-medium rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                data-filter="beklemede">
-                Bekleyen
-            </button>
-            <button onclick="filterIzinler('reddedildi')"
-                class="filter-btn px-4 py-2 text-sm font-medium rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                data-filter="reddedildi">
-                Reddedilen
-            </button>
+        class="px-4 py-3 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 sticky top-[73px] z-20">
+        <div class="flex flex-col gap-3">
+            <div class="flex items-center justify-between gap-3">
+                <!-- Month/Week Selector -->
+                <div id="month-selector" class="flex items-center gap-2" style="display: none;">
+                    <button onclick="prevPeriod()"
+                        class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-slate-600 dark:text-slate-400">chevron_left</span>
+                    </button>
+                    <span id="period-label"
+                        class="text-sm font-semibold text-slate-900 dark:text-white min-w-[120px] text-center">Şubat
+                        2026</span>
+                    <button onclick="nextPeriod()"
+                        class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-slate-600 dark:text-slate-400">chevron_right</span>
+                    </button>
+                </div>
+
+                <!-- Spacer if month selector is hidden -->
+                <div class="flex-1" id="month-selector-spacer"></div>
+
+                <!-- View Toggle -->
+                <div class="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg flex-shrink-0">
+                    <button onclick="setView('calendar')" id="btn-calendar"
+                        class="view-btn px-3 py-1.5 text-xs font-medium rounded-md text-slate-600 dark:text-slate-400">
+                        Takvim
+                    </button>
+                    <button onclick="setView('list')" id="btn-list"
+                        class="view-btn px-3 py-1.5 text-xs font-semibold rounded-md bg-white dark:bg-card-dark shadow-sm">
+                        Liste
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Tabs -->
+            <div id="filter-tabs" class="flex gap-2 overflow-x-auto pb-1 min-w-0" style="display: flex;">
+                <button onclick="filterIzinler('all')"
+                    class="filter-btn active flex-shrink-0 px-4 py-1.5 text-xs font-semibold rounded-full bg-primary text-white"
+                    data-filter="all">
+                    Tümü
+                </button>
+                <button onclick="filterIzinler('onaylandi')"
+                    class="filter-btn flex-shrink-0 px-4 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    data-filter="onaylandi">
+                    Onaylanan
+                </button>
+                <button onclick="filterIzinler('beklemede')"
+                    class="filter-btn flex-shrink-0 px-4 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    data-filter="beklemede">
+                    Bekleyen
+                </button>
+                <button onclick="filterIzinler('reddedildi')"
+                    class="filter-btn flex-shrink-0 px-4 py-1.5 text-xs font-medium rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    data-filter="reddedildi">
+                    Reddedilen
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- İzin List -->
-    <div class="flex-1 px-4 py-4">
+    <!-- Calendar View -->
+    <div id="calendar-view" class="px-4 py-4" style="display: none;">
+        <!-- Week Days Header -->
+        <div class="grid grid-cols-7 gap-1 mb-2">
+            <div class="text-center text-[10px] font-semibold text-slate-500 py-1">Pzt</div>
+            <div class="text-center text-[10px] font-semibold text-slate-500 py-1">Sal</div>
+            <div class="text-center text-[10px] font-semibold text-slate-500 py-1">Çar</div>
+            <div class="text-center text-[10px] font-semibold text-slate-500 py-1">Per</div>
+            <div class="text-center text-[10px] font-semibold text-slate-500 py-1">Cum</div>
+            <div class="text-center text-[10px] font-semibold text-red-500 py-1">Cmt</div>
+            <div class="text-center text-[10px] font-semibold text-red-500 py-1">Paz</div>
+        </div>
+        <!-- Calendar Grid -->
+        <div id="calendar-grid" class="grid grid-cols-7 gap-1">
+            <!-- Days will be rendered here -->
+        </div>
+
+        <!-- Calendar Legend -->
+        <div class="flex flex-wrap items-center justify-center gap-4 mt-6 px-2">
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                <span class="text-[11px] text-slate-600 dark:text-slate-400 font-medium">Onaylanan</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                <span class="text-[11px] text-slate-600 dark:text-slate-400 font-medium">Bekleyen</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-red-400"></span>
+                <span class="text-[11px] text-slate-600 dark:text-slate-400 font-medium">Reddedilen</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-slate-400"></span>
+                <span class="text-[11px] text-slate-600 dark:text-slate-400 font-medium">İptal Edilen</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- İzin List View -->
+    <div id="list-view" class="flex-1 px-4 py-4">
         <div class="flex flex-col gap-3" id="izin-list">
             <!-- İzin items will be loaded here -->
             <div class="shimmer h-24 rounded-xl"></div>
@@ -223,10 +296,17 @@
     let izinTurleri = [];
     let hakedisData = null;
 
+    // Calendar State
+    let currentView = 'list';
+    let currentDate = new Date();
+    const aylar = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    const gunler = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+
     document.addEventListener('DOMContentLoaded', function () {
         loadIzinTurleri();
         loadIzinStats();
         loadIzinler();
+        updatePeriodLabel();
 
         // İzin form submit
         document.getElementById('izin-form').addEventListener('submit', async function (e) {
@@ -234,6 +314,152 @@
             await submitIzinTalebi(this);
         });
     });
+
+    function setView(view) {
+        currentView = view;
+
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.classList.remove('bg-white', 'dark:bg-card-dark', 'shadow-sm');
+            btn.classList.add('text-slate-600', 'dark:text-slate-400');
+        });
+
+        const activeBtn = document.getElementById(`btn-${view}`);
+        activeBtn.classList.add('bg-white', 'dark:bg-card-dark', 'shadow-sm');
+        activeBtn.classList.remove('text-slate-600', 'dark:text-slate-400');
+
+        if (view === 'calendar') {
+            document.getElementById('list-view').style.display = 'none';
+            document.getElementById('filter-tabs').style.display = 'none';
+            document.getElementById('month-selector-spacer').style.display = 'none';
+            document.getElementById('calendar-view').style.display = 'block';
+            document.getElementById('month-selector').style.display = 'flex';
+            renderCalendar();
+        } else {
+            document.getElementById('calendar-view').style.display = 'none';
+            document.getElementById('month-selector').style.display = 'none';
+            document.getElementById('month-selector-spacer').style.display = 'block';
+            document.getElementById('filter-tabs').style.display = 'flex';
+            document.getElementById('list-view').style.display = 'block';
+            renderIzinler();
+        }
+    }
+
+    function updatePeriodLabel() {
+        const label = `${aylar[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+        document.getElementById('period-label').textContent = label;
+    }
+
+    function prevPeriod() {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        updatePeriodLabel();
+        renderCalendar();
+    }
+
+    function nextPeriod() {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        updatePeriodLabel();
+        renderCalendar();
+    }
+
+    function parseDateCustom(str) {
+        if (!str) return null;
+        const parts = str.split('.');
+        if (parts.length === 3) {
+            return new Date(parts[2], parseInt(parts[1]) - 1, parts[0]);
+        }
+        return new Date(str);
+    }
+
+    function openNewIzinModal(dateStr) {
+        document.querySelector('#izin-form input[name="baslangic_tarihi"]').value = dateStr;
+        document.querySelector('#izin-form input[name="bitis_tarihi"]').value = dateStr;
+        Modal.open('izin-modal');
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById('calendar-grid');
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const startOffset = (firstDay.getDay() + 6) % 7; // Pazartesi = 0
+
+        let html = '';
+
+        for (let i = 0; i < startOffset; i++) {
+            html += `<div class="aspect-square p-1"></div>`;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        for (let day = 1; day <= lastDay.getDate(); day++) {
+            const currentCellDate = new Date(year, month, day);
+            currentCellDate.setHours(0, 0, 0, 0);
+            const isToday = currentCellDate.getTime() === today.getTime();
+            const isPast = currentCellDate < today;
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+            const dayIzinler = izinlerData.filter(izin => {
+                const startDate = parseDateCustom(izin.baslangic);
+                const endDate = parseDateCustom(izin.bitis);
+                if (startDate && endDate) {
+                    startDate.setHours(0, 0, 0, 0);
+                    endDate.setHours(0, 0, 0, 0);
+                    return currentCellDate >= startDate && currentCellDate <= endDate;
+                }
+                return false;
+            });
+
+            let dayClass = 'bg-slate-50 dark:bg-slate-800';
+            let textClass = 'text-slate-600 dark:text-slate-400';
+            let opacityClass = '';
+
+            if (isPast) {
+                dayClass = 'bg-slate-100/50 dark:bg-slate-800/50';
+                textClass = 'text-slate-400 dark:text-slate-600';
+                opacityClass = 'opacity-50';
+            }
+
+            if (isToday) {
+                dayClass = 'bg-primary/10 ring-2 ring-primary';
+                textClass = 'text-primary font-bold';
+                opacityClass = '';
+            }
+
+            let mainIzin = dayIzinler.length > 0 ? dayIzinler[0] : null;
+            let onclickAction = '';
+
+            if (mainIzin) {
+                textClass = 'text-white font-bold';
+                let baseClass = 'bg-green-500';
+                if (mainIzin.durum === 'beklemede') baseClass = 'bg-amber-500';
+                else if (mainIzin.durum === 'reddedildi') baseClass = 'bg-red-400';
+                else if (mainIzin.durum === 'iptal_edildi') baseClass = 'bg-slate-400';
+
+                if (isPast && mainIzin.durum === 'onaylandi') {
+                    baseClass = 'bg-green-400';
+                }
+                dayClass = baseClass;
+                onclickAction = `showIzinDetay(${mainIzin.id})`;
+            } else if (!isPast) {
+                onclickAction = `openNewIzinModal('${dateStr}')`;
+            }
+
+            html += `
+                <div onclick="${onclickAction}" 
+                     class="aspect-square p-1 rounded-lg ${dayClass} ${opacityClass} flex flex-col items-center justify-center ${onclickAction ? 'cursor-pointer transition-transform active:scale-95' : ''}">
+                    <span class="text-sm ${textClass}">${day}</span>
+                    <div class="flex gap-0.5 mt-0.5 max-w-full flex-wrap justify-center overflow-hidden">
+                        ${dayIzinler.length > 1 ? '<span class="w-1.5 h-1.5 bg-white rounded-full"></span>'.repeat(Math.min(dayIzinler.length - 1, 3)) : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        grid.innerHTML = html;
+    }
 
     async function loadIzinTurleri() {
         try {
@@ -414,7 +640,11 @@
 
             if (response.success && response.data.length > 0) {
                 izinlerData = response.data;
-                renderIzinler();
+                if (currentView === 'calendar') {
+                    renderCalendar();
+                } else {
+                    renderIzinler();
+                }
             } else {
                 container.innerHTML = `
                 <div class="empty-state">
@@ -600,7 +830,13 @@
         }
 
         // Gün sayısını hesapla
-        const diff = new Date(bitis) - new Date(baslangic);
+        // Parse date values explicitly instead of relying entirely on native parser which can have timezone issues
+        const baslangicD = new Date(baslangic);
+        const bitisD = new Date(bitis);
+        baslangicD.setHours(0, 0, 0, 0);
+        bitisD.setHours(0, 0, 0, 0);
+
+        const diff = bitisD - baslangicD;
         const toplamGun = Math.round(diff / (1000 * 60 * 60 * 24)) + 1;
 
         if (toplamGun <= 0) {
