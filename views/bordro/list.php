@@ -306,21 +306,12 @@ $ek_odeme_turleri = [
                                 }
                             }
 
-                            // User definition: maas_tutari + ek_odemeler
-                            // Hakediş (toplam alacağı) hesaplanmış net_maas + toplam_kesinti toplamıdır.
-                            // Bu yöntem nöbet vb. tüm ek ödemeleri garanti altına alır.
+                            // Toplam Alacağı ve Net Alacağı Hesaplaması
                             $pMaasTutari = floatval($p->maas_tutari ?? 0);
                             $pNetMaas = floatval($p->net_maas ?? 0);
                             $pToplamKesinti = floatval($p->kesinti_tutar ?? 0);
 
-                            if ($pNetMaas > 0) {
-                                // Eğer maaş hesaplanmışsa, kesin olan "net hakediş + kesintiler"dir
-                                $pToplamAlacagi = $pNetMaas + $pToplamKesinti;
-                            } else {
-                                // Hesaplama henüz yapılmamışsa tahmini değer: maaş + o anki ek ödemeler
-                                $pToplamAlacagi = $pMaasTutari + $hesaplananEkOdeme;
-                            }
-
+                            // Önce icra kesintisini al (toplamAlacağı hesabı için gerekli)
                             $pIcra = 0;
                             if (!empty($p->hesaplama_detay)) {
                                 $detay = json_decode($p->hesaplama_detay, true);
@@ -328,6 +319,14 @@ $ek_odeme_turleri = [
                             }
 
                             $pKesintiHaricIcra = $pToplamKesinti - $pIcra;
+
+                            if ($pNetMaas > 0) {
+                                // net_maas icra hariç hesaplandığı için: toplam = net + (kesinti - icra)
+                                $pToplamAlacagi = $pNetMaas + $pKesintiHaricIcra;
+                            } else {
+                                // Hesaplama henüz yapılmamışsa tahmini değer: maaş + o anki ek ödemeler
+                                $pToplamAlacagi = $pMaasTutari + $hesaplananEkOdeme;
+                            }
 
                             // Net alacağı her zaman net_maas değerine eşit olmalıdır (eğer hesaplanmışsa)
                             $pNetAlacagi = ($pNetMaas > 0) ? $pNetMaas : ($pToplamAlacagi - $pKesintiHaricIcra);
@@ -641,15 +640,7 @@ $ek_odeme_turleri = [
                                                 $pNetMaasRow = floatval($personel->net_maas ?? 0);
                                                 $pToplamKesRow = floatval($personel->kesinti_tutar ?? 0);
 
-                                                if ($pNetMaasRow > 0) {
-                                                    // Hesaplanmışsa kesin değer: net_maas + toplam_kesinti
-                                                    $toplamAlacagiPersonel = $pNetMaasRow + $pToplamKesRow;
-                                                } else {
-                                                    // Henüz hesaplanmamışsa tahmini: maaş + ek ödemeler
-                                                    $toplamAlacagiPersonel = ($personel->maas_tutari ?? 0) + $hesaplananEkOdeme;
-                                                }
-
-                                                // İcra kesintisini al
+                                                // Önce icra kesintisini al (toplamAlacağı hesabı için gerekli)
                                                 $icraKesintisi = 0;
                                                 if (!empty($personel->hesaplama_detay)) {
                                                     $detay = json_decode($personel->hesaplama_detay, true);
@@ -657,6 +648,15 @@ $ek_odeme_turleri = [
                                                 }
 
                                                 $kesintiHaricIcra = $pToplamKesRow - $icraKesintisi;
+
+                                                if ($pNetMaasRow > 0) {
+                                                    // net_maas icra hariç hesaplandığı için: toplam = net + (kesinti - icra)
+                                                    $toplamAlacagiPersonel = $pNetMaasRow + $kesintiHaricIcra;
+                                                } else {
+                                                    // Henüz hesaplanmamışsa tahmini: maaş + ek ödemeler
+                                                    $toplamAlacagiPersonel = ($personel->maas_tutari ?? 0) + $hesaplananEkOdeme;
+                                                }
+
                                                 // Net alacağı hesaplanmışsa net_maas, yoksa toplam - kesinti
                                                 $netAlacagi = ($pNetMaasRow > 0) ? $pNetMaasRow : ($toplamAlacagiPersonel - $kesintiHaricIcra);
                                                 ?>

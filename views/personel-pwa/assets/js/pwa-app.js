@@ -221,6 +221,12 @@ const Theme = {
 
     container.appendChild(pickerWrapper);
   },
+
+  toggleDarkMode() {
+    const r = document.documentElement;
+    const isDark = r.classList.toggle("dark");
+    localStorage.setItem("darkMode", isDark);
+  },
 };
 
 // ===== Navigation Functions =====

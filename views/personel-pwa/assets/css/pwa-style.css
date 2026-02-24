@@ -301,11 +301,11 @@ div:where(.swal2-container) .swal2-cancel {
   background:
     linear-gradient(145deg, rgba(var(--primary-rgb), 0.05), rgba(0, 0, 0, 0.1)),
     var(--card-dark);
-  border-color: rgba(var(--primary-rgb), 0.4);
+  border-color: rgba(var(--primary-rgb), 0.15);
   box-shadow:
     0 10px 40px -15px rgba(0, 0, 0, 0.8),
-    0 0 20px -2px rgba(var(--primary-rgb), 0.25),
-    0 0 40px -10px rgba(var(--primary-rgb), 0.15);
+    0 0 20px -5px rgba(var(--primary-rgb), 0.15),
+    0 0 40px -10px rgba(var(--primary-rgb), 0.08);
   position: relative;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -878,13 +878,13 @@ div:where(.swal2-container) .swal2-cancel {
 
 .dark .quick-action {
   background:
-    linear-gradient(145deg, rgba(var(--primary-rgb), 0.08), transparent),
+    linear-gradient(145deg, rgba(var(--primary-rgb), 0.05), transparent),
     var(--card-dark);
-  border-color: rgba(var(--primary-rgb), 0.45);
+  border-color: rgba(var(--primary-rgb), 0.2);
   box-shadow:
     0 15px 45px -12px rgba(0, 0, 0, 0.6),
-    0 0 30px -5px rgba(var(--primary-rgb), 0.3),
-    0 0 60px -15px rgba(var(--primary-rgb), 0.15);
+    0 0 30px -5px rgba(var(--primary-rgb), 0.15),
+    0 0 60px -15px rgba(var(--primary-rgb), 0.1);
 }
 
 .quick-action:active {
@@ -1112,68 +1112,68 @@ div:where(.swal2-container) .swal2-cancel {
   margin-left: -0.5rem;
 }
 
-/* ===== Colorful Neon Utilities (Subtle) ===== */
+/* ===== Colorful Neon Utilities (Very Subtle) ===== */
 .neon-blue {
-  border-color: rgba(59, 130, 246, 0.4) !important;
-  box-shadow: 0 4px 15px -5px rgba(59, 130, 246, 0.15) !important;
+  border-color: rgba(59, 130, 246, 0.2) !important;
+  box-shadow: 0 4px 15px -5px rgba(59, 130, 246, 0.1) !important;
 }
 .neon-indigo {
-  border-color: rgba(99, 102, 241, 0.4) !important;
-  box-shadow: 0 4px 15px -5px rgba(99, 102, 241, 0.15) !important;
+  border-color: rgba(99, 102, 241, 0.2) !important;
+  box-shadow: 0 4px 15px -5px rgba(99, 102, 241, 0.1) !important;
 }
 .neon-emerald {
-  border-color: rgba(16, 185, 129, 0.4) !important;
-  box-shadow: 0 4px 15px -5px rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.2) !important;
+  box-shadow: 0 4px 15px -5px rgba(16, 185, 129, 0.1) !important;
 }
 .neon-orange {
-  border-color: rgba(249, 115, 22, 0.4) !important;
-  box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.15) !important;
+  border-color: rgba(249, 115, 22, 0.2) !important;
+  box-shadow: 0 4px 15px -5px rgba(249, 115, 22, 0.1) !important;
 }
 .neon-amber {
-  border-color: rgba(245, 158, 11, 0.4) !important;
-  box-shadow: 0 4px 15px -5px rgba(245, 158, 11, 0.15) !important;
+  border-color: rgba(245, 158, 11, 0.2) !important;
+  box-shadow: 0 4px 15px -5px rgba(245, 158, 11, 0.1) !important;
 }
 .neon-pink {
-  border-color: rgba(236, 72, 153, 0.4) !important;
-  box-shadow: 0 4px 15px -5px rgba(236, 72, 153, 0.15) !important;
+  border-color: rgba(236, 72, 153, 0.2) !important;
+  box-shadow: 0 4px 15px -5px rgba(236, 72, 153, 0.1) !important;
 }
 .neon-purple {
-  border-color: rgba(168, 85, 247, 0.4) !important;
-  box-shadow: 0 4px 15px -5px rgba(168, 85, 247, 0.15) !important;
+  border-color: rgba(168, 85, 247, 0.2) !important;
+  box-shadow: 0 4px 15px -5px rgba(168, 85, 247, 0.1) !important;
 }
 
 .dark .neon-blue {
   box-shadow:
     0 10px 30px -10px rgba(0, 0, 0, 0.4),
-    0 0 15px -2px rgba(59, 130, 246, 0.2) !important;
+    0 0 15px -2px rgba(59, 130, 246, 0.1) !important;
 }
 .dark .neon-indigo {
   box-shadow:
     0 10px 30px -10px rgba(0, 0, 0, 0.4),
-    0 0 15px -2px rgba(99, 102, 241, 0.2) !important;
+    0 0 15px -2px rgba(99, 102, 241, 0.1) !important;
 }
 .dark .neon-emerald {
   box-shadow:
     0 10px 30px -10px rgba(0, 0, 0, 0.4),
-    0 0 15px -2px rgba(16, 185, 129, 0.2) !important;
+    0 0 15px -2px rgba(16, 185, 129, 0.1) !important;
 }
 .dark .neon-orange {
   box-shadow:
     0 10px 30px -10px rgba(0, 0, 0, 0.4),
-    0 0 15px -2px rgba(249, 115, 22, 0.2) !important;
+    0 0 15px -2px rgba(249, 115, 22, 0.1) !important;
 }
 .dark .neon-amber {
   box-shadow:
     0 10px 30px -10px rgba(0, 0, 0, 0.4),
-    0 0 15px -2px rgba(245, 158, 11, 0.2) !important;
+    0 0 15px -2px rgba(245, 158, 11, 0.1) !important;
 }
 .dark .neon-pink {
   box-shadow:
     0 10px 30px -10px rgba(0, 0, 0, 0.4),
-    0 0 15px -2px rgba(236, 72, 153, 0.2) !important;
+    0 0 15px -2px rgba(236, 72, 153, 0.1) !important;
 }
 .dark .neon-purple {
   box-shadow:
     0 10px 30px -10px rgba(0, 0, 0, 0.4),
-    0 0 15px -2px rgba(168, 85, 247, 0.2) !important;
+    0 0 15px -2px rgba(168, 85, 247, 0.1) !important;
 }

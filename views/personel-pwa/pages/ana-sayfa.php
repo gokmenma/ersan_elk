@@ -34,12 +34,19 @@ use App\Helper\Helper;
                         <h1 class="text-xl font-bold"><?php echo $personel->adi_soyadi ?? 'Personel'; ?></h1>
                     </div>
                 </a>
-                <button onclick="openNotificationModal()"
-                    class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center relative">
-                    <span class="material-symbols-outlined">notifications</span>
-                    <span id="notification-badge"
-                        class="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full text-[10px] font-bold flex items-center justify-center border-2 border-primary hidden"></span>
-                </button>
+                <div class="flex items-center gap-2">
+                    <button onclick="Theme.toggleDarkMode()"
+                        class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center active:scale-95 transition-transform">
+                        <span class="material-symbols-outlined dark:hidden">dark_mode</span>
+                        <span class="material-symbols-outlined hidden dark:block">light_mode</span>
+                    </button>
+                    <button onclick="openNotificationModal()"
+                        class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center relative active:scale-95 transition-transform">
+                        <span class="material-symbols-outlined">notifications</span>
+                        <span id="notification-badge"
+                            class="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full text-[10px] font-bold flex items-center justify-center border-2 border-primary hidden"></span>
+                    </button>
+                </div>
             </div>
 
             <!-- Welcome Message -->
@@ -719,24 +726,14 @@ use App\Helper\Helper;
                 var response = await API.request('getWorkStats', { type: type });
                 if (response.success && response.data && response.data.length > 0) {
                     container.innerHTML = response.data.map(function (stat, index) {
-                        const colors = [
-                            { neon: 'neon-blue', border: 'border-blue-500', bg: 'bg-blue-500/10', text: 'text-blue-500' },
-                            { neon: 'neon-purple', border: 'border-purple-500', bg: 'bg-purple-500/10', text: 'text-purple-500' },
-                            { neon: 'neon-emerald', border: 'border-emerald-500', bg: 'bg-emerald-500/10', text: 'text-emerald-500' },
-                            { neon: 'neon-orange', border: 'border-orange-500', bg: 'bg-orange-500/10', text: 'text-orange-500' },
-                            { neon: 'neon-pink', border: 'border-pink-500', bg: 'bg-pink-500/10', text: 'text-pink-500' },
-                            { neon: 'neon-amber', border: 'border-amber-500', bg: 'bg-amber-500/10', text: 'text-amber-500' }
-                        ];
-                        const color = colors[index % colors.length];
-
                         return `
-                            <div class="card p-4 flex flex-col gap-2 relative overflow-hidden group border-t-4 ${color.border} ${color.neon}">
+                            <div class="card p-4 flex flex-col gap-2 relative overflow-hidden group">
                                 <div class="absolute -right-2 -bottom-2 opacity-[0.05] group-hover:opacity-[0.1] transition-opacity">
-                                    <span class="material-symbols-outlined text-6xl ${color.text}">${stat.ikon}</span>
+                                    <span class="material-symbols-outlined text-6xl text-primary">${stat.ikon}</span>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <div class="w-8 h-8 rounded-lg ${color.bg} flex items-center justify-center">
-                                        <span class="material-symbols-outlined ${color.text} text-lg">${stat.ikon}</span>
+                                    <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-primary text-lg">${stat.ikon}</span>
                                     </div>
                                     <p class="text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider">${stat.baslik}</p>
                                 </div>

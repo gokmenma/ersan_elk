@@ -291,6 +291,23 @@ if (!in_array($page, $allowed_pages)) {
                     <span class="font-medium text-slate-900 dark:text-white text-sm">Profil</span>
                     <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
                 </a>
+                <!-- Dark Mode Toggle -->
+                <div class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                    onclick="Theme.toggleDarkMode();">
+                    <div class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-slate-600 dark:hidden">dark_mode</span>
+                        <span class="material-symbols-outlined text-amber-500 hidden dark:block">light_mode</span>
+                    </div>
+                    <span class="font-medium text-slate-900 dark:text-white text-sm dark:hidden">Koyu Mod</span>
+                    <span class="font-medium text-slate-900 dark:text-white text-sm hidden dark:block">Açık Mod</span>
+                    <div class="ml-auto">
+                        <div class="w-10 h-5 bg-slate-200 dark:bg-primary/30 rounded-full relative transition-colors">
+                            <div
+                                class="absolute top-1 left-1 dark:left-6 w-3 h-3 bg-white dark:bg-primary rounded-full transition-all">
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <a href="?page=etkinlikler"
                     class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'etkinlikler' ? 'bg-primary/10' : ''; ?>">
                     <div class="w-9 h-9 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
