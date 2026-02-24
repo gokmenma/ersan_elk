@@ -409,7 +409,7 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
         </div>
 
         <!-- Karşılaştırma Alt Sekmeleri (altta - rapor sekmeleri gibi) -->
-        <div class="d-flex align-items-center mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
             <ul class="nav nav-tabs nav-tabs-custom nav-success mb-0" role="tablist" id="compareTabs">
                 <li class="nav-item">
                     <a class="nav-link active" href="javascript:void(0);" data-tab="okuma">
@@ -437,6 +437,13 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                     </a>
                 </li>
             </ul>
+            <div class="action-button-container d-flex align-items-center border rounded shadow-sm p-1 gap-1">
+                <button type="button"
+                    class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
+                    id="btnCompareFullScreen">
+                    <i class="mdi mdi-fullscreen fs-5 me-1"></i> Tam Ekran
+                </button>
+            </div>
         </div>
 
         <!-- Karşılaştırma Rapor İçeriği -->
@@ -785,10 +792,28 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
             }
         });
 
+        $('#btnCompareFullScreen').on('click', function () {
+            const elem = document.getElementById('compareCardRow');
+            if (!document.fullscreenElement) {
+                elem.requestFullscreen().catch(err => {
+                    alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                });
+                $(this).html('<i class="bx bx-exit-fullscreen me-1"></i> Küçült');
+                $(elem).addClass('fullscreen-mode');
+            } else {
+                document.exitFullscreen();
+                $(this).html('<i class="bx bx-fullscreen me-1"></i> Tam Ekran');
+                $(elem).removeClass('fullscreen-mode');
+            }
+        });
+
         document.addEventListener('fullscreenchange', () => {
             if (!document.fullscreenElement) {
                 $('#btnFullScreen').html('<i class="bx bx-fullscreen me-1"></i> Tam Ekran');
                 $('#reportCardRow').removeClass('fullscreen-mode');
+
+                $('#btnCompareFullScreen').html('<i class="bx bx-fullscreen me-1"></i> Tam Ekran');
+                $('#compareCardRow').removeClass('fullscreen-mode');
             }
         });
 
