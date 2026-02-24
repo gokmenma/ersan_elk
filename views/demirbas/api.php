@@ -151,16 +151,17 @@ if ($action == "demirbas-toplu-kaydet") {
     }
 }
 
-// Kaskiye Teslim (Hurda sayaçları Kaskiye teslim et - stoktan çıkış)
+// Kaskiye Teslim (Sayaçları Kaskiye teslim et - stoktan çıkış)
 if ($action == "kasiye-teslim") {
     try {
-        $demirbas_id = intval($_POST["demirbas_id"] ?? 0);
-        $miktar = intval($_POST["miktar"] ?? 0);
+        $demirbas_id_raw = $_POST["demirbas_id"] ?? '';
+        $demirbas_id = $demirbas_id_raw ? intval(Security::decrypt($demirbas_id_raw)) : 0;
         $tarih = $_POST["tarih"] ?? date('d.m.Y');
+        $teslim_eden = $_SESSION["adi_soyadi"] ?? 'Sistem Kullanıcısı';
         $aciklama = $_POST["aciklama"] ?? null;
 
-        if ($demirbas_id <= 0 || $miktar <= 0) {
-            jsonResponse("error", "Geçersiz parametreler.");
+        if ($demirbas_id <= 0 || empty($tarih)) {
+            jsonResponse("error", "Geçersiz parametreler. Lütfen formu eksiksiz doldurun.");
         }
 
         // Demirbaşı bul
@@ -169,19 +170,11 @@ if ($action == "kasiye-teslim") {
             jsonResponse("error", "Demirbaş bulunamadı.");
         }
 
-        // Stok kontrolü
-        if ($demirbas->kalan_miktar < $miktar) {
-            jsonResponse("error", "Yetersiz stok! Depoda sadece {$demirbas->kalan_miktar} adet bulunmaktadır.");
-        }
+        $formatted_tarih = Date::Ymd($tarih, 'Y-m-d');
 
-        // Stoktan düş
-        $yeniKalan = $demirbas->kalan_miktar - $miktar;
-        $yeniMiktar = $demirbas->miktar - $miktar;
-        if ($yeniMiktar < 0)
-            $yeniMiktar = 0;
-
-        $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET kalan_miktar = ?, miktar = ? WHERE id = ?");
-        $sqlUpdate->execute([$yeniKalan, $yeniMiktar, $demirbas_id]);
+        // Durumu güncelle, stoğu sıfırla
+        $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Kaskiye Teslim Edildi', kaskiye_teslim_tarihi = ?, kaskiye_teslim_eden = ?, aciklama = ?, kalan_miktar = 0, miktar = 0 WHERE id = ?");
+        $sqlUpdate->execute([$formatted_tarih, $teslim_eden, ($aciklama ?? null), $demirbas_id]);
 
         // Hareket kaydı oluştur (audit trail)
         try {
@@ -189,9 +182,9 @@ if ($action == "kasiye-teslim") {
                 'demirbas_id' => $demirbas_id,
                 'personel_id' => $_SESSION["id"] ?? 1,
                 'hareket_tipi' => 'sarf',
-                'miktar' => $miktar,
-                'tarih' => Date::Ymd($tarih, 'Y-m-d'),
-                'aciklama' => 'Kaskiye teslim: ' . ($aciklama ?? ''),
+                'miktar' => $demirbas->kalan_miktar > 0 ? $demirbas->kalan_miktar : 1,
+                'tarih' => $formatted_tarih,
+                'aciklama' => 'Kaskiye teslim edildi. Teslim eden: ' . $teslim_eden . '. Not: ' . ($aciklama ?? ''),
                 'islem_yapan_id' => $_SESSION["id"] ?? null,
                 'kaynak' => 'manuel',
             ]);
@@ -199,7 +192,7 @@ if ($action == "kasiye-teslim") {
             // Hareket kaydı hata verse bile ana işlemi etkilemesin
         }
 
-        jsonResponse("success", "$miktar adet hurda sayaç Kaskiye teslim edildi. Stok güncellendi.");
+        jsonResponse("success", "Sayaç başarıyla Kaskiye teslim edildi. Durum güncellendi.");
     } catch (Exception $ex) {
         jsonResponse("error", "Hata: " . $ex->getMessage());
     }

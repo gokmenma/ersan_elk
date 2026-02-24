@@ -1,5 +1,9 @@
 var zimmetUrl = "views/demirbas/api.php";
-var demirbasTable, zimmetTable, depoPersonelTable, hurdaDemirbasTable;
+var demirbasTable,
+  zimmetTable,
+  depoPersonelTable,
+  hurdaDemirbasTable,
+  sayacTable;
 
 // ============== SAYFA YÜKLENDİĞİNDE ==============
 $(document).ready(function () {
@@ -54,12 +58,15 @@ $(document).ready(function () {
     columnDefs: [{ orderable: false, targets: [0] }],
   });
 
-  // Hurda Demirbaşlar Tablosu
-  hurdaDemirbasTable = $("#hurdaDemirbasTable").DataTable({
-    ...getDatatableOptions(),
-    pageLength: 10,
-    order: [[1, "asc"]],
-  });
+  // Sayaç Tablosu
+  if ($("#sayacTable").length) {
+    let sayacOptions = getDatatableOptions();
+    sayacOptions.columnDefs = [{ orderable: false, targets: -1 }];
+    sayacOptions.order = [[0, "asc"]];
+    sayacOptions.language.emptyTable =
+      '<div class="text-center text-muted py-4"><i class="bx bx-package display-4 d-block mb-2"></i>Henüz sayaç eklenmemiş.<br><small>"Yeni Sayaç" butonuna tıklayarak ekleyebilirsiniz.</small></div>';
+    sayacTable = $("#sayacTable").DataTable(sayacOptions);
+  }
 
   // Select2 başlat
   initSelect2();
@@ -84,7 +91,7 @@ function updateButtonVisibility() {
 
   let activeTab = activeTabBtn.attr("id");
   // Tüm ana aksiyon butonlarını gizle
-  $("#btnYeniDemirbas, #btnZimmetVer, #btnKasiyeTeslim")
+  $("#btnYeniDemirbas, #btnZimmetVer, #btnYeniSayac")
     .addClass("d-none")
     .removeClass("d-flex");
   $("#importExcelLi").addClass("d-none");
@@ -98,7 +105,7 @@ function updateButtonVisibility() {
       zimmetTable.ajax.reload(null, false);
     }
   } else if (activeTab === "depo-tab") {
-    $("#btnKasiyeTeslim").removeClass("d-none").addClass("d-flex");
+    $("#btnYeniSayac").removeClass("d-none").addClass("d-flex");
   }
 }
 
@@ -110,12 +117,12 @@ $(document).on("click", "#exportExcel", function (e) {
 
   if (activeTab === "demirbas-tab") targetTable = demirbasTable;
   else if (activeTab === "zimmet-tab") targetTable = zimmetTable;
-  else if (activeTab === "depo-tab") targetTable = depoPersonelTable;
+  else if (activeTab === "depo-tab")
+    targetTable = sayacTable || depoPersonelTable;
 
   if (targetTable) {
     targetTable.button(".buttons-excel").trigger();
   } else {
-    // Fallback if targetTable not set (e.g. global table variable)
     if (typeof table !== "undefined" && table) {
       table.button(".buttons-excel").trigger();
     }
@@ -639,6 +646,21 @@ function resetDemirbasForm() {
   $("#demirbasModalTabs a:first").tab("show");
 }
 
+// Yeni Sayaç butonuna tıklandığında kategori "Sayaç" olarak pre-select edilsin
+$(document).on("click", "#btnYeniSayac", function () {
+  setTimeout(() => {
+    let sayacOpt = $("#kategori_id option")
+      .filter(function () {
+        let txt = $(this).text().toLowerCase();
+        return txt.includes("sayaç") || txt.includes("sayac");
+      })
+      .first();
+    if (sayacOpt.length > 0) {
+      $("#kategori_id").val(sayacOpt.val()).trigger("change");
+    }
+  }, 100);
+});
+
 // Modal kapatıldığında formu sıfırla
 $("#demirbasModal").on("hidden.bs.modal", function () {
   resetDemirbasForm();
@@ -1061,90 +1083,172 @@ $(document).on("click", "#exportExcel", function () {
 });
 
 // ============== KAŞİYE TESLİM İŞLEMLERİ ==============
+$(document).on("click", ".sayac-kasiye-teslim", function (e) {
+  e.preventDefault();
+  let demirbasId = $(this).data("id");
+  let name = $(this).data("name");
+  let tr = $(this).closest("tr");
+  let seriNo = tr.find("td:eq(4)").text().trim();
 
-// Hurda sayış seçildiğinde stok bilgisini göster
-$(document).on("change", "#kasiye_demirbas_id", function () {
-  let kalan = $(this).find(":selected").data("kalan") || 0;
-  if (kalan > 0) {
-    $("#kasiyeDepoInfo").show().css("display", "flex");
-    $("#kasiyeKalanText").text(kalan + " adet");
-    $("#kasiye_miktar").attr("max", kalan).val(kalan);
-  } else {
-    $("#kasiyeDepoInfo").hide();
-    $("#kasiye_miktar").attr("max", "").val(1);
-  }
+  // Alert kutusunu sıfırla
+  $("#kasiyeAlert")
+    .removeClass("alert-success alert-danger d-block")
+    .addClass("d-none")
+    .text("");
+
+  // Modal'ı aç ve bilgileri doldur
+  $("#kasiye_demirbas_id").val(demirbasId);
+  $("#kasiyeSayacAdi").text(name);
+  $("#kasiyeSeriNo").text(seriNo ? seriNo : "-");
+
+  $("#kasiyeTeslimModal").modal("show");
 });
 
-// Kaskiye Teslim Kaydet
-$(document).on("click", "#kasiyeTeslimKaydet", function () {
+// Form Gönderimi (Kaskiye Teslim Kaydet)
+$(document).on("submit", "#kasiyeTeslimForm", function (e) {
+  e.preventDefault();
+
   let demirbasId = $("#kasiye_demirbas_id").val();
-  let miktar = parseInt($("#kasiye_miktar").val()) || 0;
-  let tarih = $("#kasiye_tarihi").val();
-  let aciklama = $("#kasiye_aciklama").val();
+  let tarih = $("#tarih").val();
+  let aciklama = $("#aciklama").val();
+  let submitBtn = $("#btnKasiyeKaydet");
 
-  if (!demirbasId) {
-    Swal.fire("Uyarı", "Lütfen hurda sayaç seçiniz.", "warning");
-    return;
-  }
-  if (miktar <= 0) {
-    Swal.fire("Uyarı", "Miktar en az 1 olmalıdır.", "warning");
+  if (!demirbasId || !tarih) {
+    Swal.fire("Uyarı", "Lütfen gerekli alanları doldurunuz.", "warning");
     return;
   }
 
-  let kalan = parseInt(
-    $("#kasiye_demirbas_id").find(":selected").data("kalan") || 0,
-  );
-  if (miktar > kalan) {
-    Swal.fire("Hata", `Depoda sadece ${kalan} adet bulunmaktadır.`, "error");
-    return;
-  }
+  // Submit butonunu yükleniyor yap
+  let originalBtnHtml = submitBtn.html();
+  submitBtn
+    .prop("disabled", true)
+    .html('<i class="bx bx-loader-alt bx-spin me-1"></i> Kaydediliyor...');
 
-  Swal.fire({
-    title: "Emin misiniz?",
-    html: `<strong>${miktar}</strong> adet hurda sayaç Kaskiye teslim edilecek.<br><small class="text-muted">Bu işlem geri alınamaz.</small>`,
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#d33",
-    cancelButtonColor: "#74788d",
-    confirmButtonText: "Evet, Teslim Et!",
-    cancelButtonText: "İptal",
-  }).then((result) => {
-    if (result.isConfirmed) {
-      let formData = new FormData();
-      formData.append("action", "kasiye-teslim");
-      formData.append("demirbas_id", demirbasId);
-      formData.append("miktar", miktar);
-      formData.append("tarih", tarih);
-      formData.append("aciklama", aciklama);
+  let formData = new FormData();
+  formData.append("action", "kasiye-teslim");
+  formData.append("demirbas_id", demirbasId);
+  formData.append("tarih", tarih);
+  formData.append("aciklama", aciklama);
 
-      fetch(zimmetUrl, {
-        method: "POST",
-        body: formData,
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.status === "success") {
-            $("#kasiyeTeslimModal").modal("hide");
-            Swal.fire({
-              icon: "success",
-              title: "Başarılı!",
-              text: data.message,
-              confirmButtonText: "Tamam",
-            }).then(() => location.reload());
-          } else {
-            Swal.fire("Hata!", data.message, "error");
-          }
-        })
-        .catch((err) => {
-          console.error(err);
-          Swal.fire("Hata!", "İşlem sırasında bir hata oluştu.", "error");
-        });
-    }
-  });
+  fetch(zimmetUrl, {
+    method: "POST",
+    body: formData,
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.status === "success") {
+        $("#kasiyeTeslimModal").modal("hide");
+        Swal.fire({
+          icon: "success",
+          title: "Başarılı!",
+          text: data.message,
+          confirmButtonText: "Tamam",
+        }).then(() => location.reload());
+      } else {
+        Swal.fire("Hata!", data.message, "error");
+        submitBtn.prop("disabled", false).html(originalBtnHtml);
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      Swal.fire("Hata!", "İşlem sırasında bir hata oluştu.", "error");
+      submitBtn.prop("disabled", false).html(originalBtnHtml);
+    });
 });
 
 // Kaskiye Teslim Modal kapandığında formu sıfırla
 $("#kasiyeTeslimModal").on("hidden.bs.modal", function () {
   $("#kasiyeTeslimForm")[0].reset();
-  $("#kasiyeDepoInfo").hide();
+  $("#kasiyeSayacAdi").text("Sayaç Adı");
+  $("#kasiyeSeriNo").text("-");
+  $("#btnKasiyeKaydet")
+    .prop("disabled", false)
+    .html('<i class="bx bx-check-circle me-1"></i> Teslimi Kaydet');
+  $("#kasiyeAlert")
+    .removeClass("alert-success alert-danger d-block")
+    .addClass("d-none")
+    .text("");
+});
+
+// ============== KASKİYE TESLİM DETAY (DURUM TIKLAMA) ==============
+$(document).on("click", ".kaskiye-detay-btn", function (e) {
+  e.preventDefault();
+  let demirbasId = $(this).data("id");
+  let sayacAdi = $(this).data("name") || "Sayaç";
+  let seriNo = $(this).data("seri") || "-";
+
+  Swal.fire({
+    title: "Lütfen Bekleyin...",
+    didOpen: () => {
+      Swal.showLoading();
+    },
+  });
+
+  let formData = new FormData();
+  formData.append("action", "demirbas-getir");
+  formData.append("demirbas_id", demirbasId);
+
+  fetch(zimmetUrl, {
+    method: "POST",
+    body: formData,
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.status === "success" && data.data) {
+        let item = data.data;
+        let teslimEden = item.kaskiye_teslim_eden || "Sistem";
+        let teslimTarihi = item.kaskiye_teslim_tarihi || "-";
+        let aciklama = item.aciklama || "Açıklama belirtilmemiş.";
+
+        if (teslimTarihi !== "-") {
+          let parts = teslimTarihi.split("-");
+          if (parts.length === 3) {
+            teslimTarihi = parts[2] + "." + parts[1] + "." + parts[0];
+          }
+        }
+
+        Swal.fire({
+          title: `<div class="d-flex align-items-center justify-content-center mb-1">
+                    <div class="avatar-xs me-2 rounded bg-dark bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                        <i class="bx bx-info-circle text-dark fs-5"></i>
+                    </div>
+                    <span class="fw-bold" style="font-size: 1.1rem;">Kaskiye Teslim Detayı</span>
+                  </div>`,
+          html: `
+            <div class="text-center mb-3">
+                <h5 class="fw-bold mb-1 text-primary">${sayacAdi}</h5>
+                <p class="text-muted small mb-0"><i class="bx bx-barcode"></i> SN: ${seriNo}</p>
+            </div>
+            <div class="p-3 bg-light rounded-3 text-start border shadow-sm">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.6rem;">Teslim Eden</small>
+                        <span class="fw-bold text-dark small">${teslimEden}</span>
+                    </div>
+                    <div class="col-6 border-start ps-3">
+                        <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.6rem;">Teslim Tarihi</small>
+                        <span class="fw-bold text-dark small">${teslimTarihi}</span>
+                    </div>
+                    <div class="col-12 mt-2 pt-2 border-top">
+                        <small class="text-muted d-block text-uppercase fw-bold mb-1" style="font-size: 0.6rem;">Açıklama / Not</small>
+                        <p class="mb-0 text-dark small font-italic opacity-75">${aciklama}</p>
+                    </div>
+                </div>
+            </div>
+          `,
+          confirmButtonText: "Kapat",
+          confirmButtonColor: "#343a40",
+          customClass: {
+            container: "my-swal-z-index",
+            popup: "rounded-4 shadow-lg border-0",
+          },
+        });
+      } else {
+        Swal.fire("Hata!", data.message || "Detaylar getirilemedi.", "error");
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      Swal.fire("Hata!", "Veri çekilirken bir hata oluştu.", "error");
+    });
 });

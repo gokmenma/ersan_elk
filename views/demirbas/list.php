@@ -18,10 +18,9 @@ $Hareket = new DemirbasHareketModel();
 $Personel = new PersonelModel();
 $Tanimlamalar = new \App\Model\TanimlamalarModel();
 
-$demirbaslar = $Demirbas->getAllWithCategory();
+$tumDemirbaslar = $Demirbas->getAllWithCategory();
 $kategoriler = $Kategori->getActiveCategories();
 $personeller = $Personel->all();
-$stokOzeti = $Demirbas->getStockSummary();
 $zimmetStats = $Zimmet->getStats();
 
 // Otomatik zimmet ayarı yapılmış demirbaşları getir
@@ -29,21 +28,67 @@ $sqlAyarlar = $Demirbas->db->prepare("SELECT * FROM demirbas WHERE (otomatik_zim
 $sqlAyarlar->execute();
 $ayarYapilmisDemirbaslar = $sqlAyarlar->fetchAll(PDO::FETCH_OBJ);
 
-// ====== SAYAÇ DEPOSU İSTATİSTİKLERİ ======
-// Sayaç kategorisindeki demirbaşları bul
+// ====== SAYAÇ KATEGORİ ID'LERİ ======
 $sqlSayacKat = $Demirbas->db->prepare("SELECT id FROM demirbas_kategorileri WHERE LOWER(kategori_adi) LIKE '%sayaç%' OR LOWER(kategori_adi) LIKE '%sayac%'");
 $sqlSayacKat->execute();
 $sayacKatIds = $sqlSayacKat->fetchAll(PDO::FETCH_COLUMN);
 
-// Depo özeti: Yeni ve Hurda sayaçların depot stoku
-$depoOzet = (object) ['yeni_depoda' => 0, 'hurda_depoda' => 0, 'yeni_personelde' => 0, 'hurda_personelde' => 0, 'toplam_kasiye_teslim' => 0];
+// ====== DEMİRBAŞ VE SAYAÇ LİSTELERİNİ AYIR ======
+$demirbaslar = [];
+$sayaclar = [];
+$stokOzeti = (object) ['toplam_cesit' => 0, 'toplam_adet' => 0, 'stokta_kalan' => 0, 'zimmetli_adet' => 0];
+
+// Kategori bazlı envanter raporu için veriler
+$kategoriEnvanteri = [];
+
+foreach ($tumDemirbaslar as $item) {
+    if (!empty($sayacKatIds) && in_array($item->kategori_id, $sayacKatIds)) {
+        $sayaclar[] = $item;
+    } else {
+        $demirbaslar[] = $item;
+
+        // Stok özetini genel hesapla
+        $stokOzeti->toplam_cesit++;
+        $stokOzeti->toplam_adet += ($item->miktar ?? 0);
+        $stokOzeti->stokta_kalan += ($item->kalan_miktar ?? 0);
+        $stokOzeti->zimmetli_adet += (($item->miktar ?? 0) - ($item->kalan_miktar ?? 0));
+
+        // Kategori bazlı envantere ekle
+        $katAdi = empty($item->kategori_adi) ? 'Kategorisiz' : $item->kategori_adi;
+        if (!isset($kategoriEnvanteri[$katAdi])) {
+            $kategoriEnvanteri[$katAdi] = [
+                'cesit' => 0,
+                'toplam' => 0,
+                'bosta' => 0,
+                'zimmetli' => 0,
+                'serviste' => 0,
+                'hurda' => 0
+            ];
+        }
+        $kategoriEnvanteri[$katAdi]['cesit']++;
+        $kategoriEnvanteri[$katAdi]['toplam'] += ($item->miktar ?? 0);
+        $kategoriEnvanteri[$katAdi]['bosta'] += ($item->kalan_miktar ?? 0);
+
+        $durum = strtolower($item->durum ?? 'aktif');
+        if ($durum == 'aktif' || $durum == 'pasif') {
+            $kategoriEnvanteri[$katAdi]['zimmetli'] += (($item->miktar ?? 0) - ($item->kalan_miktar ?? 0));
+        } elseif ($durum == 'arizali') {
+            $kategoriEnvanteri[$katAdi]['serviste'] += ($item->miktar ?? 0);
+        } elseif (str_contains($durum, 'hurda')) {
+            $kategoriEnvanteri[$katAdi]['hurda'] += ($item->miktar ?? 0);
+        }
+    }
+}
+
+// ====== SAYAÇ DEPOSU İSTATİSTİKLERİ ======
+$depoOzet = (object) ['yeni_depoda' => 0, 'hurda_depoda' => 0, 'yeni_personelde' => 0, 'hurda_personelde' => 0];
 if (!empty($sayacKatIds)) {
     $katPlaceholders = implode(',', array_fill(0, count($sayacKatIds), '?'));
 
     // Ana depodaki stok (kalan_miktar = zimmetlenmemiş adet)
     $sqlDepo = $Demirbas->db->prepare("
         SELECT 
-            COALESCE(SUM(CASE WHEN LOWER(durum) != 'hurda' THEN kalan_miktar ELSE 0 END), 0) as yeni_depoda,
+            COALESCE(SUM(CASE WHEN LOWER(durum) != 'hurda' AND LOWER(durum) != 'kaskiye teslim edildi' THEN kalan_miktar ELSE 0 END), 0) as yeni_depoda,
             COALESCE(SUM(CASE WHEN LOWER(durum) = 'hurda' THEN kalan_miktar ELSE 0 END), 0) as hurda_depoda
         FROM demirbas 
         WHERE kategori_id IN ($katPlaceholders)
@@ -56,7 +101,7 @@ if (!empty($sayacKatIds)) {
     // Personeldeki stok (aktif zimmetler)
     $sqlPersonelde = $Demirbas->db->prepare("
         SELECT 
-            COALESCE(SUM(CASE WHEN LOWER(d.durum) != 'hurda' THEN z.teslim_miktar ELSE 0 END), 0) as yeni_personelde,
+            COALESCE(SUM(CASE WHEN LOWER(d.durum) != 'hurda' AND LOWER(d.durum) != 'kaskiye teslim edildi' THEN z.teslim_miktar ELSE 0 END), 0) as yeni_personelde,
             COALESCE(SUM(CASE WHEN LOWER(d.durum) = 'hurda' THEN z.teslim_miktar ELSE 0 END), 0) as hurda_personelde
         FROM demirbas_zimmet z
         INNER JOIN demirbas d ON z.demirbas_id = d.id
@@ -66,38 +111,6 @@ if (!empty($sayacKatIds)) {
     $personeldeResult = $sqlPersonelde->fetch(PDO::FETCH_OBJ);
     $depoOzet->yeni_personelde = $personeldeResult->yeni_personelde ?? 0;
     $depoOzet->hurda_personelde = $personeldeResult->hurda_personelde ?? 0;
-
-    // Personel bazlı dağılım tablosu
-    $sqlPersonelDagilim = $Demirbas->db->prepare("
-        SELECT 
-            p.id as personel_id,
-            p.adi_soyadi,
-            COALESCE(SUM(CASE WHEN LOWER(d.durum) != 'hurda' AND z.durum = 'teslim' THEN z.teslim_miktar ELSE 0 END), 0) as yeni_adet,
-            COALESCE(SUM(CASE WHEN LOWER(d.durum) = 'hurda' AND z.durum = 'teslim' THEN z.teslim_miktar ELSE 0 END), 0) as hurda_adet
-        FROM demirbas_zimmet z
-        INNER JOIN demirbas d ON z.demirbas_id = d.id
-        INNER JOIN personel p ON z.personel_id = p.id
-        WHERE d.kategori_id IN ($katPlaceholders) AND z.durum = 'teslim'
-        GROUP BY p.id, p.adi_soyadi
-        HAVING yeni_adet > 0 OR hurda_adet > 0
-        ORDER BY p.adi_soyadi
-    ");
-    $sqlPersonelDagilim->execute($sayacKatIds);
-    $personelDagilim = $sqlPersonelDagilim->fetchAll(PDO::FETCH_OBJ);
-
-    // Hurda demirbaşları listele (Kaskiye teslim için)
-    $sqlHurdaDemirbaslar = $Demirbas->db->prepare("
-        SELECT d.id, d.demirbas_adi, d.seri_no, d.kalan_miktar, d.miktar, k.kategori_adi
-        FROM demirbas d
-        LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
-        WHERE d.kategori_id IN ($katPlaceholders) AND LOWER(d.durum) = 'hurda' AND d.kalan_miktar > 0
-        ORDER BY d.demirbas_adi
-    ");
-    $sqlHurdaDemirbaslar->execute($sayacKatIds);
-    $hurdaDemirbaslar = $sqlHurdaDemirbaslar->fetchAll(PDO::FETCH_OBJ);
-} else {
-    $personelDagilim = [];
-    $hurdaDemirbaslar = [];
 }
 ?>
 
@@ -183,10 +196,10 @@ if (!empty($sayacKatIds)) {
                                 data-bs-toggle="modal" data-bs-target="#zimmetModal">
                                 <i class="bx bx-transfer-alt fs-5 me-1"></i> Zimmet Ver
                             </button>
-                            <button type="button" id="btnKasiyeTeslim"
-                                class="btn btn-danger btn-sm px-3 py-2 fw-bold align-items-center shadow-sm ms-1 <?php echo $activeTab === 'depo' ? 'd-flex' : 'd-none'; ?>"
-                                data-bs-toggle="modal" data-bs-target="#kasiyeTeslimModal">
-                                <i class="bx bx-log-out-circle fs-5 me-1"></i> Kaskiye Teslim
+                            <button type="button" id="btnYeniSayac"
+                                class="btn btn-success btn-sm px-3 py-2 fw-bold align-items-center shadow-sm ms-1 <?php echo $activeTab === 'depo' ? 'd-flex' : 'd-none'; ?>"
+                                data-bs-toggle="modal" data-bs-target="#demirbasModal">
+                                <i class="bx bx-plus-circle fs-5 me-1"></i> Yeni Sayaç
                             </button>
                         </div>
                     </div>
@@ -204,60 +217,125 @@ if (!empty($sayacKatIds)) {
                                 <div class="col-md-4">
                                     <div class="card border border-light shadow-none h-100 bordro-summary-card"
                                         style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
+                                        <div class="card-body p-2 px-3">
                                             <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(85, 110, 230, 0.1);">
-                                                    <i class="bx bx-cube fs-4 text-primary"></i>
+                                                <div class="icon-box"
+                                                    style="background: rgba(85, 110, 230, 0.1); width: 32px; height: 32px;">
+                                                    <i class="bx bx-cube fs-5 text-primary"></i>
                                                 </div>
                                                 <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">DEMİRBAŞ</span>
+                                                    style="font-size: 0.55rem; opacity: 0.5;">DEMİRBAŞ</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM
-                                                ÇEŞİT</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading">
-                                                <?php echo $stokOzeti->toplam_cesit ?? 0; ?>
-                                            </h4>
+                                            <p class="text-muted mb-0 small fw-bold text-uppercase"
+                                                style="letter-spacing: 0.5px; font-size: 0.65rem;">Toplam Çeşit</p>
+                                            <h4 class="mb-0 fw-bold"><?php echo $stokOzeti->toplam_cesit ?? 0; ?></h4>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="card border border-light shadow-none h-100 bordro-summary-card"
                                         style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
+                                        <div class="card-body p-2 px-3">
                                             <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(52, 195, 143, 0.1);">
-                                                    <i class="bx bx-check-circle fs-4 text-success"></i>
+                                                <div class="icon-box"
+                                                    style="background: rgba(52, 195, 143, 0.1); width: 32px; height: 32px;">
+                                                    <i class="bx bx-check-circle fs-5 text-success"></i>
                                                 </div>
                                                 <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">STOK</span>
+                                                    style="font-size: 0.55rem; opacity: 0.5;">STOK</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">STOKTA
-                                                KALAN</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading">
-                                                <?php echo $stokOzeti->stokta_kalan ?? 0; ?>
-                                            </h4>
+                                            <p class="text-muted mb-0 small fw-bold text-uppercase"
+                                                style="letter-spacing: 0.5px; font-size: 0.65rem;">Stokta Kalan</p>
+                                            <h4 class="mb-0 fw-bold"><?php echo $stokOzeti->stokta_kalan ?? 0; ?></h4>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="card border border-light shadow-none h-100 bordro-summary-card"
                                         style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
+                                        <div class="card-body p-2 px-3">
                                             <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(241, 180, 76, 0.1);">
-                                                    <i class="bx bx-transfer fs-4 text-warning"></i>
+                                                <div class="icon-box"
+                                                    style="background: rgba(241, 180, 76, 0.1); width: 32px; height: 32px;">
+                                                    <i class="bx bx-transfer fs-5 text-warning"></i>
                                                 </div>
                                                 <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">ZİMMET</span>
+                                                    style="font-size: 0.55rem; opacity: 0.5;">ZİMMET</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">AKTİF
-                                                ZİMMETLİ</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading">
-                                                <?php echo $zimmetStats->aktif_zimmet ?? 0; ?>
-                                            </h4>
+                                            <p class="text-muted mb-0 small fw-bold text-uppercase"
+                                                style="letter-spacing: 0.5px; font-size: 0.65rem;">Aktif Zimmetli</p>
+                                            <h4 class="mb-0 fw-bold"><?php echo $zimmetStats->aktif_zimmet ?? 0; ?></h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Kategori Bazlı Rapor Akordiyon -->
+                            <div class="accordion mb-4" id="inventoryAccordion">
+                                <div class="accordion-item shadow-sm border-0 rounded-3 overflow-hidden">
+                                    <h2 class="accordion-header" id="headingInventory">
+                                        <button class="accordion-button collapsed bg-white fw-bold text-dark py-3"
+                                            type="button" data-bs-toggle="collapse" data-bs-target="#collapseInventory"
+                                            aria-expanded="false" aria-controls="collapseInventory"
+                                            style="box-shadow: none;">
+                                            <i class="bx bx-bar-chart-alt-2 fs-5 me-2 text-primary"></i> Kategori Bazlı
+                                            Envanter Raporu
+                                        </button>
+                                    </h2>
+                                    <div id="collapseInventory" class="accordion-collapse collapse"
+                                        aria-labelledby="headingInventory" data-bs-parent="#inventoryAccordion">
+                                        <div class="accordion-body p-0">
+                                            <div class="table-responsive">
+                                                <table class="table table-hover table-bordered mb-0">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th class="ps-3">Kategori</th>
+                                                            <th class="text-center">Çeşit</th>
+                                                            <th class="text-center">Toplam</th>
+                                                            <th class="text-center">Boşta</th>
+                                                            <th class="text-center">Zimmetli</th>
+                                                            <th class="text-center">Serviste</th>
+                                                            <th class="text-center">Hurda</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php if (!empty($kategoriEnvanteri)): ?>
+                                                            <?php foreach ($kategoriEnvanteri as $katAdi => $stats): ?>
+                                                                <tr>
+                                                                    <td class="ps-3"><span
+                                                                            class="badge bg-secondary"><?php echo htmlspecialchars($katAdi); ?></span>
+                                                                    </td>
+                                                                    <td class="text-center text-muted fw-medium">
+                                                                        <?php echo $stats['cesit']; ?>
+                                                                    </td>
+                                                                    <td class="text-center fw-bold text-dark">
+                                                                        <?php echo $stats['toplam']; ?>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <span
+                                                                            class="badge bg-success bg-opacity-10 text-success fs-6 fw-bold px-3"><?php echo $stats['bosta']; ?></span>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <?php echo $stats['zimmetli'] > 0 ? '<span class="badge bg-warning text-dark">' . $stats['zimmetli'] . '</span>' : '<span class="text-muted">-</span>'; ?>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <?php echo $stats['serviste'] > 0 ? '<span class="badge bg-info">' . $stats['serviste'] . '</span>' : '<span class="text-muted">-</span>'; ?>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <?php echo $stats['hurda'] > 0 ? '<span class="badge bg-danger">' . $stats['hurda'] . '</span>' : '<span class="text-muted">-</span>'; ?>
+                                                                    </td>
+                                                                </tr>
+                                                            <?php endforeach; ?>
+                                                        <?php else: ?>
+                                                            <tr>
+                                                                <td colspan="7" class="text-center text-muted py-4"><i
+                                                                        class="bx bx-info-circle fs-4 d-block mb-1"></i>Raporlanacak
+                                                                    veri bulunamadı.</td>
+                                                            </tr>
+                                                        <?php endif; ?>
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -274,6 +352,7 @@ if (!empty($sayacKatIds)) {
                                             <th style="width:20%">Demirbaş Adı</th>
                                             <th style="width:15%">Marka/Model</th>
                                             <th style="width:10%" class="text-center">Stok</th>
+                                            <th style="width:10%" class="text-center">Durum</th>
                                             <th style="width:10%" class="text-end">Edinme Tutarı</th>
                                             <th style="width:10%">Edinme Tarihi</th>
                                             <th style="width:5%" class="text-center">İşlemler</th>
@@ -297,6 +376,16 @@ if (!empty($sayacKatIds)) {
                                                 } else {
                                                     $stokBadge = '<span class="badge bg-success">' . $kalan . '/' . $miktar . '</span>';
                                                 }
+                                                // Durum badge
+                                                $durumText = $demirbas->durum ?? 'aktif';
+                                                $durumMap = [
+                                                    'aktif' => '<span class="badge bg-soft-success text-success">Aktif</span>',
+                                                    'pasif' => '<span class="badge bg-soft-secondary text-secondary">Pasif</span>',
+                                                    'arizali' => '<span class="badge bg-soft-warning text-warning">Arızalı</span>',
+                                                    'hurda' => '<span class="badge bg-soft-danger text-danger">Hurda</span>',
+                                                    'kaskiye teslim edildi' => '<span class="badge bg-soft-dark text-dark kaskiye-detay-btn" style="cursor:pointer;" data-id="' . $enc_id . '">Kaskiye Teslim Edildi</span>',
+                                                ];
+                                                $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
                                                 ?>
                                                 <tr data-id="<?php echo $enc_id ?>">
                                                     <td class="text-center"><?php echo $i ?></td>
@@ -320,6 +409,7 @@ if (!empty($sayacKatIds)) {
                                                             class="text-muted"><?php echo $demirbas->seri_no ? 'SN: ' . $demirbas->seri_no : '' ?></small>
                                                     </td>
                                                     <td class="text-center"><?php echo $stokBadge ?></td>
+                                                    <td class="text-center"><?php echo $durumBadge ?></td>
                                                     <td class="text-end">
                                                         <?php echo ($demirbas->edinme_tutari ?? 0) ?>
                                                     </td>
@@ -352,6 +442,9 @@ if (!empty($sayacKatIds)) {
                                     </tbody>
                                 </table>
                             </div>
+
+
+
                         </div>
 
                         <!-- Zimmet Kayıtları Tab -->
@@ -385,213 +478,185 @@ if (!empty($sayacKatIds)) {
                             id="depoContent" role="tabpanel">
 
                             <!-- Depo Özet Kartları -->
-                            <div class="row g-3 mb-4">
+                            <div class="row g-2 mb-4">
                                 <!-- Ana Depo (Yeni) -->
                                 <div class="col-xl col-md-3 col-sm-6">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                                        style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
+                                    <div class="card border border-light shadow-none h-100 bordro-summary-card"
+                                        style="--card-color: #556ee6; border-bottom: 2px solid var(--card-color) !important;">
+                                        <div class="card-body p-2 px-3">
                                             <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(85, 110, 230, 0.1);">
-                                                    <i class="bx bx-package fs-4 text-primary"></i>
+                                                <div class="icon-box"
+                                                    style="background: rgba(85, 110, 230, 0.1); width: 28px; height: 28px;">
+                                                    <i class="bx bx-package fs-6 text-primary"></i>
                                                 </div>
-                                                <span class="text-muted small fw-bold" style="font-size: 0.65rem;">ANA
-                                                    STOK</span>
+                                                <span class="text-muted small fw-bold"
+                                                    style="font-size: 0.5rem; opacity: 0.5;">DEPO (YENİ)</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">ANA DEPODA (YENİ)</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading">
-                                                <?php echo $depoOzet->yeni_depoda; ?> <span
-                                                    style="font-size: 0.85rem; font-weight: 600;">Adet</span>
-                                            </h4>
+                                            <h5 class="mb-0 fw-bold mt-1"><?php echo $depoOzet->yeni_depoda; ?></h5>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Personelde (Yeni) -->
                                 <div class="col-xl col-md-3 col-sm-6">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                                        style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
+                                    <div class="card border border-light shadow-none h-100 bordro-summary-card"
+                                        style="--card-color: #34c38f; border-bottom: 2px solid var(--card-color) !important;">
+                                        <div class="card-body p-2 px-3">
                                             <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(52, 195, 143, 0.1);">
-                                                    <i class="bx bx-user-check fs-4 text-success"></i>
+                                                <div class="icon-box"
+                                                    style="background: rgba(52, 195, 143, 0.1); width: 28px; height: 28px;">
+                                                    <i class="bx bx-user-check fs-6 text-success"></i>
                                                 </div>
                                                 <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">ZİMMET</span>
+                                                    style="font-size: 0.5rem; opacity: 0.5;">ZİMMET (YENİ)</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">PERSONELDE (YENİ)</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading">
-                                                <?php echo $depoOzet->yeni_personelde; ?> <span
-                                                    style="font-size: 0.85rem; font-weight: 600;">Adet</span>
-                                            </h4>
+                                            <h5 class="mb-0 fw-bold mt-1"><?php echo $depoOzet->yeni_personelde; ?></h5>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Hurda Depoda -->
                                 <div class="col-xl col-md-3 col-sm-6">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                                        style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
+                                    <div class="card border border-light shadow-none h-100 bordro-summary-card"
+                                        style="--card-color: #f1b44c; border-bottom: 2px solid var(--card-color) !important;">
+                                        <div class="card-body p-2 px-3">
                                             <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(241, 180, 76, 0.1);">
-                                                    <i class="bx bx-recycle fs-4 text-warning"></i>
+                                                <div class="icon-box"
+                                                    style="background: rgba(241, 180, 76, 0.1); width: 28px; height: 28px;">
+                                                    <i class="bx bx-recycle fs-6 text-warning"></i>
                                                 </div>
                                                 <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">HURDA</span>
+                                                    style="font-size: 0.5rem; opacity: 0.5;">DEPO (HURDA)</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">HURDA DEPODA</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading">
-                                                <?php echo $depoOzet->hurda_depoda; ?> <span
-                                                    style="font-size: 0.85rem; font-weight: 600;">Adet</span>
-                                            </h4>
+                                            <h5 class="mb-0 fw-bold mt-1"><?php echo $depoOzet->hurda_depoda; ?></h5>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Personelde (Hurda) -->
                                 <div class="col-xl col-md-3 col-sm-6">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                                        style="--card-color: #50a5f1; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
+                                    <div class="card border border-light shadow-none h-100 bordro-summary-card"
+                                        style="--card-color: #50a5f1; border-bottom: 2px solid var(--card-color) !important;">
+                                        <div class="card-body p-2 px-3">
                                             <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(80, 165, 241, 0.1);">
-                                                    <i class="bx bx-user-minus fs-4 text-info"></i>
+                                                <div class="icon-box"
+                                                    style="background: rgba(80, 165, 241, 0.1); width: 28px; height: 28px;">
+                                                    <i class="bx bx-user-minus fs-6 text-info"></i>
                                                 </div>
-                                                <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İADE
-                                                    BEKLEYEN</span>
+                                                <span class="text-muted small fw-bold"
+                                                    style="font-size: 0.5rem; opacity: 0.5;">ZİMMET (HURDA)</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">PERSONELDE (HURDA)</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading">
-                                                <?php echo $depoOzet->hurda_personelde; ?> <span
-                                                    style="font-size: 0.85rem; font-weight: 600;">Adet</span>
-                                            </h4>
+                                            <h5 class="mb-0 fw-bold mt-1"><?php echo $depoOzet->hurda_personelde; ?>
+                                            </h5>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Personel Bazlı Stok Dağılımı -->
-                            <div class="card border shadow-none mb-3">
-                                <div class="card-header bg-light py-2">
-                                    <h6 class="mb-0"><i class="bx bx-group text-primary me-2"></i>Personel Bazlı Sayaç
-                                        Dağılımı</h6>
-                                </div>
-                                <div class="card-body p-0">
-                                    <div class="table-responsive">
-                                        <table class="table table-demirbas table-hover table-bordered mb-0"
-                                            id="depoPersonelTable">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th style="width:5%" class="text-center">#</th>
-                                                    <th style="width:35%">Personel</th>
-                                                    <th style="width:20%" class="text-center">Yeni Sayaç</th>
-                                                    <th style="width:20%" class="text-center">Hurda Sayaç</th>
-                                                    <th style="width:20%" class="text-center">Toplam</th>
+                            <!-- Sayaç Tablosu -->
+                            <div class="table-responsive">
+                                <table id="sayacTable"
+                                    class="table table-demirbas table-hover table-bordered nowrap w-100">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="text-center" style="width:5%">Sıra</th>
+                                            <th style="width:8%" class="text-center">D.No</th>
+                                            <th style="width:20%">Sayaç Adı</th>
+                                            <th style="width:15%">Marka/Model</th>
+                                            <th style="width:15%">Seri No</th>
+                                            <th style="width:10%" class="text-center">Stok</th>
+                                            <th style="width:10%" class="text-center">Durum</th>
+                                            <th style="width:10%">Edinme Tarihi</th>
+                                            <th style="width:5%" class="text-center">İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (!empty($sayaclar)): ?>
+                                            <?php
+                                            $i = 0;
+                                            foreach ($sayaclar as $sayac) {
+                                                $i++;
+                                                $enc_id = Security::encrypt($sayac->id);
+                                                $miktar = $sayac->miktar ?? 1;
+                                                $kalan = $sayac->kalan_miktar ?? 1;
+
+                                                // Stok durumu badge
+                                                if ($kalan == 0) {
+                                                    $stokBadge = '<span class="badge bg-danger">Stok Yok</span>';
+                                                } elseif ($kalan < $miktar) {
+                                                    $stokBadge = '<span class="badge bg-warning">' . $kalan . '/' . $miktar . '</span>';
+                                                } else {
+                                                    $stokBadge = '<span class="badge bg-success">' . $kalan . '/' . $miktar . '</span>';
+                                                }
+
+                                                // Durum badge
+                                                $durumText = $sayac->durum ?? 'aktif';
+                                                $durumMap = [
+                                                    'aktif' => '<span class="badge bg-soft-success text-success">Aktif</span>',
+                                                    'pasif' => '<span class="badge bg-soft-secondary text-secondary">Pasif</span>',
+                                                    'arizali' => '<span class="badge bg-soft-warning text-warning">Arızalı</span>',
+                                                    'hurda' => '<span class="badge bg-soft-danger text-danger">Hurda</span>',
+                                                    'kaskiye teslim edildi' => '<span class="badge bg-soft-dark text-dark kaskiye-detay-btn" style="cursor:pointer;" data-id="' . $enc_id . '" data-name="' . htmlspecialchars($sayac->demirbas_adi) . '" data-seri="' . htmlspecialchars($sayac->seri_no ?? '-') . '">Kaskiye Teslim Edildi</span>',
+                                                ];
+                                                $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
+                                                ?>
+                                                <tr data-id="<?php echo $enc_id ?>">
+                                                    <td class="text-center"><?php echo $i ?></td>
+                                                    <td class="text-center"><?php echo $sayac->demirbas_no ?? '-' ?></td>
+                                                    <td>
+                                                        <a href="#" data-id="<?php echo $enc_id; ?>"
+                                                            class="text-dark duzenle fw-medium">
+                                                            <?php echo $sayac->demirbas_adi ?>
+                                                        </a>
+                                                    </td>
+                                                    <td>
+                                                        <div><?php echo ($sayac->marka ?? '-') . ' ' . ($sayac->model ?? '') ?>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <?php echo $sayac->seri_no ?? '-' ?>
+                                                    </td>
+                                                    <td class="text-center"><?php echo $stokBadge ?></td>
+                                                    <td class="text-center"><?php echo $durumBadge ?></td>
+                                                    <td><?php echo $sayac->edinme_tarihi ?? '-' ?></td>
+                                                    <td class="text-left text-nowrap">
+                                                        <?php if (strtolower($durumText) != 'kaskiye teslim edildi'): ?>
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-soft-dark waves-effect waves-light sayac-kasiye-teslim"
+                                                                data-id="<?php echo $enc_id; ?>"
+                                                                data-name="<?php echo $sayac->demirbas_adi; ?>"
+                                                                title="Kaskiye Teslim Et">
+                                                                <i class="bx bx-log-out-circle"></i>
+                                                            </button>
+                                                            <?php if ($kalan > 0): ?>
+                                                                <button type="button"
+                                                                    class="btn btn-sm btn-soft-warning waves-effect waves-light zimmet-ver"
+                                                                    data-id="<?php echo $enc_id; ?>"
+                                                                    data-name="<?php echo $sayac->demirbas_adi; ?>"
+                                                                    data-kalan="<?php echo $kalan; ?>" title="Zimmet Ver">
+                                                                    <i class="bx bx-transfer"></i>
+                                                                </button>
+                                                            <?php endif; ?>
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-soft-primary waves-effect waves-light duzenle"
+                                                                data-id="<?php echo $enc_id; ?>" title="Düzenle">
+                                                                <i class="bx bx-edit-alt"></i>
+                                                            </button>
+                                                            <button type="button"
+                                                                class="btn btn-sm btn-soft-danger waves-effect waves-light sil"
+                                                                data-id="<?php echo $enc_id; ?>" title="Sil">
+                                                                <i class="bx bx-trash"></i>
+                                                            </button>
+                                                        <?php else: ?>
+                                                            <span class="text-muted small italic">İşlem Yapılamaz</span>
+                                                        <?php endif; ?>
+                                                    </td>
                                                 </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php if (!empty($personelDagilim)): ?>
-                                                    <?php $sira = 0;
-                                                    foreach ($personelDagilim as $pd):
-                                                        $sira++; ?>
-                                                        <tr>
-                                                            <td class="text-center"><?php echo $sira; ?></td>
-                                                            <td>
-                                                                <i class="bx bx-user text-muted me-1"></i>
-                                                                <?php echo htmlspecialchars($pd->adi_soyadi); ?>
-                                                            </td>
-                                                            <td class="text-center">
-                                                                <?php if ($pd->yeni_adet > 0): ?>
-                                                                    <span
-                                                                        class="badge bg-success"><?php echo $pd->yeni_adet; ?></span>
-                                                                <?php else: ?>
-                                                                    <span class="text-muted">-</span>
-                                                                <?php endif; ?>
-                                                            </td>
-                                                            <td class="text-center">
-                                                                <?php if ($pd->hurda_adet > 0): ?>
-                                                                    <span
-                                                                        class="badge bg-danger"><?php echo $pd->hurda_adet; ?></span>
-                                                                <?php else: ?>
-                                                                    <span class="text-muted">-</span>
-                                                                <?php endif; ?>
-                                                            </td>
-                                                            <td class="text-center">
-                                                                <span
-                                                                    class="badge bg-primary"><?php echo $pd->yeni_adet + $pd->hurda_adet; ?></span>
-                                                            </td>
-                                                        </tr>
-                                                    <?php endforeach; ?>
-                                                <?php endif; ?>
-                                            </tbody>
-                                            <?php if (!empty($personelDagilim)): ?>
-                                                <tfoot class="table-light">
-                                                    <tr class="fw-bold">
-                                                        <td></td>
-                                                        <td>TOPLAM</td>
-                                                        <td class="text-center">
-                                                            <span
-                                                                class="badge bg-success fs-6"><?php echo $depoOzet->yeni_personelde; ?></span>
-                                                        </td>
-                                                        <td class="text-center">
-                                                            <span
-                                                                class="badge bg-danger fs-6"><?php echo $depoOzet->hurda_personelde; ?></span>
-                                                        </td>
-                                                        <td class="text-center">
-                                                            <span
-                                                                class="badge bg-primary fs-6"><?php echo $depoOzet->yeni_personelde + $depoOzet->hurda_personelde; ?></span>
-                                                        </td>
-                                                    </tr>
-                                                </tfoot>
-                                            <?php endif; ?>
-                                        </table>
-                                    </div>
-                                </div>
+                                            <?php } ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
                             </div>
-
-                            <!-- Hurda Depodaki Sayaçlar -->
-                            <?php if (!empty($hurdaDemirbaslar)): ?>
-                                <div class="card border shadow-none mb-0">
-                                    <div class="card-header bg-danger bg-opacity-10 py-2">
-                                        <h6 class="mb-0 text-danger"><i class="bx bx-recycle me-2"></i>Hurda Depodaki
-                                            Sayaçlar (Kaskiye Teslime Hazır)</h6>
-                                    </div>
-                                    <div class="card-body p-0">
-                                        <div class="table-responsive">
-                                            <table class="table table-hover table-bordered mb-0" id="hurdaDemirbasTable">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th class="text-center" style="width:5%">#</th>
-                                                        <th>Sayaç Adı</th>
-                                                        <th>Seri No</th>
-                                                        <th class="text-center">Depodaki Adet</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <?php $hs = 0;
-                                                    foreach ($hurdaDemirbaslar as $hd):
-                                                        $hs++; ?>
-                                                        <tr>
-                                                            <td class="text-center"><?php echo $hs; ?></td>
-                                                            <td><?php echo htmlspecialchars($hd->demirbas_adi); ?></td>
-                                                            <td><?php echo $hd->seri_no ?? '-'; ?></td>
-                                                            <td class="text-center">
-                                                                <span
-                                                                    class="badge bg-danger"><?php echo $hd->kalan_miktar; ?></span>
-                                                            </td>
-                                                        </tr>
-                                                    <?php endforeach; ?>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            <?php endif; ?>
 
                         </div>
 
@@ -638,6 +703,82 @@ if (!empty($sayacKatIds)) {
 
 <!-- Kaskiye Teslim Modal -->
 <?php include_once "modal/kasiye-teslim-modal.php" ?>
+
+<!-- Kaskiye Detay Modal -->
+<div class="modal fade" id="kasiyeDetayModal" tabindex="-1" aria-hidden="true" style="z-index: 9999 !important;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-header modal-header-dark"
+                style="background: rgba(33, 37, 41, 0.03); border-bottom: 2px solid #212529;">
+                <div class="modal-title-section d-flex align-items-center">
+                    <div class="avatar-xs me-2 rounded bg-dark bg-opacity-10 d-flex align-items-center justify-content-center"
+                        style="width: 32px; height: 32px;">
+                        <i class="bx bx-info-circle text-dark fs-5"></i>
+                    </div>
+                    <div>
+                        <h6 class="modal-title text-dark mb-0 fw-bold">Kaskiye Teslim Detayı</h6>
+                        <p class="text-muted small mb-0" style="font-size: 0.7rem;">Kaskiye'ye yapılan teslimat
+                            bilgileri</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-4">
+                    <div class="avatar-lg mx-auto mb-3">
+                        <div class="avatar-title bg-soft-success text-success display-4 rounded-circle"
+                            style="width: 70px; height: 70px; line-height: 70px;">
+                            <i class="bx bx-check-double"></i>
+                        </div>
+                    </div>
+                    <h5 id="detaySayacAdi" class="fw-bold mb-1 text-dark">-</h5>
+                    <p id="detaySeriNo" class="text-muted small mb-0 fw-medium">-</p>
+                </div>
+
+                <div class="card bg-light border-0 shadow-none mb-0 rounded-3">
+                    <div class="card-body p-3">
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0 me-2 text-primary">
+                                        <i class="bx bx-user fs-4"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <p class="text-muted mb-0 small uppercase fw-bold"
+                                            style="font-size:0.6rem; letter-spacing: 0.5px;">Teslim Eden</p>
+                                        <h6 id="detayTeslimEden" class="mb-0 fw-bold small text-dark">-</h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="d-flex align-items-center border-start ps-3">
+                                    <div class="flex-shrink-0 me-2 text-success">
+                                        <i class="bx bx-calendar fs-4"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <p class="text-muted mb-0 small uppercase fw-bold"
+                                            style="font-size:0.6rem; letter-spacing: 0.5px;">Teslim Tarihi</p>
+                                        <h6 id="detayTarih" class="mb-0 fw-bold small text-dark">-</h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 mt-3 pt-3 border-top">
+                                <p class="text-muted mb-1 small uppercase fw-bold"
+                                    style="font-size:0.6rem; letter-spacing: 0.5px;">
+                                    <i class="bx bx-message-square-detail me-1"></i> Açıklama / Not
+                                </p>
+                                <p id="detayAciklama" class="text-dark small mb-0 opacity-75">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0 py-2">
+                <button type="button" class="btn btn-dark btn-sm fw-bold px-4" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Excel Import Modal -->
 <div class="modal fade" id="importExcelModal" tabindex="-1" aria-labelledby="importExcelModalLabel" aria-hidden="true">

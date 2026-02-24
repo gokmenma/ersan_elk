@@ -128,7 +128,6 @@ class DemirbasModel extends Model
         $enc_id = Security::encrypt($data->id);
         $miktar = $data->miktar ?? 1;
         $kalan = $data->kalan_miktar ?? 1;
-        $zimmetli = $miktar - $kalan;
 
         // Stok durumu badge
         if ($kalan == 0) {
@@ -139,12 +138,22 @@ class DemirbasModel extends Model
             $stokBadge = '<span class="badge bg-success">' . $kalan . '/' . $miktar . '</span>';
         }
 
+        // Durum badge
+        $durumText = $data->durum ?? 'aktif';
+        $durumMap = [
+            'aktif' => '<span class="badge bg-soft-success text-success">Aktif</span>',
+            'pasif' => '<span class="badge bg-soft-secondary text-secondary">Pasif</span>',
+            'arizali' => '<span class="badge bg-soft-warning text-warning">Arızalı</span>',
+            'hurda' => '<span class="badge bg-soft-danger text-danger">Hurda</span>',
+        ];
+        $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
+
         return '<tr data-id="' . $enc_id . '">
             <td class="text-center">' . $data->id . '</td>
             <td class="text-center">' . $data->demirbas_no . '</td>
-            <td>' . ($data->kategori_adi ?? '-') . '</td>
-            <td data-tooltip="true" data-tooltip-title="top">
-                <a href="#" data-id="' . $enc_id . '" class="dropdown-item duzenle">
+            <td><span class="badge bg-soft-primary text-primary">' . ($data->kategori_adi ?? 'Kategorisiz') . '</span></td>
+            <td>
+                <a href="#" data-id="' . $enc_id . '" class="text-dark duzenle fw-medium">
                     ' . $data->demirbas_adi . '</a>
             </td>
             <td>
@@ -152,27 +161,13 @@ class DemirbasModel extends Model
                 <small class="text-muted">' . ($data->seri_no ? 'SN: ' . $data->seri_no : '') . '</small>
             </td>
             <td class="text-center">' . $stokBadge . '</td>
+            <td class="text-center">' . $durumBadge . '</td>
             <td class="text-end">' . Helper::formattedMoney($data->edinme_tutari ?? 0) . '</td>
             <td>' . ($data->edinme_tarihi ?? '-') . '</td>
-            <td class="text-center" style="width:5%">
-                <div class="flex-shrink-0">
-                    <div class="dropdown align-self-start">
-                        <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="bx bx-dots-vertical-rounded font-size-24 text-dark"></i>
-                        </a>
-                        <div class="dropdown-menu">
-                            ' . ($kalan > 0 ? '<a href="#" data-id="' . $enc_id . '" data-name="' . $data->demirbas_adi . '" data-kalan="' . $kalan . '" class="dropdown-item zimmet-ver">
-                                <span class="mdi mdi-hand-extended font-size-18"></span> Zimmet Ver
-                            </a>' : '') . '
-                            <a href="#" data-id="' . $enc_id . '" class="dropdown-item duzenle">
-                                <span class="mdi mdi-pencil font-size-18"></span> Düzenle
-                            </a>
-                            <a href="#" class="dropdown-item demirbas-sil" data-id="' . $enc_id . '" data-name="' . $data->demirbas_adi . '">
-                                <span class="mdi mdi-delete font-size-18"></span> Sil
-                            </a>    
-                        </div>
-                    </div>
-                </div>
+            <td class="text-center text-nowrap">
+                ' . ($kalan > 0 ? '<button type="button" class="btn btn-sm btn-soft-warning waves-effect waves-light zimmet-ver" data-id="' . $enc_id . '" data-name="' . $data->demirbas_adi . '" data-kalan="' . $kalan . '" title="Zimmet Ver"><i class="bx bx-transfer"></i></button>' : '') . '
+                <button type="button" class="btn btn-sm btn-soft-primary waves-effect waves-light duzenle" data-id="' . $enc_id . '" title="Düzenle"><i class="bx bx-edit"></i></button>
+                <button type="button" class="btn btn-sm btn-soft-danger waves-effect waves-light demirbas-sil" data-id="' . $enc_id . '" data-name="' . $data->demirbas_adi . '" title="Sil"><i class="bx bx-trash"></i></button>
             </td>
         </tr>';
     }
@@ -193,12 +188,12 @@ class DemirbasModel extends Model
         }
 
         if (!empty($colSearches)) {
-            $colMap = [1 => 'd.demirbas_no', 2 => 'k.kategori_adi', 3 => 'd.demirbas_adi', 4 => 'd.marka', 6 => 'd.edinme_tutari', 7 => 'd.edinme_tarihi'];
+            $colMap = [1 => 'd.demirbas_no', 2 => 'k.kategori_adi', 3 => 'd.demirbas_adi', 4 => 'd.marka', 6 => 'd.durum', 7 => 'd.edinme_tutari', 8 => 'd.edinme_tarihi'];
             foreach ($colSearches as $idx => $val) {
                 if (isset($colMap[$idx]) && $val !== '') {
                     $field = $colMap[$idx];
                     $paramName = "col_" . $idx;
-                    if ($idx == 7) {
+                    if ($idx == 8) {
                         $sql .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramName";
                     } else {
                         $sql .= " AND $field LIKE :$paramName";
