@@ -398,6 +398,11 @@
         return date.getDay() === 0; // Sadece Pazar
     }
 
+    // Nöbet için aktif (beklemede) bir değişim talebi olup olmadığını kontrol eder
+    function getActiveDegisimTalebi(nobetId) {
+        return taleplerData.find(t => t.nobet_id == nobetId && t.talep_tipi === 'giden' && (t.durum === 'beklemede' || t.durum === 'personel_onayladi'));
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         loadNobetler();
         loadTalepler();
@@ -605,6 +610,7 @@
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const nobet = nobetlerData.find(n => n.nobet_tarihi === dateStr);
             const pendingTalep = bireyselTaleplerData.find(t => t.nobet_tarihi === dateStr);
+            const activeDegisim = nobet ? getActiveDegisimTalebi(nobet.id) : null;
             const date = new Date(year, month, day);
             date.setHours(0, 0, 0, 0);
             const isToday = date.getTime() === today.getTime();
@@ -653,7 +659,7 @@
                      class="aspect-square p-1 rounded-lg ${dayClass} ${opacityClass} flex flex-col items-center justify-center cursor-pointer transition-transform active:scale-95">
                     <span class="text-sm ${textClass}">${day}</span>
                     <div class="flex gap-0.5 mt-0.5">
-                        ${hasNobet ? `<span class="w-1.5 h-1.5 ${nobet.silinmis_mi ? 'bg-red-300' : (isPast ? 'bg-slate-400' : 'bg-white')} rounded-full"></span>` : ''}
+                        ${hasNobet ? `<span class="w-1.5 h-1.5 ${nobet.silinmis_mi ? 'bg-red-300' : (isPast ? 'bg-slate-400' : (activeDegisim ? 'bg-amber-400' : 'bg-white'))} rounded-full"></span>` : ''}
                         ${pendingTalep ? `<span class="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>` : ''}
                     </div>
                 </div>
@@ -695,6 +701,7 @@
             const isWeekend = isNobetHaftaSonu(nobet, date);
             const isPast = date < today;
             const isDeleted = nobet.silinmis_mi;
+            const activeDegisim = getActiveDegisimTalebi(nobet.id);
 
             let cardOpacity = isPast || isDeleted ? 'opacity-60 grayscale-[0.5]' : '';
             let bgClass, textClass, subTextClass, titleClass, badgeHtml;
@@ -721,6 +728,7 @@
                     <span class="badge ${isPast ? 'bg-slate-200/50 text-slate-400 dark:bg-slate-700/30 dark:text-slate-500' : (isWeekend ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400')}">
                         ${isWeekend ? 'Hafta Sonu' : 'Hafta İçi'}
                     </span>
+                    ${activeDegisim ? '<span class="badge bg-amber-100 text-amber-700">Değişim Bekliyor</span>' : ''}
                     ${isPast ? '<span class="badge bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400">Geçmiş</span>' : ''}
                 `;
             }
@@ -856,12 +864,22 @@
                 </button>
             `;
         } else if (!isPast && !isMazeretBildirildi) {
+            const activeDegisim = getActiveDegisimTalebi(nobetId);
+
             actionsContainer.innerHTML = `
-                <button onclick="openDegisimModal('${nobetId}')" 
-                    class="w-full py-3 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-semibold rounded-xl flex items-center justify-center gap-2">
-                    <span class="material-symbols-outlined text-lg">swap_horiz</span>
-                    Değişim Talep Et
-                </button>
+                ${activeDegisim ? `
+                    <button onclick="iptalEtDegisim('${activeDegisim.id}')" 
+                        class="w-full py-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 font-semibold rounded-xl flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-lg">cancel</span>
+                        Değişim Talebini İptal Et
+                    </button>
+                ` : `
+                    <button onclick="openDegisimModal('${nobetId}')" 
+                        class="w-full py-3 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-semibold rounded-xl flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-lg">swap_horiz</span>
+                        Değişim Talep Et
+                    </button>
+                `}
                 <button onclick="openMazeretModal('${nobetId}')" 
                     class="w-full py-3 bg-red-50 dark:bg-red-900/20 text-red-600 font-semibold rounded-xl flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined text-lg">warning</span>
@@ -1071,7 +1089,9 @@
 
             if (response.success) {
                 Toast.show('Talep iptal edildi', 'success');
+                Modal.close('nobet-detay-modal');
                 loadTalepler();
+                renderView(); // Takvim/Listeyi güncelle
             } else {
                 Toast.show(response.message || 'Bir hata oluştu', 'error');
             }

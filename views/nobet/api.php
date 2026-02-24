@@ -26,8 +26,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $Settings = new \App\Model\SettingsModel();
                 $firma_id = $_SESSION['firma_id'] ?? null;
                 $islem = $_POST['nobet_gecmis_islem'] ?? '0';
+                $silinmisGoster = $_POST['nobet_silinmis_goster'] ?? '0';
 
-                $result = $Settings->upsertMultipleSettings(['nobet_gecmis_islem' => $islem], $firma_id);
+                $result = $Settings->upsertMultipleSettings([
+                    'nobet_gecmis_islem' => $islem,
+                    'nobet_silinmis_goster' => $silinmisGoster
+                ], $firma_id);
                 if ($result) {
                     echo json_encode(['status' => 'success', 'message' => 'Ayarlar güncellendi.']);
                 } else {

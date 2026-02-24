@@ -10,6 +10,7 @@ $Settings = new SettingsModel();
 
 $settingsData = $Settings->getAllSettingsAsKeyValue($_SESSION['firma_id'] ?? null);
 $canEditPast = ($settingsData['nobet_gecmis_islem'] ?? '0') === '1';
+$showDeletedToStaff = ($settingsData['nobet_silinmis_goster'] ?? '0') === '1';
 $hasSettingPermission = Gate::allows("nobet_onceki_gunlerde_islem_yapabilir");
 
 $personeller = $Personel->all(true);
@@ -783,6 +784,22 @@ $title = 'Nöbet Planlama';
                             ve taşınmasını kontrol eder.
                         </span>
                     </div>
+
+                    <div class="setting-group mt-4">
+                        <div class="setting-main">
+                            <div class="form-check form-switch form-switch-lg p-0">
+                                <input class="form-check-input" type="checkbox" name="nobet_silinmis_goster"
+                                    id="setting-silinmis-goster" <?php echo $showDeletedToStaff ? 'checked' : ''; ?>>
+                            </div>
+                            <label class="setting-label" for="setting-silinmis-goster">
+                                Personele Göster: Silinmiş Nöbetler
+                            </label>
+                        </div>
+                        <span class="settings-description">
+                            Aktif edilirse, personel kendi sayfasında iptal edilmiş veya silinmiş nöbetlerini görmeye
+                            devam eder.
+                        </span>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">İptal</button>
@@ -1108,6 +1125,9 @@ $title = 'Nöbet Planlama';
             // Switch (checkbox) değeri kontrolü
             const isChecked = document.getElementById('setting-gecmis-islem').checked;
             formData.set('nobet_gecmis_islem', isChecked ? '1' : '0');
+
+            const isShowDeletedChecked = document.getElementById('setting-silinmis-goster').checked;
+            formData.set('nobet_silinmis_goster', isShowDeletedChecked ? '1' : '0');
 
             fetch('views/nobet/api.php', {
                 method: 'POST',

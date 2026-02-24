@@ -2056,11 +2056,16 @@ try {
             $NobetModel = new \App\Model\NobetModel();
             $yil = $_POST['yil'] ?? date('Y');
             $ay = $_POST['ay'] ?? date('m');
+            $firma_id = $personel->firma_id ?? $_SESSION['firma_id'] ?? null;
+
+            $SettingsModel = new \App\Model\SettingsModel();
+            $settings = $SettingsModel->getAllSettingsAsKeyValue($firma_id);
+            $include_deleted = ($settings['nobet_silinmis_goster'] ?? '0') === '1';
 
             $baslangic = "$yil-" . str_pad($ay, 2, '0', STR_PAD_LEFT) . "-01";
             $bitis = date('Y-m-t', strtotime($baslangic));
 
-            $nobetler = $NobetModel->getPersonelNobetleri($personel_id, $baslangic, $bitis, true);
+            $nobetler = $NobetModel->getPersonelNobetleri($personel_id, $baslangic, $bitis, $include_deleted);
 
             $data = [];
             foreach ($nobetler as $nobet) {
@@ -2089,6 +2094,7 @@ try {
 
                 $data[] = [
                     'id' => $talep->id,
+                    'nobet_id' => $talep->nobet_id,
                     'nobet_tarihi' => $talep->nobet_tarihi,
                     'talep_eden_adi' => $talep->talep_eden_adi,
                     'talep_edilen_adi' => $talep->talep_edilen_adi,

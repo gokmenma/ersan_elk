@@ -271,47 +271,55 @@ use App\Helper\Date;
         listContainer.innerHTML = sortedGroups.map(group => {
             const dateObj = new Date(group.date);
             const gunAdi = dateObj.toLocaleDateString('tr-TR', { weekday: 'long' });
-
-            // Eğer bekleyen varsa warning gradienti, yoksa primary gradienti
-            const variantClass = group.acik > 0 ? 'warning' : '';
+            const dayNum = dateObj.getDate().toString().padStart(2, '0');
 
             return `
-            <div class="card card-premium ${variantClass} p-5 mb-4 hover:shadow-xl transition-all active:scale-[0.98] cursor-pointer group" 
+            <div class="card card-premium p-4 mb-1.5 hover:shadow-md transition-all active:scale-[0.99] cursor-pointer group relative overflow-hidden" 
                  onclick="showDailyDetail('${group.date}')">
-                <div class="flex items-center justify-between">
-                    <div class="flex flex-col">
-                        <span class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-1">${gunAdi}</span>
-                        <h4 class="font-black text-slate-800 dark:text-white text-xl tracking-tight">${formatDate(group.date)}</h4>
-                    </div>
-                    <div class="flex flex-col items-end">
-                        <div class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/50 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                             <span class="text-[10px] font-black text-primary">${group.total} İŞ</span>
-                        </div>
-                        <div class="flex gap-2 mt-2.5">
-                            <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-green-500/5 text-green-600 border border-green-500/10">
-                                <span class="material-symbols-outlined text-[14px] filled">check_circle</span>
-                                <span class="text-[11px] font-bold">${group.sonuclanan}</span>
-                            </div>
-                            <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-500/5 text-amber-600 border border-amber-500/10">
-                                <span class="material-symbols-outlined text-[14px] filled">schedule</span>
-                                <span class="text-[11px] font-bold">${group.acik}</span>
-                            </div>
-                        </div>
-                    </div>
+                
+                <!-- Dekatif Arkaplan Günü (Ortalanmış ve Net) -->
+                <div class="absolute inset-0 pointer-events-none select-none z-0 opacity-[0.42] flex items-center justify-center">
+                    <span class="text-[9rem] font-black leading-none tracking-tighter text-slate-100 dark:text-slate-800/50">
+                        ${dayNum}
+                    </span>
                 </div>
-                <div class="mt-5 flex items-center justify-between">
-                    <div class="flex -space-x-3 overflow-hidden p-1">
-                        ${group.items.slice(0, 5).map(item => `
-                            <div class="w-10 h-10 rounded-2xl bg-white dark:bg-slate-800 border-2 border-slate-50 dark:border-slate-800 flex items-center justify-center shadow-sm transition-transform group-hover:translate-y-[-2px]" title="${item.is_emri_tipi}">
-                                <span class="material-symbols-outlined text-lg text-primary">
-                                    ${getIconForWorkType(item.is_emri_tipi)}
-                                </span>
+
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between">
+                        <div class="flex flex-col">
+                            <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">${gunAdi}</span>
+                            <h4 class="font-bold text-slate-900 dark:text-white text-base">${formatDate(group.date)}</h4>
+                        </div>
+                        <div class="flex flex-col items-end">
+                            <div class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/50 px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-800">
+                                 <span class="text-[9px] font-bold text-primary">${group.total} İŞ</span>
                             </div>
-                        `).join('')}
-                        ${group.total > 5 ? `<div class="w-10 h-10 rounded-2xl bg-slate-900 text-white text-[10px] font-black flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-md">+${group.total - 5}</div>` : ''}
+                            <div class="flex gap-2 mt-1.5">
+                                <div class="flex items-center gap-1 text-green-600">
+                                    <span class="material-symbols-outlined text-[12px] filled">check_circle</span>
+                                    <span class="text-[10px] font-bold">${group.sonuclanan}</span>
+                                </div>
+                                <div class="flex items-center gap-1 text-amber-600">
+                                    <span class="material-symbols-outlined text-[12px] filled">schedule</span>
+                                    <span class="text-[10px] font-bold">${group.acik}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="w-10 h-10 rounded-2xl bg-primary/5 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
-                        <span class="material-symbols-outlined text-base font-bold">arrow_forward_ios</span>
+                    <div class="mt-3.5 flex items-center justify-between">
+                        <div class="flex -space-x-2 overflow-hidden">
+                            ${group.items.slice(0, 4).map(item => `
+                                <div class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center shadow-sm" title="${item.is_emri_tipi}">
+                                    <span class="material-symbols-outlined text-sm text-primary">
+                                        ${getIconForWorkType(item.is_emri_tipi)}
+                                    </span>
+                                </div>
+                            `).join('')}
+                            ${group.total > 4 ? `<div class="w-8 h-8 rounded-lg bg-slate-800 text-white text-[9px] font-bold flex items-center justify-center border border-white dark:border-slate-800 shadow-sm">+${group.total - 4}</div>` : ''}
+                        </div>
+                        <div class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                            <span class="material-symbols-outlined text-sm">chevron_right</span>
+                        </div>
                     </div>
                 </div>
             </div>
