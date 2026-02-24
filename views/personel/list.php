@@ -159,6 +159,41 @@ if (Gate::canWithMessage("personel_listesi")) {
                             opacity: 1;
                         }
 
+                        /* Personel Preloader */
+                        .personel-preloader {
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 100%;
+                            background: rgba(255, 255, 255, 0.82);
+                            z-index: 1060;
+                            border-radius: 4px;
+                            backdrop-filter: blur(3px);
+                        }
+
+                        [data-bs-theme="dark"] .personel-preloader {
+                            background: rgba(25, 30, 34, 0.85);
+                        }
+
+                        .personel-preloader .loader-content {
+                            position: absolute;
+                            top: 80px;
+                            left: 50%;
+                            transform: translateX(-50%);
+                            background: white;
+                            padding: 2.5rem;
+                            border-radius: 16px;
+                            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+                            text-align: center;
+                            min-width: 250px;
+                        }
+
+                        [data-bs-theme="dark"] .personel-preloader .loader-content {
+                            background: #2a3042;
+                            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+                        }
+
                         .animate-spin {
                             animation: spin 1s infinite linear;
                             display: inline-block;
@@ -240,43 +275,57 @@ if (Gate::canWithMessage("personel_listesi")) {
                                 </button>
                             </div>
                         </div>
-                        <table id="membersTable" class="table table-selected table-bordered nowrap w-100">
-                            <thead>
-                                <tr>
-                                    <th style="width: 20px;" class="align-middle">
-                                        #
-                                    </th>
-                                    <th class="text-center">SIRA</th>
-                                    <th style="width: 100px;" data-filter="string">TC KİMLİK NO</th>
-                                    <th data-filter="string">ADI SOYADI</th>
-                                    <th style="width: 110px;" data-filter="date">İŞE BAŞLAMA TARİHİ</th>
-                                    <th style="width: 110px;" data-filter="date">İŞTEN AYRILMA TARİHİ</th>
-                                    <th style="width: 110px;" data-filter="string">CEP TELEFONU</th>
-                                    <th data-filter="string">EMAIL</th>
-                                    <th data-filter="select">GÖREV</th>
-                                    <th data-filter="select">DEPARTMAN</th>
-                                    <th style="min-width: 160px; width: 160px;" data-filter="string">EKİP / BÖLGE</th>
-                                    <th class="text-center" data-filter="select">BİLDİRİM</th>
-                                    <th data-filter="select">DURUM</th>
-                                    <!-- Additional columns (hidden by default) -->
-                                    <th data-filter="date">DOĞUM TARİHİ</th>
-                                    <th data-filter="select">CİNSİYET</th>
-                                    <th data-filter="select">MEDENİ DURUM</th>
-                                    <th data-filter="select">KAN GRUBU</th>
-                                    <th data-filter="string">ADRES</th>
-                                    <th data-filter="select">EHLİYET</th>
-                                    <th data-filter="string">IBAN</th>
-                                    <th data-filter="string">BANKA</th>
-                                    <th data-filter="string">MAAŞ</th>
-                                    <th data-filter="string">SGK NO</th>
-                                    <th data-filter="string">SODEXO NO</th>
-                                    <th data-filter="string">2. TELEFON</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            </tbody>
-                        </table>
 
+                        <div class="position-relative">
+                            <!-- Preloader -->
+                            <div class="personel-preloader" id="personel-loader">
+                                <div class="loader-content">
+                                    <div class="spinner-border text-primary m-1" role="status">
+                                        <span class="sr-only">Yükleniyor...</span>
+                                    </div>
+                                    <h5 class="mt-2 mb-0">Personel Listesi Hazırlanıyor...</h5>
+                                    <p class="text-muted small mb-0">Lütfen bekleyiniz...</p>
+                                </div>
+                            </div>
+
+                            <table id="membersTable" class="table table-selected table-bordered nowrap w-100">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 20px;" class="align-middle">
+                                            #
+                                        </th>
+                                        <th class="text-center">SIRA</th>
+                                        <th style="width: 100px;" data-filter="string">TC KİMLİK NO</th>
+                                        <th data-filter="string">ADI SOYADI</th>
+                                        <th style="width: 110px;" data-filter="date">İŞE BAŞLAMA TARİHİ</th>
+                                        <th style="width: 110px;" data-filter="date">İŞTEN AYRILMA TARİHİ</th>
+                                        <th style="width: 110px;" data-filter="string">CEP TELEFONU</th>
+                                        <th data-filter="string">EMAIL</th>
+                                        <th data-filter="select">GÖREV</th>
+                                        <th data-filter="select">DEPARTMAN</th>
+                                        <th style="min-width: 160px; width: 160px;" data-filter="string">EKİP / BÖLGE</th>
+                                        <th class="text-center" data-filter="select">BİLDİRİM</th>
+                                        <th data-filter="select">DURUM</th>
+                                        <!-- Additional columns (hidden by default) -->
+                                        <th data-filter="date">DOĞUM TARİHİ</th>
+                                        <th data-filter="select">CİNSİYET</th>
+                                        <th data-filter="select">MEDENİ DURUM</th>
+                                        <th data-filter="select">KAN GRUBU</th>
+                                        <th data-filter="string">ADRES</th>
+                                        <th data-filter="select">EHLİYET</th>
+                                        <th data-filter="string">IBAN</th>
+                                        <th data-filter="string">BANKA</th>
+                                        <th data-filter="string">MAAŞ</th>
+                                        <th data-filter="string">SGK NO</th>
+                                        <th data-filter="string">SODEXO NO</th>
+                                        <th data-filter="string">2. TELEFON</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+
+                        </div>
                     </div>
                 </div>
             </div> <!-- end col -->
@@ -403,7 +452,8 @@ if (Gate::canWithMessage("personel_listesi")) {
                                             </div>
                                             <div class="col-md-6 mb-3">
                                                 <label class="form-label text-muted font-size-13">Cinsiyet</label>
-                                                <div id="detailCinsiyet" class="fw-bold text-dark border-bottom pb-1"></div>
+                                                <div id="detailCinsiyet" class="fw-bold text-dark border-bottom pb-1">
+                                                </div>
                                             </div>
                                             <div class="col-md-6 mb-3">
                                                 <label class="form-label text-muted font-size-13">Medeni Durum</label>
@@ -412,15 +462,18 @@ if (Gate::canWithMessage("personel_listesi")) {
                                             </div>
                                             <div class="col-md-6 mb-3">
                                                 <label class="form-label text-muted font-size-13">Kan Grubu</label>
-                                                <div id="detailKanGrubu" class="fw-bold text-dark border-bottom pb-1"></div>
+                                                <div id="detailKanGrubu" class="fw-bold text-dark border-bottom pb-1">
+                                                </div>
                                             </div>
                                             <div class="col-md-6 mb-3">
                                                 <label class="form-label text-muted font-size-13">Anne Adı</label>
-                                                <div id="detailAnneAdi" class="fw-bold text-dark border-bottom pb-1"></div>
+                                                <div id="detailAnneAdi" class="fw-bold text-dark border-bottom pb-1">
+                                                </div>
                                             </div>
                                             <div class="col-md-6 mb-3">
                                                 <label class="form-label text-muted font-size-13">Baba Adı</label>
-                                                <div id="detailBabaAdi" class="fw-bold text-dark border-bottom pb-1"></div>
+                                                <div id="detailBabaAdi" class="fw-bold text-dark border-bottom pb-1">
+                                                </div>
                                             </div>
                                             <div class="col-md-6 mb-3">
                                                 <label class="form-label text-muted font-size-13">Doğum Yeri</label>
@@ -435,15 +488,19 @@ if (Gate::canWithMessage("personel_listesi")) {
                                         <div class="row">
                                             <div class="col-md-6 mb-3">
                                                 <label class="form-label text-muted font-size-13">Cep Telefonu</label>
-                                                <div id="detailTelefon" class="fw-bold text-dark border-bottom pb-1"></div>
+                                                <div id="detailTelefon" class="fw-bold text-dark border-bottom pb-1">
+                                                </div>
                                             </div>
                                             <div class="col-md-6 mb-3">
-                                                <label class="form-label text-muted font-size-13">2. Cep Telefonu</label>
-                                                <div id="detailTelefon2" class="fw-bold text-dark border-bottom pb-1"></div>
+                                                <label class="form-label text-muted font-size-13">2. Cep
+                                                    Telefonu</label>
+                                                <div id="detailTelefon2" class="fw-bold text-dark border-bottom pb-1">
+                                                </div>
                                             </div>
                                             <div class="col-md-12 mb-3">
                                                 <label class="form-label text-muted font-size-13">E-posta Adresi</label>
-                                                <div id="detailEmail" class="fw-bold text-dark border-bottom pb-1"></div>
+                                                <div id="detailEmail" class="fw-bold text-dark border-bottom pb-1">
+                                                </div>
                                             </div>
                                             <div class="col-md-12 mb-3">
                                                 <label class="form-label text-muted font-size-13">Adres</label>
@@ -457,16 +514,20 @@ if (Gate::canWithMessage("personel_listesi")) {
                                     <div class="tab-pane" id="tabCalisma" role="tabpanel">
                                         <div class="row">
                                             <div class="col-md-6 mb-3">
-                                                <label class="form-label text-muted font-size-13">İşe Giriş Tarihi</label>
-                                                <div id="detailIseGiris" class="fw-bold text-dark border-bottom pb-1"></div>
+                                                <label class="form-label text-muted font-size-13">İşe Giriş
+                                                    Tarihi</label>
+                                                <div id="detailIseGiris" class="fw-bold text-dark border-bottom pb-1">
+                                                </div>
                                             </div>
                                             <div class="col-md-6 mb-3">
-                                                <label class="form-label text-muted font-size-13">İşten Çıkış Tarihi</label>
+                                                <label class="form-label text-muted font-size-13">İşten Çıkış
+                                                    Tarihi</label>
                                                 <div id="detailIstenCikis" class="fw-bold text-dark border-bottom pb-1">
                                                 </div>
                                             </div>
                                             <div class="col-md-6 mb-3">
-                                                <label class="form-label text-muted font-size-13">Çalışılan Proje</label>
+                                                <label class="form-label text-muted font-size-13">Çalışılan
+                                                    Proje</label>
                                                 <div id="detailProje" class="fw-bold text-dark border-bottom pb-1">
                                                 </div>
                                             </div>
@@ -481,8 +542,10 @@ if (Gate::canWithMessage("personel_listesi")) {
                                                 </div>
                                             </div>
                                             <div class="col-md-6 mb-3">
-                                                <label class="form-label text-muted font-size-13">SGK Yapılan Firma</label>
-                                                <div id="detailSgkFirma" class="fw-bold text-dark border-bottom pb-1"></div>
+                                                <label class="form-label text-muted font-size-13">SGK Yapılan
+                                                    Firma</label>
+                                                <div id="detailSgkFirma" class="fw-bold text-dark border-bottom pb-1">
+                                                </div>
                                             </div>
                                             <div class="col-md-6 mb-3">
                                                 <label class="form-label text-muted font-size-13">Araç Kullanım</label>

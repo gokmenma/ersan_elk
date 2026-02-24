@@ -185,6 +185,93 @@ function initSelect2() {
       width: "100%",
     });
   }
+
+  // ============== KATEGORİ FİLTRELEME (TAB'A GÖRE) ==============
+  $("#demirbasModal").on("show.bs.modal", function () {
+    // Aktif tab'ı bul (Daha güvenli yöntem)
+    let activeTab = $("#demirbasTab button.active").attr("id");
+    if (!activeTab) {
+      activeTab = $(".nav-link.active[data-bs-toggle='tab']").attr("id");
+    }
+
+    const $kategoriSelect = $("#kategori_id");
+    const demirbasId = $("#demirbas_id").val();
+
+    // sayacKatIds tanımlı değilse veya boşsa işlem yapma
+    if (typeof sayacKatIds === "undefined") return;
+
+    // Önce hepsini temizle ve göster
+    $kategoriSelect.find("option").prop("disabled", false).show();
+
+    if (activeTab === "depo-tab") {
+      // SADECE SAYAÇLAR (SAYAC KAT ID İÇİNDE OLANLAR)
+      $kategoriSelect.find("option").each(function () {
+        const val = $(this).val();
+        if (val !== "" && !sayacKatIds.includes(val.toString())) {
+          $(this).prop("disabled", true).hide();
+        }
+      });
+
+      // Yeni kayıt ise: Eğer şu anki seçim uygun değilse ilk uygun olanı seç
+      if (demirbasId == "0") {
+        const currentVal = $kategoriSelect.val();
+        if (!currentVal || !sayacKatIds.includes(currentVal.toString())) {
+          const firstSayac = $kategoriSelect
+            .find("option")
+            .filter(function () {
+              return sayacKatIds.includes($(this).val().toString());
+            })
+            .first()
+            .val();
+          $kategoriSelect.val(firstSayac).trigger("change");
+        }
+      }
+    } else {
+      // SAYAÇLAR HARİÇ HER ŞEY
+      $kategoriSelect.find("option").each(function () {
+        const val = $(this).val();
+        if (val !== "" && sayacKatIds.includes(val.toString())) {
+          $(this).prop("disabled", true).hide();
+        }
+      });
+
+      // Yeni kayıt ise: Eğer şu anki seçim bir sayaç ise ilk uygun olanı seç
+      if (demirbasId == "0") {
+        const currentVal = $kategoriSelect.val();
+        if (!currentVal || sayacKatIds.includes(currentVal.toString())) {
+          const firstDemirbas = $kategoriSelect
+            .find("option")
+            .filter(function () {
+              const v = $(this).val();
+              return v !== "" && !sayacKatIds.includes(v.toString());
+            })
+            .first()
+            .val();
+          $kategoriSelect.val(firstDemirbas).trigger("change");
+        }
+      }
+    }
+
+    // Select2'yi tamamen sıfırla ve yeniden başlat (DOM değişikliklerini görmesi için)
+    if ($kategoriSelect.data("select2")) {
+      $kategoriSelect.select2("destroy");
+    }
+
+    $kategoriSelect.select2({
+      dropdownParent: $("#demirbasModal"),
+      width: "100%",
+      templateResult: function (option) {
+        if (!option.id) return option.text;
+        const target = $kategoriSelect.find(
+          'option[value="' + option.id + '"]',
+        );
+        if (target.css("display") === "none" || target.prop("disabled")) {
+          return null;
+        }
+        return option.text;
+      },
+    });
+  });
 }
 
 // ============== İŞ EMRİ SONUÇLARINI GETİR ==============

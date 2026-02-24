@@ -30,6 +30,9 @@ $(document).ready(function () {
         // Tabloyu göster (sütunlar reorder edildikten sonra)
         $("#membersTable").addClass("ready");
 
+        // Preloader'ı kapat
+        $("#personel-loader").fadeOut(300);
+
         // Sütunları bir kez daha hizala
         this.api().columns.adjust();
 

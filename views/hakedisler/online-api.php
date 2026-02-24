@@ -297,6 +297,31 @@ try {
                     $data['kdv_orani'] = $soz['kdv_orani'];
                     $data['tevkifat_orani'] = $soz['tevkifat_orani'];
                 }
+
+                // EPDK'dan hakediş ayı/yılına göre güncel endeks verilerini otomatik çek
+                require_once __DIR__ . '/endeks_api/akaryakit.php';
+                require_once __DIR__ . '/endeks_api/hizmet_endeks.php';
+
+                $hakedisAy = intval($data['hakedis_tarihi_ay']);
+                $hakedisYil = intval($data['hakedis_tarihi_yil']);
+
+                // Motorin Güncel (EPDK Akaryakıt)
+                $motorinFiyat = getEpdkMotorinFiyati($hakedisYil, $hakedisAy);
+                if ($motorinFiyat !== null) {
+                    $data['motorin_guncel'] = $motorinFiyat;
+                }
+
+                // Asgari Ücret Güncel, Yİ-ÜFE Güncel, Makine-Ekipman Güncel (Hizmet İşleri Endeksleri)
+                $endeksler = getHizmetEndeksleri($hakedisYil, $hakedisAy);
+                if ($endeksler['asgari_ucret'] !== null) {
+                    $data['asgari_ucret_guncel'] = $endeksler['asgari_ucret'];
+                }
+                if ($endeksler['ufe'] !== null) {
+                    $data['ufe_genel_guncel'] = $endeksler['ufe'];
+                }
+                if ($endeksler['makine'] !== null) {
+                    $data['makine_ekipman_guncel'] = $endeksler['makine'];
+                }
             }
 
             if ($hakedis_id) {

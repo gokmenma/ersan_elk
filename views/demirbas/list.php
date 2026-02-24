@@ -28,10 +28,15 @@ $sqlAyarlar = $Demirbas->db->prepare("SELECT * FROM demirbas WHERE (otomatik_zim
 $sqlAyarlar->execute();
 $ayarYapilmisDemirbaslar = $sqlAyarlar->fetchAll(PDO::FETCH_OBJ);
 
-// ====== SAYAÇ KATEGORİ ID'LERİ ======
-$sqlSayacKat = $Demirbas->db->prepare("SELECT id FROM demirbas_kategorileri WHERE LOWER(kategori_adi) LIKE '%sayaç%' OR LOWER(kategori_adi) LIKE '%sayac%'");
-$sqlSayacKat->execute();
-$sayacKatIds = $sqlSayacKat->fetchAll(PDO::FETCH_COLUMN);
+// ====== SAYAÇ KATEGORİ ID'LERİ (Daha Sağlıklı Tespit) ======
+$sayacKatIds = [];
+$tumKategoriler = $Kategori->getActiveCategories();
+foreach ($tumKategoriler as $kat) {
+    $katAdiLower = mb_strtolower($kat->kategori_adi, 'UTF-8');
+    if (str_contains($katAdiLower, 'sayaç') || str_contains($katAdiLower, 'sayac')) {
+        $sayacKatIds[] = (string) $kat->id;
+    }
+}
 
 // ====== DEMİRBAŞ VE SAYAÇ LİSTELERİNİ AYIR ======
 $demirbaslar = [];
@@ -383,7 +388,7 @@ if (!empty($sayacKatIds)) {
                                                     'pasif' => '<span class="badge bg-soft-secondary text-secondary">Pasif</span>',
                                                     'arizali' => '<span class="badge bg-soft-warning text-warning">Arızalı</span>',
                                                     'hurda' => '<span class="badge bg-soft-danger text-danger">Hurda</span>',
-                                                    'kaskiye teslim edildi' => '<span class="badge bg-soft-dark text-dark kaskiye-detay-btn" style="cursor:pointer;" data-id="' . $enc_id . '">Kaskiye Teslim Edildi</span>',
+                                                    'kaskiye teslim edildi' => '<span class="badge bg-soft-dark text-dark kaskiye-detay-btn" style="cursor:pointer;" data-id="' . $enc_id . '" data-name="' . htmlspecialchars($demirbas->demirbas_adi) . '" data-seri="' . htmlspecialchars($demirbas->seri_no ?? '-') . '">Kaskiye Teslim Edildi</span>',
                                                 ];
                                                 $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
                                                 ?>
@@ -396,10 +401,19 @@ if (!empty($sayacKatIds)) {
                                                         </span>
                                                     </td>
                                                     <td>
-                                                        <a href="#" data-id="<?php echo $enc_id; ?>"
-                                                            class="text-dark duzenle fw-medium">
-                                                            <?php echo $demirbas->demirbas_adi ?>
-                                                        </a>
+                                                        <?php if (strtolower($durumText) == 'kaskiye teslim edildi'): ?>
+                                                            <span class="text-dark fw-medium kaskiye-detay-btn"
+                                                                style="cursor:pointer;" data-id="<?php echo $enc_id; ?>"
+                                                                data-name="<?php echo htmlspecialchars($demirbas->demirbas_adi); ?>"
+                                                                data-seri="<?php echo htmlspecialchars($demirbas->seri_no ?? '-'); ?>">
+                                                                <?php echo $demirbas->demirbas_adi ?>
+                                                            </span>
+                                                        <?php else: ?>
+                                                            <a href="#" data-id="<?php echo $enc_id; ?>"
+                                                                class="text-dark duzenle fw-medium">
+                                                                <?php echo $demirbas->demirbas_adi ?>
+                                                            </a>
+                                                        <?php endif; ?>
                                                     </td>
                                                     <td>
                                                         <div>
@@ -604,10 +618,19 @@ if (!empty($sayacKatIds)) {
                                                     <td class="text-center"><?php echo $i ?></td>
                                                     <td class="text-center"><?php echo $sayac->demirbas_no ?? '-' ?></td>
                                                     <td>
-                                                        <a href="#" data-id="<?php echo $enc_id; ?>"
-                                                            class="text-dark duzenle fw-medium">
-                                                            <?php echo $sayac->demirbas_adi ?>
-                                                        </a>
+                                                        <?php if (strtolower($durumText) == 'kaskiye teslim edildi'): ?>
+                                                            <span class="text-dark fw-medium kaskiye-detay-btn"
+                                                                style="cursor:pointer;" data-id="<?php echo $enc_id; ?>"
+                                                                data-name="<?php echo htmlspecialchars($sayac->demirbas_adi); ?>"
+                                                                data-seri="<?php echo htmlspecialchars($sayac->seri_no ?? '-'); ?>">
+                                                                <?php echo $sayac->demirbas_adi ?>
+                                                            </span>
+                                                        <?php else: ?>
+                                                            <a href="#" data-id="<?php echo $enc_id; ?>"
+                                                                class="text-dark duzenle fw-medium">
+                                                                <?php echo $sayac->demirbas_adi ?>
+                                                            </a>
+                                                        <?php endif; ?>
                                                     </td>
                                                     <td>
                                                         <div><?php echo ($sayac->marka ?? '-') . ' ' . ($sayac->model ?? '') ?>
@@ -809,4 +832,7 @@ if (!empty($sayacKatIds)) {
     </div>
 </div>
 
+<script>
+    var sayacKatIds = <?php echo json_encode($sayacKatIds); ?>;
+</script>
 <script src="views/demirbas/js/demirbas.js"></script>

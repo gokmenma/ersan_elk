@@ -310,6 +310,7 @@ $ek_odeme_turleri = [
                             $pMaasTutari = floatval($p->maas_tutari ?? 0);
                             $pNetMaas = floatval($p->net_maas ?? 0);
                             $pToplamKesinti = floatval($p->kesinti_tutar ?? 0);
+                            $pIsNet = ($p->maas_durumu ?? '') == 'Net';
 
                             // Önce icra kesintisini al (toplamAlacağı hesabı için gerekli)
                             $pIcra = 0;
@@ -320,11 +321,14 @@ $ek_odeme_turleri = [
 
                             $pKesintiHaricIcra = $pToplamKesinti - $pIcra;
 
-                            if ($pNetMaas > 0) {
-                                // net_maas icra hariç hesaplandığı için: toplam = net + (kesinti - icra)
+                            if ($pIsNet) {
+                                // Net maaş tipi: toplam alacağı = personel tablosundaki maas_tutari
+                                $pToplamAlacagi = $pMaasTutari;
+                            } elseif ($pNetMaas > 0) {
+                                // Prim Usulü vb.: toplam = net + (kesinti - icra)
                                 $pToplamAlacagi = $pNetMaas + $pKesintiHaricIcra;
                             } else {
-                                // Hesaplama henüz yapılmamışsa tahmini değer: maaş + o anki ek ödemeler
+                                // Hesaplama henüz yapılmamışsa tahmini değer
                                 $pToplamAlacagi = $pMaasTutari + $hesaplananEkOdeme;
                             }
 
@@ -637,6 +641,7 @@ $ek_odeme_turleri = [
                                                 }
 
                                                 $isPrimUsulu = ($personel->maas_durumu ?? '') == 'Prim Usülü';
+                                                $isNetMaas = ($personel->maas_durumu ?? '') == 'Net';
                                                 $pNetMaasRow = floatval($personel->net_maas ?? 0);
                                                 $pToplamKesRow = floatval($personel->kesinti_tutar ?? 0);
 
@@ -649,8 +654,11 @@ $ek_odeme_turleri = [
 
                                                 $kesintiHaricIcra = $pToplamKesRow - $icraKesintisi;
 
-                                                if ($pNetMaasRow > 0) {
-                                                    // net_maas icra hariç hesaplandığı için: toplam = net + (kesinti - icra)
+                                                if ($isNetMaas) {
+                                                    // Net maaş tipi: toplam alacağı = personel tablosundaki maas_tutari
+                                                    $toplamAlacagiPersonel = floatval($personel->maas_tutari ?? 0);
+                                                } elseif ($pNetMaasRow > 0) {
+                                                    // Prim Usulü vb.: toplam = net + (kesinti - icra)
                                                     $toplamAlacagiPersonel = $pNetMaasRow + $kesintiHaricIcra;
                                                 } else {
                                                     // Henüz hesaplanmamışsa tahmini: maaş + ek ödemeler
