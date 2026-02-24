@@ -97,7 +97,8 @@ use App\Helper\Helper;
                             <span class="material-symbols-outlined text-amber-600 text-lg">warning</span>
                             <div>
                                 <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Konum İzni Gerekli</p>
-                                <p class="text-xs text-amber-600 dark:text-amber-400">Göreve başlamak için buraya tıklayarak konum izni
+                                <p class="text-xs text-amber-600 dark:text-amber-400">Göreve başlamak için buraya
+                                    tıklayarak konum izni
                                     vermeniz gerekmektedir.</p>
                             </div>
                         </div>
@@ -210,55 +211,67 @@ use App\Helper\Helper;
     <section class="px-4 mt-6">
         <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-3">Hızlı İşlemler</h2>
         <div class="grid grid-cols-2 gap-3 pb-8">
-            <a href="?page=izin" class="quick-action group border-none shadow-indigo-200/50 bg-gradient-to-br from-indigo-500 to-indigo-700 p-5 transition-all active:scale-95">
-                <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
+            <a href="?page=izin"
+                class="quick-action group border-none shadow-indigo-200/50 bg-gradient-to-br from-indigo-500 to-indigo-700 p-5 transition-all active:scale-95">
+                <div
+                    class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
                     <span class="material-symbols-outlined text-white text-2xl filled">event_busy</span>
                 </div>
                 <div>
                     <h3 class="font-bold text-sm text-white">İzin Talebi</h3>
                     <p class="text-[10px] text-indigo-100/80 font-medium">Yeni izin planla</p>
                 </div>
-                <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                <div
+                    class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
                     <span class="material-symbols-outlined text-7xl text-white">event_busy</span>
                 </div>
             </a>
 
-            <a href="?page=talep" class="quick-action group border-none shadow-emerald-200/50 bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 transition-all active:scale-95">
-                <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
+            <a href="?page=talep"
+                class="quick-action group border-none shadow-emerald-200/50 bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 transition-all active:scale-95">
+                <div
+                    class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
                     <span class="material-symbols-outlined text-white text-2xl filled">assignment</span>
                 </div>
                 <div>
                     <h3 class="font-bold text-sm text-white">Talep Oluştur</h3>
                     <p class="text-[10px] text-emerald-100/80 font-medium">Öneri ve Şikayet</p>
                 </div>
-                <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                <div
+                    class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
                     <span class="material-symbols-outlined text-7xl text-white">assignment</span>
                 </div>
             </a>
 
-            <a href="?page=bordro" class="quick-action group border-none shadow-orange-200/50 bg-gradient-to-br from-orange-500 to-orange-700 p-5 transition-all active:scale-95">
-                <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
+            <a href="?page=bordro"
+                class="quick-action group border-none shadow-orange-200/50 bg-gradient-to-br from-orange-500 to-orange-700 p-5 transition-all active:scale-95">
+                <div
+                    class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
                     <span class="material-symbols-outlined text-white text-2xl filled">receipt_long</span>
                 </div>
                 <div>
                     <h3 class="font-bold text-sm text-white">Avanslar</h3>
                     <p class="text-[10px] text-orange-100/80 font-medium">Avans Talebi Yap</p>
                 </div>
-                <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                <div
+                    class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
                     <span class="material-symbols-outlined text-7xl text-white">receipt_long</span>
                 </div>
             </a>
 
-            <a href="?page=profil" class="quick-action group border-none shadow-rose-200/50 bg-gradient-to-br from-rose-500 to-rose-700 p-5 transition-all active:scale-95">
-                <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
-                    <span class="material-symbols-outlined text-white text-2xl filled">person_search</span>
+            <a href="?page=zimmetler"
+                class="quick-action group border-none shadow-amber-200/50 bg-gradient-to-br from-amber-500 to-amber-700 p-5 transition-all active:scale-95">
+                <div
+                    class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
+                    <span class="material-symbols-outlined text-white text-2xl filled">inventory_2</span>
                 </div>
                 <div>
-                    <h3 class="font-bold text-sm text-white">Profilim</h3>
-                    <p class="text-[10px] text-rose-100/80 font-medium">Bilgileri Güncelle</p>
+                    <h3 class="font-bold text-sm text-white">Zimmetler</h3>
+                    <p class="text-[10px] text-amber-100/80 font-medium">Demirbaş Takibi</p>
                 </div>
-                <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-                    <span class="material-symbols-outlined text-7xl text-white">person_search</span>
+                <div
+                    class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                    <span class="material-symbols-outlined text-7xl text-white">inventory_2</span>
                 </div>
             </a>
         </div>

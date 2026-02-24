@@ -367,6 +367,12 @@ File: Main Js File
       }
     });
 
+    // Apply font-family to html element (CSS selectors target html)
+    const savedFont = localStorage.getItem("data-font-family");
+    if (savedFont) {
+      html.setAttribute("data-font-family", savedFont);
+    }
+
     // right side-bar toggle
     $(".right-bar-toggle").on("click", function (e) {
       $("body").toggleClass("right-bar-enabled");
@@ -488,6 +494,20 @@ File: Main Js File
                       ? updateRadio("theme-cyan")
                       : updateRadio("theme-default");
 
+    if (html.getAttribute("data-font-family") == "Outfit") {
+      updateRadio("font-outfit");
+    } else if (html.getAttribute("data-font-family") == "Poppins") {
+      updateRadio("font-poppins");
+    } else if (html.getAttribute("data-font-family") == "Plus Jakarta Sans") {
+      updateRadio("font-jakarta");
+    } else if (html.getAttribute("data-font-family") == "Lexend") {
+      updateRadio("font-lexend");
+    } else if (html.getAttribute("data-font-family") == "Inter") {
+      updateRadio("font-inter");
+    } else {
+      updateRadio("font-geist");
+    }
+
     html.hasAttribute("data-bs-theme") &&
     html.getAttribute("data-bs-theme") == "dark"
       ? updateRadio("layout-mode-dark")
@@ -585,6 +605,10 @@ File: Main Js File
       var val = $(this).val();
       document.documentElement.setAttribute("data-theme-mode", val);
       localStorage.setItem("data-theme-mode", val);
+      // Clear custom color override when selecting a predefined theme
+      localStorage.removeItem("custom-primary-color");
+      document.documentElement.style.removeProperty("--bs-primary");
+      document.documentElement.style.removeProperty("--bs-primary-rgb");
     });
 
     // on layou change
@@ -666,6 +690,9 @@ File: Main Js File
       var val = $(this).val();
       document.body.setAttribute("data-topbar", val);
       localStorage.setItem("data-topbar", val);
+      // Clear custom topbar if predefined color selected
+      localStorage.removeItem("custom-topbar-color");
+      $("#custom-topbar-style").remove();
     });
 
     // on sidebar size change
@@ -683,7 +710,97 @@ File: Main Js File
       var val = $(this).val();
       document.body.setAttribute("data-sidebar", val);
       localStorage.setItem("data-sidebar", val);
+      // Clear custom sidebar if predefined color selected
+      localStorage.removeItem("custom-sidebar-color");
+      $("#custom-sidebar-style").remove();
     });
+
+    // on font family change
+    $("input[name='font-family']").on("change", function () {
+      var val = $(this).val();
+      document.documentElement.setAttribute("data-font-family", val);
+      localStorage.setItem("data-font-family", val);
+    });
+
+    // on custom theme picker change
+    $("#custom-theme-picker").on("input", function () {
+      var val = $(this).val();
+      document.documentElement.style.setProperty("--bs-primary", val);
+      const r = parseInt(val.slice(1, 3), 16),
+        g = parseInt(val.slice(3, 5), 16),
+        b = parseInt(val.slice(5, 7), 16);
+      document.documentElement.style.setProperty(
+        "--bs-primary-rgb",
+        `${r}, ${g}, ${b}`,
+      );
+      localStorage.setItem("custom-primary-color", val);
+      // Deselect standard theme radios
+      $("input[name='theme-mode']").prop("checked", false);
+    });
+
+    // on custom topbar picker change
+    $("#custom-topbar-picker").on("input", function () {
+      var val = $(this).val();
+      applyCustomTopbar(val);
+      localStorage.setItem("custom-topbar-color", val);
+      $("input[name='topbar-color']").prop("checked", false);
+    });
+
+    // on custom sidebar picker change
+    $("#custom-sidebar-picker").on("input", function () {
+      var val = $(this).val();
+      applyCustomSidebar(val);
+      localStorage.setItem("custom-sidebar-color", val);
+      $("input[name='sidebar-color']").prop("checked", false);
+    });
+
+    function applyCustomTopbar(color) {
+      $("#custom-topbar-style").remove();
+      $(
+        "<style id='custom-topbar-style'>body #page-topbar, body .navbar-brand-box { background-color: " +
+          color +
+          " !important; border-color: " +
+          color +
+          " !important; } body #page-topbar .header-item, body #page-topbar .logo-txt { color: #fff !important; }</style>",
+      ).appendTo("head");
+    }
+
+    function applyCustomSidebar(color) {
+      $("#custom-sidebar-style").remove();
+      $(
+        "<style id='custom-sidebar-style'>body .vertical-menu { background-color: " +
+          color +
+          " !important; border-color: " +
+          color +
+          " !important; } body .vertical-menu .mm-active, body .vertical-menu .mm-active i, body .vertical-menu .mm-active span { color: #fff !important; }</style>",
+      ).appendTo("head");
+    }
+
+    // Initialize custom colors
+    const savedTheme = localStorage.getItem("custom-primary-color");
+    if (savedTheme) {
+      $("#custom-theme-picker").val(savedTheme);
+      document.documentElement.style.setProperty("--bs-primary", savedTheme);
+      const r = parseInt(savedTheme.slice(1, 3), 16),
+        g = parseInt(savedTheme.slice(3, 5), 16),
+        b = parseInt(savedTheme.slice(5, 7), 16);
+      document.documentElement.style.setProperty(
+        "--bs-primary-rgb",
+        `${r}, ${g}, ${b}`,
+      );
+    }
+
+    const savedTopbar = localStorage.getItem("custom-topbar-color");
+    if (savedTopbar) {
+      $("#custom-topbar-picker").val(savedTopbar);
+      applyCustomTopbar(savedTopbar);
+    }
+
+    const savedSidebar = localStorage.getItem("custom-sidebar-color");
+    if (savedSidebar) {
+      $("#custom-sidebar-picker").val(savedSidebar);
+      applyCustomSidebar(savedSidebar);
+    }
 
     // on RTL-LTR mode change
     $("input[name='layout-direction']").on("change", function () {

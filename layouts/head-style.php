@@ -2,6 +2,7 @@
     (function () {
         const htmlAttributes = [
             { name: 'data-theme-mode', target: 'html' },
+            { name: 'data-font-family', target: 'html' },
             { name: 'data-bs-theme', target: 'html' },
             { name: 'dir', target: 'html' }
         ];
@@ -16,7 +17,8 @@
         };
 
         htmlAttributes.forEach(attr => {
-            const value = localStorage.getItem(attr.name);
+            let value = localStorage.getItem(attr.name);
+            if (!value && attr.name === 'data-font-family') value = 'Geist';
             if (value) applyAttribute(attr, value);
         });
     })();
@@ -31,11 +33,11 @@ use App\Helper\Helper;
 
 ?>
 
-<!-- Google Fonts: Inter & Outfit -->
+<!-- Google Fonts: Geist, Inter, Outfit, Poppins, Plus Jakarta Sans, Lexend -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Lexend:wght@400;500;600;700&display=swap"
     rel="stylesheet">
 
 <!-- preloader css -->

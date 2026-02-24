@@ -84,6 +84,127 @@ if ($action == "demirbas-kaydet") {
     }
 }
 
+// Toplu Seri ile Demirbaş Kaydet
+if ($action == "demirbas-toplu-kaydet") {
+    try {
+        $seriListesi = json_decode($_POST["seri_listesi"] ?? "[]", true);
+
+        if (empty($seriListesi)) {
+            jsonResponse("error", "Seri numarası listesi boş.");
+        }
+
+        if (count($seriListesi) > 500) {
+            jsonResponse("error", "Tek seferde en fazla 500 adet seri girilebilir.");
+        }
+
+        $baseData = [
+            "demirbas_no" => $_POST["demirbas_no"] ?? null,
+            "kategori_id" => !empty($_POST["kategori_id"]) ? $_POST["kategori_id"] : null,
+            "demirbas_adi" => $_POST["demirbas_adi"],
+            "marka" => $_POST["marka"] ?? null,
+            "model" => $_POST["model"] ?? null,
+            "edinme_tarihi" => $_POST["edinme_tarihi"] ?? null,
+            "edinme_tutari" => Helper::formattedMoneyToNumber($_POST["edinme_tutari"] ?? 0),
+            "durum" => $_POST["durum"] ?? 'aktif',
+            "aciklama" => $_POST["aciklama"] ?? null,
+            "otomatik_zimmet_is_emri" => !empty($_POST["otomatik_zimmet_is_emri"]) ? $_POST["otomatik_zimmet_is_emri"] : null,
+            "otomatik_iade_is_emri" => !empty($_POST["otomatik_iade_is_emri"]) ? $_POST["otomatik_iade_is_emri"] : null,
+        ];
+
+        $successCount = 0;
+        $errorCount = 0;
+        $errors = [];
+
+        $Demirbas->db->beginTransaction();
+
+        foreach ($seriListesi as $seriNo) {
+            try {
+                $data = array_merge($baseData, [
+                    "id" => 0,
+                    "seri_no" => $seriNo,
+                    "miktar" => 1,
+                    "kalan_miktar" => 1,
+                    "kayit_yapan" => $_SESSION["id"] ?? null,
+                ]);
+
+                $Demirbas->saveWithAttr($data);
+                $successCount++;
+            } catch (Exception $e) {
+                $errorCount++;
+                $errors[] = "Seri $seriNo: " . $e->getMessage();
+            }
+        }
+
+        $Demirbas->db->commit();
+
+        $message = "$successCount adet demirbaş başarıyla oluşturuldu.";
+        if ($errorCount > 0) {
+            $message .= " $errorCount adet hata oluştu.";
+        }
+
+        jsonResponse("success", $message, ["toplam" => $successCount, "hatalar" => $errors]);
+    } catch (Exception $ex) {
+        if ($Demirbas->db->inTransaction()) {
+            $Demirbas->db->rollBack();
+        }
+        jsonResponse("error", "Hata: " . $ex->getMessage());
+    }
+}
+
+// Kaskiye Teslim (Hurda sayaçları Kaskiye teslim et - stoktan çıkış)
+if ($action == "kasiye-teslim") {
+    try {
+        $demirbas_id = intval($_POST["demirbas_id"] ?? 0);
+        $miktar = intval($_POST["miktar"] ?? 0);
+        $tarih = $_POST["tarih"] ?? date('d.m.Y');
+        $aciklama = $_POST["aciklama"] ?? null;
+
+        if ($demirbas_id <= 0 || $miktar <= 0) {
+            jsonResponse("error", "Geçersiz parametreler.");
+        }
+
+        // Demirbaşı bul
+        $demirbas = $Demirbas->find($demirbas_id);
+        if (!$demirbas) {
+            jsonResponse("error", "Demirbaş bulunamadı.");
+        }
+
+        // Stok kontrolü
+        if ($demirbas->kalan_miktar < $miktar) {
+            jsonResponse("error", "Yetersiz stok! Depoda sadece {$demirbas->kalan_miktar} adet bulunmaktadır.");
+        }
+
+        // Stoktan düş
+        $yeniKalan = $demirbas->kalan_miktar - $miktar;
+        $yeniMiktar = $demirbas->miktar - $miktar;
+        if ($yeniMiktar < 0)
+            $yeniMiktar = 0;
+
+        $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET kalan_miktar = ?, miktar = ? WHERE id = ?");
+        $sqlUpdate->execute([$yeniKalan, $yeniMiktar, $demirbas_id]);
+
+        // Hareket kaydı oluştur (audit trail)
+        try {
+            $Hareket->hareketEkle([
+                'demirbas_id' => $demirbas_id,
+                'personel_id' => $_SESSION["id"] ?? 1,
+                'hareket_tipi' => 'sarf',
+                'miktar' => $miktar,
+                'tarih' => Date::Ymd($tarih, 'Y-m-d'),
+                'aciklama' => 'Kaskiye teslim: ' . ($aciklama ?? ''),
+                'islem_yapan_id' => $_SESSION["id"] ?? null,
+                'kaynak' => 'manuel',
+            ]);
+        } catch (Exception $e) {
+            // Hareket kaydı hata verse bile ana işlemi etkilemesin
+        }
+
+        jsonResponse("success", "$miktar adet hurda sayaç Kaskiye teslim edildi. Stok güncellendi.");
+    } catch (Exception $ex) {
+        jsonResponse("error", "Hata: " . $ex->getMessage());
+    }
+}
+
 // Demirbaş bilgilerini getir
 if ($action == "demirbas-getir") {
     $id = Security::decrypt($_POST["demirbas_id"]);

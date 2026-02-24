@@ -393,6 +393,30 @@ class NobetModel extends Model
     }
 
     /**
+     * Personelin bu nöbet için bekleyen bir değişim talebi olup olmadığını kontrol eder
+     */
+    public function hasPendingDegisimTalebi($nobet_id, $talep_eden_id)
+    {
+        $sql = "SELECT COUNT(*) FROM nobet_degisim_talepleri 
+                WHERE nobet_id = :nobet_id 
+                AND talep_eden_id = :talep_eden_id 
+                AND durum IN ('beklemede', 'personel_onayladi')";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['nobet_id' => $nobet_id, 'talep_eden_id' => $talep_eden_id]);
+        return $stmt->fetchColumn() > 0;
+    }
+
+    /**
+     * Değişim talebini iptal eder
+     */
+    public function iptalDegisimTalebi($talep_id, $talep_eden_id)
+    {
+        $sql = "UPDATE nobet_degisim_talepleri SET durum = 'iptal' WHERE id = :id AND talep_eden_id = :talep_eden_id AND durum = 'beklemede'";
+        $query = $this->db->prepare($sql);
+        return $query->execute(['id' => $talep_id, 'talep_eden_id' => $talep_eden_id]);
+    }
+
+    /**
      * Değişim talebini günceller
      */
     public function updateDegisimTalebi($id, $data)

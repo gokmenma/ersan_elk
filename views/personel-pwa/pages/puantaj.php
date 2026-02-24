@@ -112,7 +112,8 @@ use App\Helper\Date;
             </button>
         </div>
 
-        <div id="puantaj-detail-content" class="flex flex-col gap-4">
+        <div id="puantaj-detail-content"
+            class="flex flex-col gap-4 overflow-y-auto max-h-[70vh] pb-6 disable-scrollbar">
             <!-- Content will be loaded dynamically -->
         </div>
     </div>
@@ -244,104 +245,187 @@ use App\Helper\Date;
         }
 
         emptyState.classList.add('hidden');
-        listContainer.innerHTML = puantajData.map(item => `
-            <div class="card p-4 hover:shadow-md transition-shadow cursor-pointer" onclick="showPuantajDetail('${item.id}')">
-                <div class="flex items-start gap-4">
-                    <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0
-                        ${item.acik_olanlar > 0 ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-green-100 dark:bg-green-900/30'}">
-                        <span class="material-symbols-outlined text-xl
-                            ${item.acik_olanlar > 0 ? 'text-amber-600' : 'text-green-600'}">
-                            ${item.acik_olanlar > 0 ? 'pending_actions' : 'task_alt'}
-                        </span>
+
+        // Günlere göre grupla
+        const groups = puantajData.reduce((acc, item) => {
+            const date = item.tarih;
+            if (!acc[date]) acc[date] = {
+                date: date,
+                items: [],
+                total: 0,
+                sonuclanan: 0,
+                acik: 0
+            };
+            acc[date].items.push(item);
+            acc[date].total++;
+            acc[date].sonuclanan += (int(item.sonuclanmis) || 0);
+            acc[date].acik += (int(item.acik_olanlar) || 0);
+            return acc;
+        }, {});
+
+        function int(val) { return parseInt(val) || 0; }
+
+        // Tarihe göre azalan sırala
+        const sortedGroups = Object.values(groups).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        listContainer.innerHTML = sortedGroups.map(group => {
+            const dateObj = new Date(group.date);
+            const gunAdi = dateObj.toLocaleDateString('tr-TR', { weekday: 'long' });
+
+            // Eğer bekleyen varsa warning gradienti, yoksa primary gradienti
+            const variantClass = group.acik > 0 ? 'warning' : '';
+
+            return `
+            <div class="card card-premium ${variantClass} p-5 mb-4 hover:shadow-xl transition-all active:scale-[0.98] cursor-pointer group" 
+                 onclick="showDailyDetail('${group.date}')">
+                <div class="flex items-center justify-between">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-1">${gunAdi}</span>
+                        <h4 class="font-black text-slate-800 dark:text-white text-xl tracking-tight">${formatDate(group.date)}</h4>
                     </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between gap-2">
-                            <h4 class="font-semibold text-slate-900 dark:text-white truncate">${item.is_emri_tipi || 'İş Türü'}</h4>
-                            <span class="text-xs text-slate-500 whitespace-nowrap">${formatDate(item.tarih)}</span>
+                    <div class="flex flex-col items-end">
+                        <div class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/50 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                             <span class="text-[10px] font-black text-primary">${group.total} İŞ</span>
                         </div>
-                        <p class="text-sm text-slate-500 mt-1 truncate">${item.is_emri_sonucu || '-'}</p>
-                        <div class="flex items-center gap-3 mt-2">
-                            <span class="inline-flex items-center gap-1 text-xs ${item.sonuclanmis > 0 ? 'text-green-600' : 'text-slate-400'}">
-                                <span class="material-symbols-outlined text-sm">check_circle</span>
-                                ${item.sonuclanmis || 0}
-                            </span>
-                            <span class="inline-flex items-center gap-1 text-xs ${item.acik_olanlar > 0 ? 'text-amber-600' : 'text-slate-400'}">
-                                <span class="material-symbols-outlined text-sm">schedule</span>
-                                ${item.acik_olanlar || 0}
-                            </span>
+                        <div class="flex gap-2 mt-2.5">
+                            <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-green-500/5 text-green-600 border border-green-500/10">
+                                <span class="material-symbols-outlined text-[14px] filled">check_circle</span>
+                                <span class="text-[11px] font-bold">${group.sonuclanan}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-500/5 text-amber-600 border border-amber-500/10">
+                                <span class="material-symbols-outlined text-[14px] filled">schedule</span>
+                                <span class="text-[11px] font-bold">${group.acik}</span>
+                            </div>
                         </div>
                     </div>
-                    <span class="material-symbols-outlined text-slate-400">chevron_right</span>
+                </div>
+                <div class="mt-5 flex items-center justify-between">
+                    <div class="flex -space-x-3 overflow-hidden p-1">
+                        ${group.items.slice(0, 5).map(item => `
+                            <div class="w-10 h-10 rounded-2xl bg-white dark:bg-slate-800 border-2 border-slate-50 dark:border-slate-800 flex items-center justify-center shadow-sm transition-transform group-hover:translate-y-[-2px]" title="${item.is_emri_tipi}">
+                                <span class="material-symbols-outlined text-lg text-primary">
+                                    ${getIconForWorkType(item.is_emri_tipi)}
+                                </span>
+                            </div>
+                        `).join('')}
+                        ${group.total > 5 ? `<div class="w-10 h-10 rounded-2xl bg-slate-900 text-white text-[10px] font-black flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-md">+${group.total - 5}</div>` : ''}
+                    </div>
+                    <div class="w-10 h-10 rounded-2xl bg-primary/5 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
+                        <span class="material-symbols-outlined text-base font-bold">arrow_forward_ios</span>
+                    </div>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
-    function showPuantajDetail(id) {
-        // String karşılaştırması yap (sunucu string gönderebilir)
-        const item = puantajData.find(p => String(p.id) === String(id));
-        if (!item) {
-            console.error('Puantaj item bulunamadı:', id, 'Mevcut veriler:', puantajData.map(p => p.id));
-            return;
-        }
+    function getIconForWorkType(type) {
+        type = (type || '').toLowerCase();
+        if (type.includes('açma')) return 'key';
+        if (type.includes('kesme')) return 'content_cut';
+        if (type.includes('sayaç')) return 'speed';
+        if (type.includes('mühür')) return 'verified';
+        return 'assignment';
+    }
 
-        const content = document.getElementById('puantaj-detail-content');
-        content.innerHTML = `
-            <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="w-12 h-12 rounded-xl flex items-center justify-center
-                        ${item.acik_olanlar > 0 ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-green-100 dark:bg-green-900/30'}">
-                        <span class="material-symbols-outlined text-xl
-                            ${item.acik_olanlar > 0 ? 'text-amber-600' : 'text-green-600'}">
-                            ${item.acik_olanlar > 0 ? 'pending_actions' : 'task_alt'}
-                        </span>
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-slate-900 dark:text-white">${item.is_emri_tipi || 'İş Türü'}</h4>
-                        <p class="text-sm text-slate-500">${formatDate(item.tarih)}</p>
-                    </div>
-                </div>
-            </div>
+    function showDailyDetail(date) {
+        const items = puantajData.filter(p => p.tarih === date);
+        const container = document.getElementById('puantaj-detail-content');
+        const modalHeader = document.querySelector('#puantaj-detail-modal h3');
 
-            <div class="grid grid-cols-2 gap-4">
-                <div class="card p-4 text-center">
-                    <span class="material-symbols-outlined text-green-500 text-2xl">check_circle</span>
-                    <p class="text-2xl font-bold text-slate-900 dark:text-white mt-1">${item.sonuclanmis || 0}</p>
-                    <p class="text-xs text-slate-500">Sonuçlanan</p>
-                </div>
-                <div class="card p-4 text-center">
-                    <span class="material-symbols-outlined text-amber-500 text-2xl">schedule</span>
-                    <p class="text-2xl font-bold text-slate-900 dark:text-white mt-1">${item.acik_olanlar || 0}</p>
-                    <p class="text-xs text-slate-500">Açık</p>
-                </div>
-            </div>
+        modalHeader.textContent = formatDate(date) + ' İşleri';
 
-            <div class="flex flex-col gap-3">
-                <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                    <span class="material-symbols-outlined text-slate-500">business</span>
-                    <div>
-                        <p class="text-xs text-slate-500">Firma</p>
-                        <p class="font-semibold text-slate-900 dark:text-white">${item.firma || '-'}</p>
+        container.innerHTML = `
+            <div class="flex flex-col gap-3 pt-2">
+                ${items.map(item => `
+                    <div class="card p-4 bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-all cursor-pointer shadow-sm active:scale-[0.98]" 
+                         onclick="showPuantajDetail('${item.id}')">
+                        <div class="flex items-center gap-3">
+                            <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0
+                                ${parseInt(item.acik_olanlar) > 0 ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-primary/10'}">
+                                <span class="material-symbols-outlined text-xl ${parseInt(item.acik_olanlar) > 0 ? 'text-amber-600' : 'text-primary'}">
+                                    ${getIconForWorkType(item.is_emri_tipi)}
+                                </span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h5 class="font-bold text-slate-900 dark:text-white text-[13px] truncate uppercase tracking-tight">${item.is_emri_tipi}</h5>
+                                <p class="text-[12px] text-slate-500 mt-0.5 truncate">${item.is_emri_sonucu || '-'}</p>
+                            </div>
+                            <div class="flex flex-col items-end">
+                                <div class="flex items-center gap-1.5 mb-1">
+                                    ${parseInt(item.sonuclanmis) > 0 ? `<span class="text-[10px] font-bold text-green-600 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded-lg border border-green-100 dark:border-green-800/30">${item.sonuclanmis}</span>` : ''}
+                                    ${parseInt(item.acik_olanlar) > 0 ? `<span class="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-lg border border-amber-100 dark:border-amber-800/30">${item.acik_olanlar}</span>` : ''}
+                                </div>
+                                <span class="material-symbols-outlined text-slate-300 text-lg">chevron_right</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                    <span class="material-symbols-outlined text-slate-500">receipt_long</span>
-                    <div>
-                        <p class="text-xs text-slate-500">İş Emri Sonucu</p>
-                        <p class="font-semibold text-slate-900 dark:text-white">${item.is_emri_sonucu || '-'}</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                    <span class="material-symbols-outlined text-slate-500">groups</span>
-                    <div>
-                        <p class="text-xs text-slate-500">Ekip Kodu</p>
-                        <p class="font-semibold text-slate-900 dark:text-white">${item.ekip_kodu || '-'}</p>
-                    </div>
-                </div>
+                `).join('')}
             </div>
         `;
 
         Modal.open('puantaj-detail-modal');
+    }
+
+    function showPuantajDetail(id) {
+        // Event propagation'ı durdur (Eğer daily detail modal içinden tıklandıysa ana modalı etkilemesin)
+        if (event) event.stopPropagation();
+
+        // String karşılaştırması yap (sunucu string gönderebilir)
+        const item = puantajData.find(p => String(p.id) === String(id));
+        if (!item) return;
+
+        // SweetAlert veya başka bir modal ile detayları gösterelim ki 
+        // ana listeyi (günlük liste) kapatmadan detay görebilelim.
+        Alert.show({
+            title: item.is_emri_tipi,
+            content: `
+                <div class="text-left py-2">
+                    <div class="flex flex-col gap-3">
+                        <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                            <span class="material-symbols-outlined text-primary">event</span>
+                            <div>
+                                <p class="text-[10px] text-slate-500 uppercase font-bold">Tarih</p>
+                                <p class="font-semibold text-slate-900 dark:text-white">${formatDate(item.tarih)}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                            <span class="material-symbols-outlined text-primary">receipt_long</span>
+                            <div>
+                                <p class="text-[10px] text-slate-500 uppercase font-bold">Durum / Sonuç</p>
+                                <p class="font-semibold text-slate-900 dark:text-white">${item.is_emri_sonucu || '-'}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                            <span class="material-symbols-outlined text-primary">groups</span>
+                            <div>
+                                <p class="text-[10px] text-slate-500 uppercase font-bold">Ekip Kodu</p>
+                                <p class="font-semibold text-slate-900 dark:text-white">${item.ekip_kodu || '-'}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                            <span class="material-symbols-outlined text-primary">business</span>
+                            <div>
+                                <p class="text-[10px] text-slate-500 uppercase font-bold">Firma</p>
+                                <p class="font-semibold text-slate-900 dark:text-white">${item.firma || '-'}</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mt-1">
+                            <div class="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-100 dark:border-green-800/30 text-center">
+                                <p class="text-[10px] text-green-600 dark:text-green-400 uppercase font-bold">Sonuçlanan</p>
+                                <p class="text-xl font-bold text-green-700 dark:text-green-300">${item.sonuclanmis || 0}</p>
+                            </div>
+                            <div class="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-800/30 text-center">
+                                <p class="text-[10px] text-amber-600 dark:text-amber-400 uppercase font-bold">Açık / Bekleyen</p>
+                                <p class="text-xl font-bold text-amber-700 dark:text-amber-300">${item.acik_olanlar || 0}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+            showConfirmButton: true,
+            confirmButtonText: 'Kapat'
+        });
     }
 
     function formatDate(dateStr) {

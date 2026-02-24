@@ -392,6 +392,12 @@
         'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
     const gunler = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
+    // Hafta sonu kontrolü: Sadece Pazar (0) veya nobet_tipi 'hafta_sonu' ise hafta sonu sayılır
+    function isNobetHaftaSonu(nobet, date) {
+        if (nobet && nobet.nobet_tipi === 'hafta_sonu') return true;
+        return date.getDay() === 0; // Sadece Pazar
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         loadNobetler();
         loadTalepler();
@@ -500,8 +506,8 @@
         const aktifNobetler = nobetlerData.filter(n => !n.silinmis_mi);
         const toplam = aktifNobetler.length;
         const haftaSonu = aktifNobetler.filter(n => {
-            const gun = new Date(n.nobet_tarihi).getDay();
-            return gun === 0 || gun === 6;
+            const d = new Date(n.nobet_tarihi);
+            return isNobetHaftaSonu(n, d);
         }).length;
         const yaklasan = aktifNobetler.filter(n => {
             const nobetTarihi = new Date(n.nobet_tarihi);
@@ -603,7 +609,7 @@
             date.setHours(0, 0, 0, 0);
             const isToday = date.getTime() === today.getTime();
             const isPast = date < today;
-            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+            const isWeekend = isNobetHaftaSonu(nobet, date);
 
             let dayClass = 'bg-slate-50 dark:bg-slate-800';
             let textClass = 'text-slate-600 dark:text-slate-400';
@@ -686,7 +692,7 @@
             const date = new Date(nobet.nobet_tarihi);
             date.setHours(0, 0, 0, 0);
             const gunAdi = gunler[date.getDay()];
-            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+            const isWeekend = isNobetHaftaSonu(nobet, date);
             const isPast = date < today;
             const isDeleted = nobet.silinmis_mi;
 
@@ -774,7 +780,7 @@
 
         const date = new Date(nobet.nobet_tarihi);
         const gunAdi = gunler[date.getDay()];
-        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+        const isWeekend = isNobetHaftaSonu(nobet, date);
         const isPast = date < new Date();
         const formattedDate = date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
 
@@ -982,12 +988,26 @@
         }
 
         try {
-            const response = await API.request('createNobetDegisimTalebi', formData);
+            const mode = form.dataset.mode || 'create';
+            let action = 'createNobetDegisimTalebi';
+            let data = formData;
+
+            if (mode === 'update') {
+                action = 'updateNobetDegisimTalebi';
+                data = {
+                    talep_id: form.dataset.talepId,
+                    talep_edilen_id: formData.talep_edilen_id,
+                    aciklama: formData.aciklama
+                };
+            }
+
+            const response = await API.request(action, data);
 
             if (response.success) {
-                Toast.show('Değişim talebiniz gönderildi', 'success');
+                Toast.show(response.message || 'İşlem başarılı', 'success');
                 Modal.close('degisim-modal');
                 form.reset();
+                form.dataset.mode = 'create';
                 loadTalepler();
             } else {
                 Toast.show(response.message || 'Bir hata oluştu', 'error');
@@ -1035,6 +1055,68 @@
             Toast.show('Bir hata oluştu', 'error');
         }
     }
+
+    async function iptalEtDegisim(talepId) {
+        const confirmed = await Alert.confirm(
+            'Talebi İptal Et',
+            'Bu değişim talebini iptal etmek istediğinize emin misiniz?',
+            'Evet, İptal Et',
+            'Vazgeç'
+        );
+
+        if (!confirmed) return;
+
+        try {
+            const response = await API.request('iptalNobetDegisimTalebi', { talep_id: talepId });
+
+            if (response.success) {
+                Toast.show('Talep iptal edildi', 'success');
+                loadTalepler();
+            } else {
+                Toast.show(response.message || 'Bir hata oluştu', 'error');
+            }
+        } catch (error) {
+            Toast.show('Bir hata oluştu', 'error');
+        }
+    }
+
+    function openDegisimGuncelleModal(talepId) {
+        const talep = taleplerData.find(t => t.id == talepId);
+        if (!talep) return;
+
+        const date = new Date(talep.nobet_tarihi);
+        const formattedDate = date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', weekday: 'long' });
+
+        document.getElementById('degisim-nobet-id').value = talep.id; // Burada talep_id'yi nobet_id alanına koyuyoruz ama submit'te ayıracağız
+        document.getElementById('degisim-nobet-info').textContent = formattedDate + " (Güncelleme)";
+
+        const select = document.querySelector('#degisim-form select[name="talep_edilen_id"]');
+        select.value = talep.talep_edilen_id;
+
+        document.querySelector('#degisim-form textarea[name="aciklama"]').value = talep.aciklama || '';
+
+        // Formu güncelleme moduna sokmak için bir flag ekleyelim veya submit handler'ı değiştirelim
+        const form = document.getElementById('degisim-form');
+        form.dataset.mode = 'update';
+        form.dataset.talepId = talepId;
+
+        Modal.close('talepler-modal');
+        Modal.open('degisim-modal');
+    }
+
+    // Modal kapanırken dataset'i temizleyelim
+    const degisimModalElem = document.getElementById('degisim-modal');
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.attributeName === 'style' && degisimModalElem.style.display === 'none') {
+                const form = document.getElementById('degisim-form');
+                form.dataset.mode = 'create';
+                form.dataset.talepId = '';
+                form.reset();
+            }
+        });
+    });
+    observer.observe(degisimModalElem, { attributes: true });
 
     // ============ TALEPLER ============
     function openTaleplerModal() {
@@ -1119,16 +1201,28 @@
                             <p class="text-xs text-slate-500">${formattedDate} tarihli nöbet</p>
                             <span class="badge ${statusColor} mt-2">${statusBadge}</span>
                         </div>
-                        ${talep.durum === 'beklemede' && currentTalepFilter === 'gelen' ? `
+
+                        ${talep.durum === 'beklemede' ? `
                             <div class="flex gap-2">
-                                <button onclick="onaylaTalep('${talep.id}')" 
-                                    class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-green-600 text-lg">check</span>
-                                </button>
-                                <button onclick="reddetTalep('${talep.id}')" 
-                                    class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-red-600 text-lg">close</span>
-                                </button>
+                                ${currentTalepFilter === 'gelen' ? `
+                                    <button onclick="onaylaTalep('${talep.id}')" 
+                                        class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-green-600 text-lg">check</span>
+                                    </button>
+                                    <button onclick="reddetTalep('${talep.id}')" 
+                                        class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-red-600 text-lg">close</span>
+                                    </button>
+                                ` : `
+                                    <button onclick="openDegisimGuncelleModal('${talep.id}')" 
+                                        class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-blue-600 text-lg">edit</span>
+                                    </button>
+                                    <button onclick="iptalEtDegisim('${talep.id}')" 
+                                        class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-red-600 text-lg">delete</span>
+                                    </button>
+                                `}
                             </div>
                         ` : ''}
                     </div>

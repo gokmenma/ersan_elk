@@ -65,6 +65,31 @@ foreach ($isEmriSonuclari as $sonuc) {
                                 </div>
                             </div>
 
+                            <!-- Kayıt Modu Seçimi (Hizayı bozmamak için üstte ayrı bir satır yapıldı) -->
+                            <div class="row mb-2">
+                                <div class="col-12">
+                                    <div
+                                        class="d-flex align-items-center justify-content-end gap-3 p-2 bg-light rounded-3">
+                                        <span class="small text-muted fw-bold text-uppercase"
+                                            style="letter-spacing: 0.5px;">Kayıt Modu:</span>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="form-check-input shadow-none" type="radio" name="seri_mod"
+                                                id="seriModTekli" value="tekli" checked>
+                                            <label class="form-check-label small fw-medium" for="seriModTekli">Tekli
+                                                Kayıt</label>
+                                        </div>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="form-check-input shadow-none" type="radio" name="seri_mod"
+                                                id="seriModToplu" value="toplu">
+                                            <label class="form-check-label small fw-bold text-success"
+                                                for="seriModToplu">
+                                                <i class="bx bx-list-plus me-1"></i>Toplu Seri Girişi
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="row">
                                 <div class="col-md-4 mb-3">
                                     <?php echo Form::FormFloatInput('text', 'marka', null, 'Marka', 'Marka', 'tag'); ?>
@@ -73,7 +98,45 @@ foreach ($isEmriSonuclari as $sonuc) {
                                     <?php echo Form::FormFloatInput('text', 'model', null, 'Model', 'Model', 'layers'); ?>
                                 </div>
                                 <div class="col-md-4 mb-3">
-                                    <?php echo Form::FormFloatInput('text', 'seri_no', null, 'Seri numarası', 'Seri No', 'cpu'); ?>
+                                    <!-- Tekli Seri No Alanı -->
+                                    <div id="seriTekliAlani">
+                                        <?php echo Form::FormFloatInput('text', 'seri_no', null, 'Seri numarası', 'Seri No', 'cpu'); ?>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Toplu Seri Girişi Alanları (başlangıçta gizli) -->
+                            <div class="row" id="seriTopluAlani" style="display: none;">
+                                <div class="col-12 mb-2">
+                                    <div class="alert alert-soft-success d-flex align-items-center py-2 mb-2"
+                                        style="font-size: 0.82rem;">
+                                        <i class="bx bx-info-circle fs-5 me-2"></i>
+                                        <div><strong>Hızlı Giriş:</strong> Başlangıç seri ve adet girmeniz yeterlidir.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <?php echo Form::FormFloatInput('text', 'seri_baslangic', null, 'Örn: 2025100', 'Başlangıç Seri No *', 'skip-forward', 'form-control'); ?>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <?php echo Form::FormFloatInput('text', 'seri_bitis', null, 'Örn: 2025110', 'Bitiş Seri No', 'skip-back', 'form-control'); ?>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <?php echo Form::FormFloatInput('number', 'seri_adet', null, 'Adet', 'Adet', 'hash', 'form-control', false, null, 'on', false, 'min="1" max="500"'); ?>
+                                </div>
+                                <div class="col-12 mb-2" id="seriOnizlemeContainer" style="display: none;">
+                                    <div class="card border border-success border-opacity-25 mb-0 shadow-none bg-light">
+                                        <div
+                                            class="card-header bg-success bg-opacity-10 py-2 d-flex align-items-center justify-content-between">
+                                            <span class="fw-semibold text-success small"><i
+                                                    class="bx bx-list-check me-1"></i> Oluşturulacak Seriler</span>
+                                            <span class="badge bg-success" id="seriToplamBadge">0 adet</span>
+                                        </div>
+                                        <div class="card-body py-2" style="max-height: 100px; overflow-y: auto;">
+                                            <div id="seriOnizlemeList" class="d-flex flex-wrap gap-1"
+                                                style="font-size: 0.75rem;"></div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

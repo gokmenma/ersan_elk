@@ -58,7 +58,7 @@ if (!$personel) {
 
 // Sayfa yönlendirmesi
 $page = $_GET['page'] ?? 'ana-sayfa';
-$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'nobet', 'etkinlikler'];
+$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'nobet', 'etkinlikler', 'zimmetler'];
 
 if (!in_array($page, $allowed_pages)) {
     $page = 'ana-sayfa';
@@ -212,16 +212,15 @@ if (!in_array($page, $allowed_pages)) {
             <span class="material-symbols-outlined <?php echo $page === 'ana-sayfa' ? 'filled' : ''; ?>">home</span>
             <span class="text-[10px] font-semibold">Ana Sayfa</span>
         </a>
-        <a href="?page=bordro"
-            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'bordro' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-            <span class="material-symbols-outlined <?php echo $page === 'bordro' ? 'filled' : ''; ?>">payments</span>
-            <span class="text-[10px] font-semibold">Avans</span>
+        <a href="?page=puantaj"
+            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'puantaj' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+            <span class="material-symbols-outlined <?php echo $page === 'puantaj' ? 'filled' : ''; ?>">checklist</span>
+            <span class="text-[10px] font-semibold">İş Takibi</span>
         </a>
-        <a href="?page=izin"
-            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'izin' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-            <span
-                class="material-symbols-outlined <?php echo $page === 'izin' ? 'filled' : ''; ?>">calendar_today</span>
-            <span class="text-[10px] font-semibold">İzinler</span>
+        <a href="?page=nobet"
+            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'nobet' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+            <span class="material-symbols-outlined <?php echo $page === 'nobet' ? 'filled' : ''; ?>">nights_stay</span>
+            <span class="text-[10px] font-semibold">Nöbet Takibi</span>
         </a>
         <a href="?page=talep"
             class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'talep' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
@@ -229,9 +228,9 @@ if (!in_array($page, $allowed_pages)) {
             <span class="text-[10px] font-semibold">Talepler</span>
         </a>
         <button type="button" onclick="toggleMoreMenu()"
-            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo in_array($page, ['profil', 'puantaj']) ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo in_array($page, ['profil', 'etkinlikler', 'bordro', 'izin', 'zimmetler']) ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
             <span
-                class="material-symbols-outlined <?php echo in_array($page, ['profil', 'puantaj']) ? 'filled' : ''; ?>">more_horiz</span>
+                class="material-symbols-outlined <?php echo in_array($page, ['profil', 'etkinlikler', 'bordro', 'izin', 'zimmetler']) ? 'filled' : ''; ?>">more_horiz</span>
             <span class="text-[10px] font-semibold">Diğer</span>
         </button>
     </nav>
@@ -291,21 +290,30 @@ if (!in_array($page, $allowed_pages)) {
                     <span class="font-medium text-slate-900 dark:text-white text-sm">Profil</span>
                     <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
                 </a>
-                <a href="?page=puantaj"
-                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'puantaj' ? 'bg-primary/10' : ''; ?>">
+                <a href="?page=bordro"
+                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'bordro' ? 'bg-primary/10' : ''; ?>">
                     <div
-                        class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-purple-600 text-lg">checklist</span>
+                        class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-emerald-600 text-lg">payments</span>
                     </div>
-                    <span class="font-medium text-slate-900 dark:text-white text-sm">İş Takip</span>
+                    <span class="font-medium text-slate-900 dark:text-white text-sm">Avans</span>
                     <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
                 </a>
-                <a href="?page=nobet"
-                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'nobet' ? 'bg-primary/10' : ''; ?>">
-                    <div class="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-amber-600 text-lg">nights_stay</span>
+                <a href="?page=izin"
+                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'izin' ? 'bg-primary/10' : ''; ?>">
+                    <div
+                        class="w-9 h-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-orange-600 text-lg">calendar_today</span>
                     </div>
-                    <span class="font-medium text-slate-900 dark:text-white text-sm">Nöbet Takibi</span>
+                    <span class="font-medium text-slate-900 dark:text-white text-sm">İzinler</span>
+                    <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
+                </a>
+                <a href="?page=zimmetler"
+                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'zimmetler' ? 'bg-primary/10' : ''; ?>">
+                    <div class="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-amber-600 text-lg">inventory_2</span>
+                    </div>
+                    <span class="font-medium text-slate-900 dark:text-white text-sm">Zimmetler</span>
                     <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
                 </a>
             </div>
@@ -440,7 +448,7 @@ if (!in_array($page, $allowed_pages)) {
     <!-- Scripts -->
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="assets/js/pwa-app.js"></script>
+    <script src="assets/js/pwa-app.js?v=<?= time() ?>"></script>
     <script src="assets/js/notification-helper.js"></script>
     <?php if ($_pwaCanliDestekAktif): ?>
         <script src="assets/js/pwa-chat.js?v=<?= time() ?>"></script>

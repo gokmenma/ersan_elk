@@ -566,7 +566,117 @@ body[data-sidebar="brand"] .navbar-brand-box {
   --bs-primary-rgb: 6, 182, 212;
 }
 
-/* Custom Color Selectors for Right Sidebar/Settings etc */
+/* Dynamic Font Families */
+[data-font-family="Inter"] body,
+[data-font-family="Inter"] .h1,
+[data-font-family="Inter"] .h2,
+[data-font-family="Inter"] .h3,
+[data-font-family="Inter"] .h4,
+[data-font-family="Inter"] .h5,
+[data-font-family="Inter"] .h6,
+[data-font-family="Inter"] h1,
+[data-font-family="Inter"] h2,
+[data-font-family="Inter"] h3,
+[data-font-family="Inter"] h4,
+[data-font-family="Inter"] h5,
+[data-font-family="Inter"] h6 {
+  font-family: "Inter", sans-serif !important;
+}
+[data-font-family="Outfit"] body,
+[data-font-family="Outfit"] .h1,
+[data-font-family="Outfit"] .h2,
+[data-font-family="Outfit"] .h3,
+[data-font-family="Outfit"] .h4,
+[data-font-family="Outfit"] .h5,
+[data-font-family="Outfit"] .h6,
+[data-font-family="Outfit"] h1,
+[data-font-family="Outfit"] h2,
+[data-font-family="Outfit"] h3,
+[data-font-family="Outfit"] h4,
+[data-font-family="Outfit"] h5,
+[data-font-family="Outfit"] h6 {
+  font-family: "Outfit", sans-serif !important;
+}
+[data-font-family="Poppins"] body,
+[data-font-family="Poppins"] .h1,
+[data-font-family="Poppins"] .h2,
+[data-font-family="Poppins"] .h3,
+[data-font-family="Poppins"] .h4,
+[data-font-family="Poppins"] .h5,
+[data-font-family="Poppins"] .h6,
+[data-font-family="Poppins"] h1,
+[data-font-family="Poppins"] h2,
+[data-font-family="Poppins"] h3,
+[data-font-family="Poppins"] h4,
+[data-font-family="Poppins"] h5,
+[data-font-family="Poppins"] h6 {
+  font-family: "Poppins", sans-serif !important;
+}
+[data-font-family="Plus Jakarta Sans"] body,
+[data-font-family="Plus Jakarta Sans"] .h1,
+[data-font-family="Plus Jakarta Sans"] .h2,
+[data-font-family="Plus Jakarta Sans"] .h3,
+[data-font-family="Plus Jakarta Sans"] .h4,
+[data-font-family="Plus Jakarta Sans"] .h5,
+[data-font-family="Plus Jakarta Sans"] .h6,
+[data-font-family="Plus Jakarta Sans"] h1,
+[data-font-family="Plus Jakarta Sans"] h2,
+[data-font-family="Plus Jakarta Sans"] h3,
+[data-font-family="Plus Jakarta Sans"] h4,
+[data-font-family="Plus Jakarta Sans"] h5,
+[data-font-family="Plus Jakarta Sans"] h6 {
+  font-family: "Plus Jakarta Sans", sans-serif !important;
+}
+[data-font-family="Lexend"] body,
+[data-font-family="Lexend"] .h1,
+[data-font-family="Lexend"] .h2,
+[data-font-family="Lexend"] .h3,
+[data-font-family="Lexend"] .h4,
+[data-font-family="Lexend"] .h5,
+[data-font-family="Lexend"] .h6,
+[data-font-family="Lexend"] h1,
+[data-font-family="Lexend"] h2,
+[data-font-family="Lexend"] h3,
+[data-font-family="Lexend"] h4,
+[data-font-family="Lexend"] h5,
+[data-font-family="Lexend"] h6 {
+  font-family: "Lexend", sans-serif !important;
+}
+[data-font-family="Geist"] body,
+[data-font-family="Geist"] .h1,
+[data-font-family="Geist"] .h2,
+[data-font-family="Geist"] .h3,
+[data-font-family="Geist"] .h4,
+[data-font-family="Geist"] .h5,
+[data-font-family="Geist"] .h6,
+[data-font-family="Geist"] h1,
+[data-font-family="Geist"] h2,
+[data-font-family="Geist"] h3,
+[data-font-family="Geist"] h4,
+[data-font-family="Geist"] h5,
+[data-font-family="Geist"] h6 {
+  font-family: "Geist", sans-serif !important;
+}
+
+/* Header & Topbar Fixes */
+header#page-topbar .header-item {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+header#page-topbar .dropdown.show .header-item {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-bs-theme="dark"] header#page-topbar .header-item {
+  color: #adb5bd !important;
+}
+
+[data-bs-theme="dark"] header#page-topbar .header-item:hover {
+  color: #eff2f7 !important;
+}
+
 .color-selector-group {
   display: flex;
   flex-wrap: wrap;
@@ -635,6 +745,53 @@ body[data-sidebar="brand"] .navbar-brand-box {
 }
 .color-selector-btn.color-cyan {
   background-color: #06b6d4;
+}
+
+/* Custom Color Picker Swatch Style */
+.color-picker-wrapper {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.165, 0.84, 0.44, 1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: conic-gradient(
+    from 0deg,
+    red,
+    yellow,
+    lime,
+    aqua,
+    blue,
+    magenta,
+    red
+  );
+  color: white;
+  margin: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.color-picker-wrapper:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.18);
+}
+.color-picker-wrapper input[type="color"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  padding: 0;
+  border: none;
+}
+.color-picker-wrapper i {
+  font-size: 18px;
+  pointer-events: none;
 }
 
 /* Custom topbar and sidebar background support */

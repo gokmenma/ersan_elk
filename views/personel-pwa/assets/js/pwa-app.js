@@ -486,6 +486,29 @@ const Alert = {
       },
     });
   },
+
+  show(options) {
+    return Swal.fire({
+      title: options.title || "",
+      html: options.content || "",
+      icon: options.icon || null,
+      confirmButtonText: options.confirmButtonText || "Tamam",
+      showCancelButton: options.showCancelButton || false,
+      cancelButtonText: options.cancelButtonText || "Vazgeç",
+      buttonsStyling: false,
+      width: options.width || 320,
+      padding: 0,
+      customClass: {
+        popup: "swal-custom-popup",
+        title: "swal-custom-title",
+        htmlContainer: "swal-custom-content",
+        actions: "swal-custom-actions",
+        confirmButton:
+          "swal-custom-confirm swal-confirm-primary swal-confirm-full",
+        cancelButton: "swal-custom-cancel",
+      },
+    });
+  },
 };
 
 // ===== Modal Functions =====

@@ -2151,6 +2151,11 @@ try {
                 response(false, null, 'Geçmiş tarihli nöbetler için talep oluşturamazsınız.');
             }
 
+            // Zaten bekleyen bir talep var mı?
+            if ($NobetModel->hasPendingDegisimTalebi($nobet_id, $personel_id)) {
+                response(false, null, 'Bu nöbet için zaten bekleyen bir değişim talebiniz bulunuyor. Mevcut talebi iptal edip yenisini oluşturabilirsiniz.');
+            }
+
             $result = $NobetModel->createDegisimTalebi([
                 'nobet_id' => $nobet_id,
                 'talep_eden_id' => $personel_id,
@@ -2245,6 +2250,54 @@ try {
                 response(true, null, 'Talebi reddettiniz.');
             } else {
                 response(false, null, 'Reddetme işlemi başarısız.');
+            }
+            break;
+
+        case 'iptalNobetDegisimTalebi':
+            $NobetModel = new \App\Model\NobetModel();
+            $talep_id = $_POST['talep_id'] ?? null;
+
+            if (!$talep_id) {
+                response(false, null, 'Talep ID gerekli.');
+            }
+
+            $result = $NobetModel->iptalDegisimTalebi($talep_id, $personel_id);
+
+            if ($result) {
+                response(true, null, 'Değişim talebiniz iptal edildi.');
+            } else {
+                response(false, null, 'Talep iptal edilemedi veya zaten onaylanmış/iptal edilmiş.');
+            }
+            break;
+
+        case 'updateNobetDegisimTalebi':
+            $NobetModel = new \App\Model\NobetModel();
+            $talep_id = $_POST['talep_id'] ?? null;
+            $talep_edilen_id = $_POST['talep_edilen_id'] ?? null;
+            $aciklama = $_POST['aciklama'] ?? null;
+
+            if (!$talep_id || !$talep_edilen_id) {
+                response(false, null, 'Gerekli alanlar eksik.');
+            }
+
+            // Talebin bu personele ait ve beklemede olduğunu kontrol et
+            $db = new \App\Core\Db();
+            $sql = "SELECT id FROM nobet_degisim_talepleri WHERE id = :id AND talep_eden_id = :pid AND durum = 'beklemede'";
+            $stmt = $db->db->prepare($sql);
+            $stmt->execute([':id' => $talep_id, ':pid' => $personel_id]);
+            if (!$stmt->fetch()) {
+                response(false, null, 'Bu talep güncellenemez.');
+            }
+
+            $result = $NobetModel->updateDegisimTalebi($talep_id, [
+                'talep_edilen_id' => $talep_edilen_id,
+                'aciklama' => $aciklama
+            ]);
+
+            if ($result) {
+                response(true, null, 'Değişim talebiniz güncellendi.');
+            } else {
+                response(false, null, 'Talep güncellenemedi.');
             }
             break;
 
@@ -2802,6 +2855,135 @@ try {
             $settingsModel = new \App\Model\SettingsModel();
             $adminStatus = $settingsModel->getSettings('canli_destek_admin_durum') ?: 'cevrimici';
             response(true, ['status' => $adminStatus]);
+            break;
+
+        // ===== Zimmet İşlemleri =====
+        case 'getZimmetler':
+            $ZimmetModel = new \App\Model\DemirbasZimmetModel();
+            $zimmetler = $ZimmetModel->getByPersonel($personel_id);
+
+            $AracZimmetModel = new \App\Model\AracZimmetModel();
+            $aracZimmetler = $AracZimmetModel->getByPersonel($personel_id);
+
+            $data = [];
+
+            // Demirbaş Zimmetleri
+            foreach ($zimmetler as $item) {
+                $durum_map = [
+                    'teslim' => ['text' => 'Zimmetli', 'color' => 'amber'],
+                    'iade' => ['text' => 'İade Edildi', 'color' => 'emerald'],
+                    'kayip' => ['text' => 'Kayıp', 'color' => 'rose'],
+                    'arizali' => ['text' => 'Arızalı', 'color' => 'slate']
+                ];
+
+                $durum = $durum_map[$item->durum] ?? ['text' => $item->durum, 'color' => 'primary'];
+
+                $data[] = [
+                    'id' => $item->id,
+                    'type' => 'demirbas',
+                    'is_encrypted' => \App\Helper\Security::encrypt($item->id),
+                    'demirbas_adi' => $item->demirbas_adi,
+                    'demirbas_no' => $item->demirbas_no,
+                    'kategori' => $item->kategori_adi,
+                    'marka_model' => trim(($item->marka ?? '') . ' ' . ($item->model ?? '')),
+                    'seri_no' => $item->seri_no,
+                    'miktar' => $item->teslim_miktar,
+                    'teslim_tarihi' => date('d.m.Y', strtotime($item->teslim_tarihi)),
+                    'durum' => $item->durum,
+                    'durum_text' => $durum['text'],
+                    'durum_color' => $durum['color']
+                ];
+            }
+
+            // Araç Zimmetleri
+            foreach ($aracZimmetler as $item) {
+                $data[] = [
+                    'id' => $item->id,
+                    'type' => 'arac',
+                    'is_encrypted' => \App\Helper\Security::encrypt($item->id),
+                    'demirbas_adi' => $item->plaka,
+                    'demirbas_no' => 'ARAÇ',
+                    'kategori' => 'Taşıt',
+                    'marka_model' => trim(($item->marka ?? '') . ' ' . ($item->model ?? '')),
+                    'seri_no' => $item->plaka,
+                    'miktar' => 1,
+                    'teslim_tarihi' => date('d.m.Y', strtotime($item->zimmet_tarihi)),
+                    'durum' => $item->durum === 'aktif' ? 'teslim' : 'iade',
+                    'durum_text' => $item->durum === 'aktif' ? 'Zimmetli' : 'İade Edildi',
+                    'durum_color' => $item->durum === 'aktif' ? 'amber' : 'emerald'
+                ];
+            }
+
+            // Tarihe göre sırala
+            usort($data, function ($a, $b) {
+                return strtotime($b['teslim_tarihi']) - strtotime($a['teslim_tarihi']);
+            });
+
+            response(true, $data);
+            break;
+
+        case 'getZimmetHareketleri':
+            $zimmet_id = $_POST['zimmet_id'] ?? 0;
+            $type = $_POST['type'] ?? 'demirbas';
+
+            if ($type === 'arac') {
+                $ZimmetModel = new \App\Model\AracZimmetModel();
+                $zimmet = $ZimmetModel->find($zimmet_id);
+
+                if (!$zimmet || $zimmet->personel_id != $personel_id) {
+                    response(false, null, 'Yetkisiz erişim veya kayıt bulunamadı.');
+                }
+
+                $data = [];
+                $data[] = [
+                    'id' => 'z' . $zimmet->id,
+                    'tip' => 'zimmet',
+                    'tip_text' => '<span class="badge bg-warning">Zimmet</span>',
+                    'miktar' => 1,
+                    'tarih' => date('d.m.Y', strtotime($zimmet->zimmet_tarihi)),
+                    'aciklama' => 'Araç zimmet teslimi. Başlangıç KM: ' . ($zimmet->baslangic_km ?? '-'),
+                    'islem_yapan' => '-'
+                ];
+
+                if ($zimmet->durum === 'iade_edildi' && $zimmet->iade_tarihi) {
+                    $data[] = [
+                        'id' => 'i' . $zimmet->id,
+                        'tip' => 'iade',
+                        'tip_text' => '<span class="badge bg-success">İade</span>',
+                        'miktar' => 1,
+                        'tarih' => date('d.m.Y', strtotime($zimmet->iade_tarihi)),
+                        'aciklama' => 'Araç iade edildi. İade KM: ' . ($zimmet->iade_km ?? '-'),
+                        'islem_yapan' => '-'
+                    ];
+                }
+
+                response(true, $data);
+            } else {
+                // Güvenlik: Zimmetin bu personele ait olduğunu doğrula
+                $ZimmetModel = new \App\Model\DemirbasZimmetModel();
+                $zimmet = $ZimmetModel->find($zimmet_id);
+
+                if (!$zimmet || $zimmet->personel_id != $personel_id) {
+                    response(false, null, 'Yetkisiz erişim veya kayıt bulunamadı.');
+                }
+
+                $HareketModel = new \App\Model\DemirbasHareketModel();
+                $hareketler = $HareketModel->getZimmetHareketleri($zimmet_id);
+
+                $data = array_map(function ($h) {
+                    return [
+                        'id' => $h->id,
+                        'tip' => $h->hareket_tipi,
+                        'tip_text' => \App\Model\DemirbasHareketModel::getHareketTipiBadge($h->hareket_tipi),
+                        'miktar' => $h->miktar,
+                        'tarih' => date('d.m.Y', strtotime($h->tarih)),
+                        'aciklama' => $h->aciklama,
+                        'islem_yapan' => $h->islem_yapan_adi
+                    ];
+                }, $hareketler);
+
+                response(true, $data);
+            }
             break;
 
         default:

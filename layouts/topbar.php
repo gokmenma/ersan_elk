@@ -192,8 +192,8 @@ $firma_option = $FirmaModel->optionByUserPermission();
             </div>
 
             <div class="dropdown d-inline-block">
-                <button type="button" class="btn header-item bg-light-subtle border-start border-end"
-                    id="page-header-user-dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <button type="button" class="btn header-item" id="page-header-user-dropdown" data-bs-toggle="dropdown"
+                    aria-haspopup="true" aria-expanded="false">
                     <img class="rounded-circle header-profile-user user-profile-image"
                         src="<?php echo Helper::base_url('assets/images/users/avatar.png'); ?>" alt="Header Avatar"
                         id="user_image">

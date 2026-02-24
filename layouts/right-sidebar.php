@@ -36,7 +36,50 @@
                     data-bs-toggle="tooltip" data-bs-placement="top" title="Teal">
                 <input class="color-selector-btn color-cyan" type="radio" name="theme-mode" id="theme-cyan" value="cyan"
                     data-bs-toggle="tooltip" data-bs-placement="top" title="Cyan">
+
+                <div class="color-picker-wrapper" data-bs-toggle="tooltip" data-bs-placement="top"
+                    title="Özel Renk Seç">
+                    <input type="color" id="custom-theme-picker" value="#1c84ee">
+                    <i class="mdi mdi-palette"></i>
+                </div>
             </div>
+
+            <h6 class="mt-4 mb-3 pt-2">Yazı Tipi (Font)</h6>
+            <div class="font-selector-group">
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="font-family" id="font-geist" value="Geist"
+                        checked>
+                    <label class="form-check-label font-geist" for="font-geist"
+                        style="font-family: 'Geist', sans-serif;">Geist (Varsayılan)</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="font-family" id="font-inter" value="Inter">
+                    <label class="form-check-label font-inter" for="font-inter"
+                        style="font-family: 'Inter', sans-serif;">Inter</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="font-family" id="font-outfit" value="Outfit">
+                    <label class="form-check-label font-outfit" for="font-outfit"
+                        style="font-family: 'Outfit', sans-serif;">Outfit</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="font-family" id="font-poppins" value="Poppins">
+                    <label class="form-check-label font-poppins" for="font-poppins"
+                        style="font-family: 'Poppins', sans-serif;">Poppins</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="font-family" id="font-jakarta"
+                        value="Plus Jakarta Sans">
+                    <label class="form-check-label font-jakarta" for="font-jakarta"
+                        style="font-family: 'Plus Jakarta Sans', sans-serif;">Plus Jakarta Sans</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="font-family" id="font-lexend" value="Lexend">
+                    <label class="form-check-label font-lexend" for="font-lexend"
+                        style="font-family: 'Lexend', sans-serif;">Lexend</label>
+                </div>
+            </div>
+
 
             <h6 class="mt-4 mb-3 pt-2">Görünüm</h6>
             <div class="form-check form-check-inline">
@@ -118,6 +161,12 @@
                     value="teal" data-bs-toggle="tooltip" data-bs-placement="top" title="Teal">
                 <input class="color-selector-btn color-cyan" type="radio" name="topbar-color" id="topbar-cyan"
                     value="cyan" data-bs-toggle="tooltip" data-bs-placement="top" title="Cyan">
+
+                <div class="color-picker-wrapper" data-bs-toggle="tooltip" data-bs-placement="top"
+                    title="Özel Üst Bar Rengi">
+                    <input type="color" id="custom-topbar-picker" value="#1c84ee">
+                    <i class="mdi mdi-palette"></i>
+                </div>
             </div>
 
             <h6 class="mt-4 mb-3 pt-2 sidebar-setting">Yan Menü Boyutu</h6>
@@ -174,6 +223,12 @@
                     value="teal" data-bs-toggle="tooltip" data-bs-placement="top" title="Teal">
                 <input class="color-selector-btn color-cyan" type="radio" name="sidebar-color" id="sidebar-cyan"
                     value="cyan" data-bs-toggle="tooltip" data-bs-placement="top" title="Cyan">
+
+                <div class="color-picker-wrapper" data-bs-toggle="tooltip" data-bs-placement="top"
+                    title="Özel Yan Menü Rengi">
+                    <input type="color" id="custom-sidebar-picker" value="#1c84ee">
+                    <i class="mdi mdi-palette"></i>
+                </div>
             </div>
 
             <h6 class="mt-4 mb-3 pt-2">Yön</h6>

@@ -1,5 +1,5 @@
 var zimmetUrl = "views/demirbas/api.php";
-var demirbasTable, zimmetTable;
+var demirbasTable, zimmetTable, depoPersonelTable, hurdaDemirbasTable;
 
 // ============== SAYFA YÜKLENDİĞİNDE ==============
 $(document).ready(function () {
@@ -46,6 +46,21 @@ $(document).ready(function () {
     },
   });
 
+  // Depo Personel Tablosu
+  depoPersonelTable = $("#depoPersonelTable").DataTable({
+    ...getDatatableOptions(),
+    pageLength: 25,
+    order: [[1, "asc"]],
+    columnDefs: [{ orderable: false, targets: [0] }],
+  });
+
+  // Hurda Demirbaşlar Tablosu
+  hurdaDemirbasTable = $("#hurdaDemirbasTable").DataTable({
+    ...getDatatableOptions(),
+    pageLength: 10,
+    order: [[1, "asc"]],
+  });
+
   // Select2 başlat
   initSelect2();
 
@@ -68,21 +83,44 @@ function updateButtonVisibility() {
   if (activeTabBtn.length === 0) return;
 
   let activeTab = activeTabBtn.attr("id");
+  // Tüm ana aksiyon butonlarını gizle
+  $("#btnYeniDemirbas, #btnZimmetVer, #btnKasiyeTeslim")
+    .addClass("d-none")
+    .removeClass("d-flex");
+  $("#importExcelLi").addClass("d-none");
+
   if (activeTab === "demirbas-tab") {
-    $("#btnYeniDemirbas").show();
-    $("#btnZimmetVer").hide();
-    $("#importExcelLi").show();
+    $("#btnYeniDemirbas").removeClass("d-none").addClass("d-flex");
+    $("#importExcelLi").removeClass("d-none");
   } else if (activeTab === "zimmet-tab") {
-    $("#btnYeniDemirbas").hide();
-    $("#btnZimmetVer").show();
-    $("#importExcelLi").hide();
-  } else {
-    // zimmet-ayarlari-tab
-    $("#btnYeniDemirbas").hide();
-    $("#btnZimmetVer").hide();
-    $("#importExcelLi").hide();
+    $("#btnZimmetVer").removeClass("d-none").addClass("d-flex");
+    if (typeof zimmetTable !== "undefined") {
+      zimmetTable.ajax.reload(null, false);
+    }
+  } else if (activeTab === "depo-tab") {
+    $("#btnKasiyeTeslim").removeClass("d-none").addClass("d-flex");
   }
 }
+
+// Export Excel Butonu - Aktif tabloyu yakalar
+$(document).on("click", "#exportExcel", function (e) {
+  e.preventDefault();
+  let activeTab = $("#demirbasTab button.active").attr("id");
+  let targetTable;
+
+  if (activeTab === "demirbas-tab") targetTable = demirbasTable;
+  else if (activeTab === "zimmet-tab") targetTable = zimmetTable;
+  else if (activeTab === "depo-tab") targetTable = depoPersonelTable;
+
+  if (targetTable) {
+    targetTable.button(".buttons-excel").trigger();
+  } else {
+    // Fallback if targetTable not set (e.g. global table variable)
+    if (typeof table !== "undefined" && table) {
+      table.button(".buttons-excel").trigger();
+    }
+  }
+});
 
 // ============== SELECT2 BAŞLAT ==============
 function initSelect2() {
@@ -180,9 +218,13 @@ function fetchIsEmriSonuclari(callback) {
 }
 
 // ============== TAB DEĞİŞİKLİĞİNDE ==============
-// Sadece ana sayfadaki bu iki butona tıklandığında URL parametresini değiştir
-$(document).on("click", "#demirbas-tab, #zimmet-tab", function () {
-  const tabName = this.id === "zimmet-tab" ? "zimmet" : "demirbas";
+$(document).on("click", "#demirbas-tab, #zimmet-tab, #depo-tab", function () {
+  let tabMap = {
+    "demirbas-tab": "demirbas",
+    "zimmet-tab": "zimmet",
+    "depo-tab": "depo",
+  };
+  const tabName = tabMap[this.id] || "demirbas";
 
   // URL'i güncelle
   const url = new URL(window.location);
@@ -204,16 +246,144 @@ function loadZimmetList() {
 
 // ============== DEMİRBAŞ İŞLEMLERİ ==============
 
+// ============== TOPLU SERİ GİRİŞİ ==============
+
+// Seri modu radio toggle
+$(document).on("change", 'input[name="seri_mod"]', function () {
+  let mod = $(this).val();
+  if (mod === "toplu") {
+    $("#seriTekliAlani").hide();
+    $("#seriTopluAlani").slideDown(200);
+    $("#seri_no").val(""); // Tekli seri alanını temizle
+    // Toplu modda miktar alanını gizle (otomatik hesaplanacak)
+    $("#miktar").closest(".col-md-3").hide();
+  } else {
+    $("#seriTekliAlani").show();
+    $("#seriTopluAlani").slideUp(200);
+    $("#seri_baslangic, #seri_bitis, #seri_adet").val("");
+    $("#seriOnizlemeContainer").hide();
+    $("#seriOnizlemeList").empty();
+    // Miktar alanını tekrar göster
+    $("#miktar").closest(".col-md-3").show();
+  }
+});
+
+// Seri numarasından sayısal kısmı ve ön eki ayır
+function parseSeriNo(seri) {
+  seri = seri.toString().trim();
+  // Sondaki rakam bloğunu bul
+  let match = seri.match(/^(.*?)(\d+)$/);
+  if (match) {
+    return {
+      prefix: match[1],
+      number: parseInt(match[2], 10),
+      digits: match[2].length,
+    };
+  }
+  return null;
+}
+
+// Seri numarası oluştur (ön ek + sıfır padli numara)
+function buildSeriNo(prefix, number, digits) {
+  return prefix + number.toString().padStart(digits, "0");
+}
+
+// Serileri hesapla ve önizle
+function hesaplaVeOnizle() {
+  let baslangic = $("#seri_baslangic").val().trim();
+  let bitis = $("#seri_bitis").val().trim();
+  let adet = parseInt($("#seri_adet").val()) || 0;
+
+  if (!baslangic) {
+    $("#seriOnizlemeContainer").hide();
+    return [];
+  }
+
+  let parsed = parseSeriNo(baslangic);
+  if (!parsed) {
+    $("#seriOnizlemeContainer").hide();
+    return [];
+  }
+
+  let seriler = [];
+
+  if (bitis && !adet) {
+    // Bitiş girilmiş, adeti hesapla
+    let parsedBitis = parseSeriNo(bitis);
+    if (parsedBitis && parsedBitis.prefix === parsed.prefix) {
+      adet = parsedBitis.number - parsed.number + 1;
+      if (adet > 0 && adet <= 500) {
+        $("#seri_adet").val(adet);
+      } else {
+        $("#seriOnizlemeContainer").hide();
+        return [];
+      }
+    }
+  } else if (adet > 0 && !bitis) {
+    // Adet girilmiş, bitişi hesapla
+    let bitisNo = parsed.number + adet - 1;
+    $("#seri_bitis").val(buildSeriNo(parsed.prefix, bitisNo, parsed.digits));
+  } else if (adet > 0 && bitis) {
+    // İkisi de girilmiş → adet'e öncelik ver, bitişi güncelle
+    let bitisNo = parsed.number + adet - 1;
+    $("#seri_bitis").val(buildSeriNo(parsed.prefix, bitisNo, parsed.digits));
+  }
+
+  // Adeti son kez al
+  adet = parseInt($("#seri_adet").val()) || 0;
+  if (adet <= 0 || adet > 500) {
+    $("#seriOnizlemeContainer").hide();
+    return [];
+  }
+
+  // Seri listesini oluştur
+  for (let i = 0; i < adet; i++) {
+    seriler.push(buildSeriNo(parsed.prefix, parsed.number + i, parsed.digits));
+  }
+
+  // Önizleme göster
+  $("#seriOnizlemeContainer").show();
+  $("#seriToplamBadge").text(seriler.length + " adet");
+  let html = seriler
+    .map(
+      (s, i) =>
+        `<span class="badge bg-light text-dark border">${i + 1}. ${s}</span>`,
+    )
+    .join("");
+  $("#seriOnizlemeList").html(html);
+
+  return seriler;
+}
+
+// Input event'leri
+$(document).on("input", "#seri_baslangic", function () {
+  // Başlangıç değişince bitiş/adet temizle ve yeniden hesapla
+  hesaplaVeOnizle();
+});
+
+$(document).on("input", "#seri_adet", function () {
+  // Adet girildiğinde bitişi hesapla
+  $("#seri_bitis").val(""); // Bitiş alanını temizle, adet baz alınacak
+  hesaplaVeOnizle();
+});
+
+$(document).on("input", "#seri_bitis", function () {
+  // Bitiş girildiğinde adeti hesapla
+  $("#seri_adet").val(""); // Adet alanını temizle, bitiş baz alınacak
+  hesaplaVeOnizle();
+});
+
 // Demirbaş Kaydet
 $(document).on("click", "#demirbasKaydet", function () {
   var form = $("#demirbasForm");
   var demirbas_id = $("#demirbas_id").val();
+  var seriMod = $('input[name="seri_mod"]:checked').val();
 
   form.validate({
     rules: {
       demirbas_adi: { required: true },
       kategori_id: { required: true },
-      miktar: { required: true, min: 1 },
+      miktar: { required: seriMod !== "toplu", min: 1 },
     },
     messages: {
       demirbas_adi: { required: "Demirbaş adı zorunludur" },
@@ -227,6 +397,83 @@ $(document).on("click", "#demirbasKaydet", function () {
 
   if (!form.valid()) return;
 
+  // Toplu seri modunda özel kontrol
+  if (seriMod === "toplu" && demirbas_id == 0) {
+    let seriler = hesaplaVeOnizle();
+    if (seriler.length === 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Eksik Bilgi!",
+        html: "Lütfen <strong>başlangıç seri no</strong> ve <strong>adet</strong> veya <strong>bitiş seri no</strong> giriniz.",
+        confirmButtonText: "Tamam",
+      });
+      return;
+    }
+
+    // Kullanıcıya onay iste
+    Swal.fire({
+      title: "Toplu Kayıt Onayı",
+      html: `<strong>${seriler.length}</strong> adet demirbaş kaydı oluşturulacak.<br><small class="text-muted">${seriler[0]} → ${seriler[seriler.length - 1]}</small>`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#34c38f",
+      cancelButtonColor: "#74788d",
+      confirmButtonText: "Evet, Oluştur!",
+      cancelButtonText: "İptal",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Toplu kaydet
+        var formData = new FormData(form[0]);
+        formData.append("action", "demirbas-toplu-kaydet");
+        formData.append("seri_listesi", JSON.stringify(seriler));
+
+        // Loading göster
+        Swal.fire({
+          title: "Kaydediliyor...",
+          html: `<strong>${seriler.length}</strong> adet demirbaş oluşturuluyor...`,
+          allowOutsideClick: false,
+          didOpen: () => Swal.showLoading(),
+        });
+
+        fetch(zimmetUrl, {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "success") {
+              $("#demirbasModal").modal("hide");
+              resetDemirbasForm();
+              Swal.fire({
+                icon: "success",
+                title: "Başarılı!",
+                text: data.message,
+                confirmButtonText: "Tamam",
+              }).then(() => window.location.reload());
+            } else {
+              Swal.fire({
+                icon: "error",
+                title: "Hata!",
+                text: data.message,
+                confirmButtonText: "Tamam",
+              });
+            }
+          })
+          .catch((err) => {
+            console.error(err);
+            Swal.fire({
+              icon: "error",
+              title: "Hata!",
+              text: "İşlem sırasında bir hata oluştu.",
+              confirmButtonText: "Tamam",
+            });
+          });
+      }
+    });
+    return; // Toplu kayıt onay beklediği için burada dur
+  }
+
+  // Tekli kaydet (mevcut mantık)
   var formData = new FormData(form[0]);
   formData.append("action", "demirbas-kaydet");
 
@@ -380,6 +627,14 @@ function resetDemirbasForm() {
   // Otomatik zimmet ayarları
   $("#otomatik_zimmet_is_emri").val("").trigger("change");
   $("#otomatik_iade_is_emri").val("").trigger("change");
+  // Toplu seri alanlarını sıfırla
+  $("#seriModTekli").prop("checked", true).trigger("change");
+  $("#seriTekliAlani").show();
+  $("#seriTopluAlani").hide();
+  $("#seri_baslangic, #seri_bitis, #seri_adet").val("");
+  $("#seriOnizlemeContainer").hide();
+  $("#seriOnizlemeList").empty();
+  $("#miktar").closest(".col-md-3").show();
   // Modal içindeki tab'ı ilk sekmeye sıfırla
   $("#demirbasModalTabs a:first").tab("show");
 }
@@ -803,4 +1058,93 @@ $(document).on("click", "#exportExcel", function () {
   }
 
   window.location.href = url + "?" + params.toString();
+});
+
+// ============== KAŞİYE TESLİM İŞLEMLERİ ==============
+
+// Hurda sayış seçildiğinde stok bilgisini göster
+$(document).on("change", "#kasiye_demirbas_id", function () {
+  let kalan = $(this).find(":selected").data("kalan") || 0;
+  if (kalan > 0) {
+    $("#kasiyeDepoInfo").show().css("display", "flex");
+    $("#kasiyeKalanText").text(kalan + " adet");
+    $("#kasiye_miktar").attr("max", kalan).val(kalan);
+  } else {
+    $("#kasiyeDepoInfo").hide();
+    $("#kasiye_miktar").attr("max", "").val(1);
+  }
+});
+
+// Kaskiye Teslim Kaydet
+$(document).on("click", "#kasiyeTeslimKaydet", function () {
+  let demirbasId = $("#kasiye_demirbas_id").val();
+  let miktar = parseInt($("#kasiye_miktar").val()) || 0;
+  let tarih = $("#kasiye_tarihi").val();
+  let aciklama = $("#kasiye_aciklama").val();
+
+  if (!demirbasId) {
+    Swal.fire("Uyarı", "Lütfen hurda sayaç seçiniz.", "warning");
+    return;
+  }
+  if (miktar <= 0) {
+    Swal.fire("Uyarı", "Miktar en az 1 olmalıdır.", "warning");
+    return;
+  }
+
+  let kalan = parseInt(
+    $("#kasiye_demirbas_id").find(":selected").data("kalan") || 0,
+  );
+  if (miktar > kalan) {
+    Swal.fire("Hata", `Depoda sadece ${kalan} adet bulunmaktadır.`, "error");
+    return;
+  }
+
+  Swal.fire({
+    title: "Emin misiniz?",
+    html: `<strong>${miktar}</strong> adet hurda sayaç Kaskiye teslim edilecek.<br><small class="text-muted">Bu işlem geri alınamaz.</small>`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#74788d",
+    confirmButtonText: "Evet, Teslim Et!",
+    cancelButtonText: "İptal",
+  }).then((result) => {
+    if (result.isConfirmed) {
+      let formData = new FormData();
+      formData.append("action", "kasiye-teslim");
+      formData.append("demirbas_id", demirbasId);
+      formData.append("miktar", miktar);
+      formData.append("tarih", tarih);
+      formData.append("aciklama", aciklama);
+
+      fetch(zimmetUrl, {
+        method: "POST",
+        body: formData,
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.status === "success") {
+            $("#kasiyeTeslimModal").modal("hide");
+            Swal.fire({
+              icon: "success",
+              title: "Başarılı!",
+              text: data.message,
+              confirmButtonText: "Tamam",
+            }).then(() => location.reload());
+          } else {
+            Swal.fire("Hata!", data.message, "error");
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          Swal.fire("Hata!", "İşlem sırasında bir hata oluştu.", "error");
+        });
+    }
+  });
+});
+
+// Kaskiye Teslim Modal kapandığında formu sıfırla
+$("#kasiyeTeslimModal").on("hidden.bs.modal", function () {
+  $("#kasiyeTeslimForm")[0].reset();
+  $("#kasiyeDepoInfo").hide();
 });
