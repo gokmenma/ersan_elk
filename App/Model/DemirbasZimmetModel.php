@@ -30,12 +30,12 @@ class DemirbasZimmetModel extends Model
                 d.marka,
                 d.model,
                 d.seri_no,
-                k.kategori_adi,
+                k.tur_adi as kategori_adi,
                 p.adi_soyadi AS personel_adi,
                 p.cep_telefonu AS personel_telefon
             FROM {$this->table} z
             LEFT JOIN demirbas d ON z.demirbas_id = d.id
-            LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             LEFT JOIN personel p ON z.personel_id = p.id
             ORDER BY z.kayit_tarihi DESC
         ");
@@ -56,10 +56,10 @@ class DemirbasZimmetModel extends Model
                 d.marka,
                 d.model,
                 d.seri_no,
-                k.kategori_adi
+                k.tur_adi as kategori_adi
             FROM {$this->table} z
             LEFT JOIN demirbas d ON z.demirbas_id = d.id
-            LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             WHERE z.personel_id = ?
             ORDER BY z.teslim_tarihi DESC
         ");
@@ -98,11 +98,11 @@ class DemirbasZimmetModel extends Model
                 d.demirbas_adi,
                 d.marka,
                 d.model,
-                k.kategori_adi,
+                k.tur_adi as kategori_adi,
                 p.adi_soyadi AS personel_adi
             FROM {$this->table} z
             LEFT JOIN demirbas d ON z.demirbas_id = d.id
-            LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             LEFT JOIN personel p ON z.personel_id = p.id
             WHERE z.durum = 'teslim'
             ORDER BY z.teslim_tarihi DESC
@@ -218,11 +218,11 @@ class DemirbasZimmetModel extends Model
                 d.demirbas_adi,
                 d.marka,
                 d.model,
-                k.kategori_adi,
+                k.tur_adi as kategori_adi,
                 p.adi_soyadi AS personel_adi
             FROM {$this->table} z
             LEFT JOIN demirbas d ON z.demirbas_id = d.id
-            LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             LEFT JOIN personel p ON z.personel_id = p.id
             WHERE z.id = ?
         ");
@@ -290,12 +290,12 @@ class DemirbasZimmetModel extends Model
                     d.marka,
                     d.model,
                     d.seri_no,
-                    k.kategori_adi,
+                    k.tur_adi as kategori_adi,
                     p.adi_soyadi AS personel_adi,
                     p.cep_telefonu AS personel_telefon
                 FROM {$this->table} z
                 LEFT JOIN demirbas d ON z.demirbas_id = d.id
-                LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+                LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
                 LEFT JOIN personel p ON z.personel_id = p.id
                 WHERE 1=1";
 
@@ -347,12 +347,12 @@ class DemirbasZimmetModel extends Model
                         d.marka,
                         d.model,
                         d.seri_no,
-                        k.kategori_adi,
+                        k.tur_adi as kategori_adi,
                         p.adi_soyadi AS personel_adi,
                         p.cep_telefonu AS personel_telefon
                     FROM {$this->table} z
                     LEFT JOIN demirbas d ON z.demirbas_id = d.id
-                    LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+                    LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
                     LEFT JOIN personel p ON z.personel_id = p.id
                     WHERE z.silinme_tarihi IS NULL";
 

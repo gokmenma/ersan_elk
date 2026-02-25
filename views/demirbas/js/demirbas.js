@@ -109,6 +109,15 @@ function updateButtonVisibility() {
   }
 }
 
+// ============== GENEL BUTON TIKLAMA OLAYLARI ==============
+$(document).on("click", "#btnZimmetVer", function () {
+  resetZimmetForm();
+});
+
+$(document).on("click", "#btnYeniDemirbas", function () {
+  resetDemirbasForm();
+});
+
 // Export Excel Butonu - Aktif tabloyu yakalar
 $(document).on("click", "#exportExcel", function (e) {
   e.preventDefault();
@@ -735,6 +744,7 @@ function resetDemirbasForm() {
 
 // Yeni Sayaç butonuna tıklandığında kategori "Sayaç" olarak pre-select edilsin
 $(document).on("click", "#btnYeniSayac", function () {
+  resetDemirbasForm();
   setTimeout(() => {
     let sayacOpt = $("#kategori_id option")
       .filter(function () {
@@ -772,14 +782,21 @@ $(".modal").on("shown.bs.modal", function () {
 $(document).on("click", ".zimmet-ver", function (e) {
   e.preventDefault();
   let id = $(this).data("id");
+  let rawId = $(this).data("raw-id");
   let name = $(this).data("name");
   let kalan = $(this).data("kalan");
 
-  // Demirbaş seçimini yap
-  // Not: Select2'de değer seçmek için ID'yi decrypt etmemiz gerekiyor
-  // Şimdilik modal'ı aç, kullanıcı manuel seçim yapsın
+  // Formu sıfırla ama select'i kapatacağız
+  resetZimmetForm();
 
   $("#zimmetModal").modal("show");
+
+  // Demirbaş seçimini yap ve kilitle
+  if (rawId) {
+    $("#demirbas_id_zimmet").val(rawId).trigger("change");
+    $("#demirbas_id_zimmet").prop("disabled", true);
+  }
+
   $("#kalanMiktarText").text(kalan);
   $("#teslim_miktar").attr("max", kalan);
 });
@@ -828,7 +845,15 @@ $(document).on("click", "#zimmetKaydet", function () {
     return;
   }
 
+  // Eğer select disabled ise FormData'ya dahil olmaz, geçici olarak açalım
+  let isDisabled = $("#demirbas_id_zimmet").prop("disabled");
+  if (isDisabled) $("#demirbas_id_zimmet").prop("disabled", false);
+
   var formData = new FormData(form[0]);
+
+  // UI tutarlılığı için tekrar kapatalım (modal hala açıksa)
+  if (isDisabled) $("#demirbas_id_zimmet").prop("disabled", true);
+
   formData.append("action", "zimmet-kaydet");
 
   fetch(zimmetUrl, {
@@ -972,7 +997,7 @@ $(document).on("click", ".zimmet-sil", function (e) {
 function resetZimmetForm() {
   $("#zimmetForm")[0].reset();
   $("#zimmet_id").val(0);
-  $("#demirbas_id_zimmet").val("").trigger("change");
+  $("#demirbas_id_zimmet").prop("disabled", false).val("").trigger("change");
   $("#personel_id").val("").trigger("change");
   $("#kalanMiktarText").text("-");
   $(".flatpickr").flatpickr({
@@ -1332,6 +1357,88 @@ $(document).on("click", ".kaskiye-detay-btn", function (e) {
         });
       } else {
         Swal.fire("Hata!", data.message || "Detaylar getirilemedi.", "error");
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      Swal.fire("Hata!", "Veri çekilirken bir hata oluştu.", "error");
+    });
+});
+// ============== DEMİRBAŞ İŞLEM GEÇMİŞİ ==============
+$(document).on("click", ".demirbas-gecmis", function (e) {
+  e.preventDefault();
+  console.log("Demirbaş geçmiş butonu tıklandı");
+  let demirbasId = $(this).data("raw-id");
+  let name = $(this).data("name");
+
+  $("#gecmisDemirbasAdi").text(name);
+  $("#demirbasGecmisBody").html(
+    '<tr><td colspan="6" class="text-center py-3"><i class="bx bx-loader-alt bx-spin fs-4"></i> Yükleniyor...</td></tr>',
+  );
+
+  // Modal'ı body'ye taşı (eğer değilse) ve aç
+  let modalEl = $("#demirbasGecmisModal");
+  if (modalEl.length) {
+    // Modal trapped ise body'ye taşı
+    if (modalEl.parent().prop("tagName") !== "BODY") {
+      modalEl.appendTo("body");
+    }
+
+    try {
+      modalEl.modal("show");
+    } catch (err) {
+      console.warn("jQuery modal fail, constructor denenecek", err);
+      if (typeof bootstrap !== "undefined" && bootstrap.Modal) {
+        let bModal =
+          bootstrap.Modal.getInstance(modalEl[0]) ||
+          new bootstrap.Modal(modalEl[0]);
+        bModal.show();
+      }
+    }
+  } else {
+    console.error("Hata: demirbasGecmisModal bulunamadı!");
+  }
+
+  let formData = new FormData();
+  formData.append("action", "hareket-gecmisi");
+  formData.append("demirbas_id", demirbasId);
+
+  fetch(zimmetUrl, {
+    method: "POST",
+    body: formData,
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      console.log("Hareket geçmişi verisi alındı:", data);
+      if (data.status === "success") {
+        let hBody = $("#demirbasGecmisBody");
+        hBody.empty();
+
+        if (data.hareketler && data.hareketler.length > 0) {
+          data.hareketler.forEach((h) => {
+            let row = `
+                        <tr>
+                            <td>${h.hareket_badge}</td>
+                            <td class="text-center fw-bold">${h.miktar}</td>
+                            <td>${h.tarih_format}</td>
+                            <td>${h.personel_adi || "-"}</td>
+                            <td class="small">${h.aciklama || ""}</td>
+                            <td class="text-end small">${h.islem_yapan_adi || h.kaynak_badge || "-"}</td>
+                        </tr>
+                    `;
+            hBody.append(row);
+          });
+        } else {
+          hBody.html(
+            '<tr><td colspan="6" class="text-center text-muted py-3">Bu demirbaşa ait işlem kaydı bulunamadı.</td></tr>',
+          );
+        }
+      } else {
+        Swal.fire(
+          "Hata!",
+          data.message || "Geçmiş verileri alınamadı.",
+          "error",
+        );
       }
     })
     .catch((err) => {

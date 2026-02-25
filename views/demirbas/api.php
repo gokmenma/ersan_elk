@@ -8,12 +8,12 @@ use App\Helper\Helper;
 use App\Helper\Security;
 use App\Model\DemirbasModel;
 use App\Model\DemirbasZimmetModel;
-use App\Model\DemirbasKategoriModel;
+use App\Model\TanimlamalarModel;
 use App\Model\DemirbasHareketModel;
 
 $Demirbas = new DemirbasModel();
 $Zimmet = new DemirbasZimmetModel();
-$Kategori = new DemirbasKategoriModel();
+$Tanimlamalar = new TanimlamalarModel();
 $Hareket = new DemirbasHareketModel();
 
 
@@ -497,15 +497,15 @@ if ($action == "excel-upload") {
 
                 if (!empty($row[8])) {
                     $katAdi = trim($row[8]);
-                    $kat = $Kategori->getDb()->prepare("SELECT id FROM demirbas_kategorileri WHERE kategori_adi = ?");
-                    $kat->execute([$katAdi]);
+                    $kat = $Tanimlamalar->getDb()->prepare("SELECT id FROM tanimlamalar WHERE tur_adi = ? AND grup = 'demirbas_kategorisi' AND firma_id = ?");
+                    $kat->execute([$katAdi, $_SESSION['firma_id']]);
                     $katRes = $kat->fetch(PDO::FETCH_OBJ);
                     if ($katRes) {
                         $data["kategori_id"] = $katRes->id;
                     } else {
-                        $insKat = $Kategori->getDb()->prepare("INSERT INTO demirbas_kategorileri (kategori_adi, durum) VALUES (?, 'aktif')");
-                        $insKat->execute([$katAdi]);
-                        $data["kategori_id"] = $Kategori->getDb()->lastInsertId();
+                        $insKat = $Tanimlamalar->getDb()->prepare("INSERT INTO tanimlamalar (tur_adi, grup, firma_id, kayit_yapan) VALUES (?, 'demirbas_kategorisi', ?, ?)");
+                        $insKat->execute([$katAdi, $_SESSION['firma_id'], $_SESSION['id'] ?? 0]);
+                        $data["kategori_id"] = $Tanimlamalar->getDb()->lastInsertId();
                     }
                 }
 
@@ -546,7 +546,7 @@ if ($action == "demirbas-ara") {
 // Kategori listesi
 if ($action == "kategori-listesi") {
     try {
-        $kategoriler = $Kategori->getActiveCategories();
+        $kategoriler = $Tanimlamalar->getDemirbasKategorileri();
         jsonResponse("success", "Başarılı", ["data" => $kategoriler]);
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());

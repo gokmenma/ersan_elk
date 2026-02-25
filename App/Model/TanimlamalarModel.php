@@ -256,6 +256,13 @@ class TanimlamalarModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function getDemirbasKategorileri()
+    {
+        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE grup = ? AND firma_id = ? AND silinme_tarihi IS NULL ORDER BY id DESC");
+        $sql->execute(['demirbas_kategorisi', $_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
     //Tur adını getir
     public function getTurAdi($id)
     {

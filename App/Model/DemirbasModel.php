@@ -23,11 +23,11 @@ class DemirbasModel extends Model
         $sql = $this->db->prepare("
             SELECT 
                 d.*,
-                k.kategori_adi,
+                k.tur_adi as kategori_adi,
                 COALESCE(d.miktar, 1) as miktar,
                 COALESCE(d.kalan_miktar, 1) as kalan_miktar
             FROM {$this->table} d
-            LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             ORDER BY d.kayit_tarihi DESC
         ");
         $sql->execute();
@@ -42,11 +42,11 @@ class DemirbasModel extends Model
         $sql = $this->db->prepare("
             SELECT 
                 d.*,
-                k.kategori_adi
+                k.tur_adi as kategori_adi
             FROM {$this->table} d
-            LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             WHERE d.kalan_miktar > 0
-            ORDER BY k.kategori_adi, d.demirbas_adi
+            ORDER BY k.tur_adi, d.demirbas_adi
         ");
         $sql->execute();
         return $sql->fetchAll(PDO::FETCH_OBJ);
@@ -58,9 +58,9 @@ class DemirbasModel extends Model
     public function getByCategory($kategori_id)
     {
         $sql = $this->db->prepare("
-            SELECT d.*, k.kategori_adi
+            SELECT d.*, k.tur_adi as kategori_adi
             FROM {$this->table} d
-            LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             WHERE d.kategori_id = ?
             ORDER BY d.demirbas_adi
         ");
@@ -94,10 +94,10 @@ class DemirbasModel extends Model
         $sql = $this->db->prepare("
             SELECT 
                 d.id,
-                CONCAT(d.demirbas_no, ' - ', d.demirbas_adi, ' (', COALESCE(k.kategori_adi, 'Kategorisiz'), ')') as text,
+                CONCAT(d.demirbas_no, ' - ', d.demirbas_adi, ' (', COALESCE(k.tur_adi, 'Kategorisiz'), ')') as text,
                 d.kalan_miktar
             FROM {$this->table} d
-            LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             WHERE d.kalan_miktar > 0
                 AND (d.demirbas_no LIKE ? OR d.demirbas_adi LIKE ? OR d.marka LIKE ?)
             ORDER BY d.demirbas_adi
@@ -113,9 +113,9 @@ class DemirbasModel extends Model
     public function getTableRow($id)
     {
         $sql = $this->db->prepare("
-            SELECT d.*, k.kategori_adi
+            SELECT d.*, k.tur_adi as kategori_adi
             FROM {$this->table} d
-            LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             WHERE d.id = ?
         ");
         $sql->execute([$id]);
@@ -174,9 +174,9 @@ class DemirbasModel extends Model
 
     public function filter($term = null, $colSearches = [])
     {
-        $sql = "SELECT d.*, k.kategori_adi
+        $sql = "SELECT d.*, k.tur_adi as kategori_adi
                 FROM {$this->table} d
-                LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+                LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
                 WHERE 1=1";
 
         $params = [];

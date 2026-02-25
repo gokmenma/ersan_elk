@@ -2,14 +2,12 @@
 use App\Helper\Form;
 
 // Kategorileri al
-use App\Model\DemirbasKategoriModel;
 use App\Model\TanimlamalarModel;
 
-$Kategori = new DemirbasKategoriModel();
-$kategoriler = $Kategori->getActiveCategories();
+$Tanimlamalar = new TanimlamalarModel();
+$kategoriler = $Tanimlamalar->getDemirbasKategorileri();
 
 // İş emri sonuçlarını al (otomatik zimmet ayarları için)
-$Tanimlamalar = new TanimlamalarModel();
 $isEmriSonuclari = $Tanimlamalar->getIsEmriSonuclari();
 
 // İş emri sonuçları dropdown için hazırla
@@ -54,7 +52,7 @@ foreach ($isEmriSonuclari as $sonuc) {
                                 </div>
                                 <div class="col-md-8 mb-3">
                                     <?php
-                                    echo Form::FormSelect2('kategori_id', $kategoriler, null, 'Kategori *', 'grid', 'id', 'kategori_adi', 'form-select select2', true);
+                                    echo Form::FormSelect2('kategori_id', $kategoriler, null, 'Kategori *', 'grid', 'id', 'tur_adi', 'form-select select2', true);
                                     ?>
                                 </div>
                             </div>

@@ -654,3 +654,73 @@ if (isset($_POST["action"]) && $_POST["action"] == "unvan-ucretleri-getir") {
     echo json_encode(["status" => $status, "data" => $data]);
     exit;
 }
+
+// Demirbaş Kategorisi Kaydet
+if (isset($_POST["action"]) && $_POST["action"] == "demirbas-kategorisi-kaydet") {
+    $id = Security::decrypt($_POST["kategori_id"]);
+    $plainId = 0;
+    try {
+        $data = [
+            "id" => $id,
+            "type" => 0,
+            "grup" => "demirbas_kategorisi",
+            "tur_adi" => $_POST["kategori_adi"],
+            "aciklama" => $_POST["aciklama"]
+        ];
+
+        if ($id == 0) {
+            $data["kayit_yapan"] = $_SESSION["id"] ?? 0;
+            $data["firma_id"] = $_SESSION["firma_id"];
+            $plainId = $Tanimlamalar->saveWithAttr($data);
+        } else {
+            $Tanimlamalar->saveWithAttr($data);
+            $plainId = $id;
+        }
+
+        $status = "success";
+        $message = "İşlem başarılı bir şekilde gerçekleştirildi.";
+
+    } catch (PDOException $ex) {
+        $status = "error";
+        $message = $ex->getMessage();
+    }
+    $res = [
+        "status" => $status,
+        "message" => $message,
+        "id" => $plainId,
+        "is_update" => ($id != 0)
+    ];
+
+    echo json_encode($res);
+    exit;
+}
+
+// Demirbaş Kategorisi Getir
+if (isset($_POST["action"]) && $_POST["action"] == "demirbas-kategorisi-getir") {
+    $id = Security::decrypt($_POST["id"]);
+    try {
+        $data = $Tanimlamalar->find($id);
+        $data->encrypted_id = $_POST["id"];
+        $status = "success";
+    } catch (PDOException $ex) {
+        $status = "error";
+        $data = null;
+    }
+    echo json_encode(["status" => $status, "data" => $data]);
+    exit;
+}
+
+// Demirbaş Kategorisi Sil
+if (isset($_POST["action"]) && $_POST["action"] == "demirbas-kategorisi-sil") {
+    $id = Security::decrypt($_POST["id"]);
+    try {
+        $Tanimlamalar->softDelete($id);
+        $status = "success";
+        $message = "Kayıt silindi.";
+    } catch (PDOException $ex) {
+        $status = "error";
+        $message = $ex->getMessage();
+    }
+    echo json_encode(["status" => $status, "message" => $message, "deleted_id" => $id]);
+    exit;
+}

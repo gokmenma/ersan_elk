@@ -88,14 +88,14 @@ class DemirbasHareketModel extends Model
                 h.demirbas_id,
                 d.demirbas_adi,
                 d.demirbas_no,
-                k.kategori_adi,
+                k.tur_adi as kategori_adi,
                 COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0) as toplam_zimmet,
                 COALESCE(SUM(CASE WHEN h.hareket_tipi IN ('iade', 'sarf', 'kayip') THEN h.miktar ELSE 0 END), 0) as toplam_cikis,
                 COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0) - 
                 COALESCE(SUM(CASE WHEN h.hareket_tipi IN ('iade', 'sarf', 'kayip') THEN h.miktar ELSE 0 END), 0) as bakiye
             FROM {$this->table} h
             INNER JOIN demirbas d ON h.demirbas_id = d.id
-            LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             WHERE h.personel_id = ? AND h.silinme_tarihi IS NULL
             GROUP BY h.demirbas_id, d.demirbas_adi, d.demirbas_no, k.kategori_adi
             HAVING bakiye != 0
@@ -146,10 +146,10 @@ class DemirbasHareketModel extends Model
                 h.*,
                 d.demirbas_adi,
                 d.demirbas_no,
-                k.kategori_adi
+                k.tur_adi as kategori_adi
             FROM {$this->table} h
             INNER JOIN demirbas d ON h.demirbas_id = d.id
-            LEFT JOIN demirbas_kategorileri k ON d.kategori_id = k.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             WHERE h.personel_id = :personel_id AND h.silinme_tarihi IS NULL
         ";
 
