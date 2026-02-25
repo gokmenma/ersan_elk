@@ -33,6 +33,20 @@ if (isset($_COOKIE["remember_me"])) {
             $_SESSION["username"] = $user->user_name;
             $_SESSION["user_full_name"] = $user->UserName;
             $_SESSION["sube_id"] = $user->sube_id;
+
+            // Log the automatic login
+            try {
+                $SystemLog = new SystemLogModel();
+                $ip = $_SERVER['REMOTE_ADDR'] ?? 'Bilinmiyor';
+                $SystemLog->logAction(
+                    $user->id,
+                    'Başarılı Giriş (Beni Hatırla)',
+                    "{$user->adi_soyadi} ({$user->user_name}) sisteme otomatik giriş yaptı (Beni Hatırla). IP: {$ip}",
+                    SystemLogModel::LEVEL_IMPORTANT
+                );
+            } catch (\Exception $e) { /* Loglama hatası sessiz geçilir */
+            }
+
             header("location: firma-secim.php");
             exit;
         }

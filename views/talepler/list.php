@@ -168,13 +168,18 @@ $izinTurleri = [
                     </a>
                 </li>
             </ul>
+            <?php
+            $currentTab = $_GET['tab'] ?? 'avans';
+            $pendingUrl = "index?p=talepler/list&tab=" . $currentTab;
+            $approvedUrl = "index?p=talepler/list&show=approved&tab=" . $currentTab;
+            ?>
             <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 mb-2">
-                <a href="index?p=talepler/list"
+                <a href="<?= $pendingUrl ?>" id="btnShowPending"
                     class="btn btn-sm px-3 rounded-pill <?= !$showApproved ? 'btn-warning text-dark shadow-sm fw-bold' : 'btn-link text-muted text-decoration-none' ?>">
                     <i class="bx bx-time me-1"></i>Bekleyenler
                 </a>
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-                <a href="index?p=talepler/list&show=approved"
+                <a href="<?= $approvedUrl ?>" id="btnShowApproved"
                     class="btn btn-sm px-3 rounded-pill <?= $showApproved ? 'btn-success text-white shadow-sm fw-bold' : 'btn-link text-muted text-decoration-none' ?>">
                     <i class="bx bx-check-circle me-1"></i>İşlem Yapılanlar
                 </a>
@@ -1198,5 +1203,23 @@ $izinTurleri = [
             }, 1000);
         }
 
+        // Tab kliklendiğinde buton linklerini güncelle
+        $('.nav-tabs a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+            var target = $(e.target).attr("href"); // #tabAvans, #tabIzin, #tabTalepler
+            var tabName = '';
+            if (target === '#tabAvans') tabName = 'avans';
+            else if (target === '#tabIzin') tabName = 'izin';
+            else if (target === '#tabTalepler') tabName = 'talep';
+
+            if (tabName) {
+                $('#btnShowPending').attr('href', 'index?p=talepler/list&tab=' + tabName);
+                $('#btnShowApproved').attr('href', 'index?p=talepler/list&show=approved&tab=' + tabName);
+
+                // URL'yi de sessizce güncelle (opsiyonel ama iyi olur)
+                var newUrl = new URL(window.location.href);
+                newUrl.searchParams.set('tab', tabName);
+                window.history.replaceState({}, '', newUrl);
+            }
+        });
     });
 </script>

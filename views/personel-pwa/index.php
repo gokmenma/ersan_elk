@@ -13,6 +13,7 @@ require_once dirname(dirname(__DIR__)) . '/Autoloader.php';
 
 use App\Helper\Helper;
 use App\Model\PersonelModel;
+use App\Model\PersonelGirisLogModel;
 
 // Oturum kontrolü öncesi beni hatırla kontrolü
 if (!isset($_SESSION['personel_id']) && isset($_COOKIE['remember_token'])) {
@@ -32,6 +33,17 @@ if (!isset($_SESSION['personel_id']) && isset($_COOKIE['remember_token'])) {
                 $_SESSION['personel_id'] = $personel->id;
                 $_SESSION['personel_tc'] = $personel->tc_kimlik_no;
                 $_SESSION['personel_adi'] = $personel->adi_soyadi;
+
+                // Log the automatic login
+                try {
+                    $girisLogModel = new PersonelGirisLogModel();
+                    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+                    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                    $girisLogModel->logLogin($personel->id, $ip, $userAgent);
+                } catch (\Exception $e) {
+                    error_log("PWA Auto-Login log error: " . $e->getMessage());
+                }
+
                 // Cookie süresini uzat
                 setcookie('remember_token', $token, time() + (86400 * 30), "/");
             }
@@ -291,7 +303,7 @@ if (!in_array($page, $allowed_pages)) {
                     <span class="font-medium text-slate-900 dark:text-white text-sm">Profil</span>
                     <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
                 </a>
-             
+
                 <a href="?page=etkinlikler"
                     class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'etkinlikler' ? 'bg-primary/10' : ''; ?>">
                     <div class="w-9 h-9 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">

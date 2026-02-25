@@ -150,6 +150,12 @@ class PersonelIzinleriModel extends Model
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.onay_durumu IN ('Onaylandı', 'Reddedildi') AND p.firma_id = ?
+            AND pi.id NOT IN (
+                SELECT izin_id FROM izin_onaylari 
+                WHERE aciklama LIKE 'Puantaj üzerinden%' 
+                OR aciklama LIKE 'SGK Vizite%'
+                OR aciklama LIKE 'Otomatik onaylandı%'
+            )
             ORDER BY pi.talep_tarihi DESC
             LIMIT {$limit}
         ");
