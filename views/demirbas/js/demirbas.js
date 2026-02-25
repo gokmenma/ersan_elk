@@ -3,7 +3,8 @@ var demirbasTable,
   zimmetTable,
   depoPersonelTable,
   hurdaDemirbasTable,
-  sayacTable;
+  sayacTable,
+  aparatTable;
 
 // ============== SAYFA YÜKLENDİĞİNDE ==============
 $(document).ready(function () {
@@ -68,6 +69,16 @@ $(document).ready(function () {
     sayacTable = $("#sayacTable").DataTable(sayacOptions);
   }
 
+  // Aparat Tablosu
+  if ($("#aparatTable").length) {
+    let aparatOptions = getDatatableOptions();
+    aparatOptions.columnDefs = [{ orderable: false, targets: -1 }];
+    aparatOptions.order = [[0, "asc"]];
+    aparatOptions.language.emptyTable =
+      '<div class="text-center text-muted py-4"><i class="bx bx-package display-4 d-block mb-2"></i>Henüz aparat eklenmemiş.<br><small>"Yeni Aparat" butonuna tıklayarak ekleyebilirsiniz.</small></div>';
+    aparatTable = $("#aparatTable").DataTable(aparatOptions);
+  }
+
   // Select2 başlat
   initSelect2();
 
@@ -91,7 +102,7 @@ function updateButtonVisibility() {
 
   let activeTab = activeTabBtn.attr("id");
   // Tüm ana aksiyon butonlarını gizle
-  $("#btnYeniDemirbas, #btnZimmetVer, #btnYeniSayac")
+  $("#btnYeniDemirbas, #btnZimmetVer, #btnYeniSayac, #btnYeniAparat")
     .addClass("d-none")
     .removeClass("d-flex");
   $("#importExcelLi").addClass("d-none");
@@ -106,6 +117,8 @@ function updateButtonVisibility() {
     }
   } else if (activeTab === "depo-tab") {
     $("#btnYeniSayac").removeClass("d-none").addClass("d-flex");
+  } else if (activeTab === "aparat-tab") {
+    $("#btnYeniAparat").removeClass("d-none").addClass("d-flex");
   }
 }
 
@@ -128,6 +141,7 @@ $(document).on("click", "#exportExcel", function (e) {
   else if (activeTab === "zimmet-tab") targetTable = zimmetTable;
   else if (activeTab === "depo-tab")
     targetTable = sayacTable || depoPersonelTable;
+  else if (activeTab === "aparat-tab") targetTable = aparatTable;
 
   if (targetTable) {
     targetTable.button(".buttons-excel").trigger();
@@ -235,24 +249,69 @@ function initSelect2() {
           $kategoriSelect.val(firstSayac).trigger("change");
         }
       }
-    } else {
-      // SAYAÇLAR HARİÇ HER ŞEY
+    } else if (
+      activeTab === "aparat-tab" &&
+      typeof aparatKatIds !== "undefined"
+    ) {
+      // SADECE APARATLAR
       $kategoriSelect.find("option").each(function () {
         const val = $(this).val();
-        if (val !== "" && sayacKatIds.includes(val.toString())) {
+        if (val !== "" && !aparatKatIds.includes(val.toString())) {
           $(this).prop("disabled", true).hide();
         }
       });
 
-      // Yeni kayıt ise: Eğer şu anki seçim bir sayaç ise ilk uygun olanı seç
       if (demirbasId == "0") {
         const currentVal = $kategoriSelect.val();
-        if (!currentVal || sayacKatIds.includes(currentVal.toString())) {
+        if (!currentVal || !aparatKatIds.includes(currentVal.toString())) {
+          const firstAparat = $kategoriSelect
+            .find("option")
+            .filter(function () {
+              return aparatKatIds.includes($(this).val().toString());
+            })
+            .first()
+            .val();
+          $kategoriSelect.val(firstAparat).trigger("change");
+        }
+      }
+    } else {
+      // SAYAÇLAR VE APARATLAR HARİÇ HER ŞEY
+      $kategoriSelect.find("option").each(function () {
+        const val = $(this).val();
+        const isSayac =
+          typeof sayacKatIds !== "undefined" &&
+          sayacKatIds.includes(val.toString());
+        const isAparat =
+          typeof aparatKatIds !== "undefined" &&
+          aparatKatIds.includes(val.toString());
+
+        if (val !== "" && (isSayac || isAparat)) {
+          $(this).prop("disabled", true).hide();
+        }
+      });
+
+      // Yeni kayıt ise: Eğer şu anki seçim bir sayaç veya aparat ise ilk uygun olanı seç
+      if (demirbasId == "0") {
+        const currentVal = $kategoriSelect.val();
+        const isSayac =
+          typeof sayacKatIds !== "undefined" &&
+          sayacKatIds.includes(currentVal?.toString());
+        const isAparat =
+          typeof aparatKatIds !== "undefined" &&
+          aparatKatIds.includes(currentVal?.toString());
+
+        if (!currentVal || isSayac || isAparat) {
           const firstDemirbas = $kategoriSelect
             .find("option")
             .filter(function () {
               const v = $(this).val();
-              return v !== "" && !sayacKatIds.includes(v.toString());
+              const vSayac =
+                typeof sayacKatIds !== "undefined" &&
+                sayacKatIds.includes(v.toString());
+              const vAparat =
+                typeof aparatKatIds !== "undefined" &&
+                aparatKatIds.includes(v.toString());
+              return v !== "" && !vSayac && !vAparat;
             })
             .first()
             .val();
@@ -321,26 +380,31 @@ function fetchIsEmriSonuclari(callback) {
 }
 
 // ============== TAB DEĞİŞİKLİĞİNDE ==============
-$(document).on("click", "#demirbas-tab, #zimmet-tab, #depo-tab", function () {
-  let tabMap = {
-    "demirbas-tab": "demirbas",
-    "zimmet-tab": "zimmet",
-    "depo-tab": "depo",
-  };
-  const tabName = tabMap[this.id] || "demirbas";
+$(document).on(
+  "click",
+  "#demirbas-tab, #zimmet-tab, #depo-tab, #aparat-tab",
+  function () {
+    let tabMap = {
+      "demirbas-tab": "demirbas",
+      "zimmet-tab": "zimmet",
+      "depo-tab": "depo",
+      "aparat-tab": "aparat",
+    };
+    const tabName = tabMap[this.id] || "demirbas";
 
-  // URL'i güncelle
-  const url = new URL(window.location);
-  url.searchParams.set("tab", tabName);
-  window.history.replaceState({}, "", url);
+    // URL'i güncelle
+    const url = new URL(window.location);
+    url.searchParams.set("tab", tabName);
+    window.history.replaceState({}, "", url);
 
-  // Buton görünürlüğünü güncelle
-  updateButtonVisibility();
+    // Buton görünürlüğünü güncelle
+    updateButtonVisibility();
 
-  if (this.id === "zimmet-tab") {
-    loadZimmetList();
-  }
-});
+    if (this.id === "zimmet-tab") {
+      loadZimmetList();
+    }
+  },
+);
 
 // ============== ZİMMET LİSTESİ YÜKLE ==============
 function loadZimmetList() {

@@ -27,19 +27,24 @@ $sqlAyarlar = $Demirbas->db->prepare("SELECT * FROM demirbas WHERE (otomatik_zim
 $sqlAyarlar->execute();
 $ayarYapilmisDemirbaslar = $sqlAyarlar->fetchAll(PDO::FETCH_OBJ);
 
-// ====== SAYAÇ KATEGORİ ID'LERİ (Daha Sağlıklı Tespit) ======
+// ====== SAYAÇ VE APARAT KATEGORİ ID'LERİ (Daha Sağlıklı Tespit) ======
 $sayacKatIds = [];
+$aparatKatIds = [];
 $tumKategoriler = $Tanimlamalar->getDemirbasKategorileri();
 foreach ($tumKategoriler as $kat) {
     $katAdiLower = mb_strtolower($kat->tur_adi, 'UTF-8');
     if (str_contains($katAdiLower, 'sayaç') || str_contains($katAdiLower, 'sayac')) {
         $sayacKatIds[] = (string) $kat->id;
     }
+    if (str_contains($katAdiLower, 'aparat') || $kat->id == 645) {
+        $aparatKatIds[] = (string) $kat->id;
+    }
 }
 
-// ====== DEMİRBAŞ VE SAYAÇ LİSTELERİNİ AYIR ======
+// ====== DEMİRBAŞ, SAYAÇ VE APARAT LİSTELERİNİ AYIR ======
 $demirbaslar = [];
 $sayaclar = [];
+$aparatlar = [];
 $stokOzeti = (object) ['toplam_cesit' => 0, 'toplam_adet' => 0, 'stokta_kalan' => 0, 'zimmetli_adet' => 0];
 
 // Kategori bazlı envanter raporu için veriler
@@ -48,6 +53,8 @@ $kategoriEnvanteri = [];
 foreach ($tumDemirbaslar as $item) {
     if (!empty($sayacKatIds) && in_array($item->kategori_id, $sayacKatIds)) {
         $sayaclar[] = $item;
+    } elseif (!empty($aparatKatIds) && in_array($item->kategori_id, $aparatKatIds)) {
+        $aparatlar[] = $item;
     } else {
         $demirbaslar[] = $item;
 
@@ -160,6 +167,13 @@ if (!empty($sayacKatIds)) {
                                         <i class="bx bx-store-alt me-1"></i> Sayaç Deposu
                                     </button>
                                 </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link <?php echo $activeTab === 'aparat' ? 'active' : ''; ?>"
+                                        id="aparat-tab" data-bs-toggle="tab" data-bs-target="#aparatContent" type="button"
+                                        role="tab">
+                                        <i class="bx bx-wrench me-1"></i> Aparatlar
+                                    </button>
+                                </li>
                             </ul>
                         </div>
 
@@ -204,6 +218,11 @@ if (!empty($sayacKatIds)) {
                                 class="btn btn-success btn-sm px-3 py-2 fw-bold align-items-center shadow-sm ms-1 <?php echo $activeTab === 'depo' ? 'd-flex' : 'd-none'; ?>"
                                 data-bs-toggle="modal" data-bs-target="#demirbasModal">
                                 <i class="bx bx-plus-circle fs-5 me-1"></i> Yeni Sayaç
+                            </button>
+                            <button type="button" id="btnYeniAparat"
+                                class="btn btn-success btn-sm px-3 py-2 fw-bold align-items-center shadow-sm ms-1 <?php echo $activeTab === 'aparat' ? 'd-flex' : 'd-none'; ?>"
+                                data-bs-toggle="modal" data-bs-target="#demirbasModal">
+                                <i class="bx bx-plus-circle fs-5 me-1"></i> Yeni Aparat
                             </button>
                         </div>
                     </div>
@@ -721,6 +740,122 @@ if (!empty($sayacKatIds)) {
 
                         </div>
 
+                        <!-- Aparatlar Tab -->
+                        <div class="tab-pane fade <?php echo $activeTab === 'aparat' ? 'show active' : ''; ?>"
+                            id="aparatContent" role="tabpanel">
+                            <!-- Aparat Tablosu -->
+                            <div class="table-responsive">
+                                <table id="aparatTable"
+                                    class="table table-demirbas table-hover table-bordered nowrap w-100">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="text-center" style="width:5%">Sıra</th>
+                                            <th style="width:8%" class="text-center">D.No</th>
+                                            <th style="width:20%">Aparat Adı</th>
+                                            <th style="width:15%">Marka/Model</th>
+                                            <th style="width:15%">Seri No</th>
+                                            <th style="width:10%" class="text-center">Stok</th>
+                                            <th style="width:10%" class="text-center">Durum</th>
+                                            <th style="width:10%">Edinme Tarihi</th>
+                                            <th style="width:5%" class="text-center">İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (!empty($aparatlar)): ?>
+                                            <?php
+                                            $i = 0;
+                                            foreach ($aparatlar as $aparat) {
+                                                $i++;
+                                                $enc_id = Security::encrypt($aparat->id);
+                                                $miktar = $aparat->miktar ?? 1;
+                                                $kalan = $aparat->kalan_miktar ?? 1;
+
+                                                if ($kalan == 0) {
+                                                    $stokBadge = '<span class="badge bg-danger">Stok Yok</span>';
+                                                } elseif ($kalan < $miktar) {
+                                                    $stokBadge = '<span class="badge bg-warning">' . $kalan . '/' . $miktar . '</span>';
+                                                } else {
+                                                    $stokBadge = '<span class="badge bg-success">' . $kalan . '/' . $miktar . '</span>';
+                                                }
+
+                                                $durumText = $aparat->durum ?? 'aktif';
+                                                $durumMap = [
+                                                    'aktif' => '<span class="badge bg-soft-success text-success">Aktif</span>',
+                                                    'pasif' => '<span class="badge bg-soft-secondary text-secondary">Pasif</span>',
+                                                    'arizali' => '<span class="badge bg-soft-warning text-warning">Arızalı</span>',
+                                                    'hurda' => '<span class="badge bg-soft-danger text-danger">Hurda</span>',
+                                                ];
+                                                $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
+                                                ?>
+                                                <tr data-id="<?php echo $enc_id ?>">
+                                                    <td class="text-center"><?php echo $i ?></td>
+                                                    <td class="text-center"><?php echo $aparat->demirbas_no ?? '-' ?></td>
+                                                    <td>
+                                                        <a href="#" data-id="<?php echo $enc_id; ?>"
+                                                            class="text-dark duzenle fw-medium">
+                                                            <?php echo $aparat->demirbas_adi ?>
+                                                        </a>
+                                                    </td>
+                                                    <td>
+                                                        <div><?php echo ($aparat->marka ?? '-') . ' ' . ($aparat->model ?? '') ?>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <?php echo $aparat->seri_no ?? '-' ?>
+                                                    </td>
+                                                    <td class="text-center"><?php echo $stokBadge ?></td>
+                                                    <td class="text-center"><?php echo $durumBadge ?></td>
+                                                    <td><?php echo $aparat->edinme_tarihi ?? '-' ?></td>
+                                                    <td class="text-center">
+                                                        <div class="dropdown">
+                                                                <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                                    <i class="bx bx-dots-horizontal-rounded"></i>
+                                                                </button>
+                                                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                                                    <?php if ($kalan > 0): ?>
+                                                                        <li>
+                                                                            <a class="dropdown-item zimmet-ver" href="javascript:void(0);"
+                                                                               data-id="<?php echo $enc_id; ?>"
+                                                                               data-raw-id="<?php echo $aparat->id; ?>"
+                                                                               data-name="<?php echo $aparat->demirbas_adi; ?>"
+                                                                               data-kalan="<?php echo $kalan; ?>">
+                                                                                <i class="bx bx-transfer text-warning me-2"></i> Zimmet Ver
+                                                                            </a>
+                                                                        </li>
+                                                                    <?php endif; ?>
+                                                                    <li>
+                                                                        <a class="dropdown-item duzenle" href="javascript:void(0);" data-id="<?php echo $enc_id; ?>">
+                                                                            <i class="bx bx-edit-alt text-primary me-2"></i> Düzenle
+                                                                        </a>
+                                                                    </li>
+                                                                    <li>
+                                                                        <a class="dropdown-item demirbas-gecmis" href="javascript:void(0);" 
+                                                                           data-id="<?php echo $enc_id; ?>"
+                                                                           data-raw-id="<?php echo $aparat->id; ?>"
+                                                                           data-name="<?php echo htmlspecialchars($aparat->demirbas_adi); ?>">
+                                                                            <i class="bx bx-history text-info me-2"></i> İşlem Geçmişi
+                                                                        </a>
+                                                                    </li>
+                                                                    <li><hr class="dropdown-divider"></li>
+                                                                    <li>
+                                                                        <a class="dropdown-item demirbas-sil" href="javascript:void(0);" 
+                                                                           data-id="<?php echo $enc_id; ?>"
+                                                                           data-name="<?php echo $aparat->demirbas_adi; ?>">
+                                                                            <i class="bx bx-trash text-danger me-2"></i> Sil
+                                                                        </a>
+                                                                    </li>
+                                                                </ul>
+                                                            </div>
+                                                    </td>
+                                                </tr>
+                                            <?php } ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -916,5 +1051,6 @@ if (!empty($sayacKatIds)) {
 
 <script>
     var sayacKatIds = <?php echo json_encode($sayacKatIds); ?>;
+    var aparatKatIds = <?php echo json_encode($aparatKatIds); ?>;
 </script>
 <script src="views/demirbas/js/demirbas.js?v=<?php echo time(); ?>"></script>

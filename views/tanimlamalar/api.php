@@ -714,6 +714,12 @@ if (isset($_POST["action"]) && $_POST["action"] == "demirbas-kategorisi-getir") 
 if (isset($_POST["action"]) && $_POST["action"] == "demirbas-kategorisi-sil") {
     $id = Security::decrypt($_POST["id"]);
     try {
+        // Kontrol et: Kategori kullanılıyor mu?
+        if ($Tanimlamalar->isDemirbasKategorisiKullaniliyor($id)) {
+            echo json_encode(["status" => "error", "message" => "Bu kategori demirbaşlar tarafından kullanılıyor. Önce ilgili demirbaşların kategorisini değiştirin veya silin."]);
+            exit;
+        }
+
         $Tanimlamalar->softDelete($id);
         $status = "success";
         $message = "Kayıt silindi.";

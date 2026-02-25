@@ -481,6 +481,17 @@ class TanimlamalarModel extends Model
     }
 
     /**
+     * Demirbaş kategorisi kullanılıyor mu kontrol et
+     */
+    public function isDemirbasKategorisiKullaniliyor($id)
+    {
+        $sql = "SELECT id FROM demirbas WHERE kategori_id = ? LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        return $stmt->fetch(PDO::FETCH_OBJ) ? true : false;
+    }
+
+    /**
      * Benzersiz iş emri sonuçlarını getirir (Demirbaş otomatik zimmet için)
      * @return array İş emri sonuçları listesi
      */
