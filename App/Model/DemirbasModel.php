@@ -25,7 +25,8 @@ class DemirbasModel extends Model
                 d.*,
                 k.tur_adi as kategori_adi,
                 COALESCE(d.miktar, 1) as miktar,
-                COALESCE(d.kalan_miktar, 1) as kalan_miktar
+                COALESCE(d.kalan_miktar, 1) as kalan_miktar,
+                (SELECT id FROM demirbas_servis_kayitlari WHERE demirbas_id = d.id AND iade_tarihi IS NULL AND silinme_tarihi IS NULL LIMIT 1) as active_servis_id
             FROM {$this->table} d
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             ORDER BY d.kayit_tarihi DESC

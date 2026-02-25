@@ -4,7 +4,8 @@ var demirbasTable,
   depoPersonelTable,
   hurdaDemirbasTable,
   sayacTable,
-  aparatTable;
+  aparatTable,
+  servisTable;
 
 // ============== SAYFA YÜKLENDİĞİNDE ==============
 $(document).ready(function () {
@@ -83,6 +84,40 @@ $(document).ready(function () {
     aparatTable = $("#aparatTable").DataTable(aparatOptions);
   }
 
+  // Servis Tablosu
+  if ($("#servisTable").length) {
+    servisTable = $("#servisTable").DataTable({
+      ...getDatatableOptions(),
+      serverSide: true,
+      ajax: {
+        url: zimmetUrl,
+        type: "POST",
+        data: function (d) {
+          d.action = "servis-listesi";
+          d.baslangic = $("#servis_filtre_baslangic").val();
+          d.bitis = $("#servis_filtre_bitis").val();
+        },
+      },
+      columns: [
+        { data: "sira", className: "text-center" },
+        { data: "demirbas_adi" },
+        { data: "servis_tarihi", className: "text-center" },
+        { data: "iade_tarihi", className: "text-center" },
+        { data: "servis_adi" },
+        { data: "teslim_eden" },
+        { data: "islem_detay" },
+        { data: "tutar", className: "text-end" },
+        { data: "islemler", className: "text-center", orderable: false },
+      ],
+      order: [[2, "desc"]],
+      language: {
+        ...getDatatableOptions().language,
+        emptyTable:
+          '<div class="text-center text-muted py-4"><i class="bx bx-wrench display-4 d-block mb-2"></i>Herhangi bir servis kaydı bulunamadı.</div>',
+      },
+    });
+  }
+
   // Select2 başlat
   initSelect2();
 
@@ -98,6 +133,10 @@ $(document).ready(function () {
   if ($("#zimmet-tab").hasClass("active")) {
     loadZimmetList();
   }
+
+  if ($("#servis-tab").hasClass("active")) {
+    loadServisList();
+  }
 });
 
 function updateButtonVisibility() {
@@ -106,7 +145,9 @@ function updateButtonVisibility() {
 
   let activeTab = activeTabBtn.attr("id");
   // Tüm ana aksiyon butonlarını gizle
-  $("#btnYeniDemirbas, #btnZimmetVer, #btnYeniSayac, #btnYeniAparat")
+  $(
+    "#btnYeniDemirbas, #btnZimmetVer, #btnYeniSayac, #btnYeniAparat, #btnYeniServis",
+  )
     .addClass("d-none")
     .removeClass("d-flex");
   $("#importExcelLi").addClass("d-none");
@@ -123,6 +164,11 @@ function updateButtonVisibility() {
     $("#btnYeniSayac").removeClass("d-none").addClass("d-flex");
   } else if (activeTab === "aparat-tab") {
     $("#btnYeniAparat").removeClass("d-none").addClass("d-flex");
+  } else if (activeTab === "servis-tab") {
+    $("#btnYeniServis").removeClass("d-none").addClass("d-flex");
+    if (typeof servisTable !== "undefined") {
+      servisTable.ajax.reload(null, false);
+    }
   }
 }
 
@@ -208,6 +254,24 @@ function initSelect2() {
     $("#otomatik_iade_is_emri").select2({
       dropdownParent: $("#demirbasModal"),
       placeholder: "Seçiniz (Yok)",
+      allowClear: true,
+      width: "100%",
+    });
+  }
+
+  if ($("#servis_demirbas_id").length) {
+    $("#servis_demirbas_id").select2({
+      dropdownParent: $("#servisModal"),
+      placeholder: "Demirbaş Seçin...",
+      allowClear: true,
+      width: "100%",
+    });
+  }
+
+  if ($("#teslim_eden_personel_id").length) {
+    $("#teslim_eden_personel_id").select2({
+      dropdownParent: $("#servisModal"),
+      placeholder: "Personel Seçin...",
       allowClear: true,
       width: "100%",
     });
@@ -386,13 +450,14 @@ function fetchIsEmriSonuclari(callback) {
 // ============== TAB DEĞİŞİKLİĞİNDE ==============
 $(document).on(
   "click",
-  "#demirbas-tab, #zimmet-tab, #depo-tab, #aparat-tab",
+  "#demirbas-tab, #zimmet-tab, #depo-tab, #aparat-tab, #servis-tab",
   function () {
     let tabMap = {
       "demirbas-tab": "demirbas",
       "zimmet-tab": "zimmet",
       "depo-tab": "depo",
       "aparat-tab": "aparat",
+      "servis-tab": "servis",
     };
     const tabName = tabMap[this.id] || "demirbas";
 
@@ -406,6 +471,8 @@ $(document).on(
 
     if (this.id === "zimmet-tab") {
       loadZimmetList();
+    } else if (this.id === "servis-tab") {
+      loadServisList();
     }
   },
 );
@@ -646,6 +713,9 @@ $(document).on("click", "#demirbasKaydet", function () {
 
   // Tekli kaydet (mevcut mantık)
   var formData = new FormData(form[0]);
+  if ($("#durum").prop("disabled")) {
+    formData.append("durum", $("#durum").val());
+  }
   formData.append("action", "demirbas-kaydet");
 
   fetch(zimmetUrl, {
@@ -739,6 +809,14 @@ $(document).on("click", ".duzenle", function (e) {
                 $("#" + key)
                   .val(d[key])
                   .trigger("change");
+
+                if (key === "durum") {
+                  if (d[key] === "serviste") {
+                    $("#" + key).prop("disabled", true);
+                  } else {
+                    $("#" + key).prop("disabled", false);
+                  }
+                }
               } else {
                 $("#" + key).val(d[key]);
               }
@@ -793,7 +871,7 @@ function resetDemirbasForm() {
   $("#demirbasForm")[0].reset();
   $("#demirbas_id").val(0);
   $("#kategori_id").val("").trigger("change");
-  $("#durum").val("aktif").trigger("change");
+  $("#durum").prop("disabled", false).val("aktif").trigger("change");
   $("#miktar").val(1);
   $("#minimun_stok_uyari_miktari").val(0);
   // Otomatik zimmet ayarları
@@ -1622,4 +1700,167 @@ $(document).on("click", "#clearInventoryFilter", function () {
   $("#activeFilterBadges").empty();
   $(this).remove();
   demirbasTable.draw();
+});
+
+// ============== SERVİS KAYDI İŞLEMLERİ ==============
+
+function loadServisList() {
+  if (servisTable) {
+    servisTable.ajax.reload(function (json) {
+      if (json.stats) {
+        $("#servis_toplam_kayit").text(json.stats.toplam_kayit);
+        $("#servis_aktif_sayisi").text(json.stats.aktif_sayisi);
+        $("#servis_toplam_maliyet").text(json.stats.toplam_maliyet);
+        $("#servisStatsRow").removeClass("d-none");
+      }
+    }, false);
+  }
+}
+
+$(document).on("click", "#btnServisListele", function () {
+  loadServisList();
+});
+
+$(document).on("click", "#btnYeniServis", function () {
+  $("#servisForm")[0].reset();
+  $("#servis_id").val("");
+  $("#servis_demirbas_id").val("").trigger("change");
+  $("#teslim_eden_personel_id").val("").trigger("change");
+
+  $("#servis_demirbas_select_area").removeClass("d-none");
+  $("#servis_demirbas_info_area").addClass("d-none");
+
+  $("#servisModalLabel").html(
+    '<i class="bx bx-wrench me-2"></i>Yeni Servis Kaydı',
+  );
+  $("#servisModal").modal("show");
+});
+
+$(document).on("click", ".servis-ekle", function () {
+  const rawId = $(this).data("raw-id");
+  const name = $(this).data("name");
+  const no = $(this).data("no");
+
+  $("#servisForm")[0].reset();
+  $("#servis_id").val("");
+  $("#servis_demirbas_id").val(rawId).trigger("change");
+  $("#teslim_eden_personel_id").val("").trigger("change");
+
+  $("#servis_demirbas_select_area").addClass("d-none");
+  $("#servis_demirbas_info_area").removeClass("d-none");
+
+  $("#servis_demirbas_adi_display").text(name);
+  $("#servis_demirbas_no_display").text(no);
+
+  $("#servisModalLabel").html(
+    '<i class="bx bx-wrench me-2"></i>Yeni Servis Kaydı',
+  );
+
+  $("#servisModal").modal("show");
+});
+
+$(document).on("click", ".servis-duzenle", function () {
+  const encId = $(this).data("id");
+
+  $.post(
+    zimmetUrl,
+    { action: "servis-detay", id: encId },
+    function (response) {
+      if (response.status === "success") {
+        const data = response.data;
+        $("#servisForm")[0].reset();
+        $("#servis_id").val(encId);
+        $("#servis_demirbas_id").val(data.demirbas_id).trigger("change");
+        $("#teslim_eden_personel_id")
+          .val(data.teslim_eden_personel_id)
+          .trigger("change");
+
+        $("#servis_demirbas_select_area").addClass("d-none");
+        $("#servis_demirbas_info_area").removeClass("d-none");
+
+        $("#servis_demirbas_adi_display").text(data.demirbas_adi);
+        $("#servis_demirbas_no_display").text(data.demirbas_no);
+
+        // Form alanlarını doldur
+        $("#servis_tarihi").val(data.servis_tarihi_formatted);
+        $("#iade_tarihi").val(data.iade_tarihi_formatted);
+        $("#servis_adi").val(data.servis_adi);
+        $("#servis_nedeni").val(data.servis_nedeni);
+        $("#yapilan_islemler").val(data.yapilan_islemler);
+        $("#tutar").val(data.tutar);
+        $("#fatura_no").val(data.fatura_no);
+
+        $("#servisModalLabel").html(
+          '<i class="bx bx-wrench me-2"></i>Servis Kaydı Düzenle',
+        );
+        $("#servisModal").modal("show");
+      } else {
+        Swal.fire("Hata", response.message || "Veri alınamadı", "error");
+      }
+    },
+    "json",
+  );
+});
+
+$(document).on("click", "#btnServisKaydet", function () {
+  const $btn = $(this);
+  const formData = $("#servisForm").serialize();
+
+  $btn
+    .prop("disabled", true)
+    .html('<i class="bx bx-loader bx-spin me-1"></i> Kaydediliyor...');
+
+  $.post(
+    zimmetUrl,
+    {
+      action: "servis-kaydet",
+      ...$("#servisForm")
+        .serializeArray()
+        .reduce((obj, item) => ({ ...obj, [item.name]: item.value }), {}),
+    },
+    function (response) {
+      $btn
+        .prop("disabled", false)
+        .html('<i class="bx bx-save me-1"></i> Kaydet');
+      if (response.status === "success") {
+        Swal.fire("Başarılı", "Servis kaydı başarıyla kaydedildi.", "success");
+        $("#servisModal").modal("hide");
+        loadServisList();
+      } else {
+        Swal.fire("Hata", response.message || "Kaydedilemedi", "error");
+      }
+    },
+    "json",
+  );
+});
+
+$(document).on("click", ".servis-sil", function () {
+  const encId = $(this).data("id");
+
+  Swal.fire({
+    title: "Emin misiniz?",
+    text: "Bu servis kaydı silinecektir!",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#3085d6",
+    confirmButtonText: "Evet, sil!",
+    cancelButtonText: "Vazgeç",
+  }).then((result) => {
+    if (result.isConfirmed) {
+      $.post(
+        zimmetUrl,
+        { action: "servis-sil", id: encId },
+        function (response) {
+          if (response.status === "success") {
+            Swal.fire("Silindi", "Servis kaydı silindi.", "success");
+            loadServisList();
+          } else {
+            Swal.fire("Hata", response.message || "Silinemedi", "error");
+          }
+        },
+        "json",
+      );
+    }
+  });
 });

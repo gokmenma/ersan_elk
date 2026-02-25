@@ -81,7 +81,7 @@ try {
                 SELECT pi.id, pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id, t.tur_adi, t.kisa_kod, t.renk 
                 FROM personel_izinleri pi
                 JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-                WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL 
+                WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL AND pi.onay_durumu != 'Reddedildi'
                 AND ((pi.baslangic_tarihi BETWEEN ? AND ?) OR (pi.bitis_tarihi BETWEEN ? AND ?))
             ");
             $izin_stmt->execute([$p->id, $startDate, $endDate, $startDate, $endDate]);
@@ -129,7 +129,7 @@ try {
             SELECT pi.id, pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id, t.tur_adi, t.kisa_kod, t.renk 
             FROM personel_izinleri pi
             JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL 
+            WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL AND pi.onay_durumu != 'Reddedildi'
             AND (
                 (pi.baslangic_tarihi BETWEEN ? AND ?) 
                 OR (pi.bitis_tarihi BETWEEN ? AND ?)
@@ -796,7 +796,7 @@ try {
                 SELECT pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id, t.kisa_kod, t.renk 
                 FROM personel_izinleri pi
                 JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-                WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL 
+                WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL AND pi.onay_durumu != 'Reddedildi'
                 AND ((pi.baslangic_tarihi BETWEEN ? AND ?) OR (pi.bitis_tarihi BETWEEN ? AND ?))
             ");
             $izin_stmt->execute([$p->id, $startDate, $endDate, $startDate, $endDate]);

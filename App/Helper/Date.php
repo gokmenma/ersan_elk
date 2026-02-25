@@ -35,6 +35,20 @@ class Date
         return date($format, strtotime($date));
     }
 
+    public static function dttoeng($date)
+    {
+        if (empty($date))
+            return null;
+        return date('Y-m-d', strtotime($date));
+    }
+
+    public static function engtodt($date)
+    {
+        if (empty($date))
+            return null;
+        return date('d.m.Y', strtotime($date));
+    }
+
     /** Tarih saat formatında döndürür */
     public static function dmYHis($date = null, $format = 'd.m.Y H:i:s')
     {

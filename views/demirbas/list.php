@@ -4,6 +4,7 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Helper\Helper;
 use App\Helper\Security;
+use App\Helper\Form;
 
 use App\Model\DemirbasModel;
 use App\Model\DemirbasZimmetModel;
@@ -164,7 +165,14 @@ if (!empty($sayacKatIds)) {
                                     <button class="nav-link <?php echo $activeTab === 'aparat' ? 'active' : ''; ?>"
                                         id="aparat-tab" data-bs-toggle="tab" data-bs-target="#aparatContent"
                                         type="button" role="tab">
-                                        <i class="bx bx-wrench me-1"></i> Aparatlar
+                                        <i class="bx bx-plug me-1"></i> Aparatlar
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link <?php echo $activeTab === 'servis' ? 'active' : ''; ?>"
+                                        id="servis-tab" data-bs-toggle="tab" data-bs-target="#servisContent"
+                                        type="button" role="tab">
+                                        <i class="bx bx-wrench me-1"></i> Servis Kayıtları
                                     </button>
                                 </li>
                                 <li class="nav-item" role="presentation">
@@ -223,6 +231,10 @@ if (!empty($sayacKatIds)) {
                                 class="btn btn-success btn-sm px-3 py-2 fw-bold align-items-center shadow-sm ms-1 <?php echo $activeTab === 'aparat' ? 'd-flex' : 'd-none'; ?>"
                                 data-bs-toggle="modal" data-bs-target="#demirbasModal">
                                 <i class="bx bx-plus-circle fs-5 me-1"></i> Yeni Aparat
+                            </button>
+                            <button type="button" id="btnYeniServis"
+                                class="btn btn-warning btn-sm px-3 py-2 fw-bold align-items-center shadow-sm ms-1 <?php echo $activeTab === 'servis' ? 'd-flex' : 'd-none'; ?>">
+                                <i class="bx bx-wrench fs-5 me-1"></i> Yeni Servis Kaydı
                             </button>
                         </div>
                     </div>
@@ -440,6 +452,7 @@ if (!empty($sayacKatIds)) {
                                                     'pasif' => '<span class="badge bg-soft-secondary text-secondary">Pasif</span>',
                                                     'arizali' => '<span class="badge bg-soft-warning text-warning">Arızalı</span>',
                                                     'hurda' => '<span class="badge bg-soft-danger text-danger">Hurda</span>',
+                                                    'serviste' => '<span class="badge bg-soft-warning text-warning">Serviste</span>',
                                                     'kaskiye teslim edildi' => '<span class="badge bg-soft-dark text-dark kaskiye-detay-btn" style="cursor:pointer;" data-id="' . $enc_id . '" data-name="' . htmlspecialchars($demirbas->demirbas_adi) . '" data-seri="' . htmlspecialchars($demirbas->seri_no ?? '-') . '">Kaskiye Teslim Edildi</span>',
                                                 ];
                                                 $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
@@ -491,7 +504,7 @@ if (!empty($sayacKatIds)) {
                                                                 <i class="bx bx-dots-horizontal-rounded"></i>
                                                             </button>
                                                             <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                                                <?php if ($kalan > 0): ?>
+                                                                <?php if ($kalan > 0 && strtolower($durumText) !== 'serviste'): ?>
                                                                     <li>
                                                                         <a class="dropdown-item zimmet-ver"
                                                                             href="javascript:void(0);"
@@ -510,6 +523,28 @@ if (!empty($sayacKatIds)) {
                                                                         <i class="bx bx-edit text-primary me-2"></i> Düzenle
                                                                     </a>
                                                                 </li>
+                                                                <?php if (strtolower($durumText) === 'serviste'): ?>
+                                                                    <li>
+                                                                        <a class="dropdown-item servis-duzenle"
+                                                                            href="javascript:void(0);"
+                                                                            data-id="<?php echo Security::encrypt($demirbas->active_servis_id); ?>">
+                                                                            <i class="bx bx-wrench text-warning me-2"></i> Servis
+                                                                            Kaydını Düzenle
+                                                                        </a>
+                                                                    </li>
+                                                                <?php else: ?>
+                                                                    <li>
+                                                                        <a class="dropdown-item servis-ekle"
+                                                                            href="javascript:void(0);"
+                                                                            data-id="<?php echo $enc_id; ?>"
+                                                                            data-raw-id="<?php echo $demirbas->id; ?>"
+                                                                            data-name="<?php echo htmlspecialchars($demirbas->demirbas_adi); ?>"
+                                                                            data-no="<?php echo htmlspecialchars($demirbas->demirbas_no ?? '-'); ?>">
+                                                                            <i class="bx bx-wrench text-warning me-2"></i> Servis
+                                                                            Kaydı Ekle
+                                                                        </a>
+                                                                    </li>
+                                                                <?php endif; ?>
                                                                 <li>
                                                                     <a class="dropdown-item demirbas-gecmis"
                                                                         href="javascript:void(0);"
@@ -674,6 +709,7 @@ if (!empty($sayacKatIds)) {
                                                     'pasif' => '<span class="badge bg-soft-secondary text-secondary">Pasif</span>',
                                                     'arizali' => '<span class="badge bg-soft-warning text-warning">Arızalı</span>',
                                                     'hurda' => '<span class="badge bg-soft-danger text-danger">Hurda</span>',
+                                                    'serviste' => '<span class="badge bg-soft-warning text-warning">Serviste</span>',
                                                     'kaskiye teslim edildi' => '<span class="badge bg-soft-dark text-dark kaskiye-detay-btn" style="cursor:pointer;" data-id="' . $enc_id . '" data-name="' . htmlspecialchars($sayac->demirbas_adi) . '" data-seri="' . htmlspecialchars($sayac->seri_no ?? '-') . '">Kaskiye Teslim Edildi</span>',
                                                 ];
                                                 $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
@@ -727,7 +763,7 @@ if (!empty($sayacKatIds)) {
                                                                             Kaskiye Teslim Et
                                                                         </a>
                                                                     </li>
-                                                                    <?php if ($kalan > 0): ?>
+                                                                    <?php if ($kalan > 0 && strtolower($durumText) !== 'serviste'): ?>
                                                                         <li>
                                                                             <a class="dropdown-item zimmet-ver"
                                                                                 href="javascript:void(0);"
@@ -756,6 +792,28 @@ if (!empty($sayacKatIds)) {
                                                                             Geçmişi
                                                                         </a>
                                                                     </li>
+                                                                    <?php if (strtolower($durumText) === 'serviste'): ?>
+                                                                        <li>
+                                                                            <a class="dropdown-item servis-duzenle"
+                                                                                href="javascript:void(0);"
+                                                                                data-id="<?php echo Security::encrypt($sayac->active_servis_id); ?>">
+                                                                                <i class="bx bx-wrench text-warning me-2"></i> Servis
+                                                                                Kaydını Düzenle
+                                                                            </a>
+                                                                        </li>
+                                                                    <?php else: ?>
+                                                                        <li>
+                                                                            <a class="dropdown-item servis-ekle"
+                                                                                href="javascript:void(0);"
+                                                                                data-id="<?php echo $enc_id; ?>"
+                                                                                data-raw-id="<?php echo $sayac->id; ?>"
+                                                                                data-name="<?php echo htmlspecialchars($sayac->demirbas_adi); ?>"
+                                                                                data-no="<?php echo htmlspecialchars($sayac->demirbas_no ?? '-'); ?>">
+                                                                                <i class="bx bx-wrench text-warning me-2"></i> Servis
+                                                                                Kaydı Ekle
+                                                                            </a>
+                                                                        </li>
+                                                                    <?php endif; ?>
                                                                     <li>
                                                                         <hr class="dropdown-divider">
                                                                     </li>
@@ -833,6 +891,7 @@ if (!empty($sayacKatIds)) {
                                                     'pasif' => '<span class="badge bg-soft-secondary text-secondary">Pasif</span>',
                                                     'arizali' => '<span class="badge bg-soft-warning text-warning">Arızalı</span>',
                                                     'hurda' => '<span class="badge bg-soft-danger text-danger">Hurda</span>',
+                                                    'serviste' => '<span class="badge bg-soft-warning text-warning">Serviste</span>',
                                                 ];
                                                 $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
                                                 ?>
@@ -867,7 +926,7 @@ if (!empty($sayacKatIds)) {
                                                                 <i class="bx bx-dots-horizontal-rounded"></i>
                                                             </button>
                                                             <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                                                <?php if ($kalan > 0): ?>
+                                                                <?php if ($kalan > 0 && strtolower($durumText) !== 'serviste'): ?>
                                                                     <li>
                                                                         <a class="dropdown-item zimmet-ver"
                                                                             href="javascript:void(0);"
@@ -886,6 +945,28 @@ if (!empty($sayacKatIds)) {
                                                                         <i class="bx bx-edit-alt text-primary me-2"></i> Düzenle
                                                                     </a>
                                                                 </li>
+                                                                <?php if (strtolower($durumText) === 'serviste'): ?>
+                                                                    <li>
+                                                                        <a class="dropdown-item servis-duzenle"
+                                                                            href="javascript:void(0);"
+                                                                            data-id="<?php echo Security::encrypt($aparat->active_servis_id); ?>">
+                                                                            <i class="bx bx-wrench text-warning me-2"></i> Servis
+                                                                            Kaydını Düzenle
+                                                                        </a>
+                                                                    </li>
+                                                                <?php else: ?>
+                                                                    <li>
+                                                                        <a class="dropdown-item servis-ekle"
+                                                                            href="javascript:void(0);"
+                                                                            data-id="<?php echo $enc_id; ?>"
+                                                                            data-raw-id="<?php echo $aparat->id; ?>"
+                                                                            data-name="<?php echo htmlspecialchars($aparat->demirbas_adi); ?>"
+                                                                            data-no="<?php echo htmlspecialchars($aparat->demirbas_no ?? '-'); ?>">
+                                                                            <i class="bx bx-wrench text-warning me-2"></i> Servis
+                                                                            Kaydı Ekle
+                                                                        </a>
+                                                                    </li>
+                                                                <?php endif; ?>
                                                                 <li>
                                                                     <a class="dropdown-item demirbas-gecmis"
                                                                         href="javascript:void(0);"
@@ -918,6 +999,109 @@ if (!empty($sayacKatIds)) {
                             </div>
 
 
+                        </div>
+
+                        <!-- Servis Kayıtları Tab -->
+                        <div class="tab-pane fade <?php echo $activeTab === 'servis' ? 'show active' : ''; ?>"
+                            id="servisContent" role="tabpanel">
+
+                            <!-- Servis Özet Kartları -->
+                            <div class="row g-3 mb-4 d-none" id="servisStatsRow">
+                                <div class="col-xl col-md-4">
+                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                                        style="--card-color: #0ea5e9; border-bottom: 3px solid var(--card-color) !important;">
+                                        <div class="card-body p-3">
+                                            <div class="icon-label-container">
+                                                <div class="icon-box" style="background: rgba(14, 165, 233, 0.1);">
+                                                    <i class="bx bx-wrench fs-4" style="color: #0ea5e9;"></i>
+                                                </div>
+                                                <span class="text-muted small fw-bold"
+                                                    style="font-size: 0.65rem;">SERVİS</span>
+                                            </div>
+                                            <p class="text-muted mb-1 small fw-bold"
+                                                style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM KAYIT</p>
+                                            <h4 class="mb-0 fw-bold bordro-text-heading" id="servis_toplam_kayit">0</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xl col-md-4">
+                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                                        style="--card-color: #ef4444; border-bottom: 3px solid var(--card-color) !important;">
+                                        <div class="card-body p-3">
+                                            <div class="icon-label-container">
+                                                <div class="icon-box" style="background: rgba(239, 68, 68, 0.1);">
+                                                    <i class="bx bx-time fs-4" style="color: #ef4444;"></i>
+                                                </div>
+                                                <span class="text-muted small fw-bold"
+                                                    style="font-size: 0.65rem;">SERVİSTE</span>
+                                            </div>
+                                            <p class="text-muted mb-1 small fw-bold"
+                                                style="letter-spacing: 0.5px; opacity: 0.7;">ŞU AN SERVİSTE</p>
+                                            <h4 class="mb-0 fw-bold bordro-text-heading" id="servis_aktif_sayisi">0</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-xl col-md-4">
+                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                                        style="--card-color: #22c55e; border-bottom: 3px solid var(--card-color) !important;">
+                                        <div class="card-body p-3">
+                                            <div class="icon-label-container">
+                                                <div class="icon-box" style="background: rgba(34, 197, 94, 0.1);">
+                                                    <i class="bx bx-money fs-4" style="color: #22c55e;"></i>
+                                                </div>
+                                                <span class="text-muted small fw-bold"
+                                                    style="font-size: 0.65rem;">MALİYET</span>
+                                            </div>
+                                            <p class="text-muted mb-1 small fw-bold"
+                                                style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM MALİYET</p>
+                                            <h4 class="mb-0 fw-bold bordro-text-heading" id="servis_toplam_maliyet">0 ₺
+                                            </h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card bg-light border-0 shadow-none mb-3">
+                                <div class="card-body p-2 d-flex align-items-center">
+                                    <div class="me-3 ps-2">
+                                        <i class="bx bx-filter-alt text-primary"></i> <span
+                                            class="fw-bold small text-muted">FİLTRELE:</span>
+                                    </div>
+                                    <div class="row g-2 align-items-center flex-grow-1">
+                                        <div class="col-md-2">
+                                            <?php echo Form::FormFloatInput('text', 'servis_filtre_baslangic', date('01.m.Y'), 'Başlangıç', 'Başlangıç', 'calendar', 'form-control flatpickr'); ?>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <?php echo Form::FormFloatInput('text', 'servis_filtre_bitis', date('t.m.Y'), 'Bitiş', 'Bitiş', 'calendar', 'form-control flatpickr'); ?>
+                                        </div>
+                                        <div class="col-md-2 align-self-end p-1">
+                                            <button type="button" class="btn btn-primary w-100" id="btnServisListele">
+                                                <i class="bx bx-search-alt"></i> Listele
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table id="servisTable"
+                                    class="table table-demirbas table-hover table-bordered nowrap w-100">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="text-center" style="width:5%">Sıra</th>
+                                            <th style="width:15%">Demirbaş</th>
+                                            <th style="width:10%" class="text-center">Giriş Tarihi</th>
+                                            <th style="width:10%" class="text-center">Çıkış Tarihi</th>
+                                            <th style="width:15%">Servis Noktası</th>
+                                            <th style="width:15%">Teslim Eden</th>
+                                            <th style="width:20%">Neden / Yapılan İşlem</th>
+                                            <th style="width:10%" class="text-end">Tutar</th>
+                                            <th style="width:10%" class="text-center">İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
                         </div>
 
                         <!-- Zimmet Kayıtları Tab -->
@@ -1053,6 +1237,9 @@ if (!empty($sayacKatIds)) {
 
 <!-- Zimmet Detay Modal -->
 <?php include_once "modal/zimmet-detay-modal.php" ?>
+
+<!-- Servis Modal -->
+<?php include_once "modal/servis-modal.php" ?>
 
 <!-- Kaskiye Teslim Modal -->
 <?php include_once "modal/kasiye-teslim-modal.php" ?>

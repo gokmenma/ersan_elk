@@ -7,11 +7,13 @@ use App\Helper\Date;
 use App\Helper\Helper;
 use App\Helper\Security;
 use App\Model\DemirbasModel;
+use App\Model\DemirbasServisModel;
 use App\Model\DemirbasZimmetModel;
 use App\Model\TanimlamalarModel;
 use App\Model\DemirbasHareketModel;
 
 $Demirbas = new DemirbasModel();
+$Servis = new DemirbasServisModel();
 $Zimmet = new DemirbasZimmetModel();
 $Tanimlamalar = new TanimlamalarModel();
 $Hareket = new DemirbasHareketModel();
@@ -628,5 +630,132 @@ if ($action == "personel-bakiye") {
         }
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());
+    }
+}
+// ============== SERVİS KAYDI İŞLEMLERİ ==============
+
+if ($action == "servis-listesi") {
+    $baslangic = Date::dttoeng($_POST['baslangic'] ?? date('01.m.Y'));
+    $bitis = Date::dttoeng($_POST['bitis'] ?? date('t.m.Y'));
+
+    $kayitlar = $Servis->getByDateRange($baslangic, $bitis);
+    $data = [];
+
+    $i = 0;
+    foreach ($kayitlar as $row) {
+        $i++;
+        $data[] = [
+            "sira" => $i,
+            "enc_id" => Security::encrypt($row->id),
+            "demirbas_adi" => '<b>' . $row->demirbas_adi . '</b><br><small class="text-muted">' . ($row->demirbas_no ?? '-') . '</small>',
+            "servis_tarihi" => Date::engtodt($row->servis_tarihi),
+            "iade_tarihi" => $row->iade_tarihi ? Date::engtodt($row->iade_tarihi) : '<span class="badge bg-soft-warning text-warning">Serviste</span>',
+            "servis_adi" => $row->servis_adi ?? '-',
+            "teslim_eden" => $row->teslim_eden_adi ?? '-',
+            "islem_detay" => '<b>' . ($row->servis_nedeni ?? '-') . '</b><br><small>' . ($row->yapilan_islemler ?? '-') . '</small>',
+            "tutar" => Helper::formattedMoney($row->tutar) . ' ₺',
+            "islemler" => '
+                <div class="btn-group">
+                    <button class="btn btn-soft-primary btn-sm servis-duzenle" data-id="' . Security::encrypt($row->id) . '">
+                        <i class="bx bx-edit"></i>
+                    </button>
+                    <button class="btn btn-soft-danger btn-sm servis-sil" data-id="' . Security::encrypt($row->id) . '">
+                        <i class="bx bx-trash"></i>
+                    </button>
+                </div>'
+        ];
+    }
+
+    $stats = $Servis->getStats($baslangic, $bitis);
+
+    echo json_encode([
+        "draw" => intval($_POST['draw'] ?? 1),
+        "recordsTotal" => count($data),
+        "recordsFiltered" => count($data),
+        "data" => $data,
+        "stats" => [
+            "toplam_kayit" => $stats->toplam_kayit ?? 0,
+            "aktif_sayisi" => $stats->servisteki_sayisi ?? 0,
+            "toplam_maliyet" => Helper::formattedMoney($stats->toplam_maliyet ?? 0) . ' ₺'
+        ]
+    ]);
+    exit;
+}
+
+if ($action == "servis-detay") {
+    $id = Security::decrypt($_POST['id']);
+    $kayit = $Servis->find($id);
+
+    if ($kayit) {
+        $demirbas = $Demirbas->find($kayit->demirbas_id);
+        $kayit->demirbas_adi = $demirbas->demirbas_adi;
+        $kayit->demirbas_no = $demirbas->demirbas_no;
+        $kayit->servis_tarihi_formatted = Date::engtodt($kayit->servis_tarihi);
+        $kayit->iade_tarihi_formatted = $kayit->iade_tarihi ? Date::engtodt($kayit->iade_tarihi) : '';
+        $kayit->tutar = Helper::formattedMoney($kayit->tutar);
+
+        jsonResponse("success", "Veri getirildi", ["data" => $kayit]);
+    } else {
+        jsonResponse("error", "Kayıt bulunamadı");
+    }
+}
+
+if ($action == "servis-kaydet") {
+    $id = Security::decrypt($_POST['servis_id'] ?? '');
+
+    $data = [
+        "id" => $id ?: 0,
+        "firma_id" => $_SESSION['firma_id'],
+        "demirbas_id" => $_POST['demirbas_id'],
+        "teslim_eden_personel_id" => $_POST['teslim_eden_personel_id'] ?? null,
+        "servis_tarihi" => Date::dttoeng($_POST['servis_tarihi']),
+        "iade_tarihi" => !empty($_POST['iade_tarihi']) ? Date::dttoeng($_POST['iade_tarihi']) : null,
+        "servis_adi" => $_POST['servis_adi'] ?? null,
+        "servis_nedeni" => $_POST['servis_nedeni'] ?? null,
+        "yapilan_islemler" => $_POST['yapilan_islemler'] ?? null,
+        "tutar" => Helper::formattedMoneyToNumber($_POST['tutar'] ?? 0),
+        "fatura_no" => $_POST['fatura_no'] ?? null,
+        "olusturan_kullanici_id" => $_SESSION['id'] ?? null
+    ];
+
+    try {
+        $Servis->saveWithAttr($data);
+
+        // Demirbaş durumunu güncelle
+        // Eğer iade tarihi boşsa 'serviste', doluysa 'aktif' yap
+        $new_status = empty($data['iade_tarihi']) ? 'serviste' : 'aktif';
+
+        $Demirbas->saveWithAttr([
+            "id" => $data['demirbas_id'],
+            "durum" => $new_status
+        ]);
+
+        jsonResponse("success", "Servis kaydı başarıyla kaydedildi.");
+    } catch (Exception $e) {
+        jsonResponse("error", "Kaydedilemedi: " . $e->getMessage());
+    }
+}
+
+if ($action == "servis-sil") {
+    $id = Security::decrypt($_POST['id']);
+    try {
+        // Silmeden önce demirbaş ID'sini al
+        $kayit = $Servis->find($id);
+        if ($kayit) {
+            $demirbas_id = $kayit->demirbas_id;
+            $Servis->softDelete($id);
+
+            // Eğer silinen kayıt aktif bir servis kaydıysa (iade edilmemişse), demirbaşı 'aktif'e çek
+            if (empty($kayit->iade_tarihi)) {
+                $Demirbas->saveWithAttr([
+                    "id" => $demirbas_id,
+                    "durum" => 'aktif'
+                ]);
+            }
+        }
+
+        jsonResponse("success", "Kayıt silindi.");
+    } catch (Exception $e) {
+        jsonResponse("error", "Silinemedi: " . $e->getMessage());
     }
 }
