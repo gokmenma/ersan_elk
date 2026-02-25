@@ -191,14 +191,13 @@ $aylar = [
                                             <?= Form::FormFloatTextarea('kontrol_teskilati', '', "ÖMER FARUK YAŞAR - İDARİ İŞLER SORUMLUSU\nHARUN KAZANCI - OKUMA YÖNETİCİSİ", 'Kontrol Teşkilatı (İsim - Unvan)', icon: 'users', rows: 3, minHeight: '100px') ?>
                                             <small class="text-muted">Her yetkiliyi yeni bir satıra yazın</small>
                                         </div>
-                                            <div class="col-md-6">
-                                                <div class="row">
-                                                    <div class="col-12 mb-3">
-                                                        <?= Form::FormFloatInput('text', 'idare_onaylayan', '', 'KEMALETTİN GÜNEN', 'İdare Adına Onaylayan (İsim)', icon: 'user') ?>
-                                                    </div>
-                                                    <div class="col-12">
-                                                        <?= Form::FormFloatInput('text', 'idare_onaylayan_unvan', '', 'İdare Unvanı', 'Unvanı', icon: 'award') ?>
-                                                    </div>
+                                        <div class="col-md-6">
+                                            <div class="row">
+                                                <div class="col-12 mb-3">
+                                                    <?= Form::FormFloatInput('text', 'idare_onaylayan', '', 'KEMALETTİN GÜNEN', 'İdare Adına Onaylayan (İsim)', icon: 'user') ?>
+                                                </div>
+                                                <div class="col-12">
+                                                    <?= Form::FormFloatInput('text', 'idare_onaylayan_unvan', '', 'İdare Unvanı', 'Unvanı', icon: 'award') ?>
                                                 </div>
                                             </div>
                                         </div>
@@ -206,124 +205,125 @@ $aylar = [
                                 </div>
                             </div>
                         </div>
-
-                <!-- BİRİM FİYAT CETVELİ TAB -->
-                <div class="tab-pane" id="birim-fiyat-tab" role="tabpanel">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6>Birim Fiyat Teklif Cetveli (Sözleşme Kalemleri)</h6>
-                        <button type="button" class="btn btn-sm btn-success" onclick="satirEkle()">
-                            <i class="bx bx-plus me-1"></i> Yeni Satır Ekle
-                        </button>
                     </div>
-                    <div class="alert alert-warning mb-3">Milyon/Bin ayıracı kullanmayınız, ondalık kısımları
-                        nokta (.) ile ayırınız (Örn: 1000.50).</div>
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-sm align-middle" id="birimFiyatTable">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 50px;">Sıra</th>
-                                    <th style="width: 120px;">Poz No</th>
-                                    <th>İşin Adı</th>
-                                    <th style="width: 120px;">Ölçü Birimi</th>
-                                    <th style="width: 120px;">Miktarı</th>
-                                    <th style="width: 150px;">Teklif Edilen B.Fiyat</th>
-                                    <th style="width: 150px;">Tutarı</th>
-                                    <th style="width: 50px;"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="birimFiyatBody">
-                                <!-- Satırlar JS ile eklenecek -->
-                            </tbody>
-                            <tfoot>
-                                <tr class="table-light fw-bold">
-                                    <td colspan="6" class="text-end">GENEL TOPLAM:</td>
-                                    <td id="genelToplamTutar" class="text-end text-primary">0,00 ₺</td>
-                                    <td></td>
-                                </tr>
-                            </tfoot>
-                        </table>
+
+                    <!-- BİRİM FİYAT CETVELİ TAB -->
+                    <div class="tab-pane" id="birim-fiyat-tab" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6>Birim Fiyat Teklif Cetveli (Sözleşme Kalemleri)</h6>
+                            <button type="button" class="btn btn-sm btn-success" onclick="satirEkle()">
+                                <i class="bx bx-plus me-1"></i> Yeni Satır Ekle
+                            </button>
+                        </div>
+                        <div class="alert alert-warning mb-3">Milyon/Bin ayıracı kullanmayınız, ondalık kısımları
+                            nokta (.) ile ayırınız (Örn: 1000.50).</div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm align-middle" id="birimFiyatTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 50px;">Sıra</th>
+                                        <th style="width: 120px;">Poz No</th>
+                                        <th>İşin Adı</th>
+                                        <th style="width: 120px;">Ölçü Birimi</th>
+                                        <th style="width: 120px;">Miktarı</th>
+                                        <th style="width: 150px;">Teklif Edilen B.Fiyat</th>
+                                        <th style="width: 150px;">Tutarı</th>
+                                        <th style="width: 50px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="birimFiyatBody">
+                                    <!-- Satırlar JS ile eklenecek -->
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-light fw-bold">
+                                        <td colspan="6" class="text-end">GENEL TOPLAM:</td>
+                                        <td id="genelToplamTutar" class="text-end text-primary">0,00 ₺</td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
                     </div>
-                </div>
 
-                <!-- FİYAT FARKI VE KESİNTİLER TAB -->
-                <div class="tab-pane" id="fiyat-farki-tab" role="tabpanel">
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="alert alert-info">
-                                <i class="bx bx-info-circle me-1"></i> Sözleşme genelindeki standart katsayıları
-                                ve
-                                temel endeksleri buradan tanımlayınız. Bu değerler her yeni hakedişte otomatik
-                                olarak getirilecektir.
-                            </div>
-                        </div>
-                        <div class="col-md-6 border-end">
-                            <h6 class="mb-3 text-primary"><i data-feather="sliders" style="width:16px;height:16px"
-                                    class="me-1"></i> Fiyat Farkı Katsayıları
-                                (P1)</h6>
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <?= Form::FormFloatInput('number', 'a1_katsayisi', '0.28000', '0.28000', 'a1 (İşçilik) Katsayısı', icon: 'percent', attributes: 'step="0.00001"') ?>
-                                </div>
-                                <div class="col-md-6">
-                                    <?= Form::FormFloatInput('number', 'b1_katsayisi', '0.22000', '0.22000', 'b1 (Motorin) Katsayısı', icon: 'percent', attributes: 'step="0.00001"') ?>
+                    <!-- FİYAT FARKI VE KESİNTİLER TAB -->
+                    <div class="tab-pane" id="fiyat-farki-tab" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="alert alert-info">
+                                    <i class="bx bx-info-circle me-1"></i> Sözleşme genelindeki standart katsayıları
+                                    ve
+                                    temel endeksleri buradan tanımlayınız. Bu değerler her yeni hakedişte otomatik
+                                    olarak getirilecektir.
                                 </div>
                             </div>
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <?= Form::FormFloatInput('number', 'b2_katsayisi', '0.25000', '0.25000', 'b2 (Yİ-ÜFE) Katsayısı', icon: 'percent', attributes: 'step="0.00001"') ?>
+                            <div class="col-md-6 border-end">
+                                <h6 class="mb-3 text-primary"><i data-feather="sliders" style="width:16px;height:16px"
+                                        class="me-1"></i> Fiyat Farkı Katsayıları
+                                    (P1)</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <?= Form::FormFloatInput('number', 'a1_katsayisi', '0.28000', '0.28000', 'a1 (İşçilik) Katsayısı', icon: 'percent', attributes: 'step="0.00001"') ?>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <?= Form::FormFloatInput('number', 'b1_katsayisi', '0.22000', '0.22000', 'b1 (Motorin) Katsayısı', icon: 'percent', attributes: 'step="0.00001"') ?>
+                                    </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <?= Form::FormFloatInput('number', 'c_katsayisi', '0.25000', '0.25000', 'c (Makine-Ekp) Katsayısı', icon: 'percent', attributes: 'step="0.00001"') ?>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <?= Form::FormFloatInput('number', 'b2_katsayisi', '0.25000', '0.25000', 'b2 (Yİ-ÜFE) Katsayısı', icon: 'percent', attributes: 'step="0.00001"') ?>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <?= Form::FormFloatInput('number', 'c_katsayisi', '0.25000', '0.25000', 'c (Makine-Ekp) Katsayısı', icon: 'percent', attributes: 'step="0.00001"') ?>
+                                    </div>
+                                </div>
+
+                                <h6 class="mt-4 mb-3 text-danger"><i data-feather="scissors"
+                                        style="width:16px;height:16px" class="me-1"></i> Kesinti Oranları</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <?= Form::FormFloatInput('number', 'kdv_orani', '20.00', '20.00', 'KDV Oranı (%)', icon: 'percent', attributes: 'step="0.01"') ?>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <?= Form::FormFloatInput('text', 'tevkifat_orani', '4/10', '4/10', 'Tevkifat Oranı (Örn: 4/10)', icon: 'divide-circle') ?>
+                                    </div>
                                 </div>
                             </div>
 
-                            <h6 class="mt-4 mb-3 text-danger"><i data-feather="scissors" style="width:16px;height:16px"
-                                    class="me-1"></i> Kesinti Oranları</h6>
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <?= Form::FormFloatInput('number', 'kdv_orani', '20.00', '20.00', 'KDV Oranı (%)', icon: 'percent', attributes: 'step="0.01"') ?>
+                            <div class="col-md-6">
+                                <h6 class="mb-3 text-success"><i data-feather="calendar" style="width:16px;height:16px"
+                                        class="me-1"></i> Temel (Sözleşme Ayı)
+                                    Endeksleri (o)</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-7">
+                                        <?= Form::FormSelect2('temel_endeks_ay', $aylar, '', 'Temel Endeks Ayı', icon: 'calendar', required: false) ?>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <?= Form::FormFloatInput('number', 'temel_endeks_yil', '', date('Y'), 'Temel Endeks Yılı', icon: 'calendar', required: false) ?>
+                                    </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <?= Form::FormFloatInput('text', 'tevkifat_orani', '4/10', '4/10', 'Tevkifat Oranı (Örn: 4/10)', icon: 'divide-circle') ?>
+                                <div class="mb-3">
+                                    <?= Form::FormFloatInput('number', 'asgari_ucret_temel', '', 'Örn: 26005.50', 'İşçilik (Asgari Ücret) - Io', icon: 'dollar-sign', attributes: 'step="0.01"') ?>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <h6 class="mb-3 text-success"><i data-feather="calendar" style="width:16px;height:16px"
-                                    class="me-1"></i> Temel (Sözleşme Ayı)
-                                Endeksleri (o)</h6>
-                            <div class="row mb-3">
-                                <div class="col-md-7">
-                                    <?= Form::FormSelect2('temel_endeks_ay', $aylar, '', 'Temel Endeks Ayı', icon: 'calendar', required: false) ?>
+                                <div class="mb-3">
+                                    <?= Form::FormFloatInput('number', 'motorin_temel', '', 'Örn: 54.13308', 'Motorin Endeksi - Mo', icon: 'droplet', attributes: 'step="0.00001"') ?>
                                 </div>
-                                <div class="col-md-5">
-                                    <?= Form::FormFloatInput('number', 'temel_endeks_yil', '', date('Y'), 'Temel Endeks Yılı', icon: 'calendar', required: false) ?>
+                                <div class="mb-3">
+                                    <?= Form::FormFloatInput('number', 'ufe_genel_temel', '', 'Örn: 4632.89', 'Yİ-ÜFE Genel Endeksi - ÜFEo', icon: 'trending-up', attributes: 'step="0.01"') ?>
                                 </div>
-                            </div>
-                            <div class="mb-3">
-                                <?= Form::FormFloatInput('number', 'asgari_ucret_temel', '', 'Örn: 26005.50', 'İşçilik (Asgari Ücret) - Io', icon: 'dollar-sign', attributes: 'step="0.01"') ?>
-                            </div>
-                            <div class="mb-3">
-                                <?= Form::FormFloatInput('number', 'motorin_temel', '', 'Örn: 54.13308', 'Motorin Endeksi - Mo', icon: 'droplet', attributes: 'step="0.00001"') ?>
-                            </div>
-                            <div class="mb-3">
-                                <?= Form::FormFloatInput('number', 'ufe_genel_temel', '', 'Örn: 4632.89', 'Yİ-ÜFE Genel Endeksi - ÜFEo', icon: 'trending-up', attributes: 'step="0.01"') ?>
-                            </div>
-                            <div class="mb-3">
-                                <?= Form::FormFloatInput('number', 'makine_ekipman_temel', '', 'Örn: 3319.76', 'Makine-Ekipman Endeksi - Eo', icon: 'tool', attributes: 'step="0.01"') ?>
+                                <div class="mb-3">
+                                    <?= Form::FormFloatInput('number', 'makine_ekipman_temel', '', 'Örn: 3319.76', 'Makine-Ekipman Endeksi - Eo', icon: 'tool', attributes: 'step="0.01"') ?>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="submit" class="btn btn-primary" id="btnSaveSozlesme">
+                    <i class="bx bx-save me-1"></i> Sözleşmeyi Kaydet
+                </button>
+            </div>
+        </form>
     </div>
-    <div class="modal-footer bg-light">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-        <button type="submit" class="btn btn-primary" id="btnSaveSozlesme">
-            <i class="bx bx-save me-1"></i> Sözleşmeyi Kaydet
-        </button>
-    </div>
-    </form>
-</div>
 </div>
