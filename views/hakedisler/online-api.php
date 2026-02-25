@@ -18,6 +18,19 @@ $firma_id = $_SESSION['firma_id'];
 $type = $_REQUEST['type'] ?? '';
 
 try {
+    function convertDateToDb($date)
+    {
+        if (empty($date))
+            return null;
+        if (strpos($date, '.') !== false) {
+            $parts = explode('.', $date);
+            if (count($parts) == 3) {
+                return $parts[2] . '-' . $parts[1] . '-' . $parts[0];
+            }
+        }
+        return $date;
+    }
+
     switch ($type) {
         case 'getSozlesmeler':
             $model = new HakedisSozlesmeModel();
@@ -87,10 +100,10 @@ try {
                 'kesif_bedeli' => !empty($_POST['kesif_bedeli']) ? floatval($_POST['kesif_bedeli']) : null,
                 'ihale_tenzilati' => !empty($_POST['ihale_tenzilati']) ? floatval($_POST['ihale_tenzilati']) : null,
                 'sozlesme_bedeli' => !empty($_POST['sozlesme_bedeli']) ? floatval($_POST['sozlesme_bedeli']) : null,
-                'sozlesme_tarihi' => !empty($_POST['sozlesme_tarihi']) ? $_POST['sozlesme_tarihi'] : null,
-                'isin_bitecegi_tarih' => !empty($_POST['isin_bitecegi_tarih']) ? $_POST['isin_bitecegi_tarih'] : null,
-                'ihale_tarihi' => !empty($_POST['ihale_tarihi']) ? $_POST['ihale_tarihi'] : null,
-                'yer_teslim_tarihi' => !empty($_POST['yer_teslim_tarihi']) ? $_POST['yer_teslim_tarihi'] : null,
+                'sozlesme_tarihi' => convertDateToDb($_POST['sozlesme_tarihi'] ?? null),
+                'isin_bitecegi_tarih' => convertDateToDb($_POST['isin_bitecegi_tarih'] ?? null),
+                'ihale_tarihi' => convertDateToDb($_POST['ihale_tarihi'] ?? null),
+                'yer_teslim_tarihi' => convertDateToDb($_POST['yer_teslim_tarihi'] ?? null),
                 'isin_suresi' => !empty($_POST['isin_suresi']) ? intval($_POST['isin_suresi']) : null,
                 'kontrol_teskilati' => $_POST['kontrol_teskilati'] ?? '',
                 'idare_onaylayan' => $_POST['idare_onaylayan'] ?? '',
@@ -105,7 +118,9 @@ try {
                 'ufe_genel_temel' => !empty($_POST['ufe_genel_temel']) ? floatval($_POST['ufe_genel_temel']) : null,
                 'makine_ekipman_temel' => !empty($_POST['makine_ekipman_temel']) ? floatval($_POST['makine_ekipman_temel']) : null,
                 'kdv_orani' => !empty($_POST['kdv_orani']) ? floatval($_POST['kdv_orani']) : 20.00,
-                'tevkifat_orani' => $_POST['tevkifat_orani'] ?? '4/10'
+                'tevkifat_orani' => $_POST['tevkifat_orani'] ?? '4/10',
+                'temel_endeks_ay' => !empty($_POST['temel_endeks_ay']) ? intval($_POST['temel_endeks_ay']) : null,
+                'temel_endeks_yil' => !empty($_POST['temel_endeks_yil']) ? intval($_POST['temel_endeks_yil']) : null
             ];
 
             if (isset($_POST['id']) && $_POST['id'] > 0) {
@@ -274,11 +289,11 @@ try {
                 'hakedis_no' => intval($_POST['hakedis_no'] ?? 1),
                 'hakedis_tarihi_ay' => intval($_POST['hakedis_tarihi_ay'] ?? date('n')),
                 'hakedis_tarihi_yil' => intval($_POST['hakedis_tarihi_yil'] ?? date('Y')),
-                'is_yapilan_ayin_son_gunu' => !empty($_POST['is_yapilan_ayin_son_gunu']) ? $_POST['is_yapilan_ayin_son_gunu'] : null,
+                'is_yapilan_ayin_son_gunu' => convertDateToDb($_POST['is_yapilan_ayin_son_gunu'] ?? null),
                 'temel_endeks_ayi' => $_POST['temel_endeks_ayi'] ?? '',
                 'guncel_endeks_ayi' => $_POST['guncel_endeks_ayi'] ?? '',
                 'olusturan_personel_id' => $_SESSION['id'],
-                'durum' => 'taslak'
+                'durum' => $_POST['durum'] ?? 'taslak'
             ];
 
             if (!$hakedis_id) {

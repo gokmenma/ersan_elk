@@ -511,6 +511,11 @@ if (Gate::allows("ana_sayfa")) {
                     </span>
                 </h4>
                 <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Onay bekleyen işlemler</div>
+                <div class="card-footer-actions mt-2 d-flex justify-content-end">
+                    <a href="index.php?p=talepler/list" class="btn btn-xs btn-soft-warning rounded-pill">
+                        <i class="bx bx-right-arrow-alt"></i> Git
+                    </a>
+                </div>
             </div>
         </div>
     </div>

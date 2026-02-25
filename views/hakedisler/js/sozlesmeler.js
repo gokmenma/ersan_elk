@@ -207,7 +207,14 @@ function editSozlesme(id) {
         for (let key in data) {
           const el = $(form).find(`[name="${key}"]`);
           if (el.length) {
-            el.val(data[key]);
+            if (el[0]._flatpickr) {
+              el[0]._flatpickr.setDate(data[key]);
+            } else {
+              el.val(data[key]);
+            }
+            if (el.hasClass("select2")) {
+              el.trigger("change");
+            }
           }
         }
 
@@ -241,6 +248,24 @@ function editSozlesme(id) {
         // Reset tab
         $('.nav-tabs a[href="#sozlesme-bilgileri-tab"]').tab("show");
         $("#yeniSozlesmeModal").modal("show");
+
+        // Select2 clipping fix
+        setTimeout(() => {
+          $("#yeniSozlesmeForm")
+            .find(".select2")
+            .each(function () {
+              $(this).select2({
+                dropdownParent: $("#yeniSozlesmeModal"),
+                language: "tr",
+              });
+            });
+        }, 300);
+
+        if (typeof feather !== "undefined") {
+          setTimeout(() => {
+            feather.replace();
+          }, 100);
+        }
       } else {
         Swal.fire("Hata", res.message, "error");
       }
@@ -256,6 +281,24 @@ $(document).on("click", '[data-bs-target="#yeniSozlesmeModal"]', function () {
   $("#birimFiyatBody").empty();
   hesaplaGenelToplam();
   $('.nav-tabs a[href="#sozlesme-bilgileri-tab"]').tab("show");
+
+  // Initialize Select2 with dropdownParent to prevent clipping
+  setTimeout(() => {
+    $("#yeniSozlesmeForm")
+      .find(".select2")
+      .each(function () {
+        $(this).select2({
+          dropdownParent: $("#yeniSozlesmeModal"),
+          language: "tr",
+        });
+      });
+  }, 300);
+
+  if (typeof feather !== "undefined") {
+    setTimeout(() => {
+      feather.replace();
+    }, 100);
+  }
 });
 
 function satirEkle() {

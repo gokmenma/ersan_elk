@@ -17,7 +17,8 @@ $db = $donemModel->getDb();
 $sql = "SELECT d.*, s.idare_adi, s.isin_adi, s.sozlesme_bedeli, s.isin_yuklenicisi,
                s.a1_katsayisi as s_a1, s.b1_katsayisi as s_b1, s.b2_katsayisi as s_b2, s.c_katsayisi as s_c,
                s.asgari_ucret_temel as s_asgari, s.motorin_temel as s_motorin, s.ufe_genel_temel as s_ufe, s.makine_ekipman_temel as s_makine,
-               s.kdv_orani as s_kdv, s.tevkifat_orani as s_tevkifat
+               s.kdv_orani as s_kdv, s.tevkifat_orani as s_tevkifat,
+               s.temel_endeks_ay as s_temel_endeks_ay, s.temel_endeks_yil as s_temel_endeks_yil
         FROM hakedis_donemleri d
         JOIN hakedis_sozlesmeler s ON d.sozlesme_id = s.id
         WHERE d.id = ? AND s.firma_id = ? AND d.silinme_tarihi IS NULL";
@@ -95,8 +96,34 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                             <p class="mb-1"><strong>İş Adı:</strong>
                                 <?= htmlspecialchars(mb_substr($hakedis->isin_adi, 0, 50)) ?>...
                             </p>
-                            <p class="mb-0"><strong>Bedel:</strong>
+                            <p class="mb-1"><strong>Bedel:</strong>
                                 <?= number_format($hakedis->sozlesme_bedeli, 2, ',', '.') ?> ₺
+                            </p>
+                            <?php if ($hakedis->s_temel_endeks_ay && $hakedis->s_temel_endeks_yil): ?>
+                                <p class="mb-1"><strong>Temel Endeks Ayı:</strong>
+                                    <span class="badge bg-light text-dark">
+                                        <?= $aylar[$hakedis->s_temel_endeks_ay] . ' ' . $hakedis->s_temel_endeks_yil ?>
+                                    </span>
+                                </p>
+                            <?php endif; ?>
+                            <?php if ($hakedis->guncel_endeks_ayi): ?>
+                                <p class="mb-1"><strong>Güncel Endeks Ayı:</strong>
+                                    <span class="badge bg-warning text-dark">
+                                        <?= htmlspecialchars($hakedis->guncel_endeks_ayi) ?>
+                                    </span>
+                                </p>
+                            <?php endif; ?>
+                            <?php
+                            $durumLabels = [
+                                'taslak' => ['Taslak', 'bg-secondary'],
+                                'hazirlandi' => ['Hazırlandı', 'bg-info'],
+                                'tamamlandi' => ['Tamamlandı', 'bg-success'],
+                                'onaylandi' => ['Onaylandı', 'bg-primary']
+                            ];
+                            $dLabel = $durumLabels[$hakedis->durum] ?? ['Taslak', 'bg-secondary'];
+                            ?>
+                            <p class="mb-0"><strong>Durum:</strong>
+                                <span class="badge <?= $dLabel[1] ?>"><?= $dLabel[0] ?></span>
                             </p>
                         </div>
                     </div>
@@ -274,13 +301,28 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
         <div class="card">
             <div class="card-body">
                 <div class="d-flex flex-wrap align-items-center mb-4">
-                    <h5 class="card-title me-2 border-bottom pb-2">Hakediş Kalem ve İmalat Girişleri</h5>
-                    <div class="ms-auto mt-2 mt-md-0">
+                    <h5 class="card-title me-2">Hakediş Kalem ve İmalat Girişleri</h5>
+                    <div class="ms-auto mt-2 mt-md-0 d-flex align-items-center gap-2">
+                        <!-- Navigasyon Butonları (Bordro stilinde) -->
+                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 me-2">
+                            <a href="?p=hakedisler/index"
+                                class="btn btn-link btn-sm text-primary text-decoration-none px-3 fw-bold d-flex align-items-center">
+                                <i class="bx bx-list-ul fs-5 me-1"></i> Sözleşmelere Dön
+                            </a>
+                            <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                            <a href="?p=hakedisler/sozlesme-detay&id=<?= $hakedis->sozlesme_id ?>"
+                                class="btn btn-link btn-sm text-info text-decoration-none px-3 fw-bold d-flex align-items-center">
+                                <i class="bx bx-file fs-5 me-1"></i> Hakedişlere Dön
+                            </a>
+                            <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                       
+
                         <!-- Excel Çıktısı -->
-                        <button type="button" class="btn btn-success waves-effect waves-light"
+                        <button type="button" class="btn btn-success waves-effect waves-light shadow-success"
                             onclick="exportHakedisToExcel(<?= $hakedis->id ?>)">
                             <i class="bx bx-file me-1"></i> Excel Çıktısı Al
                         </button>
+                         </div>
                     </div>
                 </div>
 

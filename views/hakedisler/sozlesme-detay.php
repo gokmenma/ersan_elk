@@ -80,6 +80,19 @@ $aylar = [
                                 <td><?= $sozlesme->isin_bitecegi_tarih ? date('d.m.Y', strtotime($sozlesme->isin_bitecegi_tarih)) : '-' ?>
                                 </td>
                             </tr>
+                            <tr>
+                                <th scope="row">Temel Endeks Ayı :</th>
+                                <td>
+                                    <?php if ($sozlesme->temel_endeks_ay && $sozlesme->temel_endeks_yil): ?>
+                                        <span class="badge bg-info-subtle text-info px-2 py-1">
+                                            <i data-feather="calendar" style="width:12px;height:12px" class="me-1"></i>
+                                            <?= $aylar[$sozlesme->temel_endeks_ay] . ' ' . $sozlesme->temel_endeks_yil ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="text-muted">-</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -129,11 +142,12 @@ $aylar = [
 
 <!-- Modal for New Progress Payment (Hakediş) -->
 <div class="modal fade" id="yeniHakedisModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <form id="yeniHakedisForm" class="modal-content">
             <div class="modal-header">
                 <div class="d-flex align-items-center">
-                    <div class="bg-success-subtle rounded-3 p-2 me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                    <div class="bg-success-subtle rounded-3 p-2 me-3 d-flex align-items-center justify-content-center"
+                        style="width: 40px; height: 40px;">
                         <i data-feather="edit-3" class="text-success" style="width: 20px; height: 20px;"></i>
                     </div>
                     <div>
@@ -143,45 +157,121 @@ $aylar = [
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="yeniHakedisForm">
-                <input type="hidden" name="id" id="hakedis_id">
-                <input type="hidden" name="sozlesme_id" value="<?= $sozlesme->id ?>">
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <strong>Bilgi:</strong> Hakedişin ana parametrelerini girdikten sonra detay (endeksler, fiyat
-                        farkları ve miktarlar) girişlerini yapabileceksiniz.
+            <input type="hidden" name="id" id="hakedis_id">
+            <input type="hidden" name="sozlesme_id" value="<?= $sozlesme->id ?>">
+            <input type="hidden" name="temel_endeks_ayi" id="temel_endeks_ayi_hidden" value="">
+            <input type="hidden" name="guncel_endeks_ayi" id="guncel_endeks_ayi_hidden" value="">
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <strong>Bilgi:</strong> Hakedişin ana parametrelerini girdikten sonra detay (endeksler, fiyat
+                    farkları ve miktarlar) girişlerini yapabileceksiniz.
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <?= Form::FormFloatInput('number', 'hakedis_no', '', 'Hakediş No', 'Hakediş No', icon: 'hash', required: true) ?>
                     </div>
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <?= Form::FormFloatInput('number', 'hakedis_no', '', 'Hakediş No', 'Hakediş No', icon: 'hash', required: true) ?>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <?= Form::FormSelect2('hakedis_tarihi_ay', $aylar, date('n'), 'Hakediş Ayı', icon: 'calendar', required: true) ?>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <?= Form::FormFloatInput('number', 'hakedis_tarihi_yil', date('Y'), 'Hakediş Yılı', 'Hakediş Yılı', icon: 'calendar', required: true) ?>
-                        </div>
+                    <div class="col-md-4 mb-3">
+                        <?= Form::FormSelect2('hakedis_tarihi_ay', $aylar, date('n'), 'Hakediş Ayı', icon: 'calendar', required: true) ?>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <?= Form::FormFloatInput('number', 'hakedis_tarihi_yil', date('Y'), 'Hakediş Yılı', 'Hakediş Yılı', icon: 'calendar', required: true) ?>
+                    </div>
 
-                        <div class="col-md-6 mb-3">
-                            <?= Form::FormFloatInput('text', 'temel_endeks_ayi', '', 'Eylül 2025', 'Temel Endeks Ayı (Sözleşme başı)', icon: 'activity', required: true) ?>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <?= Form::FormFloatInput('text', 'guncel_endeks_ayi', '', 'Şubat 2026', 'Güncel Endeks Ayı (Hakediş ayı)', icon: 'trending-up', required: true) ?>
-                        </div>
-                        <div class="col-md-12 mb-3">
-                            <?= Form::FormFloatInput('date', 'is_yapilan_ayin_son_gunu', '', '', 'İş Yapılan Ayın Son Günü', icon: 'calendar') ?>
+                    <!-- Temel Endeks Ayı - Sözleşmeden gelen label -->
+                    <div class="col-md-6 mb-3">
+                        <div class="form-floating form-floating-custom">
+                            <div class="form-control bg-light d-flex align-items-center"
+                                style="height: auto; min-height: calc(3.5rem + 2px); padding-top: 1.625rem;"
+                                id="temelEndeksAyiLabel">
+                                <?php if ($sozlesme->temel_endeks_ay && $sozlesme->temel_endeks_yil): ?>
+                                    <span class="badge bg-info-subtle text-info px-3 py-2 fs-6">
+                                        <i data-feather="anchor" style="width:14px;height:14px" class="me-1"></i>
+                                        <?= $aylar[$sozlesme->temel_endeks_ay] . ' ' . $sozlesme->temel_endeks_yil ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="text-muted fst-italic">Sözleşmede tanımlı değil</span>
+                                <?php endif; ?>
+                            </div>
+                            <label>Temel Endeks Ayı (Sözleşme)</label>
+                            <div class="form-floating-icon">
+                                <i data-feather="anchor"></i>
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Güncel Endeks Ayı - Seçilen ay/yıldan otomatik -->
+                    <div class="col-md-6 mb-3">
+                        <div class="form-floating form-floating-custom">
+                            <div class="form-control bg-light d-flex align-items-center"
+                                style="height: auto; min-height: calc(3.5rem + 2px); padding-top: 1.625rem;"
+                                id="guncelEndeksAyiLabel">
+                                <span class="badge bg-warning-subtle text-warning px-3 py-2 fs-6"
+                                    id="guncelEndeksAyiBadge">
+                                    <i data-feather="trending-up" style="width:14px;height:14px" class="me-1"></i>
+                                    <span id="guncelEndeksAyiText"><?= $aylar[date('n')] . ' ' . date('Y') ?></span>
+                                </span>
+                            </div>
+                            <label>Güncel Endeks Ayı (Hakediş)</label>
+                            <div class="form-floating-icon">
+                                <i data-feather="trending-up"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <?= Form::FormFloatInput('text', 'is_yapilan_ayin_son_gunu', '', '', 'İş Yapılan Ayın Son Günü', icon: 'calendar', class: 'form-control flatpickr') ?>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <?= Form::FormSelect2('durum', [
+                            'taslak' => 'Taslak',
+                            'hazirlandi' => 'Hazırlandı',
+                            'tamamlandi' => 'Tamamlandı'
+                        ], 'taslak', 'Durum', icon: 'flag') ?>
+                    </div>
                 </div>
-                <div class="modal-footer border-top-0">
-                    <button type="button" class="btn btn-secondary px-4 fw-bold rounded-3" data-bs-dismiss="modal">İptal</button>
-                    <button type="submit" class="btn btn-success px-4 fw-bold rounded-3 shadow-success" id="btnHakedisSave">Kaydet ve Detaya Git</button>
-                </div>
-            </form>
-        </div>
+            </div>
+            <div class="modal-footer border-top-0">
+                <button type="button" class="btn btn-secondary px-4 fw-bold rounded-3"
+                    data-bs-dismiss="modal">İptal</button>
+                <button type="submit" class="btn btn-success px-4 fw-bold rounded-3 shadow-success"
+                    id="btnHakedisSave">Kaydet ve Detaya Git</button>
+            </div>
+        </form>
     </div>
 </div>
 
 <script>
     var currentSozlesmeId = <?= $sozlesme->id ?>;
+    var sozlesmeTemelEndeksAy = <?= json_encode($sozlesme->temel_endeks_ay ? $aylar[$sozlesme->temel_endeks_ay] . ' ' . $sozlesme->temel_endeks_yil : '') ?>;
+    var sozlesmeTemelEndeksAyNum = <?= intval($sozlesme->temel_endeks_ay ?? 0) ?>;
+    var sozlesmeTemelEndeksYil = <?= intval($sozlesme->temel_endeks_yil ?? 0) ?>;
+
+    // Ay/Yıl seçildiğinde Güncel Endeks Ayı label'ını güncelle
+    const aylarJS = { 1: 'Ocak', 2: 'Şubat', 3: 'Mart', 4: 'Nisan', 5: 'Mayıs', 6: 'Haziran', 7: 'Temmuz', 8: 'Ağustos', 9: 'Eylül', 10: 'Ekim', 11: 'Kasım', 12: 'Aralık' };
+
+    function updateEndeksLabels() {
+        var ay = parseInt($('#hakedis_tarihi_ay').val());
+        var yil = parseInt($('#hakedis_tarihi_yil').val());
+        if (ay && yil && aylarJS[ay]) {
+            var guncelText = aylarJS[ay] + ' ' + yil;
+            $('#guncelEndeksAyiText').text(guncelText);
+            $('#guncel_endeks_ayi_hidden').val(guncelText);
+        }
+        // Temel endeks ayı sözleşmeden gelir
+        if (sozlesmeTemelEndeksAy) {
+            $('#temel_endeks_ayi_hidden').val(sozlesmeTemelEndeksAy);
+        }
+    }
+
+    $(document).on('change', '#hakedis_tarihi_ay, #hakedis_tarihi_yil', function () {
+        updateEndeksLabels();
+    });
+    $(document).on('keyup', '#hakedis_tarihi_yil', function () {
+        updateEndeksLabels();
+    });
+
+    // İlk yüklemede label'ları ayarla
+    $(document).ready(function () {
+        updateEndeksLabels();
+    });
 </script>

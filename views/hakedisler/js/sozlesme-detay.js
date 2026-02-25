@@ -60,15 +60,22 @@ function initHakedisTable() {
     {
       data: null,
       render: function (data, type, row) {
-        return `<span class="badge bg-info">${row.temel_endeks_ayi}</span> <i class="bx bx-right-arrow-alt"></i> <span class="badge bg-warning">${row.guncel_endeks_ayi}</span>`;
+        let temel = row.temel_endeks_ayi || "-";
+        let guncel = row.guncel_endeks_ayi || "-";
+        return `<span class="badge bg-info">${temel}</span> <i class="bx bx-right-arrow-alt"></i> <span class="badge bg-warning">${guncel}</span>`;
       },
     },
     {
       data: "durum",
       render: function (data) {
-        let badge = "bg-secondary";
-        if (data == "onaylandi") badge = "bg-success";
-        return `<span class="badge ${badge}">${data.toUpperCase()}</span>`;
+        const durumMap = {
+          taslak: { badge: "bg-secondary", label: "Taslak" },
+          hazirlandi: { badge: "bg-info", label: "Hazırlandı" },
+          tamamlandi: { badge: "bg-success", label: "Tamamlandı" },
+          onaylandi: { badge: "bg-primary", label: "Onaylandı" },
+        };
+        let d = durumMap[data] || { badge: "bg-secondary", label: data };
+        return `<span class="badge ${d.badge}">${d.label}</span>`;
       },
     },
     {
@@ -91,11 +98,16 @@ function initHakedisTable() {
       },
     },
   ]),
-    (options.order = [[0, "desc"]]));
+    (options.order = [[0, "asc"]]));
   hakedisTable = $("#hakedisTable").DataTable(options);
 }
 
 function saveHakedis(form) {
+  // Endeks label'larını hidden inputlara yaz
+  if (typeof updateEndeksLabels === "function") {
+    updateEndeksLabels();
+  }
+
   const formData = $(form).serializeArray();
   formData.push({ name: "type", value: "saveHakedis" });
 
@@ -143,25 +155,53 @@ function editHakedis(id) {
       if (res.status === "success") {
         Swal.close();
         const data = res.data;
+        const $form = $("#yeniHakedisForm");
+
         $("#hakedis_id").val(data.id);
-        $("#yeniHakedisForm").find('[name="hakedis_no"]').val(data.hakedis_no);
-        $("#yeniHakedisForm")
+        $form.find('[name="hakedis_no"]').val(data.hakedis_no);
+
+        // Hakediş Ayı ve Yılı - trigger change for Select2 and labels
+        $form
           .find('[name="hakedis_tarihi_ay"]')
-          .val(data.hakedis_tarihi_ay);
-        $("#yeniHakedisForm")
+          .val(data.hakedis_tarihi_ay)
+          .trigger("change");
+        $form
           .find('[name="hakedis_tarihi_yil"]')
-          .val(data.hakedis_tarihi_yil);
-        $("#yeniHakedisForm")
-          .find('[name="temel_endeks_ayi"]')
-          .val(data.temel_endeks_ayi);
-        $("#yeniHakedisForm")
-          .find('[name="guncel_endeks_ayi"]')
-          .val(data.guncel_endeks_ayi);
-        $("#yeniHakedisForm")
-          .find('[name="is_yapilan_ayin_son_gunu"]')
-          .val(data.is_yapilan_ayin_son_gunu);
+          .val(data.hakedis_tarihi_yil)
+          .trigger("change");
+
+        const $dateInput = $form.find('[name="is_yapilan_ayin_son_gunu"]');
+        if ($dateInput[0] && $dateInput[0]._flatpickr) {
+          $dateInput[0]._flatpickr.setDate(data.is_yapilan_ayin_son_gunu);
+        } else {
+          $dateInput.val(data.is_yapilan_ayin_son_gunu);
+        }
+
+        // Set durum
+        $form
+          .find('[name="durum"]')
+          .val(data.durum || "taslak")
+          .trigger("change");
+
+        // Update hidden fields
+        $("#temel_endeks_ayi_hidden").val(data.temel_endeks_ayi || "");
+        $("#guncel_endeks_ayi_hidden").val(data.guncel_endeks_ayi || "");
+
+        // Update labels
+        updateEndeksLabels();
 
         $("#yeniHakedisModal").modal("show");
+
+        // Select2 clipping fix
+        setTimeout(() => {
+          $form.find(".select2").each(function () {
+            $(this).select2({
+              dropdownParent: $("#yeniHakedisModal"),
+              language: "tr",
+            });
+          });
+        }, 300);
+
         if (typeof feather !== "undefined") {
           setTimeout(() => {
             feather.replace();
@@ -176,12 +216,93 @@ function editHakedis(id) {
 }
 
 $(document).on("click", '[data-bs-target="#yeniHakedisModal"]', function () {
-  $("#yeniHakedisForm")[0].reset();
+  const $form = $("#yeniHakedisForm");
+  $form[0].reset();
   $("#hakedis_id").val("");
+
+  // Reset durum to taslak
+  $form.find('[name="durum"]').val("taslak").trigger("change");
+
+  // Reset date to current month's last day
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    .toISOString()
+    .split("T")[0];
+  $form.find('[name="is_yapilan_ayin_son_gunu"]').val(lastDay);
+
+  // Initialize Select2 with dropdownParent to prevent clipping
+  setTimeout(() => {
+    $form.find(".select2").each(function () {
+      $(this).select2({
+        dropdownParent: $("#yeniHakedisModal"),
+        language: "tr",
+      });
+    });
+  }, 300);
+
+  // Reset endeks labels
+  if (typeof updateEndeksLabels === "function") {
+    setTimeout(() => {
+      updateEndeksLabels();
+    }, 50);
+  }
+
   if (typeof feather !== "undefined") {
     setTimeout(() => {
       feather.replace();
     }, 100);
+  }
+});
+
+// Ay/Yıl değiştiğinde tarihi otomatik güncelle
+$(document).on(
+  "change",
+  "#hakedis_tarihi_ay, #hakedis_tarihi_yil",
+  function (e) {
+    const ay = parseInt($("#hakedis_tarihi_ay").val());
+    const yil = parseInt($("#hakedis_tarihi_yil").val());
+    if (ay && yil) {
+      // Ayın son gününü bul
+      const lastDayDate = new Date(yil, ay, 0);
+      const y = lastDayDate.getFullYear();
+      const m = String(lastDayDate.getMonth() + 1).padStart(2, "0");
+      const d = String(lastDayDate.getDate()).padStart(2, "0");
+      const lastDayStr = `${d}.${m}.${y}`; // dd.mm.yyyy formatı
+
+      const $dateInput = $("#yeniHakedisForm").find(
+        '[name="is_yapilan_ayin_son_gunu"]',
+      );
+
+      // Flatpickr varsa onun üzerinden güncelle, yoksa normal val
+      if ($dateInput[0] && $dateInput[0]._flatpickr) {
+        $dateInput[0]._flatpickr.setDate(lastDayStr);
+      } else {
+        $dateInput.val(lastDayStr);
+      }
+
+      updateEndeksLabels();
+    }
+  },
+);
+
+// Tarih değiştiğinde ay/yıl selectlerini güncelle
+$(document).on("change", '[name="is_yapilan_ayin_son_gunu"]', function (e) {
+  // Hem manuel hem de flatpickr kaynaklı değişimleri yakala
+  if (e.originalEvent || e.isTrigger) {
+    const dateVal = $(this).val();
+    if (dateVal && dateVal.includes(".")) {
+      const parts = dateVal.split(".");
+      if (parts.length === 3) {
+        const ay = parseInt(parts[1]);
+        const yil = parseInt(parts[2]);
+
+        if (ay && yil) {
+          $("#hakedis_tarihi_ay").val(ay).trigger("change.select2");
+          $("#hakedis_tarihi_yil").val(yil);
+          updateEndeksLabels();
+        }
+      }
+    }
   }
 });
 
