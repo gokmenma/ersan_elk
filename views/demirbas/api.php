@@ -701,7 +701,7 @@ if ($action == "servis-detay") {
 }
 
 if ($action == "servis-kaydet") {
-    $id = Security::decrypt($_POST['servis_id'] ?? '');
+    $id = Security::decrypt($_POST['id'] ?? '');
 
     $data = [
         "id" => $id ?: 0,
