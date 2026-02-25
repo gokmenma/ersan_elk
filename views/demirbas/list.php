@@ -301,8 +301,9 @@ if (!empty($sayacKatIds)) {
                                             type="button" data-bs-toggle="collapse" data-bs-target="#collapseInventory"
                                             aria-expanded="false" aria-controls="collapseInventory"
                                             style="box-shadow: none;">
-                                            <i class="bx bx-bar-chart-alt-2 fs-5 me-2 text-primary"></i> Kategori Bazlı
-                                            Envanter Raporu
+                                            <i class="bx bx-bar-chart-alt-2 fs-5 me-2 text-primary"></i>
+                                            <span class="me-2">Kategori Bazlı Envanter Raporu</span>
+                                            <div id="activeFilterBadges" class="d-flex gap-2"></div>
                                         </button>
                                     </h2>
                                     <div id="collapseInventory" class="accordion-collapse collapse"
@@ -336,16 +337,45 @@ if (!empty($sayacKatIds)) {
                                                                     </td>
                                                                     <td class="text-center">
                                                                         <span
-                                                                            class="badge bg-success bg-opacity-10 text-success fs-6 fw-bold px-3"><?php echo $stats['bosta']; ?></span>
+                                                                            class="badge bg-success bg-opacity-10 text-success fs-6 fw-bold px-3 inventory-filter"
+                                                                            style="cursor:pointer;" data-filter-type="bosta"
+                                                                            data-kat-adi="<?php echo htmlspecialchars($katAdi); ?>">
+                                                                            <?php echo $stats['bosta']; ?>
+                                                                        </span>
                                                                     </td>
                                                                     <td class="text-center">
-                                                                        <?php echo $stats['zimmetli'] > 0 ? '<span class="badge bg-warning text-dark">' . $stats['zimmetli'] . '</span>' : '<span class="text-muted">-</span>'; ?>
+                                                                        <?php if ($stats['zimmetli'] > 0): ?>
+                                                                            <span
+                                                                                class="badge bg-warning text-dark inventory-filter"
+                                                                                style="cursor:pointer;" data-filter-type="zimmetli"
+                                                                                data-kat-adi="<?php echo htmlspecialchars($katAdi); ?>">
+                                                                                <?php echo $stats['zimmetli']; ?>
+                                                                            </span>
+                                                                        <?php else: ?>
+                                                                            <span class="text-muted">-</span>
+                                                                        <?php endif; ?>
                                                                     </td>
                                                                     <td class="text-center">
-                                                                        <?php echo $stats['serviste'] > 0 ? '<span class="badge bg-info">' . $stats['serviste'] . '</span>' : '<span class="text-muted">-</span>'; ?>
+                                                                        <?php if ($stats['serviste'] > 0): ?>
+                                                                            <span class="badge bg-info inventory-filter"
+                                                                                style="cursor:pointer;" data-filter-type="arizali"
+                                                                                data-kat-adi="<?php echo htmlspecialchars($katAdi); ?>">
+                                                                                <?php echo $stats['serviste']; ?>
+                                                                            </span>
+                                                                        <?php else: ?>
+                                                                            <span class="text-muted">-</span>
+                                                                        <?php endif; ?>
                                                                     </td>
                                                                     <td class="text-center">
-                                                                        <?php echo $stats['hurda'] > 0 ? '<span class="badge bg-danger">' . $stats['hurda'] . '</span>' : '<span class="text-muted">-</span>'; ?>
+                                                                        <?php if ($stats['hurda'] > 0): ?>
+                                                                            <span class="badge bg-danger inventory-filter"
+                                                                                style="cursor:pointer;" data-filter-type="hurda"
+                                                                                data-kat-adi="<?php echo htmlspecialchars($katAdi); ?>">
+                                                                                <?php echo $stats['hurda']; ?>
+                                                                            </span>
+                                                                        <?php else: ?>
+                                                                            <span class="text-muted">-</span>
+                                                                        <?php endif; ?>
                                                                     </td>
                                                                 </tr>
                                                             <?php endforeach; ?>
@@ -414,7 +444,11 @@ if (!empty($sayacKatIds)) {
                                                 ];
                                                 $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
                                                 ?>
-                                                <tr data-id="<?php echo $enc_id ?>">
+                                                <tr data-id="<?php echo $enc_id ?>"
+                                                    data-kat-adi="<?php echo htmlspecialchars($demirbas->kategori_adi ?? 'Kategorisiz') ?>"
+                                                    data-durum="<?php echo strtolower($durumText) ?>"
+                                                    data-bosta="<?php echo $kalan > 0 ? '1' : '0' ?>"
+                                                    data-zimmetli="<?php echo $kalan < $miktar ? '1' : '0' ?>">
                                                     <td class="text-center"><?php echo $i ?></td>
                                                     <td class="text-center"><?php echo $demirbas->demirbas_no ?? '-' ?></td>
                                                     <td>
@@ -644,7 +678,11 @@ if (!empty($sayacKatIds)) {
                                                 ];
                                                 $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
                                                 ?>
-                                                <tr data-id="<?php echo $enc_id ?>">
+                                                <tr data-id="<?php echo $enc_id ?>"
+                                                    data-kat-adi="<?php echo htmlspecialchars($demirbas->kategori_adi ?? 'Kategorisiz') ?>"
+                                                    data-durum="<?php echo strtolower($durumText) ?>"
+                                                    data-bosta="<?php echo $kalan > 0 ? '1' : '0' ?>"
+                                                    data-zimmetli="<?php echo $kalan < $miktar ? '1' : '0' ?>">
                                                     <td class="text-center"><?php echo $i ?></td>
                                                     <td class="text-center"><?php echo $sayac->demirbas_no ?? '-' ?></td>
                                                     <td>
@@ -798,7 +836,11 @@ if (!empty($sayacKatIds)) {
                                                 ];
                                                 $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
                                                 ?>
-                                                <tr data-id="<?php echo $enc_id ?>">
+                                                <tr data-id="<?php echo $enc_id ?>"
+                                                    data-kat-adi="<?php echo htmlspecialchars($demirbas->kategori_adi ?? 'Kategorisiz') ?>"
+                                                    data-durum="<?php echo strtolower($durumText) ?>"
+                                                    data-bosta="<?php echo $kalan > 0 ? '1' : '0' ?>"
+                                                    data-zimmetli="<?php echo $kalan < $miktar ? '1' : '0' ?>">
                                                     <td class="text-center"><?php echo $i ?></td>
                                                     <td class="text-center"><?php echo $aparat->demirbas_no ?? '-' ?></td>
                                                     <td>
@@ -959,6 +1001,44 @@ if (!empty($sayacKatIds)) {
 
     .nav-pills .nav-link {
         color: #495057;
+    }
+
+    .filter-badge {
+        display: inline-flex;
+        align-items: center;
+        background: #32394e;
+        color: #fff;
+        padding: 0;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        overflow: hidden;
+        border: 1px solid #3e465b;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-badge .filter-label {
+        padding: 4px 8px;
+        background: rgba(255, 255, 255, 0.05);
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+        color: #a6b0cf;
+    }
+
+    .filter-badge .filter-value {
+        padding: 4px 10px;
+        font-weight: 600;
+    }
+
+    .filter-badge .filter-remove {
+        padding: 4px 8px;
+        background: rgba(255, 255, 255, 0.1);
+        cursor: pointer;
+        transition: all 0.2s;
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .filter-badge .filter-remove:hover {
+        background: #f46a6a;
+        color: #fff;
     }
 </style>
 

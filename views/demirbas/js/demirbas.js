@@ -1520,3 +1520,106 @@ $(document).on("click", ".demirbas-gecmis", function (e) {
 $(document).on("change", ".zimmet-filter", function () {
   zimmetTable.ajax.reload();
 });
+
+// ============== ENVANTER RAPORU FİLTRELEME ==============
+$(document).on("click", ".inventory-filter", function () {
+  let katAdi = $(this).data("kat-adi");
+  let type = $(this).data("filter-type");
+
+  if (!katAdi || !type) return;
+
+  // Varsa önceki özel filtreyi temizle
+  $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(function (fn) {
+    return fn.name !== "inventoryReportFilter";
+  });
+
+  // Yeni filtre fonksiyonu
+  let inventoryReportFilter = function (settings, data, dataIndex) {
+    if (settings.nTable.id !== "demirbasTable") return true;
+
+    let rowNode = settings.aoData[dataIndex].nTr;
+    let $row = $(rowNode);
+
+    let rowKat = $row.data("kat-adi");
+    let rowDurum = $row.data("durum");
+    let isBosta = $row.data("bosta") == "1";
+    let isZimmetli = $row.data("zimmetli") == "1";
+
+    // Kategori kontrolü
+    if (rowKat !== katAdi) return false;
+
+    // Tip kontrolü
+    if (type === "bosta") return isBosta;
+    if (type === "zimmetli") return isZimmetli;
+    if (type === "arizali") return rowDurum === "arizali";
+    if (type === "hurda") return rowDurum.includes("hurda");
+
+    return true;
+  };
+
+  // İsim vererek ekle (sonradan temizleyebilmek için)
+  Object.defineProperty(inventoryReportFilter, "name", {
+    value: "inventoryReportFilter",
+  });
+  $.fn.dataTable.ext.search.push(inventoryReportFilter);
+
+  // Tabloyu çiz
+  demirbasTable.draw();
+
+  // Filtre Badge'lerini oluştur (Yeni İstek)
+  const filterNames = {
+    bosta: "Boşta",
+    zimmetli: "Zimmetli",
+    arizali: "Serviste/Arızalı",
+    hurda: "Hurda",
+  };
+
+  const badgeHtml = `
+    <div class="filter-badge">
+        <span class="filter-label">Kategori:</span>
+        <span class="filter-value">${katAdi}</span>
+    </div>
+    <div class="filter-badge">
+        <span class="filter-label">Durum:</span>
+        <span class="filter-value">${filterNames[type]}</span>
+        <span class="filter-remove" id="clearInventoryFilterBadge" title="Filtreyi Kaldır">
+            <i class="bx bx-x"></i>
+        </span>
+    </div>
+  `;
+
+  $("#activeFilterBadges").html(badgeHtml);
+
+  // Tabloya kaydır
+  $("html, body").animate(
+    {
+      scrollTop: $("#demirbasTable").offset().top - 150,
+    },
+    500,
+  );
+
+  // Eski butonu artık eklememize gerek yok (başlıkta badge var)
+  if ($("#clearInventoryFilter").length) {
+    $("#clearInventoryFilter").remove();
+  }
+});
+
+// Filtre Badge'inden Kaldırma (x'e basınca)
+$(document).on("click", "#clearInventoryFilterBadge", function (e) {
+  e.stopPropagation(); // Accordion'un açılıp kapanmasını engelle
+  $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(function (fn) {
+    return fn.name !== "inventoryReportFilter";
+  });
+  $("#activeFilterBadges").empty();
+  demirbasTable.draw();
+});
+
+// Eski Filtreyi Temizle Butonu (Geriye dönük uyumluluk veya yedek)
+$(document).on("click", "#clearInventoryFilter", function () {
+  $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(function (fn) {
+    return fn.name !== "inventoryReportFilter";
+  });
+  $("#activeFilterBadges").empty();
+  $(this).remove();
+  demirbasTable.draw();
+});
