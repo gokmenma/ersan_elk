@@ -394,6 +394,25 @@ class DemirbasZimmetModel extends Model
             }
         }
 
+        // Kategori Bazlı Filtreleme
+        $filterType = $request['filter_type'] ?? 'all';
+        $sayacKatIds = $request['sayac_kat_ids'] ?? [];
+        $aparatKatIds = $request['aparat_kat_ids'] ?? [];
+
+        if ($filterType === 'sayac' && !empty($sayacKatIds)) {
+            $ids = implode(',', array_map('intval', $sayacKatIds));
+            $searchWhere .= " AND d.kategori_id IN ($ids)";
+        } elseif ($filterType === 'aparat' && !empty($aparatKatIds)) {
+            $ids = implode(',', array_map('intval', $aparatKatIds));
+            $searchWhere .= " AND d.kategori_id IN ($ids)";
+        } elseif ($filterType === 'demirbas') {
+            $allExclude = array_filter(array_merge((array) $sayacKatIds, (array) $aparatKatIds));
+            if (!empty($allExclude)) {
+                $ids = implode(',', array_map('intval', $allExclude));
+                $searchWhere .= " AND (d.kategori_id NOT IN ($ids) OR d.kategori_id IS NULL)";
+            }
+        }
+
         // Toplam kayıt sayısı (filtresiz)
         $totalSql = "SELECT COUNT(*) FROM {$this->table} WHERE silinme_tarihi IS NULL";
         $totalRecords = $this->db->query($totalSql)->fetchColumn();

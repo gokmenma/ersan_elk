@@ -53,6 +53,7 @@ if ($action == "demirbas-kaydet") {
             "edinme_tarihi" => $_POST["edinme_tarihi"] ?? null,
             "edinme_tutari" => Helper::formattedMoneyToNumber($_POST["edinme_tutari"] ?? 0),
             "miktar" => $miktar,
+            "minimun_stok_uyari_miktari" => intval($_POST["minimun_stok_uyari_miktari"] ?? 0),
             "durum" => $_POST["durum"] ?? 'aktif',
             "aciklama" => $_POST["aciklama"] ?? null,
             "otomatik_zimmet_is_emri" => !empty($_POST["otomatik_zimmet_is_emri"]) ? $_POST["otomatik_zimmet_is_emri"] : null,

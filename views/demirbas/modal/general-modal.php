@@ -139,16 +139,13 @@ foreach ($isEmriSonuclari as $sonuc) {
                             </div>
 
                             <div class="row">
-                                <div class="col-md-3 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <?php echo Form::FormFloatInput('number', 'miktar', '1', null, 'Toplam Miktar *', 'hash', 'form-control', true, null, 'on', false, 'min="1"'); ?>
                                 </div>
-                                <div class="col-md-3 mb-3">
-                                    <?php echo Form::FormFloatInput('text', 'edinme_tarihi', date('d.m.Y'), null, 'Edinme Tarihi', 'calendar', 'form-control flatpickr'); ?>
+                                <div class="col-md-4 mb-3">
+                                    <?php echo Form::FormFloatInput('number', 'minimun_stok_uyari_miktari', '0', null, 'Min. Stok Uyarısı', 'bell', 'form-control', false, null, 'on', false, 'min="0"'); ?>
                                 </div>
-                                <div class="col-md-3 mb-3">
-                                    <?php echo Form::FormFloatInput('text', 'edinme_tutari', null, '0,00', 'Edinme Tutarı', 'dollar-sign', 'form-control money'); ?>
-                                </div>
-                                <div class="col-md-3 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <?php
                                     $durumlar = [
                                         'aktif' => 'Aktif',
@@ -158,6 +155,15 @@ foreach ($isEmriSonuclari as $sonuc) {
                                     ];
                                     echo Form::FormSelect2('durum', $durumlar, 'aktif', 'Durum', 'activity');
                                     ?>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <?php echo Form::FormFloatInput('text', 'edinme_tarihi', date('d.m.Y'), null, 'Edinme Tarihi', 'calendar', 'form-control flatpickr'); ?>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <?php echo Form::FormFloatInput('text', 'edinme_tutari', null, '0,00', 'Edinme Tutarı', 'dollar-sign', 'form-control money'); ?>
                                 </div>
                             </div>
 

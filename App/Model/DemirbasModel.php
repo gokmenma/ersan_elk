@@ -128,10 +128,13 @@ class DemirbasModel extends Model
         $enc_id = Security::encrypt($data->id);
         $miktar = $data->miktar ?? 1;
         $kalan = $data->kalan_miktar ?? 1;
+        $minStok = $data->minimun_stok_uyari_miktari ?? 0;
 
         // Stok durumu badge
         if ($kalan == 0) {
             $stokBadge = '<span class="badge bg-danger">Stok Yok</span>';
+        } elseif ($minStok > 0 && $kalan <= $minStok) {
+            $stokBadge = '<span class="badge bg-soft-danger text-danger border border-danger">Stok Azaldı (' . $kalan . '/' . $miktar . ')</span>';
         } elseif ($kalan < $miktar) {
             $stokBadge = '<span class="badge bg-warning">' . $kalan . '/' . $miktar . '</span>';
         } else {

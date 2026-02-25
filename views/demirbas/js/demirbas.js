@@ -27,6 +27,10 @@ $(document).ready(function () {
       type: "POST",
       data: function (d) {
         d.action = "zimmet-listesi";
+        d.filter_type = $('input[name="zimmetFilter"]:checked').val() || "all";
+        d.sayac_kat_ids = typeof sayacKatIds !== "undefined" ? sayacKatIds : [];
+        d.aparat_kat_ids =
+          typeof aparatKatIds !== "undefined" ? aparatKatIds : [];
       },
     },
     columns: [
@@ -791,6 +795,7 @@ function resetDemirbasForm() {
   $("#kategori_id").val("").trigger("change");
   $("#durum").val("aktif").trigger("change");
   $("#miktar").val(1);
+  $("#minimun_stok_uyari_miktari").val(0);
   // Otomatik zimmet ayarları
   $("#otomatik_zimmet_is_emri").val("").trigger("change");
   $("#otomatik_iade_is_emri").val("").trigger("change");
@@ -1509,4 +1514,9 @@ $(document).on("click", ".demirbas-gecmis", function (e) {
       console.error(err);
       Swal.fire("Hata!", "Veri çekilirken bir hata oluştu.", "error");
     });
+});
+
+// Zimmet filtresi tıklandığında tabloyu yenile
+$(document).on("change", ".zimmet-filter", function () {
+  zimmetTable.ajax.reload();
 });

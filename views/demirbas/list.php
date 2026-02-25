@@ -154,13 +154,6 @@ if (!empty($sayacKatIds)) {
                                     </button>
                                 </li>
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link <?php echo $activeTab === 'zimmet' ? 'active' : ''; ?>"
-                                        id="zimmet-tab" data-bs-toggle="tab" data-bs-target="#zimmetContent"
-                                        type="button" role="tab">
-                                        <i class="bx bx-transfer me-1"></i> Zimmet Kayıtları
-                                    </button>
-                                </li>
-                                <li class="nav-item" role="presentation">
                                     <button class="nav-link <?php echo $activeTab === 'depo' ? 'active' : ''; ?>"
                                         id="depo-tab" data-bs-toggle="tab" data-bs-target="#depoContent" type="button"
                                         role="tab">
@@ -169,9 +162,16 @@ if (!empty($sayacKatIds)) {
                                 </li>
                                 <li class="nav-item" role="presentation">
                                     <button class="nav-link <?php echo $activeTab === 'aparat' ? 'active' : ''; ?>"
-                                        id="aparat-tab" data-bs-toggle="tab" data-bs-target="#aparatContent" type="button"
-                                        role="tab">
+                                        id="aparat-tab" data-bs-toggle="tab" data-bs-target="#aparatContent"
+                                        type="button" role="tab">
                                         <i class="bx bx-wrench me-1"></i> Aparatlar
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link <?php echo $activeTab === 'zimmet' ? 'active' : ''; ?>"
+                                        id="zimmet-tab" data-bs-toggle="tab" data-bs-target="#zimmetContent"
+                                        type="button" role="tab">
+                                        <i class="bx bx-transfer me-1"></i> Zimmet Kayıtları
                                     </button>
                                 </li>
                             </ul>
@@ -392,8 +392,12 @@ if (!empty($sayacKatIds)) {
                                                 $kalan = $demirbas->kalan_miktar ?? 1;
 
                                                 // Stok durumu badge
+                                                $minStok = $demirbas->minimun_stok_uyari_miktari ?? 0;
+
                                                 if ($kalan == 0) {
                                                     $stokBadge = '<span class="badge bg-danger">Stok Yok</span>';
+                                                } elseif ($minStok > 0 && $kalan <= $minStok) {
+                                                    $stokBadge = '<span class="badge bg-soft-danger text-danger border border-danger">Stok Azaldı (' . $kalan . '/' . $miktar . ')</span>';
                                                 } elseif ($kalan < $miktar) {
                                                     $stokBadge = '<span class="badge bg-warning">' . $kalan . '/' . $miktar . '</span>';
                                                 } else {
@@ -448,39 +452,48 @@ if (!empty($sayacKatIds)) {
                                                     <td><?php echo $demirbas->edinme_tarihi ?? '-' ?></td>
                                                     <td class="text-center">
                                                         <div class="dropdown">
-                                                            <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                            <button class="btn btn-light btn-sm dropdown-toggle" type="button"
+                                                                data-bs-toggle="dropdown" aria-expanded="false">
                                                                 <i class="bx bx-dots-horizontal-rounded"></i>
                                                             </button>
                                                             <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                                                                 <?php if ($kalan > 0): ?>
                                                                     <li>
-                                                                        <a class="dropdown-item zimmet-ver" href="javascript:void(0);"
-                                                                           data-id="<?php echo $enc_id; ?>"
-                                                                           data-raw-id="<?php echo $demirbas->id; ?>"
-                                                                           data-name="<?php echo $demirbas->demirbas_adi; ?>"
-                                                                           data-kalan="<?php echo $kalan; ?>">
-                                                                            <i class="bx bx-transfer text-warning me-2"></i> Zimmet Ver
+                                                                        <a class="dropdown-item zimmet-ver"
+                                                                            href="javascript:void(0);"
+                                                                            data-id="<?php echo $enc_id; ?>"
+                                                                            data-raw-id="<?php echo $demirbas->id; ?>"
+                                                                            data-name="<?php echo $demirbas->demirbas_adi; ?>"
+                                                                            data-kalan="<?php echo $kalan; ?>">
+                                                                            <i class="bx bx-transfer text-warning me-2"></i> Zimmet
+                                                                            Ver
                                                                         </a>
                                                                     </li>
                                                                 <?php endif; ?>
                                                                 <li>
-                                                                    <a class="dropdown-item duzenle" href="javascript:void(0);" data-id="<?php echo $enc_id; ?>">
+                                                                    <a class="dropdown-item duzenle" href="javascript:void(0);"
+                                                                        data-id="<?php echo $enc_id; ?>">
                                                                         <i class="bx bx-edit text-primary me-2"></i> Düzenle
                                                                     </a>
                                                                 </li>
                                                                 <li>
-                                                                    <a class="dropdown-item demirbas-gecmis" href="javascript:void(0);" 
-                                                                       data-id="<?php echo $enc_id; ?>"
-                                                                       data-raw-id="<?php echo $demirbas->id; ?>"
-                                                                       data-name="<?php echo htmlspecialchars($demirbas->demirbas_adi); ?>">
-                                                                        <i class="bx bx-history text-info me-2"></i> İşlem Geçmişi
+                                                                    <a class="dropdown-item demirbas-gecmis"
+                                                                        href="javascript:void(0);"
+                                                                        data-id="<?php echo $enc_id; ?>"
+                                                                        data-raw-id="<?php echo $demirbas->id; ?>"
+                                                                        data-name="<?php echo htmlspecialchars($demirbas->demirbas_adi); ?>">
+                                                                        <i class="bx bx-history text-info me-2"></i> İşlem
+                                                                        Geçmişi
                                                                     </a>
                                                                 </li>
-                                                                <li><hr class="dropdown-divider"></li>
                                                                 <li>
-                                                                    <a class="dropdown-item demirbas-sil" href="javascript:void(0);" 
-                                                                       data-id="<?php echo $enc_id; ?>"
-                                                                       data-name="<?php echo $demirbas->demirbas_adi; ?>">
+                                                                    <hr class="dropdown-divider">
+                                                                </li>
+                                                                <li>
+                                                                    <a class="dropdown-item demirbas-sil"
+                                                                        href="javascript:void(0);"
+                                                                        data-id="<?php echo $enc_id; ?>"
+                                                                        data-name="<?php echo $demirbas->demirbas_adi; ?>">
                                                                         <i class="bx bx-trash text-danger me-2"></i> Sil
                                                                     </a>
                                                                 </li>
@@ -498,31 +511,7 @@ if (!empty($sayacKatIds)) {
 
                         </div>
 
-                        <!-- Zimmet Kayıtları Tab -->
-                        <div class="tab-pane fade <?php echo $activeTab === 'zimmet' ? 'show active' : ''; ?>"
-                            id="zimmetContent" role="tabpanel">
-                            <div class="table-responsive">
-                                <table id="zimmetTable"
-                                    class="table table-demirbas table-hover table-bordered nowrap w-100">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th class="text-center" style="width:5%">ID</th>
-                                            <th style="width:12%">Kategori</th>
-                                            <th style="width:20%">Demirbaş</th>
-                                            <th style="width:15%">Marka/Model</th>
-                                            <th style="width:18%">Personel</th>
-                                            <th style="width:8%" class="text-center">Miktar</th>
-                                            <th style="width:12%">Teslim Tarihi</th>
-                                            <th style="width:10%" class="text-center">Durum</th>
-                                            <th style="width:5%" class="text-center">İşlemler</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="zimmetTableBody">
-                                        <!-- Zimmet verileri JavaScript ile yüklenecek -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+
 
                         <!-- Sayaç Deposu Tab -->
                         <div class="tab-pane fade <?php echo $activeTab === 'depo' ? 'show active' : ''; ?>"
@@ -632,8 +621,12 @@ if (!empty($sayacKatIds)) {
                                                 $kalan = $sayac->kalan_miktar ?? 1;
 
                                                 // Stok durumu badge
+                                                $minStok = $sayac->minimun_stok_uyari_miktari ?? 0;
+
                                                 if ($kalan == 0) {
                                                     $stokBadge = '<span class="badge bg-danger">Stok Yok</span>';
+                                                } elseif ($minStok > 0 && $kalan <= $minStok) {
+                                                    $stokBadge = '<span class="badge bg-soft-danger text-danger border border-danger">Stok Azaldı (' . $kalan . '/' . $miktar . ')</span>';
                                                 } elseif ($kalan < $miktar) {
                                                     $stokBadge = '<span class="badge bg-warning">' . $kalan . '/' . $miktar . '</span>';
                                                 } else {
@@ -681,55 +674,68 @@ if (!empty($sayacKatIds)) {
                                                     <td><?php echo $sayac->edinme_tarihi ?? '-' ?></td>
                                                     <td class="text-center">
                                                         <div class="dropdown">
-                                                                <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                                    <i class="bx bx-dots-horizontal-rounded"></i>
-                                                                </button>
-                                                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                                                    <?php if (strtolower($durumText) != 'kaskiye teslim edildi'): ?>
+                                                            <button class="btn btn-light btn-sm dropdown-toggle" type="button"
+                                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                                                <i class="bx bx-dots-horizontal-rounded"></i>
+                                                            </button>
+                                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                                                <?php if (strtolower($durumText) != 'kaskiye teslim edildi'): ?>
+                                                                    <li>
+                                                                        <a class="dropdown-item sayac-kasiye-teslim"
+                                                                            href="javascript:void(0);"
+                                                                            data-id="<?php echo $enc_id; ?>"
+                                                                            data-name="<?php echo $sayac->demirbas_adi; ?>">
+                                                                            <i class="bx bx-log-out-circle text-dark me-2"></i>
+                                                                            Kaskiye Teslim Et
+                                                                        </a>
+                                                                    </li>
+                                                                    <?php if ($kalan > 0): ?>
                                                                         <li>
-                                                                            <a class="dropdown-item sayac-kasiye-teslim" href="javascript:void(0);"
-                                                                               data-id="<?php echo $enc_id; ?>"
-                                                                               data-name="<?php echo $sayac->demirbas_adi; ?>">
-                                                                                <i class="bx bx-log-out-circle text-dark me-2"></i> Kaskiye Teslim Et
+                                                                            <a class="dropdown-item zimmet-ver"
+                                                                                href="javascript:void(0);"
+                                                                                data-id="<?php echo $enc_id; ?>"
+                                                                                data-raw-id="<?php echo $sayac->id; ?>"
+                                                                                data-name="<?php echo $sayac->demirbas_adi; ?>"
+                                                                                data-kalan="<?php echo $kalan; ?>">
+                                                                                <i class="bx bx-transfer text-warning me-2"></i> Zimmet
+                                                                                Ver
                                                                             </a>
                                                                         </li>
-                                                                        <?php if ($kalan > 0): ?>
-                                                                            <li>
-                                                                                <a class="dropdown-item zimmet-ver" href="javascript:void(0);"
-                                                                                   data-id="<?php echo $enc_id; ?>"
-                                                                                   data-raw-id="<?php echo $sayac->id; ?>"
-                                                                                   data-name="<?php echo $sayac->demirbas_adi; ?>"
-                                                                                   data-kalan="<?php echo $kalan; ?>">
-                                                                                    <i class="bx bx-transfer text-warning me-2"></i> Zimmet Ver
-                                                                                </a>
-                                                                            </li>
-                                                                        <?php endif; ?>
-                                                                        <li>
-                                                                            <a class="dropdown-item duzenle" href="javascript:void(0);" data-id="<?php echo $enc_id; ?>">
-                                                                                <i class="bx bx-edit-alt text-primary me-2"></i> Düzenle
-                                                                            </a>
-                                                                        </li>
-                                                                        <li>
-                                                                            <a class="dropdown-item demirbas-gecmis" href="javascript:void(0);" 
-                                                                               data-id="<?php echo $enc_id; ?>"
-                                                                               data-raw-id="<?php echo $sayac->id; ?>"
-                                                                               data-name="<?php echo htmlspecialchars($sayac->demirbas_adi); ?>">
-                                                                                <i class="bx bx-history text-info me-2"></i> İşlem Geçmişi
-                                                                            </a>
-                                                                        </li>
-                                                                        <li><hr class="dropdown-divider"></li>
-                                                                        <li>
-                                                                            <a class="dropdown-item demirbas-sil" href="javascript:void(0);" 
-                                                                               data-id="<?php echo $enc_id; ?>"
-                                                                               data-name="<?php echo $sayac->demirbas_adi; ?>">
-                                                                                <i class="bx bx-trash text-danger me-2"></i> Sil
-                                                                            </a>
-                                                                        </li>
-                                                                    <?php else: ?>
-                                                                        <li><span class="dropdown-item-text text-muted small italic">İşlem Yapılamaz</span></li>
                                                                     <?php endif; ?>
-                                                                </ul>
-                                                            </div>
+                                                                    <li>
+                                                                        <a class="dropdown-item duzenle" href="javascript:void(0);"
+                                                                            data-id="<?php echo $enc_id; ?>">
+                                                                            <i class="bx bx-edit-alt text-primary me-2"></i> Düzenle
+                                                                        </a>
+                                                                    </li>
+                                                                    <li>
+                                                                        <a class="dropdown-item demirbas-gecmis"
+                                                                            href="javascript:void(0);"
+                                                                            data-id="<?php echo $enc_id; ?>"
+                                                                            data-raw-id="<?php echo $sayac->id; ?>"
+                                                                            data-name="<?php echo htmlspecialchars($sayac->demirbas_adi); ?>">
+                                                                            <i class="bx bx-history text-info me-2"></i> İşlem
+                                                                            Geçmişi
+                                                                        </a>
+                                                                    </li>
+                                                                    <li>
+                                                                        <hr class="dropdown-divider">
+                                                                    </li>
+                                                                    <li>
+                                                                        <a class="dropdown-item demirbas-sil"
+                                                                            href="javascript:void(0);"
+                                                                            data-id="<?php echo $enc_id; ?>"
+                                                                            data-name="<?php echo $sayac->demirbas_adi; ?>">
+                                                                            <i class="bx bx-trash text-danger me-2"></i> Sil
+                                                                        </a>
+                                                                    </li>
+                                                                <?php else: ?>
+                                                                    <li><span
+                                                                            class="dropdown-item-text text-muted small italic">İşlem
+                                                                            Yapılamaz</span></li>
+                                                                <?php endif; ?>
+                                                            </ul>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             <?php } ?>
@@ -770,8 +776,13 @@ if (!empty($sayacKatIds)) {
                                                 $miktar = $aparat->miktar ?? 1;
                                                 $kalan = $aparat->kalan_miktar ?? 1;
 
+                                                // Stok durumu badge
+                                                $minStok = $aparat->minimun_stok_uyari_miktari ?? 0;
+
                                                 if ($kalan == 0) {
                                                     $stokBadge = '<span class="badge bg-danger">Stok Yok</span>';
+                                                } elseif ($minStok > 0 && $kalan <= $minStok) {
+                                                    $stokBadge = '<span class="badge bg-soft-danger text-danger border border-danger">Stok Azaldı (' . $kalan . '/' . $miktar . ')</span>';
                                                 } elseif ($kalan < $miktar) {
                                                     $stokBadge = '<span class="badge bg-warning">' . $kalan . '/' . $miktar . '</span>';
                                                 } else {
@@ -797,7 +808,8 @@ if (!empty($sayacKatIds)) {
                                                         </a>
                                                     </td>
                                                     <td>
-                                                        <div><?php echo ($aparat->marka ?? '-') . ' ' . ($aparat->model ?? '') ?>
+                                                        <div>
+                                                            <?php echo ($aparat->marka ?? '-') . ' ' . ($aparat->model ?? '') ?>
                                                         </div>
                                                     </td>
                                                     <td>
@@ -808,44 +820,53 @@ if (!empty($sayacKatIds)) {
                                                     <td><?php echo $aparat->edinme_tarihi ?? '-' ?></td>
                                                     <td class="text-center">
                                                         <div class="dropdown">
-                                                                <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                                    <i class="bx bx-dots-horizontal-rounded"></i>
-                                                                </button>
-                                                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                                                    <?php if ($kalan > 0): ?>
-                                                                        <li>
-                                                                            <a class="dropdown-item zimmet-ver" href="javascript:void(0);"
-                                                                               data-id="<?php echo $enc_id; ?>"
-                                                                               data-raw-id="<?php echo $aparat->id; ?>"
-                                                                               data-name="<?php echo $aparat->demirbas_adi; ?>"
-                                                                               data-kalan="<?php echo $kalan; ?>">
-                                                                                <i class="bx bx-transfer text-warning me-2"></i> Zimmet Ver
-                                                                            </a>
-                                                                        </li>
-                                                                    <?php endif; ?>
+                                                            <button class="btn btn-light btn-sm dropdown-toggle" type="button"
+                                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                                                <i class="bx bx-dots-horizontal-rounded"></i>
+                                                            </button>
+                                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                                                <?php if ($kalan > 0): ?>
                                                                     <li>
-                                                                        <a class="dropdown-item duzenle" href="javascript:void(0);" data-id="<?php echo $enc_id; ?>">
-                                                                            <i class="bx bx-edit-alt text-primary me-2"></i> Düzenle
+                                                                        <a class="dropdown-item zimmet-ver"
+                                                                            href="javascript:void(0);"
+                                                                            data-id="<?php echo $enc_id; ?>"
+                                                                            data-raw-id="<?php echo $aparat->id; ?>"
+                                                                            data-name="<?php echo $aparat->demirbas_adi; ?>"
+                                                                            data-kalan="<?php echo $kalan; ?>">
+                                                                            <i class="bx bx-transfer text-warning me-2"></i> Zimmet
+                                                                            Ver
                                                                         </a>
                                                                     </li>
-                                                                    <li>
-                                                                        <a class="dropdown-item demirbas-gecmis" href="javascript:void(0);" 
-                                                                           data-id="<?php echo $enc_id; ?>"
-                                                                           data-raw-id="<?php echo $aparat->id; ?>"
-                                                                           data-name="<?php echo htmlspecialchars($aparat->demirbas_adi); ?>">
-                                                                            <i class="bx bx-history text-info me-2"></i> İşlem Geçmişi
-                                                                        </a>
-                                                                    </li>
-                                                                    <li><hr class="dropdown-divider"></li>
-                                                                    <li>
-                                                                        <a class="dropdown-item demirbas-sil" href="javascript:void(0);" 
-                                                                           data-id="<?php echo $enc_id; ?>"
-                                                                           data-name="<?php echo $aparat->demirbas_adi; ?>">
-                                                                            <i class="bx bx-trash text-danger me-2"></i> Sil
-                                                                        </a>
-                                                                    </li>
-                                                                </ul>
-                                                            </div>
+                                                                <?php endif; ?>
+                                                                <li>
+                                                                    <a class="dropdown-item duzenle" href="javascript:void(0);"
+                                                                        data-id="<?php echo $enc_id; ?>">
+                                                                        <i class="bx bx-edit-alt text-primary me-2"></i> Düzenle
+                                                                    </a>
+                                                                </li>
+                                                                <li>
+                                                                    <a class="dropdown-item demirbas-gecmis"
+                                                                        href="javascript:void(0);"
+                                                                        data-id="<?php echo $enc_id; ?>"
+                                                                        data-raw-id="<?php echo $aparat->id; ?>"
+                                                                        data-name="<?php echo htmlspecialchars($aparat->demirbas_adi); ?>">
+                                                                        <i class="bx bx-history text-info me-2"></i> İşlem
+                                                                        Geçmişi
+                                                                    </a>
+                                                                </li>
+                                                                <li>
+                                                                    <hr class="dropdown-divider">
+                                                                </li>
+                                                                <li>
+                                                                    <a class="dropdown-item demirbas-sil"
+                                                                        href="javascript:void(0);"
+                                                                        data-id="<?php echo $enc_id; ?>"
+                                                                        data-name="<?php echo $aparat->demirbas_adi; ?>">
+                                                                        <i class="bx bx-trash text-danger me-2"></i> Sil
+                                                                    </a>
+                                                                </li>
+                                                            </ul>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             <?php } ?>
@@ -854,6 +875,62 @@ if (!empty($sayacKatIds)) {
                                 </table>
                             </div>
 
+
+                        </div>
+
+                        <!-- Zimmet Kayıtları Tab -->
+                        <div class="tab-pane fade <?php echo $activeTab === 'zimmet' ? 'show active' : ''; ?>"
+                            id="zimmetContent" role="tabpanel">
+
+                            <!-- Zimmet Filtre Butonları -->
+                            <div class="card bg-light border-0 shadow-none mb-3">
+                                <div class="card-body p-2 d-flex align-items-center">
+                                    <div class="me-3 ps-2">
+                                        <i class="bx bx-filter-alt text-primary"></i> <span
+                                            class="fw-bold small text-muted">FİLTRELE:</span>
+                                    </div>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <input type="radio" class="btn-check zimmet-filter" name="zimmetFilter"
+                                            id="filterTum" value="all" checked>
+                                        <label class="btn btn-outline-primary px-3" for="filterTum">Tümü</label>
+
+                                        <input type="radio" class="btn-check zimmet-filter" name="zimmetFilter"
+                                            id="filterDemirbas" value="demirbas">
+                                        <label class="btn btn-outline-primary px-3"
+                                            for="filterDemirbas">Demirbaş</label>
+
+                                        <input type="radio" class="btn-check zimmet-filter" name="zimmetFilter"
+                                            id="filterSayac" value="sayac">
+                                        <label class="btn btn-outline-primary px-3" for="filterSayac">Sayaç</label>
+
+                                        <input type="radio" class="btn-check zimmet-filter" name="zimmetFilter"
+                                            id="filterAparat" value="aparat">
+                                        <label class="btn btn-outline-primary px-3" for="filterAparat">Aparat</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table id="zimmetTable"
+                                    class="table table-demirbas table-hover table-bordered nowrap w-100">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="text-center" style="width:5%">ID</th>
+                                            <th style="width:12%">Kategori</th>
+                                            <th style="width:20%">Demirbaş</th>
+                                            <th style="width:15%">Marka/Model</th>
+                                            <th style="width:18%">Personel</th>
+                                            <th style="width:8%" class="text-center">Miktar</th>
+                                            <th style="width:12%">Teslim Tarihi</th>
+                                            <th style="width:10%" class="text-center">Durum</th>
+                                            <th style="width:5%" class="text-center">İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="zimmetTableBody">
+                                        <!-- Zimmet verileri JavaScript ile yüklenecek -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
                     </div>
