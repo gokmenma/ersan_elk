@@ -50,7 +50,7 @@ $activeTab = $_GET['tab'] ?? 'home';
 $tabs = [
     'home' => ['label' => 'Genel Bilgiler', 'icon' => 'fas fa-home'],
     'calisma' => ['label' => 'Çalışma Bilgileri', 'icon' => 'far fa-user'],
-    'finansal' => ['label' => 'Finansal Bilgileri', 'icon' => 'fas fa-wallet'],
+    'finansal' => ['label' => 'Maaş & Görev Bilgileri', 'icon' => 'fas fa-wallet'],
     'diger' => ['label' => 'Diğer Bilgiler', 'icon' => 'far fa-envelope'],
 ];
 
@@ -418,6 +418,7 @@ if ($id > 0) {
                         </div>
                     </form>
                     <?php include_once "icerik/modals/ekip_gecmisi.php"; ?>
+                    <?php include_once "icerik/modals/gorev_gecmisi.php"; ?>
                     <!-- Dinamik yüklenen tab'lar (izinler, zimmetler vb.) form dışında kalmalı, iç içe form sorunu yaşanmaması için -->
                     <?php if ($id > 0): ?>
                         <div class="tab-pane <?php echo $activeTab === 'izinler' ? 'active show' : ''; ?>" id="izinler"
@@ -555,25 +556,55 @@ if ($id > 0) {
             });
         }
 
-        /**Flatpickr varsa init yap */
         if ($(container).find(".flatpickr").length > 0) {
-            $(container).find(".flatpickr").flatpickr({
-                dateFormat: "d.m.Y",
-                altInput: true,
-                altFormat: "d.m.Y",
-                locale: "tr",
-                onChange: function (selectedDates, dateStr, instance) {
-                    $(instance.element).trigger('change');
+            $(container).find(".flatpickr").each(function () {
+                if (!this._flatpickr) {
+                    $(this).flatpickr({
+                        dateFormat: "d.m.Y",
+                        altInput: true,
+                        altFormat: "d.m.Y",
+                        locale: "tr",
+                        onChange: function (selectedDates, dateStr, instance) {
+                            var elem = null;
+                            try {
+                                if (instance && instance.element) {
+                                    elem = instance.element;
+                                } else if (this && this.element) {
+                                    elem = this.element;
+                                }
+                                if (elem) $(elem).trigger('change');
+                            } catch (e) {
+                                console.error('Flatpickr onChange error:', e);
+                            }
+                        }
+                    });
                 }
             });
         }
 
         if ($(container).find(".flatpickr-date").length > 0) {
-            $(container).find(".flatpickr-date").flatpickr({
-                enableTime: true,
-                dateFormat: "Y-m-d H:i",
-                time_24hr: true,
-                locale: "tr"
+            $(container).find(".flatpickr-date").each(function () {
+                if (!this._flatpickr) {
+                    $(this).flatpickr({
+                        enableTime: true,
+                        dateFormat: "Y-m-d H:i",
+                        time_24hr: true,
+                        locale: "tr",
+                        onChange: function (selectedDates, dateStr, instance) {
+                            var elem = null;
+                            try {
+                                if (instance && instance.element) {
+                                    elem = instance.element;
+                                } else if (this && this.element) {
+                                    elem = this.element;
+                                }
+                                if (elem) $(elem).trigger('change');
+                            } catch (e) {
+                                console.error('Flatpickr-date onChange error:', e);
+                            }
+                        }
+                    });
+                }
             });
         }
 

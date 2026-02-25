@@ -1018,6 +1018,75 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
+    } elseif ($action == 'get-gorev-gecmisi') {
+        try {
+            $personel_id = $_POST['personel_id'] ?? 0;
+            $gecmis = $Personel->getGorevGecmisi($personel_id);
+            echo json_encode(['status' => 'success', 'data' => $gecmis]);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'gorev-gecmisi-ekle') {
+        try {
+            $data = $_POST;
+            $saveData = [
+                'personel_id' => $data['personel_id'],
+                'maas_durumu' => $data['maas_durumu'],
+                'maas_tutari' => Helper::formattedMoneyToNumber($data['maas_tutari']),
+                'baslangic_tarihi' => Date::Ymd($data['gorev_baslangic'] ?? $data['baslangic_tarihi'] ?? '', 'Y-m-d'),
+                'bitis_tarihi' => !empty($data['gorev_bitis']) ? Date::Ymd($data['gorev_bitis'], 'Y-m-d') : (!empty($data['bitis_tarihi']) ? Date::Ymd($data['bitis_tarihi'], 'Y-m-d') : null),
+                'aciklama' => $data['aciklama'] ?? null
+            ];
+
+            $Personel->addGorevGecmisi($saveData);
+
+            // Eğer bugün ekleniyorsa veya aktif bir tarihteyse personel tablosunu da güncelleyelim.
+            // Bu kısım şimdilik isteğe bağlı ama işe yarar olabilir. (İleride eklenebilir)
+
+            echo json_encode(['status' => 'success', 'message' => 'Görev geçmişi başarıyla eklendi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'gorev-gecmisi-get') {
+        try {
+            $id = $_POST['id'];
+            $data = $Personel->getSingleGorevGecmisi($id);
+            if ($data) {
+                $data->baslangic_tarihi = Date::dmY($data->baslangic_tarihi);
+                if ($data->bitis_tarihi) {
+                    $data->bitis_tarihi = Date::dmY($data->bitis_tarihi);
+                }
+                echo json_encode(['status' => 'success', 'data' => $data]);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Kayıt bulunamadı.']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'gorev-gecmisi-guncelle') {
+        try {
+            $data = $_POST;
+            $saveData = [
+                'id' => $data['id'],
+                'maas_durumu' => $data['maas_durumu'],
+                'maas_tutari' => Helper::formattedMoneyToNumber($data['maas_tutari']),
+                'baslangic_tarihi' => Date::Ymd($data['gorev_baslangic'] ?? $data['baslangic_tarihi'] ?? '', 'Y-m-d'),
+                'bitis_tarihi' => !empty($data['gorev_bitis']) ? Date::Ymd($data['gorev_bitis'], 'Y-m-d') : (!empty($data['bitis_tarihi']) ? Date::Ymd($data['bitis_tarihi'], 'Y-m-d') : null),
+                'aciklama' => $data['aciklama'] ?? null
+            ];
+            $Personel->updateGorevGecmisi($saveData);
+            echo json_encode(['status' => 'success', 'message' => 'Görev geçmişi başarıyla güncellendi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'gorev-gecmisi-sil') {
+        try {
+            $id = $_POST['id'];
+            $Personel->deleteGorevGecmisi($id);
+            echo json_encode(['status' => 'success', 'message' => 'Görev geçmişi kaydı silindi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Geçersiz işlem.']);
     }

@@ -52,7 +52,7 @@ $page = $_GET['p'] ?? 'home';
 <?php } ?>
 
 <?php if ($page == 'personel/manage') { ?>
-    <script src="views/personel/js/manage.js"></script>
+    <script src="views/personel/js/manage.js?v=<?php echo time(); ?>"></script>
     <script src="views/personel/js/izin.js?v=<?php echo time(); ?>"></script>
 <?php } ?>
 
@@ -164,7 +164,7 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "kasa/list" || $page == "gelir-gider/online-hesap-hareketleri" || $page == "tanimlamalar/ekip-kodu" ||
     $page == "bordro/list" || $page == "demirbas/list" || $page == "puantaj/veri-yukleme" ||
     $page == "tanimlamalar/is-turu" || $page == "mail-sms/list" || $page == "tanimlamalar/izin-turu" ||
-    $page == "tanimlamalar/demirbas-kategorileri" || 
+    $page == "tanimlamalar/demirbas-kategorileri" ||
     $page == "mail-sms/mail-gonder" || $page == "arac-takip/list" || $page == "arac-takip/duzenle" ||
     $page == "personel-takip/list" || $page == "nobet/talepler" || $page == "talepler/list" ||
     $page == "tanimlamalar/unvan-ucret" ||

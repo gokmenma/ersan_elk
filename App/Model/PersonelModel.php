@@ -801,6 +801,86 @@ class PersonelModel extends Model
         return $res ? $res->earliest_date : null;
     }
 
+    /**
+     * Personelin görev (maaş) geçmişini getirir
+     */
+    public function getGorevGecmisi($personel_id)
+    {
+        $sql = "SELECT * 
+                FROM personel_gorev_gecmisi 
+                WHERE personel_id = ? 
+                ORDER BY bitis_tarihi IS NULL DESC, baslangic_tarihi DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$personel_id]);
+        return $stmt->fetchAll(\PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Görev (Maaş) geçmişi ekler
+     */
+    public function addGorevGecmisi($data)
+    {
+        $sql = "INSERT INTO personel_gorev_gecmisi 
+                (personel_id, maas_durumu, maas_tutari, baslangic_tarihi, bitis_tarihi, aciklama, olusturan_id) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            $data['personel_id'],
+            $data['maas_durumu'],
+            $data['maas_tutari'] ?? 0,
+            $data['baslangic_tarihi'],
+            $data['bitis_tarihi'] ?? null,
+            $data['aciklama'] ?? null,
+            $_SESSION['user_id'] ?? null
+        ]);
+    }
+
+    /**
+     * Tek bir görev (Maaş) geçmişi kaydını getirir
+     */
+    public function getSingleGorevGecmisi($id)
+    {
+        $sql = "SELECT * 
+                FROM personel_gorev_gecmisi 
+                WHERE id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        return $stmt->fetch(\PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Görev (Maaş) geçmişini günceller
+     */
+    public function updateGorevGecmisi($data)
+    {
+        $sql = "UPDATE personel_gorev_gecmisi SET 
+                maas_durumu = ?, 
+                maas_tutari = ?, 
+                baslangic_tarihi = ?, 
+                bitis_tarihi = ?, 
+                aciklama = ? 
+                WHERE id = ?";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            $data['maas_durumu'],
+            $data['maas_tutari'] ?? 0,
+            $data['baslangic_tarihi'],
+            $data['bitis_tarihi'] ?? null,
+            $data['aciklama'] ?? null,
+            $data['id']
+        ]);
+    }
+
+    /**
+     * Görev (Maaş) geçmişini siler
+     */
+    public function deleteGorevGecmisi($id)
+    {
+        $sql = "DELETE FROM personel_gorev_gecmisi WHERE id = ?";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([$id]);
+    }
+
     public function getAdvancedDashboardStats()
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;

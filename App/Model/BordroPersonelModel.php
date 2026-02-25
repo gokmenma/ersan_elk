@@ -1488,16 +1488,83 @@ class BordroPersonelModel extends Model
         if (!$kayit)
             return false;
 
+        // Dönem tarihi - parametreleri bu tarihe göre çek
+        $donemTarihi = $kayit->baslangic_tarihi ?? date('Y-m-d');
+        $donemBitis = $kayit->bitis_tarihi ?? date('Y-m-t');
 
-        // Maaş durumu kontrolü (Net ise vergisiz/sigortasız, Prim Usülü ise özel hesaplama)
+        // ---------------- GEÇİŞ SÜRECİ STRATEJİSİ VE PARÇALI MAAŞ HESAPLAMASI ----------------
+        // Yeni görev (maaş) geçmişi tablosundan DÖNEM İÇİNDE GEÇERLİ OLAN TÜM KAYITLARI alıyoruz
+        $sqlGecmis = $this->db->prepare("
+            SELECT maas_durumu, maas_tutari, baslangic_tarihi, bitis_tarihi
+            FROM personel_gorev_gecmisi 
+            WHERE personel_id = ? 
+            AND baslangic_tarihi <= ? 
+            AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
+            ORDER BY baslangic_tarihi ASC
+        ");
+        $sqlGecmis->execute([$kayit->personel_id, $donemBitis, $donemTarihi]);
+        $gecmisKayitlar = $sqlGecmis->fetchAll(\PDO::FETCH_OBJ);
+
+        $agirlikliBrutMaas = 0;
+        $toplamGecerliGun = 0;
+        $isNetMaas = false;
+        $isPrimUsulu = false;
+
+        // Maaş durumu değişkenlerini baştan tanımlayalım (Hata almamak için)
         $maasDurumuRaw = $kayit->maas_durumu ?? 'brüt';
         $maasDurumu = mb_strtolower(trim($maasDurumuRaw), 'UTF-8');
 
-        // Net maaş kontrolü - esnek karşılaştırma
-        // "Net", "NET", "net", "Net Maaş", "net maaş" gibi tüm varyasyonları yakala
-        $isNetMaas = (stripos($maasDurumuRaw, 'net') !== false);
+        if (count($gecmisKayitlar) > 0) {
+            // Dönem içinde birden fazla geçmiş kaydı varsa ağırlıklı hesaplama yap
+            $donemBaslangicTs = strtotime($donemTarihi);
+            $donemBitisTs = strtotime($donemBitis);
 
-        // Prim Usülü için esnek karşılaştırma (Türkçe karakter encoding sorunları için)
+            foreach ($gecmisKayitlar as $idx => $g) {
+                $gBaslangic = strtotime($g->baslangic_tarihi);
+                $gBitis = empty($g->bitis_tarihi) ? $donemBitisTs : strtotime($g->bitis_tarihi);
+
+                // Dönemle kesişen tarih aralığını bul
+                $hesapBaslangic = max($donemBaslangicTs, $gBaslangic);
+                $hesapBitis = min($donemBitisTs, $gBitis);
+
+                // Kesişen gün sayısını hesapla (+1 dahil etmek için)
+                if ($hesapBitis >= $hesapBaslangic) {
+                    $gecerliGun = round(($hesapBitis - $hesapBaslangic) / (60 * 60 * 24)) + 1;
+
+                    // Şubatı 30'a tamamlama vs (ticari ay mantığı - opsiyonel)
+                    if (date('m', $donemBitisTs) == '02' && date('d', $hesapBitis) >= 28 && empty($g->bitis_tarihi)) {
+                        $gecerliGun = 30 - round(($hesapBaslangic - $donemBaslangicTs) / (60 * 60 * 24));
+                    }
+
+                    // Günlük fiyatını bul ve çarp
+                    $gunlukTutar = floatval($g->maas_tutari) / 30;
+                    $agirlikliBrutMaas += ($gunlukTutar * $gecerliGun);
+                    $toplamGecerliGun += $gecerliGun;
+
+                    // Bu kaydın durumunu kaydet (Son döngüdeki geçerli olacak)
+                    $maasDurumuRaw = $g->maas_durumu;
+                    $maasDurumu = mb_strtolower(trim($maasDurumuRaw), 'UTF-8');
+
+                    $isNetMaas = (stripos($maasDurumuRaw, 'net') !== false);
+                    $isPrimUsulu = (stripos($maasDurumuRaw, 'Prim') !== false || stripos($maasDurumu, 'prim') !== false);
+                }
+            }
+
+            // Toplam geçerli gün 30'u geçemez
+            if ($toplamGecerliGun > 30)
+                $toplamGecerliGun = 30;
+
+            $kayit->maas_tutari = round($agirlikliBrutMaas, 2);
+            $kayit->maas_durumu = $maasDurumuRaw;
+        } else {
+            // Hiç geçmiş yoksa eski fallback mantığıyla maaş durumunu bul
+            // $maasDurumuRaw ve $maasDurumu zaten yukarıda tanımlandı
+            $isNetMaas = (stripos($maasDurumuRaw, 'net') !== false);
+            $isPrimUsulu = (stripos($maasDurumuRaw, 'Prim') !== false || stripos($maasDurumu, 'prim') !== false);
+        }
+        // ------------------------------------------------------------------------------
+
+        // Prim Usülü için esnek karşılaştırma (Türkçe karakter encoding sorunları için son kontrol)
         $isPrimUsulu = (stripos($maasDurumuRaw, 'Prim') !== false || stripos($maasDurumu, 'prim') !== false);
 
         // Dönem tarihi - parametreleri bu tarihe göre çek

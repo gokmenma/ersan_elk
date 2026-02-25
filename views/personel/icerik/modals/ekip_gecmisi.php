@@ -222,7 +222,7 @@ use App\Helper\Form;
                         $('#ekip_gecmisi_action').val('ekip-gecmisi-ekle');
                         $('#modalEkipGecmisiEkle .modal-title').html('<i class="bx bx-group me-2"></i>Yeni Ekip Tanımla');
                         $('#formEkipGecmisiEkle')[0].reset();
-                        $('#modal_ekip_bolge').val('').trigger('change');
+                        $('#modal_ekip_bolge').val('').trigger('change.select2');
                         $('#modalEkipGecmisiEkle').modal('show');
                     });
                 });
@@ -251,7 +251,7 @@ use App\Helper\Form;
                                     // Bölgeyi bulmak için teamData kullan
                                     var item = teamData.find(x => x.id == data.ekip_kodu_id);
                                     if (item && item.bolge) {
-                                        $('#modal_ekip_bolge').val(item.bolge).trigger('change');
+                                        $('#modal_ekip_bolge').val(item.bolge).trigger('change.select2');
                                     }
 
                                     // Ekip kodunu seç
@@ -259,9 +259,9 @@ use App\Helper\Form;
                                         $('#ekip_kodu_id').append($('<option>', {
                                             value: data.ekip_kodu_id,
                                             text: data.ekip_adi
-                                        })).trigger('change');
+                                        })).trigger('change.select2');
                                     }
-                                    $('#ekip_kodu_id').val(data.ekip_kodu_id).trigger('change');
+                                    $('#ekip_kodu_id').val(data.ekip_kodu_id).trigger('change.select2');
 
                                     // Tarihleri modal kapsamındaki inputlara set et
                                     var $modal = $('#modalEkipGecmisiEkle');

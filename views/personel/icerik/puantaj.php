@@ -352,13 +352,7 @@ foreach ($workResults as $wr) {
             });
         });
 
-        // Plugins init
-        if (typeof flatpickr !== 'undefined') {
-            $(".flatpickr").flatpickr({
-                dateFormat: "d.m.Y",
-                locale: "tr"
-            });
-        }
+
 
         if ($.fn.select2) {
             $('.select2-tags').select2({

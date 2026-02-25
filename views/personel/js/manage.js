@@ -211,8 +211,18 @@ $(document).ready(function () {
     });
   });
 
-  $(".select2").on("change", function () {
-    $(this).valid();
+  $("#personelForm").on("change", ".select2", function () {
+    var form = this.form;
+    if (form && form.id === "personelForm") {
+      var validator = $.data(form, "validator");
+      if (validator) {
+        try {
+          $(this).valid();
+        } catch (e) {
+          console.warn("Validation error ignored:", e);
+        }
+      }
+    }
   });
 
   // Görev select2 init
