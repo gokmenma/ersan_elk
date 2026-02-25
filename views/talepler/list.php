@@ -307,6 +307,7 @@ $izinTurleri = [
                                     <th>Tarih Aralığı</th>
                                     <th>Gün Sayısı</th>
                                     <th>Durum</th>
+                                    <th>Açıklama</th>
                                     <?php if (true): ?>
                                         <th class="text-center" style="width:200px">İşlemler</th>
                                     <?php endif; ?>
@@ -366,6 +367,9 @@ $izinTurleri = [
                                                 <?= $durumText ?>
                                             </span>
                                         </td>
+                                        <td>
+                                            <?= htmlspecialchars($izin->aciklama ?? '-') ?>
+                                        </td>
                                         <td class="text-center">
                                             <div class="d-flex align-items-center justify-content-center gap-1">
                                                 <?php if ($izin->onay_durumu != 'Onaylandı'): ?>
@@ -411,6 +415,7 @@ $izinTurleri = [
                                     <th>Durum</th>
                                     <th>Öncelik</th>
                                     <th>Tarih</th>
+                                    <th>Açıklama</th>
                                     <th class="text-center" style="width:200px">İşlemler</th>
                                 </tr>
                             </thead>
@@ -487,6 +492,9 @@ $izinTurleri = [
                                         </td>
                                         <td>
                                             <?= date('d.m.Y H:i', strtotime($talep->olusturma_tarihi)) ?>
+                                        </td>
+                                        <td>
+                                            <?= htmlspecialchars($talep->aciklama ?? '-') ?>
                                         </td>
                                         <td class="text-center">
                                             <div class="d-flex align-items-center justify-content-center gap-1">
@@ -1092,6 +1100,9 @@ $izinTurleri = [
                 var aDurum = data.durum == 'onaylandi' ? 'success' : (data.durum == 'reddedildi' ? 'danger' : 'warning');
                 var aIcon = aDurum == 'success' ? 'check-circle' : (aDurum == 'danger' ? 'x-circle' : 'time-five');
                 html += '<tr><td class="text-muted">Durum:</td><td><span class="badge bg-' + aDurum + '"><i class="bx bx-' + aIcon + '"></i> ' + ucfirst(data.durum) + '</span></td></tr>';
+                if (data.aciklama) {
+                    html += '<tr><td class="text-muted">Açıklama:</td><td>' + data.aciklama + '</td></tr>';
+                }
             } else if (tip === 'izin') {
                 html += '<tr><td class="text-muted" width="40%">Talep Tarihi:</td><td>' + formatDate(data.talep_tarihi) + '</td></tr>';
                 html += '<tr><td class="text-muted">İzin Türü:</td><td><span class="badge bg-info"><i class="bx bx-calendar"></i> ' + ucfirst(data.izin_tipi) + '</span></td></tr>';
@@ -1100,6 +1111,9 @@ $izinTurleri = [
                 var iDurum = data.onay_durumu == 'Onaylandı' ? 'success' : (data.onay_durumu == 'Reddedildi' ? 'danger' : 'warning');
                 var iIcon = iDurum == 'success' ? 'check-circle' : (iDurum == 'danger' ? 'x-circle' : 'time-five');
                 html += '<tr><td class="text-muted">Durum:</td><td><span class="badge bg-' + iDurum + '"><i class="bx bx-' + iIcon + '"></i> ' + data.onay_durumu + '</span></td></tr>';
+                if (data.aciklama) {
+                    html += '<tr><td class="text-muted">Açıklama:</td><td>' + data.aciklama + '</td></tr>';
+                }
             } else if (tip === 'talep') {
                 html += '<tr><td class="text-muted" width="40%">Oluşturma Tarihi:</td><td>' + formatDate(data.olusturma_tarihi) + '</td></tr>';
                 html += '<tr><td class="text-muted">Başlık:</td><td><strong>' + data.baslik + '</strong></td></tr>';
