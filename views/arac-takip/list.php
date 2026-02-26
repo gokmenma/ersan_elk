@@ -55,6 +55,9 @@ if ($filter === 'muayene') {
 } elseif ($filter === 'bosta') {
     $araclar = $Arac->getBostaAraclar();
     $title = "Boşta Olan Araçlar";
+} elseif ($filter === 'serviste') {
+    $araclar = $Arac->getServistekiAraclar();
+    $title = "Servisteki Araçlar";
 } else {
     $araclar = $Arac->all();
 }
@@ -370,7 +373,9 @@ if ($filter === 'muayene') {
                                     <i class="bx bx-user-x me-1"></i> Boşta:
                                     <?php echo $aracStats->bosta_arac ?? 0; ?>
                                 </span>
-                                <span class="badge bg-danger-subtle text-danger fs-6" id="badge-servisteki-arac">
+                                <span class="badge bg-danger-subtle text-danger fs-6 badge-filter <?php echo $filter === 'serviste' ? 'active' : ''; ?>" 
+                                    id="badge-servisteki-arac"
+                                    onclick="location.href='index.php?p=arac-takip/list&filter=serviste'">
                                     <i class="bx bx-wrench me-1"></i> Servisteki:
                                     <?php
                                     $servisStatsInitial = $Servis->getStats();
@@ -389,6 +394,7 @@ if ($filter === 'muayene') {
                                             <th style="width:10%">Departman</th>
                                             <th style="width:8%">Mülkiyet</th>
                                             <th style="width:12%">Zimmetli Personel</th>
+                                            <th style="width:8%" class="text-center">Durum</th>
                                             <th style="width:7%" class="text-center">Yakıt</th>
                                             <th style="width:8%" class="text-end">KM</th>
                                             <th style="width:9%" class="text-center">Muayene Bitiş</th>
@@ -402,8 +408,6 @@ if ($filter === 'muayene') {
                                         foreach ($araclar as $arac):
                                             $i++; ?>
                                             <?php
-                                            $durumBadge = $arac->aktif_mi ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Pasif</span>';
-
                                             $tipLabels = [
                                                 'binek' => 'Binek',
                                                 'kamyonet' => 'Kamyonet',
@@ -449,6 +453,15 @@ if ($filter === 'muayene') {
                                                 </td>
                                                 <td>
                                                     <span class="small fw-bold text-dark"><?php echo $arac->zimmetli_personel_adi ?: '<span class="text-muted">Boşta</span>'; ?></span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <?php 
+                                                    if ($arac->serviste_mi) {
+                                                        echo '<span class="badge bg-danger">Serviste</span>';
+                                                    } else {
+                                                        echo $arac->aktif_mi ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Pasif</span>';
+                                                    }
+                                                    ?>
                                                 </td>
                                                 <td class="text-center">
                                                     <?php echo $yakitLabels[$arac->yakit_tipi] ?? '-'; ?>

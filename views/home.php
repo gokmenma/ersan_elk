@@ -360,139 +360,135 @@ if (Gate::allows("ana_sayfa")) {
     <?php $widgets['widget-ana-slider'] = ob_get_clean(); ?>
 
     <?php ob_start(); ?>
-    <div class="col-md-2 widget-item" id="widget-toplam-personel">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
-            style="--card-color: #4e73df; border-bottom: 3px solid var(--card-color) !important; --delay: 0.1s">
-            <div class="card-body p-3 pb-2">
-                <div class="icon-label-container">
-                    <div class="icon-box" style="background: rgba(78, 115, 223, 0.1);">
-                        <i class="bx bx-group fs-4" style="color: #4e73df;"></i>
+    <div class="col-md-6 col-xl-4 widget-item" id="widget-personel-ozet">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card" style="border-radius: 12px; background: #fff;">
+            <div class="card-body p-4 d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start mb-4">
+                    <div>
+                        <h6 class="fw-bold text-dark mb-1 d-flex align-items-center" style="font-size: 1.1rem; letter-spacing: -0.01em;">
+                            <i class='bx bx-grid-vertical drag-handle me-1 text-muted'></i> Personel Durumu
+                        </h6>
+                        <p class="text-muted mb-0 ms-4" style="font-size: 0.8rem;">Toplam Personel</p>
+                        <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $istatistik->toplam_personel ?? 0; ?> <span style="font-size: 0.9rem; font-weight: normal; color: #6c757d;">adet</span></h4>
                     </div>
-                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">PERSONEL</span>
+                    <a href="index.php?p=personel/list" class="text-primary fw-semibold small text-decoration-none" style="font-size: 0.8rem;">Personel Listesine Git</a>
                 </div>
-                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM PERSONEL</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading">
-                    <?php echo $istatistik->toplam_personel ?? 0; ?>
-                    <span class="trend-badge up ms-1">+5.4%</span>
-                </h4>
-                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Tüm zamanların toplamı</div>
+
+                <?php 
+                    $toplam_p = ($istatistik->toplam_personel ?? 0) ?: 1;
+                    $aktif_p = $istatistik->aktif_personel ?? 0;
+                    $saha_p = $extraStats->sahadaki_personel ?? 0;
+                    $izinli_p = $extraStats->izinli_personel ?? 0;
+                    $diger_p = max(0, $aktif_p - $saha_p - $izinli_p);
+                    $pasif_p = $istatistik->pasif_personel ?? 0;
+                    
+                    $s_rate = ($saha_p / $toplam_p) * 100;
+                    $d_rate = ($diger_p / $toplam_p) * 100;
+                    $i_rate = ($izinli_p / $toplam_p) * 100;
+                    $p_rate = ($pasif_p / $toplam_p) * 100;
+                ?>
+                <div class="progress mb-4" style="height: 20px; border-radius: 4px;">
+                    <div class="progress-bar" role="progressbar" style="width: <?php echo $s_rate; ?>%; background-color: #0d6efd;" title="Saha: <?php echo $saha_p; ?>"></div>
+                    <div class="progress-bar" role="progressbar" style="width: <?php echo $d_rate; ?>%; background-color: #0dcaf0;" title="İçeride/Diğer: <?php echo $diger_p; ?>"></div>
+                    <div class="progress-bar" role="progressbar" style="width: <?php echo $i_rate; ?>%; background-color: #ffc107;" title="İzinli: <?php echo $izinli_p; ?>"></div>
+                    <div class="progress-bar" role="progressbar" style="width: <?php echo $p_rate; ?>%; background-color: #adb5bd;" title="Pasif: <?php echo $pasif_p; ?>"></div>
+                </div>
+
+                <div class="row mt-auto">
+                    <div class="col-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <div style="width: 3px; height: 32px; background-color: #0d6efd; margin-right: 12px;"></div>
+                            <div>
+                                <p class="text-muted small mb-0 font-size-11">Saha Görevlisi</p>
+                                <h6 class="mb-0 fw-bold text-dark"><?php echo $saha_p; ?> Adet</h6>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <div style="width: 3px; height: 32px; background-color: #0dcaf0; margin-right: 12px;"></div>
+                            <div>
+                                <p class="text-muted small mb-0 font-size-11">İçeride / Diğer</p>
+                                <h6 class="mb-0 fw-bold text-dark"><?php echo $diger_p; ?> Adet</h6>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex align-items-center">
+                            <div style="width: 3px; height: 32px; background-color: #ffc107; margin-right: 12px;"></div>
+                            <div>
+                                <p class="text-muted small mb-0 font-size-11">İzinli</p>
+                                <h6 class="mb-0 fw-bold text-dark"><?php echo $izinli_p; ?> Adet</h6>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex align-items-center">
+                            <div style="width: 3px; height: 32px; background-color: #adb5bd; margin-right: 12px;"></div>
+                            <div>
+                                <p class="text-muted small mb-0 font-size-11">Pasif</p>
+                                <h6 class="mb-0 fw-bold text-dark"><?php echo $pasif_p; ?> Adet</h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    <?php $widgets['widget-toplam-personel'] = ob_get_clean();
+    <?php $widgets['widget-personel-ozet'] = ob_get_clean();
 
     ob_start(); ?>
-    <div class="col-md-2 widget-item" id="widget-aktif-personel">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
-            style="--card-color: #1cc88a; border-bottom: 3px solid var(--card-color) !important; --delay: 0.2s">
-            <div class="card-body p-3 pb-2">
-                <div class="icon-label-container">
-                    <div class="icon-box" style="background: rgba(28, 200, 138, 0.1);">
-                        <i class="bx bx-user-check fs-4" style="color: #1cc88a;"></i>
+    <div class="col-md-6 col-xl-4 widget-item" id="widget-arac-ozet">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card" style="border-radius: 12px; background: #fff;">
+            <div class="card-body p-4 d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start mb-4">
+                    <div>
+                        <h6 class="fw-bold text-dark mb-1 d-flex align-items-center" style="font-size: 1.1rem; letter-spacing: -0.01em;">
+                            <i class='bx bx-grid-vertical drag-handle me-1 text-muted'></i> Araç Durumu
+                        </h6>
+                        <?php 
+                            $sahadaki_arac = $extraStats->sahadaki_arac ?? 0;
+                            $servisteki_arac = $extraStats->servisteki_arac ?? 0;
+                            $toplam_arac = $sahadaki_arac + $servisteki_arac;
+                            $toplam_a_div = $toplam_arac ?: 1;
+                            $saha_a_yuzde = ($sahadaki_arac / $toplam_a_div) * 100;
+                            $servis_a_yuzde = ($servisteki_arac / $toplam_a_div) * 100;
+                        ?>
+                        <p class="text-muted mb-0 ms-4" style="font-size: 0.8rem;">Toplam Araç</p>
+                        <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $toplam_arac; ?> <span style="font-size: 0.9rem; font-weight: normal; color: #6c757d;">adet</span></h4>
                     </div>
-                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">AKTİF</span>
+                    <a href="index.php?p=arac-takip/list" class="text-primary fw-semibold small text-decoration-none" style="font-size: 0.8rem;">Araç Listesine Git</a>
                 </div>
-                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">AKTİF PERSONEL</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading">
-                    <?php echo $istatistik->aktif_personel ?? 0; ?>
-                    <span class="trend-badge up ms-1">+2.5%</span>
-                </h4>
-                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Sistemde aktif çalışıyor</div>
-            </div>
-        </div>
-    </div>
-    <?php $widgets['widget-aktif-personel'] = ob_get_clean();
 
-    ob_start(); ?>
-    <div class="col-md-2 widget-item" id="widget-pasif-personel">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
-            style="--card-color: #858796; border-bottom: 3px solid var(--card-color) !important; --delay: 0.3s">
-            <div class="card-body p-3 pb-2">
-                <div class="icon-label-container">
-                    <div class="icon-box" style="background: rgba(133, 135, 150, 0.1);">
-                        <i class="bx bx-user-x fs-4" style="color: #858796;"></i>
-                    </div>
-                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">PASİF</span>
+                <div class="progress mb-4" style="height: 20px; border-radius: 4px;">
+                    <div class="progress-bar" role="progressbar" style="width: <?php echo $saha_a_yuzde; ?>%; background-color: #198754;" title="Sahada: <?php echo $sahadaki_arac; ?>"></div>
+                    <div class="progress-bar" role="progressbar" style="width: <?php echo $servis_a_yuzde; ?>%; background-color: #dc3545;" title="Serviste: <?php echo $servisteki_arac; ?>"></div>
                 </div>
-                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">PASİF PERSONEL</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading">
-                    <?php echo $istatistik->pasif_personel ?? 0; ?>
-                    <span class="trend-badge down ms-1">-1.2%</span>
-                </h4>
-                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">İşten ayrılan/pasif</div>
-            </div>
-        </div>
-    </div>
-    <?php $widgets['widget-pasif-personel'] = ob_get_clean();
 
-    ob_start(); ?>
-    <div class="col-md-2 widget-item" id="widget-sahadaki-personel">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
-            style="--card-color: #4e73df; border-bottom: 3px solid var(--card-color) !important; --delay: 0.4s">
-            <div class="card-body p-3 pb-2">
-                <div class="icon-label-container">
-                    <div class="icon-box" style="background: rgba(78, 115, 223, 0.1);">
-                        <i class="bx bx-user-voice fs-4" style="color: #4e73df;"></i>
+                <div class="row mt-auto">
+                    <div class="col-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <div style="width: 3px; height: 32px; background-color: #198754; margin-right: 12px;"></div>
+                            <div>
+                                <p class="text-muted small mb-0 font-size-11">Saha Aracı</p>
+                                <h6 class="mb-0 fw-bold text-dark"><?php echo $sahadaki_arac; ?> Adet</h6>
+                            </div>
+                        </div>
                     </div>
-                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">SAHA</span>
-                </div>
-                <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK SAHA
-                    PERSONELİ</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
-                    data-daily="<?php echo $extraStats->sahadaki_personel ?? 0; ?>"
-                    data-monthly="<?php echo $extraStatsMonthly->sahadaki_personel ?? 0; ?>"
-                    data-label-daily="GÜNLÜK SAHA PERSONELİ" data-label-monthly="AYLIK SAHA PERSONELİ"
-                    data-sub-daily="Bugün sahada olan/aktif" data-sub-monthly="Bu ay sahada görev alanlar">
-                    <?php echo $extraStats->sahadaki_personel ?? 0; ?>
-                </h4>
-                <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün sahada olan/aktif
-                </div>
-                <div class="card-footer-actions mt-2">
-                    <div class="btn-group btn-group-sm stats-local-toggle-group">
-                        <button type="button" class="btn btn-outline-secondary stats-local-btn active"
-                            data-mode="daily">Gün</button>
-                        <button type="button" class="btn btn-outline-secondary stats-local-btn"
-                            data-mode="monthly">Ay</button>
+                    <div class="col-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <div style="width: 3px; height: 32px; background-color: #dc3545; margin-right: 12px;"></div>
+                            <div>
+                                <p class="text-muted small mb-0 font-size-11">Servis / Pasif</p>
+                                <h6 class="mb-0 fw-bold text-dark"><?php echo $servisteki_arac; ?> Adet</h6>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <?php $widgets['widget-sahadaki-personel'] = ob_get_clean();
-
-    ob_start(); ?>
-    <div class="col-md-2 widget-item" id="widget-izinli-personel">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
-            style="--card-color: #f6c23e; border-bottom: 3px solid var(--card-color) !important; --delay: 0.5s">
-            <div class="card-body p-3 pb-2">
-                <div class="icon-label-container">
-                    <div class="icon-box" style="background: rgba(246, 194, 62, 0.1);">
-                        <i class="bx bx-calendar-minus fs-4" style="color: #f6c23e;"></i>
-                    </div>
-                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İZİN</span>
-                </div>
-                <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
-                    İZİNLİ PERSONEL</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
-                    data-daily="<?php echo $extraStats->izinli_personel ?? 0; ?>"
-                    data-monthly="<?php echo $extraStatsMonthly->izinli_personel ?? 0; ?>"
-                    data-label-daily="GÜNLÜK İZİNLİ PERSONEL" data-label-monthly="AYLIK İZİNLİ PERSONEL"
-                    data-sub-daily="Bugün izinli olanlar" data-sub-monthly="Bu ay izin kullananlar">
-                    <?php echo $extraStats->izinli_personel ?? 0; ?>
-                </h4>
-                <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün izinli olanlar</div>
-                <div class="card-footer-actions mt-2">
-                    <div class="btn-group btn-group-sm stats-local-toggle-group">
-                        <button type="button" class="btn btn-outline-secondary stats-local-btn active"
-                            data-mode="daily">Gün</button>
-                        <button type="button" class="btn btn-outline-secondary stats-local-btn"
-                            data-mode="monthly">Ay</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <?php $widgets['widget-izinli-personel'] = ob_get_clean();
+    <?php $widgets['widget-arac-ozet'] = ob_get_clean();
 
     ob_start(); ?>
     <div class="col-md-2 widget-item" id="widget-bekleyen-talepler">
@@ -657,40 +653,7 @@ if (Gate::allows("ana_sayfa")) {
     </div>
     <?php $widgets['widget-gunluk-muhurleme'] = ob_get_clean();
 
-    ob_start(); ?>
-    <div class="col-md-2 widget-item" id="widget-sahadaki-arac">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
-            style="--card-color: #5a5c69; border-bottom: 3px solid var(--card-color) !important; --delay: 0.8s">
-            <div class="card-body p-3 pb-2">
-                <div class="icon-label-container">
-                    <div class="icon-box" style="background: rgba(90, 92, 105, 0.1);">
-                        <i class="bx bx-car fs-4" style="color: #5a5c69;"></i>
-                    </div>
-                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">ARAÇ</span>
-                </div>
-                <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK SAHA
-                    ARACI</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
-                    data-daily="<?php echo $extraStats->sahadaki_arac ?? 0; ?>"
-                    data-monthly="<?php echo $extraStats->sahadaki_arac ?? 0; ?>" data-label-daily="GÜNLÜK SAHA ARACI"
-                    data-label-monthly="AYLIK SAHA ARACI" data-sub-daily="Aktif kullanılan araçlar"
-                    data-sub-monthly="Aktif kullanılan araçlar">
-                    <?php echo $extraStats->sahadaki_arac ?? 0; ?>
-                </h4>
-                <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Aktif kullanılan araçlar
-                </div>
-                <div class="card-footer-actions mt-2">
-                    <div class="btn-group btn-group-sm stats-local-toggle-group">
-                        <button type="button" class="btn btn-outline-secondary stats-local-btn active"
-                            data-mode="daily">Gün</button>
-                        <button type="button" class="btn btn-outline-secondary stats-local-btn"
-                            data-mode="monthly">Ay</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <?php $widgets['widget-sahadaki-arac'] = ob_get_clean();
+
 
     ob_start(); ?>
     <div class="col-md-2 widget-item" id="widget-gunluk-kesme-acma">
@@ -865,43 +828,7 @@ if (Gate::allows("ana_sayfa")) {
     </div>
     <?php $widgets['widget-kacak-sayisi'] = ob_get_clean();
 
-    ob_start(); ?>
-    <div class="col-md-2 widget-item" id="widget-servisteki-arac">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
-            style="--card-color: #b7b9cc; border-bottom: 3px solid var(--card-color) !important; --delay: 1.2s">
-            <div class="card-body p-3 pb-2">
-                <div class="icon-label-container">
-                    <div class="icon-box" style="background: rgba(183, 185, 204, 0.1);">
-                        <i class="bx bx-wrench fs-4" style="color: #b7b9cc;"></i>
-                    </div>
-                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">ARAÇ</span>
-                </div>
-                <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">SERVİSTEKİ
-                    ARAÇ</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
-                    data-daily="<?php echo $extraStats->servisteki_arac ?? 0; ?>"
-                    data-monthly="<?php echo $extraStatsMonthly->servisteki_arac ?? 0; ?>"
-                    data-label-daily="SERVİSTEKİ ARAÇ" data-label-monthly="AYLIK SERVİSTEKİ ARAÇ"
-                    data-sub-daily="Serviste/Pasif araçlar" data-sub-monthly="Bu ay serviste olan/giren araçlar">
-                    <?php echo $extraStats->servisteki_arac ?? 0; ?>
-                </h4>
-                <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Serviste/Pasif araçlar
-                </div>
-                <div class="card-footer-actions mt-2">
-                    <div class="btn-group btn-group-sm stats-local-toggle-group">
-                        <button type="button" class="btn btn-outline-secondary stats-local-btn active"
-                            data-mode="daily">Gün</button>
-                        <button type="button" class="btn btn-outline-secondary stats-local-btn"
-                            data-mode="monthly">Ay</button>
-                    </div>
-                    <a href="index.php?p=arac-takip/list&tab=servis" class="btn btn-xs btn-soft-primary rounded-pill">
-                        <i class="bx bx-right-arrow-alt"></i> Git
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-    <?php $widgets['widget-servisteki-arac'] = ob_get_clean();
+
 
     // Giriş kayıtları sorgusu
     try {
@@ -1534,22 +1461,15 @@ if (Gate::allows("ana_sayfa")) {
                         <li>
                             <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
                                 <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-aktif-personel" checked>
-                                Aktif Personel
+                                    data-widget="widget-personel-ozet" checked>
+                                Personel Durumu
                             </label>
                         </li>
                         <li>
                             <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
                                 <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-pasif-personel" checked>
-                                Pasif Personel
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-toplam-personel" checked>
-                                Toplam Personel
+                                    data-widget="widget-arac-ozet" checked>
+                                Araç Durumu
                             </label>
                         </li>
                         <li>
@@ -1617,20 +1537,6 @@ if (Gate::allows("ana_sayfa")) {
                         <li>
                             <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
                                 <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-sahadaki-personel" checked>
-                                Sahadaki Personel
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-izinli-personel" checked>
-                                İzinli Personel
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
                                     data-widget="widget-gunluk-kesme-acma" checked>
                                 Günlük Kesme Açma
                             </label>
@@ -1654,20 +1560,6 @@ if (Gate::allows("ana_sayfa")) {
                                 <input type="checkbox" class="form-check-input widget-toggle me-2"
                                     data-widget="widget-gunluk-muhurleme" checked>
                                 Günlük Mühürleme
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-sahadaki-arac" checked>
-                                Sahadaki Araç
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-servisteki-arac" checked>
-                                Servisteki Araç
                             </label>
                         </li>
                         <li>

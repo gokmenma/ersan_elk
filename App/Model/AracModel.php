@@ -23,8 +23,36 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.personel_id as zimmetli_personel_id,
-                   p.adi_soyadi as zimmetli_personel_adi
+                   p.adi_soyadi as zimmetli_personel_adi,
+                   (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
+            LEFT JOIN (
+                SELECT az1.* FROM arac_zimmetleri az1
+                INNER JOIN (
+                    SELECT MAX(id) as max_id FROM arac_zimmetleri WHERE durum = 'aktif' GROUP BY arac_id
+                ) az2 ON az1.id = az2.max_id
+            ) az ON a.id = az.arac_id
+            LEFT JOIN personel p ON az.personel_id = p.id
+            WHERE a.firma_id = :firma_id 
+            AND a.silinme_tarihi IS NULL
+            ORDER BY a.plaka ASC
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Serviste olan araçları getirir
+     */
+    public function getServistekiAraclar()
+    {
+        $sql = $this->db->prepare("
+            SELECT a.*, 
+                   az.personel_id as zimmetli_personel_id,
+                   p.adi_soyadi as zimmetli_personel_adi,
+                   1 as serviste_mi
+            FROM {$this->table} a
+            INNER JOIN arac_servis_kayitlari s ON a.id = s.arac_id AND s.iade_tarihi IS NULL
             LEFT JOIN (
                 SELECT az1.* FROM arac_zimmetleri az1
                 INNER JOIN (
