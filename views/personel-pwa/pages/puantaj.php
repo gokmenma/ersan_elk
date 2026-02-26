@@ -30,11 +30,11 @@ use App\Helper\Date;
         <div class="card p-5">
             <div class="grid grid-cols-2 gap-3 text-center">
                 <div>
-                    <p class="text-2xl font-bold text-red-600" id="toplam-is">-</p>
+                    <p class="text-2xl font-bold text-red-600" id="sonuclanan-is">-</p>
                     <p class="text-xs text-slate-500">Toplam İş</p>
                 </div>
                 <div>
-                    <p class="text-2xl font-bold text-green-600" id="sonuclanan-is">-</p>
+                    <p class="text-2xl font-bold text-green-600" id="toplam-is">-</p>
                     <p class="text-xs text-slate-500">Sonuçlanan</p>
                 </div>
             </div>

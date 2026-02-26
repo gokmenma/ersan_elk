@@ -116,18 +116,18 @@
             </div>
 
             <!-- Calendar Stats (Visible in Calendar View) -->
-            <div id="calendar-stats" class="grid grid-cols-3 gap-2 mb-3" style="display: none;">
-                <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-2.5 text-center border border-blue-100 dark:border-blue-800/30 shadow-sm">
-                    <span class="block text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider mb-0.5">Çalışılan</span>
-                    <span class="block text-xl font-black text-blue-700 dark:text-blue-300 leading-none" id="stat-calisilan">-</span>
+            <div id="calendar-stats" class="flex items-center justify-between gap-2 px-1 mb-2" style="display: none;">
+                <div class="flex flex-col items-center justify-center flex-1 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg py-1.5 border border-blue-100 dark:border-blue-800/30">
+                    <span class="text-[9px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">Çalışılan</span>
+                    <span class="text-base font-black text-blue-700 dark:text-blue-300 leading-none mt-0.5" id="stat-calisilan">-</span>
                 </div>
-                <div class="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-2.5 text-center border border-amber-100 dark:border-amber-800/30 shadow-sm">
-                    <span class="block text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider mb-0.5">Ücretsiz</span>
-                    <span class="block text-xl font-black text-amber-700 dark:text-amber-300 leading-none" id="stat-ucretsiz">-</span>
+                <div class="flex flex-col items-center justify-center flex-1 bg-amber-50/50 dark:bg-amber-900/10 rounded-lg py-1.5 border border-amber-100 dark:border-amber-800/30">
+                    <span class="text-[9px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">Ücretsiz</span>
+                    <span class="text-base font-black text-amber-700 dark:text-amber-300 leading-none mt-0.5" id="stat-ucretsiz">-</span>
                 </div>
-                <div class="bg-green-50 dark:bg-green-900/20 rounded-xl p-2.5 text-center border border-green-100 dark:border-green-800/30 shadow-sm">
-                    <span class="block text-[10px] text-green-600 dark:text-green-400 font-bold uppercase tracking-wider mb-0.5">Ücretli</span>
-                    <span class="block text-xl font-black text-green-700 dark:text-green-300 leading-none" id="stat-ucretli">-</span>
+                <div class="flex flex-col items-center justify-center flex-1 bg-green-50/50 dark:bg-green-900/10 rounded-lg py-1.5 border border-green-100 dark:border-green-800/30">
+                    <span class="text-[9px] text-green-600 dark:text-green-400 font-bold uppercase tracking-wider">Ücretli</span>
+                    <span class="text-base font-black text-green-700 dark:text-green-300 leading-none mt-0.5" id="stat-ucretli">-</span>
                 </div>
             </div>
         </div>
@@ -485,17 +485,10 @@
         const month = currentDate.getMonth();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         
-        // 1. Calculate Total Potential Working Days (Mon-Fri)
-        let totalWorkingDays = 0;
-        for (let d = 1; d <= daysInMonth; d++) {
-            const date = new Date(year, month, d);
-            const day = date.getDay();
-            if (day !== 0 && day !== 6) { // Not Sunday (0) or Saturday (6)
-                totalWorkingDays++;
-            }
-        }
+        // 1. Calculate Total Days in Month (including weekends)
+        const totalDays = daysInMonth;
 
-        // 2. Calculate Leaves in this month
+        // 2. Calculate Leaves in this month (including weekends)
         let unpaidLeaveDays = 0;
         let paidLeaveDays = 0;
 
@@ -527,31 +520,23 @@
                 const overlapStart = start < monthStart ? monthStart : start;
                 const overlapEnd = end > monthEnd ? monthEnd : end;
 
-                // Iterate days in overlap to count working days (Mon-Fri)
-                let current = new Date(overlapStart);
-                
-                // Safety break to prevent infinite loops
-                let loops = 0;
-                while (current <= overlapEnd && loops < 366) {
-                     const day = current.getDay();
-                     if (day !== 0 && day !== 6) {
-                         // Check leave type
-                         const typeName = (izin.izin_tipi_text || '').toLowerCase();
-                         if (typeName.includes('ücretsiz') || typeName.includes('ucretsiz')) {
-                             unpaidLeaveDays++;
-                         } else {
-                             paidLeaveDays++;
-                         }
-                     }
-                     current.setDate(current.getDate() + 1);
-                     loops++;
+                // Calculate days in overlap (including weekends)
+                const diffTime = Math.abs(overlapEnd - overlapStart);
+                const overlapDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+                // Categorize
+                const typeName = (izin.izin_tipi_text || '').toLowerCase();
+                if (typeName.includes('ücretsiz') || typeName.includes('ucretsiz')) {
+                    unpaidLeaveDays += overlapDays;
+                } else {
+                    paidLeaveDays += overlapDays;
                 }
             });
         }
 
         // 3. Update UI
-        // Worked = Potential Working Days - (Paid + Unpaid Leaves)
-        const actualWorked = Math.max(0, totalWorkingDays - (paidLeaveDays + unpaidLeaveDays));
+        // Worked = Total Days in Month - (Paid + Unpaid Leaves)
+        const actualWorked = Math.max(0, totalDays - (paidLeaveDays + unpaidLeaveDays));
 
         document.getElementById('stat-calisilan').textContent = actualWorked;
         document.getElementById('stat-ucretsiz').textContent = unpaidLeaveDays;
