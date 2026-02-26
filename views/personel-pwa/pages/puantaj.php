@@ -253,11 +253,22 @@ use App\Helper\Date;
                 acik: 0
             };
             acc[date].items.push(item);
+            
             const sonuclanmisCount = (int(item.sonuclanmis) || 0);
             const acikCount = (int(item.acik_olanlar) || 0);
-            acc[date].total += (sonuclanmisCount + acikCount);
-            acc[date].sonuclanan += sonuclanmisCount;
+
+            // Filtrelenmiş sonuç (Admin raporu ile eşleşenler)
+            // Ücretli iş VE rapor sekmesi tanımlı olanlar
+            const isFiltered = (item.rapor_sekmesi && parseInt(item.is_turu_ucret) > 0);
+
+            if (isFiltered) {
+                acc[date].sonuclanan += sonuclanmisCount;
+                acc[date].total += sonuclanmisCount; // Günlük kartın sağ üstündeki sayı (69 İŞ yazan yer)
+            }
+            
+            // Açık işler filtreden bağımsız olarak gösteriliyor
             acc[date].acik += acikCount;
+
             return acc;
         }, {});
 
