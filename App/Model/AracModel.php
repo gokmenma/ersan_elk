@@ -117,13 +117,59 @@ class AracModel extends Model
             SELECT 
                 COUNT(*) as toplam_arac,
                 SUM(CASE WHEN aktif_mi = 1 THEN 1 ELSE 0 END) as aktif_arac,
-                SUM(CASE WHEN aktif_mi = 0 THEN 1 ELSE 0 END) as pasif_arac
+                SUM(CASE WHEN aktif_mi = 0 THEN 1 ELSE 0 END) as pasif_arac,
+                (SELECT COUNT(*) FROM araclar a2 
+                 LEFT JOIN arac_zimmetleri az ON a2.id = az.arac_id AND az.durum = 'aktif'
+                 WHERE a2.firma_id = :firma_id1 
+                 AND a2.silinme_tarihi IS NULL 
+                 AND a2.aktif_mi = 1
+                 AND az.id IS NULL) as bosta_arac
             FROM {$this->table}
-            WHERE firma_id = :firma_id
+            WHERE firma_id = :firma_id2
             AND silinme_tarihi IS NULL
         ");
-        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        $sql->execute([
+            'firma_id1' => $_SESSION['firma_id'],
+            'firma_id2' => $_SESSION['firma_id']
+        ]);
         return $sql->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Zimmetli olan araçları getirir
+     */
+    public function getZimmetliAraclar()
+    {
+        $sql = $this->db->prepare("
+            SELECT a.*, p.adi_soyadi as zimmetli_personel_adi
+            FROM {$this->table} a
+            INNER JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
+            LEFT JOIN personel p ON az.personel_id = p.id
+            WHERE a.firma_id = :firma_id 
+            AND a.silinme_tarihi IS NULL
+            ORDER BY a.plaka ASC
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Boşta olan araçları getirir
+     */
+    public function getBostaAraclar()
+    {
+        $sql = $this->db->prepare("
+            SELECT a.*, NULL as zimmetli_personel_adi
+            FROM {$this->table} a
+            LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
+            WHERE a.firma_id = :firma_id 
+            AND a.silinme_tarihi IS NULL
+            AND a.aktif_mi = 1
+            AND az.id IS NULL
+            ORDER BY a.plaka ASC
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**

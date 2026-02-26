@@ -1567,9 +1567,10 @@ try {
             $startDate = $_POST['start_date'] ?? '';
             $endDate = $_POST['end_date'] ?? '';
             $workType = $_POST['work_type'] ?? '';
+            $workResult = $_POST['work_result'] ?? '';
 
             $PuantajModel = new \App\Model\PuantajModel();
-            $items = $PuantajModel->getFiltered($startDate, $endDate, $personel_id, $workType);
+            $items = $PuantajModel->getFiltered($startDate, $endDate, $personel_id, $workType, $workResult);
 
             // İstatistikler
             $totalSonuclanan = 0;

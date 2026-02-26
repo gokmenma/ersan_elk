@@ -200,14 +200,102 @@
             </div>
         </div>
 
-        <div class="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+        <div class="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+            <button id="btn-zimmet-talep-ac"
+                class="flex-1 py-3.5 bg-primary/10 text-primary font-bold rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-lg">edit_note</span>
+                Talep Bildir
+            </button>
             <button onclick="Modal.close('zimmet-detay-modal')"
-                class="w-full py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold rounded-2xl transition-all active:scale-95">
+                class="flex-1 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold rounded-2xl transition-all active:scale-95">
                 Kapat
             </button>
         </div>
     </div>
 </div>
+
+<!-- Zimmet Talep Modal -->
+<div id="zimmet-talep-modal" class="modal-overlay" style="z-index: 1000;">
+    <div class="modal-content p-6 pt-3 flex flex-col max-h-[90vh]">
+        <div class="modal-handle"></div>
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined">edit_note</span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Talep Bildir</h3>
+            </div>
+            <button onclick="Modal.close('zimmet-talep-modal')"
+                class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <span class="material-symbols-outlined text-slate-600">close</span>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto pr-1">
+            <form id="zimmet-talep-form" class="space-y-5">
+                <input type="hidden" name="action" value="createTalepBildirimi">
+                <input type="hidden" name="asset_id" id="talep-asset-id">
+                <input type="hidden" name="asset_name" id="talep-asset-name">
+                <input type="hidden" name="asset_type" id="talep-asset-type">
+
+                <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">SEÇİLİ ZİMMET</p>
+                    <p class="font-bold text-slate-900 dark:text-white" id="talep-asset-display-name">-</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">TALEP TÜRÜ</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="selectZimmetKategori(this, 'ariza')"
+                            class="zimmet-kategori-btn p-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-400 flex flex-col items-center gap-1 transition-all active:scale-95">
+                            <span class="material-symbols-outlined text-rose-500">construction</span>
+                            Arıza
+                        </button>
+                        <button type="button" onclick="selectZimmetKategori(this, 'servis')"
+                            class="zimmet-kategori-btn p-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-400 flex flex-col items-center gap-1 transition-all active:scale-95">
+                            <span class="material-symbols-outlined text-blue-500">settings</span>
+                            Servis
+                        </button>
+                        <button type="button" onclick="selectZimmetKategori(this, 'bakim')"
+                            class="zimmet-kategori-btn p-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-400 flex flex-col items-center gap-1 transition-all active:scale-95">
+                            <span class="material-symbols-outlined text-emerald-500">verified</span>
+                            Bakım
+                        </button>
+                        <button type="button" onclick="selectZimmetKategori(this, 'diger')"
+                            class="zimmet-kategori-btn p-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-400 flex flex-col items-center gap-1 transition-all active:scale-95">
+                            <span class="material-symbols-outlined text-slate-500">more_horiz</span>
+                            Diğer
+                        </button>
+                    </div>
+                    <input type="hidden" name="kategori" id="zimmet-kategori-input" required>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">AÇIKLAMA</label>
+                    <textarea name="aciklama" rows="3"
+                        class="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                        placeholder="Talep detaylarını buraya yazın..." required></textarea>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" id="btn-zimmet-talep-gonder"
+                        class="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                        <span>Talebi Gönder</span>
+                        <span class="material-symbols-outlined text-lg">send</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .zimmet-kategori-btn.active {
+        background: rgba(var(--primary-rgb), 0.1);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+</style>
 
 <script>
     let allZimmetler = [];
@@ -243,19 +331,19 @@
         document.getElementById('arac-zimmet-count').textContent = araclar.length;
 
         // 2. Teknoloji (Telefon, Tablet, Yazıcı, Bilgisayar)
-        const techTerms = ['telefon', 'tablet', 'yazıcı', 'yazici', 'bilgisayar', 'laptop', 'ekran', 'monitör'];
+        const techTerms = ['telefon', 'tablet', 'yazıcı', 'yazici', 'bilgisayar', 'laptop', 'ekran', 'monitör', 'terminal', 'el terminali'];
         const tech = aktifler.filter(z => 
             z.type === 'demirbas' && 
-            techTerms.some(term => z.kategori.toLowerCase().includes(term) || z.demirbas_adi.toLowerCase().includes(term))
+            techTerms.some(term => (z.kategori || '').toLowerCase().includes(term) || (z.demirbas_adi || '').toLowerCase().includes(term))
         );
         document.getElementById('tech-zimmet-count').textContent = tech.length;
 
         // 3. Sayaçlar
-        const sayaclar = aktifler.filter(z => z.kategori.toLowerCase().includes('sayaç') || z.kategori.toLowerCase().includes('sayac'));
+        const sayaclar = aktifler.filter(z => (z.kategori || '').toLowerCase().includes('sayaç') || (z.kategori || '').toLowerCase().includes('sayac'));
         document.getElementById('sayac-zimmet-count').textContent = sayaclar.length;
 
         // 4. Aparatlar
-        const aparatlar = aktifler.filter(z => z.kategori.toLowerCase().includes('aparat'));
+        const aparatlar = aktifler.filter(z => (z.kategori || '').toLowerCase().includes('aparat'));
         // Aparatlarda miktar toplamı önemli olabilir
         const aparatTotal = aparatlar.reduce((sum, item) => sum + (parseInt(item.miktar) || 0), 0);
         document.getElementById('aparat-zimmet-count').textContent = aparatTotal;
@@ -295,13 +383,13 @@
 
     function showSayacDetay() {
         const aktifler = allZimmetler.filter(z => z.durum === 'teslim');
-        const sayaclar = aktifler.filter(z => z.kategori.toLowerCase().includes('sayaç') || z.kategori.toLowerCase().includes('sayac'));
+        const sayaclar = aktifler.filter(z => (z.kategori || '').toLowerCase().includes('sayaç') || (z.kategori || '').toLowerCase().includes('sayac'));
         
         let sifir = 0;
         let hurda = 0;
 
         sayaclar.forEach(z => {
-            const name = z.demirbas_adi.toLowerCase();
+            const name = (z.demirbas_adi || '').toLowerCase();
             const miktar = parseInt(z.miktar) || 0;
             
             if (name.includes('sıfır') || name.includes('sifir')) {
@@ -322,7 +410,7 @@
 
     function showAparatDetay() {
         const aktifler = allZimmetler.filter(z => z.durum === 'teslim');
-        const aparatlar = aktifler.filter(z => z.kategori.toLowerCase().includes('aparat'));
+        const aparatlar = aktifler.filter(z => (z.kategori || '').toLowerCase().includes('aparat'));
         
         const totalAmount = aparatlar.reduce((sum, item) => sum + (parseInt(item.miktar) || 0), 0);
         document.getElementById('aparat-total-info').textContent = `Zimmetinizde toplam ${totalAmount} aparat bulunuyor.`;
@@ -360,15 +448,15 @@
             if (currentZimmetFilter === 'arac') {
                 filtered = filtered.filter(z => z.type === 'arac');
             } else if (currentZimmetFilter === 'tech') {
-                const terms = ['telefon', 'tablet', 'yazıcı', 'yazici', 'bilgisayar', 'laptop', 'ekran', 'monitör'];
+                const terms = ['telefon', 'tablet', 'yazıcı', 'yazici', 'bilgisayar', 'laptop', 'ekran', 'monitör', 'terminal', 'el terminali'];
                 filtered = filtered.filter(z => 
                     z.type === 'demirbas' && 
-                    terms.some(term => z.kategori.toLowerCase().includes(term) || z.demirbas_adi.toLowerCase().includes(term))
+                    terms.some(term => (z.kategori || '').toLowerCase().includes(term) || (z.demirbas_adi || '').toLowerCase().includes(term))
                 );
             } else if (currentZimmetFilter === 'sayac') {
-                filtered = filtered.filter(z => z.kategori.toLowerCase().includes('sayaç') || z.kategori.toLowerCase().includes('sayac'));
+                filtered = filtered.filter(z => (z.kategori || '').toLowerCase().includes('sayaç') || (z.kategori || '').toLowerCase().includes('sayac'));
             } else if (currentZimmetFilter === 'aparat') {
-                filtered = filtered.filter(z => z.kategori.toLowerCase().includes('aparat'));
+                filtered = filtered.filter(z => (z.kategori || '').toLowerCase().includes('aparat'));
             }
         }
 
@@ -436,6 +524,12 @@
     async function showZimmetHareketleri(zimmetId, demirbasAdi, type = 'demirbas') {
         const listContainer = document.getElementById('zimmet-hareket-list');
         listContainer.innerHTML = '<div class="flex justify-center py-8"><div class="shimmer w-full h-32 rounded-2xl"></div></div>';
+
+        // Talep butonunu ayarla
+        const btnTalep = document.getElementById('btn-zimmet-talep-ac');
+        if (btnTalep) {
+            btnTalep.onclick = () => openZimmetTalepModal(zimmetId, demirbasAdi, type);
+        }
 
         Modal.open('zimmet-detay-modal');
 
@@ -551,4 +645,95 @@
 
         Toast.show('Excel dosyası indiriliyor...', 'success');
     }
+
+    // Zimmet Talep Fonksiyonları
+    function openZimmetTalepModal(id, name, type) {
+        document.getElementById('talep-asset-id').value = id;
+        document.getElementById('talep-asset-name').value = name;
+        document.getElementById('talep-asset-type').value = type;
+        document.getElementById('talep-asset-display-name').textContent = name;
+        
+        // Formu temizle
+        document.getElementById('zimmet-talep-form').reset();
+        document.getElementById('zimmet-kategori-input').value = '';
+        document.querySelectorAll('.zimmet-kategori-btn').forEach(btn => btn.classList.remove('active'));
+        
+        // Eğer araçsa varsayılan olarak 'servis' seçelim
+        if (type === 'arac') {
+            const servisBtn = Array.from(document.querySelectorAll('.zimmet-kategori-btn')).find(b => b.onclick.toString().includes('servis'));
+            if (servisBtn) selectZimmetKategori(servisBtn, 'servis');
+        } else {
+            // Demirbaşsa 'ariza' seçelim
+            const arizaBtn = Array.from(document.querySelectorAll('.zimmet-kategori-btn')).find(b => b.onclick.toString().includes('ariza'));
+            if (arizaBtn) selectZimmetKategori(arizaBtn, 'ariza');
+        }
+
+        Modal.open('zimmet-talep-modal');
+    }
+
+    function selectZimmetKategori(btn, value) {
+        document.querySelectorAll('.zimmet-kategori-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('zimmet-kategori-input').value = value;
+    }
+
+    // Form submit listener
+    document.getElementById('zimmet-talep-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const btn = document.getElementById('btn-zimmet-talep-gonder');
+        const originalHtml = btn.innerHTML;
+        
+        const kategori = formData.get('kategori');
+        if (!kategori) {
+            Toast.show('Lütfen bir talep türü seçin.', 'warning');
+            return;
+        }
+
+        const assetName = formData.get('asset_name');
+        const assetType = formData.get('asset_type') === 'arac' ? 'Araç' : 'Demirbaş';
+        const aciklama = formData.get('aciklama');
+        
+        // Konum bilgisini alalım (PWA standartlarında genelde istenir)
+        let konum = 'Zimmetler Sayfası';
+        
+        try {
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span>';
+            btn.disabled = true;
+
+            // Talep başlığını ve açıklamasını özelleştirelim
+            const kategoriMap = {
+                'ariza': 'Arıza Bildirimi',
+                'servis': 'Servis Talebi',
+                'bakim': 'Bakım Talebi',
+                'diger': 'Talep'
+            };
+            
+            const baslik = `${kategoriMap[kategori]} - ${assetName}`;
+            const fullAciklama = `[${assetType}: ${assetName}] ${aciklama}`;
+
+            const response = await API.request('createTalepBildirimi', {
+                kategori: kategori === 'bakim' || kategori === 'servis' ? 'istek' : kategori, // API'nin desteklediği kategorilere map et
+                baslik: baslik,
+                aciklama: fullAciklama,
+                konum: konum,
+                oncelik: 'orta'
+            });
+
+            if (response.success) {
+                Modal.close('zimmet-talep-modal');
+                Modal.close('zimmet-detay-modal');
+                Alert.success('Başarılı', 'Talebiniz başarıyla oluşturuldu.');
+            } else {
+                throw new Error(response.message || 'Bir hata oluştu');
+            }
+        } catch (error) {
+            console.error('Talep gönderme hatası:', error);
+            Alert.error('Hata', error.message || 'Talep gönderilirken bir sorun oluştu.');
+        } finally {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        }
+    });
 </script>
