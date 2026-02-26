@@ -513,20 +513,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $guncelEkOdeme = $BordroPersonel->getDonemEkOdemeleri($bp->personel_id, $bp->donem_id);
 
                 // Günlük ücret ve çalışma günü hesapla
+                $detayJSON = json_decode($bp->hesaplama_detay ?? '{}');
                 $brutMaas = floatval($bp->brut_maas ?? 0);
-                $gunlukUcret = $brutMaas / 30; // Sabit 30 güne böl
+                $nominalMaas = isset($detayJSON->matrahlar->nominal_maas) ? floatval($detayJSON->matrahlar->nominal_maas) : $brutMaas;
 
-                // Ücretsiz izin gün sayısını hesapla
-                $izinKesintileri = $BordroPersonel->getDonemKesintileriListe($bp->personel_id, $bp->donem_id);
-                $ucretsizIzinGunu = 0;
-                foreach ($izinKesintileri as $kesinti) {
-                    if (strpos($kesinti->aciklama ?? '', '[Ücretsiz İzin]') === 0) {
-                        // Açıklamadan gün sayısını çıkar: "[Ücretsiz İzin] İzin Adı (X gün x Y ₺)"
-                        if (preg_match('/\((\d+)\s*gün/', $kesinti->aciklama, $matches)) {
-                            $ucretsizIzinGunu += intval($matches[1]);
-                        }
-                    }
-                }
+                $gunlukUcret = $nominalMaas / 30; // Sabit 30 güne böl (Nominal maaş üzerinden)
+
+                // Ücretsiz izin gün sayısını hesaplama_detay JSON'dan al
+                $ucretsizIzinGunu = isset($detayJSON->matrahlar->ucretsiz_izin_gunu) ? intval($detayJSON->matrahlar->ucretsiz_izin_gunu) : 0;
+                $ucretsizIzinDusumu = isset($detayJSON->matrahlar->ucretsiz_izin_dusumu) ? floatval($detayJSON->matrahlar->ucretsiz_izin_dusumu) : 0;
                 $calismaGunu = 30 - $ucretsizIzinGunu;
 
                 // HTML oluştur
@@ -549,19 +544,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="col-md-6">';
                 $html .= '<h6 class="border-bottom pb-2 mb-3"><i class="bx bx-money me-1"></i>Maaş Özeti</h6>';
                 $html .= '<table class="table table-sm">';
-                $html .= '<tr><td class="text-muted">' . $personel->maas_durumu . ' Maaş:</td><td class="fw-bold text-primary">' . ($bp->brut_maas ? number_format($bp->brut_maas, 2, ',', '.') . ' ₺' : '-') . '</td></tr>';
+                $html .= '<tr><td class="text-muted">' . $personel->maas_durumu . ' Maaş:</td><td class="fw-bold text-primary">' . ($nominalMaas ? number_format($nominalMaas, 2, ',', '.') . ' ₺' : '-') . '</td></tr>';
                 $html .= '<tr><td class="text-muted">Günlük Ücret:</td><td class="text-secondary">' . number_format($gunlukUcret, 2, ',', '.') . ' ₺ <small class="text-muted">(' . $personel->maas_durumu . ' / 30)</small></td></tr>';
                 $html .= '<tr><td class="text-muted">Çalışma Günü:</td><td class="' . ($ucretsizIzinGunu > 0 ? 'text-warning' : 'text-secondary') . '">' . $calismaGunu . ' gün' . ($ucretsizIzinGunu > 0 ? ' <small class="text-muted">(-' . $ucretsizIzinGunu . ' izin)</small>' : '') . '</td></tr>';
 
                 // Ücretsiz izin varsa, çalışılan brüt maaşı da göster
                 if ($ucretsizIzinGunu > 0) {
-                    $izinKesintisiTutar = $gunlukUcret * $ucretsizIzinGunu;
-                    $calisanBrutMaas = floatval($bp->brut_maas ?? 0) - $izinKesintisiTutar;
+                    $calisanBrutMaas = $brutMaas; // Brüt maaş zaten ücretsiz izin düşülmüş halde
                     $html .= '<tr class="table-warning"><td class="text-muted">Çalışılan Brüt:</td><td class="fw-bold text-warning">' . number_format($calisanBrutMaas, 2, ',', '.') . ' ₺ <small class="text-muted">(SGK matrahı)</small></td></tr>';
                 }
 
                 $html .= '<tr><td class="text-muted">Toplam Ek Ödeme:</td><td class="text-success fw-medium">+' . number_format($guncelEkOdeme, 2, ',', '.') . ' ₺</td></tr>';
-                $html .= '<tr><td class="text-muted">Toplam Kesinti:</td><td class="text-danger fw-medium">-' . number_format($guncelKesinti + floatval($bp->sgk_isci) + floatval($bp->issizlik_isci) + floatval($bp->gelir_vergisi) + floatval($bp->damga_vergisi), 2, ',', '.') . ' ₺</td></tr>';
+                $html .= '<tr><td class="text-muted">Toplam Kesinti:</td><td class="text-danger fw-medium">-' . number_format(floatval($bp->kesinti_tutar ?? 0) + floatval($bp->sgk_isci) + floatval($bp->issizlik_isci) + floatval($bp->gelir_vergisi) + floatval($bp->damga_vergisi), 2, ',', '.') . ' ₺</td></tr>';
                 $html .= '<tr class="table-success"><td class="fw-bold">Net Maaş:</td><td class="fw-bold text-success fs-5">' . ($bp->net_maas ? number_format($bp->net_maas, 2, ',', '.') . ' ₺' : '-') . '</td></tr>';
                 $html .= '</table>';
                 $html .= '</div>';
@@ -617,19 +611,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<table class="table table-sm mb-0">';
                 $html .= '<tbody>';
 
-                // Onaylanmış kesintileri çek ve daha detaylı grupla (özellikle ücretsiz izinler için)
+                // Onaylanmış kesintileri çek ve detaylı grupla
+                // NOT: izin_kesinti artık oluşturulmaz, ücretsiz izin doğrudan brüt maaştan düşülür
                 $kesintiKayitlari = $BordroPersonel->getDonemKesintileriListe($bp->personel_id, $bp->donem_id);
                 $kesintilerGruplanmis = [];
 
                 foreach ($kesintiKayitlari as $k) {
-                    $etiket = $kesintiTurEtiketleri[$k->tur] ?? ucfirst($k->tur);
-
-                    // Ücretsiz izin ise alt türü (Devamsızlık, Mazeret vs.) ve gün sayısını açıklamadan çek
-                    if ($k->tur === 'izin_kesinti' && preg_match('/\[Ücretsiz İzin\]\s*(.*?)\s*\((\d+)\s*gün/', $k->aciklama, $matches)) {
-                        $altTur = trim($matches[1]);
-                        $gunSayisi = intval($matches[2]);
-                        $etiket = "Ücretsiz İzin ($altTur x $gunSayisi)";
+                    // Eski izin_kesinti kayıtlarını atla (artık oluşturulmaz)
+                    if ($k->tur === 'izin_kesinti') {
+                        continue;
                     }
+
+                    $etiket = $kesintiTurEtiketleri[$k->tur] ?? ucfirst($k->tur);
 
                     if (!isset($kesintilerGruplanmis[$etiket])) {
                         $kesintilerGruplanmis[$etiket] = (object) [
@@ -647,6 +640,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     return $b->toplam_tutar <=> $a->toplam_tutar;
                 });
 
+                // Kesinti toplamını yeniden hesapla (izin_kesinti hariç)
+                $guncelKesintiGosterim = 0;
+                foreach ($kesintilerGruplanmis as $kGrup) {
+                    $guncelKesintiGosterim += $kGrup->toplam_tutar;
+                }
+
                 if (empty($kesintilerGruplanmis)) {
                     $html .= '<tr><td class="text-center text-muted py-3" colspan="2"><i class="bx bx-check-circle me-1"></i>Kesinti yok</td></tr>';
                 } else {
@@ -656,7 +655,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
-                $html .= '<tr class="table-light"><td class="ps-3 fw-bold">Toplam</td><td class="text-end pe-3 fw-bold text-danger">-' . number_format($guncelKesinti, 2, ',', '.') . ' ₺</td></tr>';
+                $html .= '<tr class="table-light"><td class="ps-3 fw-bold">Toplam</td><td class="text-end pe-3 fw-bold text-danger">-' . number_format($guncelKesintiGosterim, 2, ',', '.') . ' ₺</td></tr>';
                 $html .= '</tbody>';
                 $html .= '</table>';
                 $html .= '</div>';

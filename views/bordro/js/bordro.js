@@ -1090,12 +1090,12 @@ $(document).ready(function () {
       .closest(".card")
       .addClass("border-primary bg-primary bg-opacity-10");
 
-    $("#gelir_edit_id").val(id);
+    $("#formPersonelGelirEkle input[name='id']").val(id);
     $("#formPersonelGelirEkle select[name='ek_odeme_tur']")
       .val(tur)
       .trigger("change");
-    $("#gelir_tutar").val(tutar);
-    $("#gelir_aciklama").val(aciklama);
+    $("#formPersonelGelirEkle input[name='tutar']").val(tutar);
+    $("#formPersonelGelirEkle input[name='aciklama']").val(aciklama);
 
     $("#formPersonelGelirEkle button[type='submit']").html(
       '<i class="bx bx-check-circle me-1"></i>Güncelle',
@@ -1120,12 +1120,12 @@ $(document).ready(function () {
     // Tıklanan butona ait kartı bul ve aktif class'ı ekle
     $(this).closest(".card").addClass("border-danger bg-danger bg-opacity-10");
 
-    $("#kesinti_edit_id").val(id);
+    $("#formPersonelKesintiEkle input[name='id']").val(id);
     $("#formPersonelKesintiEkle select[name='kesinti_tur']")
       .val(tur)
       .trigger("change");
-    $("#kesinti_tutar").val(tutar);
-    $("#kesinti_aciklama").val(aciklama);
+    $("#formPersonelKesintiEkle input[name='tutar']").val(tutar);
+    $("#formPersonelKesintiEkle input[name='aciklama']").val(aciklama);
 
     $("#formPersonelKesintiEkle button[type='submit']").html(
       '<i class="bx bx-check-circle me-1"></i>Güncelle',
@@ -1509,7 +1509,7 @@ function loadGelirListesi(personelId, donemId) {
                                     </div>
                                     <div class="flex-shrink-0 text-end mx-3">
                                         <h5 class="mb-1 text-success fw-bold">+${formatMoney(item.tutar)} ₺</h5>
-                                        <small class="text-muted" style="font-size: 11px;">${new Date(item.created_at).toLocaleDateString("tr-TR")}</small>
+                                        <small class="text-muted" style="font-size: 11px;">${item.olusturma_tarihi ? new Date(item.olusturma_tarihi).toLocaleDateString("tr-TR") : item.created_at ? new Date(item.created_at).toLocaleDateString("tr-TR") : ""}</small>
                                     </div>
 
                                     <div class="flex-shrink-0">
@@ -1583,7 +1583,7 @@ function loadKesintiListesi(personelId, donemId) {
                                     </div>
                                     <div class="flex-shrink-0 text-end mx-3">
                                         <h5 class="mb-1 text-danger fw-bold">-${formatMoney(item.tutar)} ₺</h5>
-                                        <small class="text-muted" style="font-size: 11px;">${new Date(item.created_at).toLocaleDateString("tr-TR")}</small>
+                                        <small class="text-muted" style="font-size: 11px;">${item.olusturma_tarihi ? new Date(item.olusturma_tarihi).toLocaleDateString("tr-TR") : item.created_at ? new Date(item.created_at).toLocaleDateString("tr-TR") : ""}</small>
                                     </div>
                                     <div class="flex-shrink-0">
                                         <div class="d-flex flex-column gap-1">

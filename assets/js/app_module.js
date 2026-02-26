@@ -383,56 +383,43 @@ File: Main Js File
         html.hasAttribute("data-bs-theme") &&
         html.getAttribute("data-bs-theme") == "dark"
       ) {
-        if (
-          localStorage.getItem("data-sidebar") == "dark" &&
-          body.getAttribute("data-layout") !== "horizontal"
-        ) {
-          document.body.setAttribute("data-sidebar", "dark");
-        }
-        if (
-          localStorage.getItem("data-topbar") == "dark" &&
-          body.getAttribute("data-layout") !== "horizontal"
-        ) {
-          document.body.setAttribute("data-sidebar", "light");
-          document.body.setAttribute("data-topbar", "dark");
-        }
         html.setAttribute("data-bs-theme", "light");
         localStorage.setItem("data-bs-theme", "light");
         updateRadio("layout-mode-light");
 
-        if (localStorage.getItem("data-topbar") !== "dark") {
+        // Only set topbar to light if it was forced to dark by dark mode toggle
+        if (
+          localStorage.getItem("data-topbar") == "dark" ||
+          !localStorage.getItem("data-topbar")
+        ) {
           document.body.setAttribute("data-topbar", "light");
           localStorage.setItem("data-topbar", "light");
           updateRadio("topbar-color-light");
         }
-        if (localStorage.getItem("data-sidebar") == "brand") {
-          document.body.setAttribute("data-sidebar", "brand");
-          localStorage.setItem("data-sidebar", "brand");
-          updateRadio("sidebar-color-brand");
-        }
+      } else {
+        html.setAttribute("data-bs-theme", "dark");
+        localStorage.setItem("data-bs-theme", "dark");
+        updateRadio("layout-mode-dark");
+
+        // Keep existing topbar if it's not simply 'light'
         if (
-          !localStorage.getItem("data-sidebar") &&
-          !localStorage.getItem("data-topbar")
+          body.getAttribute("data-topbar") == "light" ||
+          !body.getAttribute("data-topbar")
+        ) {
+          document.body.setAttribute("data-topbar", "dark");
+          localStorage.setItem("data-topbar", "dark");
+          updateRadio("topbar-color-dark");
+        }
+
+        // Dark mode sidebar defaults to dark
+        if (
+          body.getAttribute("data-sidebar") == "light" ||
+          !body.getAttribute("data-sidebar")
         ) {
           document.body.setAttribute("data-sidebar", "dark");
           localStorage.setItem("data-sidebar", "dark");
           updateRadio("sidebar-color-dark");
         }
-      } else {
-        if (localStorage.getItem("data-sidebar") == "dark") {
-          document.body.setAttribute("data-sidebar", "dark");
-        }
-        html.setAttribute("data-bs-theme", "dark");
-        document.body.setAttribute("data-topbar", "dark");
-        document.body.setAttribute("data-sidebar", "dark");
-
-        localStorage.setItem("data-bs-theme", "dark");
-        localStorage.setItem("data-topbar", "dark");
-        localStorage.setItem("data-sidebar", "dark");
-
-        updateRadio("layout-mode-dark");
-        updateRadio("topbar-color-dark");
-        updateRadio("sidebar-color-dark");
       }
     });
 
@@ -627,35 +614,43 @@ File: Main Js File
       var val = $(this).val();
       if (val == "light") {
         html.setAttribute("data-bs-theme", "light");
-        document.body.setAttribute("data-topbar", "light");
-        document.body.setAttribute("data-sidebar", "dark");
-        body.hasAttribute("data-layout") &&
-        body.getAttribute("data-layout") == "horizontal"
-          ? ""
-          : document.body.setAttribute("data-sidebar", "dark");
-
-        updateRadio("topbar-color-light");
-        updateRadio("sidebar-color-dark");
-
         localStorage.setItem("data-bs-theme", "light");
-        localStorage.setItem("data-topbar", "light");
-        localStorage.setItem("data-sidebar", "dark");
+
+        // Preserve specialized topbar/sidebar if they aren't 'dark' default
+        if (
+          localStorage.getItem("data-topbar") == "dark" ||
+          !localStorage.getItem("data-topbar")
+        ) {
+          document.body.setAttribute("data-topbar", "light");
+          localStorage.setItem("data-topbar", "light");
+          updateRadio("topbar-color-light");
+        }
+
+        if (localStorage.getItem("data-sidebar") == "light") {
+          // Keep it light
+        } else {
+          document.body.setAttribute("data-sidebar", "dark");
+          localStorage.setItem("data-sidebar", "dark");
+          updateRadio("sidebar-color-dark");
+        }
       } else {
         html.setAttribute("data-bs-theme", "dark");
-        document.body.setAttribute("data-topbar", "dark");
-        document.body.setAttribute("data-sidebar", "dark");
-
-        body.hasAttribute("data-layout") &&
-        body.getAttribute("data-layout") == "horizontal"
-          ? ""
-          : document.body.setAttribute("data-sidebar", "dark");
-
-        // updateRadio('topbar-color-dark')
-        updateRadio("sidebar-color-dark");
-
         localStorage.setItem("data-bs-theme", "dark");
-        localStorage.setItem("data-topbar", "dark");
-        localStorage.setItem("data-sidebar", "dark");
+
+        // Force dark topbar/sidebar for dark theme unless they are colored custom
+        const currentTopbar = localStorage.getItem("data-topbar");
+        if (currentTopbar == "light" || !currentTopbar) {
+          document.body.setAttribute("data-topbar", "dark");
+          localStorage.setItem("data-topbar", "dark");
+          updateRadio("topbar-color-dark");
+        }
+
+        const currentSidebar = localStorage.getItem("data-sidebar");
+        if (currentSidebar == "light" || !currentSidebar) {
+          document.body.setAttribute("data-sidebar", "dark");
+          localStorage.setItem("data-sidebar", "dark");
+          updateRadio("sidebar-color-dark");
+        }
       }
     });
 
@@ -743,6 +738,8 @@ File: Main Js File
       var val = $(this).val();
       applyCustomTopbar(val);
       localStorage.setItem("custom-topbar-color", val);
+      document.body.removeAttribute("data-topbar");
+      localStorage.removeItem("data-topbar");
       $("input[name='topbar-color']").prop("checked", false);
     });
 
@@ -751,6 +748,8 @@ File: Main Js File
       var val = $(this).val();
       applyCustomSidebar(val);
       localStorage.setItem("custom-sidebar-color", val);
+      document.body.removeAttribute("data-sidebar");
+      localStorage.removeItem("data-sidebar");
       $("input[name='sidebar-color']").prop("checked", false);
     });
 
@@ -761,7 +760,7 @@ File: Main Js File
           color +
           " !important; border-color: " +
           color +
-          " !important; } body #page-topbar .header-item, body #page-topbar .logo-txt { color: #fff !important; }</style>",
+          " !important; } body #page-topbar .header-item, body #page-topbar .logo-txt { color: #fff !important; } body #page-topbar .logo-dark { display: none !important; } body #page-topbar .logo-light { display: block !important; }</style>",
       ).appendTo("head");
     }
 
@@ -770,9 +769,7 @@ File: Main Js File
       $(
         "<style id='custom-sidebar-style'>body .vertical-menu { background-color: " +
           color +
-          " !important; border-color: " +
-          color +
-          " !important; } body .vertical-menu .mm-active, body .vertical-menu .mm-active i, body .vertical-menu .mm-active span { color: #fff !important; }</style>",
+          " !important; } body #sidebar-menu ul li a { color: rgba(255, 255, 255, 0.7) !important; } body #sidebar-menu ul li a i { color: rgba(255, 255, 255, 0.7) !important; } body #sidebar-menu ul li a:hover, body #sidebar-menu ul li a.active, body #sidebar-menu ul li.mm-active > a { color: #fff !important; } body #sidebar-menu .menu-title { color: rgba(255, 255, 255, 0.4) !important; } body .vertical-menu .logo-dark { display: none !important; } body .vertical-menu .logo-light { display: block !important; }</style>",
       ).appendTo("head");
     }
 

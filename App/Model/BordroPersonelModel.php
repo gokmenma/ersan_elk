@@ -1554,11 +1554,16 @@ class BordroPersonelModel extends Model
             if ($toplamGecerliGun > 30)
                 $toplamGecerliGun = 30;
 
+            // Nominal Brüt Maaş (Daily wage hesabı için oranlanmamış tam aylık tutar)
+            // Eğer 30 günün tamamı kapsanmıyorsa (kıst çalışma), ağırlık üzerinden 30 güne tamamlıyoruz
+            $nominalBrutMaas = ($toplamGecerliGun > 0) ? ($agirlikliBrutMaas / $toplamGecerliGun * 30) : $agirlikliBrutMaas;
+
             $kayit->maas_tutari = round($agirlikliBrutMaas, 2);
             $kayit->maas_durumu = $maasDurumuRaw;
         } else {
             // Hiç geçmiş yoksa eski fallback mantığıyla maaş durumunu bul
             // $maasDurumuRaw ve $maasDurumu zaten yukarıda tanımlandı
+            $nominalBrutMaas = floatval($kayit->maas_tutari ?? 0);
             $isNetMaas = (stripos($maasDurumuRaw, 'net') !== false);
             $isPrimUsulu = (stripos($maasDurumuRaw, 'Prim') !== false || stripos($maasDurumu, 'prim') !== false);
         }
@@ -1595,8 +1600,8 @@ class BordroPersonelModel extends Model
         //    - Sürekli kesintiler (ana_kesinti_id NOT NULL)
         //    - Avans kesintileri (tur = 'avans' ve açıklama [Avans] ile başlayan)
         //    - İcra kesintileri (tur = 'icra')
-        //    - Ücretsiz izin kesintileri (tur = 'izin_kesinti')
         //    - BES kesintileri (açıklama [BES] ile başlayan)
+        //    NOT: izin_kesinti artık oluşturulmaz, ücretsiz izin doğrudan brüt maaştan düşülür
         $this->db->prepare("
             UPDATE personel_kesintileri 
             SET silinme_tarihi = NOW() 
@@ -1605,7 +1610,7 @@ class BordroPersonelModel extends Model
                 ana_kesinti_id IS NOT NULL
                 OR tur = 'icra'
                 OR tur = 'izin_kesinti'
-                OR tur = 'avans'
+                OR (tur = 'avans' AND aciklama LIKE '[Avans]%')
                 OR aciklama LIKE '[BES]%'
             )
         ")->execute([$kayit->personel_id, $kayit->donem_id]);
@@ -1651,19 +1656,20 @@ class BordroPersonelModel extends Model
         // Aktif icra dosyalarını bulup kesinti olarak ekle
         $this->olusturIcraKesintileri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
-        // ========== ÜCRETSİZ İZİN KESİNTİLERİ ==========
-        // Dönem içindeki onaylanmış ücretsiz izinleri bulup kesinti olarak ekle
-        // Günlük ücret = Brüt maaş / 30, Kesinti = Günlük ücret × Ücretsiz izin gün sayısı
-        // NOT: Prim Usülü çalışanlarda eksik günlerden dolayı maaş kesintisi yapılmaz
-        // Prim bazlı çalışanlarda gelir zaten yapılan işe göre hesaplandığı için gün bazlı kesinti uygulanmaz
-        if ($isPrimUsulu) {
-            // İzin gün bilgisini yine de al (fiili çalışma günü için gerekli)
-            $ucretsizIzinKesinti = 0;
-            $ucretsizIzinGunu = $this->getUcretsizIzinGunuDirekt($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+        // ========== ÜCRETSİZ İZİN HESAPLAMASI ==========
+        // Ücretsiz izinler artık ayrı kesinti olarak oluşturulmaz.
+        // Bunun yerine doğrudan brüt maaştan düşülür: Brüt = Günlük Ücret × (30 - ücretsiz izin günü)
+        // Bu sayede çift düşme problemi ortadan kalkar.
+        // Kesintiler yalnızca avans, ceza, icra gibi gerçek kesintiler için kullanılır.
+        $ucretsizIzinGunu = $this->getUcretsizIzinGunuDirekt($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+
+        // Ücretsiz izin günü varsa brüt maaşı düşür (Günlük ücret × izin günü kadar)
+        if ($ucretsizIzinGunu > 0 && $nominalBrutMaas > 0) {
+            $gunlukUcretHesap = $nominalBrutMaas / 30;
+            $ucretsizIzinDusumu = round($gunlukUcretHesap * $ucretsizIzinGunu, 2);
+            $brutMaas = max(0, $brutMaas - $ucretsizIzinDusumu);
         } else {
-            $ucretsizIzinSonuc = $this->olusturUcretsizIzinKesintileri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, $brutMaas);
-            $ucretsizIzinKesinti = $ucretsizIzinSonuc['toplam_kesinti'] ?? 0;
-            $ucretsizIzinGunu = $ucretsizIzinSonuc['toplam_gun'] ?? 0;
+            $ucretsizIzinDusumu = 0;
         }
 
         // ========== ÜCRETLİ İZİN BİLGİSİ ==========
@@ -1698,7 +1704,7 @@ class BordroPersonelModel extends Model
                 }
             }
 
-            $tempCalisanBrut = max(0, $brutMaas - $ucretsizIzinKesinti);
+            $tempCalisanBrut = max(0, $brutMaas); // $brutMaas zaten ücretsiz izin düşülmüş halde
             $tempSgkMatrahi = $tempCalisanBrut + $tempSgkMatrahEkleri;
 
             $this->olusturBesKesintisi($kayit->personel_id, $kayit->donem_id, $tempSgkMatrahi, $donemTarihi);
@@ -1923,13 +1929,17 @@ class BordroPersonelModel extends Model
         }
 
         // Her kesintiyi işle
-        // Ücretsiz izin kesintilerini ayrı tut (yasal kesinti hesabı için)
-        $ucretsizIzinKesinti = 0;
+        // NOT: Ücretsiz izin kesintisi artık burada yok, doğrudan brüt maaştan düşüldü
         $digerKesintiler = 0;
         $toplamKesinti = 0;
         $oranliKesintiler = []; // Net üzerinden oranlı kesintiler (İcra vb.)
 
         foreach ($kesintiler as $kesinti) {
+            // Eski izin_kesinti kayıtlarını atla (artık oluşturulmaz ama eski veriler olabilir)
+            if ($kesinti->tur === 'izin_kesinti') {
+                continue;
+            }
+
             $tutar = floatval($kesinti->tutar);
             $parametre = $parametreModel->getByKod($kesinti->tur, $donemTarihi);
             $hesaplamaTipi = $kesinti->hesaplama_tipi ?? 'sabit';
@@ -1969,22 +1979,16 @@ class BordroPersonelModel extends Model
             }
 
             $toplamKesinti += $tutar;
-
-            // Ücretsiz izin kesintisini ayır
-            if ($kesinti->tur === 'izin_kesinti' || strpos($kesinti->aciklama ?? '', '[Ücretsiz İzin]') === 0) {
-                $ucretsizIzinKesinti += $tutar;
-            } else {
-                $digerKesintiler += $tutar;
-            }
+            $digerKesintiler += $tutar;
 
             $kesintiDetaylari[] = $detay;
         }
 
         // ========== HESAPLAMALAR ==========
 
-        // Ücretsiz izin kesintisi düşüldükten sonraki "çalışılan brüt maaş"
+        // Çalışılan brüt maaş = brüt maaş (ücretsiz izin düşümü zaten yukarıda yapıldı)
         // Yasal kesintiler bu tutar üzerinden hesaplanacak
-        $calisanBrutMaas = $brutMaas - $ucretsizIzinKesinti;
+        $calisanBrutMaas = $brutMaas;
         if ($calisanBrutMaas < 0) {
             $calisanBrutMaas = 0;
         }
@@ -2023,11 +2027,13 @@ class BordroPersonelModel extends Model
         // ========== ORANLI KESİNTİLERİN HESAPLANMASI (NET ÜZERİNDEN) ==========
         // Oranlı kesintiler için temel net hakediş (icra vb. öncesi)
         if ($isNetMaas || $isPrimUsulu) {
-            // Prim Usülü: Ücretsiz izin kesintisi yapılmaz, hakediş sadece ek ödemeler/kesintiler ile hesaplanır
-            $hakedisNet = $brutMaas + $toplamEkOdeme - ($isPrimUsulu ? 0 : $ucretsizIzinKesinti);
+            // Prim Usülü / Net: Hakediş = brüt maaş + toplam ek ödemeler
+            // Ücretsiz izin zaten brüt maaştan düşülmüş durumda
+            $hakedisNet = $brutMaas + $toplamEkOdeme;
         } else {
+            // Brüt: Hakediş = brüt maaş - yasal kesintiler + ek ödemeler
+            // Ücretsiz izin zaten brüt maaştan düşülmüş durumda
             $hakedisNet = $brutMaas
-                - $ucretsizIzinKesinti
                 - $sgkIsci - $issizlikIsci - $gelirVergisi - $damgaVergisi
                 + $netEkOdemeler
                 + $brutEkOdemeler;
@@ -2200,12 +2206,13 @@ class BordroPersonelModel extends Model
             // ========== NET VE PRİM USULÜ İÇİN BASİT HESAPLAMA ==========
             // Net Maaş = Maaş Tutarı + Toplam Ek Ödemeler - (Toplam Kesintiler - İcra)
             // İcra kesintisi net hakedişten sonra elden ödemeden düşülür
+            // NOT: Ücretsiz izin zaten brüt maaştan düşülmüş durumda
             $netMaas = $brutMaas + $toplamEkOdeme - ($toplamKesinti - ($icraKesintisi > 0 ? $icraKesintisi : 0));
         } else {
             // ========== BRÜT MAAŞ İÇİN TAM HESAPLAMA ==========
-            // Net = Brüt - Ücretsiz İzin - Yasal Kesintiler + Net Ek Ödemeler + Brüt Ek Ödemeler - (Diğer Kesintiler - İcra)
+            // Net = Brüt - Yasal Kesintiler + Net Ek Ödemeler + Brüt Ek Ödemeler - (Diğer Kesintiler - İcra)
+            // NOT: Ücretsiz izin zaten brüt maaştan düşülmüş durumda, ayrıca çıkarmıyoruz
             $netMaas = $brutMaas
-                - $ucretsizIzinKesinti
                 - $sgkIsci - $issizlikIsci - $gelirVergisi - $damgaVergisi
                 + $netEkOdemeler
                 + $brutEkOdemeler
@@ -2272,15 +2279,10 @@ class BordroPersonelModel extends Model
             // 4. En son Elden ödeme = Net maaş - Banka - Sodexo - İcra
 
 
-            // Net maaşı günlük oranla (eksik gün varsa)
-            if ($fiiliCalismaGunu < 30 && $fiiliCalismaGunu > 0) {
-                // Net maaşı günlük oranla
-                $gunlukNetMaas = $brutMaas / 30; // brutMaas = net maaş (net durumda)
-                $oranliNetMaas = $gunlukNetMaas * $fiiliCalismaGunu;
 
-                // Net maaşı güncelle (ek ödemeler ve kesintiler dahil - İcra hariç)
-                $netMaas = $oranliNetMaas + $netEkOdemeler + $brutEkOdemeler - ($digerKesintiler - $icraKesintisi);
-            }
+            // NOT: Net maaş günlük oranlama artık gerekli değil.
+            // $brutMaas zaten görev geçmişi kıst hesabını ve ücretsiz izin düşümünü içeriyor.
+            // Net maaş yukarıda doğru şekilde hesaplandı.
 
             // Bankaya yatacak minimum tutar (asgari ücret netinden günlük oranlı)
             // Bu tutar asla asgari ücretin çalışma gününe oranının altına düşmemeli
@@ -2368,8 +2370,9 @@ class BordroPersonelModel extends Model
             ],
             'matrahlar' => [
                 'brut_maas' => round($brutMaas, 2),
-                'ucretsiz_izin_kesinti' => round($ucretsizIzinKesinti, 2),
+                'nominal_maas' => round($nominalBrutMaas, 2),
                 'ucretsiz_izin_gunu' => $ucretsizIzinGunu,
+                'ucretsiz_izin_dusumu' => round($ucretsizIzinDusumu, 2),
                 'ucretli_izin_gunu' => $ucretliIzinGunu,
                 'fiili_calisma_gunu' => $fiiliCalismaGunu,
                 'calisan_brut_maas' => round($calisanBrutMaas, 2),

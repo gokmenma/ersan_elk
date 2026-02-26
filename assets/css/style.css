@@ -239,9 +239,9 @@
 [data-bs-theme="dark"] .vertical-menu,
 [data-bs-theme="dark"] #page-topbar,
 [data-bs-theme="dark"] .navbar-brand-box {
-  background-color: #282f36 !important;
-  border: none !important;
-  box-shadow: none !important;
+  background-color: #282f36;
+  border: none;
+  box-shadow: none;
 }
 
 [data-bs-theme="dark"] #sidebar-menu ul li.mm-active > a,
@@ -471,7 +471,55 @@
   box-shadow: none !important;
 }
 body[data-sidebar="brand"] .vertical-menu {
-  background-color: var(--bs-primary);
+  background-color: var(--bs-primary) !important;
+}
+
+body[data-sidebar="brand"] #sidebar-menu ul li a {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+body[data-sidebar="brand"] #sidebar-menu ul li a i {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+body[data-sidebar="brand"] #sidebar-menu ul li a:hover,
+body[data-sidebar="brand"] #sidebar-menu ul li a.active,
+body[data-sidebar="brand"] #sidebar-menu ul li.mm-active > a {
+  color: #fff !important;
+}
+
+body[data-sidebar="brand"] #sidebar-menu ul li a.active i,
+body[data-sidebar="brand"] #sidebar-menu ul li.mm-active > a i {
+  color: #fff !important;
+}
+
+body[data-sidebar="brand"] #sidebar-menu .menu-title {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+body[data-topbar="brand"] #page-topbar,
+body[data-topbar="brand"] .navbar-brand-box {
+  background-color: var(--bs-primary) !important;
+  border-color: var(--bs-primary) !important;
+}
+
+body[data-topbar="brand"] #page-topbar .header-item,
+body[data-topbar="brand"] #page-topbar .logo-txt {
+  color: #fff !important;
+}
+
+body[data-topbar="brand"] #page-topbar .header-item:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body[data-topbar="brand"] .app-search .form-control {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+body[data-topbar="brand"] .app-search span.mdi-magnify {
+  color: rgba(255, 255, 255, 0.7) !important;
 }
 
 /* [data-bs-theme="dark"][data-sidebar="brand"] .vertical-menu,

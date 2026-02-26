@@ -166,10 +166,14 @@ if (Gate::canWithMessage("personel_listesi")) {
                             left: 0;
                             width: 100%;
                             height: 100%;
+                            min-height: 400px;
                             background: rgba(255, 255, 255, 0.82);
                             z-index: 1060;
                             border-radius: 4px;
                             backdrop-filter: blur(3px);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
                         }
 
                         [data-bs-theme="dark"] .personel-preloader {
@@ -177,10 +181,6 @@ if (Gate::canWithMessage("personel_listesi")) {
                         }
 
                         .personel-preloader .loader-content {
-                            position: absolute;
-                            top: 80px;
-                            left: 50%;
-                            transform: translateX(-50%);
                             background: white;
                             padding: 2.5rem;
                             border-radius: 16px;
@@ -276,7 +276,7 @@ if (Gate::canWithMessage("personel_listesi")) {
                             </div>
                         </div>
 
-                        <div class="position-relative">
+                        <div class="position-relative" style="min-height: 400px;">
                             <!-- Preloader -->
                             <div class="personel-preloader" id="personel-loader">
                                 <div class="loader-content">

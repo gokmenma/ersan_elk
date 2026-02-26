@@ -688,9 +688,9 @@ $ek_odeme_turleri = [
                                                     // Ücretsiz izin günü
                                                     if (isset($detay['matrahlar']['ucretsiz_izin_gunu'])) {
                                                         $ucretsizIzinGunu = intval($detay['matrahlar']['ucretsiz_izin_gunu']);
-                                                    } elseif (isset($detay['matrahlar']['ucretsiz_izin_kesinti']) && isset($detay['matrahlar']['brut_maas']) && $detay['matrahlar']['brut_maas'] > 0) {
-                                                        $gunlukUcret = $detay['matrahlar']['brut_maas'] / 30;
-                                                        $ucretsizIzinGunu = round($detay['matrahlar']['ucretsiz_izin_kesinti'] / $gunlukUcret);
+                                                    } elseif (isset($detay['matrahlar']['ucretsiz_izin_dusumu']) && isset($detay['matrahlar']['nominal_maas']) && $detay['matrahlar']['nominal_maas'] > 0) {
+                                                        $gunlukUcret = $detay['matrahlar']['nominal_maas'] / 30;
+                                                        $ucretsizIzinGunu = round($detay['matrahlar']['ucretsiz_izin_dusumu'] / $gunlukUcret);
                                                     }
 
                                                     // Ücretli izin günü

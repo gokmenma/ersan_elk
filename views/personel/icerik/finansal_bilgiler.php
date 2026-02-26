@@ -106,7 +106,13 @@ use App\Helper\Helper;
                                                 <?php
                                                 $bugun = date('Y-m-d');
                                                 if ($g->baslangic_tarihi <= $bugun && ($g->bitis_tarihi === null || $g->bitis_tarihi >= $bugun)) {
-                                                    echo '<span class="badge bg-success">Aktif</span>';
+                                                    if ($g->bitis_tarihi === null) {
+                                                        echo '<span class="badge bg-success">Aktif</span>';
+                                                    } elseif ($g->bitis_tarihi == $bugun) {
+                                                        echo '<span class="badge bg-warning">Bitiş Günü</span>';
+                                                    } else {
+                                                        echo '<span class="badge bg-info">Süreli Aktif</span>';
+                                                    }
                                                 } else {
                                                     echo '<span class="badge bg-secondary">Pasif</span>';
                                                 }

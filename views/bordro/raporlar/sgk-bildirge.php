@@ -37,39 +37,41 @@ if ($selectedDonemId) {
             $isciIssizlik = floatval($personel->issizlik_isci ?? 0);
             $isverenSgk = floatval($personel->sgk_isveren ?? 0);
             $isverenIssizlik = floatval($personel->issizlik_isveren ?? 0);
-            
+
             $toplamIsciSgk += $isciSgk;
             $toplamIsciIssizlik += $isciIssizlik;
             $toplamIsverenSgk += $isverenSgk;
             $toplamIsverenIssizlik += $isverenIssizlik;
-            
+
             // SGK Matrahı ve Prim Gününü hesaplama_detay JSON'dan al
             $sgkMatrahi = floatval($personel->brut_maas ?? 0); // Varsayılan olarak brüt maaş
             $primGunu = 30; // Varsayılan 30 gün
-            
+
             if (!empty($personel->hesaplama_detay)) {
                 $detay = json_decode($personel->hesaplama_detay, true);
                 if (isset($detay['matrahlar']['sgk_matrahi'])) {
                     $sgkMatrahi = floatval($detay['matrahlar']['sgk_matrahi']);
                 }
-                
+
                 // Gün hesaplama
                 $ucretsizIzinGunu = 0;
                 $ucretliIzinGunu = 0;
-                if (isset($detay['matrahlar']['ucretsiz_izin_kesinti']) && isset($detay['matrahlar']['brut_maas']) && $detay['matrahlar']['brut_maas'] > 0) {
-                    $gunlukUcret = $detay['matrahlar']['brut_maas'] / 30;
-                    $ucretsizIzinGunu = round($detay['matrahlar']['ucretsiz_izin_kesinti'] / $gunlukUcret);
+                if (isset($detay['matrahlar']['ucretsiz_izin_gunu'])) {
+                    $ucretsizIzinGunu = intval($detay['matrahlar']['ucretsiz_izin_gunu']);
+                } elseif (isset($detay['matrahlar']['ucretsiz_izin_dusumu']) && isset($detay['matrahlar']['nominal_maas']) && $detay['matrahlar']['nominal_maas'] > 0) {
+                    $gunlukUcret = $detay['matrahlar']['nominal_maas'] / 30;
+                    $ucretsizIzinGunu = round($detay['matrahlar']['ucretsiz_izin_dusumu'] / $gunlukUcret);
                 }
                 if (isset($detay['matrahlar']['ucretli_izin_gunu'])) {
                     $ucretliIzinGunu = intval($detay['matrahlar']['ucretli_izin_gunu']);
                 }
                 $primGunu = max(0, 30 - $ucretsizIzinGunu - $ucretliIzinGunu);
             }
-            
+
             $personel->sgk_matrahi = $sgkMatrahi;
             $personel->prim_gunu = $primGunu;
             $personel->toplam_prim_tutari = $isciSgk + $isciIssizlik + $isverenSgk + $isverenIssizlik;
-            
+
             $toplamSgkMatrahi += $sgkMatrahi;
             $toplamGun += $primGunu;
             $toplamPrim += $personel->toplam_prim_tutari;
@@ -106,10 +108,11 @@ foreach ($donemler as $donem) {
                                 <i class="bx bx-shield-quarter text-warning me-2"></i>SGK Bildirge Raporu
                             </h5>
                             <?php if ($selectedDonem): ?>
-                                <span class="badge bg-warning text-dark shadow-sm border border-warning"><?= htmlspecialchars($selectedDonem->donem_adi) ?></span>
+                                <span
+                                    class="badge bg-warning text-dark shadow-sm border border-warning"><?= htmlspecialchars($selectedDonem->donem_adi) ?></span>
                             <?php endif; ?>
                         </div>
-                        
+
                         <div class="d-flex align-items-center gap-2">
                             <?php echo Form::FormSelect2(
                                 name: 'yilSelectSgk',
@@ -119,7 +122,7 @@ foreach ($donemler as $donem) {
                                 icon: 'calendar',
                                 style: 'min-width: 120px;'
                             ); ?>
-                            
+
                             <?php echo Form::FormSelect2(
                                 name: 'donemSelectSgk',
                                 options: $donem_option,
@@ -128,16 +131,16 @@ foreach ($donemler as $donem) {
                                 icon: 'calendar',
                                 style: 'min-width: 180px;'
                             ); ?>
-                            
+
                             <?php if ($selectedDonem): ?>
                                 <a href="views/bordro/excel-sgk-export.php?donem_id=<?= $selectedDonemId ?>"
                                     class="btn btn-success shadow-sm">
                                     <i class="bx bx-download me-1"></i> Excel İndir
                                 </a>
                             <?php endif; ?>
-                            
-                            <a href="index?p=bordro/raporlar&donem=<?= $selectedDonemId ?>" 
-                               class="btn btn-secondary shadow-sm">
+
+                            <a href="index?p=bordro/raporlar&donem=<?= $selectedDonemId ?>"
+                                class="btn btn-secondary shadow-sm">
                                 <i class="bx bx-arrow-back me-1"></i> Raporlara Dön
                             </a>
                         </div>
@@ -157,11 +160,14 @@ foreach ($donemler as $donem) {
                                             <div class="icon-box" style="background: rgba(14, 165, 233, 0.1);">
                                                 <i class="bx bx-money fs-4 text-info"></i>
                                             </div>
-                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">MATRAH (PEK)</span>
+                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">MATRAH
+                                                (PEK)</span>
                                         </div>
-                                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM SGK KAZANCI</p>
+                                        <p class="text-muted mb-1 small fw-bold"
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM SGK KAZANCI</p>
                                         <h4 class="mb-0 fw-bold bordro-text-heading">
-                                            <?= number_format($toplamSgkMatrahi, 2, ',', '.') ?> <span style="font-size: 0.85rem; font-weight: 600;">₺</span>
+                                            <?= number_format($toplamSgkMatrahi, 2, ',', '.') ?> <span
+                                                style="font-size: 0.85rem; font-weight: 600;">₺</span>
                                         </h4>
                                     </div>
                                 </div>
@@ -176,16 +182,19 @@ foreach ($donemler as $donem) {
                                             <div class="icon-box" style="background: rgba(245, 158, 11, 0.1);">
                                                 <i class="bx bx-user fs-4 text-warning"></i>
                                             </div>
-                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞÇİ (SGK + İŞSİZLİK)</span>
+                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞÇİ (SGK +
+                                                İŞSİZLİK)</span>
                                         </div>
-                                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM İŞÇİ KESİNTİSİ</p>
+                                        <p class="text-muted mb-1 small fw-bold"
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM İŞÇİ KESİNTİSİ</p>
                                         <h4 class="mb-0 fw-bold bordro-text-heading">
-                                            <?= number_format($toplamIsciSgk + $toplamIsciIssizlik, 2, ',', '.') ?> <span style="font-size: 0.85rem; font-weight: 600;">₺</span>
+                                            <?= number_format($toplamIsciSgk + $toplamIsciIssizlik, 2, ',', '.') ?> <span
+                                                style="font-size: 0.85rem; font-weight: 600;">₺</span>
                                         </h4>
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- İşveren Payları Toplamı -->
                             <div class="col-xl col-md-4">
                                 <div class="card border-0 shadow-sm h-100 bordro-summary-card"
@@ -195,11 +204,14 @@ foreach ($donemler as $donem) {
                                             <div class="icon-box" style="background: rgba(244, 63, 94, 0.1);">
                                                 <i class="bx bx-building fs-4 text-danger"></i>
                                             </div>
-                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞVEREN (SGK + İŞSİZLİK)</span>
+                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞVEREN (SGK
+                                                + İŞSİZLİK)</span>
                                         </div>
-                                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM İŞVEREN MALİYETİ</p>
+                                        <p class="text-muted mb-1 small fw-bold"
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM İŞVEREN MALİYETİ</p>
                                         <h4 class="mb-0 fw-bold bordro-text-heading">
-                                            <?= number_format($toplamIsverenSgk + $toplamIsverenIssizlik, 2, ',', '.') ?> <span style="font-size: 0.85rem; font-weight: 600;">₺</span>
+                                            <?= number_format($toplamIsverenSgk + $toplamIsverenIssizlik, 2, ',', '.') ?>
+                                            <span style="font-size: 0.85rem; font-weight: 600;">₺</span>
                                         </h4>
                                     </div>
                                 </div>
@@ -214,11 +226,14 @@ foreach ($donemler as $donem) {
                                             <div class="icon-box" style="background: rgba(42, 157, 143, 0.1);">
                                                 <i class="bx bx-pie-chart fs-4 text-success"></i>
                                             </div>
-                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">TOPLAM PRİM</span>
+                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">TOPLAM
+                                                PRİM</span>
                                         </div>
-                                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">SGK BİLDİRGE TOPLAMI</p>
+                                        <p class="text-muted mb-1 small fw-bold"
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">SGK BİLDİRGE TOPLAMI</p>
                                         <h4 class="mb-0 fw-bold bordro-text-heading text-success">
-                                            <?= number_format($toplamPrim, 2, ',', '.') ?> <span style="font-size: 0.85rem; font-weight: 600;">₺</span>
+                                            <?= number_format($toplamPrim, 2, ',', '.') ?> <span
+                                                style="font-size: 0.85rem; font-weight: 600;">₺</span>
                                         </h4>
                                     </div>
                                 </div>
@@ -235,22 +250,27 @@ foreach ($donemler as $donem) {
                                         <th>Ad Soyad</th>
                                         <th class="text-center" title="Prim Ödeme Gün Sayısı">Gün</th>
                                         <th class="text-end text-primary" title="Prime Esas Kazanç">SGK Matrahı (PEK)</th>
-                                        <th class="text-end" style="background-color: #fff8e1;">İşçi SGK<br><small class="text-muted">(%14)</small></th>
-                                        <th class="text-end" style="background-color: #fff8e1;">İşçi İşsz.<br><small class="text-muted">(%1)</small></th>
-                                        <th class="text-end" style="background-color: #ffebee;">İşv. SGK<br><small class="text-muted">(%20.5)</small></th>
-                                        <th class="text-end" style="background-color: #ffebee;">İşv. İşsz.<br><small class="text-muted">(%2)</small></th>
+                                        <th class="text-end" style="background-color: #fff8e1;">İşçi SGK<br><small
+                                                class="text-muted">(%14)</small></th>
+                                        <th class="text-end" style="background-color: #fff8e1;">İşçi İşsz.<br><small
+                                                class="text-muted">(%1)</small></th>
+                                        <th class="text-end" style="background-color: #ffebee;">İşv. SGK<br><small
+                                                class="text-muted">(%20.5)</small></th>
+                                        <th class="text-end" style="background-color: #ffebee;">İşv. İşsz.<br><small
+                                                class="text-muted">(%2)</small></th>
                                         <th class="text-end bg-light fw-bold text-success">Toplam Prim</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php 
+                                    <?php
                                     $sira = 1;
-                                    foreach ($personeller as $personel): 
-                                    ?>
+                                    foreach ($personeller as $personel):
+                                        ?>
                                         <tr>
                                             <td class="text-center fw-medium"><?= $sira++ ?></td>
                                             <td>
-                                                <span class="text-muted" style="font-family: monospace;"><?= htmlspecialchars($personel->tc_kimlik_no ?? '-') ?></span>
+                                                <span class="text-muted"
+                                                    style="font-family: monospace;"><?= htmlspecialchars($personel->tc_kimlik_no ?? '-') ?></span>
                                             </td>
                                             <td>
                                                 <span class="fw-bold"><?= htmlspecialchars($personel->adi_soyadi) ?></span>
@@ -283,12 +303,18 @@ foreach ($donemler as $donem) {
                                     <tr>
                                         <th colspan="3" class="text-end">GENEL TOPLAMLAR:</th>
                                         <th class="text-center"><?= $toplamGun ?></th>
-                                        <th class="text-end text-primary fs-6"><?= number_format($toplamSgkMatrahi, 2, ',', '.') ?> ₺</th>
-                                        <th class="text-end text-warning"><?= number_format($toplamIsciSgk, 2, ',', '.') ?> ₺</th>
-                                        <th class="text-end text-warning"><?= number_format($toplamIsciIssizlik, 2, ',', '.') ?> ₺</th>
-                                        <th class="text-end text-danger"><?= number_format($toplamIsverenSgk, 2, ',', '.') ?> ₺</th>
-                                        <th class="text-end text-danger"><?= number_format($toplamIsverenIssizlik, 2, ',', '.') ?> ₺</th>
-                                        <th class="text-end text-success fs-5"><?= number_format($toplamPrim, 2, ',', '.') ?> ₺</th>
+                                        <th class="text-end text-primary fs-6">
+                                            <?= number_format($toplamSgkMatrahi, 2, ',', '.') ?> ₺</th>
+                                        <th class="text-end text-warning"><?= number_format($toplamIsciSgk, 2, ',', '.') ?>
+                                            ₺</th>
+                                        <th class="text-end text-warning">
+                                            <?= number_format($toplamIsciIssizlik, 2, ',', '.') ?> ₺</th>
+                                        <th class="text-end text-danger">
+                                            <?= number_format($toplamIsverenSgk, 2, ',', '.') ?> ₺</th>
+                                        <th class="text-end text-danger">
+                                            <?= number_format($toplamIsverenIssizlik, 2, ',', '.') ?> ₺</th>
+                                        <th class="text-end text-success fs-5">
+                                            <?= number_format($toplamPrim, 2, ',', '.') ?> ₺</th>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -321,62 +347,62 @@ foreach ($donemler as $donem) {
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // DataTable başlat
-    if (document.getElementById('sgkBildirgeTable')) {
-        $('#sgkBildirgeTable').DataTable({
-            language: {
-                url: 'assets/libs/datatables/Turkish.json'
-            },
-            pageLength: 50,
-            order: [[2, 'asc']], // Ad Soyad'a göre sırala
-            dom: '<"row align-items-center mb-3"<"col-md-6"B><"col-md-6"f>>rt<"row align-items-center mt-3"<"col-md-6"i><"col-md-6"p>>',
-            buttons: [
-                {
-                    extend: 'excelHtml5',
-                    text: '<i class="bx bx-spreadsheet me-1"></i> Excel İndir',
-                    className: 'btn btn-sm btn-success',
-                    title: 'SGK Bildirge Raporu - <?= $selectedDonem ? htmlspecialchars($selectedDonem->donem_adi) : '' ?>',
-                    footer: true,
-                    exportOptions: {
-                        columns: ':visible'
-                    }
+    document.addEventListener('DOMContentLoaded', function () {
+        // DataTable başlat
+        if (document.getElementById('sgkBildirgeTable')) {
+            $('#sgkBildirgeTable').DataTable({
+                language: {
+                    url: 'assets/libs/datatables/Turkish.json'
                 },
-                {
-                    extend: 'print',
-                    text: '<i class="bx bx-printer me-1"></i> Yazdır',
-                    className: 'btn btn-sm btn-secondary',
-                    title: 'SGK Bildirge Raporu - <?= $selectedDonem ? htmlspecialchars($selectedDonem->donem_adi) : '' ?>',
-                    footer: true,
-                    orientation: 'landscape',
-                    customize: function (win) {
-                        $(win.document.body).css('font-size', '10pt');
-                        $(win.document.body).find('table')
-                            .addClass('compact')
-                            .css('font-size', 'inherit');
+                pageLength: 50,
+                order: [[2, 'asc']], // Ad Soyad'a göre sırala
+                dom: '<"row align-items-center mb-3"<"col-md-6"B><"col-md-6"f>>rt<"row align-items-center mt-3"<"col-md-6"i><"col-md-6"p>>',
+                buttons: [
+                    {
+                        extend: 'excelHtml5',
+                        text: '<i class="bx bx-spreadsheet me-1"></i> Excel İndir',
+                        className: 'btn btn-sm btn-success',
+                        title: 'SGK Bildirge Raporu - <?= $selectedDonem ? htmlspecialchars($selectedDonem->donem_adi) : '' ?>',
+                        footer: true,
+                        exportOptions: {
+                            columns: ':visible'
+                        }
+                    },
+                    {
+                        extend: 'print',
+                        text: '<i class="bx bx-printer me-1"></i> Yazdır',
+                        className: 'btn btn-sm btn-secondary',
+                        title: 'SGK Bildirge Raporu - <?= $selectedDonem ? htmlspecialchars($selectedDonem->donem_adi) : '' ?>',
+                        footer: true,
+                        orientation: 'landscape',
+                        customize: function (win) {
+                            $(win.document.body).css('font-size', '10pt');
+                            $(win.document.body).find('table')
+                                .addClass('compact')
+                                .css('font-size', 'inherit');
+                        }
                     }
-                }
-            ],
-            scrollX: true, 
-            responsive: false
-        });
-    }
-    
-    // Yıl değişince
-    const yilSelect = document.querySelector('[name="yilSelectSgk"]');
-    const donemSelect = document.querySelector('[name="donemSelectSgk"]');
-    
-    if (yilSelect) {
-        yilSelect.addEventListener('change', function() {
-            window.location.href = 'index?p=bordro/raporlar/sgk-bildirge&yil=' + this.value;
-        });
-    }
-    
-    // Dönem değişince
-    if (donemSelect) {
-        donemSelect.addEventListener('change', function() {
-            window.location.href = 'index?p=bordro/raporlar/sgk-bildirge&donem=' + this.value;
-        });
-    }
-});
+                ],
+                scrollX: true,
+                responsive: false
+            });
+        }
+
+        // Yıl değişince
+        const yilSelect = document.querySelector('[name="yilSelectSgk"]');
+        const donemSelect = document.querySelector('[name="donemSelectSgk"]');
+
+        if (yilSelect) {
+            yilSelect.addEventListener('change', function () {
+                window.location.href = 'index?p=bordro/raporlar/sgk-bildirge&yil=' + this.value;
+            });
+        }
+
+        // Dönem değişince
+        if (donemSelect) {
+            donemSelect.addEventListener('change', function () {
+                window.location.href = 'index?p=bordro/raporlar/sgk-bildirge&donem=' + this.value;
+            });
+        }
+    });
 </script>
