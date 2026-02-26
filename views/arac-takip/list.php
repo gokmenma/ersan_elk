@@ -377,10 +377,7 @@ if ($filter === 'muayene') {
                                     id="badge-servisteki-arac"
                                     onclick="location.href='index.php?p=arac-takip/list&filter=serviste'">
                                     <i class="bx bx-wrench me-1"></i> Servisteki:
-                                    <?php
-                                    $servisStatsInitial = $Servis->getStats();
-                                    echo $servisStatsInitial->servisteki_arac_sayisi ?? 0;
-                                    ?>
+                                    <?php echo $Arac->getServistekiAracSayisi(); ?>
                                 </span>
                             </div>
 

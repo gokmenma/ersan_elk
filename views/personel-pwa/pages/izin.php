@@ -114,6 +114,22 @@
                     Reddedilen
                 </button>
             </div>
+
+            <!-- Calendar Stats (Visible in Calendar View) -->
+            <div id="calendar-stats" class="grid grid-cols-3 gap-2 mb-3" style="display: none;">
+                <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-2.5 text-center border border-blue-100 dark:border-blue-800/30 shadow-sm">
+                    <span class="block text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider mb-0.5">Çalışılan</span>
+                    <span class="block text-xl font-black text-blue-700 dark:text-blue-300 leading-none" id="stat-calisilan">-</span>
+                </div>
+                <div class="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-2.5 text-center border border-amber-100 dark:border-amber-800/30 shadow-sm">
+                    <span class="block text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider mb-0.5">Ücretsiz</span>
+                    <span class="block text-xl font-black text-amber-700 dark:text-amber-300 leading-none" id="stat-ucretsiz">-</span>
+                </div>
+                <div class="bg-green-50 dark:bg-green-900/20 rounded-xl p-2.5 text-center border border-green-100 dark:border-green-800/30 shadow-sm">
+                    <span class="block text-[10px] text-green-600 dark:text-green-400 font-bold uppercase tracking-wider mb-0.5">Ücretli</span>
+                    <span class="block text-xl font-black text-green-700 dark:text-green-300 leading-none" id="stat-ucretli">-</span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -333,10 +349,12 @@
             document.getElementById('month-selector-spacer').style.display = 'none';
             document.getElementById('calendar-view').style.display = 'block';
             document.getElementById('month-selector').style.display = 'flex';
+            document.getElementById('calendar-stats').style.display = 'flex';
             renderCalendar();
         } else {
             document.getElementById('calendar-view').style.display = 'none';
             document.getElementById('month-selector').style.display = 'none';
+            document.getElementById('calendar-stats').style.display = 'none';
             document.getElementById('month-selector-spacer').style.display = 'block';
             document.getElementById('filter-tabs').style.display = 'flex';
             document.getElementById('list-view').style.display = 'block';
@@ -459,6 +477,85 @@
         }
 
         grid.innerHTML = html;
+        updateMonthStats();
+    }
+
+    function updateMonthStats() {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
+        // 1. Calculate Total Potential Working Days (Mon-Fri)
+        let totalWorkingDays = 0;
+        for (let d = 1; d <= daysInMonth; d++) {
+            const date = new Date(year, month, d);
+            const day = date.getDay();
+            if (day !== 0 && day !== 6) { // Not Sunday (0) or Saturday (6)
+                totalWorkingDays++;
+            }
+        }
+
+        // 2. Calculate Leaves in this month
+        let unpaidLeaveDays = 0;
+        let paidLeaveDays = 0;
+
+        const monthStart = new Date(year, month, 1);
+        const monthEnd = new Date(year, month + 1, 0);
+        // Normalize times to start of day for accurate comparison
+        monthStart.setHours(0,0,0,0);
+        monthEnd.setHours(0,0,0,0);
+
+        if (izinlerData && izinlerData.length > 0) {
+            izinlerData.forEach(izin => {
+                // Check if status is approved (case-insensitive and handling Turkish chars)
+                const status = (izin.durum || '').toLowerCase();
+                const isApproved = status === 'onaylandi' || status === 'onaylandı';
+                
+                if (!isApproved) return; 
+
+                const start = parseDateCustom(izin.baslangic);
+                const end = parseDateCustom(izin.bitis);
+                
+                if (!start || !end) return;
+
+                start.setHours(0,0,0,0);
+                end.setHours(0,0,0,0);
+
+                // Check overlap
+                if (start > monthEnd || end < monthStart) return;
+
+                const overlapStart = start < monthStart ? monthStart : start;
+                const overlapEnd = end > monthEnd ? monthEnd : end;
+
+                // Iterate days in overlap to count working days (Mon-Fri)
+                let current = new Date(overlapStart);
+                
+                // Safety break to prevent infinite loops
+                let loops = 0;
+                while (current <= overlapEnd && loops < 366) {
+                     const day = current.getDay();
+                     if (day !== 0 && day !== 6) {
+                         // Check leave type
+                         const typeName = (izin.izin_tipi_text || '').toLowerCase();
+                         if (typeName.includes('ücretsiz') || typeName.includes('ucretsiz')) {
+                             unpaidLeaveDays++;
+                         } else {
+                             paidLeaveDays++;
+                         }
+                     }
+                     current.setDate(current.getDate() + 1);
+                     loops++;
+                }
+            });
+        }
+
+        // 3. Update UI
+        // Worked = Potential Working Days - (Paid + Unpaid Leaves)
+        const actualWorked = Math.max(0, totalWorkingDays - (paidLeaveDays + unpaidLeaveDays));
+
+        document.getElementById('stat-calisilan').textContent = actualWorked;
+        document.getElementById('stat-ucretsiz').textContent = unpaidLeaveDays;
+        document.getElementById('stat-ucretli').textContent = paidLeaveDays;
     }
 
     async function loadIzinTurleri() {

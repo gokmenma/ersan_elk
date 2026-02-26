@@ -421,6 +421,7 @@ $izinTurleri = [
                                     <th>Öncelik</th>
                                     <th>Tarih</th>
                                     <th>Açıklama</th>
+                                    <th>Sonuç</th>
                                     <th class="text-center" style="width:200px">İşlemler</th>
                                 </tr>
                             </thead>
@@ -500,6 +501,9 @@ $izinTurleri = [
                                         </td>
                                         <td>
                                             <?= htmlspecialchars($talep->aciklama ?? '-') ?>
+                                        </td>
+                                        <td>
+                                            <?= htmlspecialchars($talep->cozum_aciklama ?? '-') ?>
                                         </td>
                                         <td class="text-center">
                                             <div class="d-flex align-items-center justify-content-center gap-1">
@@ -1127,6 +1131,9 @@ $izinTurleri = [
                 html += '<tr><td class="text-muted">Durum:</td><td><span class="badge bg-' + tDurum + '"><i class="bx bx-' + tIcon + '"></i> ' + ucfirst(data.durum) + '</span></td></tr>';
                 if (data.aciklama) {
                     html += '<tr><td class="text-muted">Açıklama:</td><td>' + data.aciklama + '</td></tr>';
+                }
+                if (data.cozum_aciklama) {
+                    html += '<tr><td class="text-muted text-success">Sonuç Açıklaması:</td><td><strong class="text-success">' + data.cozum_aciklama + '</strong></td></tr>';
                 }
                 if (data.foto) {
                     html += '<tr><td class="text-muted">Fotoğraf:</td><td><img src="' + data.foto + '" class="img-fluid rounded mt-2" style="max-height:200px;cursor:pointer;" onclick="window.open(\'' + data.foto + '\', \'_blank\')" onerror="this.style.display=\'none\'"></td></tr>';

@@ -539,6 +539,13 @@
                 <p class="text-sm text-slate-700 dark:text-slate-300">${talep.aciklama}</p>
             </div>
             
+            ${talep.cozum_aciklama ? `
+            <div class="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+                <p class="text-xs text-green-600 dark:text-green-400 font-semibold mb-1">Sonuç Açıklaması</p>
+                <p class="text-sm text-green-700 dark:text-green-300">${talep.cozum_aciklama}</p>
+            </div>
+            ` : ''}
+
             ${talep.foto ? `
             <div>
                 <p class="text-xs text-slate-500 mb-2">Fotoğraf</p>

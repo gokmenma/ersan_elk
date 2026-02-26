@@ -297,7 +297,7 @@ if (Gate::allows("ana_sayfa")) {
     // Widget İçeriklerini Tanımla
     $widgets = [];
 
-    if (!empty($slider_notifications)) {
+    if (!empty($slider_notifications) && !empty($duyurular)) {
         ob_start(); ?>
         <div class="col-12 col-lg-6 widget-item" id="widget-ana-slider" style="margin-bottom: 1.5rem; position: relative;">
             <!-- Drag Handle (Separated from Carousel to avoid event blocking) -->

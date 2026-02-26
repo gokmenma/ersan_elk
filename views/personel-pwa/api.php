@@ -806,6 +806,7 @@ try {
                     'durum_text' => $durum_map[$item->durum] ?? $item->durum,
                     'tarih' => date('d.m.Y H:i', strtotime($item->olusturma_tarihi)),
                     'aciklama' => $item->aciklama,
+                    'cozum_aciklama' => $item->cozum_aciklama,
                     'foto' => $item->foto,
                     'latitude' => $item->latitude,
                     'longitude' => $item->longitude,
@@ -1552,18 +1553,25 @@ try {
 
             // İstatistikler
             $totalSonuclanan = 0;
+            $filteredSonuclanan = 0; // Admin raporuyla eşleşen (ücretli ve tanımlı)
             $totalAcik = 0;
 
             foreach ($items as $item) {
-                $totalSonuclanan += (int) ($item->sonuclanmis ?? 0);
+                $sonuclanan = (int) ($item->sonuclanmis ?? 0);
+                $totalSonuclanan += $sonuclanan;
                 $totalAcik += (int) ($item->acik_olanlar ?? 0);
+
+                // Admin raporu mantığı: is_turu_ucret > 0 ve rapor_sekmesi tanımlı olanlar
+                if (!empty($item->rapor_sekmesi) && ($item->is_turu_ucret > 0)) {
+                    $filteredSonuclanan += $sonuclanan;
+                }
             }
 
             response(true, [
                 'items' => $items,
                 'stats' => [
-                    'toplam' => $totalSonuclanan,
-                    'sonuclanan' => $totalSonuclanan,
+                    'toplam' => $filteredSonuclanan, // Admin raporu ile tutması için filtrelenmiş toplam
+                    'sonuclanan' => $totalSonuclanan, // Gerçek toplam (tüm işler)
                     'acik' => $totalAcik
                 ]
             ]);

@@ -28,18 +28,14 @@ use App\Helper\Date;
     <!-- Stats Card -->
     <section class="px-4 -mt-10 relative z-20">
         <div class="card p-5">
-            <div class="grid grid-cols-3 gap-3 text-center">
+            <div class="grid grid-cols-2 gap-3 text-center">
                 <div>
-                    <p class="text-2xl font-bold text-primary" id="toplam-is">-</p>
+                    <p class="text-2xl font-bold text-red-600" id="toplam-is">-</p>
                     <p class="text-xs text-slate-500">Toplam İş</p>
                 </div>
                 <div>
-                    <p class="text-2xl font-bold text-green-500" id="sonuclanan-is">-</p>
+                    <p class="text-2xl font-bold text-green-600" id="sonuclanan-is">-</p>
                     <p class="text-xs text-slate-500">Sonuçlanan</p>
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-amber-500" id="acik-is">-</p>
-                    <p class="text-xs text-slate-500">Açık</p>
                 </div>
             </div>
         </div>
@@ -52,7 +48,7 @@ use App\Helper\Date;
                 <div class="flex-1">
                     <label class="text-xs text-slate-500 mb-1 block">Başlangıç</label>
                     <input type="date" id="filter-start-date" class="form-input text-sm"
-                        value="<?php echo date('Y-m-d', strtotime('-30 days')); ?>" onchange="loadPuantajData()">
+                        value="<?php echo date('Y-m-01'); ?>" onchange="loadPuantajData()">
                 </div>
                 <div class="flex-1">
                     <label class="text-xs text-slate-500 mb-1 block">Bitiş</label>
@@ -215,7 +211,7 @@ use App\Helper\Date;
                 // Update stats
                 document.getElementById('toplam-is').textContent = stats.toplam || 0;
                 document.getElementById('sonuclanan-is').textContent = stats.sonuclanan || 0;
-                document.getElementById('acik-is').textContent = stats.acik || 0;
+                // document.getElementById('acik-is').textContent = stats.acik || 0;
 
                 if (puantajData.length === 0) {
                     listContainer.innerHTML = '';

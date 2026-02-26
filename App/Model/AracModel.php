@@ -24,7 +24,7 @@ class AracModel extends Model
             SELECT a.*, 
                    az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
-                   (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL) as serviste_mi
+                   (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN (
                 SELECT az1.* FROM arac_zimmetleri az1
@@ -52,7 +52,7 @@ class AracModel extends Model
                    p.adi_soyadi as zimmetli_personel_adi,
                    1 as serviste_mi
             FROM {$this->table} a
-            INNER JOIN arac_servis_kayitlari s ON a.id = s.arac_id AND s.iade_tarihi IS NULL
+            INNER JOIN arac_servis_kayitlari s ON a.id = s.arac_id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL
             LEFT JOIN (
                 SELECT az1.* FROM arac_zimmetleri az1
                 INNER JOIN (
@@ -66,6 +66,23 @@ class AracModel extends Model
         ");
         $sql->execute(['firma_id' => $_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Servisteki araç sayısı
+     */
+    public function getServistekiAracSayisi()
+    {
+        $sql = $this->db->prepare("
+            SELECT COUNT(DISTINCT a.id) as servisteki_arac
+            FROM {$this->table} a
+            INNER JOIN arac_servis_kayitlari s ON a.id = s.arac_id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL
+            WHERE a.firma_id = :firma_id
+            AND a.silinme_tarihi IS NULL
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        $result = $sql->fetch(PDO::FETCH_OBJ);
+        return $result->servisteki_arac ?? 0;
     }
 
     /**
@@ -169,7 +186,9 @@ class AracModel extends Model
     public function getZimmetliAraclar()
     {
         $sql = $this->db->prepare("
-            SELECT a.*, p.adi_soyadi as zimmetli_personel_adi
+            SELECT a.*, 
+                   p.adi_soyadi as zimmetli_personel_adi,
+                   (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             INNER JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
             LEFT JOIN personel p ON az.personel_id = p.id
@@ -187,7 +206,9 @@ class AracModel extends Model
     public function getBostaAraclar()
     {
         $sql = $this->db->prepare("
-            SELECT a.*, NULL as zimmetli_personel_adi
+            SELECT a.*, 
+                   NULL as zimmetli_personel_adi,
+                   (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
             WHERE a.firma_id = :firma_id 
@@ -324,7 +345,9 @@ class AracModel extends Model
     public function getMuayeneYaklasanlar($gunRange = 30)
     {
         $sql = $this->db->prepare("
-            SELECT a.*, p.adi_soyadi as zimmetli_personel_adi
+            SELECT a.*, 
+                   p.adi_soyadi as zimmetli_personel_adi,
+                   (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
             LEFT JOIN personel p ON az.personel_id = p.id
@@ -345,7 +368,9 @@ class AracModel extends Model
     public function getSigortaYaklasanlar($gunRange = 30)
     {
         $sql = $this->db->prepare("
-            SELECT a.*, p.adi_soyadi as zimmetli_personel_adi
+            SELECT a.*, 
+                   p.adi_soyadi as zimmetli_personel_adi,
+                   (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
             LEFT JOIN personel p ON az.personel_id = p.id
@@ -366,7 +391,9 @@ class AracModel extends Model
     public function getKaskoYaklasanlar($gunRange = 30)
     {
         $sql = $this->db->prepare("
-            SELECT a.*, p.adi_soyadi as zimmetli_personel_adi
+            SELECT a.*, 
+                   p.adi_soyadi as zimmetli_personel_adi,
+                   (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
             LEFT JOIN personel p ON az.personel_id = p.id
@@ -387,7 +414,9 @@ class AracModel extends Model
     public function getMuayeneBitenler()
     {
         $sql = $this->db->prepare("
-            SELECT a.*, p.adi_soyadi as zimmetli_personel_adi
+            SELECT a.*, 
+                   p.adi_soyadi as zimmetli_personel_adi,
+                   (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
             LEFT JOIN personel p ON az.personel_id = p.id
@@ -407,7 +436,9 @@ class AracModel extends Model
     public function getSigortaBitenler()
     {
         $sql = $this->db->prepare("
-            SELECT a.*, p.adi_soyadi as zimmetli_personel_adi
+            SELECT a.*, 
+                   p.adi_soyadi as zimmetli_personel_adi,
+                   (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
             LEFT JOIN personel p ON az.personel_id = p.id
@@ -427,7 +458,9 @@ class AracModel extends Model
     public function getKaskoBitenler()
     {
         $sql = $this->db->prepare("
-            SELECT a.*, p.adi_soyadi as zimmetli_personel_adi
+            SELECT a.*, 
+                   p.adi_soyadi as zimmetli_personel_adi,
+                   (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
             LEFT JOIN personel p ON az.personel_id = p.id
