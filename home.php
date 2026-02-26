@@ -171,7 +171,7 @@ if (Gate::allows("ana_sayfa")) {
         }
     }
 
-    /* if (empty($slider_notifications)) {
+    if (empty($slider_notifications)) {
         $slider_notifications = [
             [
                 'title' => 'Duyuru Bulunmamaktadır',
@@ -180,70 +180,68 @@ if (Gate::allows("ana_sayfa")) {
                 'gradient' => 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
             ]
         ];
-    } */
+    }
 
     // Widget İçeriklerini Tanımla
     $widgets = [];
 
-    if (!empty($slider_notifications)) {
-        ob_start(); ?>
-        <div class="col-12 widget-item" id="widget-ana-slider">
-            <div id="dashboardCarousel" class="carousel slide" data-bs-ride="carousel">
-                <div class="carousel-indicators">
-                    <?php foreach ($slider_notifications as $index => $notif): ?>
-                        <button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="<?php echo $index; ?>"
-                            class="<?php echo $index === 0 ? 'active' : ''; ?>"
-                            aria-current="<?php echo $index === 0 ? 'true' : 'false'; ?>"
-                            aria-label="Slide <?php echo $index + 1; ?>"></button>
-                    <?php endforeach; ?>
-                </div>
-                <div class="carousel-inner shadow-lg rounded-4">
-                    <?php foreach ($slider_notifications as $index => $notif): ?>
-                        <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
-                            <div class="carousel-content p-5 d-flex align-items-center"
-                                style="background: <?php echo $notif['gradient']; ?>; min-height: 200px; position: relative; overflow: hidden;">
-                                <!-- Arka plan animasyon efekti için dekoratif elementler -->
-                                <div class="circles">
-                                    <div></div>
-                                    <div></div>
-                                    <div></div>
-                                    <div></div>
-                                </div>
-                                <div class="flex-grow-1 position-relative" style="z-index: 2;">
-                                    <h2 class="text-white fw-bold mb-3"><?php echo $notif['title']; ?></h2>
-                                    <p class="text-white fs-5 mb-0" style="opacity:0.9;"><?php echo $notif['description']; ?></p>
-                                    <?php if (!empty($notif['link'])): ?>
-                                        <a href="<?= $notif['link'] ?>"
-                                            class="btn btn-light btn-sm mt-3 px-4 rounded-pill fw-bold">Detay Gör <i
-                                                class="bx bx-right-arrow-alt"></i></a>
-                                    <?php endif; ?>
-                                </div>
-                                <?php if (!empty($notif['image'])): ?>
-                                    <div class="flex-shrink-0 ms-4 d-none d-md-block" style="z-index: 1;">
-                                        <img src="<?= $notif['image'] ?>" class="rounded-3 shadow-lg"
-                                            style="max-height: 150px; width: auto; max-width: 250px; object-fit: cover; border: 3px solid rgba(255,255,255,0.2);">
-                                    </div>
-                                <?php else: ?>
-                                    <div class="flex-shrink-0 ms-4 d-none d-md-block opacity-25 position-relative" style="z-index: 1;">
-                                        <i class='bx <?php echo $notif['icon']; ?>' style="font-size: 150px; color: white;"></i>
-                                    </div>
+    ob_start(); ?>
+    <div class="col-12 widget-item" id="widget-ana-slider">
+        <div id="dashboardCarousel" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-indicators">
+                <?php foreach ($slider_notifications as $index => $notif): ?>
+                    <button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="<?php echo $index; ?>"
+                        class="<?php echo $index === 0 ? 'active' : ''; ?>"
+                        aria-current="<?php echo $index === 0 ? 'true' : 'false'; ?>"
+                        aria-label="Slide <?php echo $index + 1; ?>"></button>
+                <?php endforeach; ?>
+            </div>
+            <div class="carousel-inner shadow-lg rounded-4">
+                <?php foreach ($slider_notifications as $index => $notif): ?>
+                    <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
+                        <div class="carousel-content p-5 d-flex align-items-center"
+                            style="background: <?php echo $notif['gradient']; ?>; min-height: 200px; position: relative; overflow: hidden;">
+                            <!-- Arka plan animasyon efekti için dekoratif elementler -->
+                            <div class="circles">
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                            </div>
+                            <div class="flex-grow-1 position-relative" style="z-index: 2;">
+                                <h2 class="text-white fw-bold mb-3"><?php echo $notif['title']; ?></h2>
+                                <p class="text-white fs-5 mb-0" style="opacity:0.9;"><?php echo $notif['description']; ?></p>
+                                <?php if (!empty($notif['link'])): ?>
+                                    <a href="<?= $notif['link'] ?>"
+                                        class="btn btn-light btn-sm mt-3 px-4 rounded-pill fw-bold">Detay Gör <i
+                                            class="bx bx-right-arrow-alt"></i></a>
                                 <?php endif; ?>
                             </div>
+                            <?php if (!empty($notif['image'])): ?>
+                                <div class="flex-shrink-0 ms-4 d-none d-md-block" style="z-index: 1;">
+                                    <img src="<?= $notif['image'] ?>" class="rounded-3 shadow-lg"
+                                        style="max-height: 150px; width: auto; max-width: 250px; object-fit: cover; border: 3px solid rgba(255,255,255,0.2);">
+                                </div>
+                            <?php else: ?>
+                                <div class="flex-shrink-0 ms-4 d-none d-md-block opacity-25 position-relative" style="z-index: 1;">
+                                    <i class='bx <?php echo $notif['icon']; ?>' style="font-size: 150px; color: white;"></i>
+                                </div>
+                            <?php endif; ?>
                         </div>
-                    <?php endforeach; ?>
-                </div>
-                <button class="carousel-control-prev" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="prev">
-                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                    <span class="visually-hidden">Previous</span>
-                </button>
-                <button class="carousel-control-next" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="next">
-                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                    <span class="visually-hidden">Next</span>
-                </button>
+                    </div>
+                <?php endforeach; ?>
             </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
         </div>
-        <?php $widgets['widget-ana-slider'] = ob_get_clean();
-    }
+    </div>
+    <?php $widgets['widget-ana-slider'] = ob_get_clean();
 
     ob_start(); ?>
     <div class="col-md-3 widget-item" id="widget-aktif-personel">

@@ -117,68 +117,46 @@ try {
             break;
 
         case 'getWorkStats':
-            $type = $_POST['type'] ?? 'day'; // day or month
             $today = date('Y-m-d');
             $startOfMonth = date('Y-m-01');
             $endOfMonth = date('Y-m-t');
 
             $db = (new \App\Model\Model('tanimlamalar'))->getDb();
 
-            $where = "t.personel_id = ? AND t.silinme_tarihi IS NULL";
-            $params = [$personel_id];
+            $baseWhere = "personel_id = ? AND silinme_tarihi IS NULL";
+            $paramsDaily = [$personel_id, $today];
+            $paramsMonthly = [$personel_id, $startOfMonth, $endOfMonth];
 
-            if ($type === 'day') {
-                $where .= " AND t.tarih = ?";
-                $params[] = $today;
-            } else {
-                $where .= " AND t.tarih BETWEEN ? AND ?";
-                $params[] = $startOfMonth;
-                $params[] = $endOfMonth;
-            }
+            // Günlük Toplam
+            $sqlIslerDaily = "SELECT SUM(sonuclanmis) as toplam FROM yapilan_isler WHERE $baseWhere AND tarih = ?";
+            $stmt = $db->prepare($sqlIslerDaily);
+            $stmt->execute($paramsDaily);
+            $dailyIsler = (int)($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
 
-            // Yapılan İşler - Tanimlamalardaki tur_adi'na göre grupla
-            // COALESCE ile hem yeni hem eski alanları kontrol ediyoruz
-            $sqlIsler = "SELECT 
-                            COALESCE(tn.tur_adi, t.is_emri_tipi, 'Diğer İşler') as baslik, 
-                            SUM(t.sonuclanmis) as toplam 
-                        FROM yapilan_isler t
-                        LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
-                        WHERE $where
-                        GROUP BY COALESCE(tn.tur_adi, t.is_emri_tipi, 'Diğer İşler')
-                        HAVING toplam > 0";
+            $sqlEndeksDaily = "SELECT SUM(okunan_abone_sayisi) as toplam FROM endeks_okuma WHERE $baseWhere AND tarih = ?";
+            $stmt = $db->prepare($sqlEndeksDaily);
+            $stmt->execute($paramsDaily);
+            $dailyEndeks = (int)($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
 
-            $stmtIsler = $db->prepare($sqlIsler);
-            $stmtIsler->execute($params);
-            $isler = $stmtIsler->fetchAll(PDO::FETCH_OBJ);
+            $dailyTotal = $dailyIsler + $dailyEndeks;
 
-            // Endeks Okuma
-            $sqlEndeks = "SELECT 
-                            'Endeks Okuma' as baslik, 
-                            SUM(okunan_abone_sayisi) as toplam 
-                        FROM endeks_okuma t
-                        WHERE $where";
+            // Aylık Toplam
+            $sqlIslerMonthly = "SELECT SUM(sonuclanmis) as toplam FROM yapilan_isler WHERE $baseWhere AND tarih BETWEEN ? AND ?";
+            $stmt = $db->prepare($sqlIslerMonthly);
+            $stmt->execute($paramsMonthly);
+            $monthlyIsler = (int)($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
 
-            $stmtEndeks = $db->prepare($sqlEndeks);
-            $stmtEndeks->execute($params);
-            $endeks = $stmtEndeks->fetch(PDO::FETCH_OBJ);
+            $sqlEndeksMonthly = "SELECT SUM(okunan_abone_sayisi) as toplam FROM endeks_okuma WHERE $baseWhere AND tarih BETWEEN ? AND ?";
+            $stmt = $db->prepare($sqlEndeksMonthly);
+            $stmt->execute($paramsMonthly);
+            $monthlyEndeks = (int)($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
 
-            $data = [];
-            foreach ($isler as $i) {
-                $data[] = [
-                    'baslik' => $i->baslik,
-                    'toplam' => (int) $i->toplam,
-                    'ikon' => 'task_alt'
-                ];
-            }
-            if ($endeks && $endeks->toplam > 0) {
-                $data[] = [
-                    'baslik' => 'Endeks Okuma',
-                    'toplam' => (int) $endeks->toplam,
-                    'ikon' => 'speed'
-                ];
-            }
+            $monthlyTotal = $monthlyIsler + $monthlyEndeks;
 
-            response(true, $data);
+            response(true, [
+                'daily_total' => $dailyTotal,
+                'monthly_total' => $monthlyTotal
+            ]);
             break;
 
         // ===== Bordro İşlemleri =====
@@ -1584,7 +1562,7 @@ try {
             response(true, [
                 'items' => $items,
                 'stats' => [
-                    'toplam' => count($items),
+                    'toplam' => $totalSonuclanan,
                     'sonuclanan' => $totalSonuclanan,
                     'acik' => $totalAcik
                 ]

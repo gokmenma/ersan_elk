@@ -18,7 +18,6 @@ $year = $_GET['year'] ?? date('Y');
 $month = $_GET['month'] ?? date('m');
 $personel_id = $_GET['personel_id'] ?? '';
 $region = $_GET['region'] ?? '';
-$region = $_GET['region'] ?? '';
 $startDate = $_GET['start_date'] ?? '';
 $endDate = $_GET['end_date'] ?? '';
 $filterType = $_GET['filter_type'] ?? 'period';
@@ -228,10 +227,10 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                                         </div>
 
                                         <div class="col-md-2">
-                                            <?php echo Form::FormSelect2("personel_id", $personelOptions, $personel_id, "Personel", "bx bx-user", "grid", "key", "form-control-sm select2"); ?>
+                                            <?php echo Form::FormSelect2("personel_id", $personelOptions, $personel_id, "Personel", "bx bx-user", "key", "", "form-control-sm select2"); ?>
                                         </div>
                                         <div class="col-md-2">
-                                            <?php echo Form::FormSelect2("region", $regionOptions, $region, "Bölge", "bx bx-map-pin", "grid", "key", "form-control-sm select2"); ?>
+                                            <?php echo Form::FormSelect2("region", $regionOptions, $region, "Bölge", "bx bx-map-pin", "key", "", "form-control-sm select2"); ?>
                                         </div>
 
                                         <div class="col-md-2 d-flex align-items-end">

@@ -182,6 +182,8 @@ $(document).ready(function () {
         { data: "sgk_no", visible: false },
         { data: "sodexo_kart_no", visible: false },
         { data: "cep_telefonu_2", visible: false },
+        { data: "kaski_kullanici_adi", visible: false },
+        { data: "kaski_sifre", visible: false },
       ],
       createdRow: function (row, data, dataIndex) {
         $(row).attr("data-id", data.id);

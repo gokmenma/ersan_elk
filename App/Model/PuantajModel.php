@@ -47,10 +47,18 @@ class PuantajModel extends Model
             $params[] = $workType;
             $params[] = $workType;
         }
-        if ($workResult) {
+
+        if ($workResult === 'sonuclanan') {
+            $sql .= " AND (t.sonuclanmis > 0)";
+        } elseif ($workResult === 'acik') {
+            $sql .= " AND (t.acik_olanlar > 0)";
+        } elseif ($workResult) {
             $sql .= " AND (tn.is_emri_sonucu = ? OR t.is_emri_sonucu = ?)";
             $params[] = $workResult;
             $params[] = $workResult;
+        } else {
+            // Hiçbir filtre yoksa, en azından bir değeri olanları getir
+            $sql .= " AND (t.sonuclanmis > 0 OR t.acik_olanlar > 0)";
         }
 
         $sql .= " ORDER BY t.tarih DESC";
@@ -247,7 +255,11 @@ class PuantajModel extends Model
             $baseWhere .= " AND (tn.tur_adi = :work_type OR t.is_emri_tipi = :work_type)";
             $params['work_type'] = $workType;
         }
-        if ($workResult) {
+        if ($workResult === 'sonuclanan') {
+            $baseWhere .= " AND (t.sonuclanmis > 0)";
+        } elseif ($workResult === 'acik') {
+            $baseWhere .= " AND (t.acik_olanlar > 0)";
+        } elseif ($workResult) {
             // Hem yeni normalized hem de eski string alanından filtrele
             $baseWhere .= " AND (tn.is_emri_sonucu = :work_result OR t.is_emri_sonucu = :work_result)";
             $params['work_result'] = $workResult;

@@ -257,9 +257,11 @@ use App\Helper\Date;
                 acik: 0
             };
             acc[date].items.push(item);
-            acc[date].total++;
-            acc[date].sonuclanan += (int(item.sonuclanmis) || 0);
-            acc[date].acik += (int(item.acik_olanlar) || 0);
+            const sonuclanmisCount = (int(item.sonuclanmis) || 0);
+            const acikCount = (int(item.acik_olanlar) || 0);
+            acc[date].total += (sonuclanmisCount + acikCount);
+            acc[date].sonuclanan += sonuclanmisCount;
+            acc[date].acik += acikCount;
             return acc;
         }, {});
 
@@ -292,7 +294,8 @@ use App\Helper\Date;
                         </div>
                         <div class="flex flex-col items-end">
                             <div class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/50 px-2.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800">
-                                 <span class="text-[13px] font-bold text-primary">${group.total} İŞ</span>
+                                 <span class="text-[13px] font-bold text-primary">${group.sonuclanan} İŞ</span>
+                                 ${group.acik > 0 ? `<span class="text-[11px] text-slate-400 ms-1">(+${group.acik} Açık)</span>` : ''}
                             </div>
                             <div class="flex gap-3 mt-2.5">
                                 <div class="flex items-center gap-1.5 text-green-600">

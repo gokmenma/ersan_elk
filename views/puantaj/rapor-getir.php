@@ -373,7 +373,7 @@ if (true) { // Always use unified logic for all standard tabs
             $regionName = $team->ekip_bolge ?: 'TANIMSIZ BÖLGE';
         }
 
-        if ($filterRegion && mb_strtoupper($regionName, 'UTF-8') !== mb_strtoupper($filterRegion, 'UTF-8'))
+        if ($filterRegion !== '' && mb_strtoupper($regionName, 'UTF-8') !== mb_strtoupper($filterRegion, 'UTF-8'))
             continue;
 
         $regionGrouped[$regionName][] = [
@@ -1204,8 +1204,10 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                 h.setAttribute('colspan', isSummaryMode ? 1 : defaultSubColCount);
             });
             const totalCols = <?= count($reportDates) * $subColCount ?>;
-            document.getElementById('mainGunlerHeader').setAttribute('colspan', totalCols);
-            document.getElementById('actionTotalsHeader').setAttribute('colspan', defaultSubColCount);
+            const mainGunlerHeader = document.getElementById('mainGunlerHeader');
+            if (mainGunlerHeader) mainGunlerHeader.setAttribute('colspan', totalCols);
+            const actionTotalsHeader = document.getElementById('actionTotalsHeader');
+            if (actionTotalsHeader) actionTotalsHeader.setAttribute('colspan', defaultSubColCount);
             document.querySelectorAll('.action-grand-total-consolidated').forEach(c => c.setAttribute('colspan', defaultSubColCount));
         } else {
             const activeCodes = Array.from(activeFilters).map(f => f.dataset.wtCode);
@@ -1250,7 +1252,8 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             for (let i = 0; i < row2SubHeaders.length; i++) {
                 if (row2SubHeaders[i].dataset.date && !row2SubHeaders[i].classList.contains('legend-hidden')) mVis++;
             }
-            document.getElementById('mainGunlerHeader').setAttribute('colspan', mVis || 1);
+            const mainGunlerHeader2 = document.getElementById('mainGunlerHeader');
+            if (mainGunlerHeader2) mainGunlerHeader2.setAttribute('colspan', mVis || 1);
         }
 
         table.querySelectorAll('.day-separator').forEach(s => s.classList.remove('day-separator'));

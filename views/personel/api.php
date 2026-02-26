@@ -492,6 +492,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'kan_grubu' => ['kan grubu'],
                 'cep_telefonu' => ['telefon', 'cep telefonu', 'gsm', 'mobil', 'cep'],
                 'sifre' => ['program şifresi', 'program sifresi', 'program şifre', 'program sifre', 'şifre', 'sifre', 'password'],
+                'kaski_kullanici_adi' => ['kaski kullanıcı adı', 'kaski kullanici adi', 'kaski kullanıcı', 'kaski kullanici', 'kaski k.adı'],
+                'kaski_sifre' => ['kaski şifre', 'kaski sifre', 'kaski şifresi', 'kaski sifresi', 'kaski password'],
                 'cep_telefonu_2' => ['2. cep telefonu', 'telefon 2'],
                 'email_adresi' => ['email', 'e-posta', 'mail', 'eposta', 'e-posta adresi'],
                 'ayakkabi_numarasi' => ['ayakkabı no', 'ayakkabi no'],

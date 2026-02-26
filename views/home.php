@@ -194,6 +194,7 @@ if (Gate::allows("ana_sayfa")) {
 
     // Araç Verilerini Çek (Dashboard Hatırlatıcı için)
     $aracModelHome = new \App\Model\AracModel();
+    $aracStats = $aracModelHome->getStats();
     $expiredCounts = $aracModelHome->getAracEvrakStats();
     $aracNotifText = "";
     $hasExpired = false;
@@ -296,68 +297,71 @@ if (Gate::allows("ana_sayfa")) {
     // Widget İçeriklerini Tanımla
     $widgets = [];
 
-    ob_start(); ?>
-    <div class="col-12 col-lg-6 widget-item" id="widget-ana-slider" style="margin-bottom: 1.5rem; position: relative;">
-        <!-- Drag Handle (Separated from Carousel to avoid event blocking) -->
-        <div class="drag-handle shadow-sm"
-            style="position: absolute; top: 12px; left: 20px; z-index: 1000; cursor: move; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 2px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1);">
-            <i class='bx bx-grid-vertical text-white' style="font-size: 1.2rem; opacity: 0.8;"></i>
-        </div>
-
-        <div id="dashboardCarousel" class="carousel slide animate-card bordro-summary-card" data-bs-ride="carousel"
-            style="--delay: 0s; cursor: grab;">
-            <div class="carousel-indicators" style="margin-bottom: 0.5rem;">
-                <?php foreach ($slider_notifications as $index => $notif): ?>
-                    <button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="<?php echo $index; ?>"
-                        class="<?php echo $index === 0 ? 'active' : ''; ?>"
-                        aria-current="<?php echo $index === 0 ? 'true' : 'false'; ?>"
-                        aria-label="Slide <?php echo $index + 1; ?>"
-                        style="width: 8px; height: 8px; border-radius: 50%;"></button>
-                <?php endforeach; ?>
+    if (!empty($slider_notifications)) {
+        ob_start(); ?>
+        <div class="col-12 col-lg-6 widget-item" id="widget-ana-slider" style="margin-bottom: 1.5rem; position: relative;">
+            <!-- Drag Handle (Separated from Carousel to avoid event blocking) -->
+            <div class="drag-handle shadow-sm"
+                style="position: absolute; top: 12px; left: 20px; z-index: 1000; cursor: move; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 2px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1);">
+                <i class='bx bx-grid-vertical text-white' style="font-size: 1.2rem; opacity: 0.8;"></i>
             </div>
-            <div class="carousel-inner shadow-sm rounded-3 overflow-hidden border-0">
-                <?php foreach ($slider_notifications as $index => $notif): ?>
-                    <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
-                        <div class="carousel-content p-4 px-5 d-flex align-items-center <?= $notif['link_class'] ?>"
-                            <?= $notif['link_action'] ?>
-                            style="background: <?php echo $notif['gradient']; ?>; min-height: 230px; position: relative; overflow: hidden;">
-                            <div class="circles" style="opacity: 0.12;">
-                                <div></div>
-                                <div></div>
-                                <div></div>
-                                <div></div>
-                            </div>
-                            <div class="flex-grow-1 position-relative" style="z-index: 2; padding-right: 25px;">
-                                <h5 class="text-white fw-bold mb-3"
-                                    style="font-family: 'Outfit', sans-serif; letter-spacing: -0.01em; font-size: 1.1rem;">
-                                    <?php echo $notif['title']; ?>
-                                </h5>
-                                <p class="text-white-50 mb-0"
-                                    style="max-width: 580px; line-height: 1.5; opacity: 0.8; font-size: 0.95rem;">
-                                    <?php echo $notif['description']; ?>
-                                </p>
-                            </div>
-                            <div class="flex-shrink-0 ms-auto d-none d-md-block opacity-20 position-relative"
-                                style="z-index: 1;">
-                                <i class='bx <?php echo $notif['icon']; ?>' style="font-size: 90px; color: white;"></i>
+
+            <div id="dashboardCarousel" class="carousel slide animate-card bordro-summary-card" data-bs-ride="carousel"
+                style="--delay: 0s; cursor: grab;">
+                <div class="carousel-indicators" style="margin-bottom: 0.5rem;">
+                    <?php foreach ($slider_notifications as $index => $notif): ?>
+                        <button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="<?php echo $index; ?>"
+                            class="<?php echo $index === 0 ? 'active' : ''; ?>"
+                            aria-current="<?php echo $index === 0 ? 'true' : 'false'; ?>"
+                            aria-label="Slide <?php echo $index + 1; ?>"
+                            style="width: 8px; height: 8px; border-radius: 50%;"></button>
+                    <?php endforeach; ?>
+                </div>
+                <div class="carousel-inner shadow-sm rounded-3 overflow-hidden border-0">
+                    <?php foreach ($slider_notifications as $index => $notif): ?>
+                        <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
+                            <div class="carousel-content p-4 px-5 d-flex align-items-center <?= $notif['link_class'] ?>"
+                                <?= $notif['link_action'] ?>
+                                style="background: <?php echo $notif['gradient']; ?>; min-height: 230px; position: relative; overflow: hidden;">
+                                <div class="circles" style="opacity: 0.12;">
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+                                <div class="flex-grow-1 position-relative" style="z-index: 2; padding-right: 25px;">
+                                    <h5 class="text-white fw-bold mb-3"
+                                        style="font-family: 'Outfit', sans-serif; letter-spacing: -0.01em; font-size: 1.1rem;">
+                                        <?php echo $notif['title']; ?>
+                                    </h5>
+                                    <p class="text-white-50 mb-0"
+                                        style="max-width: 580px; line-height: 1.5; opacity: 0.8; font-size: 0.95rem;">
+                                        <?php echo $notif['description']; ?>
+                                    </p>
+                                </div>
+                                <div class="flex-shrink-0 ms-auto d-none d-md-block opacity-20 position-relative"
+                                    style="z-index: 1;">
+                                    <i class='bx <?php echo $notif['icon']; ?>' style="font-size: 90px; color: white;"></i>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                <?php endforeach; ?>
+                    <?php endforeach; ?>
+                </div>
+                <button class="carousel-control-prev" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="prev"
+                    style="width: 4%;">
+                    <span class="carousel-control-prev-icon" aria-hidden="true" style="width: 1.2rem; height: 1.2rem;"></span>
+                    <span class="visually-hidden">Previous</span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="next"
+                    style="width: 4%;">
+                    <span class="carousel-control-next-icon" aria-hidden="true" style="width: 1.2rem; height: 1.2rem;"></span>
+                    <span class="visually-hidden">Next</span>
+                </button>
             </div>
-            <button class="carousel-control-prev" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="prev"
-                style="width: 4%;">
-                <span class="carousel-control-prev-icon" aria-hidden="true" style="width: 1.2rem; height: 1.2rem;"></span>
-                <span class="visually-hidden">Previous</span>
-            </button>
-            <button class="carousel-control-next" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="next"
-                style="width: 4%;">
-                <span class="carousel-control-next-icon" aria-hidden="true" style="width: 1.2rem; height: 1.2rem;"></span>
-                <span class="visually-hidden">Next</span>
-            </button>
         </div>
-    </div>
-    <?php $widgets['widget-ana-slider'] = ob_get_clean(); ?>
+        <?php $widgets['widget-ana-slider'] = ob_get_clean();
+    }
+    ?>
 
     <?php ob_start(); ?>
     <div class="col-md-6 col-xl-4 widget-item" id="widget-personel-ozet">
@@ -449,10 +453,12 @@ if (Gate::allows("ana_sayfa")) {
                         <?php 
                             $sahadaki_arac = $extraStats->sahadaki_arac ?? 0;
                             $servisteki_arac = $extraStats->servisteki_arac ?? 0;
-                            $toplam_arac = $sahadaki_arac + $servisteki_arac;
+                            $bosta_arac = $aracStats->bosta_arac ?? 0;
+                            $toplam_arac = $aracStats->toplam_arac ?? ($sahadaki_arac + $servisteki_arac + $bosta_arac);
                             $toplam_a_div = $toplam_arac ?: 1;
                             $saha_a_yuzde = ($sahadaki_arac / $toplam_a_div) * 100;
                             $servis_a_yuzde = ($servisteki_arac / $toplam_a_div) * 100;
+                            $bosta_a_yuzde = ($bosta_arac / $toplam_a_div) * 100;
                         ?>
                         <p class="text-muted mb-0 ms-4" style="font-size: 0.8rem;">Toplam Araç</p>
                         <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $toplam_arac; ?> <span style="font-size: 0.9rem; font-weight: normal; color: #6c757d;">adet</span></h4>
@@ -463,10 +469,11 @@ if (Gate::allows("ana_sayfa")) {
                 <div class="progress mb-4" style="height: 20px; border-radius: 4px;">
                     <div class="progress-bar" role="progressbar" style="width: <?php echo $saha_a_yuzde; ?>%; background-color: #198754;" title="Sahada: <?php echo $sahadaki_arac; ?>"></div>
                     <div class="progress-bar" role="progressbar" style="width: <?php echo $servis_a_yuzde; ?>%; background-color: #dc3545;" title="Serviste: <?php echo $servisteki_arac; ?>"></div>
+                    <div class="progress-bar" role="progressbar" style="width: <?php echo $bosta_a_yuzde; ?>%; background-color: #ffc107;" title="Boşta: <?php echo $bosta_arac; ?>"></div>
                 </div>
 
                 <div class="row mt-auto">
-                    <div class="col-6 mb-3">
+                    <div class="col-4 mb-3">
                         <div class="d-flex align-items-center">
                             <div style="width: 3px; height: 32px; background-color: #198754; margin-right: 12px;"></div>
                             <div>
@@ -475,12 +482,21 @@ if (Gate::allows("ana_sayfa")) {
                             </div>
                         </div>
                     </div>
-                    <div class="col-6 mb-3">
+                    <div class="col-4 mb-3">
                         <div class="d-flex align-items-center">
                             <div style="width: 3px; height: 32px; background-color: #dc3545; margin-right: 12px;"></div>
                             <div>
                                 <p class="text-muted small mb-0 font-size-11">Servis / Pasif</p>
                                 <h6 class="mb-0 fw-bold text-dark"><?php echo $servisteki_arac; ?> Adet</h6>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-4 mb-3">
+                        <div class="d-flex align-items-center">
+                            <div style="width: 3px; height: 32px; background-color: #ffc107; margin-right: 12px;"></div>
+                            <div>
+                                <p class="text-muted small mb-0 font-size-11">Boşta</p>
+                                <h6 class="mb-0 fw-bold text-dark"><?php echo $bosta_arac; ?> Adet</h6>
                             </div>
                         </div>
                     </div>

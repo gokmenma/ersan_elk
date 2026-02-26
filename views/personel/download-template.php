@@ -60,6 +60,8 @@ try {
         'Kan Grubu' => 'kan_grubu',
         'Cep Telefonu' => 'cep_telefonu',
         'Program Şifre' => 'sifre',
+        'Kaski Kullanıcı Adı' => 'kaski_kullanici_adi',
+        'Kaski Şifre' => 'kaski_sifre',
         '2. Cep Telefonu' => 'cep_telefonu_2',
         'E-posta Adresi' => 'email_adresi',
         'Ayakkabı No' => 'ayakkabi_numarasi',
