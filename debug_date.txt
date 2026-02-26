@@ -140635,3 +140635,27 @@ Result (String Match Y-m-d): 2026-02-01
 Input: 2026-02-26 Type: string
 Result (String Match Y-m-d): 2026-02-26
 ----------------
+Input: 2026-02-01 Type: string
+Result (String Match Y-m-d): 2026-02-01
+----------------
+Input: 2026-02-26 Type: string
+Result (String Match Y-m-d): 2026-02-26
+----------------
+Input: 2026-02-01 Type: string
+Result (String Match Y-m-d): 2026-02-01
+----------------
+Input: 2026-02-26 Type: string
+Result (String Match Y-m-d): 2026-02-26
+----------------
+Input: 2026-02-01 Type: string
+Result (String Match Y-m-d): 2026-02-01
+----------------
+Input: 2026-02-26 Type: string
+Result (String Match Y-m-d): 2026-02-26
+----------------
+Input: 2026-02-01 Type: string
+Result (String Match Y-m-d): 2026-02-01
+----------------
+Input: 2026-02-26 Type: string
+Result (String Match Y-m-d): 2026-02-26
+----------------

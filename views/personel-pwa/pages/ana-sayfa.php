@@ -716,6 +716,27 @@ use App\Helper\Helper;
                 var response = await API.request('getWorkStats');
                 if (response.success && response.data) {
                     var stat = response.data;
+
+                    let todayBreakdown = '';
+                    if (stat.details && (stat.details.daily_isler > 0 || stat.details.daily_endeks > 0)) {
+                        let parts = [];
+                        if (stat.details.daily_isler > 0) parts.push(`${stat.details.daily_isler} Kesme`);
+                        if (stat.details.daily_endeks > 0) parts.push(`${stat.details.daily_endeks} Endeks`);
+                        if (parts.length > 1) {
+                            todayBreakdown = `<p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium leading-tight">${parts.join(' &bull; ')}</p>`;
+                        }
+                    }
+
+                    let monthBreakdown = '';
+                    if (stat.details && (stat.details.monthly_isler > 0 || stat.details.monthly_endeks > 0)) {
+                        let parts = [];
+                        if (stat.details.monthly_isler > 0) parts.push(`${stat.details.monthly_isler} Kesme`);
+                        if (stat.details.monthly_endeks > 0) parts.push(`${stat.details.monthly_endeks} Endeks`);
+                        if (parts.length > 1) {
+                            monthBreakdown = `<p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium leading-tight">${parts.join(' &bull; ')}</p>`;
+                        }
+                    }
+
                     container.innerHTML = `
                         <div class="col-span-2 card p-4 flex flex-col gap-2 relative overflow-hidden group">
                             <div class="absolute -right-2 -bottom-2 opacity-[0.05] group-hover:opacity-[0.1] transition-opacity">
@@ -731,11 +752,13 @@ use App\Helper\Helper;
                             <div class="grid grid-cols-2 gap-4 mt-2">
                                 <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700">
                                     <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">Bugün</p>
-                                    <p class="text-2xl font-black text-slate-900 dark:text-white">${stat.daily_total}</p>
+                                    <p class="text-2xl font-black text-slate-900 dark:text-white">${stat.today}</p>
+                                    ${todayBreakdown}
                                 </div>
                                 <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700">
                                     <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">Bu Ay</p>
-                                    <p class="text-2xl font-black text-slate-900 dark:text-white">${stat.monthly_total}</p>
+                                    <p class="text-2xl font-black text-slate-900 dark:text-white">${stat.month}</p>
+                                    ${monthBreakdown}
                                 </div>
                             </div>
                         </div>
