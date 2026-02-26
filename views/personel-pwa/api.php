@@ -1685,6 +1685,7 @@ try {
                             etkinlik_tarihi
                         FROM duyurular
                         WHERE silinme_tarihi IS NULL
+                        AND pwa_goster = 1
                         AND (alici_tipi = 'toplu' OR FIND_IN_SET(?, alici_ids))
                         AND (etkinlik_tarihi IS NULL OR etkinlik_tarihi >= CURDATE())
                         ORDER BY activity_date DESC
@@ -1806,6 +1807,7 @@ try {
             $duyuruSql = "SELECT id, baslik, icerik, resim, hedef_sayfa, tarih, etkinlik_tarihi
                         FROM duyurular
                         WHERE silinme_tarihi IS NULL 
+                        AND pwa_goster = 1
                         AND durum = 'Yayında'
                         AND (alici_tipi = 'toplu' OR FIND_IN_SET(?, alici_ids))
                         AND (etkinlik_tarihi IS NULL OR etkinlik_tarihi >= CURDATE())
@@ -1858,6 +1860,7 @@ try {
             $duyuruSql = "SELECT id, baslik, icerik, resim, hedef_sayfa, tarih, etkinlik_tarihi
                         FROM duyurular
                         WHERE silinme_tarihi IS NULL 
+                        AND pwa_goster = 1
                         AND durum = 'Yayında'
                         AND (alici_tipi = 'toplu' OR FIND_IN_SET(?, alici_ids))
                         ORDER BY id DESC";

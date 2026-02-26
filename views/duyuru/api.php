@@ -39,6 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Başlık zorunludur.');
                 }
 
+                // Resim Silme İsteği
+                if (isset($_POST['resim_sil']) && $_POST['resim_sil'] == '1') {
+                    $data['resim'] = null;
+                }
+
                 // Resim Yükleme
                 if (isset($_FILES['resim']) && $_FILES['resim']['error'] === UPLOAD_ERR_OK) {
                     $uploadDir = dirname(__DIR__, 2) . '/uploads/duyuru/';

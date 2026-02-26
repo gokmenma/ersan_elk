@@ -109,7 +109,7 @@ use App\Helper\Helper;
                                                     if ($g->bitis_tarihi === null) {
                                                         echo '<span class="badge bg-success">Aktif</span>';
                                                     } elseif ($g->bitis_tarihi == $bugun) {
-                                                        echo '<span class="badge bg-warning">Bitiş Günü</span>';
+                                                        echo '<span class="badge bg-warning">Bitti</span>';
                                                     } else {
                                                         echo '<span class="badge bg-info">Süreli Aktif</span>';
                                                     }

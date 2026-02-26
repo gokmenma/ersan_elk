@@ -483,7 +483,7 @@ $(document).ready(function () {
     $(".day-cell")
       .off("click")
       .on("click", function (e) {
-        if (!selectedType) return;
+        if (!selectedType || $(this).hasClass("disabled")) return;
 
         const cell = this;
         const pId = cell.dataset.personelId;
@@ -543,6 +543,10 @@ $(document).ready(function () {
           $(".tooltip").remove();
         },
         onAdd: function (evt) {
+          if ($(cell).hasClass("disabled")) {
+            evt.item.remove();
+            return;
+          }
           // Target cell logic: When an item is dropped
           const typeId = evt.item.dataset.id;
           const typeName = evt.item.dataset.name;
@@ -1484,6 +1488,23 @@ $(document).ready(function () {
 
         // Tarihi oluştur
         const dateStr = `${yil}-${ay}-${dayNum.toString().padStart(2, "0")}`;
+
+        // İşten çıkış kontrolü - Çıkış tarihinden sonraki günleri engelle
+        if (
+          person.isten_cikis_tarihi &&
+          person.isten_cikis_tarihi !== "0000-00-00" &&
+          person.isten_cikis_tarihi !== null
+        ) {
+          const cikisParts = person.isten_cikis_tarihi.split("-");
+          const cikisDate = new Date(
+            parseInt(cikisParts[0]),
+            parseInt(cikisParts[1]) - 1,
+            parseInt(cikisParts[2]),
+          );
+          const currentDate = new Date(yil, ay - 1, dayNum);
+          if (currentDate > cikisDate) return;
+        }
+
         const dateKey = `${person.id}-${dateStr}`;
 
         unsavedChanges[dateKey] = {

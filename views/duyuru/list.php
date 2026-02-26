@@ -196,7 +196,7 @@ foreach ($personeller as $p) {
 
 <!-- Modal -->
 <div class="modal fade" id="duyuruModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
             <div class="modal-header border-bottom py-3">
                 <div class="d-flex align-items-center">
@@ -211,10 +211,11 @@ foreach ($personeller as $p) {
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="duyuruForm" enctype="multipart/form-data">
-                <input type="hidden" name="id" id="duyuruId">
-                <input type="hidden" name="action" value="save">
-                <div class="modal-body">
+            <div class="modal-body">
+                <form id="duyuruForm" enctype="multipart/form-data">
+                    <input type="hidden" name="id" id="duyuruId">
+                    <input type="hidden" name="action" value="save">
+                    <input type="hidden" name="resim_sil" id="resimSil" value="0">
                     <div class="row g-3">
                         <div class="col-12">
                             <?= Form::FormFloatInput('text', 'baslik', '', 'Duyuru başlığı...', 'Başlık *', 'type', 'form-control', true) ?>
@@ -236,17 +237,22 @@ foreach ($personeller as $p) {
                                 <input type="file" name="resim" id="duyuruResim" accept="image/*"
                                     class="position-absolute top-0 start-0 w-100 h-100 opacity-0"
                                     style="cursor:pointer; z-index:2;">
+                                
                                 <div id="uploadPlaceholder">
                                     <i class="mdi mdi-image-plus text-primary" style="font-size: 2rem;"></i>
                                     <p class="fw-semibold mb-0">Duyuru Görseli Seçin veya Sürükleyin</p>
-                                    <p class="text-muted small mb-0">Optimal görünüm için yatay görseller önerilir
-                                        (.jpg, .png)</p>
+                                    <p class="text-muted small mb-0">Optimal görünüm için yatay görseller önerilir (.jpg, .png)</p>
                                 </div>
-                                <div id="uploadPreview" class="d-none">
-                                    <i class="mdi mdi-check-circle text-success" style="font-size: 2rem;"></i>
-                                    <p class="fw-semibold mb-0" id="fileNameDisplay">Görsel Seçildi</p>
-                                    <p class="text-muted small mb-0">Değiştirmek için tekrar tıklayın veya sürükleyin
-                                    </p>
+                                
+                                <div id="uploadPreview" class="d-none position-relative" style="z-index: 3;">
+                                    <div class="position-relative d-inline-block">
+                                        <img id="previewImage" src="" class="rounded shadow-sm" style="max-height: 150px; max-width: 100%;">
+                                        <button type="button" id="btnRemoveImage" class="btn btn-danger btn-sm position-absolute top-0 end-0 translate-middle rounded-circle p-1" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
+                                            <i data-feather="x" style="width: 14px; height: 14px;"></i>
+                                        </button>
+                                    </div>
+                                    <p class="fw-semibold mb-0 mt-2" id="fileNameDisplay">Görsel Seçildi</p>
+                                    <p class="text-muted small mb-0">Değiştirmek için resmin üzerine tıklayın veya sürükleyin</p>
                                 </div>
                             </div>
                         </div>
@@ -293,17 +299,17 @@ foreach ($personeller as $p) {
                             <?= Form::FormFloatInput('text', 'hedef_sayfa', '', 'Eğer bir sayfaya yönlendirilecekse URL girin...', 'Hedef URL (Opsiyonel)', 'link', 'form-control') ?>
                         </div>
                     </div>
-                </div>
-                <div class="modal-footer border-top bg-light py-3"
-                    style="border-bottom-left-radius: 15px; border-bottom-right-radius: 15px;">
-                    <button type="button" class="btn btn-vazgec px-4" data-bs-dismiss="modal">
-                        <i data-feather="x" class="me-1" style="width: 16px; height: 16px;"></i> Vazgeç
-                    </button>
-                    <button type="submit" class="btn btn-kaydet px-4">
-                        <i data-feather="save" class="me-1" style="width: 16px; height: 16px;"></i> Kaydet
-                    </button>
-                </div>
-            </form>
+                </form>
+            </div>
+            <div class="modal-footer border-top bg-light py-3"
+                style="border-bottom-left-radius: 15px; border-bottom-right-radius: 15px;">
+                <button type="button" class="btn btn-vazgec px-4" data-bs-dismiss="modal">
+                    <i data-feather="x" class="me-1" style="width: 16px; height: 16px;"></i> Vazgeç
+                </button>
+                <button type="submit" form="duyuruForm" class="btn btn-kaydet px-4">
+                    <i data-feather="save" class="me-1" style="width: 16px; height: 16px;"></i> Kaydet
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -327,15 +333,29 @@ foreach ($personeller as $p) {
 
         // Resim Yükleme Önizleme
         $('#duyuruResim').on('change', function () {
-            const fileName = $(this).val().split('\\').pop();
-            if (fileName) {
-                $('#uploadPlaceholder').addClass('d-none');
-                $('#uploadPreview').removeClass('d-none');
-                $('#fileNameDisplay').text(fileName);
-            } else {
-                $('#uploadPlaceholder').removeClass('d-none');
-                $('#uploadPreview').addClass('d-none');
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#previewImage').attr('src', e.target.result);
+                    $('#uploadPlaceholder').addClass('d-none');
+                    $('#uploadPreview').removeClass('d-none');
+                    $('#fileNameDisplay').text(file.name);
+                    $('#resimSil').val('0');
+                }
+                reader.readAsDataURL(file);
             }
+        });
+
+        // Resim Silme Butonu
+        $('#btnRemoveImage').click(function(e) {
+            e.preventDefault();
+            e.stopPropagation(); // Parent click'i engelle
+            $('#duyuruResim').val('');
+            $('#previewImage').attr('src', '');
+            $('#uploadPreview').addClass('d-none');
+            $('#uploadPlaceholder').removeClass('d-none');
+            $('#resimSil').val('1');
         });
 
         let dtOptions = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
@@ -403,12 +423,23 @@ foreach ($personeller as $p) {
                         $('#modalTitle').text('Duyuruyu Düzenle');
                         $('input[name="baslik"]').val(d.baslik);
                         $('textarea[name="icerik"]').val(d.icerik);
+                        
                         if (d.etkinlik_tarihi) {
-                            $('input[name="etkinlik_tarihi"]').val(d.etkinlik_tarihi).trigger('change');
+                            const fp = document.querySelector('input[name="etkinlik_tarihi"]')._flatpickr;
+                            if (fp) fp.setDate(d.etkinlik_tarihi);
                         }
+                        
                         $('input[name="hedef_sayfa"]').val(d.hedef_sayfa);
                         if (d.durum) {
                             $('select[name="durum"]').val(d.durum).trigger('change');
+                        }
+
+                        // Resim Gösterimi
+                        if (d.resim) {
+                            $('#previewImage').attr('src', d.resim);
+                            $('#uploadPlaceholder').addClass('d-none');
+                            $('#uploadPreview').removeClass('d-none');
+                            $('#fileNameDisplay').text('Mevcut Resim');
                         }
 
                         if (d.ana_sayfada_goster == 1) $('#ana_sayfada_goster').prop('checked', true);
@@ -416,7 +447,7 @@ foreach ($personeller as $p) {
 
                         if (d.alici_tipi == 'tekli') {
                             $('#tipTekli').prop('checked', true).trigger('change');
-                            const ids = d.alici_ids.split(',');
+                            const ids = d.alici_ids ? d.alici_ids.split(',') : [];
                             $('#personel_ids').val(ids).trigger('change');
                         } else {
                             $('#tipToplu').prop('checked', true).trigger('change');
@@ -465,8 +496,12 @@ foreach ($personeller as $p) {
         $('select[name="durum"]').val('Yayında').trigger('change');
         const fp = document.querySelector('input[name="etkinlik_tarihi"]')._flatpickr;
         if (fp) fp.clear();
-        $('#uploadPlaceholder').removeClass('d-none');
+        
+        $('#previewImage').attr('src', '');
         $('#uploadPreview').addClass('d-none');
+        $('#uploadPlaceholder').removeClass('d-none');
+        $('#resimSil').val('0');
+        
         $('#personelSecimContainer').hide();
         $('#personel_ids').val(null).trigger('change');
     }
