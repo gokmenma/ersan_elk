@@ -37,6 +37,10 @@ use App\Helper\Form;
                             </div>
                         </div>
 
+                        <div class="mb-3">
+                            <?php echo Form::FormSelect2("ekip_sefi_mi", ['0' => 'Hayır', '1' => 'Evet'], '0', "Ekip Şefi mi?", "user-check", "", "", "form-select select2"); ?>
+                        </div>
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <?php echo Form::FormFloatInput("text", "baslangic_tarihi", date('d.m.Y'), "Başlangıç Tarihi", "Başlangıç Tarihi", "calendar", "form-control flatpickr", true); ?>
@@ -105,10 +109,15 @@ use App\Helper\Form;
                                         ? formatDate(bitisTarihi)
                                         : '<span class="badge bg-soft-success text-success">Devam Ediyor</span>';
 
+                                    var ekipSefiBadge = item.ekip_sefi_mi == 1
+                                        ? '<span class="badge bg-success">Evet</span>'
+                                        : '<span class="badge bg-secondary">Hayır</span>';
+
                                     var row = '<tr>' +
                                         '<td><span class="fw-bold text-dark">' + item.ekip_adi + '</span></td>' +
                                         '<td>' + formatDate(item.baslangic_tarihi) + '</td>' +
                                         '<td>' + bitisBadge + '</td>' +
+                                        '<td>' + ekipSefiBadge + '</td>' +
                                         '<td>' + statusBadge + '</td>' +
                                         '<td class="text-center text-nowrap">' +
                                         '<button type="button" class="btn btn-sm btn-soft-primary btn-ekip-gecmisi-duzenle me-1" data-id="' + item.id + '" title="Düzenle">' +
@@ -223,6 +232,7 @@ use App\Helper\Form;
                         $('#modalEkipGecmisiEkle .modal-title').html('<i class="bx bx-group me-2"></i>Yeni Ekip Tanımla');
                         $('#formEkipGecmisiEkle')[0].reset();
                         $('#modal_ekip_bolge').val('').trigger('change.select2');
+                        $('#ekip_sefi_mi').val('0').trigger('change.select2');
                         $('#modalEkipGecmisiEkle').modal('show');
                     });
                 });
@@ -262,6 +272,9 @@ use App\Helper\Form;
                                         })).trigger('change.select2');
                                     }
                                     $('#ekip_kodu_id').val(data.ekip_kodu_id).trigger('change.select2');
+                                    
+                                    // Ekip Şefi mi?
+                                    $('#ekip_sefi_mi').val(data.ekip_sefi_mi).trigger('change.select2');
 
                                     // Tarihleri modal kapsamındaki inputlara set et
                                     var $modal = $('#modalEkipGecmisiEkle');

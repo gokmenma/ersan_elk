@@ -188,12 +188,12 @@ div:where(.swal2-container) .swal2-cancel {
 .swal-confirm-primary {
   background: var(--primary) !important;
   color: white !important;
-  box-shadow: 0 4px 14px rgba(19, 91, 236, 0.3) !important;
+  box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.3) !important;
 }
 
 .swal-confirm-primary:hover {
   background: var(--primary-dark) !important;
-  box-shadow: 0 6px 20px rgba(19, 91, 236, 0.4) !important;
+  box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.4) !important;
 }
 
 .swal-confirm-danger {

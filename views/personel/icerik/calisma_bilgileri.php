@@ -95,6 +95,7 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                                     <th>Ekip Adı / Kodu</th>
                                     <th>Başlangıç Tarihi</th>
                                     <th>Bitiş Tarihi</th>
+                                    <th>Ekip Şefi</th>
                                     <th>Durum</th>
                                     <th class="text-center">İşlem</th>
                                 </tr>
@@ -107,6 +108,9 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                                             </td>
                                             <td><?= date('d.m.Y', strtotime($g->baslangic_tarihi)) ?></td>
                                             <td><?= $g->bitis_tarihi ? date('d.m.Y', strtotime($g->bitis_tarihi)) : '<span class="badge bg-soft-success text-success">Devam Ediyor</span>' ?>
+                                            </td>
+                                            <td>
+                                                <?= isset($g->ekip_sefi_mi) && $g->ekip_sefi_mi == 1 ? '<span class="badge bg-success">Evet</span>' : '<span class="badge bg-secondary">Hayır</span>' ?>
                                             </td>
                                             <td>
                                                 <?php

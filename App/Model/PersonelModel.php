@@ -614,15 +614,16 @@ class PersonelModel extends Model
     {
 
 
-        $sql = "INSERT INTO personel_ekip_gecmisi (personel_id, ekip_kodu_id, baslangic_tarihi, bitis_tarihi, firma_id) 
-                VALUES (:personel_id, :ekip_kodu_id, :baslangic_tarihi, :bitis_tarihi, :firma_id)";
+        $sql = "INSERT INTO personel_ekip_gecmisi (personel_id, ekip_kodu_id, baslangic_tarihi, bitis_tarihi, firma_id, ekip_sefi_mi) 
+                VALUES (:personel_id, :ekip_kodu_id, :baslangic_tarihi, :bitis_tarihi, :firma_id, :ekip_sefi_mi)";
         $query = $this->db->prepare($sql);
         return $query->execute([
             'personel_id' => $data['personel_id'],
             'ekip_kodu_id' => $data['ekip_kodu_id'],
             'baslangic_tarihi' => $data['baslangic_tarihi'],
             'bitis_tarihi' => !empty($data['bitis_tarihi']) ? $data['bitis_tarihi'] : null,
-            'firma_id' => $_SESSION['firma_id']
+            'firma_id' => $_SESSION['firma_id'],
+            'ekip_sefi_mi' => $data['ekip_sefi_mi'] ?? 0
         ]);
     }
 
@@ -651,7 +652,8 @@ class PersonelModel extends Model
         $sql = "UPDATE personel_ekip_gecmisi SET 
                 ekip_kodu_id = :ekip_kodu_id, 
                 baslangic_tarihi = :baslangic_tarihi, 
-                bitis_tarihi = :bitis_tarihi 
+                bitis_tarihi = :bitis_tarihi,
+                ekip_sefi_mi = :ekip_sefi_mi
                 WHERE id = :id AND firma_id = :firma_id";
         $query = $this->db->prepare($sql);
         return $query->execute([
@@ -659,7 +661,8 @@ class PersonelModel extends Model
             'ekip_kodu_id' => $data['ekip_kodu_id'],
             'baslangic_tarihi' => $data['baslangic_tarihi'],
             'bitis_tarihi' => !empty($data['bitis_tarihi']) ? $data['bitis_tarihi'] : null,
-            'firma_id' => $_SESSION['firma_id']
+            'firma_id' => $_SESSION['firma_id'],
+            'ekip_sefi_mi' => $data['ekip_sefi_mi'] ?? 0
         ]);
     }
 

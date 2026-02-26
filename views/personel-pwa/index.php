@@ -68,9 +68,36 @@ if (!$personel) {
     exit();
 }
 
+// Firma ID'yi oturuma ekle (Model'ler için gerekli)
+if (!isset($_SESSION['firma_id']) && isset($personel->firma_id)) {
+    $_SESSION['firma_id'] = $personel->firma_id;
+}
+
+// Departman & Görev bazlı kontrol
+$isEndeksOkuma = (stripos($personel->departman ?? '', 'Endeks Okuma') !== false);
+$isBuro = (stripos($personel->departman ?? '', 'BÜRO') !== false || stripos($personel->departman ?? '', 'Büro') !== false);
+$isSef = (stripos($personel->gorev ?? '', 'Şef') !== false);
+$isEkipSefi = false;
+
+if ($isEndeksOkuma && $isSef) {
+    $ekipGecmisiList = $PersonelModel->getEkipGecmisi($personel_id);
+    foreach ($ekipGecmisiList as $g) {
+        if (($g->ekip_sefi_mi ?? 0) == 1 && (empty($g->bitis_tarihi) || $g->bitis_tarihi >= date('Y-m-d'))) {
+            $isEkipSefi = true;
+            break;
+        }
+    }
+}
+
 // Sayfa yönlendirmesi
 $page = $_GET['page'] ?? 'ana-sayfa';
-$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'nobet', 'etkinlikler', 'zimmetler'];
+$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'etkinlikler', 'zimmetler'];
+
+if ($isEndeksOkuma && $isEkipSefi) {
+    $allowed_pages[] = 'ekip-takibi';
+} elseif (!$isEndeksOkuma && !$isBuro) {
+    $allowed_pages[] = 'nobet';
+}
 
 if (!in_array($page, $allowed_pages)) {
     $page = 'ana-sayfa';
@@ -237,20 +264,43 @@ if (!in_array($page, $allowed_pages)) {
             <span class="material-symbols-outlined <?php echo $page === 'puantaj' ? 'filled' : ''; ?>">checklist</span>
             <span class="text-[10px] font-semibold">İş Takibi</span>
         </a>
-        <a href="?page=nobet"
-            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'nobet' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-            <span class="material-symbols-outlined <?php echo $page === 'nobet' ? 'filled' : ''; ?>">nights_stay</span>
-            <span class="text-[10px] font-semibold">Nöbet Takibi</span>
-        </a>
+        <?php if ($isEndeksOkuma && $isEkipSefi): ?>
+            <a href="?page=ekip-takibi"
+                class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'ekip-takibi' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+                <span class="material-symbols-outlined <?php echo $page === 'ekip-takibi' ? 'filled' : ''; ?>">groups</span>
+                <span class="text-[10px] font-semibold">Ekip Takibi</span>
+            </a>
+        <?php elseif ($isEndeksOkuma || $isBuro): ?>
+            <a href="?page=zimmetler"
+                class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'zimmetler' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+                <span
+                    class="material-symbols-outlined <?php echo $page === 'zimmetler' ? 'filled' : ''; ?>">inventory_2</span>
+                <span class="text-[10px] font-semibold">Zimmetler</span>
+            </a>
+        <?php else: ?>
+            <a href="?page=nobet"
+                class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'nobet' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+                <span class="material-symbols-outlined <?php echo $page === 'nobet' ? 'filled' : ''; ?>">nights_stay</span>
+                <span class="text-[10px] font-semibold">Nöbet Takibi</span>
+            </a>
+        <?php endif; ?>
         <a href="?page=talep"
             class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'talep' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
             <span class="material-symbols-outlined <?php echo $page === 'talep' ? 'filled' : ''; ?>">assignment</span>
             <span class="text-[10px] font-semibold">Talepler</span>
         </a>
+        <?php
+        $moreActivePages = ['profil', 'etkinlikler', 'bordro', 'izin'];
+        $isZimmetInBottomNav = ($isEndeksOkuma && !$isEkipSefi) || $isBuro;
+        // Zimmetler zaten bottom nav'da gösteriliyorsa diğer menüde highlight etme
+        if (!$isZimmetInBottomNav) {
+            $moreActivePages[] = 'zimmetler';
+        }
+        ?>
         <button type="button" onclick="toggleMoreMenu()"
-            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo in_array($page, ['profil', 'etkinlikler', 'bordro', 'izin', 'zimmetler']) ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo in_array($page, $moreActivePages) ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
             <span
-                class="material-symbols-outlined <?php echo in_array($page, ['profil', 'etkinlikler', 'bordro', 'izin', 'zimmetler']) ? 'filled' : ''; ?>">more_horiz</span>
+                class="material-symbols-outlined <?php echo in_array($page, $moreActivePages) ? 'filled' : ''; ?>">more_horiz</span>
             <span class="text-[10px] font-semibold">Diğer</span>
         </button>
     </nav>
@@ -330,14 +380,16 @@ if (!in_array($page, $allowed_pages)) {
                     <span class="font-medium text-slate-900 dark:text-white text-sm">İzinler</span>
                     <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
                 </a>
-                <a href="?page=zimmetler"
-                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'zimmetler' ? 'bg-primary/10' : ''; ?>">
-                    <div class="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-amber-600 text-lg">inventory_2</span>
-                    </div>
-                    <span class="font-medium text-slate-900 dark:text-white text-sm">Zimmetler</span>
-                    <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
-                </a>
+                <?php if (!$isZimmetInBottomNav): ?>
+                    <a href="?page=zimmetler"
+                        class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'zimmetler' ? 'bg-primary/10' : ''; ?>">
+                        <div class="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-amber-600 text-lg">inventory_2</span>
+                        </div>
+                        <span class="font-medium text-slate-900 dark:text-white text-sm">Zimmetler</span>
+                        <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
+                    </a>
+                <?php endif; ?>
             </div>
         </div>
     </div>

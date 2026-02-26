@@ -889,7 +889,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'ekip_kodu_id' => $data['ekip_kodu_id'],
                 'baslangic_tarihi' => Date::Ymd($data['baslangic_tarihi'], 'Y-m-d'),
                 'bitis_tarihi' => !empty($data['bitis_tarihi']) ? Date::Ymd($data['bitis_tarihi'], 'Y-m-d') : null,
-                'firma_id' => $_SESSION['firma_id']
+                'firma_id' => $_SESSION['firma_id'],
+                'ekip_sefi_mi' => $data['ekip_sefi_mi'] ?? 0
             ];
 
             // Personelin işe giriş tarihini kontrol et
@@ -986,7 +987,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'id' => $data['id'],
                 'ekip_kodu_id' => $data['ekip_kodu_id'],
                 'baslangic_tarihi' => Date::Ymd($data['baslangic_tarihi'], 'Y-m-d'),
-                'bitis_tarihi' => !empty($data['bitis_tarihi']) ? Date::Ymd($data['bitis_tarihi'], 'Y-m-d') : null
+                'bitis_tarihi' => !empty($data['bitis_tarihi']) ? Date::Ymd($data['bitis_tarihi'], 'Y-m-d') : null,
+                'ekip_sefi_mi' => $data['ekip_sefi_mi'] ?? 0
             ];
 
             // Mevcut kaydı bul (personel_id için)

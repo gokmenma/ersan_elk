@@ -1880,3 +1880,63 @@ Params: Array
 )
 
 ----------------
+SQL: SELECT t.*, p.adi_soyadi as personel_adi 
+                FROM endeks_okuma t 
+                LEFT JOIN personel p ON t.personel_id = p.id 
+                LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL
+                AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?(10[1-9]|1[1-9][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3,})' AND t.tarih >= ? AND t.tarih <= ? AND t.personel_id = ? ORDER BY t.tarih DESC, t.id ASC
+Params: Array
+(
+    [0] => 1
+    [1] => 2026-01-27
+    [2] => 2026-02-26
+    [3] => 141
+)
+
+----------------
+SQL: SELECT t.*, p.adi_soyadi as personel_adi 
+                FROM endeks_okuma t 
+                LEFT JOIN personel p ON t.personel_id = p.id 
+                LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL
+                AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?(10[1-9]|1[1-9][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3,})' AND t.tarih >= ? AND t.tarih <= ? AND t.personel_id = ? ORDER BY t.tarih DESC, t.id ASC
+Params: Array
+(
+    [0] => 1
+    [1] => 2026-02-01
+    [2] => 2026-02-26
+    [3] => 141
+)
+
+----------------
+SQL: SELECT t.*, p.adi_soyadi as personel_adi 
+                FROM endeks_okuma t 
+                LEFT JOIN personel p ON t.personel_id = p.id 
+                LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL
+                AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?(10[1-9]|1[1-9][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3,})' AND t.tarih >= ? AND t.tarih <= ? AND t.personel_id = ? ORDER BY t.tarih DESC, t.id ASC
+Params: Array
+(
+    [0] => 1
+    [1] => 2026-02-01
+    [2] => 2026-02-26
+    [3] => 141
+)
+
+----------------
+SQL: SELECT t.*, p.adi_soyadi as personel_adi 
+                FROM endeks_okuma t 
+                LEFT JOIN personel p ON t.personel_id = p.id 
+                LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL
+                AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?(10[1-9]|1[1-9][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3,})' AND t.tarih >= ? AND t.tarih <= ? AND t.personel_id = ? ORDER BY t.tarih DESC, t.id ASC
+Params: Array
+(
+    [0] => 1
+    [1] => 2026-02-01
+    [2] => 2026-02-26
+    [3] => 141
+)
+
+----------------

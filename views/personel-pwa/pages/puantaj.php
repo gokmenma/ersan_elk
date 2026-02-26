@@ -5,6 +5,9 @@
  */
 use App\Helper\Helper;
 use App\Helper\Date;
+
+$isEndeksOkuma = (stripos($personel->departman ?? '', 'Endeks Okuma') !== false);
+$defaultTab = $isEndeksOkuma ? 'endeks' : 'kesme';
 ?>
 
 <div class="flex flex-col min-h-screen pb-8">
@@ -31,13 +34,27 @@ use App\Helper\Date;
             <div class="grid grid-cols-2 gap-3 text-center">
                 <div>
                     <p class="text-2xl font-bold text-red-600" id="sonuclanan-is">-</p>
-                    <p class="text-xs text-slate-500">Toplam İş</p>
+                    <p class="text-xs text-slate-500" id="label-toplam">Toplam İş</p>
                 </div>
                 <div>
                     <p class="text-2xl font-bold text-green-600" id="toplam-is">-</p>
-                    <p class="text-xs text-slate-500">Sonuçlanan</p>
+                    <p class="text-xs text-slate-500" id="label-sonuclanan">Sonuçlanan</p>
                 </div>
             </div>
+        </div>
+    </section>
+
+    <!-- Tab Navigation -->
+    <section class="px-4 mt-4">
+        <div class="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+            <button onclick="switchTab('kesme')" id="tab-btn-kesme" 
+                class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all <?php echo $defaultTab === 'kesme' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'; ?>">
+                Kesme-Açma
+            </button>
+            <button onclick="switchTab('endeks')" id="tab-btn-endeks"
+                class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all <?php echo $defaultTab === 'endeks' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'; ?>">
+                Endeks Okuma
+            </button>
         </div>
     </section>
 
@@ -48,19 +65,19 @@ use App\Helper\Date;
                 <div class="flex-1">
                     <label class="text-xs text-slate-500 mb-1 block">Başlangıç</label>
                     <input type="date" id="filter-start-date" class="form-input text-sm"
-                        value="<?php echo date('Y-m-01'); ?>" onchange="loadPuantajData()">
+                        value="<?php echo date('Y-m-01'); ?>" onchange="loadData()">
                 </div>
                 <div class="flex-1">
                     <label class="text-xs text-slate-500 mb-1 block">Bitiş</label>
                     <input type="date" id="filter-end-date" class="form-input text-sm"
-                        value="<?php echo date('Y-m-d'); ?>" onchange="loadPuantajData()">
+                        value="<?php echo date('Y-m-d'); ?>" onchange="loadData()">
                 </div>
             </div>
-            <div class="grid grid-cols-2 gap-2">
+            <div id="kesme-filters" class="grid grid-cols-2 gap-2">
                 <select id="filter-type" class="form-select text-sm" onchange="handleWorkTypeChange()">
                     <option value="">Tüm İş Türleri</option>
                 </select>
-                <select id="filter-result" class="form-select text-sm" onchange="loadPuantajData()">
+                <select id="filter-result" class="form-select text-sm" onchange="loadData()">
                     <option value="">Tüm İş Sonuçları</option>
                 </select>
             </div>
@@ -69,7 +86,7 @@ use App\Helper\Date;
 
     <!-- Work List -->
     <section class="px-4 mt-6">
-        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Yapılan İşler</h3>
+        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3" id="list-title">Yapılan İşler</h3>
         <div id="puantaj-list" class="flex flex-col gap-3">
             <!-- Skeleton loader -->
             <div class="card p-4 animate-pulse">
@@ -116,14 +133,50 @@ use App\Helper\Date;
 </div>
 
 <script>
+    let currentTab = '<?php echo $defaultTab; ?>';
     let puantajData = [];
+    let endeksData = [];
     let workTypes = [];
 
     document.addEventListener('DOMContentLoaded', function () {
+        switchTab(currentTab);
         loadWorkTypes();
         loadWorkResults();
-        loadPuantajData();
     });
+
+    function switchTab(tab) {
+        currentTab = tab;
+        
+        // Update Buttons
+        document.getElementById('tab-btn-kesme').className = `flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'kesme' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'}`;
+        document.getElementById('tab-btn-endeks').className = `flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'endeks' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'}`;
+
+        // Toggle Filters
+        const kesmeFilters = document.getElementById('kesme-filters');
+        if (tab === 'kesme') {
+            kesmeFilters.classList.remove('hidden');
+            kesmeFilters.classList.add('grid');
+            document.getElementById('list-title').textContent = 'Yapılan İşler';
+            document.getElementById('label-toplam').textContent = 'Toplam İş';
+            document.getElementById('label-sonuclanan').textContent = 'Sonuçlanan';
+        } else {
+            kesmeFilters.classList.add('hidden');
+            kesmeFilters.classList.remove('grid');
+            document.getElementById('list-title').textContent = 'Okuma Listesi';
+            document.getElementById('label-toplam').textContent = 'Toplam Okunan';
+            document.getElementById('label-sonuclanan').textContent = '-'; // Endeks için ikinci stat ne olsun? Şimdilik boş.
+        }
+
+        loadData();
+    }
+
+    async function loadData() {
+        if (currentTab === 'kesme') {
+            await loadPuantajData();
+        } else {
+            await loadEndeksData();
+        }
+    }
 
     async function loadWorkTypes() {
         try {
@@ -174,21 +227,59 @@ use App\Helper\Date;
         }
     }
 
-    async function loadPuantajData() {
+    async function loadEndeksData() {
         const listContainer = document.getElementById('puantaj-list');
         const emptyState = document.getElementById('empty-state');
-
-        // Show skeleton
+        
         listContainer.innerHTML = `
             <div class="card p-4 animate-pulse">
                 <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4 mb-2"></div>
                 <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
-            </div>
+            </div>`;
+        emptyState.classList.add('hidden');
+
+        const startDate = document.getElementById('filter-start-date').value;
+        const endDate = document.getElementById('filter-end-date').value;
+
+        try {
+            const response = await API.request('getEndeksData', {
+                start_date: startDate,
+                end_date: endDate
+            });
+
+            if (response.success) {
+                endeksData = response.data.items || [];
+                const stats = response.data.stats || {};
+                
+                document.getElementById('sonuclanan-is').textContent = stats.toplam_okunan || 0;
+                document.getElementById('toplam-is').textContent = '-'; // İkinci stat yok
+
+                if (endeksData.length === 0) {
+                    listContainer.innerHTML = '';
+                    emptyState.classList.remove('hidden');
+                } else {
+                    renderEndeksList();
+                }
+            } else {
+                listContainer.innerHTML = '';
+                emptyState.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Endeks verileri yüklenemedi:', error);
+            listContainer.innerHTML = '';
+            emptyState.classList.remove('hidden');
+        }
+    }
+
+    async function loadPuantajData() {
+        const listContainer = document.getElementById('puantaj-list');
+        const emptyState = document.getElementById('empty-state');
+        
+        listContainer.innerHTML = `
             <div class="card p-4 animate-pulse">
                 <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4 mb-2"></div>
                 <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
-            </div>
-        `;
+            </div>`;
         emptyState.classList.add('hidden');
 
         const startDate = document.getElementById('filter-start-date').value;
@@ -209,9 +300,8 @@ use App\Helper\Date;
                 const stats = response.data.stats || {};
 
                 // Update stats
-                document.getElementById('toplam-is').textContent = stats.toplam || 0;
-                document.getElementById('sonuclanan-is').textContent = stats.sonuclanan || 0;
-                // document.getElementById('acik-is').textContent = stats.acik || 0;
+                document.getElementById('toplam-is').textContent = stats.sonuclanan || 0; // Yer değiştirdik
+                document.getElementById('sonuclanan-is').textContent = stats.toplam || 0; // Yer değiştirdik
 
                 if (puantajData.length === 0) {
                     listContainer.innerHTML = '';
@@ -228,6 +318,91 @@ use App\Helper\Date;
             listContainer.innerHTML = '';
             emptyState.classList.remove('hidden');
         }
+    }
+
+    function renderEndeksList() {
+        const listContainer = document.getElementById('puantaj-list');
+        const emptyState = document.getElementById('empty-state');
+
+        if (endeksData.length === 0) {
+            listContainer.innerHTML = '';
+            emptyState.classList.remove('hidden');
+            return;
+        }
+        emptyState.classList.add('hidden');
+
+        // Group by date
+        const groups = endeksData.reduce((acc, item) => {
+            const date = item.tarih;
+            if (!acc[date]) acc[date] = {
+                date: date,
+                items: [],
+                totalOkunan: 0,
+                bolgeler: new Set()
+            };
+            acc[date].items.push(item);
+            acc[date].totalOkunan += (parseInt(item.okunan_abone_sayisi) || 0);
+            if (item.ekip_bolge) acc[date].bolgeler.add(item.ekip_bolge);
+            return acc;
+        }, {});
+
+        const sortedGroups = Object.values(groups).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        listContainer.innerHTML = sortedGroups.map(group => {
+            const dateObj = new Date(group.date);
+            const gunAdi = dateObj.toLocaleDateString('tr-TR', { weekday: 'long' });
+            const dayNum = dateObj.getDate().toString().padStart(2, '0');
+            const bolgeListesi = Array.from(group.bolgeler).join(', ');
+
+            return `
+            <div class="card card-premium p-4 mb-1.5 hover:shadow-md transition-all active:scale-[0.99] cursor-pointer group relative overflow-hidden" 
+                 onclick="showEndeksDailyDetail('${group.date}')">
+                
+                <div class="absolute inset-0 pointer-events-none select-none z-0 opacity-[0.42] flex items-center justify-center">
+                    <span class="text-[9rem] font-black leading-none tracking-tighter text-slate-100 dark:text-slate-800/50">
+                        ${dayNum}
+                    </span>
+                </div>
+
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between">
+                        <div class="flex flex-col">
+                            <span class="text-[12px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">${gunAdi}</span>
+                            <h4 class="font-bold text-slate-900 dark:text-white text-lg">${formatDate(group.date)}</h4>
+                        </div>
+                        <div class="flex flex-col items-end">
+                            <div class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/50 px-2.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                                 <span class="text-[13px] font-bold text-primary">${group.totalOkunan} ABONE</span>
+                            </div>
+                            <div class="flex gap-3 mt-2.5">
+                                <div class="flex items-center gap-1.5 text-green-600">
+                                    <span class="material-symbols-outlined text-[20px] filled">check_circle</span>
+                                    <span class="text-[15px] font-bold">${group.totalOkunan}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-amber-600">
+                                    <span class="material-symbols-outlined text-[20px] filled">schedule</span>
+                                    <span class="text-[15px] font-bold">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3.5 flex items-center justify-between">
+                        <div class="flex items-center gap-2 overflow-hidden">
+                            ${Array.from(group.bolgeler).slice(0, 3).map(bolge => `
+                                <span class="bg-primary/10 text-primary px-2 py-1 rounded text-xs font-bold uppercase truncate max-w-[120px] inline-block" title="${bolge}">
+                                    ${bolge}
+                                </span>
+                            `).join('')}
+                            ${group.bolgeler.size > 3 ? `<span class="bg-slate-100 text-slate-500 px-2 py-1 rounded text-xs font-bold">+${group.bolgeler.size - 3}</span>` : ''}
+                        </div>
+                        <div class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shrink-0">
+                            <span class="material-symbols-outlined text-sm">chevron_right</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+        }).join('');
     }
 
     function renderPuantajList() {
@@ -344,6 +519,36 @@ use App\Helper\Date;
         if (type.includes('sayaç')) return 'speed';
         if (type.includes('mühür')) return 'verified';
         return 'assignment';
+    }
+
+    function showEndeksDailyDetail(date) {
+        const items = endeksData.filter(p => p.tarih === date);
+        const container = document.getElementById('puantaj-detail-content');
+        const modalHeader = document.querySelector('#puantaj-detail-modal h3');
+
+        modalHeader.textContent = formatDate(date) + ' Endeks Okuma';
+
+        container.innerHTML = `
+            <div class="flex flex-col gap-3 pt-2">
+                ${items.map(item => `
+                    <div class="card p-4 bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary/10">
+                                <span class="material-symbols-outlined text-xl text-primary">visibility</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h5 class="font-bold text-slate-900 dark:text-white text-[13px] truncate uppercase tracking-tight">${item.bolge || item.ekip_bolge || 'BÖLGE YOK'}</h5>
+                                <p class="text-[12px] text-slate-500 mt-0.5 truncate">Okunan</p>
+                            </div>
+                            <div class="flex flex-col items-end">
+                                <span class="text-2xl font-bold text-slate-900 dark:text-white">${item.okunan_abone_sayisi}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        Modal.open('puantaj-detail-modal');
     }
 
     function showDailyDetail(date) {

@@ -21,7 +21,7 @@ class EndeksOkumaModel extends Model
                 FROM $this->table t
                 LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
                 WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
-                AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?(10[1-9]|1[1-9][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3,})'
+                AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'
                 GROUP BY t.personel_id, t.ekip_kodu_id, t.tarih";
 
         $stmt = $this->db->prepare($sql);
@@ -38,12 +38,12 @@ class EndeksOkumaModel extends Model
     public function getFiltered($startDate, $endDate, $personelId = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT t.*, p.adi_soyadi as personel_adi 
+        $sql = "SELECT t.*, p.adi_soyadi as personel_adi, def.ekip_bolge 
                 FROM $this->table t 
                 LEFT JOIN personel p ON t.personel_id = p.id 
                 LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
                 WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL
-                AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?(10[1-9]|1[1-9][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3,})'";
+                AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'";
         $params = [$firmaId];
 
         if ($startDate) {
@@ -62,7 +62,7 @@ class EndeksOkumaModel extends Model
         $sql .= " ORDER BY t.tarih DESC, t.id ASC";
 
         // DEBUG
-        file_put_contents(dirname(__DIR__, 2) . '/debug_sql.txt', "SQL: $sql\nParams: " . print_r($params, true) . "\n----------------\n", FILE_APPEND);
+        // file_put_contents(dirname(__DIR__, 2) . '/debug_sql.txt', "SQL: $sql\nParams: " . print_r($params, true) . "\n----------------\n", FILE_APPEND);
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -78,7 +78,7 @@ class EndeksOkumaModel extends Model
         $params = ['firma_id' => $firmaId];
 
         // Temel sorgu
-        $baseWhere = "t.firma_id = :firma_id AND t.silinme_tarihi IS NULL AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?(10[1-9]|1[1-9][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3,})'";
+        $baseWhere = "t.firma_id = :firma_id AND t.silinme_tarihi IS NULL AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'";
 
         // Tarih filtreleri
         if ($startDate) {
@@ -249,7 +249,7 @@ class EndeksOkumaModel extends Model
                     LEFT JOIN personel p ON t.personel_id = p.id
                     LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
                     WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
-                    AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?(10[1-9]|1[1-9][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3,})'
+                    AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'
                     GROUP BY t.personel_id, t.ekip_kodu_id, p.adi_soyadi, def.tur_adi, def.ekip_bolge";
 
             $stmt = $this->db->prepare($sql);
