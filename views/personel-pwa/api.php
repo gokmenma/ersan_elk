@@ -123,32 +123,46 @@ try {
 
             $db = (new \App\Model\Model('tanimlamalar'))->getDb();
 
-            $baseWhere = "personel_id = ? AND silinme_tarihi IS NULL";
+            $baseWhere = "t.personel_id = ? AND t.silinme_tarihi IS NULL";
+            
+            // Admin raporu filtresi: Ücretli ve Rapor Sekmesi Tanımlı
+            $adminFilter = "AND tn.is_turu_ucret > 0 AND tn.rapor_sekmesi IS NOT NULL AND tn.rapor_sekmesi != ''";
+
             $paramsDaily = [$personel_id, $today];
             $paramsMonthly = [$personel_id, $startOfMonth, $endOfMonth];
 
-            // Günlük Toplam
-            $sqlIslerDaily = "SELECT SUM(sonuclanmis) as toplam FROM yapilan_isler WHERE $baseWhere AND tarih = ?";
+            // Günlük Toplam (Admin Raporu Mantığıyla)
+            $sqlIslerDaily = "SELECT SUM(t.sonuclanmis) as toplam 
+                            FROM yapilan_isler t
+                            LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                            WHERE $baseWhere AND t.tarih = ? $adminFilter";
             $stmt = $db->prepare($sqlIslerDaily);
             $stmt->execute($paramsDaily);
             $dailyIsler = (int)($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
 
-            $sqlEndeksDaily = "SELECT SUM(okunan_abone_sayisi) as toplam FROM endeks_okuma WHERE $baseWhere AND tarih = ?";
+            // Endeks okuma için parametreler (alias kullanmadan)
+            $paramsEndeksDaily = [$personel_id, $today];
+            $sqlEndeksDaily = "SELECT SUM(okunan_abone_sayisi) as toplam FROM endeks_okuma WHERE personel_id = ? AND silinme_tarihi IS NULL AND tarih = ?";
             $stmt = $db->prepare($sqlEndeksDaily);
-            $stmt->execute($paramsDaily);
+            $stmt->execute($paramsEndeksDaily);
             $dailyEndeks = (int)($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
 
             $dailyTotal = $dailyIsler + $dailyEndeks;
 
-            // Aylık Toplam
-            $sqlIslerMonthly = "SELECT SUM(sonuclanmis) as toplam FROM yapilan_isler WHERE $baseWhere AND tarih BETWEEN ? AND ?";
+            // Aylık Toplam (Admin Raporu Mantığıyla)
+            $sqlIslerMonthly = "SELECT SUM(t.sonuclanmis) as toplam 
+                                FROM yapilan_isler t
+                                LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                                WHERE $baseWhere AND t.tarih BETWEEN ? AND ? $adminFilter";
             $stmt = $db->prepare($sqlIslerMonthly);
             $stmt->execute($paramsMonthly);
             $monthlyIsler = (int)($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
 
-            $sqlEndeksMonthly = "SELECT SUM(okunan_abone_sayisi) as toplam FROM endeks_okuma WHERE $baseWhere AND tarih BETWEEN ? AND ?";
+            // Endeks okuma için parametreler (alias kullanmadan)
+            $paramsEndeksMonthly = [$personel_id, $startOfMonth, $endOfMonth];
+            $sqlEndeksMonthly = "SELECT SUM(okunan_abone_sayisi) as toplam FROM endeks_okuma WHERE personel_id = ? AND silinme_tarihi IS NULL AND tarih BETWEEN ? AND ?";
             $stmt = $db->prepare($sqlEndeksMonthly);
-            $stmt->execute($paramsMonthly);
+            $stmt->execute($paramsEndeksMonthly);
             $monthlyEndeks = (int)($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
 
             $monthlyTotal = $monthlyIsler + $monthlyEndeks;
