@@ -1476,7 +1476,7 @@ class BordroPersonelModel extends Model
 
         // Bordro kaydını ve personel detaylarını çek
         $sql = $this->db->prepare("
-            SELECT bp.*, p.maas_tutari, p.maas_durumu, p.bes_kesintisi_varmi, p.sodexo, bd.baslangic_tarihi, bd.bitis_tarihi
+            SELECT bp.*, p.maas_tutari, p.maas_durumu, p.bes_kesintisi_varmi, p.sodexo, p.sgk_yapilan_firma, bd.baslangic_tarihi, bd.bitis_tarihi
             FROM {$this->table} bp
             INNER JOIN personel p ON bp.personel_id = p.id
             INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
@@ -2279,6 +2279,10 @@ class BordroPersonelModel extends Model
             // USER REQ: İcra tutarını bankadan düş
             $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
 
+            if (($kayit->sgk_yapilan_firma ?? '') === 'İŞKUR') {
+                $bankaOdemesi = 0;
+            }
+
             // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra - Diğer Ödeme
             $eldenOdeme = max(0, $toplamPrim - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
         } elseif ($isNetMaas) {
@@ -2320,6 +2324,10 @@ class BordroPersonelModel extends Model
             // USER REQ: İcra tutarını bankadan düş
             $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
 
+            if (($kayit->sgk_yapilan_firma ?? '') === 'İŞKUR') {
+                $bankaOdemesi = 0;
+            }
+
             // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra - Diğer Ödeme
             $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
         } else {
@@ -2352,6 +2360,10 @@ class BordroPersonelModel extends Model
 
             // USER REQ: İcra tutarını bankadan düş
             $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
+
+            if (($kayit->sgk_yapilan_firma ?? '') === 'İŞKUR') {
+                $bankaOdemesi = 0;
+            }
 
             // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra - Diğer Ödeme
             $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
