@@ -51,14 +51,15 @@ try {
 
         // Aktif personelleri ve o ay veya sonrasında işten çıkanları getir
         $personeller = $Personel->db->prepare("
-            SELECT id, adi_soyadi, resim_yolu, ekip_no, tc_kimlik_no, isten_cikis_tarihi 
+            SELECT id, adi_soyadi, resim_yolu, ekip_no, tc_kimlik_no, isten_cikis_tarihi, ise_giris_tarihi 
             FROM personel 
             WHERE firma_id = ? 
             AND silinme_tarihi IS NULL 
             AND (aktif_mi = 1 OR (isten_cikis_tarihi IS NOT NULL AND isten_cikis_tarihi >= ?))
+            AND ise_giris_tarihi <= ?
             ORDER BY adi_soyadi ASC
         ");
-        $personeller->execute([$firma_id, $startDate]);
+        $personeller->execute([$firma_id, $startDate, $endDate]);
         $personel_list = $personeller->fetchAll(PDO::FETCH_OBJ);
 
         // Puantaj ve İzin verilerini getir
@@ -73,6 +74,7 @@ try {
                 'tc_kimlik_no' => $p->tc_kimlik_no ?? '',
                 'resim' => $p->resim_yolu ?: 'assets/images/users/user-dummy-img.jpg',
                 'isten_cikis_tarihi' => $p->isten_cikis_tarihi,
+                'ise_giris_tarihi' => $p->ise_giris_tarihi,
                 'entries' => []
             ];
 
@@ -725,7 +727,7 @@ try {
 
         // Aktif personelleri ve o ay veya sonrasında işten çıkanları getir
         $personeller = $Personel->db->prepare("
-            SELECT id, adi_soyadi, tc_kimlik_no, isten_cikis_tarihi 
+            SELECT id, adi_soyadi, tc_kimlik_no, isten_cikis_tarihi, ise_giris_tarihi
             FROM personel 
             WHERE firma_id = ? 
             AND silinme_tarihi IS NULL 
@@ -878,6 +880,24 @@ try {
             }
 
             // Totals
+            $disabledDaysCount = 0;
+            for ($d = 1; $d <= $daysCount; $d++) {
+                $dateObj = new DateTime(sprintf("%s-%s-%02d", $yil, $ay, $d));
+                $isDisabled = false;
+                
+                if (!empty($p->isten_cikis_tarihi) && $p->isten_cikis_tarihi != '0000-00-00') {
+                    $cikisDate = new DateTime($p->isten_cikis_tarihi);
+                    if ($dateObj > $cikisDate) $isDisabled = true;
+                }
+                
+                if (!empty($p->ise_giris_tarihi) && $p->ise_giris_tarihi != '0000-00-00') {
+                    $baslamaDate = new DateTime($p->ise_giris_tarihi);
+                    if ($dateObj < $baslamaDate) $isDisabled = true;
+                }
+                
+                if ($isDisabled) $disabledDaysCount++;
+            }
+
             $unpaidCount = 0;
             foreach ($dayData as $dEntry) {
                 if (in_array($dEntry['tip_id'], $ucretsizIds)) {
@@ -886,8 +906,9 @@ try {
             }
             $allEntriesCount = count($dayData);
 
-            $toplamCalismaGunu = $daysCount - $unpaidCount;
-            $fiiliCalismaGunu = $daysCount - $allEntriesCount;
+            $calisilmasiGerekenGun = max(0, $daysCount - $disabledDaysCount);
+            $toplamCalismaGunu = max(0, $calisilmasiGerekenGun - $unpaidCount);
+            $fiiliCalismaGunu = max(0, $calisilmasiGerekenGun - $allEntriesCount);
 
             $sheet->setCellValue($toplamCol . $row, $toplamCalismaGunu);
             $sheet->setCellValue($fiiliCol . $row, $fiiliCalismaGunu);

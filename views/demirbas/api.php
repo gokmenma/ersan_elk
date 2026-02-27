@@ -301,7 +301,7 @@ if ($action == "demirbas-listesi") {
                     }
 
                     if ($kalan > 0) {
-                        $actions .= '<li><a class="dropdown-item py-2 zimmet-ver text-warning" href="javascript:void(0);" data-id="' . $enc_id . '" data-name="' . htmlspecialchars($d->demirbas_adi) . '" data-kalan="' . $kalan . '">
+                        $actions .= '<li><a class="dropdown-item py-2 zimmet-ver text-warning" href="javascript:void(0);" data-id="' . $enc_id . '" data-raw-id="' . $d->id . '" data-name="' . htmlspecialchars($d->demirbas_adi) . '" data-kalan="' . $kalan . '">
                                         <i class="bx bx-transfer me-2"></i> Zimmet Ver
                                     </a></li>';
                     }
@@ -328,7 +328,7 @@ if ($action == "demirbas-listesi") {
                     }
 
                     if ($kalan > 0) {
-                        $actions .= '<button type="button" class="btn btn-sm btn-soft-warning waves-effect waves-light zimmet-ver" data-id="' . $enc_id . '" data-name="' . htmlspecialchars($d->demirbas_adi) . '" data-kalan="' . $kalan . '" title="Zimmet Ver"><i class="bx bx-transfer"></i></button> ';
+                        $actions .= '<button type="button" class="btn btn-sm btn-soft-warning waves-effect waves-light zimmet-ver" data-id="' . $enc_id . '" data-raw-id="' . $d->id . '" data-name="' . htmlspecialchars($d->demirbas_adi) . '" data-kalan="' . $kalan . '" title="Zimmet Ver"><i class="bx bx-transfer"></i></button> ';
                     }
 
                     $actions .= '<button type="button" class="btn btn-sm btn-soft-primary waves-effect waves-light duzenle" data-id="' . $enc_id . '" title="Düzenle"><i class="bx bx-edit"></i></button> ';
@@ -786,9 +786,10 @@ if ($action == "excel-upload") {
 // Select2 için demirbaş arama
 if ($action == "demirbas-ara") {
     $search = $_GET["q"] ?? $_POST["q"] ?? "";
+    $type = $_GET["type"] ?? $_POST["type"] ?? "demirbas";
 
     try {
-        $results = $Demirbas->getForSelect($search);
+        $results = $Demirbas->getForSelect($search, $type);
         echo json_encode(["results" => $results]);
     } catch (Exception $ex) {
         echo json_encode(["results" => []]);

@@ -164,32 +164,61 @@ $ek_odeme_turleri = [
             transition: opacity 0.2s ease;
         }
 
-        /* Sticky Table Header */
-        .table-responsive {
-            overflow-x: auto !important;
+        /* JS Tabanlı Sticky Header için CSS Hazırlıkları */
+        .fixed-card-header {
+            position: fixed !important;
+            top: 70px !important; /* Navbar yüksekliği */
+            z-index: 1010 !important;
+            background-color: var(--bs-card-bg, #fff) !important;
+            border-bottom: 1px solid var(--bs-border-color) !important;
+            box-shadow: 0 4px 10px -4px rgba(0, 0, 0, 0.1) !important;
+            border-radius: 0 0 4px 4px !important;
+            /* Genişlik JS ile hesaplanıp atanacak */
+        }
+        
+        [data-bs-theme="dark"] .fixed-card-header {
+            background-color: #2a3042 !important; 
         }
 
         #bordroTable thead {
-            position: sticky !important;
-            top: 0;
-            z-index: 1060;
+            position: relative;
+            z-index: 1040;
+            background-color: #ffffff;
         }
 
         #bordroTable thead th {
-            background-color: #f8f9fa; /* İçeriğin üstüne bindiğinde arkası görünmesin */
-            box-shadow: inset 0 -1px 0 #eff2f7, inset 0 1px 0 #eff2f7; /* Alt/Üst sınırları koru */
+            background-color: #f8f9fa !important; /* İçeriğin üstüne bindiğinde arkası görünmesin */
+            box-shadow: inset 0 -1px 0 #eff2f7, inset 0 1px 0 #eff2f7 !important; /* Alt/Üst sınırları koru */
+        }
+
+        [data-bs-theme="dark"] #bordroTable thead {
+            background-color: #2a3042;
         }
 
         [data-bs-theme="dark"] #bordroTable thead th {
-            background-color: #2a3042;
-            box-shadow: inset 0 -1px 0 #32394e, inset 0 1px 0 #32394e;
+            background-color: #2a3042 !important;
+            box-shadow: inset 0 -1px 0 #32394e, inset 0 1px 0 #32394e !important;
+        }
+
+        /* JS ile Yüzer (Floating) hale geldiğinde belirgin renk ve gölge eklensin */
+        .floating-thead th {
+            background-color: #e6ebf1 !important; /* Normalden biraz daha koyu/farklı bir gri-mavi */
+            border-bottom: 2px solid #c8d1da !important;
+            box-shadow: 0 10px 15px -5px rgba(0, 0, 0, 0.1) !important;
+            transition: background-color 0.2s;
+        }
+
+        [data-bs-theme="dark"] .floating-thead th {
+            background-color: #1e2330 !important;
+            border-bottom: 2px solid #32394e !important;
+            box-shadow: 0 10px 15px -5px rgba(0, 0, 0, 0.4) !important;
         }
     </style>
 
     <div class="row">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header">
+            <div class="card bordro-card">
+                <div class="card-header bordro-sticky-header">
                     <div class="d-flex flex-wrap align-items-center gap-3">
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-2">
                             <div style="min-width: 150px;">
@@ -1554,5 +1583,74 @@ window.addEventListener('load', function() {
         console.log('📊 DOM Content Loaded: ' + Math.round(perfData.domContentLoadedEventEnd) + 'ms');
         console.log('📊 Full Page Load: ' + Math.round(perfData.loadEventEnd) + 'ms');
     }
+});
+
+// --- BULLETPROOF JS STICKY HEADER ---
+// Tema yapıları (overflow: hidden vb.) CSS sticky'i bozabilir. Kesin ve kusursuz çözüm JS ile müdahaledir.
+document.addEventListener('DOMContentLoaded', function() {
+    var navbarHeight = 70; // Üst navbar yaklaşık yüksekliği
+    var headerParent = document.querySelector('.bordro-card');
+    var header = document.querySelector('.bordro-sticky-header');
+    var isHeaderFixed = false;
+
+    window.addEventListener('scroll', function() {
+        // 1. KONTROL PANELİNİ (Filtreler vb) SABİTLE (Navbar'ın hemen altında)
+        if (headerParent && header) {
+            var parentRect = headerParent.getBoundingClientRect();
+            
+            // Kartın normalde bulunduğu üst nokta navbar'dan yukarı çıktığında sabitle
+            if (parentRect.top < navbarHeight) {
+                if (!isHeaderFixed) {
+                    header.classList.add('fixed-card-header');
+                    header.style.width = parentRect.width + 'px';
+                    header.style.left = parentRect.left + 'px';
+                    headerParent.style.paddingTop = header.offsetHeight + 'px'; // Kayma olmaması için
+                    isHeaderFixed = true;
+                } else {
+                    // Update width and left just in case of horizontal scrolling or resize
+                    header.style.width = parentRect.width + 'px';
+                    header.style.left = parentRect.left + 'px';
+                }
+            } else {
+                if (isHeaderFixed) {
+                    header.classList.remove('fixed-card-header');
+                    header.style.width = '';
+                    header.style.left = '';
+                    headerParent.style.paddingTop = '';
+                    isHeaderFixed = false;
+                }
+            }
+        }
+        
+        // 2. TABLO BAŞLIĞINI SABİTLE (Filtrelerin Hemen Altında)
+        var container = document.querySelector('.table-responsive');
+        var thead = document.querySelector('#bordroTable thead');
+        
+        if (container && thead) {
+            var containerRect = container.getBoundingClientRect();
+            // Sabitleme ofseti: Navbar yüksekliği + (eğer kontrol paneli fixed ise onun yüksekliği)
+            var stickyOffset = navbarHeight + (isHeaderFixed ? header.offsetHeight : 0);
+            
+            // Tablo container'ı ofsetten daha yukarıdaysa formülü işlet
+            if (containerRect.top < stickyOffset && containerRect.bottom > (stickyOffset + 100)) {
+                var distance = stickyOffset - containerRect.top;
+                // JS Translate kullanarak tablo içindeki overflow kısıtlamarını aşıyoruz
+                thead.style.transform = 'translateY(' + distance + 'px)';
+                thead.classList.add('floating-thead');
+            } else {
+                thead.style.transform = 'translateY(0)';
+                thead.classList.remove('floating-thead');
+            }
+        }
+    });
+    
+    // Pencere boyutu değiştiğinde fixed genişliği de düzelt
+    window.addEventListener('resize', function() {
+        if (isHeaderFixed && headerParent && header) {
+            var rect = headerParent.getBoundingClientRect();
+            header.style.width = rect.width + 'px';
+            header.style.left = rect.left + 'px';
+        }
+    });
 });
 </script>

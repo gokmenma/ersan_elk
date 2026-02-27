@@ -16,35 +16,95 @@ foreach ($personeller as $p) {
 }
 ?>
 
+<style>
+    /* Modern Segmented Control */
+    .segmented-control {
+        display: flex;
+        width: 100%;
+        background-color: #f1f5f9;
+        border-radius: 0.5rem;
+        padding: 0.25rem;
+        position: relative;
+        border: 1px solid #e2e8f0;
+    }
+
+    .segmented-control input[type="radio"] {
+        display: none;
+    }
+
+    .segmented-control label {
+        flex: 1;
+        text-align: center;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        border-radius: 0.375rem;
+        font-weight: 500;
+        font-size: 0.875rem;
+        color: #64748b;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        user-select: none;
+    }
+
+    .segmented-control input[type="radio"]:checked+label {
+        background-color: #ffffff;
+        color: #2563eb; /* Primary Blue */
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        font-weight: 600;
+    }
+
+    .segmented-control label:hover:not(:active) {
+        color: #1e293b;
+    }
+</style>
+
 <div class="modal fade" id="zimmetModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title"><i data-feather="repeat" class="me-2"></i>Demirbaş Zimmet Ver</h5>
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-light border-bottom">
+                <h5 class="modal-title fw-bold text-primary"><i data-feather="repeat" class="me-2"></i>Demirbaş Zimmet Ver</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="zimmetForm">
                 <input type="hidden" name="zimmet_id" id="zimmet_id" value="0">
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i data-feather="info" class="me-1"></i>
-                        <small>Personele demirbaş zimmetlemek için aşağıdaki formu doldurun. Zimmetlenen miktar stoktan
-                            düşülecektir.</small>
+                <div class="modal-body p-4">
+                    <div class="alert alert-soft-primary border-0 d-flex align-items-center mb-4">
+                        <i data-feather="info" class="me-3 text-primary"></i>
+                        <div class="text-primary small">
+                            Personele demirbaş zimmetlemek için formu doldurun. Seçtiğiniz türe göre liste güncellenecektir.
+                        </div>
                     </div>
 
                     <div class="row">
+                        <div class="col-md-12 mb-4">
+                            <label class="form-label d-block fw-bold text-muted small text-uppercase mb-2">Zimmet Türü</label>
+                            <div class="segmented-control">
+                                <input type="radio" name="zimmet_turu" id="zimmetTurDemirbas" value="demirbas" checked>
+                                <label for="zimmetTurDemirbas">
+                                    <i data-feather="box" width="16" height="16"></i> Demirbaş
+                                </label>
+
+                                <input type="radio" name="zimmet_turu" id="zimmetTurSayac" value="sayac">
+                                <label for="zimmetTurSayac">
+                                    <i data-feather="clock" width="16" height="16"></i> Sayaç
+                                </label>
+
+                                <input type="radio" name="zimmet_turu" id="zimmetTurAparat" value="aparat">
+                                <label for="zimmetTurAparat">
+                                    <i data-feather="tool" width="16" height="16"></i> Aparat
+                                </label>
+                            </div>
+                        </div>
+
                         <div class="col-md-12 mb-3">
                             <!-- Custom Select2 with data attributes to match Form class style -->
                             <div class="form-floating form-floating-custom">
                                 <select class="form-select select2" id="demirbas_id_zimmet" name="demirbas_id" required
                                     style="width:100%">
-                                    <option value="">Demirbaş arayın...</option>
-                                    <?php foreach ($demirbaslar as $d): ?>
-                                        <option value="<?php echo $d->id; ?>"
-                                            data-kalan="<?php echo $d->kalan_miktar ?? 1; ?>">
-                                            <?php echo ($d->demirbas_no ?? '-') . ' - ' . $d->demirbas_adi . ' (' . ($d->kategori_adi ?? 'Kategorisiz') . ') - Kalan: ' . ($d->kalan_miktar ?? 1); ?>
-                                        </option>
-                                    <?php endforeach; ?>
+                                    <!-- AJAX ile dolacak -->
                                 </select>
                                 <label for="demirbas_id_zimmet">Demirbaş Seçin *</label>
                                 <div class="form-floating-icon">

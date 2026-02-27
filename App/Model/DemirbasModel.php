@@ -91,22 +91,49 @@ class DemirbasModel extends Model
     /**
      * Select2 için demirbaş listesi
      */
-    public function getForSelect($search = '')
+    public function getForSelect($search = '', $type = 'demirbas')
     {
         $searchTerm = '%' . $search . '%';
+        // search terms count: 4 (demirbas_no, demirbas_adi, marka, seri_no)
+        $params = [$_SESSION['firma_id'], $searchTerm, $searchTerm, $searchTerm, $searchTerm];
+
+        $whereType = "";
+        
+        // Kategori filtresi
+        $sayacCondition = "(LOWER(k.tur_adi) LIKE '%sayaç%' OR LOWER(k.tur_adi) LIKE '%sayac%')";
+        $aparatCondition = "(LOWER(k.tur_adi) LIKE '%aparat%' OR k.id = 645)";
+
+        if ($type === 'sayac') {
+            $whereType = " AND " . $sayacCondition;
+        } elseif ($type === 'aparat') {
+            $whereType = " AND " . $aparatCondition;
+        } else {
+            // Demirbaş: Sayaç ve Aparat hariç
+            $whereType = " AND NOT " . $sayacCondition . " AND NOT " . $aparatCondition;
+        }
+
+        // Sayaç ise seri numarasını da ekle
+        $textSelect = "CONCAT(d.demirbas_no, ' - ', d.demirbas_adi, ' (', COALESCE(k.tur_adi, 'Kategorisiz'), ')')";
+        if ($type === 'sayac') {
+            $textSelect = "CONCAT(d.demirbas_no, ' - ', d.demirbas_adi, ' (', COALESCE(k.tur_adi, 'Kategorisiz'), ') - SN: ', COALESCE(d.seri_no, '-'))";
+        }
+
         $sql = $this->db->prepare("
             SELECT 
                 d.id,
-                CONCAT(d.demirbas_no, ' - ', d.demirbas_adi, ' (', COALESCE(k.tur_adi, 'Kategorisiz'), ')') as text,
-                d.kalan_miktar
+                $textSelect as text,
+                d.kalan_miktar,
+                d.seri_no
             FROM {$this->table} d
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             WHERE d.kalan_miktar > 0 AND d.firma_id = ?
-                AND (d.demirbas_no LIKE ? OR d.demirbas_adi LIKE ? OR d.marka LIKE ?)
+                AND (d.demirbas_no LIKE ? OR d.demirbas_adi LIKE ? OR d.marka LIKE ? OR d.seri_no LIKE ?)
+                $whereType
             ORDER BY d.demirbas_adi
-            LIMIT 20
+            LIMIT 50
         ");
-        $sql->execute([$_SESSION['firma_id'], $searchTerm, $searchTerm, $searchTerm]);
+        
+        $sql->execute($params);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -171,7 +198,7 @@ class DemirbasModel extends Model
             <td class="text-end">' . Helper::formattedMoney($data->edinme_tutari ?? 0) . '</td>
             <td>' . ($data->edinme_tarihi ?? '-') . '</td>
             <td class="text-center text-nowrap">
-                ' . ($kalan > 0 ? '<button type="button" class="btn btn-sm btn-soft-warning waves-effect waves-light zimmet-ver" data-id="' . $enc_id . '" data-name="' . $data->demirbas_adi . '" data-kalan="' . $kalan . '" title="Zimmet Ver"><i class="bx bx-transfer"></i></button>' : '') . '
+                ' . ($kalan > 0 ? '<button type="button" class="btn btn-sm btn-soft-warning waves-effect waves-light zimmet-ver" data-id="' . $enc_id . '" data-raw-id="' . $data->id . '" data-name="' . $data->demirbas_adi . '" data-kalan="' . $kalan . '" title="Zimmet Ver"><i class="bx bx-transfer"></i></button>' : '') . '
                 <button type="button" class="btn btn-sm btn-soft-primary waves-effect waves-light duzenle" data-id="' . $enc_id . '" title="Düzenle"><i class="bx bx-edit"></i></button>
                 <button type="button" class="btn btn-sm btn-soft-danger waves-effect waves-light demirbas-sil" data-id="' . $enc_id . '" data-name="' . $data->demirbas_adi . '" title="Sil"><i class="bx bx-trash"></i></button>
             </td>

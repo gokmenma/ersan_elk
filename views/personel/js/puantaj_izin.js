@@ -249,6 +249,7 @@ $(document).ready(function () {
 
                   let unpaidCount = 0;
                   let allCount = 0;
+                  let disabledDaysCount = 0;
 
                   for (let d = 1; d <= daysCount; d++) {
                     const dateObj = new Date(yil, ay - 1, d);
@@ -259,6 +260,8 @@ $(document).ready(function () {
 
                     let disabledStyle = "";
                     let disabledClass = "";
+                    let isDisabledDay = false;
+
                     if (
                       p.isten_cikis_tarihi &&
                       p.isten_cikis_tarihi !== "0000-00-00" &&
@@ -274,7 +277,31 @@ $(document).ready(function () {
                         disabledClass = "disabled bg-light cursor-not-allowed";
                         disabledStyle =
                           "pointer-events: none; opacity: 0.5; background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 10px) !important;";
+                        isDisabledDay = true;
                       }
+                    }
+
+                    if (
+                      p.ise_giris_tarihi &&
+                      p.ise_giris_tarihi !== "0000-00-00" &&
+                      p.ise_giris_tarihi !== null
+                    ) {
+                      const baslamaParts = p.ise_giris_tarihi.split("-");
+                      const baslamaDate = new Date(
+                        parseInt(baslamaParts[0]),
+                        parseInt(baslamaParts[1]) - 1,
+                        parseInt(baslamaParts[2]),
+                      );
+                      if (dateObj < baslamaDate) {
+                        disabledClass = "disabled bg-light cursor-not-allowed";
+                        disabledStyle =
+                          "pointer-events: none; opacity: 0.5; background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 10px) !important;";
+                        isDisabledDay = true;
+                      }
+                    }
+
+                    if (isDisabledDay) {
+                        disabledDaysCount++;
                     }
 
                     const key = `${p.id}-${dateStr}`;
@@ -348,8 +375,9 @@ $(document).ready(function () {
                                     </td>`;
                   }
 
-                  const toplamCalisma = daysCount - unpaidCount;
-                  const fiiliCalisma = daysCount - allCount;
+                  const calisilmasiGerekenGun = daysCount - disabledDaysCount;
+                  const toplamCalisma = calisilmasiGerekenGun > 0 ? calisilmasiGerekenGun - unpaidCount : 0;
+                  const fiiliCalisma = calisilmasiGerekenGun > 0 ? calisilmasiGerekenGun - allCount : 0;
                   bodyHtml += `<td class="sticky-col-right-1 toplam-calisma-gunu">${toplamCalisma}</td>`;
                   bodyHtml += `<td class="sticky-col-right-2 fiili-calisma-gunu">${fiiliCalisma}</td>`;
                   bodyHtml += "</tr>";
@@ -610,9 +638,13 @@ $(document).ready(function () {
 
     let unpaidCount = 0;
     let allCount = 0;
+    let disabledCount = 0;
 
     $row.find(".day-cell").each(function () {
       const $cell = $(this);
+      if ($cell.hasClass("disabled")) {
+          disabledCount++;
+      }
       const $content = $cell.find(".cell-content");
       if ($content.length) {
         allCount++;
@@ -623,8 +655,9 @@ $(document).ready(function () {
       }
     });
 
-    $row.find(".toplam-calisma-gunu").text(daysCount - unpaidCount);
-    $row.find(".fiili-calisma-gunu").text(daysCount - allCount);
+    const activeDays = daysCount - disabledCount;
+    $row.find(".toplam-calisma-gunu").text(activeDays > 0 ? activeDays - unpaidCount : 0);
+    $row.find(".fiili-calisma-gunu").text(activeDays > 0 ? activeDays - allCount : 0);
 
     // Satır toplamı değiştiyse genel toplamı da güncelle
     calculateTotals();

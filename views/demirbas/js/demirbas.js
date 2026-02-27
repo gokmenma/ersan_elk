@@ -368,6 +368,35 @@ function initSelect2() {
       placeholder: "Demirbaş arayın...",
       allowClear: true,
       width: "100%",
+      ajax: {
+        url: zimmetUrl,
+        type: "POST",
+        dataType: "json",
+        delay: 250,
+        data: function (params) {
+          return {
+            action: "demirbas-ara",
+            q: params.term,
+            type: $('input[name="zimmet_turu"]:checked').val() || "demirbas",
+            page: params.page || 1,
+          };
+        },
+        processResults: function (data, params) {
+          params.page = params.page || 1;
+          return {
+            results: data.results, // Use data.results instead of data.items
+          };
+        },
+        cache: true,
+      },
+      minimumInputLength: 0,
+      templateResult: function (repo) {
+        if (repo.loading) return repo.text;
+        return repo.text;
+      },
+      templateSelection: function (repo) {
+        return repo.text || repo.id;
+      },
     });
   }
 
@@ -1082,6 +1111,18 @@ $(".modal").on("shown.bs.modal", function () {
 
 // ============== ZİMMET İŞLEMLERİ ==============
 
+// Zimmet Türü Radio Button Değişikliği
+$(document).on("change", 'input[name="zimmet_turu"]', function () {
+  let type = $(this).val();
+  filterZimmetOptions(type);
+});
+
+function filterZimmetOptions(type) {
+  // AJAX kullandığımız için sadece seçimi temizliyoruz.
+  // Select2, açıldığında 'type' parametresini (radio buton) okuyarak sunucudan doğru veriyi çekecek.
+  $("#demirbas_id_zimmet").val(null).trigger("change");
+}
+
 // Demirbaş listesinden zimmet ver
 $(document).on("click", ".zimmet-ver", function (e) {
   e.preventDefault();
@@ -1089,15 +1130,33 @@ $(document).on("click", ".zimmet-ver", function (e) {
   let rawId = $(this).data("raw-id");
   let name = $(this).data("name");
   let kalan = $(this).data("kalan");
+  
+  // Hangi tablodan tıklandığını bulup türü belirle
+  let tableId = $(this).closest('table').attr('id');
+  let type = 'demirbas';
+  if (tableId === 'sayacTable') type = 'sayac';
+  else if (tableId === 'aparatTable') type = 'aparat';
 
-  // Formu sıfırla ama select'i kapatacağız
-  resetZimmetForm();
+  // Formu sıfırla (tür seçimini atla)
+  resetZimmetForm(false);
+  
+  // Türü ayarla
+  $('input[name="zimmet_turu"][value="' + type + '"]').prop('checked', true);
 
   $("#zimmetModal").modal("show");
 
-  // Demirbaş seçimini yap ve kilitle
+  // Demirbaş seçimini yap ve kilitle (AJAX olduğu için Option'ı manuel ekle)
   if (rawId) {
+    // Eğer seçenek zaten varsa (nadir) onu seç, yoksa oluştur
+    if ($("#demirbas_id_zimmet option[value='" + rawId + "']").length === 0) {
+        var newOption = new Option(name, rawId, true, true);
+        $("#demirbas_id_zimmet").append(newOption);
+    }
     $("#demirbas_id_zimmet").val(rawId).trigger("change");
+    
+    // Kalan bilgisini seçili elemana ekle (data-kalan)
+    $("#demirbas_id_zimmet option:selected").data('kalan', kalan);
+    
     $("#demirbas_id_zimmet").prop("disabled", true);
   }
 
@@ -1298,7 +1357,7 @@ $(document).on("click", ".zimmet-sil", function (e) {
 });
 
 // Form Reset
-function resetZimmetForm() {
+function resetZimmetForm(setDefaultType = true) {
   $("#zimmetForm")[0].reset();
   $("#zimmet_id").val(0);
   $("#demirbas_id_zimmet").prop("disabled", false).val("").trigger("change");
@@ -1309,6 +1368,13 @@ function resetZimmetForm() {
     locale: "tr",
     defaultDate: new Date(),
   });
+  
+  if (setDefaultType) {
+    // Default olarak Demirbaş seç
+    $("#zimmetTurDemirbas").prop("checked", true);
+    // filterZimmetOptions'a gerek yok, zaten change tetiklenince select2 sıfırlanır
+    $("#demirbas_id_zimmet").val(null).trigger("change");
+  }
 }
 
 // Modal kapatıldığında formu sıfırla
