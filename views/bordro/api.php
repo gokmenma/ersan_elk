@@ -548,10 +548,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<tr><td class="text-muted">Günlük Ücret:</td><td class="text-secondary">' . number_format($gunlukUcret, 2, ',', '.') . ' ₺ <small class="text-muted">(' . $personel->maas_durumu . ' / 30)</small></td></tr>';
                 $html .= '<tr><td class="text-muted">Çalışma Günü:</td><td class="' . ($ucretsizIzinGunu > 0 ? 'text-warning' : 'text-secondary') . '">' . $calismaGunu . ' gün' . ($ucretsizIzinGunu > 0 ? ' <small class="text-muted">(-' . $ucretsizIzinGunu . ' izin)</small>' : '') . '</td></tr>';
 
-                // Ücretsiz izin varsa, çalışılan brüt maaşı da göster
-                if ($ucretsizIzinGunu > 0) {
-                    $calisanBrutMaas = $brutMaas; // Brüt maaş zaten ücretsiz izin düşülmüş halde
-                    $html .= '<tr class="table-warning"><td class="text-muted">Çalışılan Brüt:</td><td class="fw-bold text-warning">' . number_format($calisanBrutMaas, 2, ',', '.') . ' ₺ <small class="text-muted">(SGK matrahı)</small></td></tr>';
+                // Ücretsiz izin veya net/brüt maaş ise, çalışılan brüt/net maaşı göster
+                if ($ucretsizIzinGunu > 0 || in_array($personel->maas_durumu, ['Net', 'Brüt'])) {
+                    $calisanBrutMaas = $gunlukUcret * $calismaGunu; // Gün bazlı matrah hesaplama
+                    $descText = ($personel->maas_durumu == 'Net' || $personel->maas_durumu == 'Brüt') ? ' (Gün x Ücret)' : ' (SGK matrahı)';
+                    $html .= '<tr class="table-warning"><td class="text-muted">Hakediş (Maaş):</td><td class="fw-bold text-warning">' . number_format($calisanBrutMaas, 2, ',', '.') . ' ₺ <small class="text-muted">' . $descText . '</small></td></tr>';
                 }
 
                 $html .= '<tr><td class="text-muted">Toplam Ek Ödeme:</td><td class="text-success fw-medium">+' . number_format($guncelEkOdeme, 2, ',', '.') . ' ₺</td></tr>';

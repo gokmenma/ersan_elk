@@ -321,9 +321,32 @@ $ek_odeme_turleri = [
 
                             $pKesintiHaricIcra = $pToplamKesinti - $pIcra;
 
-                            if ($pIsNet) {
-                                // Net maaş tipi: toplam alacağı = personel tablosundaki maas_tutari
-                                $pToplamAlacagi = $pMaasTutari;
+                            // İzin gün sayılarını hesapla
+                            $pUcretsizIzinGunu = 0;
+                            $pUcretliIzinGunu = 0;
+                            $pCalismaGunu = 30;
+                            if (!empty($p->hesaplama_detay)) {
+                                $detay = json_decode($p->hesaplama_detay, true);
+                                if (isset($detay['matrahlar']['fiili_calisma_gunu'])) {
+                                    $pCalismaGunu = intval($detay['matrahlar']['fiili_calisma_gunu']);
+                                }
+                                if (isset($detay['matrahlar']['ucretsiz_izin_gunu'])) {
+                                    $pUcretsizIzinGunu = intval($detay['matrahlar']['ucretsiz_izin_gunu']);
+                                } elseif (isset($detay['matrahlar']['ucretsiz_izin_dusumu']) && isset($detay['matrahlar']['nominal_maas']) && $detay['matrahlar']['nominal_maas'] > 0) {
+                                    $pGunlukUcret = $detay['matrahlar']['nominal_maas'] / 30;
+                                    $pUcretsizIzinGunu = round($detay['matrahlar']['ucretsiz_izin_dusumu'] / $pGunlukUcret);
+                                }
+                                if (isset($detay['matrahlar']['ucretli_izin_gunu'])) {
+                                    $pUcretliIzinGunu = intval($detay['matrahlar']['ucretli_izin_gunu']);
+                                }
+                                if (!isset($detay['matrahlar']['fiili_calisma_gunu'])) {
+                                    $pCalismaGunu = 30 - $pUcretsizIzinGunu - $pUcretliIzinGunu;
+                                }
+                            }
+
+                            if ($pIsNet || ($p->maas_durumu ?? '') == 'Brüt') {
+                                // Net veya Brüt maaş tipi: toplam alacağı = (maaş / 30) * gün + ek ödemeler
+                                $pToplamAlacagi = (($pMaasTutari / 30) * $pCalismaGunu) + $hesaplananEkOdeme;
                             } elseif ($pNetMaas > 0) {
                                 // Prim Usulü vb.: toplam = net + (kesinti - icra)
                                 $pToplamAlacagi = $pNetMaas + $pKesintiHaricIcra;
@@ -654,25 +677,6 @@ $ek_odeme_turleri = [
 
                                                 $kesintiHaricIcra = $pToplamKesRow - $icraKesintisi;
 
-                                                if ($isNetMaas) {
-                                                    // Net maaş tipi: toplam alacağı = personel tablosundaki maas_tutari
-                                                    $toplamAlacagiPersonel = floatval($personel->maas_tutari ?? 0);
-                                                } elseif ($pNetMaasRow > 0) {
-                                                    // Prim Usulü vb.: toplam = net + (kesinti - icra)
-                                                    $toplamAlacagiPersonel = $pNetMaasRow + $kesintiHaricIcra;
-                                                } else {
-                                                    // Henüz hesaplanmamışsa tahmini: maaş + ek ödemeler
-                                                    $toplamAlacagiPersonel = ($personel->maas_tutari ?? 0) + $hesaplananEkOdeme;
-                                                }
-
-                                                // Net alacağı hesaplanmışsa net_maas, yoksa toplam - kesinti
-                                                $netAlacagi = ($pNetMaasRow > 0) ? $pNetMaasRow : ($toplamAlacagiPersonel - $kesintiHaricIcra);
-                                                ?>
-                                                <?php
-                                                // Elden ödeme artık model'de hesaplanıp kaydediliyor
-                                                // Ancak görüntüleme için yedek hesaplama yap (negatif çıkmaması için max(0,...) eklendi)
-                                                $eldenOdeme = $personel->elden_odeme ?? max(0, ($personel->net_maas ?? 0) - ($personel->banka_odemesi ?? 0) - ($personel->sodexo_odemesi ?? 0) - ($personel->diger_odeme ?? 0));
-
                                                 // İzin gün sayılarını hesapla
                                                 $ucretsizIzinGunu = 0;
                                                 $ucretliIzinGunu = 0;
@@ -703,6 +707,26 @@ $ek_odeme_turleri = [
                                                         $calismaGunu = 30 - $ucretsizIzinGunu - $ucretliIzinGunu;
                                                     }
                                                 }
+
+                                                if ($isNetMaas || ($personel->maas_durumu ?? '') == 'Brüt') {
+                                                    // Net veya Brüt maaş tipi: toplam alacağı = (maaş / 30) * gün + ek ödemeler
+                                                    $toplamAlacagiPersonel = ((floatval($personel->maas_tutari ?? 0) / 30) * $calismaGunu) + $hesaplananEkOdeme;
+                                                } elseif ($pNetMaasRow > 0) {
+                                                    // Prim Usulü vb.: toplam = net + (kesinti - icra)
+                                                    $toplamAlacagiPersonel = $pNetMaasRow + $kesintiHaricIcra;
+                                                } else {
+                                                    // Henüz hesaplanmamışsa tahmini: maaş + ek ödemeler
+                                                    $toplamAlacagiPersonel = ($personel->maas_tutari ?? 0) + $hesaplananEkOdeme;
+                                                }
+
+                                                // Net alacağı hesaplanmışsa net_maas, yoksa toplam - kesinti
+                                                $netAlacagi = ($pNetMaasRow > 0) ? $pNetMaasRow : ($toplamAlacagiPersonel - $kesintiHaricIcra);
+                                                ?>
+                                                <?php
+                                                // Elden ödeme artık model'de hesaplanıp kaydediliyor
+                                                // Ancak görüntüleme için yedek hesaplama yap (negatif çıkmaması için max(0,...) eklendi)
+                                                $eldenOdeme = $personel->elden_odeme ?? max(0, ($personel->net_maas ?? 0) - ($personel->banka_odemesi ?? 0) - ($personel->sodexo_odemesi ?? 0) - ($personel->diger_odeme ?? 0));
+
                                                 ?>
                                                 <tr data-id="<?= $personel->id ?>">
                                                     <td>
