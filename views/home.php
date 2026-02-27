@@ -851,17 +851,18 @@ if (Gate::allows("ana_sayfa")) {
         $personelStmt = $db->prepare("
             SELECT p.adi_soyadi, pg.giris_tarihi as tarih, pg.ip_adresi, pg.tarayici
             FROM personel_giris_loglari pg JOIN personel p ON p.id = pg.personel_id
+            WHERE p.firma_id = :firma_id
             ORDER BY pg.giris_tarihi DESC LIMIT 10
         ");
-        $personelStmt->execute();
+        $personelStmt->execute(['firma_id' => $_SESSION['firma_id']]);
         $personelLogs = $personelStmt->fetchAll(PDO::FETCH_OBJ);
 
         $kullaniciStmt = $db->prepare("
             SELECT u.adi_soyadi, sl.created_at as tarih, SUBSTR(sl.description, LOCATE('IP:', sl.description) + 4) as ip_adresi, 'Sistem' as tarayici
             FROM system_logs sl JOIN users u ON u.id = sl.user_id
-            WHERE sl.action_type = 'Başarılı Giriş' ORDER BY sl.created_at DESC LIMIT 10
+            WHERE sl.action_type = 'Başarılı Giriş' AND u.firma_id = :firma_id ORDER BY sl.created_at DESC LIMIT 10
         ");
-        $kullaniciStmt->execute();
+        $kullaniciStmt->execute(['firma_id' => $_SESSION['firma_id']]);
         $kullaniciLogs = $kullaniciStmt->fetchAll(PDO::FETCH_OBJ);
     } catch (\Exception $e) {
         $personelLogs = [];
@@ -3452,7 +3453,7 @@ if (Gate::allows("ana_sayfa")) {
                 const $icon = $btn.find('i');
                 const action = $btn.data('action');
                 const today = '<?php echo date('Y-m-d'); ?>';
-                const firmaId = '<?php echo $_SESSION['firma_id'] ?? 17; ?>';
+                const firmaKodu = '<?php echo $_SESSION['firma_kodu'] ?? 17; ?>';
 
                 if ($btn.hasClass('syncing')) return;
 
@@ -3468,8 +3469,8 @@ if (Gate::allows("ana_sayfa")) {
                             'active-tab') || '',
                         baslangic_tarihi: today,
                         bitis_tarihi: today,
-                        ilk_firma: firmaId,
-                        son_firma: firmaId
+                        ilk_firma: firmaKodu,
+                        son_firma: firmaKodu
                     },
                     success: function (response) {
                         $btn.removeClass('syncing');

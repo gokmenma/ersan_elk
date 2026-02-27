@@ -347,6 +347,8 @@ use App\Helper\Helper;
 
     <script>
         // Global data
+        var userIsSef = <?php echo json_encode($isSef ?? false); ?>;
+        var lastUpdateDate = "<?php echo Helper::getLastUpdateDate(['yapilan_isler', 'endeks_okuma']); ?>";
         var allActivitiesData = [];
         var allNotificationsData = [];
         var currentNotificationIndex = -1;
@@ -593,6 +595,11 @@ use App\Helper\Helper;
         }
 
         async function gorevBasla() {
+            if (!userIsSef) {
+                Toast.show('Bu işlemi gerçekleştirmek için "Şef" yetkisine sahip olmalısınız.', 'error');
+                return;
+            }
+
             var btn = document.getElementById('btn-gorev-basla');
             var originalHtml = btn.innerHTML;
 
@@ -746,7 +753,10 @@ use App\Helper\Helper;
                                 <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                                     <span class="material-symbols-outlined text-primary text-xl">fact_check</span>
                                 </div>
-                                <p class="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wider">Toplam Tamamlanan İş</p>
+                                <div>
+                                    <p class="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wider">Toplam Tamamlanan İş</p>
+                                    <p class="text-[10px] text-slate-400 font-medium">Son Güncelleme: ${lastUpdateDate}</p>
+                                </div>
                             </div>
                             
                             <div class="grid grid-cols-2 gap-4 mt-2">

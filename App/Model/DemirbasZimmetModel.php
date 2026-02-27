@@ -37,9 +37,10 @@ class DemirbasZimmetModel extends Model
             LEFT JOIN demirbas d ON z.demirbas_id = d.id
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             LEFT JOIN personel p ON z.personel_id = p.id
+            WHERE d.firma_id = ?
             ORDER BY z.kayit_tarihi DESC
         ");
-        $sql->execute();
+        $sql->execute([$_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -104,10 +105,10 @@ class DemirbasZimmetModel extends Model
             LEFT JOIN demirbas d ON z.demirbas_id = d.id
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             LEFT JOIN personel p ON z.personel_id = p.id
-            WHERE z.durum = 'teslim'
+            WHERE z.durum = 'teslim' AND d.firma_id = ?
             ORDER BY z.teslim_tarihi DESC
         ");
-        $sql->execute();
+        $sql->execute([$_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -196,13 +197,15 @@ class DemirbasZimmetModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT 
-                COUNT(CASE WHEN durum = 'teslim' THEN 1 END) as aktif_zimmet,
-                COUNT(CASE WHEN durum = 'iade' THEN 1 END) as iade_edilen,
-                COUNT(CASE WHEN durum = 'kayip' THEN 1 END) as kayip,
+                COUNT(CASE WHEN z.durum = 'teslim' THEN 1 END) as aktif_zimmet,
+                COUNT(CASE WHEN z.durum = 'iade' THEN 1 END) as iade_edilen,
+                COUNT(CASE WHEN z.durum = 'kayip' THEN 1 END) as kayip,
                 COUNT(*) as toplam
-            FROM {$this->table}
+            FROM {$this->table} z
+            LEFT JOIN demirbas d ON z.demirbas_id = d.id
+            WHERE d.firma_id = ?
         ");
-        $sql->execute();
+        $sql->execute([$_SESSION['firma_id']]);
         return $sql->fetch(PDO::FETCH_OBJ);
     }
 
@@ -297,9 +300,9 @@ class DemirbasZimmetModel extends Model
                 LEFT JOIN demirbas d ON z.demirbas_id = d.id
                 LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
                 LEFT JOIN personel p ON z.personel_id = p.id
-                WHERE 1=1";
+                WHERE d.firma_id = :firma_id";
 
-        $params = [];
+        $params = ['firma_id' => $_SESSION['firma_id']];
 
         if (!empty($term)) {
             $term = "%$term%";
@@ -354,9 +357,9 @@ class DemirbasZimmetModel extends Model
                     LEFT JOIN demirbas d ON z.demirbas_id = d.id
                     LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
                     LEFT JOIN personel p ON z.personel_id = p.id
-                    WHERE z.silinme_tarihi IS NULL";
+                    WHERE z.silinme_tarihi IS NULL AND d.firma_id = :firma_id";
 
-        $params = [];
+        $params = ['firma_id' => $_SESSION['firma_id']];
 
         // Global Arama
         $searchWhere = "";
@@ -414,8 +417,10 @@ class DemirbasZimmetModel extends Model
         }
 
         // Toplam kayıt sayısı (filtresiz)
-        $totalSql = "SELECT COUNT(*) FROM {$this->table} WHERE silinme_tarihi IS NULL";
-        $totalRecords = $this->db->query($totalSql)->fetchColumn();
+        $totalSql = "SELECT COUNT(*) FROM {$this->table} z LEFT JOIN demirbas d ON z.demirbas_id = d.id WHERE z.silinme_tarihi IS NULL AND d.firma_id = :firma_id_total";
+        $stmtTotal = $this->db->prepare($totalSql);
+        $stmtTotal->execute(['firma_id_total' => $_SESSION['firma_id']]);
+        $totalRecords = $stmtTotal->fetchColumn();
 
         // Filtrelenmiş kayıt sayısı
         $filterSql = "SELECT COUNT(*) FROM ({$baseSql} {$searchWhere}) AS temp";
@@ -558,12 +563,13 @@ class DemirbasZimmetModel extends Model
 
         // Tetikleyicileri bir kez çek ve cache'le (Performans için)
         if (self::$_autoTriggers === null) {
-            $sql = $this->db->query("
+            $sql = $this->db->prepare("
                 SELECT id, demirbas_adi, otomatik_zimmet_is_emri, otomatik_iade_is_emri 
                 FROM demirbas 
-                WHERE (otomatik_zimmet_is_emri IS NOT NULL AND otomatik_zimmet_is_emri != '')
-                OR (otomatik_iade_is_emri IS NOT NULL AND otomatik_iade_is_emri != '')
+                WHERE ((otomatik_zimmet_is_emri IS NOT NULL AND otomatik_zimmet_is_emri != '')
+                OR (otomatik_iade_is_emri IS NOT NULL AND otomatik_iade_is_emri != '')) AND firma_id = ?
             ");
+            $sql->execute([$_SESSION['firma_id']]);
             self::$_autoTriggers = $sql->fetchAll(PDO::FETCH_OBJ);
         }
 

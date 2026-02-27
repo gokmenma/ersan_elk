@@ -4,6 +4,11 @@ if (isset($_SESSION["id"]) && !empty($_SESSION["id"])) {
     $_SESSION["firma_id"] = $_GET["firma_id"];
     if (isset($_GET["firma_kodu"])) {
         $_SESSION["firma_kodu"] = $_GET["firma_kodu"];
+    }else{
+        require_once "vendor/autoload.php";
+        $FirmaModel = new \App\Model\FirmaModel();
+        $firma = $FirmaModel->find($_GET["firma_id"]);
+        $_SESSION["firma_kodu"] = $firma->firma_kodu;
     }
     $page = $_GET["p"] ?? "home";
 

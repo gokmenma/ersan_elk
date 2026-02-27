@@ -29,9 +29,10 @@ class DemirbasModel extends Model
                 (SELECT id FROM demirbas_servis_kayitlari WHERE demirbas_id = d.id AND iade_tarihi IS NULL AND silinme_tarihi IS NULL LIMIT 1) as active_servis_id
             FROM {$this->table} d
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
+            WHERE d.firma_id = ?
             ORDER BY d.kayit_tarihi DESC
         ");
-        $sql->execute();
+        $sql->execute([$_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -46,10 +47,10 @@ class DemirbasModel extends Model
                 k.tur_adi as kategori_adi
             FROM {$this->table} d
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
-            WHERE d.kalan_miktar > 0
+            WHERE d.kalan_miktar > 0 AND d.firma_id = ?
             ORDER BY k.tur_adi, d.demirbas_adi
         ");
-        $sql->execute();
+        $sql->execute([$_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -62,10 +63,10 @@ class DemirbasModel extends Model
             SELECT d.*, k.tur_adi as kategori_adi
             FROM {$this->table} d
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
-            WHERE d.kategori_id = ?
+            WHERE d.kategori_id = ? AND d.firma_id = ?
             ORDER BY d.demirbas_adi
         ");
-        $sql->execute([$kategori_id]);
+        $sql->execute([$kategori_id, $_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -81,8 +82,9 @@ class DemirbasModel extends Model
                 COALESCE(SUM(kalan_miktar), 0) as stokta_kalan,
                 (COALESCE(SUM(miktar), 0) - COALESCE(SUM(kalan_miktar), 0)) as zimmetli_adet
             FROM {$this->table}
+            WHERE firma_id = ?
         ");
-        $sql->execute();
+        $sql->execute([$_SESSION['firma_id']]);
         return $sql->fetch(PDO::FETCH_OBJ);
     }
 
@@ -99,12 +101,12 @@ class DemirbasModel extends Model
                 d.kalan_miktar
             FROM {$this->table} d
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
-            WHERE d.kalan_miktar > 0
+            WHERE d.kalan_miktar > 0 AND d.firma_id = ?
                 AND (d.demirbas_no LIKE ? OR d.demirbas_adi LIKE ? OR d.marka LIKE ?)
             ORDER BY d.demirbas_adi
             LIMIT 20
         ");
-        $sql->execute([$searchTerm, $searchTerm, $searchTerm]);
+        $sql->execute([$_SESSION['firma_id'], $searchTerm, $searchTerm, $searchTerm]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -181,9 +183,9 @@ class DemirbasModel extends Model
         $sql = "SELECT d.*, k.tur_adi as kategori_adi
                 FROM {$this->table} d
                 LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
-                WHERE 1=1";
+                WHERE d.firma_id = :firma_id";
 
-        $params = [];
+        $params = ['firma_id' => $_SESSION['firma_id']];
 
         if (!empty($term)) {
             $term = "%$term%";

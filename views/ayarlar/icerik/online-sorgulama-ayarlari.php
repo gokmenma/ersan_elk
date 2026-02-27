@@ -20,15 +20,23 @@ $puantaj_saatleri = array_filter(array_map('trim', explode(',', $online_sorgulam
 $online_sorgulama_firma_baslangic = $allSettings['online_sorgulama_firma_baslangic'] ?? ($_SESSION['firma_kodu'] ?? '17');
 $online_sorgulama_firma_bitis = $allSettings['online_sorgulama_firma_bitis'] ?? ($_SESSION['firma_kodu'] ?? '17');
 
-// Endeks Okuma API Ayarları
-$api_endeks_url = $allSettings['api_endeks_url'] ?? 'https://yonetim.maraskaski.gov.tr/api/api_okuma_secure.php?action=getData';
-$api_endeks_kullanici = $allSettings['api_endeks_kullanici'] ?? '';
-$api_endeks_sifre = $allSettings['api_endeks_sifre'] ?? 'sk_live_DSOSTjHN195B4NUpEaB9NdYtW7xQ8EVjZD2p2ssW';
+// Firma bazlı özel ayarları al (Global sızıntıları önlemek için)
+$stmtFirmaSec = $Settings->db->prepare("SELECT set_name, set_value FROM settings WHERE firma_id = ?");
+$stmtFirmaSec->execute([$firma_id]);
+$firmaOzelAyarlar = $stmtFirmaSec->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
+
+// Eğer firma 17 değilse, globalden sızan kaski ayarlarını ezelim. (Firma kendine özel ayarlamadıysa boş dursun)
+$firma_kodu = $_SESSION['firma_kodu'] ?? '17';
+
+$api_endeks_url = $firmaOzelAyarlar['api_endeks_url'] ?? ($firma_kodu == 17 ? ($allSettings['api_endeks_url'] ?? 'https://yonetim.maraskaski.gov.tr/api/api_okuma_secure.php?action=getData') : '');
+$api_endeks_kullanici = $firmaOzelAyarlar['api_endeks_kullanici'] ?? ($firma_kodu == 17 ? ($allSettings['api_endeks_kullanici'] ?? '') : '');
+$api_endeks_sifre = $firmaOzelAyarlar['api_endeks_sifre'] ?? ($firma_kodu == 17 ? ($allSettings['api_endeks_sifre'] ?? 'sk_live_DSOSTjHN195B4NUpEaB9NdYtW7xQ8EVjZD2p2ssW') : '');
 
 // Kesme/Açma API Ayarları
-$api_puantaj_url = $allSettings['api_puantaj_url'] ?? 'https://yonetim.maraskaski.gov.tr/api/api_isemri_secure.php?action=getIsEmri';
-$api_puantaj_kullanici = $allSettings['api_puantaj_kullanici'] ?? '';
-$api_puantaj_sifre = $allSettings['api_puantaj_sifre'] ?? 'sk_live_DSOSTjHN195B4NUpEaB9NdYtW7xQ8EVjZD2p2ssW';
+$api_puantaj_url = $firmaOzelAyarlar['api_puantaj_url'] ?? ($firma_kodu == 17 ? ($allSettings['api_puantaj_url'] ?? 'https://yonetim.maraskaski.gov.tr/api/api_isemri_secure.php?action=getIsEmri') : '');
+$api_puantaj_kullanici = $firmaOzelAyarlar['api_puantaj_kullanici'] ?? ($firma_kodu == 17 ? ($allSettings['api_puantaj_kullanici'] ?? '') : '');
+$api_puantaj_sifre = $firmaOzelAyarlar['api_puantaj_sifre'] ?? ($firma_kodu == 17 ? ($allSettings['api_puantaj_sifre'] ?? 'sk_live_DSOSTjHN195B4NUpEaB9NdYtW7xQ8EVjZD2p2ssW') : '');
+
 
 // Son çalışma zamanları
 $online_sorgulama_endeks_son_calistirma = $allSettings['online_sorgulama_endeks_son_calistirma'] ?? '08:15';

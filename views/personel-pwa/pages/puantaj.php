@@ -35,6 +35,7 @@ $defaultTab = $isEndeksOkuma ? 'endeks' : 'kesme';
                 <div>
                     <p class="text-2xl font-bold text-red-600" id="sonuclanan-is">-</p>
                     <p class="text-xs text-slate-500" id="label-toplam">Toplam İş</p>
+                    <p class="text-[10px] text-slate-400 font-medium mt-0.5" id="label-date"></p>
                 </div>
                 <div>
                     <p class="text-2xl font-bold text-green-600" id="toplam-is">-</p>
@@ -137,6 +138,10 @@ $defaultTab = $isEndeksOkuma ? 'endeks' : 'kesme';
     let puantajData = [];
     let endeksData = [];
     let workTypes = [];
+    
+    // Last Update Dates
+    var lastUpdateYapilanIsler = "<?php echo Helper::getLastUpdateDate('yapilan_isler'); ?>";
+    var lastUpdateEndeks = "<?php echo Helper::getLastUpdateDate('endeks_okuma'); ?>";
 
     document.addEventListener('DOMContentLoaded', function () {
         switchTab(currentTab);
@@ -159,12 +164,14 @@ $defaultTab = $isEndeksOkuma ? 'endeks' : 'kesme';
             document.getElementById('list-title').textContent = 'Yapılan İşler';
             document.getElementById('label-toplam').textContent = 'Toplam İş';
             document.getElementById('label-sonuclanan').textContent = 'Sonuçlanan';
+            document.getElementById('label-date').textContent = 'Son Güncelleme: ' + lastUpdateYapilanIsler;
         } else {
             kesmeFilters.classList.add('hidden');
             kesmeFilters.classList.remove('grid');
             document.getElementById('list-title').textContent = 'Okuma Listesi';
             document.getElementById('label-toplam').textContent = 'Toplam Okunan';
             document.getElementById('label-sonuclanan').textContent = '-'; // Endeks için ikinci stat ne olsun? Şimdilik boş.
+            document.getElementById('label-date').textContent = 'Son Güncelleme: ' + lastUpdateEndeks;
         }
 
         loadData();

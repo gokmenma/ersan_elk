@@ -4,14 +4,17 @@
  */
 
 $Settings = $Settings ?? new \App\Model\SettingsModel();
-$canliDestekAktif = $Settings->getSettings('canli_destek_aktif') ?? '1';
-$yetkiliKullanicilar = $Settings->getSettings('canli_destek_yetkili_kullanicilar') ?? '';
+$firma_id = $_SESSION["firma_id"] ?? null;
+$allSettings = $Settings->getAllSettingsAsKeyValue($firma_id);
+
+$canliDestekAktif = $allSettings['canli_destek_aktif'] ?? '1';
+$yetkiliKullanicilar = $allSettings['canli_destek_yetkili_kullanicilar'] ?? '';
 $yetkiliIds = array_filter(explode(',', $yetkiliKullanicilar));
 
-$canliDestekGunler = $Settings->getSettings('canli_destek_gunler') ?? '1,2,3,4,5,6';
+$canliDestekGunler = $allSettings['canli_destek_gunler'] ?? '1,2,3,4,5,6';
 $canliDestekGunDizisi = explode(',', $canliDestekGunler);
-$canliDestekBaslama = $Settings->getSettings('canli_destek_baslama_saati') ?? '08:00';
-$canliDestekBitis = $Settings->getSettings('canli_destek_bitis_saati') ?? '18:00';
+$canliDestekBaslama = $allSettings['canli_destek_baslama_saati'] ?? '08:00';
+$canliDestekBitis = $allSettings['canli_destek_bitis_saati'] ?? '18:00';
 
 // Tüm kullanıcıları getir
 $db = (new \App\Model\Model('users'))->getDb();
@@ -23,6 +26,7 @@ $tumKullanicilar = $stmtUsers->fetchAll(PDO::FETCH_OBJ);
     <div class="col-lg-8">
         <form id="formCanliDestekAyarlari">
             <input type="hidden" name="action" value="save">
+            <input type="hidden" name="firma_id" value="<?php echo $_SESSION['firma_id'] ?? ''; ?>">
 
             <!-- Canlı Destek Durumu -->
             <div class="card border shadow-sm">

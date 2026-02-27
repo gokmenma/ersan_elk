@@ -11,7 +11,7 @@ $Settings = new SettingsModel();
 $id = isset($_GET['id']) ? $_GET['id'] : 0;
 
 /**Ayarları al */
-$settings = (object) $Settings->getAllSettingsAsKeyValue();
+$settings = (object) $Settings->getAllSettingsAsKeyValue($_SESSION['firma_id'] ?? null);
 
 
 ?>

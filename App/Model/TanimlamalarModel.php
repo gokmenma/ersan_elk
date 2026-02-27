@@ -31,8 +31,8 @@ class TanimlamalarModel extends Model
 
     public function getGelirGiderTurleriSelect($type)
     {
-        $sql = $this->db->prepare("SELECT id,tur_adi FROM $this->table WHERE type = ? AND silinme_tarihi IS NULL");
-        $sql->execute([$type]);
+        $sql = $this->db->prepare("SELECT id,tur_adi FROM $this->table WHERE type = ? AND firma_id = ? AND silinme_tarihi IS NULL");
+        $sql->execute([$type, $_SESSION['firma_id']]);
         $result = $sql->fetchAll(PDO::FETCH_OBJ);
 
         $select = "<option value='0' disabled >Seçiniz</option>";
@@ -244,15 +244,15 @@ class TanimlamalarModel extends Model
 
     public function getIsTurleri()
     {
-        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE grup = ? and silinme_tarihi IS NULL ORDER BY id DESC");
-        $sql->execute(['is_turu']);
+        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE grup = ? AND firma_id = ? and silinme_tarihi IS NULL ORDER BY id DESC");
+        $sql->execute(['is_turu', $_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
     public function getIzinTurleri()
     {
-        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE grup = ? and silinme_tarihi IS NULL ORDER BY id DESC");
-        $sql->execute(['izin_turu']);
+        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE grup = ? AND firma_id = ? and silinme_tarihi IS NULL ORDER BY id DESC");
+        $sql->execute(['izin_turu', $_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -398,12 +398,12 @@ class TanimlamalarModel extends Model
             WHERE id IN (
                 SELECT MAX(id) 
                 FROM $this->table 
-                WHERE grup = 'is_turu' AND is_turu_ucret > 0 AND silinme_tarihi IS NULL 
+                WHERE grup = 'is_turu' AND is_turu_ucret > 0 AND firma_id = ? AND silinme_tarihi IS NULL 
                 GROUP BY TRIM(is_emri_sonucu)
             )
             ORDER BY id ASC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute();
+        $stmt->execute([$_SESSION['firma_id']]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -415,12 +415,12 @@ class TanimlamalarModel extends Model
             WHERE id IN (
                 SELECT MAX(id) 
                 FROM $this->table 
-                WHERE grup = 'is_turu' AND rapor_sekmesi = ? AND is_turu_ucret > 0 AND silinme_tarihi IS NULL 
+                WHERE grup = 'is_turu' AND rapor_sekmesi = ? AND firma_id = ? AND is_turu_ucret > 0 AND silinme_tarihi IS NULL 
                 GROUP BY TRIM(is_emri_sonucu)
             )
             ORDER BY id ASC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$raporTuru]);
+        $stmt->execute([$raporTuru, $_SESSION['firma_id']]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
     public function getIsTurleriAdlari()
@@ -502,10 +502,11 @@ class TanimlamalarModel extends Model
                 WHERE grup = 'is_turu' 
                 AND is_emri_sonucu IS NOT NULL 
                 AND is_emri_sonucu != '' 
+                AND firma_id = ? 
                 AND silinme_tarihi IS NULL 
                 ORDER BY is_emri_sonucu ASC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute();
+        $stmt->execute([$_SESSION['firma_id']]);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 

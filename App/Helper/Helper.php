@@ -251,4 +251,42 @@ class Helper
             $string = array_slice($string, 0, 1);
         return $string ? implode(', ', $string) . ' önce' : 'şimdi';
     }
+
+    /**
+     * Belirtilen tablolardaki en son güncelleme tarihini getirir
+     * @param array|string $tables Tablo adı veya adları
+     * @return string
+     */
+    public static function getLastUpdateDate($tables = [])
+    {
+        try {
+            $db = new \App\Core\Db();
+            $pdo = $db->getConnection();
+            
+            if (empty($tables)) {
+                $tables = ['yapilan_isler', 'endeks_okuma'];
+            }
+            
+            if (is_string($tables)) {
+                $tables = [$tables];
+            }
+
+            $maxDate = null;
+
+            foreach ($tables as $table) {
+                $stmt = $pdo->query("SELECT MAX(created_at) FROM $table");
+                $date = $stmt->fetchColumn();
+                
+                if ($date) {
+                    if ($maxDate === null || strtotime($date) > strtotime($maxDate)) {
+                        $maxDate = $date;
+                    }
+                }
+            }
+            
+            return $maxDate ? date('d.m.Y H:i', strtotime($maxDate)) : '-';
+        } catch (\Exception $e) {
+            return '-';
+        }
+    }
 }

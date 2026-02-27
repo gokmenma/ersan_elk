@@ -56,13 +56,13 @@ class SystemLogModel extends Model
         $sql = "SELECT l.*, u.adi_soyadi 
                 FROM {$this->table} l
                 LEFT JOIN users u ON l.user_id = u.id
-                WHERE l.firma_id = ? {$levelCondition}
+                WHERE l.firma_id = :firma_id {$levelCondition}
                 ORDER BY l.created_at DESC 
-                LIMIT ?";
+                LIMIT :limit";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(1, $_SESSION["firma_id"], PDO::PARAM_INT);
-        $stmt->bindValue(2, $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':firma_id', $_SESSION["firma_id"], PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
 
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_OBJ);

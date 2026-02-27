@@ -24,8 +24,8 @@ $personeller = $Personel->all();
 $zimmetStats = $Zimmet->getStats();
 
 // Otomatik zimmet ayarı yapılmış demirbaşları getir
-$sqlAyarlar = $Demirbas->db->prepare("SELECT * FROM demirbas WHERE (otomatik_zimmet_is_emri IS NOT NULL OR otomatik_iade_is_emri IS NOT NULL)");
-$sqlAyarlar->execute();
+$sqlAyarlar = $Demirbas->db->prepare("SELECT * FROM demirbas WHERE (otomatik_zimmet_is_emri IS NOT NULL OR otomatik_iade_is_emri IS NOT NULL) AND firma_id = ?");
+$sqlAyarlar->execute([$_SESSION['firma_id']]);
 $ayarYapilmisDemirbaslar = $sqlAyarlar->fetchAll(PDO::FETCH_OBJ);
 
 // ====== SAYAÇ VE APARAT KATEGORİ ID'LERİ (Daha Sağlıklı Tespit) ======
@@ -103,9 +103,11 @@ if (!empty($sayacKatIds)) {
             COALESCE(SUM(CASE WHEN LOWER(durum) != 'hurda' AND LOWER(durum) != 'kaskiye teslim edildi' THEN kalan_miktar ELSE 0 END), 0) as yeni_depoda,
             COALESCE(SUM(CASE WHEN LOWER(durum) = 'hurda' THEN kalan_miktar ELSE 0 END), 0) as hurda_depoda
         FROM demirbas 
-        WHERE kategori_id IN ($katPlaceholders)
+        WHERE kategori_id IN ($katPlaceholders) AND firma_id = ?
     ");
-    $sqlDepo->execute($sayacKatIds);
+    $paramArr = $sayacKatIds;
+    $paramArr[] = $_SESSION['firma_id'];
+    $sqlDepo->execute($paramArr);
     $depoResult = $sqlDepo->fetch(PDO::FETCH_OBJ);
     $depoOzet->yeni_depoda = $depoResult->yeni_depoda ?? 0;
     $depoOzet->hurda_depoda = $depoResult->hurda_depoda ?? 0;
@@ -117,9 +119,9 @@ if (!empty($sayacKatIds)) {
             COALESCE(SUM(CASE WHEN LOWER(d.durum) = 'hurda' THEN z.teslim_miktar ELSE 0 END), 0) as hurda_personelde
         FROM demirbas_zimmet z
         INNER JOIN demirbas d ON z.demirbas_id = d.id
-        WHERE z.durum = 'teslim' AND d.kategori_id IN ($katPlaceholders)
+        WHERE z.durum = 'teslim' AND d.kategori_id IN ($katPlaceholders) AND d.firma_id = ?
     ");
-    $sqlPersonelde->execute($sayacKatIds);
+    $sqlPersonelde->execute($paramArr);
     $personeldeResult = $sqlPersonelde->fetch(PDO::FETCH_OBJ);
     $depoOzet->yeni_personelde = $personeldeResult->yeni_personelde ?? 0;
     $depoOzet->hurda_personelde = $personeldeResult->hurda_personelde ?? 0;

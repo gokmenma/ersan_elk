@@ -29,12 +29,14 @@ class EndeskOkumaService
      * @return array API yanıtı
      * @throws Exception
      */
-    public function getData($startDate, $endDate, $limit = 100, $offset = 0)
+    public function getData($startDate, $endDate, $ilkFirma = 17, $sonFirma = 17, $limit = 100, $offset = 0)
     {
         $apiKey = trim($this->apiKey);
         $data = [
             'start_date' => $startDate,
             'end_date' => $endDate,
+            'ilk_firma' => $ilkFirma,
+            'son_firma' => $sonFirma,
             'limit' => $limit,
             'offset' => $offset
         ];

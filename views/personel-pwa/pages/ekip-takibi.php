@@ -67,6 +67,10 @@ use App\Helper\Date;
                     <p class="text-[10px] text-slate-400">Aylık Ort.</p>
                 </div>
             </div>
+            
+            <div class="mt-3 text-center border-t border-slate-100 dark:border-slate-700 pt-2">
+                <p class="text-[10px] text-slate-400 font-medium">Son Güncelleme: <?php echo Helper::getLastUpdateDate('endeks_okuma'); ?></p>
+            </div>
         </div>
     </section>
 

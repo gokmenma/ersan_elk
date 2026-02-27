@@ -1128,12 +1128,19 @@ if (isset($_GET["action"]) && $_GET["action"] == "get-comparison-report") {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'online-puantaj-sorgula') {
     ob_start();
     header('Content-Type: application/json; charset=utf-8');
+    
+    // Yalnızca firma_kodu 17 olanlar sorgulayabilir.
+    if (($_SESSION["firma_kodu"] ?? 17) != 17) {
+        echo json_encode(['status' => 'error', 'message' => 'API sorgulaması şu an sadece Firma Kodu 17 için desteklenmektedir. Diğer firmaların verileri şu an çekilemez.']);
+        exit;
+    }
+
     $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
 
     try {
         ini_set('memory_limit', '512M');
-        $ilkFirma = $_POST['ilk_firma'] ?? 17;
-        $sonFirma = $_POST['son_firma'] ?? 17;
+        $ilkFirma = $_POST['ilk_firma'] ?? ($_SESSION['firma_kodu'] ?? 17);
+        $sonFirma = $_POST['son_firma'] ?? ($_SESSION['firma_kodu'] ?? 17);
         $baslangicTarihiRaw = $_POST['baslangic_tarihi'] ?? date('Y-m-d');
         $bitisTarihiRaw = $_POST['bitis_tarihi'] ?? date('Y-m-d');
 
@@ -1217,7 +1224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $hasMore = true;
 
             while ($hasMore) {
-                $apiResponse = $KesmeAcmaSvc->getData($currentDateAPI, $currentDateAPI, $limit, $offset);
+                $apiResponse = $KesmeAcmaSvc->getData($currentDateAPI, $currentDateAPI, $ilkFirma, $sonFirma, $limit, $offset);
                 if (!($apiResponse['success'] ?? false))
                     break;
 
@@ -1479,6 +1486,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'online-icmal-sorgula') {
     ob_start();
     header('Content-Type: application/json; charset=utf-8');
+
+    // Yalnızca firma_kodu 17 olanlar sorgulayabilir.
+    if (($_SESSION["firma_kodu"] ?? 17) != 17) {
+        echo json_encode(['status' => 'error', 'message' => 'API sorgulaması şu an sadece Firma Kodu 17 için desteklenmektedir. Diğer firmaların verileri şu an çekilemez.']);
+        exit;
+    }
+
     $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
 
     try {
@@ -1491,8 +1505,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $bosSonucSayisi = 0;
         $apiData = [];
 
-        $ilkFirma = $_POST['ilk_firma'] ?? 17;
-        $sonFirma = $_POST['son_firma'] ?? 17;
+        $ilkFirma = $_POST['ilk_firma'] ?? ($_SESSION['firma_kodu'] ?? 17);
+        $sonFirma = $_POST['son_firma'] ?? ($_SESSION['firma_kodu'] ?? 17);
         $baslangicTarihiRaw = $_POST['baslangic_tarihi'] ?? date('Y-m-d');
         $bitisTarihiRaw = $_POST['bitis_tarihi'] ?? date('Y-m-d');
 
@@ -1546,7 +1560,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $hasMore = true;
 
             while ($hasMore) {
-                $apiResponse = $apiService->getData($currentDateAPI, $currentDateAPI, $limit, $offset);
+                $apiResponse = $apiService->getData($currentDateAPI, $currentDateAPI, $ilkFirma, $sonFirma, $limit, $offset);
                 if (!($apiResponse['success'] ?? false))
                     break;
 
