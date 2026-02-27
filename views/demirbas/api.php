@@ -531,6 +531,137 @@ if ($action == "zimmet-kaydet") {
     }
 }
 
+// Koli Kontrol (Zimmet Modalı İçin)
+if ($action == "koli-kontrol") {
+    try {
+        $seriler = json_decode($_POST["seriler"] ?? "[]", true);
+        if (empty($seriler)) {
+            jsonResponse("error", "Seri listesi boş.");
+        }
+
+        // Veritabanından bu serilere sahip ürünleri çek
+        // SQL Injection'a karşı placeholder oluştur
+        $placeholders = implode(',', array_fill(0, count($seriler), '?'));
+        
+        $sql = $Demirbas->getDb()->prepare("
+            SELECT id, seri_no, kalan_miktar, durum 
+            FROM demirbas 
+            WHERE firma_id = ? AND seri_no IN ($placeholders)
+        ");
+        
+        $params = array_merge([$_SESSION['firma_id']], $seriler);
+        $sql->execute($params);
+        $records = $sql->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Sonuçları işle (key olarak seri no kullan)
+        $dbResults = [];
+        foreach ($records as $rec) {
+            $dbResults[$rec['seri_no']] = $rec;
+        }
+        
+        $response = [];
+        foreach ($seriler as $seri) {
+            if (isset($dbResults[$seri])) {
+                $rec = $dbResults[$seri];
+                $kalan = intval($rec['kalan_miktar']);
+                $durum = strtolower($rec['durum']);
+                
+                if ($kalan > 0 && !in_array($durum, ['hurda', 'arizali'])) {
+                    $response[$seri] = ["status" => "ok", "id" => $rec['id']];
+                } else {
+                    $response[$seri] = ["status" => "not_in_stock", "id" => $rec['id']];
+                }
+            } else {
+                $response[$seri] = ["status" => "missing"];
+            }
+        }
+        
+        jsonResponse("success", "Kontrol tamamlandı", ["data" => $response]);
+
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+}
+
+// Zimmet Koli Kaydet (Toplu 10'lu)
+if ($action == "zimmet-koli-kaydet") {
+    try {
+        $baslangic = trim($_POST["koli_baslangic_seri"] ?? "");
+        $personel_id = intval($_POST["personel_id"]);
+        $teslim_tarihi = Date::Ymd($_POST["teslim_tarihi"], 'Y-m-d');
+        $aciklama = $_POST["aciklama"] ?? null;
+        
+        if (empty($baslangic) || $personel_id <= 0) {
+            jsonResponse("error", "Eksik bilgi.");
+        }
+
+        // Seri noları hesapla
+        if (!preg_match('/^(.*?)(\d+)$/', $baslangic, $matches)) {
+            jsonResponse("error", "Geçersiz seri numarası formatı.");
+        }
+        
+        $prefix = $matches[1];
+        $number = intval($matches[2]);
+        $digits = strlen($matches[2]);
+        
+        $seriler = [];
+        for ($i = 0; $i < 10; $i++) {
+            $nextNum = str_pad($number + $i, $digits, "0", STR_PAD_LEFT);
+            $seriler[] = $prefix . $nextNum;
+        }
+        
+        // Veritabanından ID'leri bul
+        $placeholders = implode(',', array_fill(0, count($seriler), '?'));
+        $sql = $Demirbas->getDb()->prepare("
+            SELECT id, seri_no, kalan_miktar 
+            FROM demirbas 
+            WHERE firma_id = ? AND seri_no IN ($placeholders)
+        ");
+        $params = array_merge([$_SESSION['firma_id']], $seriler);
+        $sql->execute($params);
+        $records = $sql->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (count($records) < 10) {
+            jsonResponse("error", "Bazı sayaçlar veritabanında bulunamadı. Lütfen kontrol ediniz.");
+        }
+        
+        // İşlem
+        $Zimmet->getDb()->beginTransaction();
+        $successCount = 0;
+        
+        foreach ($records as $rec) {
+            if ($rec['kalan_miktar'] <= 0) {
+                // Stokta olmayanları atla veya hata ver?
+                // Kullanıcı "Zimmet Ver" butonuna bastıysa hepsi "ok" durumundadır diye varsayıyoruz ama double check iyidir.
+                // Şimdilik hata fırlatıp rollback yapalım
+                throw new Exception("{$rec['seri_no']} seri numaralı sayaç stokta yok!");
+            }
+            
+            $data = [
+                "demirbas_id" => $rec['id'],
+                "personel_id" => $personel_id,
+                "teslim_tarihi" => $teslim_tarihi,
+                "teslim_miktar" => 1,
+                "aciklama" => $aciklama ? "$aciklama (Koli: $baslangic)" : "Koli Başlangıç: $baslangic",
+                "teslim_eden_id" => $_SESSION["id"] ?? null
+            ];
+            
+            $Zimmet->zimmetVer($data);
+            $successCount++;
+        }
+        
+        $Zimmet->getDb()->commit();
+        
+        jsonResponse("success", "$successCount adet sayaç başarıyla zimmetlendi.");
+
+    } catch (Exception $ex) {
+        if ($Zimmet->getDb()->inTransaction()) {
+            $Zimmet->getDb()->rollBack();
+        }
+        jsonResponse("error", "Hata: " . $ex->getMessage());
+    }
+}
+
 // Zimmet İade
 if ($action == "zimmet-iade") {
     $zimmet_id = Security::decrypt($_POST["zimmet_id"]);

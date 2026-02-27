@@ -1121,7 +1121,124 @@ function filterZimmetOptions(type) {
   // AJAX kullandığımız için sadece seçimi temizliyoruz.
   // Select2, açıldığında 'type' parametresini (radio buton) okuyarak sunucudan doğru veriyi çekecek.
   $("#demirbas_id_zimmet").val(null).trigger("change");
+  
+  // Koli Modu Göster/Gizle
+  if(type === "sayac") {
+      $("#koliModuWrapper").removeClass("d-none");
+  } else {
+      $("#koliModuWrapper").addClass("d-none");
+      if($("#koliModuToggle").is(":checked")) {
+          $("#koliModuToggle").prop("checked", false).trigger("change");
+      }
+  }
 }
+
+// Koli Modu Toggle
+$(document).on("change", "#koliModuToggle", function() {
+    if($(this).is(":checked")) {
+        $("#tekliSecimAlani").addClass("d-none");
+        $("#koliSecimAlani").removeClass("d-none");
+        // Miktarı 10'a sabitle ve gizle (veya disable et)
+        $("#teslim_miktar").val(10).prop("readonly", true);
+        $("#kalanMiktarText").text("-"); // Koli modunda kalan anlamsız
+        $("#demirbas_id_zimmet").removeAttr("required"); // HTML5 validation'ı engellemek için
+    } else {
+        $("#tekliSecimAlani").removeClass("d-none");
+        $("#koliSecimAlani").addClass("d-none");
+        $("#teslim_miktar").val(1).prop("readonly", false);
+        $("#demirbas_id_zimmet").attr("required", true);
+    }
+});
+
+// Koli Başlangıç Seri No Girişi
+let koliTimer;
+$(document).on("input", "#koli_baslangic_seri", function() {
+    clearTimeout(koliTimer);
+    let baslangic = $(this).val().trim();
+    let $onizleme = $("#koliOnizleme");
+    let $liste = $("#koliListe");
+    let $badge = $("#koliDurumBadge");
+    
+    // Eğer koli modu aktif değilse işlem yapma
+    if(!$("#koliModuToggle").is(":checked")) return;
+
+    if(baslangic.length < 3) {
+        $onizleme.addClass("d-none");
+        return;
+    }
+
+    koliTimer = setTimeout(() => {
+        let parsed = parseSeriNo(baslangic);
+        if(!parsed) return;
+
+        let seriler = [];
+        for(let i=0; i<10; i++) {
+            seriler.push(buildSeriNo(parsed.prefix, parsed.number + i, parsed.digits));
+        }
+
+        $onizleme.removeClass("d-none");
+        $liste.html('<div class="spinner-border spinner-border-sm text-primary" role="status"></div> Kontrol ediliyor...');
+        $badge.removeClass("bg-success bg-danger bg-warning").addClass("bg-secondary").text("Kontrol Ediliyor...");
+        
+        // Butonu geçici olarak disable et
+        $("#zimmetKaydet").prop("disabled", true);
+
+        // AJAX ile kontrol et
+        $.post(zimmetUrl, {
+            action: "koli-kontrol",
+            seriler: JSON.stringify(seriler)
+        }, function(res) {
+            let data = typeof res === "string" ? JSON.parse(res) : res;
+            $liste.empty();
+            
+            let uygunSayisi = 0;
+            
+            if(data.status === "success") {
+                let sonuclar = data.data; // { "SN123": {id: 5, status: "ok"}, "SN124": {status: "missing"} }
+                
+                seriler.forEach(seri => {
+                    let info = sonuclar[seri];
+                    let badgeClass = "bg-secondary";
+                    let icon = "bx-question-mark";
+                    let title = "Bilinmiyor";
+                    
+                    if(info) {
+                        if(info.status === "ok") {
+                            badgeClass = "bg-success";
+                            icon = "bx-check";
+                            title = "Uygun";
+                            uygunSayisi++;
+                        } else if(info.status === "missing") {
+                            badgeClass = "bg-danger";
+                            icon = "bx-x"; 
+                            title = "Kayıtlı Değil";
+                        } else if(info.status === "not_in_stock") {
+                            badgeClass = "bg-warning text-dark";
+                            icon = "bx-error"; 
+                            title = "Stokta Yok (Zimmetli veya Arızalı)";
+                        }
+                    } else {
+                         badgeClass = "bg-danger";
+                         icon = "bx-x";
+                         title = "Bulunamadı";
+                    }
+                    
+                    $liste.append(`<span class="badge ${badgeClass} d-flex align-items-center gap-1" title="${title}">${seri} <i class='bx ${icon}'></i></span>`);
+                });
+                
+                if(uygunSayisi === 10) {
+                    $badge.removeClass("bg-secondary bg-danger bg-warning").addClass("bg-success").text("10/10 Uygun");
+                    $("#zimmetKaydet").prop("disabled", false);
+                } else {
+                    $badge.removeClass("bg-secondary bg-success bg-warning").addClass("bg-danger").text(`${uygunSayisi}/10 Uygun`);
+                    // Uygun değilse kaydetme (veya kullanıcıya uyarı vererek izin verilebilir ama şimdilik engelleyelim)
+                    $("#zimmetKaydet").prop("disabled", true);
+                }
+            }
+        });
+
+    }, 500);
+});
 
 // Demirbaş listesinden zimmet ver
 $(document).on("click", ".zimmet-ver", function (e) {
@@ -1174,6 +1291,68 @@ $(document).on("change", "#demirbas_id_zimmet", function () {
 // Zimmet Kaydet
 $(document).on("click", "#zimmetKaydet", function () {
   var form = $("#zimmetForm");
+  
+  // Koli Modu Kontrolü
+  if($("#koliModuToggle").is(":checked")) {
+      let baslangic = $("#koli_baslangic_seri").val();
+      let personel_id = $("#personel_id").val();
+      let teslim_tarihi = $("#teslim_tarihi").val();
+      
+      if(!baslangic) {
+          Swal.fire("Hata", "Başlangıç seri numarası giriniz.", "warning");
+          return;
+      }
+      if(!personel_id) {
+          Swal.fire("Hata", "Lütfen personel seçiniz.", "warning");
+          return;
+      }
+      if(!teslim_tarihi) {
+          Swal.fire("Hata", "Teslim tarihi zorunludur.", "warning");
+          return;
+      }
+      
+      // Backend'e gönder
+      var formData = new FormData(form[0]);
+      formData.append("action", "zimmet-koli-kaydet");
+      
+      // Disable button
+      let $btn = $(this);
+      $btn.prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin"></i> Kaydediliyor...');
+      
+      fetch(zimmetUrl, {
+        method: "POST",
+        body: formData,
+      })
+      .then((response) => response.json())
+      .then((data) => {
+          $btn.prop("disabled", false).html('<i data-feather="check-square" class="me-1"></i>Zimmet Ver');
+          if (typeof feather !== "undefined") feather.replace();
+
+          if (data.status === "success") {
+            $("#zimmetModal").modal("hide");
+            resetZimmetForm();
+            loadZimmetList();
+            Swal.fire({
+              icon: "success",
+              title: "Başarılı!",
+              text: data.message,
+              confirmButtonText: "Tamam",
+            }).then((result) => {
+              if (result.isConfirmed) location.reload();
+            });
+          } else {
+            Swal.fire("Hata!", data.message, "error");
+          }
+      })
+      .catch(err => {
+          console.error(err);
+          $btn.prop("disabled", false).html('<i data-feather="check-square" class="me-1"></i>Zimmet Ver');
+          if (typeof feather !== "undefined") feather.replace();
+          Swal.fire("Hata!", "Bir hata oluştu.", "error");
+      });
+      
+      return;
+  }
 
   form.validate({
     rules: {
@@ -1374,6 +1553,14 @@ function resetZimmetForm(setDefaultType = true) {
     $("#zimmetTurDemirbas").prop("checked", true);
     // filterZimmetOptions'a gerek yok, zaten change tetiklenince select2 sıfırlanır
     $("#demirbas_id_zimmet").val(null).trigger("change");
+    
+    // Koli modunu sıfırla
+    $("#koliModuToggle").prop("checked", false).trigger("change");
+    $("#koliModuWrapper").addClass("d-none");
+  } else {
+      // Eğer setDefaultType false ise (örn: listeden tıklandıysa), 
+      // yine de koli modunu kapatmamız lazım çünkü listeden tekil seçim yapıldı
+      $("#koliModuToggle").prop("checked", false).trigger("change");
   }
 }
 

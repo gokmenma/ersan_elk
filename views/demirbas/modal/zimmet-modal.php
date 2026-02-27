@@ -100,15 +100,41 @@ foreach ($personeller as $p) {
                         </div>
 
                         <div class="col-md-12 mb-3">
-                            <!-- Custom Select2 with data attributes to match Form class style -->
-                            <div class="form-floating form-floating-custom">
-                                <select class="form-select select2" id="demirbas_id_zimmet" name="demirbas_id" required
+                            <!-- Koli Modu Checkbox (Sadece Sayaç için) -->
+                            <div id="koliModuWrapper" class="form-check form-switch mb-2 d-none">
+                                <input class="form-check-input" type="checkbox" id="koliModuToggle">
+                                <label class="form-check-label fw-medium" for="koliModuToggle">
+                                    <i class="bx bx-package me-1"></i>10'lu Koli Zimmeti
+                                </label>
+                            </div>
+
+                            <!-- Standart Seçim -->
+                            <div id="tekliSecimAlani" class="form-floating form-floating-custom">
+                                <select class="form-select select2" id="demirbas_id_zimmet" name="demirbas_id"
                                     style="width:100%">
                                     <!-- AJAX ile dolacak -->
                                 </select>
                                 <label for="demirbas_id_zimmet">Demirbaş Seçin *</label>
                                 <div class="form-floating-icon">
                                     <i data-feather="package"></i>
+                                </div>
+                            </div>
+
+                            <!-- Koli Seçimi -->
+                            <div id="koliSecimAlani" class="d-none">
+                                <div class="form-floating form-floating-custom mb-2">
+                                    <input type="text" class="form-control" id="koli_baslangic_seri" name="koli_baslangic_seri" placeholder="Başlangıç Seri No">
+                                    <label for="koli_baslangic_seri">Başlangıç Seri No *</label>
+                                    <div class="form-floating-icon">
+                                        <i data-feather="barcode"></i>
+                                    </div>
+                                </div>
+                                <div id="koliOnizleme" class="alert alert-light border small d-none">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <strong><i class="bx bx-list-ul me-1"></i>Koli İçeriği (10 Adet)</strong>
+                                        <span id="koliDurumBadge" class="badge bg-secondary">Bekleniyor</span>
+                                    </div>
+                                    <div id="koliListe" class="d-flex flex-wrap gap-1" style="max-height: 100px; overflow-y: auto;"></div>
                                 </div>
                             </div>
                         </div>
