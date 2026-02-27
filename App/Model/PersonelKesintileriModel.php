@@ -45,8 +45,9 @@ class PersonelKesintileriModel extends Model
      */
     public function getAktifSurekliKesintiler($personel_id, $donem)
     {
-        // Dönemden tarih oluştur (ayın ilk günü)
-        $donemTarih = $donem . '-01';
+        // Dönemden tarih oluştur
+        $donemBaslangic = $donem . '-01';
+        $donemBitis = date('Y-m-t', strtotime($donemBaslangic));
 
         $sql = $this->db->prepare("
             SELECT pk.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bp.hesaplama_tipi as param_hesaplama_tipi
@@ -57,11 +58,11 @@ class PersonelKesintileriModel extends Model
               AND pk.aktif = 1
               AND pk.silinme_tarihi IS NULL
               AND pk.ana_kesinti_id IS NULL
-              AND pk.baslangic_donemi <= ?
-              AND (pk.bitis_donemi IS NULL OR pk.bitis_donemi >= ?)
+              AND pk.baslangic_donemi <= ? -- Ayın son gününden önce başlamış olmalı
+              AND (pk.bitis_donemi IS NULL OR pk.bitis_donemi >= ?) -- Ayın ilk gününden sonra bitiyor (veya açık uçlu) olmalı
             ORDER BY pk.olusturma_tarihi ASC
         ");
-        $sql->execute([$personel_id, $donemTarih, $donemTarih]);
+        $sql->execute([$personel_id, $donemBitis, $donemBaslangic]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -89,26 +90,34 @@ class PersonelKesintileriModel extends Model
      */
     public function olusturDonemKesintisi($surekliKesinti, $donem_id, $tutar)
     {
-        // Bu dönem için zaten kayıt var mı kontrol et
+        // Bu dönem için zaten kayıt var mı kontrol et (Silinmişler dahil)
         $sql = $this->db->prepare("
-            SELECT id, durum FROM {$this->table} 
-            WHERE ana_kesinti_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
+            SELECT id, durum, silinme_tarihi FROM {$this->table} 
+            WHERE ana_kesinti_id = ? AND donem_id = ?
+            ORDER BY id DESC LIMIT 1
         ");
         $sql->execute([$surekliKesinti->id, $donem_id]);
         $mevcut = $sql->fetch(PDO::FETCH_OBJ);
 
         if ($mevcut) {
-            // Eğer kayıt varsa ve beklemedeyse onaylandıya çek
-            if ($mevcut->durum === 'beklemede') {
-                $update = $this->db->prepare("UPDATE {$this->table} SET durum = 'onaylandi', tutar = ?, updated_at = NOW() WHERE id = ?");
-                $update->execute([$tutar, $mevcut->id]);
-            }
-            return true; // Mevcut olduğu için true dönüyoruz (işlem tamam gibi)
+            // Kayıt varsa güncelle ve silinmişse geri getir
+            $updateSql = "UPDATE {$this->table} SET 
+                silinme_tarihi = NULL, 
+                durum = 'onaylandi', 
+                tutar = ?, 
+                updated_at = NOW() 
+                WHERE id = ?";
+            
+            $updateStmt = $this->db->prepare($updateSql);
+            $updateStmt->execute([$tutar, $mevcut->id]);
+            
+            return true;
         }
 
         $data = [
             'personel_id' => $surekliKesinti->personel_id,
             'donem_id' => $donem_id,
+            'tarih' => date('Y-m-d'), // Kayıt tarihi
             'tur' => $surekliKesinti->tur,
             'tekrar_tipi' => 'tek_sefer', // Oluşturulan kayıt tek seferlik olarak işaretlenir
             'hesaplama_tipi' => $surekliKesinti->hesaplama_tipi,

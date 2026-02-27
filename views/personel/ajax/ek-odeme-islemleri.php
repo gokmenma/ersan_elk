@@ -44,6 +44,7 @@ try {
                 'hesaplama_tipi' => $hesaplamaTipi,
                 'tutar' => floatval($_POST['tutar'] ?? 0),
                 'oran' => floatval($_POST['oran'] ?? 0),
+                'tarih' => $_POST['tarih'] ?? date('Y-m-d'),
                 'aciklama' => $_POST['aciklama'] ?? '',
                 'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
                 'aktif' => 1
@@ -86,6 +87,7 @@ try {
                 'hesaplama_tipi' => $hesaplamaTipi,
                 'tutar' => floatval($_POST['tutar'] ?? 0),
                 'oran' => floatval($_POST['oran'] ?? 0),
+                'tarih' => $_POST['tarih'] ?? date('Y-m-d'),
                 'aciklama' => $_POST['aciklama'] ?? '',
                 'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null
             ];

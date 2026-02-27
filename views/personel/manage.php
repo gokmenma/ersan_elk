@@ -709,3 +709,9 @@ if ($id > 0) {
 <script src="views/personel/js/ek_odeme.js"></script>
 <script src="views/personel/js/icra.js"></script>
 <script src="views/personel/js/evrak.js"></script>
+<script>
+    window.personelData = {
+        maas_tutari: <?= floatval($personel->maas_tutari ?? 0) ?>,
+        maas_durumu: "<?= $personel->maas_durumu ?? '' ?>"
+    };
+</script>

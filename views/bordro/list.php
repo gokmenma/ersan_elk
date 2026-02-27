@@ -1,5 +1,5 @@
-﻿<?php
-
+<?php
+$_pageStart = microtime(true);
 
 use App\Model\BordroDonemModel;
 use App\Model\BordroPersonelModel;
@@ -66,7 +66,9 @@ $personeller = [];
 if ($selectedDonemId) {
     $selectedDonem = $BordroDonem->getDonemById($selectedDonemId);
     if ($selectedDonem) {
+        $_sqlStart = microtime(true);
         $personeller = $BordroPersonel->getPersonellerByDonem($selectedDonemId);
+        $_sqlTime = round((microtime(true) - $_sqlStart) * 1000);
     }
 }
 
@@ -145,6 +147,42 @@ $ek_odeme_turleri = [
         [data-bs-theme="dark"] .bordro-preloader .loader-content {
             background: #2a3042;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Tablo ilk yüklemede gizli, DataTables hazır olunca görünür */
+        #bordroTable:not(.dt-ready) tbody {
+            visibility: hidden;
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+        }
+        #bordroTable.dt-ready tbody {
+            visibility: visible;
+            opacity: 1;
+            height: auto;
+            overflow: visible;
+            transition: opacity 0.2s ease;
+        }
+
+        /* Sticky Table Header */
+        .table-responsive {
+            overflow-x: auto !important;
+        }
+
+        #bordroTable thead {
+            position: sticky !important;
+            top: 0;
+            z-index: 1060;
+        }
+
+        #bordroTable thead th {
+            background-color: #f8f9fa; /* İçeriğin üstüne bindiğinde arkası görünmesin */
+            box-shadow: inset 0 -1px 0 #eff2f7, inset 0 1px 0 #eff2f7; /* Alt/Üst sınırları koru */
+        }
+
+        [data-bs-theme="dark"] #bordroTable thead th {
+            background-color: #2a3042;
+            box-shadow: inset 0 -1px 0 #32394e, inset 0 1px 0 #32394e;
         }
     </style>
 
@@ -285,7 +323,9 @@ $ek_odeme_turleri = [
                 <div class="card-body">
                     <?php if ($selectedDonem): ?>
                         <?php
-                        // Dönem toplamlarını hesapla
+                        // ========== TEK DÖNGÜDE ÖN-HESAPLAMA (Performance Optimization) ==========
+                        // Tüm personel değerlerini tek döngüde hesapla, sonuçları $preCalc dizisine kaydet
+                        // Hem özet kartlarda hem tablo satırlarında bu veriler kullanılacak
                         $toplamAlacagi = 0;
                         $toplamKesintiHaricIcra = 0;
                         $toplamNetAlacagi = 0;
@@ -293,92 +333,104 @@ $ek_odeme_turleri = [
                         $toplamBanka = 0;
                         $toplamSodexo = 0;
                         $toplamElden = 0;
+                        $latestCalculation = null;
+                        $preCalc = []; // Hesaplanmış değerleri sakla
+
+                        // Dönem tarihlerini döngü dışında bir kez hesapla
+                        $donemBasTs = $selectedDonem ? strtotime($selectedDonem->baslangic_tarihi) : 0;
+                        $donemBitTs = $selectedDonem ? strtotime($selectedDonem->bitis_tarihi) : 0;
+                        $aydakiGunSayisi = $selectedDonem ? date('t', $donemBasTs) : 30;
 
                         foreach ($personeller as $p) {
-                            $hesaplananEkOdeme = $p->guncel_toplam_ek_odeme;
-                            if (!empty($p->hesaplama_detay)) {
-                                $detayEkOdeme = json_decode($p->hesaplama_detay, true);
-                                if (isset($detayEkOdeme['ek_odemeler']) && is_array($detayEkOdeme['ek_odemeler'])) {
-                                    $hesaplananEkOdeme = 0;
-                                    foreach ($detayEkOdeme['ek_odemeler'] as $eo) {
-                                        $hesaplananEkOdeme += floatval($eo['net_etki'] ?? $eo['tutar'] ?? 0);
-                                    }
-                                }
-                            }
-
-                            // Toplam Alacağı ve Net Alacağı Hesaplaması
+                            $rawEkOdeme = floatval($p->guncel_toplam_ek_odeme);
                             $pMaasTutari = floatval($p->maas_tutari ?? 0);
                             $pNetMaas = floatval($p->net_maas ?? 0);
                             $pToplamKesinti = floatval($p->kesinti_tutar ?? 0);
                             $pIsNet = ($p->maas_durumu ?? '') == 'Net';
+                            $pIsPrimUsulu = (stripos($p->maas_durumu ?? '', 'Prim') !== false);
 
-                            // Önce icra kesintisini al (toplamAlacağı hesabı için gerekli)
-                            $pIcra = 0;
-                            if (!empty($p->hesaplama_detay)) {
-                                $detay = json_decode($p->hesaplama_detay, true);
-                                $pIcra = $detay['odeme_dagilimi']['icra_kesintisi'] ?? 0;
-                            }
-
+                            // SQL'den JSON_EXTRACT ile çekilen değerleri direkt kullan (json_decode yok)
+                            $pIcra = floatval($p->hd_icra_kesintisi ?? 0);
                             $pKesintiHaricIcra = $pToplamKesinti - $pIcra;
 
-                            // İzin gün sayılarını hesapla
+                            // Çalışma günü hesaplama
+                            $pGunlukBase = 30;
+                            if ($selectedDonem) {
+                                if (!empty($p->ise_giris_tarihi)) {
+                                    $iseGirisTs = strtotime($p->ise_giris_tarihi);
+                                    if ($iseGirisTs > $donemBasTs) {
+                                        $pGunlukBase -= (min(30, date('j', $iseGirisTs)) - 1);
+                                    }
+                                }
+                                if (!empty($p->isten_cikis_tarihi)) {
+                                    $istenAyrilmaTs = strtotime($p->isten_cikis_tarihi);
+                                    if ($istenAyrilmaTs < $donemBitTs) {
+                                        $pGunlukBase -= ($aydakiGunSayisi - date('j', $istenAyrilmaTs));
+                                    }
+                                }
+                            }
+                            if ($pGunlukBase < 0) $pGunlukBase = 0;
+
+                            $pCalismaGunu = $pGunlukBase;
                             $pUcretsizIzinGunu = 0;
                             $pUcretliIzinGunu = 0;
-                            $pCalismaGunu = 30;
-                            if (!empty($p->hesaplama_detay)) {
-                                $detay = json_decode($p->hesaplama_detay, true);
-                                if (isset($detay['matrahlar']['fiili_calisma_gunu'])) {
-                                    $pCalismaGunu = intval($detay['matrahlar']['fiili_calisma_gunu']);
-                                }
-                                if (isset($detay['matrahlar']['ucretsiz_izin_gunu'])) {
-                                    $pUcretsizIzinGunu = intval($detay['matrahlar']['ucretsiz_izin_gunu']);
-                                } elseif (isset($detay['matrahlar']['ucretsiz_izin_dusumu']) && isset($detay['matrahlar']['nominal_maas']) && $detay['matrahlar']['nominal_maas'] > 0) {
-                                    $pGunlukUcret = $detay['matrahlar']['nominal_maas'] / 30;
-                                    $pUcretsizIzinGunu = round($detay['matrahlar']['ucretsiz_izin_dusumu'] / $pGunlukUcret);
-                                }
-                                if (isset($detay['matrahlar']['ucretli_izin_gunu'])) {
-                                    $pUcretliIzinGunu = intval($detay['matrahlar']['ucretli_izin_gunu']);
-                                }
-                                if (!isset($detay['matrahlar']['fiili_calisma_gunu'])) {
-                                    $pCalismaGunu = 30 - $pUcretsizIzinGunu - $pUcretliIzinGunu;
-                                }
+
+                            // JSON_EXTRACT ile çekilen değerleri kullan
+                            if ($p->hd_fiili_calisma_gunu !== null) {
+                                $pCalismaGunu = intval($p->hd_fiili_calisma_gunu);
+                            }
+                            if ($p->hd_ucretsiz_izin_gunu !== null) {
+                                $pUcretsizIzinGunu = intval($p->hd_ucretsiz_izin_gunu);
+                            } elseif ($p->hd_ucretsiz_izin_dusumu !== null && $p->hd_nominal_maas !== null && floatval($p->hd_nominal_maas) > 0) {
+                                $pUcretsizIzinGunu = round(floatval($p->hd_ucretsiz_izin_dusumu) / (floatval($p->hd_nominal_maas) / 30));
+                            }
+                            if ($p->hd_ucretli_izin_gunu !== null) {
+                                $pUcretliIzinGunu = intval($p->hd_ucretli_izin_gunu);
+                            }
+                            if ($p->hd_fiili_calisma_gunu === null) {
+                                $pCalismaGunu = $pGunlukBase - $pUcretsizIzinGunu - $pUcretliIzinGunu;
                             }
 
-                            if ($pIsNet || ($p->maas_durumu ?? '') == 'Brüt') {
-                                // Net veya Brüt maaş tipi: toplam alacağı = (maaş / 30) * gün + ek ödemeler
-                                $pToplamAlacagi = (($pMaasTutari / 30) * $pCalismaGunu) + $hesaplananEkOdeme;
-                            } elseif ($pNetMaas > 0) {
-                                // Prim Usulü vb.: toplam = net + (kesinti - icra)
-                                $pToplamAlacagi = $pNetMaas + $pKesintiHaricIcra;
+                            // Toplam Alacağı
+                            if ($pIsPrimUsulu) {
+                                $pToplamAlacagi = floatval($p->brut_maas ?? 0) + $rawEkOdeme;
+                            } elseif ($pIsNet || ($p->maas_durumu ?? '') == 'Brüt') {
+                                $pToplamAlacagi = (($pMaasTutari / 30) * $pCalismaGunu) + $rawEkOdeme;
                             } else {
-                                // Hesaplama henüz yapılmamışsa tahmini değer
-                                $pToplamAlacagi = $pMaasTutari + $hesaplananEkOdeme;
+                                $pToplamAlacagi = $pMaasTutari + $rawEkOdeme;
                             }
 
-                            // Net alacağı her zaman net_maas değerine eşit olmalıdır (eğer hesaplanmışsa)
-                            $pNetAlacagi = ($pNetMaas > 0) ? $pNetMaas : ($pToplamAlacagi - $pKesintiHaricIcra);
+                            // Net alacağı
+                            $pNetAlacagi = ($p->hesaplama_tarihi) ? $pNetMaas : ($pToplamAlacagi - $pKesintiHaricIcra);
 
+                            // Elden ödeme
+                            $eldenP = $p->elden_odeme ?? (($p->net_maas ?? 0) - ($p->banka_odemesi ?? 0) - ($p->sodexo_odemesi ?? 0) - ($p->diger_odeme ?? 0));
+                            $eldenP = max(0, floatval($eldenP));
+
+                            // Toplamları güncelle
                             $toplamAlacagi += $pToplamAlacagi;
                             $toplamKesintiHaricIcra += $pKesintiHaricIcra;
                             $toplamNetAlacagi += $pNetAlacagi;
                             $toplamIcra += $pIcra;
-
                             $toplamBanka += floatval($p->banka_odemesi ?? 0);
                             $toplamSodexo += floatval($p->sodexo_odemesi ?? 0);
+                            $toplamElden += $eldenP;
 
-                            // Elden hesaplama
-                            $eldenP = $p->elden_odeme ?? (($p->net_maas ?? 0) - ($p->banka_odemesi ?? 0) - ($p->sodexo_odemesi ?? 0) - ($p->diger_odeme ?? 0));
-                            $toplamElden += max(0, floatval($eldenP));
-                        }
-
-                        // En son hesaplama tarihini bul
-                        $latestCalculation = null;
-                        foreach ($personeller as $p) {
-                            if ($p->hesaplama_tarihi) {
-                                if (!$latestCalculation || $p->hesaplama_tarihi > $latestCalculation) {
-                                    $latestCalculation = $p->hesaplama_tarihi;
-                                }
+                            // En son hesaplama tarihi
+                            if ($p->hesaplama_tarihi && (!$latestCalculation || $p->hesaplama_tarihi > $latestCalculation)) {
+                                $latestCalculation = $p->hesaplama_tarihi;
                             }
+
+                            // Ön-hesaplama sonuçlarını kaydet (tablo satırında kullanılacak)
+                            $preCalc[$p->id] = [
+                                'enc_id' => Security::encrypt($p->personel_id),
+                                'toplamAlacagi' => $pToplamAlacagi,
+                                'kesintiHaricIcra' => $pKesintiHaricIcra,
+                                'netAlacagi' => $pNetAlacagi,
+                                'icraKesintisi' => $pIcra,
+                                'calismaGunu' => $pCalismaGunu,
+                                'eldenOdeme' => $eldenP,
+                            ];
                         }
                         ?>
 
@@ -648,85 +700,15 @@ $ek_odeme_turleri = [
                                         <?php else: ?>
                                             <?php $idx = 1;
                                             foreach ($personeller as $personel):
-                                                $enc_id = Security::encrypt($personel->personel_id);
-                                                ?>
-                                                <?php
-                                                // Hesaplanmış ek ödeme toplamını al (gün bazlı hesaplamalar dahil)
-                                                $hesaplananEkOdeme = $personel->guncel_toplam_ek_odeme;
-                                                if (!empty($personel->hesaplama_detay)) {
-                                                    $detayEkOdeme = json_decode($personel->hesaplama_detay, true);
-                                                    if (isset($detayEkOdeme['ek_odemeler']) && is_array($detayEkOdeme['ek_odemeler'])) {
-                                                        $hesaplananEkOdeme = 0;
-                                                        foreach ($detayEkOdeme['ek_odemeler'] as $eo) {
-                                                            $hesaplananEkOdeme += floatval($eo['net_etki'] ?? $eo['tutar'] ?? 0);
-                                                        }
-                                                    }
-                                                }
-
-                                                $isPrimUsulu = ($personel->maas_durumu ?? '') == 'Prim Usülü';
-                                                $isNetMaas = ($personel->maas_durumu ?? '') == 'Net';
-                                                $pNetMaasRow = floatval($personel->net_maas ?? 0);
-                                                $pToplamKesRow = floatval($personel->kesinti_tutar ?? 0);
-
-                                                // Önce icra kesintisini al (toplamAlacağı hesabı için gerekli)
-                                                $icraKesintisi = 0;
-                                                if (!empty($personel->hesaplama_detay)) {
-                                                    $detay = json_decode($personel->hesaplama_detay, true);
-                                                    $icraKesintisi = $detay['odeme_dagilimi']['icra_kesintisi'] ?? 0;
-                                                }
-
-                                                $kesintiHaricIcra = $pToplamKesRow - $icraKesintisi;
-
-                                                // İzin gün sayılarını hesapla
-                                                $ucretsizIzinGunu = 0;
-                                                $ucretliIzinGunu = 0;
-                                                $calismaGunu = 30;
-                                                if (!empty($personel->hesaplama_detay)) {
-                                                    $detay = json_decode($personel->hesaplama_detay, true);
-
-                                                    // Fiili çalışma gununu doğrudan JSON'dan al (varsa)
-                                                    if (isset($detay['matrahlar']['fiili_calisma_gunu'])) {
-                                                        $calismaGunu = intval($detay['matrahlar']['fiili_calisma_gunu']);
-                                                    }
-
-                                                    // Ücretsiz izin günü
-                                                    if (isset($detay['matrahlar']['ucretsiz_izin_gunu'])) {
-                                                        $ucretsizIzinGunu = intval($detay['matrahlar']['ucretsiz_izin_gunu']);
-                                                    } elseif (isset($detay['matrahlar']['ucretsiz_izin_dusumu']) && isset($detay['matrahlar']['nominal_maas']) && $detay['matrahlar']['nominal_maas'] > 0) {
-                                                        $gunlukUcret = $detay['matrahlar']['nominal_maas'] / 30;
-                                                        $ucretsizIzinGunu = round($detay['matrahlar']['ucretsiz_izin_dusumu'] / $gunlukUcret);
-                                                    }
-
-                                                    // Ücretli izin günü
-                                                    if (isset($detay['matrahlar']['ucretli_izin_gunu'])) {
-                                                        $ucretliIzinGunu = intval($detay['matrahlar']['ucretli_izin_gunu']);
-                                                    }
-
-                                                    // Fiili çalışma günü yoksa hesapla
-                                                    if (!isset($detay['matrahlar']['fiili_calisma_gunu'])) {
-                                                        $calismaGunu = 30 - $ucretsizIzinGunu - $ucretliIzinGunu;
-                                                    }
-                                                }
-
-                                                if ($isNetMaas || ($personel->maas_durumu ?? '') == 'Brüt') {
-                                                    // Net veya Brüt maaş tipi: toplam alacağı = (maaş / 30) * gün + ek ödemeler
-                                                    $toplamAlacagiPersonel = ((floatval($personel->maas_tutari ?? 0) / 30) * $calismaGunu) + $hesaplananEkOdeme;
-                                                } elseif ($pNetMaasRow > 0) {
-                                                    // Prim Usulü vb.: toplam = net + (kesinti - icra)
-                                                    $toplamAlacagiPersonel = $pNetMaasRow + $kesintiHaricIcra;
-                                                } else {
-                                                    // Henüz hesaplanmamışsa tahmini: maaş + ek ödemeler
-                                                    $toplamAlacagiPersonel = ($personel->maas_tutari ?? 0) + $hesaplananEkOdeme;
-                                                }
-
-                                                // Net alacağı hesaplanmışsa net_maas, yoksa toplam - kesinti
-                                                $netAlacagi = ($pNetMaasRow > 0) ? $pNetMaasRow : ($toplamAlacagiPersonel - $kesintiHaricIcra);
-                                                ?>
-                                                <?php
-                                                // Elden ödeme artık model'de hesaplanıp kaydediliyor
-                                                // Ancak görüntüleme için yedek hesaplama yap (negatif çıkmaması için max(0,...) eklendi)
-                                                $eldenOdeme = $personel->elden_odeme ?? max(0, ($personel->net_maas ?? 0) - ($personel->banka_odemesi ?? 0) - ($personel->sodexo_odemesi ?? 0) - ($personel->diger_odeme ?? 0));
-
+                                                // Ön-hesaplanmış değerleri oku (tekrar hesaplama yok)
+                                                $pc = $preCalc[$personel->id];
+                                                $enc_id = $pc['enc_id'];
+                                                $toplamAlacagiPersonel = $pc['toplamAlacagi'];
+                                                $kesintiHaricIcra = $pc['kesintiHaricIcra'];
+                                                $netAlacagi = $pc['netAlacagi'];
+                                                $icraKesintisi = $pc['icraKesintisi'];
+                                                $calismaGunu = $pc['calismaGunu'];
+                                                $eldenOdeme = $pc['eldenOdeme'];
                                                 ?>
                                                 <tr data-id="<?= $personel->id ?>">
                                                     <td>
@@ -840,7 +822,9 @@ $ek_odeme_turleri = [
                                                     <td class="text-end text-danger fw-bold">
                                                         <span class="cursor-pointer btn-kesinti-ekle text-danger"
                                                             data-id="<?= $personel->personel_id ?>"
-                                                            data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>">
+                                                            data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"
+                                                            data-maas="<?= floatval($personel->maas_tutari ?? 0) ?>"
+                                                            data-maas-durumu="<?= $personel->maas_durumu ?? '' ?>">
                                                             <?= number_format($kesintiHaricIcra, 2, ',', '.') ?> ₺
                                                         </span>
                                                     </td>
@@ -932,7 +916,9 @@ $ek_odeme_turleri = [
                                                                     <a class="dropdown-item btn-kesinti-ekle<?= $donemKapali ? ' disabled' : '' ?>"
                                                                         href="javascript:void(0);"
                                                                         data-id="<?= $personel->personel_id ?>"
-                                                                        data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>">
+                                                                        data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"
+                                                                        data-maas="<?= floatval($personel->maas_tutari ?? 0) ?>"
+                                                                        data-maas-durumu="<?= $personel->maas_durumu ?? '' ?>">
                                                                         <i
                                                                             class="mdi mdi-minus-circle-outline me-2 text-danger"></i>
                                                                         Kesinti Ekle
@@ -1270,7 +1256,7 @@ $ek_odeme_turleri = [
 
     <!-- Personel Gelir Ekle Modal -->
     <div class="modal fade" id="modalPersonelGelirEkle" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-md">
             <div class="modal-content">
                 <div class="modal-header bg-success text-white">
                     <h5 class="modal-title"><i class="bx bx-plus-circle me-2"></i>Personel Gelir Yönetimi</h5>
@@ -1296,7 +1282,7 @@ $ek_odeme_turleri = [
                                 <div id="collapseGelir" class="accordion-collapse collapse" aria-labelledby="headingGelir"
                                     data-bs-parent="#accordionGelirEkle">
                                     <div class="accordion-body bg-white">
-                                        <form id="formPersonelGelirEkle">
+                                        <form id="formPersonelGelirEkle" novalidate>
                                             <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
                                             <input type="hidden" name="personel_id" id="gelir_personel_id">
                                             <input type="hidden" name="id" id="gelir_edit_id" value="0">
@@ -1315,7 +1301,11 @@ $ek_odeme_turleri = [
                                             </div>
 
                                             <div class="mb-3">
-                                                <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="gelir_tutar"') ?>
+                                                <?= Form::FormFloatInput("number", "gelir_tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" name="tutar"') ?>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <?= Form::FormFloatInput("date", "tarih", date('Y-m-d'), "", "Tarih", "calendar", "form-control", true, null, "off", false, 'id="gelir_tarih"') ?>
                                             </div>
 
                                             <div class="mb-3">
@@ -1344,9 +1334,13 @@ $ek_odeme_turleri = [
         </div>
     </div>
 
+    <style>
+
+    </style>
+
     <!-- Personel Kesinti Ekle Modal -->
     <div class="modal fade" id="modalPersonelKesintiEkle" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-md">
             <div class="modal-content">
                 <div class="modal-header bg-danger text-white">
                     <h5 class="modal-title"><i class="bx bx-minus-circle me-2"></i>Personel Kesinti Yönetimi</h5>
@@ -1372,7 +1366,7 @@ $ek_odeme_turleri = [
                                 <div id="collapseKesinti" class="accordion-collapse collapse"
                                     aria-labelledby="headingKesinti" data-bs-parent="#accordionKesintiEkle">
                                     <div class="accordion-body bg-white">
-                                        <form id="formPersonelKesintiEkle">
+                                        <form id="formPersonelKesintiEkle" novalidate>
                                             <input type="hidden" name="donem_id" value="<?= $selectedDonemId ?>">
                                             <input type="hidden" name="personel_id" id="kesinti_personel_id">
                                             <input type="hidden" name="id" id="kesinti_edit_id" value="0">
@@ -1390,8 +1384,32 @@ $ek_odeme_turleri = [
                                                 ) ?>
                                             </div>
 
+                                            <div class="mb-3 d-none" id="div_ucretsiz_izin_secenek">
+                                                <label class="form-label fw-bold d-block mb-2"><i
+                                                        class="bx bx-cog me-1"></i>Kesinti Yöntemi</label>
+                                                <div class="btn-group w-100" role="group">
+                                                    <input type="radio" class="btn-check" name="rad_kesinti_tip"
+                                                        id="kesinti_tip_tutar" value="tutar" checked>
+                                                    <label class="btn btn-outline-danger" for="kesinti_tip_tutar"><i
+                                                            class="bx bx-lira me-1"></i> Tutar Gir</label>
+
+                                                    <input type="radio" class="btn-check" name="rad_kesinti_tip"
+                                                        id="kesinti_tip_gun" value="gun">
+                                                    <label class="btn btn-outline-danger" for="kesinti_tip_gun"><i
+                                                            class="bx bx-calendar me-1"></i> Gün Gir</label>
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3 d-none" id="div_kesinti_gun">
+                                                <?= Form::FormFloatInput("number", "kesinti_gun", "", "0", "Gün Sayısı", "calendar", "form-control", false, null, "off", false, 'id="kesinti_gun_sayisi" min="0" step="1"') ?>
+                                            </div>
+
+                                            <div class="mb-3" id="div_kesinti_tutar">
+                                                <?= Form::FormFloatInput("number", "kesinti_tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" name="tutar"') ?>
+                                            </div>
+
                                             <div class="mb-3">
-                                                <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="kesinti_tutar"') ?>
+                                                <?= Form::FormFloatInput("date", "tarih", date('Y-m-d'), "", "Tarih", "calendar", "form-control", true, null, "off", false, 'id="kesinti_tarih"') ?>
                                             </div>
 
                                             <div class="mb-3">
@@ -1519,3 +1537,22 @@ $ek_odeme_turleri = [
 </div>
 
 <script src="views/bordro/js/bordro.js?v=<?= time() ?>"></script>
+<?php
+$_totalTime = round((microtime(true) - $_pageStart) * 1000);
+echo "<!-- PERF: SQL={$_sqlTime}ms | PHP_TOTAL={$_totalTime}ms | PERSONEL=" . count($personeller) . " -->";
+?>
+<script>
+// Performans ölçümü
+console.log('%c⚡ Bordro Performans', 'color: #E76F51; font-weight: bold; font-size: 14px;');
+console.log('📊 PHP SQL Sorgusu: <?= $_sqlTime ?? 0 ?>ms');
+console.log('📊 PHP Toplam: <?= $_totalTime ?? 0 ?>ms');
+console.log('📊 Personel Sayısı: <?= count($personeller) ?>');
+window.addEventListener('load', function() {
+    var perfData = performance.getEntriesByType('navigation')[0];
+    if (perfData) {
+        console.log('📊 DOM Interactive: ' + Math.round(perfData.domInteractive) + 'ms');
+        console.log('📊 DOM Content Loaded: ' + Math.round(perfData.domContentLoadedEventEnd) + 'ms');
+        console.log('📊 Full Page Load: ' + Math.round(perfData.loadEventEnd) + 'ms');
+    }
+});
+</script>

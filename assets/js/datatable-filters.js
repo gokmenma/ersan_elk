@@ -336,6 +336,7 @@
         title: title,
         $trigger: $modeTrigger,
         $dropdown: $dropdown,
+        $th: $th,
       };
 
       if (filterType === "select") {
@@ -814,5 +815,35 @@
     } else {
       updateFilterBar();
     }
+
+    // --- Column Visibility Listener ---
+    api.on("column-visibility.dt", function (e, settings, column, state) {
+      if (settings.sTableId !== tableId) return;
+      const cell = filterCells.find((c) => c.colIdx === column);
+      if (cell && cell.$th) {
+        state ? cell.$th.show() : cell.$th.hide();
+      }
+    });
+
+    // --- Column Reorder Listener ---
+    api.on("column-reorder.dt", function (e, settings, details) {
+      if (settings.sTableId !== tableId) return;
+      if (!api.colReorder) return;
+      
+      // Re-order filter cells to match current column order
+      const currentOrder = api.colReorder.order();
+      const $cells = $filterRow.children("th");
+      
+      // Detach all cells
+      $cells.detach();
+      
+      // Re-append in new order
+      currentOrder.forEach((originalIdx) => {
+        const cell = filterCells.find((c) => c.colIdx === originalIdx);
+        if (cell && cell.$th) {
+          $filterRow.append(cell.$th);
+        }
+      });
+    });
   };
 })(jQuery);

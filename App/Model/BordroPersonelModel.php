@@ -20,14 +20,11 @@ class BordroPersonelModel extends Model
     /**
      * Belirli bir dönemdeki tüm personelleri getirir
      */
-    /**
-     * Belirli bir dönemdeki tüm personelleri getirir
-     */
     public function getPersonellerByDonem($donem_id, $ids = [])
     {
         $firma_id = $_SESSION['firma_id'] ?? 0;
         $idFilter = "";
-        $params = [$firma_id, $donem_id];
+        $params = [$firma_id, $donem_id, $donem_id, $donem_id];
 
         if (!empty($ids)) {
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
@@ -36,12 +33,22 @@ class BordroPersonelModel extends Model
         }
 
         $sql = $this->db->prepare("
-            SELECT bp.*, p.adi_soyadi, p.tc_kimlik_no, p.departman, p.gorev, 
+            SELECT bp.id, bp.donem_id, bp.personel_id, bp.brut_maas, bp.net_maas,
+                   bp.kesinti_tutar, bp.prim_tutar, bp.hesaplama_tarihi,
+                   bp.banka_odemesi, bp.sodexo_odemesi, bp.diger_odeme, bp.elden_odeme,
+                   bp.calisan_gun, bp.aciklama,
+                   p.adi_soyadi, p.tc_kimlik_no, p.departman, p.gorev, 
                    p.ise_giris_tarihi, p.isten_cikis_tarihi, p.maas_tutari, p.maas_durumu,
-                   p.cep_telefonu, p.resim_yolu, bp.hesaplama_detay,
+                   p.cep_telefonu, p.resim_yolu,
                    t_all.ekip_adi, t_all.ekip_bolge,
-                   (SELECT COALESCE(SUM(tutar), 0) FROM personel_kesintileri WHERE personel_id = bp.personel_id AND donem_id = bp.donem_id AND silinme_tarihi IS NULL AND durum = 'onaylandi') as guncel_toplam_kesinti,
-                   (SELECT COALESCE(SUM(tutar), 0) FROM personel_ek_odemeler WHERE personel_id = bp.personel_id AND donem_id = bp.donem_id AND silinme_tarihi IS NULL AND durum = 'onaylandi') as guncel_toplam_ek_odeme
+                   COALESCE(pk_agg.toplam_kesinti, 0) as guncel_toplam_kesinti,
+                   COALESCE(eo_agg.toplam_ek_odeme, 0) as guncel_toplam_ek_odeme,
+                   JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.odeme_dagilimi.icra_kesintisi')) as hd_icra_kesintisi,
+                   JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.fiili_calisma_gunu')) as hd_fiili_calisma_gunu,
+                   JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.ucretsiz_izin_gunu')) as hd_ucretsiz_izin_gunu,
+                   JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.ucretsiz_izin_dusumu')) as hd_ucretsiz_izin_dusumu,
+                   JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.nominal_maas')) as hd_nominal_maas,
+                   JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.ucretli_izin_gunu')) as hd_ucretli_izin_gunu
             FROM {$this->table} bp
             INNER JOIN personel p ON bp.personel_id = p.id
             LEFT JOIN (
@@ -55,6 +62,18 @@ class BordroPersonelModel extends Model
                 AND pg.firma_id = ?
                 GROUP BY pg.personel_id
             ) t_all ON p.id = t_all.personel_id
+            LEFT JOIN (
+                SELECT personel_id, donem_id, SUM(tutar) as toplam_kesinti
+                FROM personel_kesintileri 
+                WHERE donem_id = ? AND silinme_tarihi IS NULL AND (durum = 'onaylandi' OR tur = 'icra')
+                GROUP BY personel_id, donem_id
+            ) pk_agg ON bp.personel_id = pk_agg.personel_id AND bp.donem_id = pk_agg.donem_id
+            LEFT JOIN (
+                SELECT personel_id, donem_id, SUM(tutar) as toplam_ek_odeme
+                FROM personel_ek_odemeler 
+                WHERE donem_id = ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'
+                GROUP BY personel_id, donem_id
+            ) eo_agg ON bp.personel_id = eo_agg.personel_id AND bp.donem_id = eo_agg.donem_id
             WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL $idFilter
             ORDER BY p.adi_soyadi ASC
         ");
@@ -355,25 +374,27 @@ class BordroPersonelModel extends Model
      * @param string $tur Kesinti türü
      * @param string $durum Onay durumu (beklemede, onaylandi, reddedildi) - varsayılan: beklemede
      */
-    public function addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur = 'diger', $durum = 'beklemede', $icra_id = null)
+    public function addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur = 'diger', $durum = 'beklemede', $icra_id = null, $tarih = null)
     {
+        $tarih = $tarih ?: date('Y-m-d');
         $sql = $this->db->prepare("
-            INSERT INTO personel_kesintileri (personel_id, donem_id, aciklama, tutar, tur, durum, icra_id, olusturma_tarihi)
-            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            INSERT INTO personel_kesintileri (personel_id, donem_id, aciklama, tutar, tur, durum, icra_id, tarih, olusturma_tarihi)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
-        return $sql->execute([$personel_id, $donem_id, $aciklama, $tutar, $tur, $durum, $icra_id]);
+        return $sql->execute([$personel_id, $donem_id, $aciklama, $tutar, $tur, $durum, $icra_id, $tarih]);
     }
 
     /**
      * Personele ek ödeme ekler
      */
-    public function addEkOdeme($personel_id, $donem_id, $aciklama, $tutar, $tur = 'diger')
+    public function addEkOdeme($personel_id, $donem_id, $aciklama, $tutar, $tur = 'diger', $tarih = null)
     {
+        $tarih = $tarih ?: date('Y-m-d');
         $sql = $this->db->prepare("
-            INSERT INTO personel_ek_odemeler (personel_id, donem_id, aciklama, tutar, tur, created_at)
-            VALUES (?, ?, ?, ?, ?, NOW())
+            INSERT INTO personel_ek_odemeler (personel_id, donem_id, aciklama, tutar, tur, tarih, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, NOW())
         ");
-        return $sql->execute([$personel_id, $donem_id, $aciklama, $tutar, $tur]);
+        return $sql->execute([$personel_id, $donem_id, $aciklama, $tutar, $tur, $tarih]);
     }
 
     /**
@@ -1476,7 +1497,7 @@ class BordroPersonelModel extends Model
 
         // Bordro kaydını ve personel detaylarını çek
         $sql = $this->db->prepare("
-            SELECT bp.*, p.maas_tutari, p.maas_durumu, p.bes_kesintisi_varmi, p.sodexo, p.sgk_yapilan_firma, bd.baslangic_tarihi, bd.bitis_tarihi
+            SELECT bp.*, p.maas_tutari, p.maas_durumu, p.bes_kesintisi_varmi, p.sodexo, p.sgk_yapilan_firma, p.ise_giris_tarihi, p.isten_cikis_tarihi, bd.baslangic_tarihi, bd.bitis_tarihi
             FROM {$this->table} bp
             INNER JOIN personel p ON bp.personel_id = p.id
             INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
@@ -1609,7 +1630,6 @@ class BordroPersonelModel extends Model
             AND (
                 ana_kesinti_id IS NOT NULL
                 OR tur = 'icra'
-                OR tur = 'izin_kesinti'
                 OR (tur = 'avans' AND aciklama LIKE '[Avans]%')
                 OR aciklama LIKE '[BES]%'
             )
@@ -1666,10 +1686,37 @@ class BordroPersonelModel extends Model
         // ========== ÜCRETLİ İZİN BİLGİSİ ==========
         $ucretliIzinGunu = $this->getUcretliIzinGunu($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
+        // Aktif çalışma günlerini hesapla (İşe giriş ve işten ayrılma tarihlerine göre)
+        $gunlukBase = 30;
+        $donemBasTs = strtotime($kayit->baslangic_tarihi);
+        $donemBitTs = strtotime($kayit->bitis_tarihi);
+        $aydakiGunSayisi = date('t', $donemBasTs);
+
+        if (!empty($kayit->ise_giris_tarihi)) {
+            $iseGirisTs = strtotime($kayit->ise_giris_tarihi);
+            if ($iseGirisTs > $donemBasTs) {
+                $startDay = date('j', $iseGirisTs);
+                // 30 günlük ticari ay mantığına göre eksik günü bul
+                $eksikGunBas = min(30, $startDay) - 1;
+                $gunlukBase -= $eksikGunBas;
+            }
+        }
+
+        if (!empty($kayit->isten_cikis_tarihi)) {
+            $istenAyrilmaTs = strtotime($kayit->isten_cikis_tarihi);
+            if ($istenAyrilmaTs < $donemBitTs) {
+                $endDay = date('j', $istenAyrilmaTs);
+                $eksikGunSon = $aydakiGunSayisi - $endDay;
+                $gunlukBase -= $eksikGunSon;
+            }
+        }
+        if ($gunlukBase < 0)
+            $gunlukBase = 0;
+
         // Ücretsiz izin günü varsa brüt maaşı düşür (Günlük ücret × izin günü kadar)
         if ($isNetMaas || $maasDurumu === 'brüt') {
             // Net veya Brüt maaş tipi: toplam alacağı = (maaş / 30) * gün
-            $fiiliCalismaGunuTemp = 30 - $ucretsizIzinGunu - $ucretliIzinGunu;
+            $fiiliCalismaGunuTemp = $gunlukBase - $ucretsizIzinGunu - $ucretliIzinGunu;
             if ($fiiliCalismaGunuTemp < 0)
                 $fiiliCalismaGunuTemp = 0;
             $brutMaas = round(($nominalBrutMaas / 30) * $fiiliCalismaGunuTemp, 2);
@@ -1677,10 +1724,13 @@ class BordroPersonelModel extends Model
             if ($ucretsizIzinDusumu < 0)
                 $ucretsizIzinDusumu = 0;
         } else {
-            if ($ucretsizIzinGunu > 0 && $nominalBrutMaas > 0) {
+
+            if (($ucretsizIzinGunu > 0 || $gunlukBase < 30) && $nominalBrutMaas > 0) {
+                // Eğer eksik gün (işe giriş çıkıştan dolayı) varsa onu da ucretsiz izin mantığıyla düş
+                $calismadigiGunler = (30 - $gunlukBase) + $ucretsizIzinGunu;
                 $gunlukUcretHesap = $nominalBrutMaas / 30;
-                $ucretsizIzinDusumu = round($gunlukUcretHesap * $ucretsizIzinGunu, 2);
-                $brutMaas = max(0, $brutMaas - $ucretsizIzinDusumu);
+                $ucretsizIzinDusumu = round($gunlukUcretHesap * $calismadigiGunler, 2);
+                $brutMaas = max(0, $nominalBrutMaas - $ucretsizIzinDusumu);
             } else {
                 $ucretsizIzinDusumu = 0;
             }
@@ -1946,11 +1996,6 @@ class BordroPersonelModel extends Model
         $oranliKesintiler = []; // Net üzerinden oranlı kesintiler (İcra vb.)
 
         foreach ($kesintiler as $kesinti) {
-            // Eski izin_kesinti kayıtlarını atla (artık oluşturulmaz ama eski veriler olabilir)
-            if ($kesinti->tur === 'izin_kesinti') {
-                continue;
-            }
-
             $tutar = floatval($kesinti->tutar);
             $parametre = $parametreModel->getByKod($kesinti->tur, $donemTarihi);
             $hesaplamaTipi = $kesinti->hesaplama_tipi ?? 'sabit';
@@ -2080,7 +2125,7 @@ class BordroPersonelModel extends Model
         // Fiili çalışma günü (30 günden ücretsiz ve ücretli izinler düşülmüş)
         // NOT: Gün tüm maaş tipleri için düşer (banka/sodexo oranlaması için gerekli)
         // Prim Usülü'de fark: toplam alacağı gün bazlı düşmez, ama banka/sodexo düşer
-        $fiiliCalismaGunu = 30 - $ucretsizIzinGunu - $ucretliIzinGunu;
+        $fiiliCalismaGunu = $gunlukBase - $ucretsizIzinGunu - $ucretliIzinGunu;
         if ($fiiliCalismaGunu < 0)
             $fiiliCalismaGunu = 0;
 
@@ -2436,7 +2481,7 @@ class BordroPersonelModel extends Model
             'toplam_kesinti' => round($toplamKesinti, 2),
             'toplam_ek_odeme' => round($toplamEkOdeme, 2),
             'fazla_mesai_tutar' => round($toplamMesaiTutar, 2),
-            'calisan_gun' => 30 - $ucretsizIzinGunu,
+            'calisan_gun' => $gunlukBase - $ucretsizIzinGunu,
             'sodexo_odemesi' => round($sodexoOdemesi, 2),
             'banka_odemesi' => round($bankaOdemesi, 2),
             'elden_odeme' => round($eldenOdeme, 2),

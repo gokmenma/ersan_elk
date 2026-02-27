@@ -6,8 +6,8 @@ $(document).ready(function () {
 function getDatatableOptions() {
   return {
     stateSave: false,
-    responsive: true,
-    scrollX: false,
+    responsive: false,
+    // scrollX: false,
     pageLength: 10,
     dom: 't<"row"<"col-sm-12 col-md-6 d-flex align-items-center justify-content-start"i<"ms-3 text-nowrap"l>><"col-sm-12 col-md-6 d-flex justify-content-end"p>>',
     language: {

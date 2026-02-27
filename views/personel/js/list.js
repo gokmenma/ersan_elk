@@ -6,6 +6,7 @@ $(document).ready(function () {
       serverSide: true,
       colReorder: true,
       stateSave: true,
+      responsive:true,
       stateSaveParams: function (settings, data) {
         // Global stateSaveParams'ı taklit et ama sıralama ve görünürlüğü KORU
         data.start = 0;
@@ -180,6 +181,7 @@ $(document).ready(function () {
           },
         },
         { data: "sgk_no", visible: false },
+        { data: "sgk_yapilan_firma", visible: false },
         { data: "sodexo_kart_no", visible: false },
         { data: "cep_telefonu_2", visible: false },
         { data: "kaski_kullanici_adi", visible: false },

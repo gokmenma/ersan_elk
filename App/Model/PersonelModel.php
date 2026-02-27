@@ -145,7 +145,8 @@ class PersonelModel extends Model
                 8 => 'p.gorev',
                 9 => 'p.departman',
                 10 => 't.tur_adi',
-                12 => 'p.aktif_mi'
+                12 => 'p.aktif_mi',
+                23 => 'p.sgk_yapilan_firma'
             ];
 
             foreach ($colSearches as $idx => $val) {
@@ -316,18 +317,19 @@ class PersonelModel extends Model
 
         // Sütun Bazlı Arama
         $colMap = [
-            2 => 'p.tc_kimlik_no',
-            3 => 'p.adi_soyadi',
-            4 => 'p.ise_giris_tarihi',
-            5 => 'p.isten_cikis_tarihi',
-            6 => 'p.cep_telefonu',
-            7 => 'p.email_adresi',
-            8 => 'p.gorev',
-            9 => 'p.departman',
-            10 => 't_all.tur_adi',
-            11 => 'bildirim_abonesi',
-            12 => 'p.aktif_mi'
-        ];
+                2 => 'p.tc_kimlik_no',
+                3 => 'p.adi_soyadi',
+                4 => 'p.ise_giris_tarihi',
+                5 => 'p.isten_cikis_tarihi',
+                6 => 'p.cep_telefonu',
+                7 => 'p.email_adresi',
+                8 => 'p.gorev',
+                9 => 'p.departman',
+                10 => 't_all.tur_adi',
+                11 => 'bildirim_abonesi',
+                12 => 'p.aktif_mi',
+                23 => 'p.sgk_yapilan_firma'
+            ];
 
         if (isset($request['columns'])) {
             foreach ($request['columns'] as $i => $column) {
@@ -999,7 +1001,8 @@ class PersonelModel extends Model
             9 => 'p.departman',
             10 => 't_all.tur_adi',
             11 => 'bildirim_abonesi',
-            12 => 'p.aktif_mi'
+            12 => 'p.aktif_mi',
+            23 => 'p.sgk_yapilan_firma'
         ];
 
         $targetField = '';

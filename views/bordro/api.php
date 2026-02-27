@@ -418,6 +418,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <table class="table table-sm table-hover table-bordered mb-0">
                         <thead class="table-light">
                             <tr>
+                                <th>Tarih</th>
                                 <th>İcra Dairesi / Dosya No</th>
                                 <th>Açıklama</th>
                                 <th class="text-end" style="width: 120px;">Tutar</th>
@@ -432,7 +433,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $tutar = floatval($k->tutar);
                         $toplam += $tutar;
                         $icraSayisi++;
+                        $tarih = !empty($k->tarih) ? date('d.m.Y', strtotime($k->tarih)) : (!empty($k->olusturma_tarihi) ? date('d.m.Y', strtotime($k->olusturma_tarihi)) : '-');
                         $html .= '<tr>
+                            <td>' . $tarih . '</td>
                             <td>' . htmlspecialchars(($k->icra_dairesi ?? '') . ' ' . ($k->dosya_no ?? '')) . '</td>
                             <td>' . htmlspecialchars($k->aciklama ?? '-') . '</td>
                             <td class="text-end fw-bold text-danger">' . number_format($tutar, 2, ',', '.') . ' ₺</td>
@@ -652,7 +655,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 } else {
                     foreach ($kesintilerGruplanmis as $kesinti) {
                         $adetStr = $kesinti->adet > 1 ? ' <small class="text-muted">(' . $kesinti->adet . ' adet)</small>' : '';
-                        $html .= '<tr><td class="ps-3">' . htmlspecialchars($kesinti->etiket) . $adetStr . '</td><td class="text-end pe-3 text-danger">-' . number_format($kesinti->toplam_tutar, 2, ',', '.') . ' ₺</td></tr>';
+                        $html .= '<tr class="cursor-pointer bg-light-subtle" data-bs-toggle="collapse" data-bs-target=".kesinti-detail-' . md5($kesinti->etiket) . '">
+                            <td class="ps-3">' . htmlspecialchars($kesinti->etiket) . $adetStr . ' <i class="bx bx-chevron-down small text-muted"></i></td>
+                            <td class="text-end pe-3 text-danger">-' . number_format($kesinti->toplam_tutar, 2, ',', '.') . ' ₺</td>
+                        </tr>';
+
+                        foreach ($kesintiKayitlari as $k) {
+                            $kEtiket = $kesintiTurEtiketleri[$k->tur] ?? ucfirst($k->tur);
+                            if ($kEtiket === $kesinti->etiket && $k->tur !== 'izin_kesinti') {
+                                $tarih = !empty($k->tarih) ? date('d.m.Y', strtotime($k->tarih)) : (!empty($k->olusturma_tarihi) ? date('d.m.Y', strtotime($k->olusturma_tarihi)) : '-');
+                                $html .= '<tr class="collapse kesinti-detail-' . md5($kesinti->etiket) . '">
+                                    <td class="ps-4 small">' . $tarih . ' - ' . htmlspecialchars($k->aciklama ?: '-') . '</td>
+                                    <td class="text-end pe-3 small text-danger">-' . number_format($k->tutar, 2, ',', '.') . ' ₺</td>
+                                </tr>';
+                            }
+                        }
                     }
                 }
 
@@ -742,12 +759,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                         foreach ($data['items'] as $item) {
                             $itemAciklama = $item->aciklama ?? '';
+                            $tarih = !empty($item->tarih) ? date('d.m.Y', strtotime($item->tarih)) : (!empty($item->created_at) ? date('d.m.Y', strtotime($item->created_at)) : '-');
                             if (preg_match('/^(.*?)\s*\((.*?)\)$/', $itemAciklama, $matches)) {
                                 $anaMetin = $matches[1];
                                 $detayMetin = $matches[2];
-                                $html .= '<tr class="' . $collapseId . ' collapse"><td class="ps-4 py-2"><div class="fw-medium">' . htmlspecialchars($anaMetin) . '</div><small class="text-muted">' . htmlspecialchars($detayMetin) . '</small></td><td class="text-end pe-3 text-success align-middle">+' . number_format($item->tutar, 2, ',', '.') . ' ₺</td></tr>';
+                                $html .= '<tr class="' . $collapseId . ' collapse"><td class="ps-4 py-2"><div class="fw-medium">' . $tarih . ' - ' . htmlspecialchars($anaMetin) . '</div><small class="text-muted">' . htmlspecialchars($detayMetin) . '</small></td><td class="text-end pe-3 text-success align-middle">+' . number_format($item->tutar, 2, ',', '.') . ' ₺</td></tr>';
                             } else {
-                                $html .= '<tr class="' . $collapseId . ' collapse"><td class="ps-4 py-2 small">' . htmlspecialchars($itemAciklama) . '</td><td class="text-end pe-3 text-success align-middle">+' . number_format($item->tutar, 2, ',', '.') . ' ₺</td></tr>';
+                                $html .= '<tr class="' . $collapseId . ' collapse"><td class="ps-4 py-2 small">' . $tarih . ' - ' . htmlspecialchars($itemAciklama) . '</td><td class="text-end pe-3 text-success align-middle">+' . number_format($item->tutar, 2, ',', '.') . ' ₺</td></tr>';
                             }
                         }
                     }
@@ -1059,6 +1077,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $aciklama = trim($_POST['aciklama'] ?? '');
                 $tutar = floatval($_POST['tutar'] ?? 0);
                 $tur = trim($_POST['ek_odeme_tur'] ?? 'diger');
+                $tarih = !empty($_POST['tarih']) ? $_POST['tarih'] : date('Y-m-d');
 
                 if ($personel_id <= 0 || $donem_id <= 0) {
                     throw new Exception('Geçersiz personel veya dönem.');
@@ -1078,10 +1097,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Güncelleme
                     $sql = $BordroPersonel->getDb()->prepare("
                         UPDATE personel_ek_odemeler 
-                        SET aciklama = ?, tutar = ?, tur = ? 
+                        SET aciklama = ?, tutar = ?, tur = ?, tarih = ?
                         WHERE id = ?
                     ");
-                    if ($sql->execute([$aciklama, $tutar, $tur, $id])) {
+                    if ($sql->execute([$aciklama, $tutar, $tur, $tarih, $id])) {
                         // Otomatik maaş hesapla
                         $BordroPersonel->hesaplaMaasByPersonelDonem($personel_id, $donem_id);
 
@@ -1094,7 +1113,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 } else {
                     // Ekleme
-                    if ($BordroPersonel->addEkOdeme($personel_id, $donem_id, $aciklama, $tutar, $tur)) {
+                    if ($BordroPersonel->addEkOdeme($personel_id, $donem_id, $aciklama, $tutar, $tur, $tarih)) {
                         // Otomatik maaş hesapla
                         $BordroPersonel->hesaplaMaasByPersonelDonem($personel_id, $donem_id);
 
@@ -1116,6 +1135,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $aciklama = trim($_POST['aciklama'] ?? '');
                 $tutar = floatval($_POST['tutar'] ?? 0);
                 $tur = trim($_POST['kesinti_tur'] ?? 'diger');
+                $tarih = !empty($_POST['tarih']) ? $_POST['tarih'] : date('Y-m-d');
 
                 if ($personel_id <= 0 || $donem_id <= 0) {
                     throw new Exception('Geçersiz personel veya dönem.');
@@ -1127,6 +1147,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Bu dönem kapatılmış. Kapalı dönemlere kesinti eklenemez.');
                 }
 
+                // Eğer tutar 0 ise ve gün girilmişse maaştan hesapla
+                $gun = floatval($_POST['kesinti_gun'] ?? 0);
+                if ($tutar <= 0 && $gun > 0) {
+                    $stmt = $BordroPersonel->getDb()->prepare("SELECT maas_tutari FROM personel WHERE id = ?");
+                    $stmt->execute([$personel_id]);
+                    $maas = floatval($stmt->fetchColumn());
+
+                    if ($maas > 0) {
+                        $gunluk = $maas / 30;
+                        $tutar = round($gunluk * $gun, 2);
+                    }
+                }
+
                 if ($tutar <= 0) {
                     throw new Exception('Tutar 0\'dan büyük olmalıdır.');
                 }
@@ -1135,10 +1168,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Güncelleme
                     $sql = $BordroPersonel->getDb()->prepare("
                         UPDATE personel_kesintileri 
-                        SET aciklama = ?, tutar = ?, tur = ? 
+                        SET aciklama = ?, tutar = ?, tur = ?, tarih = ?
                         WHERE id = ?
                     ");
-                    if ($sql->execute([$aciklama, $tutar, $tur, $id])) {
+                    if ($sql->execute([$aciklama, $tutar, $tur, $tarih, $id])) {
                         // Otomatik maaş hesapla
                         $BordroPersonel->hesaplaMaasByPersonelDonem($personel_id, $donem_id);
 
@@ -1151,7 +1184,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 } else {
                     // Ekleme
-                    if ($BordroPersonel->addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur, 'onaylandi')) {
+                    if ($BordroPersonel->addKesinti($personel_id, $donem_id, $aciklama, $tutar, $tur, 'onaylandi', null, $tarih)) {
                         // Otomatik maaş hesapla
                         $BordroPersonel->hesaplaMaasByPersonelDonem($personel_id, $donem_id);
 

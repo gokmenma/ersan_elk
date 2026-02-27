@@ -240,6 +240,209 @@ if ($action == "demirbas-sil") {
     }
 }
 
+// Demirbaş listesi (Server-side Datatables)
+if ($action == "demirbas-listesi") {
+    try {
+        $tab = $_POST['tab'] ?? 'demirbas';
+
+        $result = $Demirbas->getDatatableList($_POST, $tab);
+        $start = intval($_POST['start'] ?? 0);
+
+        $data = [];
+        foreach ($result['data'] as $d) {
+            $start++;
+            $rowHtml = $Demirbas->getTableRow($d->id);
+            if (!empty($rowHtml)) {
+                // DOM Parsing just to extract td contents cleanly is overkill
+                // Let's implement it better: we just return data arrays and datatable renders it,
+                // OR we can just return what we expect. Let's return the columns directly.
+
+                $enc_id = Security::encrypt($d->id);
+                $miktar = $d->miktar ?? 1;
+                $kalan = $d->kalan_miktar ?? 1;
+                $minStok = $d->minimun_stok_uyari_miktari ?? 0;
+
+                // Stok durumu badge
+                if ($kalan == 0) {
+                    $stokBadge = '<span class="badge bg-danger">Stok Yok</span>';
+                } elseif ($minStok > 0 && $kalan <= $minStok) {
+                    $stokBadge = '<span class="badge bg-soft-danger text-danger border border-danger">Stok Azaldı (' . $kalan . '/' . $miktar . ')</span>';
+                } elseif ($kalan < $miktar) {
+                    $stokBadge = '<span class="badge bg-warning">' . $kalan . '/' . $miktar . '</span>';
+                } else {
+                    $stokBadge = '<span class="badge bg-success">' . $kalan . '/' . $miktar . '</span>';
+                }
+
+                // Durum badge
+                $durumText = $d->durum ?? 'aktif';
+                $durumMap = [
+                    'aktif' => '<span class="badge bg-soft-success text-success">Aktif</span>',
+                    'pasif' => '<span class="badge bg-soft-secondary text-secondary">Pasif</span>',
+                    'arizali' => '<span class="badge bg-soft-warning text-warning">Arızalı</span>',
+                    'hurda' => '<span class="badge bg-soft-danger text-danger">Hurda</span>',
+                ];
+                $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
+
+                $actions = '';
+
+                // Dropdown menu for actions
+                if ($tab === 'sayac' || $tab === 'aparat' || $tab === 'demirbas') {
+                    $actions = '<div class="dropdown d-inline-block">
+                                    <button class="btn btn-soft-secondary btn-sm dropdown" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bx bx-dots-horizontal-rounded"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">';
+
+                    if ($tab === 'sayac' && $kalan > 0) {
+                        $actions .= '<li><a class="dropdown-item py-2 sayac-kasiye-teslim text-info" href="javascript:void(0);" data-id="' . $enc_id . '" data-name="' . htmlspecialchars($d->demirbas_adi) . '">
+                                        <i class="bx bx-buildings me-2"></i> Kaskiye Teslim Et
+                                    </a></li>';
+                        $actions .= '<li><hr class="dropdown-divider"></li>';
+                    }
+
+                    if ($kalan > 0) {
+                        $actions .= '<li><a class="dropdown-item py-2 zimmet-ver text-warning" href="javascript:void(0);" data-id="' . $enc_id . '" data-name="' . htmlspecialchars($d->demirbas_adi) . '" data-kalan="' . $kalan . '">
+                                        <i class="bx bx-transfer me-2"></i> Zimmet Ver
+                                    </a></li>';
+                    }
+
+                    $actions .= '<li><a class="dropdown-item py-2 duzenle text-primary" href="javascript:void(0);" data-id="' . $enc_id . '">
+                                    <i class="bx bx-edit me-2"></i> Düzenle
+                                </a></li>';
+
+                    $actions .= '<li><a class="dropdown-item py-2 demirbas-gecmis text-dark" href="javascript:void(0);" data-raw-id="' . $d->id . '" data-id="' . $enc_id . '" data-name="' . htmlspecialchars($d->demirbas_adi) . '">
+                                    <i class="bx bx-history me-2"></i> İşlem Geçmişi
+                                </a></li>';
+
+                    $actions .= '<li><hr class="dropdown-divider"></li>';
+
+                    $actions .= '<li><a class="dropdown-item py-2 demirbas-sil text-danger" href="javascript:void(0);" data-id="' . $enc_id . '" data-name="' . htmlspecialchars($d->demirbas_adi) . '">
+                                    <i class="bx bx-trash me-2"></i> Sil
+                                </a></li>';
+
+                    $actions .= '</ul></div>';
+                } else {
+                    // Fallback for other tabs if any
+                    if ($tab === 'sayac' && $kalan > 0) {
+                        $actions .= '<button type="button" class="btn btn-sm btn-soft-info waves-effect waves-light sayac-kasiye-teslim" data-id="' . $enc_id . '" data-name="' . htmlspecialchars($d->demirbas_adi) . '" title="Kaskiye Teslim"><i class="bx bx-buildings"></i></button> ';
+                    }
+
+                    if ($kalan > 0) {
+                        $actions .= '<button type="button" class="btn btn-sm btn-soft-warning waves-effect waves-light zimmet-ver" data-id="' . $enc_id . '" data-name="' . htmlspecialchars($d->demirbas_adi) . '" data-kalan="' . $kalan . '" title="Zimmet Ver"><i class="bx bx-transfer"></i></button> ';
+                    }
+
+                    $actions .= '<button type="button" class="btn btn-sm btn-soft-primary waves-effect waves-light duzenle" data-id="' . $enc_id . '" title="Düzenle"><i class="bx bx-edit"></i></button> ';
+                    $actions .= '<button type="button" class="btn btn-sm btn-soft-dark waves-effect waves-light demirbas-gecmis" data-raw-id="' . $d->id . '" data-id="' . $enc_id . '" data-name="' . htmlspecialchars($d->demirbas_adi) . '" title="İşlem Geçmişi"><i class="bx bx-history"></i></button> ';
+                    $actions .= '<button type="button" class="btn btn-sm btn-soft-danger waves-effect waves-light demirbas-sil" data-id="' . $enc_id . '" data-name="' . htmlspecialchars($d->demirbas_adi) . '" title="Sil"><i class="bx bx-trash"></i></button>';
+                }
+
+                // Determine Kaskiye Teslim button for Sayac vs others
+                $katBadgesHtml = '<span class="badge bg-soft-primary text-primary">' . ($d->kategori_adi ?? 'Kategorisiz') . '</span>';
+
+                $markaHtml = '<div>' . ($d->marka ?? '-') . ' ' . ($d->model ?? '') . '</div><small class="text-muted">' . ($d->seri_no ? 'SN: ' . $d->seri_no : '') . '</small>';
+                $demirbasAdiHtml = '<a href="#" data-id="' . $enc_id . '" class="text-dark duzenle fw-medium">' . htmlspecialchars($d->demirbas_adi) . '</a>';
+
+                $data[] = [
+                    "DT_RowId" => "row-" . $enc_id,
+                    "DT_RowData" => [
+                        "id" => $enc_id,
+                        "kat-adi" => $d->kategori_adi ?? 'Kategorisiz',
+                        "durum" => strtolower($durumText),
+                        "bosta" => ($kalan > 0) ? '1' : '0',
+                        "zimmetli" => ($kalan < $miktar) ? '1' : '0'
+                    ],
+                    "checkbox" => '<div class="text-center"><input type="checkbox" class="form-check-input sayac-select" value="' . $enc_id . '"></div>',
+                    "sira_no" => '<div class="text-center">' . $start . '</div>',
+                    "id" => '<div class="text-center">' . $start . '</div>',
+                    "demirbas_no" => '<div class="text-center">' . ($d->demirbas_no ?? '-') . '</div>',
+                    "kategori_adi" => $katBadgesHtml,
+                    "demirbas_adi" => $demirbasAdiHtml,
+                    "marka_model" => $markaHtml,
+                    "marka_sade" => '<div>' . ($d->marka ?? '-') . ' ' . ($d->model ?? '') . '</div>',
+                    "seri_no" => $d->seri_no ?? '-',
+                    "stok" => '<div class="text-center">' . $stokBadge . '</div>',
+                    "durum" => '<div class="text-center">' . $durumBadge . '</div>',
+                    "tutar" => '<div class="text-end">' . Helper::formattedMoney($d->edinme_tutari ?? 0) . ' ₺' . '</div>',
+                    "tarih" => ($d->edinme_tarihi ? date('d.m.Y', strtotime($d->edinme_tarihi)) : '-'),
+                    "islemler" => '<div class="text-center text-nowrap">' . $actions . '</div>'
+                ];
+            }
+        }
+
+        echo json_encode([
+            "draw" => intval($_POST['draw'] ?? 0),
+            "recordsTotal" => $result['recordsTotal'],
+            "recordsFiltered" => $result['recordsFiltered'],
+            "data" => $data
+        ]);
+        exit;
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+}
+
+// Toplu Kaskiye Teslim
+if ($action == "bulk-kasiye-teslim") {
+    try {
+        $ids_raw = $_POST["ids"] ?? [];
+        $tarih = $_POST["tarih"] ?? date('d.m.Y');
+        $teslim_eden = $_SESSION["adi_soyadi"] ?? 'Sistem Kullanıcısı';
+        $aciklama = $_POST["aciklama"] ?? null;
+
+        if (empty($ids_raw) || empty($tarih)) {
+            jsonResponse("error", "Lütfen en az bir sayaç seçin ve tarih girin.");
+        }
+
+        $formatted_tarih = Date::Ymd($tarih, 'Y-m-d');
+        $successCount = 0;
+        $errorCount = 0;
+
+        $Demirbas->db->beginTransaction();
+
+        foreach ($ids_raw as $enc_id) {
+            $id = Security::decrypt($enc_id);
+            if (!$id)
+                continue;
+
+            $demirbas = $Demirbas->find($id);
+            if (!$demirbas)
+                continue;
+
+            // Stok kontrolü - sadece stokta olanlar (kalan_miktar > 0) teslim edilebilir mi?
+            // User requested bulk delivery, usually for meters in stock.
+
+            $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Kaskiye Teslim Edildi', kaskiye_teslim_tarihi = ?, kaskiye_teslim_eden = ?, aciklama = ?, kalan_miktar = 0, miktar = 0 WHERE id = ?");
+            $sqlUpdate->execute([$formatted_tarih, $teslim_eden, ($aciklama ?? null), $id]);
+
+            // Hareket kaydı
+            try {
+                $Hareket->hareketEkle([
+                    'demirbas_id' => $id,
+                    'personel_id' => $_SESSION["id"] ?? 1,
+                    'hareket_tipi' => 'sarf',
+                    'miktar' => $demirbas->kalan_miktar > 0 ? $demirbas->kalan_miktar : 1,
+                    'tarih' => $formatted_tarih,
+                    'aciklama' => 'Toplu Kaskiye teslim edildi. Teslim eden: ' . $teslim_eden . '. Not: ' . ($aciklama ?? ''),
+                    'islem_yapan_id' => $_SESSION["id"] ?? null,
+                    'kaynak' => 'manuel',
+                ]);
+                $successCount++;
+            } catch (Exception $e) {
+                // Ignore harekete ekle errors for bulk
+            }
+        }
+
+        $Demirbas->db->commit();
+
+        jsonResponse("success", "$successCount sayaç başarıyla Kaskiye teslim edildi.");
+    } catch (Exception $ex) {
+        if ($Demirbas->db->inTransaction()) {
+            $Demirbas->db->rollBack();
+        }
+        jsonResponse("error", "Hata: " . $ex->getMessage());
+    }
+}
+
 // ============== ZİMMET İŞLEMLERİ ==============
 
 // Zimmet listesini getir

@@ -42,8 +42,9 @@ class PersonelEkOdemelerModel extends Model
      */
     public function getAktifSurekliOdemeler($personel_id, $donem)
     {
-        // Dönemden tarih oluştur (ayın ilk günü)
-        $donemTarih = $donem . '-01';
+        // Dönemden tarih oluştur
+        $donemBaslangic = $donem . '-01';
+        $donemBitis = date('Y-m-t', strtotime($donemBaslangic));
 
         $sql = $this->db->prepare("
             SELECT peo.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bp.hesaplama_tipi as param_hesaplama_tipi
@@ -58,7 +59,7 @@ class PersonelEkOdemelerModel extends Model
               AND (peo.bitis_donemi IS NULL OR peo.bitis_donemi >= ?)
             ORDER BY peo.created_at ASC
         ");
-        $sql->execute([$personel_id, $donemTarih, $donemTarih]);
+        $sql->execute([$personel_id, $donemBitis, $donemBaslangic]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -85,9 +86,28 @@ class PersonelEkOdemelerModel extends Model
      */
     public function olusturDonemOdemesi($surekliOdeme, $donem_id, $tutar)
     {
-        // Bu dönem için zaten kayıt var mı kontrol et
-        if ($this->donemdeKaynakKayitVarMi($surekliOdeme->id, $donem_id)) {
-            return false; // Zaten mevcut
+        // Bu dönem için zaten kayıt var mı kontrol et (Silinmişler dahil)
+        $sql = $this->db->prepare("
+            SELECT id, durum, silinme_tarihi FROM {$this->table} 
+            WHERE ana_odeme_id = ? AND donem_id = ?
+            ORDER BY id DESC LIMIT 1
+        ");
+        $sql->execute([$surekliOdeme->id, $donem_id]);
+        $mevcut = $sql->fetch(PDO::FETCH_OBJ);
+
+        if ($mevcut) {
+            // Kayıt varsa güncelle ve silinmişse geri getir
+            $updateSql = "UPDATE {$this->table} SET 
+                silinme_tarihi = NULL, 
+                durum = 'onaylandi', 
+                tutar = ?, 
+                updated_at = NOW() 
+                WHERE id = ?";
+            
+            $updateStmt = $this->db->prepare($updateSql);
+            $updateStmt->execute([$tutar, $mevcut->id]);
+            
+            return true;
         }
 
         $data = [

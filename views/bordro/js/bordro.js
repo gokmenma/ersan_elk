@@ -44,7 +44,8 @@ $(document).ready(function () {
     if (typeof originalInitComplete === "function") {
       originalInitComplete.call(this, settings, json);
     }
-    // Sonra preloader'ı kapat
+    // Tablo hazır - satırları göster ve preloader'ı kapat
+    $("#bordroTable").addClass("dt-ready");
     $("#bordro-loader").fadeOut(300);
   };
   $("#bordroTable").DataTable(applyLengthStateSave(bordroOpts));
@@ -1007,6 +1008,9 @@ $(document).ready(function () {
     const form = $("#formPersonelGelirEkle");
     if (form.length > 0) {
       form.trigger("reset");
+      // Bugünün tarihini varsayılan yap
+      const today = new Date().toISOString().split("T")[0];
+      form.find("input[name='tarih']").val(today);
       form
         .find("button[type='submit']")
         .html('<i class="bx bx-save me-1"></i>Kaydet');
@@ -1041,19 +1045,32 @@ $(document).ready(function () {
       const id = $(this).data("id");
       const ad = $(this).data("ad");
       const donemId = $("#donemSelect").val();
+      const maas = $(this).data("maas");
+      const maasDurumu = $(this).data("maas-durumu");
 
-      console.log("Personel ID:", id, "Ad:", ad, "Dönem:", donemId);
+      console.log("Personel ID:", id, "Ad:", ad, "Dönem:", donemId, "Maaş:", maas, "Durum:", maasDurumu);
 
       $("#kesinti_personel_id").val(id);
+      $("#formPersonelKesintiEkle").attr("data-maas", maas);
+      $("#formPersonelKesintiEkle").attr("data-maas-durumu", maasDurumu);
       $("#kesinti_personel_ad").text(ad);
       $("#kesinti_edit_id").val(0); // Reset edit ID
 
       const form = $("#formPersonelKesintiEkle");
       if (form.length > 0) {
         form.trigger("reset");
+        // Bugünün tarihini varsayılan yap
+        const today = new Date().toISOString().split("T")[0];
+        form.find("input[name='tarih']").val(today);
         form
           .find("button[type='submit']")
           .html('<i class="bx bx-save me-1"></i>Kaydet');
+
+        // UI Reset
+        $("#div_ucretsiz_izin_secenek").addClass("d-none");
+        $("#div_kesinti_gun").addClass("d-none");
+        $("#div_kesinti_tutar").removeClass("d-none");
+        $("#kesinti_tip_tutar").prop("checked", true);
       } else {
         console.error("Form #formPersonelKesintiEkle bulunamadı!");
       }
@@ -1079,6 +1096,7 @@ $(document).ready(function () {
     const tur = $(this).data("tur");
     const tutar = $(this).data("tutar");
     const aciklama = $(this).data("aciklama");
+    const tarih = $(this).data("tarih");
 
     // Önceki aktif karttan class'ı kaldır
     $(".card.border-primary").removeClass(
@@ -1096,6 +1114,7 @@ $(document).ready(function () {
       .trigger("change");
     $("#formPersonelGelirEkle input[name='tutar']").val(tutar);
     $("#formPersonelGelirEkle input[name='aciklama']").val(aciklama);
+    $("#formPersonelGelirEkle input[name='tarih']").val(tarih || "");
 
     $("#formPersonelGelirEkle button[type='submit']").html(
       '<i class="bx bx-check-circle me-1"></i>Güncelle',
@@ -1111,6 +1130,7 @@ $(document).ready(function () {
     const tur = $(this).data("tur");
     const tutar = $(this).data("tutar");
     const aciklama = $(this).data("aciklama");
+    const tarih = $(this).data("tarih");
 
     // Önceki aktif karttan class'ı kaldır
     $(".card.border-danger").removeClass(
@@ -1126,6 +1146,7 @@ $(document).ready(function () {
       .trigger("change");
     $("#formPersonelKesintiEkle input[name='tutar']").val(tutar);
     $("#formPersonelKesintiEkle input[name='aciklama']").val(aciklama);
+    $("#formPersonelKesintiEkle input[name='tarih']").val(tarih || "");
 
     $("#formPersonelKesintiEkle button[type='submit']").html(
       '<i class="bx bx-check-circle me-1"></i>Güncelle',
@@ -1344,6 +1365,62 @@ $(document).ready(function () {
       },
     });
   });
+
+  // Kesinti Türü Değişince
+  $(document).on("change", "select[name='kesinti_tur']", function () {
+    const tur = $(this).val();
+    const form = $("#formPersonelKesintiEkle");
+    const maasDurumu = form.attr("data-maas-durumu");
+
+    if (tur === "izin_kesinti") {
+      $("#div_ucretsiz_izin_secenek").removeClass("d-none");
+
+      // Eğer prim usulü ise gün seçeneğini gizle
+      if (maasDurumu === "Prim Usulü") {
+        $("#kesinti_tip_gun").prop("disabled", true);
+        $("label[for='kesinti_tip_gun']").addClass("d-none");
+        $("#kesinti_tip_tutar").prop("checked", true).trigger("change");
+      } else {
+        $("#kesinti_tip_gun").prop("disabled", false);
+        $("label[for='kesinti_tip_gun']").removeClass("d-none");
+      }
+    } else {
+      $("#div_ucretsiz_izin_secenek").addClass("d-none");
+      $("#div_kesinti_gun").addClass("d-none");
+      $("#div_kesinti_tutar").removeClass("d-none");
+    }
+  });
+
+  // Kesinti Tipi (Tutar/Gün) Değişince
+  $(document).on("change", "input[name='rad_kesinti_tip']", function () {
+    const tip = $(this).val();
+    if (tip === "gun") {
+      $("#div_kesinti_gun").removeClass("d-none");
+      $("#div_kesinti_tutar").addClass("d-none");
+      $("#kesinti_tutar").prop("required", false);
+      $("#kesinti_gun_sayisi").prop("required", true).focus();
+    } else {
+      $("#div_kesinti_gun").addClass("d-none");
+      $("#div_kesinti_tutar").removeClass("d-none");
+      $("#kesinti_tutar").prop("required", true);
+      $("#kesinti_gun_sayisi").prop("required", false);
+    }
+  });
+
+  // Gün Sayısı Değişince Tutar Hesapla
+  $(document).on("input", "#kesinti_gun_sayisi", function () {
+    const gun = parseFloat($(this).val()) || 0;
+    const form = $("#formPersonelKesintiEkle");
+    const maas = parseFloat(form.attr("data-maas")) || 0;
+
+    if (gun > 0 && maas > 0) {
+      const gunluk = maas / 30;
+      const toplam = (gunluk * gun).toFixed(2);
+      $("#kesinti_tutar").val(toplam);
+    } else {
+      $("#kesinti_tutar").val(0);
+    }
+  });
 });
 
 // function initDataTable() {
@@ -1491,34 +1568,51 @@ function loadGelirListesi(personelId, donemId) {
           html =
             '<div class="text-center text-muted py-3"><i class="bx bx-info-circle fs-1 mb-2"></i><br>Kayıtlı gelir bulunamadı.</div>';
         } else {
+          html = `
+            <div class="table-responsive">
+              <table class="table table-sm table-hover table-bordered mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Tarih</th>
+                    <th>Tür</th>
+                    <th>Açıklama</th>
+                    <th class="text-end">Tutar</th>
+                    <th class="text-center">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody>`;
           response.data.forEach((item) => {
+            const fullDate = item.tarih
+              ? item.tarih
+              : (item.created_at ? item.created_at : "");
+            const dateStr = fullDate.split(' ')[0];
+            const formattedDate = dateStr
+              ? new Date(dateStr).toLocaleDateString("tr-TR")
+              : "-";
             html += `
-                        <div class="card mb-2 border shadow-sm">
-                            <div class="card-body p-3">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0 me-3">
-                                        <div class="avatar-sm">
-                                            <span class="avatar-title bg-success bg-opacity-10 text-success rounded-3">
-                                                <i class="bx bx-plus-circle fs-3"></i>
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="mb-1 text-uppercase text-success fw-bold">${item.etiket}</h6>
-                                        <p class="text-muted mb-0 small">${item.aciklama || "Açıklama yok"}</p>
-                                    </div>
-                                    <div class="flex-shrink-0 text-end mx-3">
-                                        <h5 class="mb-1 text-success fw-bold">+${formatMoney(item.tutar)} ₺</h5>
-                                        <small class="text-muted" style="font-size: 11px;">${item.olusturma_tarihi ? new Date(item.olusturma_tarihi).toLocaleDateString("tr-TR") : item.created_at ? new Date(item.created_at).toLocaleDateString("tr-TR") : ""}</small>
-                                    </div>
-
-                                    <div class="flex-shrink-0">
-                                    
-                                    </div>
-                                </div>
-                            </div>
-                        </div>`;
+                  <tr>
+                    <td>${formattedDate}</td>
+                    <td><span class="badge bg-success bg-opacity-10 text-success">${item.etiket}</span></td>
+                    <td class="small">${item.aciklama || "-"}</td>
+                    <td class="text-end fw-bold text-success">+${formatMoney(item.tutar)} ₺</td>
+                    <td class="text-center">
+                      <div class="d-flex justify-content-center gap-1">
+                        <button type="button" class="btn btn-sm btn-soft-success btn-edit-gelir" 
+                            data-id="${item.id}" 
+                            data-tur="${item.tur}" 
+                            data-tutar="${item.tutar}" 
+                            data-tarih="${item.tarih || ""}" 
+                            data-aciklama="${item.aciklama || ""}">
+                            <i class="bx bx-edit"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete-gelir" data-id="${item.id}">
+                            <i class="bx bx-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>`;
           });
+          html += `</tbody></table></div>`;
         }
         $("#listPersonelGelirler").html(html);
       }
@@ -1563,46 +1657,55 @@ function loadKesintiListesi(personelId, donemId) {
             nafaka: "Nafaka",
           };
 
+          html = `
+            <div class="table-responsive">
+              <table class="table table-sm table-hover table-bordered mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Tarih</th>
+                    <th>Tür</th>
+                    <th>Açıklama</th>
+                    <th class="text-end">Tutar</th>
+                    <th class="text-center">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody>`;
+
           response.data.forEach((item) => {
             const turLabel =
               kesintiMap[item.tur] || item.tur.replace(/_/g, " ");
+            const fullDate = item.tarih
+              ? item.tarih
+              : (item.olusturma_tarihi ? item.olusturma_tarihi : "");
+            const dateStr = fullDate.split(' ')[0];
+            const formattedDate = dateStr
+              ? new Date(dateStr).toLocaleDateString("tr-TR")
+              : "-";
+
             html += `
-                        <div class="card mb-2 border shadow-sm">
-                            <div class="card-body p-3">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0 me-3">
-                                        <div class="avatar-sm">
-                                            <span class="avatar-title bg-danger bg-opacity-10 text-danger rounded-3">
-                                                <i class="bx bx-minus-circle fs-3"></i>
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <h6 class="mb-1 text-uppercase text-danger fw-bold">${turLabel}</h6>
-                                        <p class="text-muted mb-0 small">${item.aciklama || "Açıklama yok"}</p>
-                                    </div>
-                                    <div class="flex-shrink-0 text-end mx-3">
-                                        <h5 class="mb-1 text-danger fw-bold">-${formatMoney(item.tutar)} ₺</h5>
-                                        <small class="text-muted" style="font-size: 11px;">${item.olusturma_tarihi ? new Date(item.olusturma_tarihi).toLocaleDateString("tr-TR") : item.created_at ? new Date(item.created_at).toLocaleDateString("tr-TR") : ""}</small>
-                                    </div>
-                                    <div class="flex-shrink-0">
-                                        <div class="d-flex flex-column gap-1">
-                                            <button type="button" class="btn btn-sm btn-soft-primary btn-edit-kesinti" 
-                                                data-id="${item.id}" 
-                                                data-tur="${item.tur}" 
-                                                data-tutar="${item.tutar}" 
-                                                data-aciklama="${item.aciklama || ""}">
-                                                <i class="bx bx-edit"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-kesinti" data-id="${item.id}">
-                                                <i class="bx bx-trash"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>`;
+                  <tr>
+                    <td>${formattedDate}</td>
+                    <td><span class="badge bg-danger bg-opacity-10 text-danger">${turLabel}</span></td>
+                    <td class="small">${item.aciklama || "-"}</td>
+                    <td class="text-end fw-bold text-danger">-${formatMoney(item.tutar)} ₺</td>
+                    <td class="text-center">
+                      <div class="d-flex justify-content-center gap-1">
+                        <button type="button" class="btn btn-sm btn-soft-primary btn-edit-kesinti" 
+                            data-id="${item.id}" 
+                            data-tur="${item.tur}" 
+                            data-tutar="${item.tutar}" 
+                            data-tarih="${item.tarih || ""}" 
+                            data-aciklama="${item.aciklama || ""}">
+                            <i class="bx bx-edit"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete-kesinti" data-id="${item.id}">
+                            <i class="bx bx-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>`;
           });
+          html += `</tbody></table></div>`;
         }
         $("#listPersonelKesintiler").html(html);
       }

@@ -21,6 +21,36 @@ $(document).ready(function () {
     resetKesintiModal();
     initKesintiSelect2();
     $("#modalPersonelKesintiEkle").modal("show");
+    setTimeout(function() {
+        var today = new Date();
+        var dd = String(today.getDate()).padStart(2, "0");
+        var mm = String(today.getMonth() + 1).padStart(2, "0");
+        var yyyy = today.getFullYear();
+        var dateStr = dd + "." + mm + "." + yyyy;
+        var dateInput = $("#kesinti_tarih");
+        dateInput.val(dateStr);
+        if (dateInput[0] && dateInput[0]._flatpickr) {
+            dateInput[0]._flatpickr.setDate(dateStr);
+        }
+    }, 100);
+  });
+  
+  // Modal açıldığında bugün tarihini zorla (Flatpickr desteğiyle)
+  $(document).on("shown.bs.modal", "#modalPersonelKesintiEkle", function () {
+    var today = new Date();
+    var dd = String(today.getDate()).padStart(2, "0");
+    var mm = String(today.getMonth() + 1).padStart(2, "0");
+    var yyyy = today.getFullYear();
+    var dateStr = dd + "." + mm + "." + yyyy;
+    var dateInput = $("#kesinti_tarih");
+    
+    // Sadece eğer alan boşsa veya add modundaysak setle
+    if (!dateInput.val()) {
+        dateInput.val(dateStr);
+        if (dateInput[0] && dateInput[0]._flatpickr) {
+            dateInput[0]._flatpickr.setDate(dateStr);
+        }
+    }
   });
 
   // Modal kapatılınca formu sıfırla
@@ -33,13 +63,135 @@ $(document).ready(function () {
     if (form.length && form[0]) {
       form[0].reset();
     }
+    
+    // Hidden ID inputunu temizle
+    form.find('input[name="id"]').remove();
+    
+    // Modal başlığını ve buton metnini sıfırla
+    $("#modalPersonelKesintiEkle .modal-title").html('<i class="bx bx-minus-circle me-2"></i>Yeni Kesinti Ekle');
+    $("#btnPersonelKesintiKaydet").html('<i class="bx bx-save me-1"></i>Kaydet');
+    
     $("#kesinti_parametre_id").val("").trigger("change");
     $("#tekrar_tek_sefer").prop("checked", true);
     $("#hesaplama_sabit").prop("checked", true);
     updateTekrarTipiUI();
     updateHesaplamaTipiUI();
     $("#div_icra_secimi").addClass("d-none");
+    $("#div_ucretsiz_izin_secenek").addClass("d-none");
+    $("#div_kesinti_gun").addClass("d-none");
+    $("#div_tutar").removeClass("d-none");
+    $("#kesinti_tip_tutar").prop("checked", true);
+
+    // Set today's date
+    var today = new Date();
+    var dd = String(today.getDate()).padStart(2, "0");
+    var mm = String(today.getMonth() + 1).padStart(2, "0");
+    var yyyy = today.getFullYear();
+    var dateStr = dd + "." + mm + "." + yyyy;
+
+    var dateInput = $("#kesinti_tarih");
+    dateInput.val(dateStr);
+    if (dateInput[0] && dateInput[0]._flatpickr) {
+      dateInput[0]._flatpickr.setDate(dateStr);
+    }
   }
+
+  // Kesinti Düzenle
+  $(document).on("click", ".btn-personel-kesinti-duzenle", function () {
+    var id = $(this).data("id");
+    
+    $.ajax({
+      url: "views/personel/ajax/kesinti-islemleri.php",
+      type: "POST",
+      data: {
+        action: "get_kesinti",
+        id: id,
+        personel_id: $('#formPersonelKesintiEkle input[name="personel_id"]').val()
+      },
+      dataType: "json",
+      success: function (response) {
+        if (response && !response.error) {
+          resetKesintiModal();
+          initKesintiSelect2();
+          
+          var form = $("#formPersonelKesintiEkle");
+          
+          // ID ekle
+          form.append('<input type="hidden" name="id" value="' + response.id + '">');
+          
+          // Modal başlığını güncelle
+          $("#modalPersonelKesintiEkle .modal-title").html('<i class="bx bx-edit me-2"></i>Kesinti Düzenle');
+          $("#btnPersonelKesintiKaydet").html('<i class="bx bx-save me-1"></i>Güncelle');
+          
+          // Alanları doldur
+          if (response.parametre_id) {
+              $("#kesinti_parametre_id").val(response.parametre_id).trigger("change");
+          } else if (response.tur) {
+              // Parametre ID yoksa tür kodundan bulmaya çalış
+              var option = $("#kesinti_parametre_id option").filter(function() {
+                  return $(this).data("kod") == response.tur;
+              });
+              if (option.length > 0) {
+                  $("#kesinti_parametre_id").val(option.val()).trigger("change");
+              }
+          }
+          
+          // İcra ise
+          if (response.icra_id) {
+             // İcra dosyalarını bekle ve seç
+             setTimeout(function() {
+                 $("#kesinti_icra_id").val(response.icra_id).trigger("change");
+             }, 500);
+          }
+          
+          // Tekrar tipi
+          if (response.tekrar_tipi === 'surekli') {
+            $("#tekrar_surekli").prop("checked", true);
+            $("#kesinti_baslangic_donemi").val(response.baslangic_donemi);
+            $("#kesinti_bitis_donemi").val(response.bitis_donemi);
+          } else {
+            $("#tekrar_tek_sefer").prop("checked", true);
+            $("select[name='kesinti_donem']").val(response.donem_id).trigger('change');
+          }
+          updateTekrarTipiUI();
+          
+          // Hesaplama tipi (Trigger change varsayılanları getirdiği için tekrar set ediyoruz)
+          if (response.hesaplama_tipi === 'sabit') {
+            $("#hesaplama_sabit").prop("checked", true);
+            $("input[name='tutar']").val(response.tutar);
+          } else if (response.hesaplama_tipi === 'oran_net') {
+            $("#hesaplama_oran_net").prop("checked", true);
+            $("input[name='oran']").val(response.oran);
+          } else if (response.hesaplama_tipi === 'oran_brut') {
+            $("#hesaplama_oran_brut").prop("checked", true);
+            $("input[name='oran']").val(response.oran);
+          }
+          updateHesaplamaTipiUI();
+          
+          // Tarih
+          if (response.tarih) {
+            var dateParts = response.tarih.split("-");
+            var dateStr = dateParts[2] + "." + dateParts[1] + "." + dateParts[0];
+            $("#kesinti_tarih").val(dateStr);
+            if ($("#kesinti_tarih")[0]._flatpickr) {
+                $("#kesinti_tarih")[0]._flatpickr.setDate(dateStr);
+            }
+          }
+          
+          // Açıklama
+          $("input[name='aciklama']").val(response.aciklama);
+          
+          // Modalı göster
+          $("#modalPersonelKesintiEkle").modal("show");
+        } else {
+          Swal.fire("Hata", response.error || "Kayıt bulunamadı", "error");
+        }
+      },
+      error: function () {
+        Swal.fire("Hata", "Veri çekilemedi", "error");
+      }
+    });
+  });
 
   // Tekrar tipi değişince - EVENT DELEGATION
   $(document).on("change", 'input[name="tekrar_tipi"]', function () {
@@ -126,6 +278,55 @@ $(document).ready(function () {
       }
     }
     updateHesaplamaTipiUI();
+
+    // Ücretsiz İzin özel mantığı
+    if (kod === "izin_kesinti") {
+      $("#div_ucretsiz_izin_secenek").removeClass("d-none");
+      const maasDurumu = window.personelData ? window.personelData.maas_durumu : "";
+
+      if (maasDurumu === "Prim Usulü") {
+        $("#kesinti_tip_gun").prop("disabled", true);
+        $("label[for='kesinti_tip_gun']").addClass("d-none");
+        $("#kesinti_tip_tutar").prop("checked", true).trigger("change");
+      } else {
+        $("#kesinti_tip_gun").prop("disabled", false);
+        $("label[for='kesinti_tip_gun']").removeClass("d-none");
+      }
+    } else {
+      $("#div_ucretsiz_izin_secenek").addClass("d-none");
+      $("#div_kesinti_gun").addClass("d-none");
+      $("#div_tutar").removeClass("d-none");
+    }
+  });
+
+  // Kesinti Tipi (Tutar/Gün) Değişince
+  $(document).on("change", "input[name='rad_kesinti_tip']", function () {
+    const tip = $(this).val();
+    if (tip === "gun") {
+      $("#div_kesinti_gun").removeClass("d-none");
+      $("#div_tutar").addClass("d-none");
+      $("input[name='tutar']").prop("required", false);
+      $("#kesinti_gun_sayisi").prop("required", true).focus();
+    } else {
+      $("#div_kesinti_gun").addClass("d-none");
+      $("#div_tutar").removeClass("d-none");
+      $("input[name='tutar']").prop("required", true);
+      $("#kesinti_gun_sayisi").prop("required", false);
+    }
+  });
+
+  // Gün Sayısı Değişince Tutar Hesapla
+  $(document).on("input", "#kesinti_gun_sayisi", function () {
+    const gun = parseFloat($(this).val()) || 0;
+    const maas = window.personelData ? window.personelData.maas_tutari : 0;
+
+    if (gun > 0 && maas > 0) {
+      const gunluk = maas / 30;
+      const toplam = (gunluk * gun).toFixed(2);
+      $("input[name='tutar']").val(toplam);
+    } else {
+      $("input[name='tutar']").val(0);
+    }
   });
 
   // İcra dosyalarını yükle
@@ -226,8 +427,12 @@ $(document).ready(function () {
     var turKod =
       $("#kesinti_parametre_id").find("option:selected").data("kod") || "diger";
 
+    // Güncelleme kontrolü
+    var idInput = form.find('input[name="id"]');
+    var action = idInput.length > 0 ? "update_kesinti" : "save_kesinti";
+
     var data = {
-      action: "save_kesinti",
+      action: action,
       personel_id: $('input[name="personel_id"]').val(),
       parametre_id: parametreId,
       tur: turKod,
@@ -235,9 +440,21 @@ $(document).ready(function () {
       hesaplama_tipi: hesaplamaTipi,
       tutar: hesaplamaTipi === "sabit" ? $("input[name='tutar']").val() : 0,
       oran: hesaplamaTipi !== "sabit" ? $("input[name='oran']").val() : 0,
+      tarih: $("#kesinti_tarih").val(),
       aciklama: $("input[name='aciklama']").val(),
       icra_id: $("#kesinti_icra_id").val() || null,
     };
+
+    // Update ise ID ekle
+    if (action === "update_kesinti") {
+      data.id = idInput.val();
+    }
+
+    // Tarih kontrolü
+    if (!data.tarih) {
+      Swal.fire("Hata", "Lütfen tarih seçiniz.", "error");
+      return;
+    }
 
     // Dönem bilgisi
     if (tekrarTipi === "tek_sefer") {
@@ -271,7 +488,7 @@ $(document).ready(function () {
   $(document).on("click", ".btn-personel-kesinti-onayla", function () {
     var id = $(this).data("id");
     console.log("Kesinti Onayla - ID:", id); // Debug
-    
+
     Swal.fire({
       title: "Kesintiyi Onayla",
       text: "Bu kesinti onaylanacak ve maaş hesaplamasına dahil edilecek.",
@@ -282,8 +499,11 @@ $(document).ready(function () {
       confirmButtonColor: "#28a745",
     }).then((result) => {
       if (result.isConfirmed) {
-        console.log("Gönderilen data:", { action: "kesinti-onayla", kesinti_id: id }); // Debug
-        
+        console.log("Gönderilen data:", {
+          action: "kesinti-onayla",
+          kesinti_id: id,
+        }); // Debug
+
         $.ajax({
           url: "views/personel/api.php",
           type: "POST",
@@ -294,7 +514,7 @@ $(document).ready(function () {
           dataType: "json",
           success: function (response) {
             console.log("API Response:", response); // Debug
-            
+
             if (response.status === "success") {
               refreshKesintiTab();
               Swal.fire("Onaylandı!", "Kesinti onaylandı.", "success");

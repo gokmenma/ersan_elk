@@ -288,6 +288,8 @@ if (Gate::canWithMessage("personel_listesi")) {
                                 </div>
                             </div>
 
+<div class="responsive" style="overflow-x: auto !important;">
+
                             <table id="membersTable" class="table table-selected table-bordered nowrap w-100">
                                 <thead>
                                     <tr>
@@ -317,6 +319,7 @@ if (Gate::canWithMessage("personel_listesi")) {
                                         <th data-filter="string">BANKA</th>
                                         <th data-filter="string">MAAŞ</th>
                                         <th data-filter="string">SGK NO</th>
+                                        <th data-filter="string">SGK YAPILAN FİRMA</th>
                                         <th data-filter="string">SODEXO NO</th>
                                         <th data-filter="string">2. TELEFON</th>
                                         <th data-filter="string">KASKI KULLANICI ADI</th>
@@ -326,6 +329,8 @@ if (Gate::canWithMessage("personel_listesi")) {
                                 <tbody>
                                 </tbody>
                             </table>
+</div>
+
 
                         </div>
                     </div>

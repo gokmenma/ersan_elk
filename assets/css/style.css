@@ -271,7 +271,13 @@
   background-color: #191e22 !important;
   border-color: #32394e !important;
 }
+   .modal-dialog-lg {
+            max-width: 1000px;
+        }
 
+        .modal-dialog-md {
+            max-width: 800px;
+        }
 /* Premium Modal Header Styles */
 .modal-header {
   display: flex !important;
@@ -332,6 +338,7 @@
   display: flex;
   flex-direction: column;
 }
+
 
 .modal-header .modal-title {
   margin: 0 !important;

@@ -68,6 +68,20 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                     <div class="col-md-2 mb-2">
                         <?php echo Form::FormSelect2("arac_kullanim", ['Yok' => 'Yok', 'Kendi Aracı' => 'Kendi Aracı', 'Şirket aracı' => 'Şirket aracı'], $personel->arac_kullanim ?? 'Yok', "Araç Kullanım", "truck"); ?>
                     </div>
+                    <div class="col-md-2 mb-2">
+                        <?php
+
+                        $firma_adi = $FirmaModel->find($_SESSION['firma_id'])->firma_adi;
+                        $firma_option = [
+                            $firma_adi => $firma_adi,
+                            "İŞKUR" => "İŞKUR"
+
+                        ];
+
+
+                        echo Form::FormSelect2("sgk_yapilan_firma", $firma_option, $personel->sgk_yapilan_firma ?? 'Yok', "SGK Yapılan Firma", "book-open"); ?>
+
+                    </div>
                 </div>
 
 

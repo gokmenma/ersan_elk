@@ -68,6 +68,24 @@ if (count($reportDates) > 0) {
 }
 
 $daysCount = count($reportDates);
+
+// Fetch Manuel Düşüm totals for the range for all relevant tabs
+$manuelDusumMap = [];
+if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma'])) {
+    $sqlDusum = "SELECT personel_id, ekip_kodu_id, SUM(ABS(sonuclanmis)) as total_dusum 
+                 FROM yapilan_isler 
+                 WHERE firma_id = ? 
+                 AND is_emri_tipi = 'Manuel Düşüm' 
+                 AND tarih BETWEEN ? AND ? 
+                 AND silinme_tarihi IS NULL 
+                 GROUP BY personel_id, ekip_kodu_id";
+    $stmtDusum = $Puantaj->db->prepare($sqlDusum);
+    $stmtDusum->execute([$_SESSION['firma_id'], $startDateStr, $endDateStr]);
+    while ($row = $stmtDusum->fetch(PDO::FETCH_OBJ)) {
+        $manuelDusumMap[$row->personel_id][$row->ekip_kodu_id] = $row->total_dusum;
+    }
+}
+
 $regions = $Tanimlamalar->getEkipBolgeleri();
 
 if ($filterRegion) {
@@ -828,9 +846,9 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                 <?php if ($hasSubCols): ?>
                     <th colspan="<?= $subColCount ?>" id="actionTotalsHeader">İŞLEM TOPLAMLARI</th><?php endif; ?>
                 <th>TOPLAM</th>
-                <?php if ($activeTab === 'kesme'): ?>
-                    <th>DÜŞÜLECEK SAYI</th>
-                    <th>KALAN TOPLAM</th>
+                <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma'])): ?>
+                    <th>(-) Sayı</th>
+                    <th>Kalan</th>
                 <?php endif; ?>
                 <th>BÖLGE TOP.</th>
                 <th>BÖLGE ADI</th>
@@ -891,7 +909,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                 class="vertical-text"><?= $wt['code'] ?></span></th><?php endforeach; ?>
                 <?php endif; ?>
                 <th></th>
-                <?php if ($activeTab === 'kesme'): ?>
+                <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma'])): ?>
                     <th></th>
                     <th></th>
                 <?php endif; ?>
@@ -1067,23 +1085,16 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                             $grandTotal += $personelTotal;
                             ?>
                             <?php foreach ($workTypeCols as $wt): ?>
-                                <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> table-info fw-bold row-action-total">
+                                <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> table-info fw-bold row-action-total" data-wt-code="<?= $wt['code'] ?>">
                                     <?= $personelActTotals[$wt['name']] ?: '' ?>
                                 </td>
                             <?php endforeach; ?>
                         <?php endif; ?>
 
                         <td class="table-light fw-bold row-total-cell"><?= $personelTotal ?: '' ?></td>
-                        <?php if ($activeTab === 'kesme'): ?>
+                        <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma'])): ?>
                             <?php
-                            $dusum = 0;
-                            if (isset($summary[$pId][$tId])) {
-                                foreach ($summary[$pId][$tId] as $dayData) {
-                                    if (isset($dayData['Manuel Düşüm'])) {
-                                        $dusum += abs($dayData['Manuel Düşüm']);
-                                    }
-                                }
-                            }
+                            $dusum = $manuelDusumMap[$pId][$tId] ?? 0;
                             ?>
                             <td class="table-danger" style="width: 80px;">
                                 <input type="number" class="form-control form-control-sm text-center fw-bold manual-dusum-input"
@@ -1150,7 +1161,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     <?php endforeach; ?>
                     <td class="table-warning fw-bold action-types-grand-total"><?= $allActionTypesGrandTotal ?: '' ?>
                     </td>
-                    <?php if ($activeTab === 'kesme'): ?>
+                    <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma'])): ?>
                         <td colspan="2"></td>
                     <?php endif; ?>
                     <td colspan="2"></td>
@@ -1178,7 +1189,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     </td>
                 <?php endif; ?>
                 <td class="grand-total-cell"><?= $grandTotal ?: '' ?></td>
-                <?php if ($activeTab === 'kesme'): ?>
+                <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma'])): ?>
                     <td class="grand-dusum-cell table-danger"></td>
                     <td class="grand-kalan-cell table-success"></td>
                 <?php endif; ?>
@@ -1348,8 +1359,11 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     const cell = subCells[c];
                     const date = cell.dataset.date;
                     const code = cell.dataset.wtCode;
+                    
+                    if (typeof rowActTotals[code] === 'undefined') rowActTotals[code] = 0;
+                    
                     const val = parseInt(cell.textContent) || 0;
-
+                    
                     rowActTotals[code] += val;
                     rowDayTotals[date] = (rowDayTotals[date] || 0) + val;
 
@@ -1366,7 +1380,8 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                 });
 
                 row.querySelectorAll('.row-action-total').forEach(col => {
-                    col.textContent = rowActTotals[col.dataset.wtCode] || '';
+                    const wtCode = col.dataset.wtCode;
+                    col.textContent = (rowActTotals[wtCode] !== undefined && rowActTotals[wtCode] !== 0) ? rowActTotals[wtCode] : '';
                 });
             } else {
                 const dayCells = row.querySelectorAll('[data-date]');
@@ -1384,7 +1399,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             if (totalCell) totalCell.textContent = rowTotal || '';
             overallGrandTotal += rowTotal;
 
-            if (activeTab === 'kesme') {
+            if (['kesme', 'okuma', 'sokme_takma'].includes(activeTab)) {
                 const dusumInput = row.querySelector('.manual-dusum-input');
                 if (dusumInput) {
                     const dusumVal = parseInt(dusumInput.value) || 0;
@@ -1436,7 +1451,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
         const grandCell = document.querySelector('.grand-total-cell');
         if (grandCell) grandCell.textContent = overallGrandTotal || '';
 
-        if (activeTab === 'kesme') {
+        if (['kesme', 'okuma', 'sokme_takma'].includes(activeTab)) {
             const gdCell = document.querySelector('.grand-dusum-cell');
             if (gdCell) gdCell.textContent = overallGrandDusum || '0';
             const gkCell = document.querySelector('.grand-kalan-cell');
