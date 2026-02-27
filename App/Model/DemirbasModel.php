@@ -116,6 +116,9 @@ class DemirbasModel extends Model
         $textSelect = "CONCAT(d.demirbas_no, ' - ', d.demirbas_adi, ' (', COALESCE(k.tur_adi, 'Kategorisiz'), ')')";
         if ($type === 'sayac') {
             $textSelect = "CONCAT(d.demirbas_no, ' - ', d.demirbas_adi, ' (', COALESCE(k.tur_adi, 'Kategorisiz'), ') - SN: ', COALESCE(d.seri_no, '-'))";
+        } else {
+             // Diğer demirbaşlarda da varsa seri numarasını göster (Tablet, Simkart vb.)
+             $textSelect = "CONCAT(d.demirbas_no, ' - ', d.demirbas_adi, ' (', COALESCE(k.tur_adi, 'Kategorisiz'), ')', CASE WHEN d.seri_no IS NOT NULL AND d.seri_no != '' THEN CONCAT(' - SN: ', d.seri_no) ELSE '' END)";
         }
 
         $sql = $this->db->prepare("

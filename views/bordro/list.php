@@ -3,12 +3,14 @@ $_pageStart = microtime(true);
 
 use App\Model\BordroDonemModel;
 use App\Model\BordroPersonelModel;
+use App\Model\BordroParametreModel;
 use App\Helper\Form;
 use App\Helper\Helper;
 use App\Helper\Security;
 
 $BordroDonem = new BordroDonemModel();
 $BordroPersonel = new BordroPersonelModel();
+$BordroParametre = new BordroParametreModel();
 
 
 
@@ -370,6 +372,12 @@ $ek_odeme_turleri = [
                         $donemBitTs = $selectedDonem ? strtotime($selectedDonem->bitis_tarihi) : 0;
                         $aydakiGunSayisi = $selectedDonem ? date('t', $donemBasTs) : 30;
 
+                        // Asgari ücreti çek
+                        $asgariUcretNet = 0;
+                        if ($selectedDonem) {
+                            $asgariUcretNet = $BordroParametre->getGenelAyar('asgari_ucret_net', $selectedDonem->baslangic_tarihi) ?? 17002.12;
+                        }
+
                         foreach ($personeller as $p) {
                             $rawEkOdeme = floatval($p->guncel_toplam_ek_odeme);
                             $pMaasTutari = floatval($p->maas_tutari ?? 0);
@@ -457,11 +465,30 @@ $ek_odeme_turleri = [
                             $pNetMaasGercek = $pNetAlacagi - $pIcra;
                             if ($pNetMaasGercek < 0) $pNetMaasGercek = 0;
 
-                            // Banka = Net Maaş - Sodexo - Elden - Diğer
+                            // Banka = (Asgari / 30 * Gün) - İcra
+                            // Formül: geçerli dönemdeki asgari ücret / 30 * çalışma günü - icra kesintisi
+                            
                             $sodexoP = floatval($p->sodexo_odemesi ?? 0);
-                            $digerP = floatval($p->diger_odeme ?? 0);
-                            $bankaP = $pNetMaasGercek - $sodexoP - $eldenP - $digerP;
+                            
+                            if ($pCalismaGunu >= 30) {
+                                $bankaBaz = $asgariUcretNet;
+                            } else {
+                                $bankaBaz = ($asgariUcretNet / 30) * $pCalismaGunu;
+                            }
+
+                            // Maksimum kontrolü (Net - Sodexo) - Banka ödemesi toplam alacağı geçemez
+                            $bankaMax = max(0, $pNetAlacagi - $sodexoP);
+                            $bankaBaz = min($bankaBaz, $bankaMax);
+
+                            $bankaP = max(0, $bankaBaz - $pIcra);
                             if ($bankaP < 0) $bankaP = 0;
+
+                            $digerP = floatval($p->diger_odeme ?? 0);
+                            
+                            // Elden = Net - Banka - Sodexo - Diğer
+                            // $pNetMaasGercek (İcra düşülmüş net maaş)
+                            // $eldenP = floatval($p->elden_odeme ?? 0); // DB'den gelen değeri eziyoruz
+                            $eldenP = max(0, $pNetMaasGercek - $bankaP - $sodexoP - $digerP);
 
                             // Toplamları güncelle
                             $toplamAlacagi += $pToplamAlacagi;
