@@ -434,7 +434,7 @@ function toggleEkOdemeView(mode) {
                     <!-- Tutar/Oran Girişi -->
                     <div class="row">
                         <div class="col-md-6 mb-3" id="ek_div_tutar">
-                            <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="ek_odeme_tutar" min="0"') ?>
+                            <?= Form::FormFloatInput("number", "ek_odeme_tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="ek_odeme_tutar" min="0"') ?>
                         </div>
                         <div class="col-md-6 mb-3 d-none" id="ek_div_oran">
                             <?= Form::FormFloatInput("number", "oran", "", "0", "Oran (%)", "percent", "form-control", false, null, "off", false, 'step="0.01" id="ek_odeme_oran" min="0" max="100"') ?>

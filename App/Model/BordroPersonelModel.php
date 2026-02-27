@@ -1686,29 +1686,47 @@ class BordroPersonelModel extends Model
         // ========== ÜCRETLİ İZİN BİLGİSİ ==========
         $ucretliIzinGunu = $this->getUcretliIzinGunu($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
-        // Aktif çalışma günlerini hesapla (İşe giriş ve işten ayrılma tarihlerine göre)
-        $gunlukBase = 30;
+        // ========== ÇALIŞMA GÜNÜ HESAPLAMASI ==========
+        // Mantık:
+        // 1) İşe giriş tarihi dönem içindeyse: ayın_gün_sayısı - giriş_günü + 1 (takvim günü)
+        // 2) Tam çalıştı + ücretsiz izin yok: 30 gün (ticari ay)
+        // 3) Tam çalıştı + ücretsiz izin var: ayın_gün_sayısı - ücretsiz_izin_günü
         $donemBasTs = strtotime($kayit->baslangic_tarihi);
         $donemBitTs = strtotime($kayit->bitis_tarihi);
         $aydakiGunSayisi = date('t', $donemBasTs);
 
+        $iseGirisDoneмIcinde = false;
+        $istenCikisDoneмIcinde = false;
+
         if (!empty($kayit->ise_giris_tarihi)) {
             $iseGirisTs = strtotime($kayit->ise_giris_tarihi);
             if ($iseGirisTs > $donemBasTs) {
-                $startDay = date('j', $iseGirisTs);
-                // 30 günlük ticari ay mantığına göre eksik günü bul
-                $eksikGunBas = min(30, $startDay) - 1;
-                $gunlukBase -= $eksikGunBas;
+                $iseGirisDoneмIcinde = true;
             }
         }
 
         if (!empty($kayit->isten_cikis_tarihi)) {
-            $istenAyrilmaTs = strtotime($kayit->isten_cikis_tarihi);
-            if ($istenAyrilmaTs < $donemBitTs) {
-                $endDay = date('j', $istenAyrilmaTs);
-                $eksikGunSon = $aydakiGunSayisi - $endDay;
-                $gunlukBase -= $eksikGunSon;
+            $istenCikisTs = strtotime($kayit->isten_cikis_tarihi);
+            if ($istenCikisTs >= $donemBasTs && $istenCikisTs < $donemBitTs) {
+                $istenCikisDoneмIcinde = true;
             }
+        }
+
+        if ($iseGirisDoneмIcinde && $istenCikisDoneмIcinde) {
+            // Hem giriş hem çıkış ay içinde
+            $gunlukBase = date('j', $istenCikisTs) - date('j', $iseGirisTs) + 1;
+        } elseif ($iseGirisDoneмIcinde) {
+            // Sadece giriş ay içinde: ayın kalan günleri
+            $gunlukBase = $aydakiGunSayisi - date('j', $iseGirisTs) + 1;
+        } elseif ($istenCikisDoneмIcinde) {
+            // Sadece çıkış ay içinde: ayın başından çıkış gününe kadar
+            $gunlukBase = date('j', $istenCikisTs);
+        } elseif ($ucretsizIzinGunu > 0 || $ucretliIzinGunu > 0) {
+            // Tam ay çalıştı ama izin var: takvim günü kullan
+            $gunlukBase = $aydakiGunSayisi;
+        } else {
+            // Tam ay, izin yok: ticari 30 gün
+            $gunlukBase = 30;
         }
         if ($gunlukBase < 0)
             $gunlukBase = 0;
@@ -1724,10 +1742,12 @@ class BordroPersonelModel extends Model
             if ($ucretsizIzinDusumu < 0)
                 $ucretsizIzinDusumu = 0;
         } else {
+            $fiiliCalismaGunuTemp = $gunlukBase - $ucretsizIzinGunu - $ucretliIzinGunu;
+            if ($fiiliCalismaGunuTemp < 0)
+                $fiiliCalismaGunuTemp = 0;
 
-            if (($ucretsizIzinGunu > 0 || $gunlukBase < 30) && $nominalBrutMaas > 0) {
-                // Eğer eksik gün (işe giriş çıkıştan dolayı) varsa onu da ucretsiz izin mantığıyla düş
-                $calismadigiGunler = (30 - $gunlukBase) + $ucretsizIzinGunu;
+            if ($fiiliCalismaGunuTemp < 30 && $nominalBrutMaas > 0) {
+                $calismadigiGunler = 30 - $fiiliCalismaGunuTemp;
                 $gunlukUcretHesap = $nominalBrutMaas / 30;
                 $ucretsizIzinDusumu = round($gunlukUcretHesap * $calismadigiGunler, 2);
                 $brutMaas = max(0, $nominalBrutMaas - $ucretsizIzinDusumu);

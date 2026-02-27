@@ -490,7 +490,7 @@ function toggleKesintiView(mode) {
                         </div>
 
                         <div class="col-md-6 mb-3" id="div_tutar">
-                            <?= Form::FormFloatInput("number", "tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" min="0" id="kesinti_tutar"') ?>
+                            <?= Form::FormFloatInput("number", "kesinti_tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" min="0" id="kesinti_tutar"') ?>
                         </div>
                         <div class="col-md-6 mb-3 d-none" id="div_oran">
                             <?= Form::FormFloatInput("number", "oran", "", "0", "Oran (%)", "percent", "form-control", false, null, "off", false, 'step="0.01" id="kesinti_oran" min="0" max="100"') ?>

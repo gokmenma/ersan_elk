@@ -138,13 +138,14 @@ $(document).ready(function () {
           
           // Hesaplama tipi (Trigger change varsayılanları getirdiği için tekrar set ediyoruz)
           setTimeout(() => {
-              if (response.hesaplama_tipi === 'sabit') {
+              var h_tipi = response.hesaplama_tipi || 'sabit';
+              if (h_tipi === 'sabit') {
                 $("#ek_hesaplama_sabit").prop("checked", true);
-                $("#ek_odeme_tutar").val(response.tutar);
-              } else if (response.hesaplama_tipi === 'oran_net') {
+                $("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").val(response.tutar);
+              } else if (h_tipi === 'oran_net') {
                 $("#ek_hesaplama_oran_net").prop("checked", true);
                 $("#formPersonelEkOdemeEkle input[name='oran']").val(response.oran);
-              } else if (response.hesaplama_tipi === 'oran_brut') {
+              } else if (h_tipi === 'oran_brut') {
                 $("#ek_hesaplama_oran_brut").prop("checked", true);
                 $("#formPersonelEkOdemeEkle input[name='oran']").val(response.oran);
               }
@@ -210,12 +211,12 @@ $(document).ready(function () {
     if (hesaplamaTipi === "sabit") {
       $("#ek_div_tutar").removeClass("d-none").show();
       $("#ek_div_oran").addClass("d-none").hide();
-      $("#ek_odeme_tutar").prop("required", true);
+      $("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").prop("required", true);
       $("#formPersonelEkOdemeEkle input[name='oran']").prop("required", false);
     } else {
       $("#ek_div_tutar").addClass("d-none").hide();
       $("#ek_div_oran").removeClass("d-none").show();
-      $("#ek_odeme_tutar").prop("required", false);
+      $("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").prop("required", false);
       $("#formPersonelEkOdemeEkle input[name='oran']").prop("required", true);
     }
   }
@@ -246,7 +247,7 @@ $(document).ready(function () {
     } else {
       $("#ek_hesaplama_sabit").prop("checked", true);
       if (tutar > 0) {
-        $("#ek_odeme_tutar").val(tutar);
+        $("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").val(tutar);
       }
     }
     updateEkHesaplamaTipiUI();
@@ -284,7 +285,7 @@ $(document).ready(function () {
 
     // Sabit tutarda tutar zorunlu
     if (hesaplamaTipi === "sabit") {
-      var tutar = $("#ek_odeme_tutar").val();
+      var tutar = $("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").val();
       if (!tutar || parseFloat(tutar) <= 0) {
         Swal.fire("Hata", "Lütfen geçerli bir tutar giriniz.", "error");
         return;
@@ -316,7 +317,7 @@ $(document).ready(function () {
       hesaplama_tipi: hesaplamaTipi,
       tutar:
         hesaplamaTipi === "sabit"
-          ? $("#ek_odeme_tutar").val()
+          ? $("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").val()
           : 0,
       oran:
         hesaplamaTipi !== "sabit"

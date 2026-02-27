@@ -383,31 +383,16 @@ $ek_odeme_turleri = [
                             $pKesintiHaricIcra = $pToplamKesinti - $pIcra;
 
                             // Çalışma günü hesaplama
+                            // 1) İşe giriş dönem içindeyse: ayın_gün_sayısı - giriş_günü + 1
+                            // 2) Tam ay + izin yok: 30 (ticari)
+                            // 3) Tam ay + izin var: ayın_gün_sayısı - izin_günü
                             $pGunlukBase = 30;
-                            if ($selectedDonem) {
-                                if (!empty($p->ise_giris_tarihi)) {
-                                    $iseGirisTs = strtotime($p->ise_giris_tarihi);
-                                    if ($iseGirisTs > $donemBasTs) {
-                                        $pGunlukBase -= (min(30, date('j', $iseGirisTs)) - 1);
-                                    }
-                                }
-                                if (!empty($p->isten_cikis_tarihi)) {
-                                    $istenAyrilmaTs = strtotime($p->isten_cikis_tarihi);
-                                    if ($istenAyrilmaTs < $donemBitTs) {
-                                        $pGunlukBase -= ($aydakiGunSayisi - date('j', $istenAyrilmaTs));
-                                    }
-                                }
-                            }
-                            if ($pGunlukBase < 0) $pGunlukBase = 0;
-
-                            $pCalismaGunu = $pGunlukBase;
                             $pUcretsizIzinGunu = 0;
                             $pUcretliIzinGunu = 0;
+                            $pIseGirisDI = false;
+                            $pIstenCikisDI = false;
 
-                            // JSON_EXTRACT ile çekilen değerleri kullan
-                            if ($p->hd_fiili_calisma_gunu !== null) {
-                                $pCalismaGunu = intval($p->hd_fiili_calisma_gunu);
-                            }
+                            // JSON_EXTRACT ile çekilen izin değerlerini önce al
                             if ($p->hd_ucretsiz_izin_gunu !== null) {
                                 $pUcretsizIzinGunu = intval($p->hd_ucretsiz_izin_gunu);
                             } elseif ($p->hd_ucretsiz_izin_dusumu !== null && $p->hd_nominal_maas !== null && floatval($p->hd_nominal_maas) > 0) {
@@ -416,7 +401,39 @@ $ek_odeme_turleri = [
                             if ($p->hd_ucretli_izin_gunu !== null) {
                                 $pUcretliIzinGunu = intval($p->hd_ucretli_izin_gunu);
                             }
-                            if ($p->hd_fiili_calisma_gunu === null) {
+
+                            if ($selectedDonem) {
+                                if (!empty($p->ise_giris_tarihi)) {
+                                    $iseGirisTs = strtotime($p->ise_giris_tarihi);
+                                    if ($iseGirisTs > $donemBasTs) {
+                                        $pIseGirisDI = true;
+                                    }
+                                }
+                                if (!empty($p->isten_cikis_tarihi)) {
+                                    $istenCikisTs = strtotime($p->isten_cikis_tarihi);
+                                    if ($istenCikisTs >= $donemBasTs && $istenCikisTs < $donemBitTs) {
+                                        $pIstenCikisDI = true;
+                                    }
+                                }
+                            }
+
+                            if ($pIseGirisDI && $pIstenCikisDI) {
+                                $pGunlukBase = date('j', $istenCikisTs) - date('j', $iseGirisTs) + 1;
+                            } elseif ($pIseGirisDI) {
+                                $pGunlukBase = $aydakiGunSayisi - date('j', $iseGirisTs) + 1;
+                            } elseif ($pIstenCikisDI) {
+                                $pGunlukBase = date('j', $istenCikisTs);
+                            } elseif ($pUcretsizIzinGunu > 0 || $pUcretliIzinGunu > 0) {
+                                $pGunlukBase = $aydakiGunSayisi;
+                            } else {
+                                $pGunlukBase = 30;
+                            }
+                            if ($pGunlukBase < 0) $pGunlukBase = 0;
+
+                            $pCalismaGunu = $pGunlukBase;
+                            if ($p->hd_fiili_calisma_gunu !== null) {
+                                $pCalismaGunu = intval($p->hd_fiili_calisma_gunu);
+                            } elseif ($p->hd_fiili_calisma_gunu === null) {
                                 $pCalismaGunu = $pGunlukBase - $pUcretsizIzinGunu - $pUcretliIzinGunu;
                             }
 
