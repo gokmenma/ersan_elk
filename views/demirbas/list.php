@@ -1367,29 +1367,75 @@ if (!empty($sayacKatIds)) {
 </div>
 
 <!-- Excel Import Modal -->
-<div class="modal fade" id="importExcelModal" tabindex="-1" aria-labelledby="importExcelModalLabel" aria-hidden="true" style="z-index: 9999 !important;">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="importExcelModalLabel">Excel'den Demirbaş Yükle</h5>
+<div class="modal fade" id="importExcelModal" tabindex="-1" aria-labelledby="importExcelModalLabel" aria-hidden="true"
+    style="z-index: 9999 !important;">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-header" style="background: rgba(85, 110, 230, 0.05); border-bottom: 2px solid #556ee6;">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-xs me-2 rounded bg-primary bg-opacity-10 d-flex align-items-center justify-content-center"
+                        style="width: 32px; height: 32px;">
+                        <i class="bx bx-upload text-primary fs-5"></i>
+                    </div>
+                    <div>
+                        <h6 class="modal-title mb-0 fw-bold" id="importExcelModalLabel">Excel'den Demirbaş Yükle</h6>
+                        <p class="text-muted small mb-0" style="font-size: 0.7rem;">Toplu veri yükleme işlemi</p>
+                    </div>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body p-4">
                 <form id="importExcelForm" enctype="multipart/form-data">
                     <div class="mb-3">
-                        <label for="excelFile" class="form-label">Excel Dosyası Seçin (.xlsx, .xls)</label>
+                        <label for="excelFile" class="form-label fw-bold">Excel Dosyası Seçin (.xlsx, .xls)</label>
                         <input class="form-control" type="file" id="excelFile" name="excelFile" accept=".xlsx, .xls">
                     </div>
-                    <div class="alert alert-info">
+                    <div class="alert alert-info py-2 px-3">
                         <i class="bx bx-info-circle me-1"></i> Lütfen uygun şablonu kullandığınızdan emin olun.
                         <br>
-                        <a href="views/demirbas/download-template.php" class="alert-link">Örnek Şablonu İndir</a>
+                        <a href="views/demirbas/download-template.php" class="alert-link">
+                            <i class="bx bx-download me-1"></i>Örnek Şablonu İndir
+                        </a>
                     </div>
+
+                    <div class="alert alert-warning py-2 px-3 mb-3">
+                        <i class="bx bx-error-circle me-1"></i>
+                        <strong>Önemli:</strong> Excel'deki <strong>Kategori Adı</strong> sütunu, aşağıdaki mevcut
+                        kategorilerden biriyle
+                        <strong>birebir eşleşmelidir</strong>. Eşleşmeyen satırlar atlanacaktır.
+                    </div>
+
+                    <?php if (!empty($kategoriler)): ?>
+                        <div class="card bg-light border-0 shadow-none mb-0">
+                            <div class="card-body py-2 px-3">
+                                <p class="mb-1 small fw-bold text-muted">
+                                    <i class="bx bx-list-check me-1"></i> Geçerli Kategoriler
+                                    <span class="badge bg-secondary ms-1"><?php echo count($kategoriler); ?></span>
+                                </p>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <?php foreach ($kategoriler as $kat): ?>
+                                        <span class="badge bg-primary bg-opacity-75 fw-normal py-1 px-2">
+                                            <?php echo htmlspecialchars($kat->tur_adi); ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <div class="alert alert-danger py-2 px-3 mb-0">
+                            <i class="bx bx-error me-1"></i>
+                            Henüz tanımlı kategori bulunmuyor.
+                            <strong>Tanımlamalar</strong> sayfasından önce kategori ekleyin.
+                        </div>
+                    <?php endif; ?>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
-                <button type="button" class="btn btn-primary" id="btnUploadExcel">Yükle</button>
+            <div class="modal-footer bg-light border-0 py-2">
+                <button type="button" class="btn btn-secondary btn-sm fw-bold px-4"
+                    data-bs-dismiss="modal">Kapat</button>
+                <button type="button" class="btn btn-primary btn-sm fw-bold px-4" id="btnUploadExcel">
+                    <i class="bx bx-upload me-1"></i> Yükle
+                </button>
             </div>
         </div>
     </div>

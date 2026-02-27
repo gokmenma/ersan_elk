@@ -1305,13 +1305,127 @@ $(document).on("click", "#btnUploadExcel", function () {
       try {
         let res = JSON.parse(response);
         if (res.status === "success") {
-          Swal.fire({
-            title: "Başarılı",
-            text: res.message,
-            icon: "success",
-          }).then(() => {
-            location.reload();
-          });
+          let hasSkipped = res.skipped && res.skipped.length > 0;
+          let hasErrors = res.errors && res.errors.length > 0;
+
+          if (hasSkipped || hasErrors) {
+            // Detaylı sonuç göster
+            let htmlContent = `
+              <div class="text-start">
+                <div class="d-flex gap-2 mb-3 justify-content-center flex-wrap">
+                  <span class="badge bg-success px-3 py-2 fs-6">
+                    <i class="bx bx-check-circle me-1"></i> ${res.successCount || 0} Başarılı
+                  </span>`;
+
+            if (hasSkipped) {
+              htmlContent += `
+                  <span class="badge bg-warning text-dark px-3 py-2 fs-6">
+                    <i class="bx bx-skip-next-circle me-1"></i> ${res.skippedCount || 0} Atlandı
+                  </span>`;
+            }
+
+            if (hasErrors) {
+              htmlContent += `
+                  <span class="badge bg-danger px-3 py-2 fs-6">
+                    <i class="bx bx-error-circle me-1"></i> ${res.errors.length} Hata
+                  </span>`;
+            }
+
+            htmlContent += `</div>`;
+
+            // Atlanan satırlar tablosu
+            if (hasSkipped) {
+              htmlContent += `
+                <div class="alert alert-warning py-2 px-3 mb-2">
+                  <i class="bx bx-info-circle me-1"></i>
+                  <strong>Atlanan Satırlar</strong> - Kategori eşleşmediği için aşağıdaki satırlar yüklenmedi:
+                </div>
+                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                  <table class="table table-sm table-bordered table-striped mb-2">
+                    <thead class="table-light" style="position: sticky; top: 0;">
+                      <tr>
+                        <th class="text-center" style="width:15%">Satır</th>
+                        <th style="width:25%">Demirbaş Adı</th>
+                        <th style="width:20%">Kategori</th>
+                        <th style="width:40%">Neden</th>
+                      </tr>
+                    </thead>
+                    <tbody>`;
+
+              res.skipped.forEach(function (s) {
+                htmlContent += `
+                      <tr>
+                        <td class="text-center fw-bold">${s.satir}</td>
+                        <td>${s.demirbas_adi || "-"}</td>
+                        <td><span class="badge bg-danger">${s.kategori || "-"}</span></td>
+                        <td class="small">${s.neden}</td>
+                      </tr>`;
+              });
+
+              htmlContent += `
+                    </tbody>
+                  </table>
+                </div>`;
+
+              // Mevcut geçerli kategoriler
+              if (
+                res.mevcutKategoriler &&
+                res.mevcutKategoriler.length > 0
+              ) {
+                htmlContent += `
+                <div class="alert alert-info py-2 px-3 mb-0 mt-2">
+                  <i class="bx bx-list-check me-1"></i>
+                  <strong>Geçerli Kategoriler:</strong><br>
+                  <div class="mt-1 d-flex flex-wrap gap-1">`;
+
+                res.mevcutKategoriler.forEach(function (k) {
+                  htmlContent += `<span class="badge bg-primary bg-opacity-75">${k}</span>`;
+                });
+
+                htmlContent += `
+                  </div>
+                </div>`;
+              }
+            }
+
+            // Hatalar
+            if (hasErrors) {
+              htmlContent += `
+                <div class="alert alert-danger py-2 px-3 mb-0 mt-2">
+                  <i class="bx bx-error me-1"></i>
+                  <strong>Hatalar:</strong><br>`;
+              res.errors.forEach(function (err) {
+                htmlContent += `<div class="small">• ${err}</div>`;
+              });
+              htmlContent += `</div>`;
+            }
+
+            htmlContent += `</div>`;
+
+            Swal.fire({
+              title:
+                res.successCount > 0
+                  ? "İşlem Tamamlandı"
+                  : "Yükleme Başarısız",
+              html: htmlContent,
+              icon: res.successCount > 0 ? "warning" : "error",
+              width: "700px",
+              confirmButtonText: "Tamam",
+            }).then(() => {
+              if (res.successCount > 0) {
+                location.reload();
+              }
+            });
+          } else {
+            // Tüm satırlar başarılı
+            Swal.fire({
+              title: "Başarılı",
+              text: res.message,
+              icon: "success",
+            }).then(() => {
+              location.reload();
+            });
+          }
         } else {
           Swal.fire("Hata", res.message, "error");
         }

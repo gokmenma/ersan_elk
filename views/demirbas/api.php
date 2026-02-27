@@ -46,6 +46,7 @@ if ($action == "demirbas-kaydet") {
 
         $data = [
             "id" => $id,
+            "firma_id" => $_SESSION['firma_id'] ?? 0,
             "demirbas_no" => $_POST["demirbas_no"] ?? null,
             "kategori_id" => !empty($_POST["kategori_id"]) ? $_POST["kategori_id"] : null,
             "demirbas_adi" => $_POST["demirbas_adi"],
@@ -101,6 +102,7 @@ if ($action == "demirbas-toplu-kaydet") {
         }
 
         $baseData = [
+            "firma_id" => $_SESSION['firma_id'] ?? 0,
             "demirbas_no" => $_POST["demirbas_no"] ?? null,
             "kategori_id" => !empty($_POST["kategori_id"]) ? $_POST["kategori_id"] : null,
             "demirbas_adi" => $_POST["demirbas_adi"],
@@ -473,20 +475,65 @@ if ($action == "excel-upload") {
         // İlk satır başlıklar, atla
         $header = array_shift($rows);
 
+        // Tüm mevcut kategorileri ön-yükle (performans için)
+        $mevcutKategoriler = [];
+        $katSql = $Tanimlamalar->getDb()->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'demirbas_kategorisi' AND firma_id = ? AND silinme_tarihi IS NULL");
+        $katSql->execute([$_SESSION['firma_id']]);
+        $katSonuclar = $katSql->fetchAll(PDO::FETCH_OBJ);
+        foreach ($katSonuclar as $k) {
+            $mevcutKategoriler[mb_strtolower(trim($k->tur_adi), 'UTF-8')] = $k->id;
+        }
+
         $successCount = 0;
         $errorCount = 0;
+        $skippedCount = 0;
         $errors = [];
+        $skipped = [];
 
         foreach ($rows as $index => $row) {
             if (empty($row[1]))
                 continue; // Demirbaş adı boşsa atla
 
+            $satirNo = $index + 2; // Excel satır numarası (1. satır başlık)
+
+            // Kategori eşleşme kontrolü
+            $kategoriId = null;
+            if (!empty($row[8])) {
+                $katAdi = trim($row[8]);
+                $katAdiLower = mb_strtolower($katAdi, 'UTF-8');
+
+                if (isset($mevcutKategoriler[$katAdiLower])) {
+                    $kategoriId = $mevcutKategoriler[$katAdiLower];
+                } else {
+                    // Kategori eşleşmedi, satırı atla
+                    $skippedCount++;
+                    $skipped[] = [
+                        'satir' => $satirNo,
+                        'demirbas_adi' => $row[1],
+                        'kategori' => $katAdi,
+                        'neden' => "\"$katAdi\" kategorisi tanımlamalar tablosunda bulunamadı."
+                    ];
+                    continue;
+                }
+            } else {
+                // Kategori belirtilmemişse satırı atla
+                $skippedCount++;
+                $skipped[] = [
+                    'satir' => $satirNo,
+                    'demirbas_adi' => $row[1],
+                    'kategori' => '-',
+                    'neden' => "Kategori bilgisi boş bırakılmış."
+                ];
+                continue;
+            }
+
             try {
                 $data = [
                     "id" => 0,
                     "demirbas_no" => $row[0] ?? null,
+                    "firma_id" => $_SESSION['firma_id'] ?? 0,
                     "demirbas_adi" => $row[1],
-                    "kategori_id" => null,
+                    "kategori_id" => $kategoriId,
                     "marka" => $row[2] ?? null,
                     "model" => $row[3] ?? null,
                     "seri_no" => $row[4] ?? null,
@@ -498,34 +545,34 @@ if ($action == "excel-upload") {
                     "kayit_yapan" => $_SESSION["id"] ?? null
                 ];
 
-                if (!empty($row[8])) {
-                    $katAdi = trim($row[8]);
-                    $kat = $Tanimlamalar->getDb()->prepare("SELECT id FROM tanimlamalar WHERE tur_adi = ? AND grup = 'demirbas_kategorisi' AND firma_id = ?");
-                    $kat->execute([$katAdi, $_SESSION['firma_id']]);
-                    $katRes = $kat->fetch(PDO::FETCH_OBJ);
-                    if ($katRes) {
-                        $data["kategori_id"] = $katRes->id;
-                    } else {
-                        $insKat = $Tanimlamalar->getDb()->prepare("INSERT INTO tanimlamalar (tur_adi, grup, firma_id, kayit_yapan) VALUES (?, 'demirbas_kategorisi', ?, ?)");
-                        $insKat->execute([$katAdi, $_SESSION['firma_id'], $_SESSION['id'] ?? 0]);
-                        $data["kategori_id"] = $Tanimlamalar->getDb()->lastInsertId();
-                    }
-                }
-
                 $Demirbas->saveWithAttr($data);
                 $successCount++;
             } catch (Exception $e) {
                 $errorCount++;
-                $errors[] = "Satır " . ($index + 2) . ": " . $e->getMessage();
+                $errors[] = "Satır " . $satirNo . ": " . $e->getMessage();
             }
         }
 
         $message = "$successCount adet demirbaş başarıyla yüklendi.";
+        if ($skippedCount > 0) {
+            $message .= " $skippedCount satır kategori eşleşmediği için atlandı.";
+        }
         if ($errorCount > 0) {
             $message .= " $errorCount hata oluştu.";
         }
 
-        jsonResponse("success", $message, ["errors" => $errors]);
+        // Mevcut kategori listesini de gönder (bilgilendirme amaçlı)
+        $mevcutKategoriAdlari = array_map(function ($k) {
+            return $k->tur_adi;
+        }, $katSonuclar);
+
+        jsonResponse("success", $message, [
+            "errors" => $errors,
+            "skipped" => $skipped,
+            "skippedCount" => $skippedCount,
+            "successCount" => $successCount,
+            "mevcutKategoriler" => $mevcutKategoriAdlari
+        ]);
     } catch (Exception $ex) {
         jsonResponse("error", "Hata: " . $ex->getMessage());
     }
