@@ -116,6 +116,8 @@ try {
     for ($i = 8; $i <= 18; $i++) {
         $puantajSaatler[] = sprintf('%02d:00', $i);
     }
+    // Gün sonu çalışma: 23:55
+    $puantajSaatler[] = '23:45';
 
     // Şu anki saat (15 dakikalık dilimlere yuvarla)
     $simdikiDakika = (int) date('i');

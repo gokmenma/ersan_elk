@@ -484,6 +484,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $Personel = new PersonelModel();
                 $personel = $Personel->find($bp->personel_id);
 
+                // Dönem bilgilerini al (çalışma günü hesabı için)
+                $donemBilgi = $BordroDonem->getDonemById($bp->donem_id);
+
                 // Kesinti ve ek ödeme türü etiketleri
                 $kesintiTurEtiketleri = [
                     'icra' => 'İcra',
@@ -525,7 +528,41 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Ücretsiz izin gün sayısını hesaplama_detay JSON'dan al
                 $ucretsizIzinGunu = isset($detayJSON->matrahlar->ucretsiz_izin_gunu) ? intval($detayJSON->matrahlar->ucretsiz_izin_gunu) : 0;
                 $ucretsizIzinDusumu = isset($detayJSON->matrahlar->ucretsiz_izin_dusumu) ? floatval($detayJSON->matrahlar->ucretsiz_izin_dusumu) : 0;
-                $calismaGunu = 30 - $ucretsizIzinGunu;
+                $ucretliIzinGunu = isset($detayJSON->matrahlar->ucretli_izin_gunu) ? intval($detayJSON->matrahlar->ucretli_izin_gunu) : 0;
+
+                // Çalışma günü: fiili_calisma_gunu JSON'dan varsa onu kullan
+                if (isset($detayJSON->matrahlar->fiili_calisma_gunu)) {
+                    $calismaGunu = intval($detayJSON->matrahlar->fiili_calisma_gunu);
+                } else {
+                    // JSON'da yoksa dinamik hesapla
+                    $donemBasTsApi = strtotime($donemBilgi->baslangic_tarihi ?? date('Y-m-01'));
+                    $donemBitTsApi = strtotime($donemBilgi->bitis_tarihi ?? date('Y-m-t'));
+                    $aydakiGunApi = date('t', $donemBasTsApi);
+                    $iseGirisDI = false;
+                    $istenCikisDI = false;
+
+                    if (!empty($personel->ise_giris_tarihi)) {
+                        $iseGTs = strtotime($personel->ise_giris_tarihi);
+                        if ($iseGTs > $donemBasTsApi) $iseGirisDI = true;
+                    }
+                    if (!empty($personel->isten_cikis_tarihi)) {
+                        $isCTs = strtotime($personel->isten_cikis_tarihi);
+                        if ($isCTs >= $donemBasTsApi && $isCTs < $donemBitTsApi) $istenCikisDI = true;
+                    }
+
+                    if ($iseGirisDI && $istenCikisDI) {
+                        $gunBase = date('j', $isCTs) - date('j', $iseGTs) + 1;
+                    } elseif ($iseGirisDI) {
+                        $gunBase = $aydakiGunApi - date('j', $iseGTs) + 1;
+                    } elseif ($istenCikisDI) {
+                        $gunBase = date('j', $isCTs);
+                    } elseif ($ucretsizIzinGunu > 0 || $ucretliIzinGunu > 0) {
+                        $gunBase = $aydakiGunApi;
+                    } else {
+                        $gunBase = 30;
+                    }
+                    $calismaGunu = max(0, $gunBase - $ucretsizIzinGunu - $ucretliIzinGunu);
+                }
 
                 // HTML oluştur
                 $html = '<div class="row">';
