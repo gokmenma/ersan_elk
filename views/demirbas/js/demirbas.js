@@ -1133,6 +1133,9 @@ function filterZimmetOptions(type) {
   }
 }
 
+// Koli Modu için Global Değişkenler
+let koliListesi = [];
+
 // Koli Modu Toggle
 $(document).on("change", "#koliModuToggle", function() {
     if($(this).is(":checked")) {
@@ -1142,6 +1145,9 @@ $(document).on("change", "#koliModuToggle", function() {
         $("#teslim_miktar").val(10).prop("readonly", true);
         $("#kalanMiktarText").text("-"); // Koli modunda kalan anlamsız
         $("#demirbas_id_zimmet").removeAttr("required"); // HTML5 validation'ı engellemek için
+        koliListesi = [];
+        renderKoliListesi();
+        $("#koli_baslangic_seri").val('').focus();
     } else {
         $("#tekliSecimAlani").removeClass("d-none");
         $("#koliSecimAlani").addClass("d-none");
@@ -1150,95 +1156,174 @@ $(document).on("change", "#koliModuToggle", function() {
     }
 });
 
-// Koli Başlangıç Seri No Girişi
-let koliTimer;
-$(document).on("input", "#koli_baslangic_seri", function() {
-    clearTimeout(koliTimer);
-    let baslangic = $(this).val().trim();
-    let $onizleme = $("#koliOnizleme");
-    let $liste = $("#koliListe");
-    let $badge = $("#koliDurumBadge");
+// Koli Ekleme Fonksiyonu
+function koliEkle(inputVal) {
+    if (!inputVal) return;
     
-    // Eğer koli modu aktif değilse işlem yapma
-    if(!$("#koliModuToggle").is(":checked")) return;
+    // Virgülle ayrılmış girişleri destekle
+    let girisler = inputVal.split(/[\s,]+/);
+    let eklendi = false;
 
-    if(baslangic.length < 3) {
-        $onizleme.addClass("d-none");
+    girisler.forEach(seri => {
+        seri = seri.trim();
+        if (seri.length < 3) return;
+        
+        // Zaten ekli mi?
+        if (koliListesi.some(k => k.baslangic === seri)) {
+            return; 
+        }
+
+        let koliObj = {
+            id: 'koli_' + new Date().getTime() + '_' + Math.floor(Math.random() * 1000),
+            baslangic: seri,
+            durum: 'bekliyor',
+            mesaj: 'Kontrol ediliyor...',
+            uygunSayisi: 0,
+            seriler: []
+        };
+
+        koliListesi.push(koliObj);
+        eklendi = true;
+        koliKontrolEt(koliObj);
+    });
+
+    if (eklendi) {
+        renderKoliListesi();
+        $("#koli_baslangic_seri").val('');
+    }
+}
+
+// Koli Ekle Butonu
+$(document).on("click", "#btnKoliEkle", function() {
+    koliEkle($("#koli_baslangic_seri").val());
+});
+
+// Enter tuşu ile ekleme
+$(document).on("keypress", "#koli_baslangic_seri", function(e) {
+    if(e.which === 13) {
+        e.preventDefault();
+        koliEkle($(this).val());
+    }
+});
+
+// Koli Silme
+$(document).on("click", ".koli-sil", function() {
+    let id = $(this).data("id");
+    koliListesi = koliListesi.filter(k => k.id !== id);
+    renderKoliListesi();
+});
+
+// Koli Listesini Render Et
+function renderKoliListesi() {
+    let $liste = $("#eklenenKolilerListesi");
+    let $info = $("#toplamKoliBilgisi");
+    
+    $liste.empty();
+    
+    if (koliListesi.length === 0) {
+        $liste.addClass("d-none");
+        $info.addClass("d-none");
+        // Eğer koli modundaysak ve liste boşsa butonu pasif yap
+        if($("#koliModuToggle").is(":checked")) {
+            $("#zimmetKaydet").prop("disabled", true);
+        }
         return;
     }
 
-    koliTimer = setTimeout(() => {
-        let parsed = parseSeriNo(baslangic);
-        if(!parsed) return;
+    $liste.removeClass("d-none");
+    $info.removeClass("d-none");
 
-        let seriler = [];
-        for(let i=0; i<10; i++) {
-            seriler.push(buildSeriNo(parsed.prefix, parsed.number + i, parsed.digits));
+    let toplamKoli = koliListesi.length;
+    let toplamSayac = toplamKoli * 10;
+    let hepsiUygun = true;
+
+    koliListesi.forEach(koli => {
+        let badgeClass = "bg-secondary";
+        let icon = "bx-loader-alt bx-spin";
+        
+        if (koli.durum === 'uygun') {
+            badgeClass = "bg-success";
+            icon = "bx-check";
+        } else if (koli.durum === 'hatali') {
+            badgeClass = "bg-danger";
+            icon = "bx-x";
+            hepsiUygun = false;
+        } else {
+            hepsiUygun = false; 
         }
 
-        $onizleme.removeClass("d-none");
-        $liste.html('<div class="spinner-border spinner-border-sm text-primary" role="status"></div> Kontrol ediliyor...');
-        $badge.removeClass("bg-success bg-danger bg-warning").addClass("bg-secondary").text("Kontrol Ediliyor...");
-        
-        // Butonu geçici olarak disable et
-        $("#zimmetKaydet").prop("disabled", true);
+        let html = `
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-0"><i class="bx bx-package me-1"></i>${koli.baslangic} <small class="text-muted">(10 Adet)</small></h6>
+                    <small class="${koli.durum === 'uygun' ? 'text-success' : (koli.durum === 'hatali' ? 'text-danger' : 'text-muted')}">
+                        <i class='bx ${icon}'></i> ${koli.mesaj}
+                    </small>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger koli-sil" data-id="${koli.id}"><i class="bx bx-trash"></i></button>
+            </div>
+        `;
+        $liste.append(html);
+    });
 
-        // AJAX ile kontrol et
-        $.post(zimmetUrl, {
-            action: "koli-kontrol",
-            seriler: JSON.stringify(seriler)
-        }, function(res) {
-            let data = typeof res === "string" ? JSON.parse(res) : res;
-            $liste.empty();
-            
+    $("#lblToplamKoli").text(toplamKoli);
+    $("#lblToplamSayac").text(toplamSayac);
+    
+    // Eğer koli modundaysak ve hepsi uygunsa butonu aç
+    if($("#koliModuToggle").is(":checked")) {
+        $("#zimmetKaydet").prop("disabled", !hepsiUygun);
+    }
+}
+
+// Backend Kontrolü
+function koliKontrolEt(koli) {
+    let parsed = parseSeriNo(koli.baslangic);
+    if(!parsed) {
+        koli.durum = 'hatali';
+        koli.mesaj = 'Geçersiz seri no formatı';
+        renderKoliListesi();
+        return;
+    }
+
+    let seriler = [];
+    for(let i=0; i<10; i++) {
+        seriler.push(buildSeriNo(parsed.prefix, parsed.number + i, parsed.digits));
+    }
+    koli.seriler = seriler;
+
+    $.post(zimmetUrl, {
+        action: "koli-kontrol",
+        seriler: JSON.stringify(seriler)
+    }, function(res) {
+        let data = typeof res === "string" ? JSON.parse(res) : res;
+        
+        if(data.status === "success") {
+            let sonuclar = data.data;
             let uygunSayisi = 0;
             
-            if(data.status === "success") {
-                let sonuclar = data.data; // { "SN123": {id: 5, status: "ok"}, "SN124": {status: "missing"} }
-                
-                seriler.forEach(seri => {
-                    let info = sonuclar[seri];
-                    let badgeClass = "bg-secondary";
-                    let icon = "bx-question-mark";
-                    let title = "Bilinmiyor";
-                    
-                    if(info) {
-                        if(info.status === "ok") {
-                            badgeClass = "bg-success";
-                            icon = "bx-check";
-                            title = "Uygun";
-                            uygunSayisi++;
-                        } else if(info.status === "missing") {
-                            badgeClass = "bg-danger";
-                            icon = "bx-x"; 
-                            title = "Kayıtlı Değil";
-                        } else if(info.status === "not_in_stock") {
-                            badgeClass = "bg-warning text-dark";
-                            icon = "bx-error"; 
-                            title = "Stokta Yok (Zimmetli veya Arızalı)";
-                        }
-                    } else {
-                         badgeClass = "bg-danger";
-                         icon = "bx-x";
-                         title = "Bulunamadı";
-                    }
-                    
-                    $liste.append(`<span class="badge ${badgeClass} d-flex align-items-center gap-1" title="${title}">${seri} <i class='bx ${icon}'></i></span>`);
-                });
-                
-                if(uygunSayisi === 10) {
-                    $badge.removeClass("bg-secondary bg-danger bg-warning").addClass("bg-success").text("10/10 Uygun");
-                    $("#zimmetKaydet").prop("disabled", false);
-                } else {
-                    $badge.removeClass("bg-secondary bg-success bg-warning").addClass("bg-danger").text(`${uygunSayisi}/10 Uygun`);
-                    // Uygun değilse kaydetme (veya kullanıcıya uyarı vererek izin verilebilir ama şimdilik engelleyelim)
-                    $("#zimmetKaydet").prop("disabled", true);
+            seriler.forEach(seri => {
+                let info = sonuclar[seri];
+                if(info && info.status === "ok") {
+                    uygunSayisi++;
                 }
+            });
+            
+            koli.uygunSayisi = uygunSayisi;
+            
+            if(uygunSayisi === 10) {
+                koli.durum = 'uygun';
+                koli.mesaj = '10/10 Uygun';
+            } else {
+                koli.durum = 'hatali';
+                koli.mesaj = `${uygunSayisi}/10 Uygun - Stok kontrol ediniz`;
             }
-        });
-
-    }, 500);
-});
+        } else {
+            koli.durum = 'hatali';
+            koli.mesaj = 'Sunucu hatası';
+        }
+        renderKoliListesi();
+    });
+}
 
 // Demirbaş listesinden zimmet ver
 $(document).on("click", ".zimmet-ver", function (e) {
@@ -1294,14 +1379,20 @@ $(document).on("click", "#zimmetKaydet", function () {
   
   // Koli Modu Kontrolü
   if($("#koliModuToggle").is(":checked")) {
-      let baslangic = $("#koli_baslangic_seri").val();
       let personel_id = $("#personel_id").val();
       let teslim_tarihi = $("#teslim_tarihi").val();
       
-      if(!baslangic) {
-          Swal.fire("Hata", "Başlangıç seri numarası giriniz.", "warning");
+      if(koliListesi.length === 0) {
+          Swal.fire("Hata", "Lütfen en az bir koli ekleyin.", "warning");
           return;
       }
+      
+      // Hepsinin uygun olduğundan emin ol
+      if(koliListesi.some(k => k.durum !== 'uygun')) {
+          Swal.fire("Hata", "Listede uygun olmayan koliler var. Lütfen kontrol ediniz.", "warning");
+          return;
+      }
+
       if(!personel_id) {
           Swal.fire("Hata", "Lütfen personel seçiniz.", "warning");
           return;
@@ -1311,9 +1402,15 @@ $(document).on("click", "#zimmetKaydet", function () {
           return;
       }
       
-      // Backend'e gönder
-      var formData = new FormData(form[0]);
-      formData.append("action", "zimmet-koli-kaydet");
+      // Backend'e gönderilecek veri: Sadece başlangıç serileri listesi
+      let baslangicSerileri = koliListesi.map(k => k.baslangic);
+
+      var formData = new FormData();
+      formData.append("action", "zimmet-koli-kaydet-coklu"); // Yeni action
+      formData.append("koli_baslangiclar", JSON.stringify(baslangicSerileri));
+      formData.append("personel_id", personel_id);
+      formData.append("teslim_tarihi", teslim_tarihi);
+      formData.append("aciklama", $("#aciklama").val());
       
       // Disable button
       let $btn = $(this);

@@ -122,19 +122,27 @@ foreach ($personeller as $p) {
 
                             <!-- Koli Seçimi -->
                             <div id="koliSecimAlani" class="d-none">
-                                <div class="form-floating form-floating-custom mb-2">
-                                    <input type="text" class="form-control" id="koli_baslangic_seri" name="koli_baslangic_seri" placeholder="Başlangıç Seri No">
-                                    <label for="koli_baslangic_seri">Başlangıç Seri No *</label>
-                                    <div class="form-floating-icon">
-                                        <i data-feather="barcode"></i>
+                                <div class="input-group mb-2">
+                                    <div class="form-floating form-floating-custom flex-grow-1">
+                                        <input type="text" class="form-control" id="koli_baslangic_seri" placeholder="Başlangıç Seri No">
+                                        <label for="koli_baslangic_seri">Başlangıç Seri No</label>
+                                        <div class="form-floating-icon">
+                                            <i data-feather="barcode"></i>
+                                        </div>
                                     </div>
+                                    <button class="btn btn-primary" type="button" id="btnKoliEkle"><i class="bx bx-plus"></i> Ekle</button>
                                 </div>
-                                <div id="koliOnizleme" class="alert alert-light border small d-none">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <strong><i class="bx bx-list-ul me-1"></i>Koli İçeriği (10 Adet)</strong>
-                                        <span id="koliDurumBadge" class="badge bg-secondary">Bekleniyor</span>
+                                <div class="form-text mb-2">Birden fazla eklemek için virgülle ayırabilirsiniz.</div>
+
+                                <div id="eklenenKolilerListesi" class="list-group list-group-flush border rounded mb-2 d-none" style="max-height: 250px; overflow-y: auto;">
+                                    <!-- Javascript ile dolacak -->
+                                </div>
+                                
+                                <div id="toplamKoliBilgisi" class="alert alert-info py-2 d-none">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Toplam Koli: <strong id="lblToplamKoli">0</strong></span>
+                                        <span>Toplam Sayaç: <strong id="lblToplamSayac">0</strong></span>
                                     </div>
-                                    <div id="koliListe" class="d-flex flex-wrap gap-1" style="max-height: 100px; overflow-y: auto;"></div>
                                 </div>
                             </div>
                         </div>

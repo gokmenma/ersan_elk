@@ -583,46 +583,68 @@ if ($action == "koli-kontrol") {
     }
 }
 
-// Zimmet Koli Kaydet (Toplu 10'lu)
-if ($action == "zimmet-koli-kaydet") {
+// Zimmet Koli Kaydet (Çoklu Koli)
+if ($action == "zimmet-koli-kaydet-coklu") {
     try {
-        $baslangic = trim($_POST["koli_baslangic_seri"] ?? "");
+        $koli_baslangiclar = json_decode($_POST["koli_baslangiclar"] ?? "[]", true);
         $personel_id = intval($_POST["personel_id"]);
         $teslim_tarihi = Date::Ymd($_POST["teslim_tarihi"], 'Y-m-d');
         $aciklama = $_POST["aciklama"] ?? null;
         
-        if (empty($baslangic) || $personel_id <= 0) {
+        if (empty($koli_baslangiclar) || $personel_id <= 0) {
             jsonResponse("error", "Eksik bilgi.");
         }
 
-        // Seri noları hesapla
-        if (!preg_match('/^(.*?)(\d+)$/', $baslangic, $matches)) {
-            jsonResponse("error", "Geçersiz seri numarası formatı.");
+        $tumSeriler = [];
+        $koliMap = []; // Hangi seri hangi koliye ait
+
+        foreach ($koli_baslangiclar as $baslangic) {
+            if (!preg_match('/^(.*?)(\d+)$/', $baslangic, $matches)) {
+                continue; // Hatalı formatı atla
+            }
+            
+            $prefix = $matches[1];
+            $number = intval($matches[2]);
+            $digits = strlen($matches[2]);
+            
+            for ($i = 0; $i < 10; $i++) {
+                $nextNum = str_pad($number + $i, $digits, "0", STR_PAD_LEFT);
+                $seri = $prefix . $nextNum;
+                $tumSeriler[] = $seri;
+                $koliMap[$seri] = $baslangic;
+            }
         }
         
-        $prefix = $matches[1];
-        $number = intval($matches[2]);
-        $digits = strlen($matches[2]);
-        
-        $seriler = [];
-        for ($i = 0; $i < 10; $i++) {
-            $nextNum = str_pad($number + $i, $digits, "0", STR_PAD_LEFT);
-            $seriler[] = $prefix . $nextNum;
+        if (empty($tumSeriler)) {
+            jsonResponse("error", "İşlenecek seri numarası bulunamadı.");
         }
-        
+
         // Veritabanından ID'leri bul
-        $placeholders = implode(',', array_fill(0, count($seriler), '?'));
+        $placeholders = implode(',', array_fill(0, count($tumSeriler), '?'));
         $sql = $Demirbas->getDb()->prepare("
             SELECT id, seri_no, kalan_miktar 
             FROM demirbas 
             WHERE firma_id = ? AND seri_no IN ($placeholders)
         ");
-        $params = array_merge([$_SESSION['firma_id']], $seriler);
+        $params = array_merge([$_SESSION['firma_id']], $tumSeriler);
         $sql->execute($params);
         $records = $sql->fetchAll(PDO::FETCH_ASSOC);
         
-        if (count($records) < 10) {
-            jsonResponse("error", "Bazı sayaçlar veritabanında bulunamadı. Lütfen kontrol ediniz.");
+        // Stok kontrolü (Backend tarafında da tekrar kontrol edelim)
+        $dbRecordsMap = [];
+        foreach($records as $rec) {
+            $dbRecordsMap[$rec['seri_no']] = $rec;
+        }
+
+        $eksikSeriler = [];
+        foreach($tumSeriler as $seri) {
+            if(!isset($dbRecordsMap[$seri]) || $dbRecordsMap[$seri]['kalan_miktar'] <= 0) {
+                $eksikSeriler[] = $seri;
+            }
+        }
+
+        if (!empty($eksikSeriler)) {
+            jsonResponse("error", "Bazı sayaçlar stokta bulunamadı: " . implode(", ", array_slice($eksikSeriler, 0, 5)) . (count($eksikSeriler)>5 ? "..." : ""));
         }
         
         // İşlem
@@ -630,19 +652,15 @@ if ($action == "zimmet-koli-kaydet") {
         $successCount = 0;
         
         foreach ($records as $rec) {
-            if ($rec['kalan_miktar'] <= 0) {
-                // Stokta olmayanları atla veya hata ver?
-                // Kullanıcı "Zimmet Ver" butonuna bastıysa hepsi "ok" durumundadır diye varsayıyoruz ama double check iyidir.
-                // Şimdilik hata fırlatıp rollback yapalım
-                throw new Exception("{$rec['seri_no']} seri numaralı sayaç stokta yok!");
-            }
-            
+            $seri = $rec['seri_no'];
+            $koliBaslangic = $koliMap[$seri] ?? '?';
+
             $data = [
                 "demirbas_id" => $rec['id'],
                 "personel_id" => $personel_id,
                 "teslim_tarihi" => $teslim_tarihi,
                 "teslim_miktar" => 1,
-                "aciklama" => $aciklama ? "$aciklama (Koli: $baslangic)" : "Koli Başlangıç: $baslangic",
+                "aciklama" => $aciklama ? "$aciklama (Koli: $koliBaslangic)" : "Koli: $koliBaslangic",
                 "teslim_eden_id" => $_SESSION["id"] ?? null
             ];
             

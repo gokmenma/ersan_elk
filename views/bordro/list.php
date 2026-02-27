@@ -446,8 +446,9 @@ $ek_odeme_turleri = [
                                 $pToplamAlacagi = $pMaasTutari + $rawEkOdeme;
                             }
 
-                            // Net alacağı
-                            $pNetAlacagi = ($p->hesaplama_tarihi) ? $pNetMaas : ($pToplamAlacagi - $pKesintiHaricIcra);
+                            // Net alacağı = Toplam Alacağı - Kesinti (hariç icra)
+                            // NOT: $pNetMaas (DB net_maas) icra düşülmüş hali, bu yüzden doğrudan kullanılmamalı
+                            $pNetAlacagi = $pToplamAlacagi - $pKesintiHaricIcra;
 
                             // Elden ödeme
                             $eldenP = $p->elden_odeme ?? (($p->net_maas ?? 0) - ($p->banka_odemesi ?? 0) - ($p->sodexo_odemesi ?? 0) - ($p->diger_odeme ?? 0));

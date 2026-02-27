@@ -589,15 +589,64 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<tr><td class="text-muted">Çalışma Günü:</td><td class="' . ($ucretsizIzinGunu > 0 ? 'text-warning' : 'text-secondary') . '">' . $calismaGunu . ' gün' . ($ucretsizIzinGunu > 0 ? ' <small class="text-muted">(-' . $ucretsizIzinGunu . ' izin)</small>' : '') . '</td></tr>';
 
                 // Ücretsiz izin veya net/brüt maaş ise, çalışılan brüt/net maaşı göster
+                $calisanBrutMaas = $gunlukUcret * $calismaGunu; // Gün bazlı matrah hesaplama
                 if ($ucretsizIzinGunu > 0 || in_array($personel->maas_durumu, ['Net', 'Brüt'])) {
-                    $calisanBrutMaas = $gunlukUcret * $calismaGunu; // Gün bazlı matrah hesaplama
                     $descText = ($personel->maas_durumu == 'Net' || $personel->maas_durumu == 'Brüt') ? ' (Gün x Ücret)' : ' (SGK matrahı)';
                     $html .= '<tr class="table-warning"><td class="text-muted">Hakediş (Maaş):</td><td class="fw-bold text-warning">' . number_format($calisanBrutMaas, 2, ',', '.') . ' ₺ <small class="text-muted">' . $descText . '</small></td></tr>';
+                } else {
+                    $calisanBrutMaas = $nominalMaas; // Tam ay çalıştıysa hakediş = nominal maaş
                 }
 
-                $html .= '<tr><td class="text-muted">Toplam Ek Ödeme:</td><td class="text-success fw-medium">+' . number_format($guncelEkOdeme, 2, ',', '.') . ' ₺</td></tr>';
-                $html .= '<tr><td class="text-muted">Toplam Kesinti:</td><td class="text-danger fw-medium">-' . number_format(floatval($bp->kesinti_tutar ?? 0) + floatval($bp->sgk_isci) + floatval($bp->issizlik_isci) + floatval($bp->gelir_vergisi) + floatval($bp->damga_vergisi), 2, ',', '.') . ' ₺</td></tr>';
-                $html .= '<tr class="table-success"><td class="fw-bold">Net Maaş:</td><td class="fw-bold text-success fs-5">' . ($bp->net_maas ? number_format($bp->net_maas, 2, ',', '.') . ' ₺' : '-') . '</td></tr>';
+                // ============================================================
+                // TUTAR HESAPLAMALARI
+                // ============================================================
+                // 1) Toplam Alacağı = Hakediş (Maaş) + Ek Ödeme
+                $toplamAlacak = $calisanBrutMaas + $guncelEkOdeme;
+
+                // 2) Yasal Kesintiler (SGK, İşsizlik, Gelir Vergisi, Damga Vergisi)
+                $yasalKesintiler = floatval($bp->sgk_isci ?? 0)
+                    + floatval($bp->issizlik_isci ?? 0)
+                    + floatval($bp->gelir_vergisi ?? 0)
+                    + floatval($bp->damga_vergisi ?? 0);
+
+                // 3) Diğer Kesintiler (İcra, Avans, Nafaka vb.) - DB'den çek
+                $kesintiKayitlariOnce = $BordroPersonel->getDonemKesintileriListe($bp->personel_id, $bp->donem_id);
+                $digerKesintilerToplam = 0;
+                foreach ($kesintiKayitlariOnce as $kk) {
+                    if ($kk->tur !== 'izin_kesinti') {
+                        $digerKesintilerToplam += floatval($kk->tutar);
+                    }
+                }
+
+                // 4) Kesinti Tutarı (özet satır) = Yasal Kesintiler
+                $kesintiTutarOzet = $yasalKesintiler;
+
+                // 5) Net Alacağı = Toplam Alacağı - Yasal Kesintiler
+                $netAlacak = $toplamAlacak - $yasalKesintiler;
+
+                // 6) Net Maaş = Net Alacağı - Diğer Kesintiler (İcra vs.)
+                $netMaasHesap = $netAlacak - $digerKesintilerToplam;
+                if ($netMaasHesap < 0) $netMaasHesap = 0;
+
+                // ============================================================
+                // HTML ÇIKTISI
+                // ============================================================
+                $html .= '<tr><td class="text-muted">Ek Ödeme:</td><td class="text-success fw-medium">+' . number_format($guncelEkOdeme, 2, ',', '.') . ' ₺</td></tr>';
+                
+              
+                // Kesinti Tutarı (Yasal)
+                $html .= '<tr><td class="text-muted">Kesinti Tutarı:</td><td class="text-danger fw-medium">' . ($kesintiTutarOzet > 0 ? '-' . number_format($kesintiTutarOzet, 2, ',', '.') . ' ₺' : '0,00 ₺') . '</td></tr>';
+                
+                // Net Alacağı
+                $html .= '<tr><td class="text-muted fw-bold">Net Alacağı:</td><td class="fw-bold text-success">' . number_format($netAlacak, 2, ',', '.') . ' ₺</td></tr>';
+                
+                // İcra / Diğer Kesintiler
+                if ($digerKesintilerToplam > 0) {
+                    $html .= '<tr><td class="text-muted">İcra / Diğer Kesinti:</td><td class="text-danger fw-medium">-' . number_format($digerKesintilerToplam, 2, ',', '.') . ' ₺</td></tr>';
+                }
+                
+                // Net Maaş (son tutar: Net Alacağı - İcra)
+                $html .= '<tr class="table-success"><td class="fw-bold">Net Maaş:</td><td class="fw-bold text-success fs-5">' . number_format($netMaasHesap, 2, ',', '.') . ' ₺</td></tr>';
                 $html .= '</table>';
                 $html .= '</div>';
 
@@ -654,7 +703,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // Onaylanmış kesintileri çek ve detaylı grupla
                 // NOT: izin_kesinti artık oluşturulmaz, ücretsiz izin doğrudan brüt maaştan düşülür
-                $kesintiKayitlari = $BordroPersonel->getDonemKesintileriListe($bp->personel_id, $bp->donem_id);
+                $kesintiKayitlari = $kesintiKayitlariOnce; // Yukarıda zaten çekildi, tekrar DB sorgusu yapmıyoruz
                 $kesintilerGruplanmis = [];
 
                 foreach ($kesintiKayitlari as $k) {
