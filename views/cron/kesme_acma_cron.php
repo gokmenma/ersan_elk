@@ -112,6 +112,11 @@ try {
     // Çoklu saatleri diziye çevir
     $puantajSaatler = array_filter(array_map('trim', explode(',', $puantajSaatStr)));
 
+    // Otomatik çalışma: 08:00 ile 18:00 saatlerini (dahil) listeye ekle
+    for ($i = 8; $i <= 18; $i++) {
+        $puantajSaatler[] = sprintf('%02d:00', $i);
+    }
+
     // Şu anki saat (15 dakikalık dilimlere yuvarla)
     $simdikiDakika = (int) date('i');
     $yuvarlanmisDakika = floor($simdikiDakika / 15) * 15;

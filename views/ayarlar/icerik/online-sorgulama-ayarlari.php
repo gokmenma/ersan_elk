@@ -43,8 +43,13 @@ $online_sorgulama_endeks_son_calistirma = $allSettings['online_sorgulama_endeks_
 $online_sorgulama_puantaj_son_calistirma = $allSettings['online_sorgulama_puantaj_son_calistirma'] ?? '08:45';
 
 // Saat seçenekleri oluştur (tam saat aralıklarla - cron 15 dk'da bir çalışsa bile sadece tam saatlerde tetiklenir)
+// Saat seçenekleri oluştur (08:00 - 18:00 arası sistem otomatik her saat çalışır)
 $saatSecenekleri = [];
 for ($saat = 0; $saat < 24; $saat++) {
+    // 08:00 ile 18:00 arasını gizle
+    if ($saat >= 8 && $saat <= 18) {
+        continue;
+    }
     $saatStr = sprintf('%02d:00', $saat);
     $saatSecenekleri[$saatStr] = $saatStr;
 }
@@ -122,10 +127,13 @@ for ($saat = 0; $saat < 24; $saat++) {
                     ); ?>
                     <input type="hidden" name="online_sorgulama_endeks_saat" id="online_sorgulama_endeks_saat"
                         value="<?php echo htmlspecialchars($online_sorgulama_endeks_saat); ?>">
+                    <div class="form-text text-primary mb-1 mt-1">
+                        <i data-feather="info" style="width:14px;height:14px" class="me-1"></i>
+                        <strong>Sistem 08:00 ile 18:00 saatleri arasında (dahil) her saat başı otomatik çalışmaktadır.</strong>
+                    </div>
                     <div class="form-text">
                         <i data-feather="info" style="width:14px;height:14px" class="me-1"></i>
-                        En fazla <strong>6 saat</strong> seçilebilir, saatler arasında en az <strong>1 saat</strong>
-                        fark olmalıdır.
+                        Mesai dışı kontroller için en fazla <strong>6 saat</strong> seçilebilir, en az <strong>1 saat</strong> fark olmalıdır.
                     </div>
                 </div>
             </div>
@@ -157,10 +165,13 @@ for ($saat = 0; $saat < 24; $saat++) {
                     ); ?>
                     <input type="hidden" name="online_sorgulama_puantaj_saat" id="online_sorgulama_puantaj_saat"
                         value="<?php echo htmlspecialchars($online_sorgulama_puantaj_saat); ?>">
+                    <div class="form-text text-primary mb-1 mt-1">
+                        <i data-feather="info" style="width:14px;height:14px" class="me-1"></i>
+                        <strong>Sistem 08:00 ile 18:00 saatleri arasında (dahil) her saat başı otomatik çalışmaktadır.</strong>
+                    </div>
                     <div class="form-text">
                         <i data-feather="info" style="width:14px;height:14px" class="me-1"></i>
-                        En fazla <strong>6 saat</strong> seçilebilir, saatler arasında en az <strong>1 saat</strong>
-                        fark olmalıdır.
+                        Mesai dışı kontroller için en fazla <strong>6 saat</strong> seçilebilir, en az <strong>1 saat</strong> fark olmalıdır.
                     </div>
                 </div>
             </div>

@@ -847,6 +847,9 @@ if (Gate::allows("ana_sayfa")) {
 
 
     // Giriş kayıtları sorgusu
+    $personelLogs = [];
+    $kullaniciLogs = [];
+
     try {
         $personelStmt = $db->prepare("
             SELECT p.adi_soyadi, pg.giris_tarihi as tarih, pg.ip_adresi, pg.tarayici
@@ -856,17 +859,20 @@ if (Gate::allows("ana_sayfa")) {
         ");
         $personelStmt->execute(['firma_id' => $_SESSION['firma_id']]);
         $personelLogs = $personelStmt->fetchAll(PDO::FETCH_OBJ);
+    } catch (\Exception $e) {
+        // Hata durumunda boş dizi
+    }
 
+    try {
         $kullaniciStmt = $db->prepare("
             SELECT u.adi_soyadi, sl.created_at as tarih, SUBSTR(sl.description, LOCATE('IP:', sl.description) + 4) as ip_adresi, 'Sistem' as tarayici
             FROM system_logs sl JOIN users u ON u.id = sl.user_id
-            WHERE sl.action_type = 'Başarılı Giriş' AND u.firma_id = :firma_id ORDER BY sl.created_at DESC LIMIT 10
+            WHERE sl.action_type = 'Başarılı Giriş' AND FIND_IN_SET(:firma_id, u.firma_ids) ORDER BY sl.created_at DESC LIMIT 10
         ");
         $kullaniciStmt->execute(['firma_id' => $_SESSION['firma_id']]);
         $kullaniciLogs = $kullaniciStmt->fetchAll(PDO::FETCH_OBJ);
     } catch (\Exception $e) {
-        $personelLogs = [];
-        $kullaniciLogs = [];
+        // Hata durumunda boş dizi
     }
     ob_start(); ?>
     <div class="<?php echo getWidgetWidth('widget-bildirimler', 'col-12'); ?> widget-item" id="widget-bildirimler">
