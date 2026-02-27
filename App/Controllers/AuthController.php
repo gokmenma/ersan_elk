@@ -114,7 +114,35 @@ class AuthController
         // Eğer demo süresi dolmuşsa, bu metot kullanıcıyı yönlendirip programı sonlandıracak.
         self::validateDemoPeriod($user);
 
-        // 4. Adım (İsteğe bağlı - Geleceğe yönelik): Diğer kontroller
+        // 4. Adım: Uzun süreli oturumlarda periyodik loglama (Beni Hatırla desteği)
+        // Kullanıcı uzun süre aktif kaldıysa, belirli aralıklarla giriş logu atarak takip edilebilirliğini sağla.
+        if (isset($_SESSION['user'])) {
+            $logInterval = 3600 * 4; // 4 saatte bir log at
+            $lastLogTime = $_SESSION['last_login_log_time'] ?? 0;
+
+            if (time() - $lastLogTime > $logInterval) {
+                try {
+                    $systemLog = new SystemLogModel();
+                    $ip = $_SERVER['REMOTE_ADDR'] ?? 'Bilinmiyor';
+                    $userName = $user->adi_soyadi ?? $user->full_name ?? 'Bilinmiyor';
+
+                    // Log mesajı, home.php'deki sorgunun yakalayabilmesi için 'Başarılı Giriş' tipinde olmalı
+                    // Ancak açıklama kısmında otomatik yenileme olduğunu belirtiyoruz.
+                    $systemLog->logAction(
+                        $user->id,
+                        'Başarılı Giriş',
+                        "{$userName} oturumu devam ediyor (Otomatik Log). IP: {$ip}",
+                        SystemLogModel::LEVEL_INFO
+                    );
+
+                    $_SESSION['last_login_log_time'] = time();
+                } catch (\Exception $e) {
+                    // Log hatası akışı bozmamalı
+                }
+            }
+        }
+
+        // 5. Adım (İsteğe bağlı - Geleceğe yönelik): Diğer kontroller
         // Örneğin, kullanıcının IP adresi değişmişse tekrar şifre sor, vb.
         // self::validateSessionIntegrity($user);
     }

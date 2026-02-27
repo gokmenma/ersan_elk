@@ -1254,8 +1254,26 @@ $(document).on("click", ".zimmet-detay", function (e) {
 // ============== EXCEL İŞLEMLERİ ==============
 
 // Excel Import Modal Aç
-$(document).on("click", "#importExcel", function () {
-  $("#importExcelModal").modal("show");
+$(document).on("click", "#importExcel", function (e) {
+  e.preventDefault();
+  
+  // Modal elementini seç
+  var modalEl = $("#importExcelModal");
+  
+  // Eğer modal bulunamadıysa hata ver
+  if (modalEl.length === 0) {
+    console.error("Import Excel Modal bulunamadı!");
+    return;
+  }
+  
+  // Modalı body'ye taşı (z-index ve overflow sorunlarını önlemek için)
+  if (modalEl.parent().prop("tagName") !== "BODY") {
+    modalEl.appendTo("body");
+  }
+  
+  // Bootstrap modal instance'ını al veya oluştur
+  var modal = bootstrap.Modal.getInstance(modalEl[0]) || new bootstrap.Modal(modalEl[0]);
+  modal.show();
 });
 
 // Excel Upload

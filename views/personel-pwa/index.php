@@ -40,6 +40,9 @@ if (!isset($_SESSION['personel_id']) && isset($_COOKIE['remember_token'])) {
                     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
                     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
                     $girisLogModel->logLogin($personel->id, $ip, $userAgent);
+                    
+                    // Log zamanını kaydet
+                    $_SESSION['last_pwa_login_log_time'] = time();
                 } catch (\Exception $e) {
                     error_log("PWA Auto-Login log error: " . $e->getMessage());
                 }
@@ -66,6 +69,24 @@ if (!$personel) {
     session_destroy();
     header("Location: login.php");
     exit();
+}
+
+// Uzun süreli oturumlarda periyodik loglama (4 saatte bir)
+// Kullanıcı aktif olduğu sürece "Giriş" logu atarak takip edilebilirliği artırıyoruz.
+$lastLogTime = $_SESSION['last_pwa_login_log_time'] ?? 0;
+$logInterval = 3600 * 4; // 4 saat
+
+if ((time() - $lastLogTime) > $logInterval) {
+    try {
+        $girisLogModel = new PersonelGirisLogModel();
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $girisLogModel->logLogin($personel->id, $ip, $userAgent);
+        
+        $_SESSION['last_pwa_login_log_time'] = time();
+    } catch (\Exception $e) {
+        // Log hatası akışı bozmamalı
+    }
 }
 
 // Firma ID'yi oturuma ekle (Model'ler için gerekli)
