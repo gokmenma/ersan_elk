@@ -221,6 +221,9 @@ function getTableSpecificOptions() {
   // Sütun bazlı arama için özel filter - Input değerlerini direkt DOM'dan oku
   $.fn.dataTable.ext.search.push(
     function (settings, searchData, dataIndex, rowData, counter) {
+      // Eğer tablo server-side ise, client-side filtreleme yapma
+      if (settings.oFeatures.bServerSide) return true;
+
       var tableId = settings.sTableId;
       var dominated = false;
 

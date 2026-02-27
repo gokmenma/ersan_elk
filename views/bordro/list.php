@@ -450,17 +450,26 @@ $ek_odeme_turleri = [
                             // NOT: $pNetMaas (DB net_maas) icra düşülmüş hali, bu yüzden doğrudan kullanılmamalı
                             $pNetAlacagi = $pToplamAlacagi - $pKesintiHaricIcra;
 
-                            // Elden ödeme
-                            $eldenP = $p->elden_odeme ?? (($p->net_maas ?? 0) - ($p->banka_odemesi ?? 0) - ($p->sodexo_odemesi ?? 0) - ($p->diger_odeme ?? 0));
-                            $eldenP = max(0, floatval($eldenP));
+                            // Elden ödeme (DB'den varsa al, yoksa hesapla)
+                            $eldenP = floatval($p->elden_odeme ?? 0);
+
+                            // Net Maaş (icra düştükten sonra dağıtılacak tutar)
+                            $pNetMaasGercek = $pNetAlacagi - $pIcra;
+                            if ($pNetMaasGercek < 0) $pNetMaasGercek = 0;
+
+                            // Banka = Net Maaş - Sodexo - Elden - Diğer
+                            $sodexoP = floatval($p->sodexo_odemesi ?? 0);
+                            $digerP = floatval($p->diger_odeme ?? 0);
+                            $bankaP = $pNetMaasGercek - $sodexoP - $eldenP - $digerP;
+                            if ($bankaP < 0) $bankaP = 0;
 
                             // Toplamları güncelle
                             $toplamAlacagi += $pToplamAlacagi;
                             $toplamKesintiHaricIcra += $pKesintiHaricIcra;
                             $toplamNetAlacagi += $pNetAlacagi;
                             $toplamIcra += $pIcra;
-                            $toplamBanka += floatval($p->banka_odemesi ?? 0);
-                            $toplamSodexo += floatval($p->sodexo_odemesi ?? 0);
+                            $toplamBanka += $bankaP;
+                            $toplamSodexo += $sodexoP;
                             $toplamElden += $eldenP;
 
                             // En son hesaplama tarihi
@@ -477,6 +486,8 @@ $ek_odeme_turleri = [
                                 'icraKesintisi' => $pIcra,
                                 'calismaGunu' => $pCalismaGunu,
                                 'eldenOdeme' => $eldenP,
+                                'bankaOdemesi' => $bankaP,
+                                'sodexoOdemesi' => $sodexoP,
                             ];
                         }
                         ?>
@@ -756,6 +767,8 @@ $ek_odeme_turleri = [
                                                 $icraKesintisi = $pc['icraKesintisi'];
                                                 $calismaGunu = $pc['calismaGunu'];
                                                 $eldenOdeme = $pc['eldenOdeme'];
+                                                $bankaOdemesi = $pc['bankaOdemesi'];
+                                                $sodexoOdemesi = $pc['sodexoOdemesi'];
                                                 ?>
                                                 <tr data-id="<?= $personel->id ?>">
                                                     <td>
@@ -892,23 +905,23 @@ $ek_odeme_turleri = [
                                                         <?php endif; ?>
                                                     </td>
                                                     <td class="text-end text-primary">
-                                                        <?= $personel->banka_odemesi ? number_format($personel->banka_odemesi, 2, ',', '.') . ' ₺' : '-' ?>
+                                                        <?= $bankaOdemesi > 0 ? number_format($bankaOdemesi, 2, ',', '.') . ' ₺' : '-' ?>
                                                     </td>
                                                     <td class="text-end text-info td-sodexo" style="width: 150px;">
                                                         <div
                                                             class="sodexo-wrapper d-flex align-items-center justify-content-end gap-2">
                                                             <span class="sodexo-value fw-bold">
-                                                                <?= $personel->sodexo_odemesi > 0 ? number_format($personel->sodexo_odemesi, 2, ',', '.') . ' ₺' : '-' ?>
+                                                                <?= $sodexoOdemesi > 0 ? number_format($sodexoOdemesi, 2, ',', '.') . ' ₺' : '-' ?>
                                                             </span>
                                                             <input type="text"
                                                                 class="form-control form-control-sm text-end update-sodexo money d-none"
                                                                 style="width: 100px;" data-id="<?= $personel->id ?>"
                                                                 data-net="<?= number_format($netAlacagi, 2, '.', '') ?>"
-                                                                data-banka="<?= number_format($personel->banka_odemesi ?? 0, 2, '.', '') ?>"
+                                                                data-banka="<?= number_format($bankaOdemesi, 2, '.', '') ?>"
                                                                 data-diger="<?= number_format($personel->diger_odeme ?? 0, 2, '.', '') ?>"
                                                                 data-icra="<?= number_format($icraKesintisi, 2, '.', '') ?>"
-                                                                data-current-val="<?= $personel->sodexo_odemesi ?? 0 ?>"
-                                                                value="<?= Helper::formattedMoney($personel->sodexo_odemesi ?? 0) ?>">
+                                                                data-current-val="<?= $sodexoOdemesi ?>"
+                                                                value="<?= Helper::formattedMoney($sodexoOdemesi) ?>">
                                                             <a href="javascript:void(0);" class="btn-edit-sodexo-inline text-muted"
                                                                 title="Düzenle">
                                                                 <i data-feather="edit-3" style="width: 14px; height: 14px;"></i>
@@ -930,8 +943,8 @@ $ek_odeme_turleri = [
                                                                     <a class="dropdown-item btn-odeme<?= $donemKapali ? ' disabled' : '' ?>"
                                                                         href="javascript:void(0);" data-id="<?= $personel->id ?>"
                                                                         data-net="<?= $netAlacagi ?>"
-                                                                        data-banka="<?= $personel->banka_odemesi ?? 0 ?>"
-                                                                        data-sodexo="<?= $personel->sodexo_odemesi ?? 0 ?>"
+                                                                        data-banka="<?= $bankaOdemesi ?>"
+                                                                        data-sodexo="<?= $sodexoOdemesi ?>"
                                                                         data-diger="<?= $personel->diger_odeme ?? 0 ?>"
                                                                         data-icra="<?= $icraKesintisi ?>"
                                                                         data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>">

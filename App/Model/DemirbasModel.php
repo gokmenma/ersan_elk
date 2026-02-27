@@ -294,6 +294,7 @@ class DemirbasModel extends Model
 
         // Sütun Bazlı Arama
         if ($tab === 'demirbas') {
+            // indices: 0=>sira, 1=>no, 2=>kat, 3=>adi, 4=>marka, 5=>stok, 6=>durum, 7=>tutar, 8=>tarih
             $colSearchMap = [
                 1 => 'd.demirbas_no',
                 2 => 'k.tur_adi',
@@ -303,8 +304,18 @@ class DemirbasModel extends Model
                 7 => 'd.edinme_tutari',
                 8 => 'DATE_FORMAT(d.edinme_tarihi, "%d.%m.%Y")'
             ];
+        } elseif ($tab === 'sayac') {
+            // indices: 0=>checkbox, 1=>sira, 2=>no, 3=>adi, 4=>marka, 5=>seri, 6=>stok, 7=>durum, 8=>tarih
+            $colSearchMap = [
+                2 => 'd.demirbas_no',
+                3 => 'd.demirbas_adi',
+                4 => 'CONCAT_WS(" ", d.marka, d.model)',
+                5 => 'd.seri_no',
+                7 => 'd.durum',
+                8 => 'DATE_FORMAT(d.edinme_tarihi, "%d.%m.%Y")'
+            ];
         } else {
-            // sayac, aparat (Col indices: 0=>id, 1=>no, 2=>adi, 3=>marka_sade, 4=>seri, 5=>stok, 6=>durum, 7=>tarih)
+            // aparat (no checkbox): 0=>sira, 1=>no, 2=>adi, 3=>marka, 4=>seri, 5=>stok, 6=>durum, 7=>tarih
             $colSearchMap = [
                 1 => 'd.demirbas_no',
                 2 => 'd.demirbas_adi',
@@ -375,8 +386,19 @@ class DemirbasModel extends Model
                 7 => 'd.edinme_tutari',
                 8 => 'd.edinme_tarihi'
             ];
+        } elseif ($tab === 'sayac') {
+            $colMapOrder = [
+                1 => 'd.id',
+                2 => 'd.demirbas_no',
+                3 => 'd.demirbas_adi',
+                4 => 'd.marka',
+                5 => 'd.seri_no',
+                6 => 'd.kalan_miktar',
+                7 => 'd.durum',
+                8 => 'd.edinme_tarihi'
+            ];
         } else {
-            // sayac, aparat
+            // aparat
             $colMapOrder = [
                 0 => 'd.id',
                 1 => 'd.demirbas_no',

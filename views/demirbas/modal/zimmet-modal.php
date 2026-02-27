@@ -127,7 +127,7 @@ foreach ($personeller as $p) {
                                         <input type="text" class="form-control" id="koli_baslangic_seri" placeholder="Başlangıç Seri No">
                                         <label for="koli_baslangic_seri">Başlangıç Seri No</label>
                                         <div class="form-floating-icon">
-                                            <i data-feather="barcode"></i>
+                                            <i data-feather="menu"></i>
                                         </div>
                                     </div>
                                     <button class="btn btn-primary" type="button" id="btnKoliEkle"><i class="bx bx-plus"></i> Ekle</button>

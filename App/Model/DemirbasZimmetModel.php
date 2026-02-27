@@ -119,7 +119,11 @@ class DemirbasZimmetModel extends Model
      */
     public function zimmetVer($data)
     {
-        $this->db->beginTransaction();
+        $startedTransaction = false;
+        if (!$this->db->inTransaction()) {
+            $this->db->beginTransaction();
+            $startedTransaction = true;
+        }
 
         try {
             // Demirbaş stok kontrolü
@@ -181,10 +185,14 @@ class DemirbasZimmetModel extends Model
             ");
             $updateStock->execute([$teslim_miktar, $data['demirbas_id']]);
 
-            $this->db->commit();
+            if ($startedTransaction) {
+                $this->db->commit();
+            }
             return Security::encrypt($lastId);
         } catch (\Exception $e) {
-            $this->db->rollBack();
+            if ($startedTransaction) {
+                $this->db->rollBack();
+            }
             throw $e;
         }
     }
@@ -474,7 +482,11 @@ class DemirbasZimmetModel extends Model
      */
     public function iadeYap($zimmet_id, $iade_tarihi, $iade_miktar, $aciklama = null, $islem_id = null, $is_emri_sonucu = null, $kaynak = 'manuel')
     {
-        $this->db->beginTransaction();
+        $startedTransaction = false;
+        if (!$this->db->inTransaction()) {
+            $this->db->beginTransaction();
+            $startedTransaction = true;
+        }
 
         try {
             // Zimmet bilgisini al
@@ -497,7 +509,9 @@ class DemirbasZimmetModel extends Model
             }
 
             if ($iade_miktar <= 0) {
-                $this->db->rollBack();
+                if ($startedTransaction) {
+                    $this->db->rollBack();
+                }
                 return true; // Zaten iade edilmiş veya kalan yok
             }
 
@@ -542,10 +556,14 @@ class DemirbasZimmetModel extends Model
             ");
             $sqlDemirbas->execute([$iade_miktar, $zimmet->demirbas_id]);
 
-            $this->db->commit();
+            if ($startedTransaction) {
+                $this->db->commit();
+            }
             return true;
         } catch (\Exception $e) {
-            $this->db->rollBack();
+            if ($startedTransaction) {
+                $this->db->rollBack();
+            }
             throw $e;
         }
     }

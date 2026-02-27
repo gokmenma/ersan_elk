@@ -959,17 +959,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $html .= '</div>';
                 }
 
-                // Ödeme Dağılımı
-                $eldenOdeme = $bp->elden_odeme ?? max(0, ($bp->net_maas ?? 0) - ($bp->banka_odemesi ?? 0) - ($bp->sodexo_odemesi ?? 0) - ($bp->diger_odeme ?? 0));
-                if ($bp->banka_odemesi > 0 || $bp->sodexo_odemesi > 0 || $bp->diger_odeme > 0 || $eldenOdeme > 0) {
+                // Ödeme Dağılımı - Dinamik Hesapla
+                // Not: Veritabanındaki tutarlar eski/hatalı hesaplamadan kalmış olabilir.
+                // Gerçek Net Hakediş (Net Alacağı - icra/avans/kesinti) = $netMaasHesap (yukarıda hesaplandı)
+                
+                $sodexoOdemeModal = floatval($bp->sodexo_odemesi ?? 0);
+                $digerOdemeModal = floatval($bp->diger_odeme ?? 0);
+                $eldenOdemeModal = floatval($bp->elden_odeme ?? 0);
+                
+                // Banka = (Net Alacağı - İcra) - Sodexo - Elden - Diğer
+                $bankaOdemeModal = $netMaasHesap - $sodexoOdemeModal - $eldenOdemeModal - $digerOdemeModal;
+                if ($bankaOdemeModal < 0) $bankaOdemeModal = 0;
+
+                if ($bankaOdemeModal > 0 || $sodexoOdemeModal > 0 || $digerOdemeModal > 0 || $eldenOdemeModal > 0) {
                     $html .= '<div class="row mt-4">';
                     $html .= '<div class="col-12">';
                     $html .= '<h6 class="border-bottom pb-2 mb-3"><i class="bx bx-wallet me-1"></i>Ödeme Dağılımı</h6>';
                     $html .= '<div class="row text-center">';
-                    $html .= '<div class="col-md-3"><div class="border rounded p-3"><small class="text-muted d-block">Banka</small><span class="fs-5 fw-bold text-primary">' . number_format($bp->banka_odemesi ?? 0, 2, ',', '.') . ' ₺</span></div></div>';
-                    $html .= '<div class="col-md-3"><div class="border rounded p-3"><small class="text-muted d-block">Sodexo</small><span class="fs-5 fw-bold text-info">' . number_format($bp->sodexo_odemesi ?? 0, 2, ',', '.') . ' ₺</span></div></div>';
-                    $html .= '<div class="col-md-3"><div class="border rounded p-3"><small class="text-muted d-block">Diğer</small><span class="fs-5 fw-bold text-secondary">' . number_format($bp->diger_odeme ?? 0, 2, ',', '.') . ' ₺</span></div></div>';
-                    $html .= '<div class="col-md-3"><div class="border rounded p-3 bg-warning bg-opacity-10"><small class="text-muted d-block">Elden</small><span class="fs-5 fw-bold text-warning">' . number_format($eldenOdeme, 2, ',', '.') . ' ₺</span></div></div>';
+                    $html .= '<div class="col-md-3"><div class="border rounded p-3"><small class="text-muted d-block">Banka</small><span class="fs-5 fw-bold text-primary">' . number_format($bankaOdemeModal, 2, ',', '.') . ' ₺</span></div></div>';
+                    $html .= '<div class="col-md-3"><div class="border rounded p-3"><small class="text-muted d-block">Sodexo</small><span class="fs-5 fw-bold text-info">' . number_format($sodexoOdemeModal, 2, ',', '.') . ' ₺</span></div></div>';
+                    $html .= '<div class="col-md-3"><div class="border rounded p-3"><small class="text-muted d-block">Diğer</small><span class="fs-5 fw-bold text-secondary">' . number_format($digerOdemeModal, 2, ',', '.') . ' ₺</span></div></div>';
+                    $html .= '<div class="col-md-3"><div class="border rounded p-3 bg-warning bg-opacity-10"><small class="text-muted d-block">Elden</small><span class="fs-5 fw-bold text-warning">' . number_format($eldenOdemeModal, 2, ',', '.') . ' ₺</span></div></div>';
                     $html .= '</div>';
                     $html .= '</div>';
                     $html .= '</div>';
