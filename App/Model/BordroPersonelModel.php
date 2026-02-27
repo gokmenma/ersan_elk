@@ -1663,17 +1663,28 @@ class BordroPersonelModel extends Model
         // Kesintiler yalnızca avans, ceza, icra gibi gerçek kesintiler için kullanılır.
         $ucretsizIzinGunu = $this->getUcretsizIzinGunuDirekt($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
-        // Ücretsiz izin günü varsa brüt maaşı düşür (Günlük ücret × izin günü kadar)
-        if ($ucretsizIzinGunu > 0 && $nominalBrutMaas > 0) {
-            $gunlukUcretHesap = $nominalBrutMaas / 30;
-            $ucretsizIzinDusumu = round($gunlukUcretHesap * $ucretsizIzinGunu, 2);
-            $brutMaas = max(0, $brutMaas - $ucretsizIzinDusumu);
-        } else {
-            $ucretsizIzinDusumu = 0;
-        }
-
         // ========== ÜCRETLİ İZİN BİLGİSİ ==========
         $ucretliIzinGunu = $this->getUcretliIzinGunu($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+
+        // Ücretsiz izin günü varsa brüt maaşı düşür (Günlük ücret × izin günü kadar)
+        if ($isNetMaas || $maasDurumu === 'brüt') {
+            // Net veya Brüt maaş tipi: toplam alacağı = (maaş / 30) * gün
+            $fiiliCalismaGunuTemp = 30 - $ucretsizIzinGunu - $ucretliIzinGunu;
+            if ($fiiliCalismaGunuTemp < 0)
+                $fiiliCalismaGunuTemp = 0;
+            $brutMaas = round(($nominalBrutMaas / 30) * $fiiliCalismaGunuTemp, 2);
+            $ucretsizIzinDusumu = $nominalBrutMaas - $brutMaas; // Sadece bilgi amaçlı
+            if ($ucretsizIzinDusumu < 0)
+                $ucretsizIzinDusumu = 0;
+        } else {
+            if ($ucretsizIzinGunu > 0 && $nominalBrutMaas > 0) {
+                $gunlukUcretHesap = $nominalBrutMaas / 30;
+                $ucretsizIzinDusumu = round($gunlukUcretHesap * $ucretsizIzinGunu, 2);
+                $brutMaas = max(0, $brutMaas - $ucretsizIzinDusumu);
+            } else {
+                $ucretsizIzinDusumu = 0;
+            }
+        }
 
         // Çalışma günü sayısı (aylık varsayılan 26 gün) - BES hesabı için gerekli
         $calismaGunuSayisi = $parametreModel->getGenelAyar('calisma_gunu_sayisi', $donemTarihi) ?? 26;
