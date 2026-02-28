@@ -6,8 +6,14 @@
 use App\Helper\Helper;
 use App\Helper\Date;
 
+$isSayacSokmeTakma = (stripos($personel->departman ?? '', 'Sayaç Sökme Takma') !== false);
 $isEndeksOkuma = (stripos($personel->departman ?? '', 'Endeks Okuma') !== false);
-$defaultTab = $isEndeksOkuma ? 'endeks' : 'kesme';
+
+if ($isSayacSokmeTakma) {
+    $defaultTab = 'sokme_takma'; // Sayaç ekipleri için varsayılan sökme takma gelsin
+} else {
+    $defaultTab = $isEndeksOkuma ? 'endeks' : 'kesme';
+}
 ?>
 
 <div class="flex flex-col min-h-screen pb-8">
@@ -48,14 +54,25 @@ $defaultTab = $isEndeksOkuma ? 'endeks' : 'kesme';
     <!-- Tab Navigation -->
     <section class="px-4 mt-4">
         <div class="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-            <button onclick="switchTab('kesme')" id="tab-btn-kesme" 
-                class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all <?php echo $defaultTab === 'kesme' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'; ?>">
-                Kesme-Açma
-            </button>
-            <button onclick="switchTab('endeks')" id="tab-btn-endeks"
-                class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all <?php echo $defaultTab === 'endeks' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'; ?>">
-                Endeks Okuma
-            </button>
+            <?php if ($isSayacSokmeTakma): ?>
+                <button onclick="switchTab('sokme_takma')" id="tab-btn-sokme_takma" 
+                    class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all <?php echo $defaultTab === 'sokme_takma' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'; ?>">
+                    Sayaç Değişimi
+                </button>
+                <button onclick="switchTab('kesme')" id="tab-btn-kesme"
+                    class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all <?php echo $defaultTab === 'kesme' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'; ?>">
+                    Kesme-Açma
+                </button>
+            <?php else: ?>
+                <button onclick="switchTab('kesme')" id="tab-btn-kesme" 
+                    class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all <?php echo $defaultTab === 'kesme' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'; ?>">
+                    Kesme-Açma
+                </button>
+                <button onclick="switchTab('endeks')" id="tab-btn-endeks"
+                    class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all <?php echo $defaultTab === 'endeks' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'; ?>">
+                    Endeks Okuma
+                </button>
+            <?php endif; ?>
         </div>
     </section>
 
@@ -135,6 +152,7 @@ $defaultTab = $isEndeksOkuma ? 'endeks' : 'kesme';
 
 <script>
     let currentTab = '<?php echo $defaultTab; ?>';
+    const isSayacTakibi = <?php echo $isSayacSokmeTakma ? 'true' : 'false'; ?>;
     let puantajData = [];
     let endeksData = [];
     let workTypes = [];
@@ -153,15 +171,20 @@ $defaultTab = $isEndeksOkuma ? 'endeks' : 'kesme';
         currentTab = tab;
         
         // Update Buttons
-        document.getElementById('tab-btn-kesme').className = `flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'kesme' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'}`;
-        document.getElementById('tab-btn-endeks').className = `flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'endeks' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'}`;
+        if (isSayacTakibi) {
+            document.getElementById('tab-btn-kesme').className = `flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'kesme' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'}`;
+            document.getElementById('tab-btn-sokme_takma').className = `flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'sokme_takma' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'}`;
+        } else {
+            document.getElementById('tab-btn-kesme').className = `flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'kesme' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'}`;
+            document.getElementById('tab-btn-endeks').className = `flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'endeks' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'}`;
+        }
 
         // Toggle Filters
         const kesmeFilters = document.getElementById('kesme-filters');
-        if (tab === 'kesme') {
+        if (tab === 'kesme' || tab === 'sokme_takma') {
             kesmeFilters.classList.remove('hidden');
             kesmeFilters.classList.add('grid');
-            document.getElementById('list-title').textContent = 'Yapılan İşler';
+            document.getElementById('list-title').textContent = tab === 'sokme_takma' ? 'Sayaç Değişimleri' : 'Kesme-Açma İşleri';
             document.getElementById('label-toplam').textContent = 'Toplam İş';
             document.getElementById('label-sonuclanan').textContent = 'Sonuçlanan';
             document.getElementById('label-date').textContent = 'Son Güncelleme: ' + lastUpdateYapilanIsler;
@@ -170,7 +193,7 @@ $defaultTab = $isEndeksOkuma ? 'endeks' : 'kesme';
             kesmeFilters.classList.remove('grid');
             document.getElementById('list-title').textContent = 'Okuma Listesi';
             document.getElementById('label-toplam').textContent = 'Toplam Okunan';
-            document.getElementById('label-sonuclanan').textContent = '-'; // Endeks için ikinci stat ne olsun? Şimdilik boş.
+            document.getElementById('label-sonuclanan').textContent = '-';
             document.getElementById('label-date').textContent = 'Son Güncelleme: ' + lastUpdateEndeks;
         }
 
@@ -178,10 +201,10 @@ $defaultTab = $isEndeksOkuma ? 'endeks' : 'kesme';
     }
 
     async function loadData() {
-        if (currentTab === 'kesme') {
-            await loadPuantajData();
-        } else {
+        if (currentTab === 'endeks') {
             await loadEndeksData();
+        } else {
+            await loadPuantajData();
         }
     }
 
@@ -299,7 +322,8 @@ $defaultTab = $isEndeksOkuma ? 'endeks' : 'kesme';
                 start_date: startDate,
                 end_date: endDate,
                 work_type: workType,
-                work_result: workResult
+                work_result: workResult,
+                rapor_sekmesi: currentTab
             });
 
             if (response.success) {

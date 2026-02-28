@@ -59,6 +59,7 @@ use App\Helper\Helper;
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script src="assets/libs/jquery/jquery.3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <!-- Flatpickr -->
 <link rel="stylesheet" href="<?php echo Helper::base_url('assets/libs/flatpickr/flatpickr.min.css'); ?>">

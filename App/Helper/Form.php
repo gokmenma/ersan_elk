@@ -113,8 +113,10 @@ class Form
         $class = "form-select select2",
         $required = false,
         $style = 'width:100%',
-        $attributes = ''
+        $attributes = '',
+        $id = null
     ) {
+        $elementId = $id ?? $name;
         // Eğer valueField boşsa, key kullan
         if ($valueField === '') {
             $valueField = 'key';
@@ -124,7 +126,7 @@ class Form
     <div class="form-floating form-floating-custom">
         <select style=' . $style . ' 
                 class="' . htmlspecialchars($class) . '" 
-                id="' . htmlspecialchars($name) . '" 
+                id="' . htmlspecialchars($elementId) . '" 
                 name="' . htmlspecialchars($name) . '" 
                 ' . ($required ? 'required' : '') . '
                 ' . $attributes . '>';
@@ -167,7 +169,7 @@ class Form
         }
 
         $html .= '</select>
-        <label for="' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
+        <label for="' . htmlspecialchars($elementId) . '">' . htmlspecialchars($label ?? '') . '</label>
         <div class="form-floating-icon">
             ' . (!empty($icon) ? ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') : '') . '
         </div>
@@ -186,8 +188,10 @@ class Form
         $valueField = '',
         $textField = '',
         $class = "form-select select2",
-        $required = false
+        $required = false,
+        $id = null
     ) {
+        $elementId = $id ?? $name;
         // If valueField is empty, use key
         if ($valueField === '') {
             $valueField = 'key';
@@ -197,7 +201,7 @@ class Form
     <div class="form-floating form-floating-custom">
         <select style="width:100%" 
                 class="' . htmlspecialchars($class) . '" 
-                id="' . htmlspecialchars($name) . '" 
+                id="' . htmlspecialchars($elementId) . '" 
                 name="' . htmlspecialchars($name) . '[]" 
                 multiple="multiple" ' .
             ($required ? 'required' : '') . '>';
@@ -214,7 +218,7 @@ class Form
         }
 
         $html .= '</select>
-        <label for="' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
+        <label for="' . htmlspecialchars($elementId) . '">' . htmlspecialchars($label ?? '') . '</label>
         <div class="form-floating-icon">
             ' . (!empty($icon) ? ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') : '') . '
         </div>

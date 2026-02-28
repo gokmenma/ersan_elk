@@ -15,7 +15,7 @@ class PuantajModel extends Model
         parent::__construct($this->table);
     }
 
-    public function getFiltered($startDate, $endDate, $ekipKodu, $workType, $workResult = '')
+    public function getFiltered($startDate, $endDate, $ekipKodu, $workType, $workResult = '', $raporSekmesi = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $sql = "SELECT t.*, 
@@ -48,6 +48,11 @@ class PuantajModel extends Model
             $sql .= " AND (tn.tur_adi = ? OR t.is_emri_tipi = ?)";
             $params[] = $workType;
             $params[] = $workType;
+        }
+
+        if ($raporSekmesi) {
+            $sql .= " AND tn.rapor_sekmesi = ?";
+            $params[] = $raporSekmesi;
         }
 
         if ($workResult === 'sonuclanan') {

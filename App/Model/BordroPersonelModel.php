@@ -39,7 +39,7 @@ class BordroPersonelModel extends Model
                    bp.calisan_gun, bp.aciklama,
                    p.adi_soyadi, p.tc_kimlik_no, p.departman, p.gorev, 
                    p.ise_giris_tarihi, p.isten_cikis_tarihi, p.maas_tutari, p.maas_durumu,
-                   p.cep_telefonu, p.resim_yolu,
+                   p.cep_telefonu, p.resim_yolu, p.sgk_yapilan_firma,
                    t_all.ekip_adi, t_all.ekip_bolge,
                    COALESCE(pk_agg.toplam_kesinti, 0) as guncel_toplam_kesinti,
                    COALESCE(eo_agg.toplam_ek_odeme, 0) as guncel_toplam_ek_odeme,
@@ -2664,7 +2664,8 @@ class BordroPersonelModel extends Model
                    p.cinsiyet,
                    p.cep_telefonu,
                    p.email_adresi,
-                   p.iban_numarasi
+                   p.iban_numarasi,
+                   p.sgk_yapilan_firma
             FROM {$this->table} bp
             INNER JOIN personel p ON bp.personel_id = p.id
             WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL $idFilter

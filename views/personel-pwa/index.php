@@ -95,10 +95,11 @@ if (!isset($_SESSION['firma_id']) && isset($personel->firma_id)) {
 }
 
 // Departman & Görev bazlı kontrol
-$isEndeksOkuma = (stripos($personel->departman ?? '', 'Endeks Okuma') !== false);
-$isBuro = (stripos($personel->departman ?? '', 'BÜRO') !== false || stripos($personel->departman ?? '', 'Büro') !== false);
-$isSef = (stripos($personel->gorev ?? '', 'Şef') !== false);
-$isEkipSefi = false;
+$isEndeksOkuma      = (stripos($personel->departman ?? '', 'Endeks Okuma') !== false);
+$isSayacSokmeTakma  = (stripos($personel->departman ?? '', 'Sayaç Sökme Takma') !== false);
+$isBuro             = (stripos($personel->departman ?? '', 'BÜRO') !== false || stripos($personel->departman ?? '', 'Büro') !== false);
+$isSef              = (stripos($personel->gorev ?? '', 'Şef') !== false);
+$isEkipSefi         = false;
 
 if ($isEndeksOkuma && $isSef) {
     $ekipGecmisiList = $PersonelModel->getEkipGecmisi($personel_id);
@@ -116,7 +117,7 @@ $allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', '
 
 if ($isEndeksOkuma && $isEkipSefi) {
     $allowed_pages[] = 'ekip-takibi';
-} elseif (!$isEndeksOkuma && !$isBuro) {
+} elseif (!$isEndeksOkuma && !$isBuro && !$isSayacSokmeTakma) {
     $allowed_pages[] = 'nobet';
 }
 

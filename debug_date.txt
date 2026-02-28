@@ -5926,3 +5926,9 @@ Result (String Match Y-m-d): 2026-02-01
 Input: 2026-02-27 Type: string
 Result (String Match Y-m-d): 2026-02-27
 ----------------
+Input: 2026-02-01 Type: string
+Result (String Match Y-m-d): 2026-02-01
+----------------
+Input: 2026-02-28 Type: string
+Result (String Match Y-m-d): 2026-02-28
+----------------

@@ -122,14 +122,15 @@ try {
             $endOfMonth = date('Y-m-t');
             $firmaId = $_SESSION['firma_id'] ?? 0;
 
+            $PersonelModel = new \App\Model\PersonelModel();
+            $personelDetails = $PersonelModel->find($personel_id);
+            $isSayacSokmeTakma = (stripos($personelDetails->departman ?? '', 'Sayaç Sökme Takma') !== false);
+
             $db = (new \App\Model\Model('tanimlamalar'))->getDb();
 
-            $baseWhere = "t.personel_id = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL";
-
-            // Admin raporu filtresi: Ücretli ve Rapor Sekmesi Tanımlı
             $adminFilter = "AND tn.is_turu_ucret > 0 AND tn.rapor_sekmesi IS NOT NULL AND tn.rapor_sekmesi != ''";
 
-            // Günlük Toplam (Admin Raporu Mantığıyla)
+            // Günlük Toplam
             $sqlIslerDaily = "SELECT SUM(t.sonuclanmis) as toplam 
                             FROM yapilan_isler t
                             LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
@@ -138,7 +139,7 @@ try {
             $stmt->execute([$personel_id, $firmaId, $today]);
             $dailyIsler = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
 
-            // Aylık Toplam (Admin Raporu Mantığıyla)
+            // Aylık Toplam
             $sqlIslerMonthly = "SELECT SUM(t.sonuclanmis) as toplam 
                             FROM yapilan_isler t
                             LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
@@ -147,37 +148,64 @@ try {
             $stmt->execute([$personel_id, $firmaId, $startOfMonth, $endOfMonth]);
             $monthlyIsler = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
 
-            // Endeks okuma için parametreler
-            $sqlEndeksDaily = "SELECT SUM(t.okunan_abone_sayisi) as toplam 
-                               FROM endeks_okuma t 
-                               LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
-                               WHERE t.personel_id = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih = ?
-                               AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'";
-            $stmt = $db->prepare($sqlEndeksDaily);
+            // Rapor Sekmesi Bazlı Dağılım (Günlük)
+            $sqlSekmeDaily = "SELECT tn.rapor_sekmesi, SUM(t.sonuclanmis) as toplam 
+                             FROM yapilan_isler t
+                             LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                             WHERE t.personel_id = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih = ? $adminFilter
+                             GROUP BY tn.rapor_sekmesi";
+            $stmt = $db->prepare($sqlSekmeDaily);
             $stmt->execute([$personel_id, $firmaId, $today]);
-            $dailyEndeks = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
+            $dailySekme = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-            $sqlEndeksMonthly = "SELECT SUM(t.okunan_abone_sayisi) as toplam 
-                                 FROM endeks_okuma t 
-                                 LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
-                                 WHERE t.personel_id = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ?
-                                 AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'";
-            $stmt = $db->prepare($sqlEndeksMonthly);
+            // Rapor Sekmesi Bazlı Dağılım (Aylık)
+            $sqlSekmeMonthly = "SELECT tn.rapor_sekmesi, SUM(t.sonuclanmis) as toplam 
+                               FROM yapilan_isler t
+                               LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                               WHERE t.personel_id = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ? $adminFilter
+                               GROUP BY tn.rapor_sekmesi";
+            $stmt = $db->prepare($sqlSekmeMonthly);
             $stmt->execute([$personel_id, $firmaId, $startOfMonth, $endOfMonth]);
-            $monthlyEndeks = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
+            $monthlySekme = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
-            // Toplamları birleştir
+            // Endeks okuma (Sadece Sayaç Sökme Takma olmayanlar için)
+            $dailyEndeks = 0;
+            $monthlyEndeks = 0;
+
+            if (!$isSayacSokmeTakma) {
+                $sqlEndeksDaily = "SELECT SUM(t.okunan_abone_sayisi) as toplam 
+                                   FROM endeks_okuma t 
+                                   LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                                   WHERE t.personel_id = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih = ?
+                                   AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'";
+                $stmt = $db->prepare($sqlEndeksDaily);
+                $stmt->execute([$personel_id, $firmaId, $today]);
+                $dailyEndeks = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
+
+                $sqlEndeksMonthly = "SELECT SUM(t.okunan_abone_sayisi) as toplam 
+                                     FROM endeks_okuma t 
+                                     LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                                     WHERE t.personel_id = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ?
+                                     AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'";
+                $stmt = $db->prepare($sqlEndeksMonthly);
+                $stmt->execute([$personel_id, $firmaId, $startOfMonth, $endOfMonth]);
+                $monthlyEndeks = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
+            }
+
             $dailyTotal = $dailyIsler + $dailyEndeks;
             $monthlyTotal = $monthlyIsler + $monthlyEndeks;
 
             response(true, [
                 'today' => $dailyTotal,
                 'month' => $monthlyTotal,
+                'is_sayac_ekibi' => $isSayacSokmeTakma,
                 'details' => [
                     'daily_isler' => $dailyIsler,
                     'daily_endeks' => $dailyEndeks,
                     'monthly_isler' => $monthlyIsler,
-                    'monthly_endeks' => $monthlyEndeks
+                    'monthly_endeks' => $monthlyEndeks,
+                    'daily_sekme' => $dailySekme,
+                    'monthly_sekme' => $monthlySekme
                 ]
             ]);
             break;
@@ -1683,9 +1711,10 @@ try {
             $endDate = $_POST['end_date'] ?? '';
             $workType = $_POST['work_type'] ?? '';
             $workResult = $_POST['work_result'] ?? '';
+            $raporSekmesi = $_POST['rapor_sekmesi'] ?? '';
 
             $PuantajModel = new \App\Model\PuantajModel();
-            $items = $PuantajModel->getFiltered($startDate, $endDate, $personel_id, $workType, $workResult);
+            $items = $PuantajModel->getFiltered($startDate, $endDate, $personel_id, $workType, $workResult, $raporSekmesi);
 
             // İstatistikler
             $totalSonuclanan = 0;

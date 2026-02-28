@@ -826,11 +826,13 @@ class PersonelModel extends Model
     public function addGorevGecmisi($data)
     {
         $sql = "INSERT INTO personel_gorev_gecmisi 
-                (personel_id, maas_durumu, maas_tutari, baslangic_tarihi, bitis_tarihi, aciklama, olusturan_id) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)";
+                (personel_id, departman, gorev, maas_durumu, maas_tutari, baslangic_tarihi, bitis_tarihi, aciklama, olusturan_id) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([
             $data['personel_id'],
+            $data['departman'] ?? null,
+            $data['gorev'] ?? null,
             $data['maas_durumu'],
             $data['maas_tutari'] ?? 0,
             $data['baslangic_tarihi'],
@@ -859,6 +861,8 @@ class PersonelModel extends Model
     public function updateGorevGecmisi($data)
     {
         $sql = "UPDATE personel_gorev_gecmisi SET 
+                departman = ?,
+                gorev = ?,
                 maas_durumu = ?, 
                 maas_tutari = ?, 
                 baslangic_tarihi = ?, 
@@ -867,6 +871,8 @@ class PersonelModel extends Model
                 WHERE id = ?";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([
+            $data['departman'] ?? null,
+            $data['gorev'] ?? null,
             $data['maas_durumu'],
             $data['maas_tutari'] ?? 0,
             $data['baslangic_tarihi'],

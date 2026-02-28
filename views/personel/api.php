@@ -1033,8 +1033,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } elseif ($action == 'gorev-gecmisi-ekle') {
         try {
             $data = $_POST;
+            
+            // Departman array ise virgülle ayır
+            if (isset($data['departman']) && is_array($data['departman'])) {
+                $data['departman'] = implode(',', $data['departman']);
+            }
+
             $saveData = [
                 'personel_id' => $data['personel_id'],
+                'departman' => $data['departman'] ?? null,
+                'gorev' => $data['gorev'] ?? null,
                 'maas_durumu' => $data['maas_durumu'],
                 'maas_tutari' => Helper::formattedMoneyToNumber($data['maas_tutari']),
                 'baslangic_tarihi' => Date::Ymd($data['gorev_baslangic'] ?? $data['baslangic_tarihi'] ?? '', 'Y-m-d'),
@@ -1070,8 +1078,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } elseif ($action == 'gorev-gecmisi-guncelle') {
         try {
             $data = $_POST;
+
+            // Departman array ise virgülle ayır
+            if (isset($data['departman']) && is_array($data['departman'])) {
+                $data['departman'] = implode(',', $data['departman']);
+            }
+
             $saveData = [
                 'id' => $data['id'],
+                'departman' => $data['departman'] ?? null,
+                'gorev' => $data['gorev'] ?? null,
                 'maas_durumu' => $data['maas_durumu'],
                 'maas_tutari' => Helper::formattedMoneyToNumber($data['maas_tutari']),
                 'baslangic_tarihi' => Date::Ymd($data['gorev_baslangic'] ?? $data['baslangic_tarihi'] ?? '', 'Y-m-d'),

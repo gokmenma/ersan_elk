@@ -166,28 +166,20 @@ $ek_odeme_turleri = [
             transition: opacity 0.2s ease;
         }
 
-        /* JS Tabanlı Sticky Header için CSS Hazırlıkları */
-        .fixed-card-header {
-            position: fixed !important;
-            top: 70px !important; /* Navbar yüksekliği */
-            z-index: 1010 !important;
-            background-color: var(--bs-card-bg, #fff) !important;
-            border-bottom: 1px solid var(--bs-border-color) !important;
-            box-shadow: 0 4px 10px -4px rgba(0, 0, 0, 0.1) !important;
-            border-radius: 0 0 4px 4px !important;
-            /* Genişlik JS ile hesaplanıp atanacak */
-        }
+.navbar-header{
+    position: sticky !important;
+    top: 70px !important;
+    z-index: 1040 !important;
+}
         
-        [data-bs-theme="dark"] .fixed-card-header {
+        [data-bs-theme="dark"] .navbar-header {
             background-color: #2a3042 !important; 
         }
 
         #bordroTable thead {
-            position: relative;
-            z-index: 1040;
             background-color: #ffffff;
         }
-
+  
         #bordroTable thead th {
             background-color: #f8f9fa !important; /* İçeriğin üstüne bindiğinde arkası görünmesin */
             box-shadow: inset 0 -1px 0 #eff2f7, inset 0 1px 0 #eff2f7 !important; /* Alt/Üst sınırları koru */
@@ -483,6 +475,10 @@ $ek_odeme_turleri = [
                             $bankaP = max(0, $bankaBaz - $pIcra);
                             if ($bankaP < 0) $bankaP = 0;
 
+                            if (($p->sgk_yapilan_firma ?? '') === 'İŞKUR') {
+                                $bankaP = 0;
+                            }
+
                             $digerP = floatval($p->diger_odeme ?? 0);
                             
                             // Elden = Net - Banka - Sodexo - Diğer
@@ -749,7 +745,7 @@ $ek_odeme_turleri = [
                             </div>
                             <div class="table-responsive">
                                 <table id="bordroTable" class="table table-hover table-bordered nowrap w-100">
-                                    <thead class="table-light">
+                                    <thead class="table-light sticky-top">
                                         <tr>
                                             <th style="width: 20px;">
                                                 <div class="form-check">
@@ -1624,91 +1620,4 @@ $ek_odeme_turleri = [
 </div>
 
 <script src="views/bordro/js/bordro.js?v=<?= time() ?>"></script>
-<?php
-$_totalTime = round((microtime(true) - $_pageStart) * 1000);
-echo "<!-- PERF: SQL={$_sqlTime}ms | PHP_TOTAL={$_totalTime}ms | PERSONEL=" . count($personeller) . " -->";
-?>
-<script>
-// Performans ölçümü
-console.log('%c⚡ Bordro Performans', 'color: #E76F51; font-weight: bold; font-size: 14px;');
-console.log('📊 PHP SQL Sorgusu: <?= $_sqlTime ?? 0 ?>ms');
-console.log('📊 PHP Toplam: <?= $_totalTime ?? 0 ?>ms');
-console.log('📊 Personel Sayısı: <?= count($personeller) ?>');
-window.addEventListener('load', function() {
-    var perfData = performance.getEntriesByType('navigation')[0];
-    if (perfData) {
-        console.log('📊 DOM Interactive: ' + Math.round(perfData.domInteractive) + 'ms');
-        console.log('📊 DOM Content Loaded: ' + Math.round(perfData.domContentLoadedEventEnd) + 'ms');
-        console.log('📊 Full Page Load: ' + Math.round(perfData.loadEventEnd) + 'ms');
-    }
-});
 
-// --- BULLETPROOF JS STICKY HEADER ---
-// Tema yapıları (overflow: hidden vb.) CSS sticky'i bozabilir. Kesin ve kusursuz çözüm JS ile müdahaledir.
-document.addEventListener('DOMContentLoaded', function() {
-    var navbarHeight = 70; // Üst navbar yaklaşık yüksekliği
-    var headerParent = document.querySelector('.bordro-card');
-    var header = document.querySelector('.bordro-sticky-header');
-    var isHeaderFixed = false;
-
-    window.addEventListener('scroll', function() {
-        // 1. KONTROL PANELİNİ (Filtreler vb) SABİTLE (Navbar'ın hemen altında)
-        if (headerParent && header) {
-            var parentRect = headerParent.getBoundingClientRect();
-            
-            // Kartın normalde bulunduğu üst nokta navbar'dan yukarı çıktığında sabitle
-            if (parentRect.top < navbarHeight) {
-                if (!isHeaderFixed) {
-                    header.classList.add('fixed-card-header');
-                    header.style.width = parentRect.width + 'px';
-                    header.style.left = parentRect.left + 'px';
-                    headerParent.style.paddingTop = header.offsetHeight + 'px'; // Kayma olmaması için
-                    isHeaderFixed = true;
-                } else {
-                    // Update width and left just in case of horizontal scrolling or resize
-                    header.style.width = parentRect.width + 'px';
-                    header.style.left = parentRect.left + 'px';
-                }
-            } else {
-                if (isHeaderFixed) {
-                    header.classList.remove('fixed-card-header');
-                    header.style.width = '';
-                    header.style.left = '';
-                    headerParent.style.paddingTop = '';
-                    isHeaderFixed = false;
-                }
-            }
-        }
-        
-        // 2. TABLO BAŞLIĞINI SABİTLE (Filtrelerin Hemen Altında)
-        var container = document.querySelector('.table-responsive');
-        var thead = document.querySelector('#bordroTable thead');
-        
-        if (container && thead) {
-            var containerRect = container.getBoundingClientRect();
-            // Sabitleme ofseti: Navbar yüksekliği + (eğer kontrol paneli fixed ise onun yüksekliği)
-            var stickyOffset = navbarHeight + (isHeaderFixed ? header.offsetHeight : 0);
-            
-            // Tablo container'ı ofsetten daha yukarıdaysa formülü işlet
-            if (containerRect.top < stickyOffset && containerRect.bottom > (stickyOffset + 100)) {
-                var distance = stickyOffset - containerRect.top;
-                // JS Translate kullanarak tablo içindeki overflow kısıtlamarını aşıyoruz
-                thead.style.transform = 'translateY(' + distance + 'px)';
-                thead.classList.add('floating-thead');
-            } else {
-                thead.style.transform = 'translateY(0)';
-                thead.classList.remove('floating-thead');
-            }
-        }
-    });
-    
-    // Pencere boyutu değiştiğinde fixed genişliği de düzelt
-    window.addEventListener('resize', function() {
-        if (isHeaderFixed && headerParent && header) {
-            var rect = headerParent.getBoundingClientRect();
-            header.style.width = rect.width + 'px';
-            header.style.left = rect.left + 'px';
-        }
-    });
-});
-</script>

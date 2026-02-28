@@ -226,7 +226,7 @@ $(document).ready(function () {
   });
 
   // Görev select2 init
-  $("#gorev").select2({
+  $("#main_gorev").select2({
     width: "100%",
     placeholder: "Görev Seçiniz",
     allowClear: true,
@@ -235,7 +235,7 @@ $(document).ready(function () {
   // Görev unvanlarını departmana göre yükle
   function loadGorevOptions(selectedDepartmanlar, callback) {
     if (!selectedDepartmanlar || selectedDepartmanlar.length === 0) {
-      var $gorev = $("#gorev");
+      var $gorev = $("#main_gorev");
       $gorev.find("option").not(":first").remove();
       $gorev.val("").trigger("change.select2");
       if (callback) callback();
@@ -273,7 +273,7 @@ $(document).ready(function () {
     });
 
     Promise.all(promises).then(function () {
-      var $gorev = $("#gorev");
+      var $gorev = $("#main_gorev");
       $gorev.find("option").not(":first").remove();
 
       // Yeni seçenekleri ekle (duplicates yok)
@@ -293,7 +293,7 @@ $(document).ready(function () {
   }
 
   // Departman değişince görev/unvan listesini güncelle
-  $("#departman").on("change", function () {
+  $("#main_departman").on("change", function () {
     var selectedDepartmanlar = $(this).val();
     loadGorevOptions(selectedDepartmanlar);
 
@@ -307,7 +307,7 @@ $(document).ready(function () {
   });
 
   // Görev seçilince ilgili ücreti maaş tutarına aktar
-  $("#gorev").on("change", function () {
+  $("#main_gorev").on("change", function () {
     var selectedVal = $(this).val();
     var ucret = 0;
 
@@ -340,9 +340,9 @@ $(document).ready(function () {
   });
 
   // Sayfa yüklendiğinde mevcut departmana göre görevleri yükle
-  var $gorevSelect = $("#gorev");
+  var $gorevSelect = $("#main_gorev");
   var currentGorev = $gorevSelect.data("current-gorev") || "";
-  var $departman = $("#departman");
+  var $departman = $("#main_departman");
   var currentDepartmanlar = $departman.val();
 
   if (currentDepartmanlar && currentDepartmanlar.length > 0) {

@@ -401,7 +401,12 @@ use App\Helper\Form;
             }
 
             $(document).ready(function () {
-                initEkipGecmisi();
+                var waitSelect2 = setInterval(function() {
+                    if (typeof $.fn.select2 !== 'undefined') {
+                        clearInterval(waitSelect2);
+                        initEkipGecmisi();
+                    }
+                }, 100);
             });
         })(jQuery);
     </script>

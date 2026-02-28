@@ -47,6 +47,9 @@ $(document).ready(function () {
     // Tablo hazır - satırları göster ve preloader'ı kapat
     $("#bordroTable").addClass("dt-ready");
     $("#bordro-loader").fadeOut(300);
+
+    // Sticky Header Başlat
+    setTimeout(initStickyHeader, 500);
   };
   $("#bordroTable").DataTable(applyLengthStateSave(bordroOpts));
 
@@ -1954,4 +1957,114 @@ function hideModal(modalId) {
   } catch (e) {
     console.error("Modal kapatılırken hata oluştu:", e);
   }
+}
+
+// Sticky Table Header
+function initStickyHeader() {
+  const $table = $("#bordroTable");
+  const $wrapper = $table.closest(".table-responsive");
+  
+  if ($table.length === 0 || $wrapper.length === 0) return;
+  
+  // Varsa temizle
+  $(".sticky-header-clone").remove();
+  
+  // Navbar yüksekliği (varsayılan 70px)
+  const navHeight = 70;
+  
+  // Z-Index Ayarı:
+  // Tablonun içinde bulunduğu kartın veya sarmalayıcının z-index'i ile uyumlu olmalı.
+  // Sidebar ve Navbar'ın altında, tablo içeriğinin üstünde kalmalı.
+  // Genellikle 10-50 arası güvenli bir aralıktır.
+  const zIndexVal = 40; 
+  
+  // Wrapper oluştur
+  const $cloneWrapper = $("<div>", { class: "sticky-header-clone" }).css({
+    position: "fixed",
+    top: navHeight + "px",
+    left: $wrapper.offset().left,
+    width: $wrapper.outerWidth(),
+    overflow: "hidden",
+    zIndex: zIndexVal,
+    display: "none",
+    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
+    backgroundColor: "#fff",
+    borderBottom: "1px solid #dee2e6"
+  });
+  
+  // Tabloyu klonla
+  const $cloneTable = $table.clone();
+  $cloneTable.find("tbody").remove();
+  $cloneTable.removeAttr("id").css({
+    marginBottom: 0,
+    width: "100%", // Wrapper genişliğini kullan
+    tableLayout: "fixed" // Genişlikleri sabitle
+  });
+  
+  $cloneWrapper.append($cloneTable);
+  $("body").append($cloneWrapper);
+  
+  // Senkronizasyon fonksiyonu
+  function syncHeader() {
+    const scrollTop = $(window).scrollTop();
+    const tableOffset = $wrapper.offset().top;
+    const tableHeight = $table.outerHeight();
+    const headerHeight = $cloneTable.outerHeight();
+    
+    // Görünürlük kontrolü
+    if (scrollTop + navHeight > tableOffset && scrollTop + navHeight < tableOffset + tableHeight - headerHeight) {
+      // Eğer gizliyse göster ve boyutları güncelle
+      if ($cloneWrapper.is(":hidden")) {
+        $cloneWrapper.show();
+      }
+      
+      // Pozisyon ve Genişlik Güncelle (Her scroll'da kontrol et)
+      $cloneWrapper.css({
+          width: $wrapper[0].getBoundingClientRect().width, // outerWidth bazen fractional pixel hatası verebilir
+          left: $wrapper.offset().left
+      });
+      
+      // Sütun genişliklerini eşitle (En kritik kısım)
+      const $origThs = $table.find("thead th");
+      const $cloneThs = $cloneTable.find("thead th");
+      
+      $origThs.each(function(i) {
+          const w = $(this)[0].getBoundingClientRect().width; // Daha hassas ölçüm
+          $cloneThs.eq(i).css({
+              width: w,
+              minWidth: w,
+              maxWidth: w,
+              boxSizing: "border-box",
+              padding: $(this).css("padding"), // Paddingleri de al
+              border: $(this).css("border") // Borderları da al
+          });
+      });
+
+      // Yatay scroll eşitle (her zaman)
+      $cloneWrapper.scrollLeft($wrapper.scrollLeft());
+    } else {
+      $cloneWrapper.hide();
+    }
+  }
+  
+  // Event listener'lar
+  $(window).on("scroll resize", syncHeader);
+  $wrapper.on("scroll", function() {
+    $cloneWrapper.scrollLeft($(this).scrollLeft());
+  });
+  
+  // Tablo çizildiğinde (sayfalama, sıralama vs.) güncelle
+  $table.on("draw.dt column-visibility.dt", function() {
+    // Biraz bekle ki tablo render olsun
+    setTimeout(function() {
+        // Eğer görünürse yeniden boyutlandır
+        if ($cloneWrapper.is(":visible")) {
+            $cloneWrapper.hide(); // Yeniden hesaplamak için gizle
+            syncHeader();
+        }
+    }, 100);
+  });
+  
+  // İlk çalıştırma
+  syncHeader();
 }

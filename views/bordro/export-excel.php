@@ -33,6 +33,7 @@ if (!$donemId) {
 try {
     $BordroPersonel = new BordroPersonelModel();
     $BordroDonem = new BordroDonemModel();
+    $BordroParametre = new App\Model\BordroParametreModel();
 
     // Dönem bilgisini al
     $donem = $BordroDonem->getDonemById($donemId);
@@ -47,31 +48,35 @@ try {
         die('Bu dönemde kriterlere uygun personel bulunmamaktadır.');
     }
 
+    // Asgari ücreti çek
+    $asgariUcretNet = $BordroParametre->getGenelAyar('asgari_ucret_net', $donem->baslangic_tarihi) ?? 17002.12;
+
+    // Dönem tarihlerini ve gün sayısını hesapla
+    $donemBasTs = strtotime($donem->baslangic_tarihi);
+    $donemBitTs = strtotime($donem->bitis_tarihi);
+    $aydakiGunSayisi = date('t', $donemBasTs);
+
     // Yeni Excel dosyası oluştur
     $spreadsheet = new Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
     $sheet->setTitle('Bordro Listesi');
 
-    // Başlıklar
+    // Başlıklar (UI Table Format)
     $basliklar = [
-        'A' => 'TC Kimlik No',
-        'B' => 'Personel Ad Soyad',
-        'C' => 'Maaş Tipi',
-        'D' => 'Ekip',
-        'E' => 'Bölge',
-        'F' => 'Çalışma Günü',
-        'G' => 'Brüt Maaş',
-        'H' => 'SGK İşçi',
-        'I' => 'İşsizlik İşçi',
-        'J' => 'Gelir Vergisi',
-        'K' => 'Damga Vergisi',
-        'L' => 'Toplam Ek Ödeme',
-        'M' => 'Toplam Kesinti',
-        'N' => 'Net Maaş',
-        'O' => 'Banka',
-        'P' => 'Sodexo',
-        'Q' => 'Diğer',
-        'R' => 'Elden'
+        'A' => 'Birim',
+        'B' => 'Ekip',
+        'C' => 'Bölge',
+        'D' => 'Personel',
+        'E' => 'TC No',
+        'F' => 'Maaş Tipi',
+        'G' => 'Gün',
+        'H' => 'Toplam Alacağı',
+        'I' => 'Kesinti Tutarı',
+        'J' => 'Net Alacağı',
+        'K' => 'İcra Kesintisi',
+        'L' => 'Banka',
+        'M' => 'Sodexo',
+        'N' => 'Elden'
     ];
 
     // Başlık stili
@@ -102,8 +107,8 @@ try {
         $sheet->getColumnDimension($kolon)->setAutoSize(true);
     }
 
-    // Başlık satırına stil uygula
-    $sheet->getStyle('A1:R1')->applyFromArray($baslikStyle);
+    // Başlık satırına stil uygula (A1:N1)
+    $sheet->getStyle('A1:N1')->applyFromArray($baslikStyle);
 
     // Veri stili
     $dataStyle = [
@@ -118,65 +123,138 @@ try {
     // Personel verilerini ekle
     $satir = 2;
     foreach ($personeller as $personel) {
-        // Elden ödeme hesapla
-        $eldenOdeme = ($personel->net_maas ?? 0) - ($personel->banka_odemesi ?? 0) - ($personel->sodexo_odemesi ?? 0) - ($personel->diger_odeme ?? 0);
+        // --- UI HESAPLAMA MANTIĞI ---
+        $rawEkOdeme = floatval($personel->guncel_toplam_ek_odeme);
+        $pMaasTutari = floatval($personel->maas_tutari ?? 0);
+        $pToplamKesinti = floatval($personel->kesinti_tutar ?? 0);
+        $pIsNet = ($personel->maas_durumu ?? '') == 'Net';
+        $pIsPrimUsulu = (stripos($personel->maas_durumu ?? '', 'Prim') !== false);
 
-        // İzin ve çalışma günü hesapla
-        $ucretsizIzinGunu = 0;
-        $ucretliIzinGunu = 0;
-        if (!empty($personel->hesaplama_detay)) {
-            $detay = json_decode($personel->hesaplama_detay, true);
-            if (isset($detay['matrahlar']['ucretsiz_izin_gunu'])) {
-                $ucretsizIzinGunu = intval($detay['matrahlar']['ucretsiz_izin_gunu']);
-            } elseif (isset($detay['matrahlar']['ucretsiz_izin_dusumu']) && isset($detay['matrahlar']['nominal_maas']) && $detay['matrahlar']['nominal_maas'] > 0) {
-                $gunlukUcret = $detay['matrahlar']['nominal_maas'] / 30;
-                $ucretsizIzinGunu = round($detay['matrahlar']['ucretsiz_izin_dusumu'] / $gunlukUcret);
-            }
-            if (isset($detay['matrahlar']['ucretli_izin_gunu'])) {
-                $ucretliIzinGunu = intval($detay['matrahlar']['ucretli_izin_gunu']);
-            }
+        // İcra ve Kesinti
+        $pIcra = floatval($personel->hd_icra_kesintisi ?? 0);
+        $pKesintiHaricIcra = $pToplamKesinti - $pIcra;
+
+        // Çalışma günü hesaplama (list.php logic)
+        $pGunlukBase = 30;
+        $pUcretsizIzinGunu = 0;
+        $pUcretliIzinGunu = 0;
+        $pIseGirisDI = false;
+        $pIstenCikisDI = false;
+
+        if ($personel->hd_ucretsiz_izin_gunu !== null) {
+            $pUcretsizIzinGunu = intval($personel->hd_ucretsiz_izin_gunu);
+        } elseif ($personel->hd_ucretsiz_izin_dusumu !== null && $personel->hd_nominal_maas !== null && floatval($personel->hd_nominal_maas) > 0) {
+            $pUcretsizIzinGunu = round(floatval($personel->hd_ucretsiz_izin_dusumu) / (floatval($personel->hd_nominal_maas) / 30));
         }
-        $calismaGunu = 30 - $ucretsizIzinGunu - $ucretliIzinGunu;
-
-        // Ek ödeme toplamı (hesaplanan)
-        $hesaplananEkOdeme = $personel->guncel_toplam_ek_odeme;
-        if (!empty($personel->hesaplama_detay)) {
-            $detayEkOdeme = json_decode($personel->hesaplama_detay, true);
-            if (isset($detayEkOdeme['ek_odemeler']) && is_array($detayEkOdeme['ek_odemeler'])) {
-                $hesaplananEkOdeme = 0;
-                foreach ($detayEkOdeme['ek_odemeler'] as $eo) {
-                    $hesaplananEkOdeme += floatval($eo['net_etki'] ?? $eo['tutar'] ?? 0);
-                }
-            }
+        if ($personel->hd_ucretli_izin_gunu !== null) {
+            $pUcretliIzinGunu = intval($personel->hd_ucretli_izin_gunu);
         }
 
-        $sheet->setCellValueExplicit('A' . $satir, $personel->tc_kimlik_no ?? '', DataType::TYPE_STRING);
-        $sheet->setCellValue('B' . $satir, $personel->adi_soyadi);
-        $sheet->setCellValue('C' . $satir, $personel->maas_durumu ?? '-');
-        $sheet->setCellValue('D' . $satir, $personel->ekip_adi ?? '');
-        $sheet->setCellValue('E' . $satir, $personel->ekip_bolge ?? '');
-        $sheet->setCellValue('F' . $satir, $calismaGunu);
-        $sheet->setCellValue('G' . $satir, $personel->brut_maas ?? 0);
-        $sheet->setCellValue('H' . $satir, $personel->sgk_isci ?? 0);
-        $sheet->setCellValue('I' . $satir, $personel->issizlik_isci ?? 0);
-        $sheet->setCellValue('J' . $satir, $personel->gelir_vergisi ?? 0);
-        $sheet->setCellValue('K' . $satir, $personel->damga_vergisi ?? 0);
-        $sheet->setCellValue('L' . $satir, $hesaplananEkOdeme);
-        $sheet->setCellValue('M' . $satir, $personel->guncel_toplam_kesinti ?? 0);
-        $sheet->setCellValue('N' . $satir, $personel->net_maas ?? 0);
-        $sheet->setCellValue('O' . $satir, $personel->banka_odemesi ?? 0);
-        $sheet->setCellValue('P' . $satir, $personel->sodexo_odemesi ?? 0);
-        $sheet->setCellValue('Q' . $satir, $personel->diger_odeme ?? 0);
-        $sheet->setCellValue('R' . $satir, $eldenOdeme);
+        if (!empty($personel->ise_giris_tarihi)) {
+            $iseGirisTs = strtotime($personel->ise_giris_tarihi);
+            if ($iseGirisTs > $donemBasTs) {
+                $pIseGirisDI = true;
+            }
+        }
+        if (!empty($personel->isten_cikis_tarihi)) {
+            $istenCikisTs = strtotime($personel->isten_cikis_tarihi);
+            if ($istenCikisTs >= $donemBasTs && $istenCikisTs < $donemBitTs) {
+                $pIstenCikisDI = true;
+            }
+        }
 
-        // Sayı formatları
-        $sheet->getStyle('G' . $satir . ':R' . $satir)->getNumberFormat()->setFormatCode('#,##0.00');
+        if ($pIseGirisDI && $pIstenCikisDI) {
+            $pGunlukBase = date('j', $istenCikisTs) - date('j', $iseGirisTs) + 1;
+        } elseif ($pIseGirisDI) {
+            $pGunlukBase = $aydakiGunSayisi - date('j', $iseGirisTs) + 1;
+        } elseif ($pIstenCikisDI) {
+            $pGunlukBase = date('j', $istenCikisTs);
+        } elseif ($pUcretsizIzinGunu > 0 || $pUcretliIzinGunu > 0) {
+            $pGunlukBase = $aydakiGunSayisi;
+        } else {
+            $pGunlukBase = 30;
+        }
+        if ($pGunlukBase < 0) $pGunlukBase = 0;
+
+        $pCalismaGunu = $pGunlukBase;
+        if ($personel->hd_fiili_calisma_gunu !== null) {
+            $pCalismaGunu = intval($personel->hd_fiili_calisma_gunu);
+        } elseif ($personel->hd_fiili_calisma_gunu === null) {
+            $pCalismaGunu = $pGunlukBase - $pUcretsizIzinGunu - $pUcretliIzinGunu;
+        }
+
+        // Toplam Alacağı
+        if ($pIsPrimUsulu) {
+            $pToplamAlacagi = floatval($personel->brut_maas ?? 0) + $rawEkOdeme;
+        } elseif ($pIsNet || ($personel->maas_durumu ?? '') == 'Brüt') {
+            $pToplamAlacagi = (($pMaasTutari / 30) * $pCalismaGunu) + $rawEkOdeme;
+        } else {
+            $pToplamAlacagi = $pMaasTutari + $rawEkOdeme;
+        }
+
+        // Net alacağı
+        $pNetAlacagi = $pToplamAlacagi - $pKesintiHaricIcra;
+
+        // Dağıtım kalemleri
+        $sodexoP = floatval($personel->sodexo_odemesi ?? 0);
+        if ($pCalismaGunu >= 30) {
+            $bankaBaz = $asgariUcretNet;
+        } else {
+            $bankaBaz = ($asgariUcretNet / 30) * $pCalismaGunu;
+        }
+        $bankaMax = max(0, $pNetAlacagi - $sodexoP);
+        $bankaBaz = min($bankaBaz, $bankaMax);
+        $bankaP = max(0, $bankaBaz - $pIcra);
+
+        if (($personel->sgk_yapilan_firma ?? '') === 'İŞKUR') {
+            $bankaP = 0;
+        }
+
+        $pNetMaasGercek = max(0, $pNetAlacagi - $pIcra);
+        $digerP = floatval($personel->diger_odeme ?? 0);
+        $eldenP = max(0, $pNetMaasGercek - $bankaP - $sodexoP - $digerP);
+
+        // Birim Kodu
+        $deptName = $personel->departman ?? '-';
+        $deptUp = mb_convert_case($deptName, MB_CASE_UPPER, "UTF-8");
+        $birimCode = '';
+        if (strpos($deptUp, 'OKUMA') !== false) $birimCode = 'EO';
+        elseif (strpos($deptUp, 'KESME') !== false) $birimCode = 'KA';
+        elseif (strpos($deptUp, 'SAYAÇ') !== false || strpos($deptUp, 'DEGİŞ') !== false) $birimCode = 'ST';
+        elseif (strpos($deptUp, 'KAÇAK') !== false) $birimCode = 'KÇ';
+        else {
+            $words = explode(' ', $deptUp);
+            if (count($words) >= 2) {
+                $birimCode = mb_substr($words[0], 0, 1) . mb_substr($words[1], 0, 1);
+            } else {
+                $birimCode = mb_substr($deptUp, 0, 2);
+            }
+        }
+
+        // Excel Satırı Doldur
+        $sheet->setCellValue('A' . $satir, $birimCode);
+        $sheet->setCellValue('B' . $satir, $personel->ekip_adi ?? '');
+        $sheet->setCellValue('C' . $satir, $personel->ekip_bolge ?? '');
+        $sheet->setCellValue('D' . $satir, $personel->adi_soyadi);
+        $sheet->setCellValueExplicit('E' . $satir, $personel->tc_kimlik_no ?? '', DataType::TYPE_STRING);
+        $sheet->setCellValue('F' . $satir, $personel->maas_durumu ?? '-');
+        $sheet->setCellValue('G' . $satir, $pCalismaGunu);
+        $sheet->setCellValue('H' . $satir, $pToplamAlacagi);
+        $sheet->setCellValue('I' . $satir, $pKesintiHaricIcra);
+        $sheet->setCellValue('J' . $satir, $pNetAlacagi);
+        $sheet->setCellValue('K' . $satir, $pIcra);
+        $sheet->setCellValue('L' . $satir, $bankaP);
+        $sheet->setCellValue('M' . $satir, $sodexoP);
+        $sheet->setCellValue('N' . $satir, $eldenP);
+
+        // Sayı formatları (H:N)
+        $sheet->getStyle('H' . $satir . ':N' . $satir)->getNumberFormat()->setFormatCode('#,##0.00');
 
         $satir++;
     }
 
     // Tüm tabloya stil uygula
-    $sheet->getStyle('A1:R' . ($satir - 1))->applyFromArray($dataStyle);
+    $sheet->getStyle('A1:N' . ($satir - 1))->applyFromArray($dataStyle);
 
     // Dosya adı
     $donemAdiSlug = preg_replace('/[^a-zA-Z0-9]/', '_', $donem->donem_adi);

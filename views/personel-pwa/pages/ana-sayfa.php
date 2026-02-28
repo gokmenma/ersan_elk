@@ -725,22 +725,45 @@ use App\Helper\Helper;
                     var stat = response.data;
 
                     let todayBreakdown = '';
-                    if (stat.details && (stat.details.daily_isler > 0 || stat.details.daily_endeks > 0)) {
-                        let parts = [];
-                        if (stat.details.daily_isler > 0) parts.push(`${stat.details.daily_isler} Kesme`);
-                        if (stat.details.daily_endeks > 0) parts.push(`${stat.details.daily_endeks} Endeks`);
-                        if (parts.length > 1) {
-                            todayBreakdown = `<p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium leading-tight">${parts.join(' &bull; ')}</p>`;
-                        }
-                    }
-
                     let monthBreakdown = '';
-                    if (stat.details && (stat.details.monthly_isler > 0 || stat.details.monthly_endeks > 0)) {
-                        let parts = [];
-                        if (stat.details.monthly_isler > 0) parts.push(`${stat.details.monthly_isler} Kesme`);
-                        if (stat.details.monthly_endeks > 0) parts.push(`${stat.details.monthly_endeks} Endeks`);
-                        if (parts.length > 1) {
-                            monthBreakdown = `<p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium leading-tight">${parts.join(' &bull; ')}</p>`;
+
+                    if (stat.is_sayac_ekibi) {
+                        // Sayaç Ekipleri için özel etiketler
+                        let dailyParts = [];
+                        if (stat.details.daily_sekme) {
+                            if (stat.details.daily_sekme.sokme_takma > 0) dailyParts.push(`${stat.details.daily_sekme.sokme_takma} Sayaç Değ.`);
+                            if (stat.details.daily_sekme.kesme > 0) dailyParts.push(`${stat.details.daily_sekme.kesme} Kesme-Açma`);
+                        }
+                        if (dailyParts.length > 0) {
+                            todayBreakdown = `<p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium leading-tight">${dailyParts.join(' &bull; ')}</p>`;
+                        }
+
+                        let monthlyParts = [];
+                        if (stat.details.monthly_sekme) {
+                            if (stat.details.monthly_sekme.sokme_takma > 0) monthlyParts.push(`${stat.details.monthly_sekme.sokme_takma} Sayaç Değ.`);
+                            if (stat.details.monthly_sekme.kesme > 0) monthlyParts.push(`${stat.details.monthly_sekme.kesme} Kesme-Açma`);
+                        }
+                        if (monthlyParts.length > 0) {
+                            monthBreakdown = `<p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium leading-tight">${monthlyParts.join(' &bull; ')}</p>`;
+                        }
+                    } else {
+                        // Normal ekipler için (Endeks + Kesme)
+                        if (stat.details && (stat.details.daily_isler > 0 || stat.details.daily_endeks > 0)) {
+                            let parts = [];
+                            if (stat.details.daily_isler > 0) parts.push(`${stat.details.daily_isler} Kesme`);
+                            if (stat.details.daily_endeks > 0) parts.push(`${stat.details.daily_endeks} Endeks`);
+                            if (parts.length > 0) {
+                                todayBreakdown = `<p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium leading-tight">${parts.join(' &bull; ')}</p>`;
+                            }
+                        }
+
+                        if (stat.details && (stat.details.monthly_isler > 0 || stat.details.monthly_endeks > 0)) {
+                            let parts = [];
+                            if (stat.details.monthly_isler > 0) parts.push(`${stat.details.monthly_isler} Kesme`);
+                            if (stat.details.monthly_endeks > 0) parts.push(`${stat.details.monthly_endeks} Endeks`);
+                            if (parts.length > 0) {
+                                monthBreakdown = `<p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium leading-tight">${parts.join(' &bull; ')}</p>`;
+                            }
                         }
                     }
 

@@ -86,6 +86,7 @@ try {
     // Verileri hesapla
     $toplamBankaOdemesi = 0;
     foreach ($personeller as $p) {
+        if (($p->sgk_yapilan_firma ?? '') === 'İŞKUR') continue;
         $toplamBankaOdemesi += (float) ($p->banka_odemesi ?? 0);
     }
 
@@ -114,8 +115,8 @@ try {
     foreach ($personeller as $personel) {
         $bankaOdemesi = (float) ($personel->banka_odemesi ?? 0);
 
-        // Eğer banka ödemesi 0 ise listeye ekleme (isteğe bağlı, resimde 0 olanlar var gerçi)
-        // if ($bankaOdemesi <= 0) continue; 
+        // Eğer banka ödemesi 0 ise veya İŞKUR personeli ise listeye ekleme
+        if ($bankaOdemesi <= 0 || ($personel->sgk_yapilan_firma ?? '') === 'İŞKUR') continue; 
 
         $sheet->setCellValue('A' . $satir, 'M');
         $sheet->setCellValue('B' . $satir, $odemeTarihiExcel);
