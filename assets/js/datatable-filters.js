@@ -415,6 +415,16 @@
             columns: [],
           };
 
+          if (settings.ajax && typeof settings.ajax.data === "function") {
+            const d = {};
+            settings.ajax.data(d);
+            Object.assign(filterData, d);
+            filterData.action = "get-unique-values"; // Keep our action
+          } else if (settings.ajax && typeof settings.ajax.data === "object") {
+            Object.assign(filterData, settings.ajax.data);
+            filterData.action = "get-unique-values";
+          }
+
           api.columns().every(function () {
             filterData.columns.push({
               search: { value: this.search() },
@@ -829,14 +839,14 @@
     api.on("column-reorder.dt", function (e, settings, details) {
       if (settings.sTableId !== tableId) return;
       if (!api.colReorder) return;
-      
+
       // Re-order filter cells to match current column order
       const currentOrder = api.colReorder.order();
       const $cells = $filterRow.children("th");
-      
+
       // Detach all cells
       $cells.detach();
-      
+
       // Re-append in new order
       currentOrder.forEach((originalIdx) => {
         const cell = filterCells.find((c) => c.colIdx === originalIdx);

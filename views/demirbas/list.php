@@ -419,13 +419,13 @@ if (!empty($sayacKatIds)) {
                                         <tr>
                                             <th class="text-center" style="width:5%">Sıra</th>
                                             <th style="width:8%" class="text-center">D.No</th>
-                                            <th style="width:12%">Kategori</th>
-                                            <th style="width:20%">Demirbaş Adı</th>
-                                            <th style="width:15%">Marka/Model</th>
-                                            <th style="width:10%" class="text-center">Stok</th>
-                                            <th style="width:10%" class="text-center">Durum</th>
-                                            <th style="width:10%" class="text-end">Edinme Tutarı</th>
-                                            <th style="width:10%">Edinme Tarihi</th>
+                                            <th style="width:12%" data-filter="select">Kategori</th>
+                                            <th style="width:20%" data-filter="string">Demirbaş Adı</th>
+                                            <th style="width:15%" data-filter="string">Marka/Model</th>
+                                            <th style="width:10%" class="text-center" data-filter="number">Stok</th>
+                                            <th style="width:10%" class="text-center" data-filter="select">Durum</th>
+                                            <th style="width:10%" class="text-end" data-filter="number">Edinme Tutarı</th>
+                                            <th style="width:10%" data-filter="date">Edinme Tarihi</th>
                                             <th style="width:5%" class="text-center">İşlemler</th>
                                         </tr>
                                     </thead>
@@ -793,10 +793,10 @@ if (!empty($sayacKatIds)) {
                                             <th style="width:12%">Kategori</th>
                                             <th style="width:20%">Demirbaş</th>
                                             <th style="width:15%">Marka/Model</th>
-                                            <th style="width:18%">Personel</th>
+                                            <th style="width:18%" data-filter="string">Personel</th>
                                             <th style="width:8%" class="text-center">Miktar</th>
-                                            <th style="width:12%">Teslim Tarihi</th>
-                                            <th style="width:10%" class="text-center">Durum</th>
+                                            <th style="width:12%" data-filter="date">Teslim Tarihi</th>
+                                            <th style="width:10%" data-filter="select" class="text-center">Durum</th>
                                             <th style="width:5%" class="text-center">İşlemler</th>
                                         </tr>
                                     </thead>

@@ -1253,3 +1253,68 @@ if ($action == "zimmet-stats-chart") {
         jsonResponse("error", $ex->getMessage());
     }
 }
+
+// Gelişmiş filtreler için benzersiz değerleri getir
+if ($action == "get-unique-values") {
+    $column = $_POST['column'] ?? '';
+    if (empty($column))
+        jsonResponse("error", "Column missing");
+
+    try {
+        $firma_id = $_SESSION['firma_id'];
+        $rows = [];
+
+        if ($column === 'durum') {
+            $sql = "SELECT DISTINCT z.durum as val FROM demirbas_zimmet z 
+                    LEFT JOIN demirbas d ON z.demirbas_id = d.id 
+                    WHERE z.silinme_tarihi IS NULL AND d.firma_id = ? ORDER BY val ASC";
+            $stmt = $Zimmet->getDb()->prepare($sql);
+            $stmt->execute([$firma_id]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } elseif ($column === 'kategori_adi') {
+            $sql = "SELECT DISTINCT k.tur_adi as val FROM demirbas d
+                    INNER JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
+                    WHERE d.firma_id = ? ORDER BY val ASC";
+            $stmt = $Zimmet->getDb()->prepare($sql);
+            $stmt->execute([$firma_id]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } elseif ($column === 'personel_adi') {
+            $sql = "SELECT DISTINCT p.adi_soyadi as val FROM demirbas_zimmet z
+                    INNER JOIN db_personel.personel p ON z.personel_id = p.id
+                    LEFT JOIN demirbas d ON z.demirbas_id = d.id
+                    WHERE z.silinme_tarihi IS NULL AND d.firma_id = ? ORDER BY val ASC"; // or p.firma_id
+            $stmt = $Zimmet->getDb()->prepare($sql);
+            $stmt->execute([$firma_id]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } elseif ($column === 'marka_model' || $column === 'marka_sade') {
+            $sql = "SELECT DISTINCT d.marka as val FROM demirbas d 
+                    WHERE d.firma_id = ? AND d.marka IS NOT NULL AND d.marka != '' ORDER BY val ASC";
+            $stmt = $Zimmet->getDb()->prepare($sql);
+            $stmt->execute([$firma_id]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } else {
+            jsonResponse("error", "Invalid column: " . $column);
+        }
+
+        $results = [];
+        $durumMap = [
+            'teslim' => 'Zimmetli',
+            'iade' => 'İade Edildi',
+            'kayip' => 'Kayıp',
+            'arizali' => 'Arızalı'
+        ];
+
+        foreach ($rows as $r) {
+            $val = $r['val'] ?? '(Boş)';
+            if ($column === 'durum') {
+                $results[] = $durumMap[strtolower($val)] ?? $val;
+            } else {
+                $results[] = $val;
+            }
+        }
+
+        jsonResponse("success", "OK", ["data" => array_values(array_unique($results))]);
+    } catch (Exception $e) {
+        jsonResponse("error", $e->getMessage());
+    }
+}

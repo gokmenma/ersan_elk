@@ -375,7 +375,7 @@ class DemirbasZimmetModel extends Model
             $searchWhere .= " AND (d.demirbas_no LIKE :search 
                             OR d.demirbas_adi LIKE :search 
                             OR p.adi_soyadi LIKE :search 
-                            OR k.kategori_adi LIKE :search
+                            OR k.tur_adi LIKE :search
                             OR d.marka LIKE :search
                             OR d.model LIKE :search
                             OR z.id LIKE :search)";
@@ -385,22 +385,141 @@ class DemirbasZimmetModel extends Model
         // Sütun Bazlı Arama
         $colSearchMap = [
             0 => 'z.id',
-            1 => 'k.kategori_adi',
+            1 => 'k.tur_adi',
             2 => 'd.demirbas_adi',
             3 => 'CONCAT_WS(" ", d.marka, d.model)',
             4 => 'p.adi_soyadi',
             5 => 'z.teslim_miktar',
-            6 => 'DATE_FORMAT(z.teslim_tarihi, "%d.%m.%Y")',
+            6 => 'z.teslim_tarihi',
             7 => 'z.durum'
         ];
 
         if (isset($request['columns']) && is_array($request['columns'])) {
             foreach ($request['columns'] as $colIdx => $col) {
                 if (!empty($col['search']['value']) && isset($colSearchMap[$colIdx])) {
-                    $searchVal = "%" . $col['search']['value'] . "%";
+                    $field = $colSearchMap[$colIdx];
+                    $searchValue = $col['search']['value'];
                     $paramKey = "col_search_" . $colIdx;
-                    $searchWhere .= " AND {$colSearchMap[$colIdx]} LIKE :$paramKey";
-                    $params[$paramKey] = $searchVal;
+
+                    // Gelişmiş Filtre Ayrıştırıcı (mode:value)
+                    if (strpos($searchValue, ':') !== false) {
+                        list($mode, $val) = explode(':', $searchValue, 2);
+
+                        // Değerleri ayır
+                        $vals = explode('|', $val);
+                        $val = $vals[0];
+                        $val2 = isset($vals[1]) ? $vals[1] : null;
+
+                        if ($val !== '' || $val2 !== null || in_array($mode, ['null', 'not_null', 'multi'])) {
+                            // Değer eşleme (Mapping)
+                            $durumReverseMap = [
+                                'Zimmetli' => 'teslim',
+                                'İade Edildi' => 'iade',
+                                'Kayıp' => 'kayip',
+                                'Arızalı' => 'arizali'
+                            ];
+
+                            // Tarih sütunu (index 6) için d.m.Y -> Y-m-d dönüşümü
+                            if ($colIdx == 6) {
+                                if ($val && strpos($val, '.') !== false)
+                                    $val = \App\Helper\Date::Ymd($val, 'Y-m-d');
+                                if ($val2 && strpos($val2, '.') !== false)
+                                    $val2 = \App\Helper\Date::Ymd($val2, 'Y-m-d');
+                            }
+
+                            // Durum eşleme
+                            if ($field == 'z.durum') {
+                                if (isset($durumReverseMap[$val]))
+                                    $val = $durumReverseMap[$val];
+                                if ($val2 && isset($durumReverseMap[$val2]))
+                                    $val2 = $durumReverseMap[$val2];
+                            }
+
+                            switch ($mode) {
+                                case 'multi':
+                                    if (!empty($vals)) {
+                                        $orConditions = [];
+                                        foreach ($vals as $vIdx => $v) {
+                                            $vParam = $paramKey . "_" . $vIdx;
+
+                                            // Mapping apply to multi
+                                            if ($field == 'z.durum' && isset($durumReverseMap[$v]))
+                                                $v = $durumReverseMap[$v];
+
+                                            if ($v === '(Boş)') {
+                                                $orConditions[] = "($field IS NULL OR $field = '' OR $field = '0000-00-00')";
+                                            } else {
+                                                if ($colIdx == 6 && strpos($v, '.') !== false) {
+                                                    $v = \App\Helper\Date::Ymd($v, 'Y-m-d');
+                                                    $orConditions[] = "$field = :$vParam";
+                                                    $params[$vParam] = $v;
+                                                } else {
+                                                    $orConditions[] = "$field LIKE :$vParam";
+                                                    $params[$vParam] = "%$v%";
+                                                }
+                                            }
+                                        }
+                                        $searchWhere .= " AND (" . implode(" OR ", $orConditions) . ")";
+                                    }
+                                    break;
+                                case 'contains':
+                                    $searchWhere .= " AND $field LIKE :$paramKey";
+                                    $params[$paramKey] = "%$val%";
+                                    break;
+                                case 'not_contains':
+                                    $searchWhere .= " AND $field NOT LIKE :$paramKey";
+                                    $params[$paramKey] = "%$val%";
+                                    break;
+                                case 'starts_with':
+                                    $searchWhere .= " AND $field LIKE :$paramKey";
+                                    $params[$paramKey] = "$val%";
+                                    break;
+                                case 'ends_with':
+                                    $searchWhere .= " AND $field LIKE :$paramKey";
+                                    $params[$paramKey] = "%$val";
+                                    break;
+                                case 'equals':
+                                    $searchWhere .= " AND $field = :$paramKey";
+                                    $params[$paramKey] = $val;
+                                    break;
+                                case 'not_equals':
+                                    $searchWhere .= " AND $field != :$paramKey";
+                                    $params[$paramKey] = $val;
+                                    break;
+                                case 'before':
+                                    $searchWhere .= " AND $field < :$paramKey";
+                                    $params[$paramKey] = $val;
+                                    break;
+                                case 'after':
+                                    $searchWhere .= " AND $field > :$paramKey";
+                                    $params[$paramKey] = $val;
+                                    break;
+                                case 'between':
+                                    if ($val && $val2) {
+                                        $p1 = $paramKey . "_1";
+                                        $p2 = $paramKey . "_2";
+                                        $searchWhere .= " AND $field BETWEEN :$p1 AND :$p2";
+                                        $params[$p1] = $val;
+                                        $params[$p2] = $val2;
+                                    }
+                                    break;
+                                case 'null':
+                                    $searchWhere .= " AND ($field IS NULL OR $field = '' OR $field = '0000-00-00')";
+                                    break;
+                                case 'not_null':
+                                    $searchWhere .= " AND $field IS NOT NULL AND $field != '' AND $field != '0000-00-00'";
+                                    break;
+                            }
+                        }
+                    } else {
+                        // Normal (Eski) Filtre Mantığı (Sadece LIKE)
+                        if ($colIdx == 6) { // Tarih
+                            $searchWhere .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramKey";
+                        } else {
+                            $searchWhere .= " AND $field LIKE :$paramKey";
+                        }
+                        $params[$paramKey] = "%$searchValue%";
+                    }
                 }
             }
         }

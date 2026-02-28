@@ -24,5 +24,9 @@
 <script src="https://cdn.datatables.net/colreorder/1.7.0/js/dataTables.colReorder.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
+<!-- DataTables FixedHeader -->
+<link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.bootstrap4.min.css">
+<script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
+
 <!-- Datatable init js -->
 <script src="assets/js/datatables.init.js?v=<?php echo filemtime("assets/js/datatables.init.js"); ?>"></script>

@@ -4,10 +4,19 @@ $(document).ready(function () {
 });
 
 function getDatatableOptions() {
+  let focusedColIdx = null;
+  let focusedCursorPos = null;
+
   return {
     stateSave: false,
     responsive: false,
-    // scrollX: false,
+    scrollX: false,
+    fixedHeader: {
+      header: true,
+      headerOffset: $("#page-topbar").length
+        ? $("#page-topbar").outerHeight()
+        : 70,
+    },
     pageLength: 10,
     dom: 't<"row"<"col-sm-12 col-md-6 d-flex align-items-center justify-content-start"i<"ms-3 text-nowrap"l>><"col-sm-12 col-md-6 d-flex justify-content-end"p>>',
     language: {
@@ -18,6 +27,64 @@ function getDatatableOptions() {
         '<div class="text-center py-5"><div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-4" style="width: 100px; height: 100px; background: linear-gradient(135deg, rgba(241,180,76,0.15) 0%, rgba(241,180,76,0.05) 100%); border: 2px dashed rgba(241,180,76,0.3);"><i class="bx bx-search-alt text-warning" style="font-size: 48px;"></i></div><h5 class="text-dark fw-semibold mb-2">Sonuç Bulunamadı</h5><p class="text-muted mb-0" style="max-width: 280px; margin: 0 auto;">Arama kriterlerinize uygun kayıt bulunamadı.</p></div>',
     },
     buttons: ["excel"],
+
+    preDrawCallback: function (settings) {
+      let activeEl = document.activeElement;
+      if (
+        activeEl &&
+        activeEl.tagName === "INPUT" &&
+        $(activeEl).closest("thead, .dtfh-floatingparent").length
+      ) {
+        focusedColIdx = $(activeEl).closest("th").index();
+        try {
+          focusedCursorPos = activeEl.selectionStart;
+        } catch (e) {
+          focusedCursorPos = null;
+        }
+      } else {
+        focusedColIdx = null;
+      }
+    },
+
+    drawCallback: function (settings) {
+      if (focusedColIdx !== null) {
+        let api = this.api();
+        setTimeout(() => {
+          let $wrapper = $(settings.nTableWrapper);
+          // 1. Dtfh plugins (FixedHeader) yüzen başlığını kontrol et
+          let $th = $(".dtfh-floatingparent th").eq(focusedColIdx);
+
+          if (!$th.length) {
+            // 2. Normal tablonun arama satırlarını kontrol et
+            let filterRows = $(api.table().header()).find(
+              "tr.search-input-row, tr.dt-filter-row",
+            );
+            if (filterRows.length) {
+              $th = filterRows.last().find("th").eq(focusedColIdx);
+            } else {
+              $th = $(api.table().header())
+                .find("tr")
+                .last()
+                .find("th")
+                .eq(focusedColIdx);
+            }
+          }
+
+          let $input = $th.find('input[type="text"]');
+          if ($input.length) {
+            $input[0].focus();
+            if (
+              focusedCursorPos !== null &&
+              typeof $input[0].setSelectionRange === "function"
+            ) {
+              try {
+                $input[0].setSelectionRange(focusedCursorPos, focusedCursorPos);
+              } catch (e) {}
+            }
+          }
+        }, 10);
+      }
+    },
 
     ...getTableSpecificOptions(),
 

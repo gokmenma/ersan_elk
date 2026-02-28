@@ -364,6 +364,8 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
                 $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucu, $normDate, $islemId, $sonuclanmis);
         }
 
+        $Puantaj->db->beginTransaction();
+
         // 3. Mevcut kayıtları temizle (Sadece gelen tipler için)
         if (!empty($resultNamesInApi)) {
             $uniqueNames = array_unique($resultNamesInApi);
@@ -375,7 +377,6 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
 
         // 4. Toplu Kayıt
         if (!empty($insertBatch)) {
-            $Puantaj->db->beginTransaction();
             $chunks = array_chunk($insertBatch, 500);
             foreach ($chunks as $chunk) {
                 $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?)'));
@@ -387,8 +388,8 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
                 }
                 $stmt->execute($flatParams);
             }
-            $Puantaj->db->commit();
         }
+        $Puantaj->db->commit();
 
         cronLog("$yeniKayit yeni kayıt eklendi, $silinenKayit eski silindi.");
         unset($apiData);

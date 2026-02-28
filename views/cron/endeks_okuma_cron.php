@@ -303,14 +303,10 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             $ekipGecmisi[$h['ekip_kodu_id']][] = $h;
         }
 
-        // 2. Sorgulanan tarihteki mevcut kayıtları soft-delete et
+        // 2. Sorgulanan tarihteki mevcut kayıtları soft-delete et (Transaction içinde çalışacak şekilde SQL hazırla)
         $silinenKayit = 0;
-        $deleteStmt = $EndeksOkuma->db->prepare("UPDATE endeks_okuma SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih = ? AND silinme_tarihi IS NULL");
-        $deleteStmt->execute([$firmaId, $tarih]);
-        $silinenKayit = $deleteStmt->rowCount();
-        if ($silinenKayit > 0) {
-            cronLog("$silinenKayit eski kayıt soft-delete edildi.");
-        }
+        $deleteSql = "UPDATE endeks_okuma SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih = ? AND silinme_tarihi IS NULL";
+        $deleteParams = [$firmaId, $tarih];
 
         // 3. API verilerini işle ve insert listesi oluştur
         $insertBatch = [];
@@ -386,9 +382,17 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             $yeniKayit++;
         }
 
-        // 4. Toplu INSERT
+        // 4. Eski verileri sil ve Toplu INSERT yap (Transaction içinde)
+        $EndeksOkuma->db->beginTransaction();
+
+        $deleteStmt = $EndeksOkuma->db->prepare($deleteSql);
+        $deleteStmt->execute($deleteParams);
+        $silinenKayit = $deleteStmt->rowCount();
+        if ($silinenKayit > 0) {
+            cronLog("$silinenKayit eski kayıt soft-delete edildi.");
+        }
+
         if (!empty($insertBatch)) {
-            $EndeksOkuma->db->beginTransaction();
             $insertChunks = array_chunk($insertBatch, 500);
             foreach ($insertChunks as $chunk) {
                 $valuesPart = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'));
@@ -400,9 +404,9 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
                 $stmt = $EndeksOkuma->db->prepare($sql);
                 $stmt->execute($params);
             }
-            $EndeksOkuma->db->commit();
             cronLog("$yeniKayit yeni kayıt eklendi.");
         }
+        $EndeksOkuma->db->commit();
 
         if ($atlanAnKayitlar > 0) {
             cronLog("$atlanAnKayitlar kayıt atlandı (ekip eşleşmedi).");
