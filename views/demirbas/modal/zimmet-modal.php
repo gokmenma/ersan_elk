@@ -3,17 +3,17 @@ use App\Helper\Form;
 use App\Model\PersonelModel;
 use App\Model\DemirbasModel;
 
-$Personel = new PersonelModel();
-$Demirbas = new DemirbasModel();
+// $Personel = new PersonelModel();
+// $Demirbas = new DemirbasModel();
 
-$personeller = $Personel->all();
-$demirbaslar = $Demirbas->getInStock();
+// $personeller = $Personel->all();
+// $demirbaslar = $Demirbas->getInStock();
 
 // Personel seçeneklerini hazırla
 $personelOptions = [];
-foreach ($personeller as $p) {
-    $personelOptions[$p->id] = $p->adi_soyadi . ' - ' . ($p->cep_telefonu ?? '');
-}
+// foreach ($personeller as $p) {
+//     $personelOptions[$p->id] = $p->adi_soyadi . ' - ' . ($p->cep_telefonu ?? '');
+// }
 ?>
 
 <style>
@@ -47,6 +47,8 @@ foreach ($personeller as $p) {
         justify-content: center;
         gap: 0.5rem;
         user-select: none;
+        margin-bottom: 0;
+        line-height: 1.2;
     }
 
     .segmented-control input[type="radio"]:checked+label {
@@ -150,7 +152,21 @@ foreach ($personeller as $p) {
 
                     <div class="row">
                         <div class="col-md-12 mb-3">
-                            <?php echo Form::FormSelect2('personel_id', $personelOptions, null, 'Personel Seçin *', 'users'); ?>
+                            <div id="personelTuruWrapper" class="d-none">
+                                <label class="form-label d-block fw-bold text-muted small text-uppercase mb-2">Personel Seçimi</label>
+                                <div class="segmented-control mb-2">
+                                    <input type="radio" name="personel_turu" id="personelTuruTum" value="all" checked>
+                                    <label for="personelTuruTum">
+                                        <i data-feather="users" width="16" height="16"></i> Tüm Personeller
+                                    </label>
+    
+                                    <input type="radio" name="personel_turu" id="personelTuruKesmeAcma" value="kesme_acma">
+                                    <label for="personelTuruKesmeAcma">
+                                        <i data-feather="scissors" width="16" height="16"></i> Kesme Açma
+                                    </label>
+                                </div>
+                            </div>
+                            <?php echo Form::FormSelect2('personel_id', [], null, 'Personel Seçin *', 'users'); ?>
                         </div>
                     </div>
 

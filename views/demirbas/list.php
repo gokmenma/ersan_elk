@@ -692,23 +692,94 @@ if (!empty($sayacKatIds)) {
                                         <i class="bx bx-filter-alt text-primary"></i> <span
                                             class="fw-bold small text-muted">FİLTRELE:</span>
                                     </div>
-                                    <div class="btn-group btn-group-sm" role="group">
-                                        <input type="radio" class="btn-check zimmet-filter" name="zimmetFilter"
-                                            id="filterTum" value="all" checked>
-                                        <label class="btn btn-outline-primary px-3" for="filterTum">Tümü</label>
+                                    <div class="row g-2 align-items-center flex-grow-1">
+                                        <div class="col-md-auto ms-2">
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check zimmet-filter" name="zimmetFilter"
+                                                    id="filterTum" value="all" checked>
+                                                <label class="btn btn-outline-primary px-3" for="filterTum">Tümü</label>
 
-                                        <input type="radio" class="btn-check zimmet-filter" name="zimmetFilter"
-                                            id="filterDemirbas" value="demirbas">
-                                        <label class="btn btn-outline-primary px-3"
-                                            for="filterDemirbas">Demirbaş</label>
+                                                <input type="radio" class="btn-check zimmet-filter" name="zimmetFilter"
+                                                    id="filterDemirbas" value="demirbas">
+                                                <label class="btn btn-outline-primary px-3"
+                                                    for="filterDemirbas">Demirbaş</label>
 
-                                        <input type="radio" class="btn-check zimmet-filter" name="zimmetFilter"
-                                            id="filterSayac" value="sayac">
-                                        <label class="btn btn-outline-primary px-3" for="filterSayac">Sayaç</label>
+                                                <input type="radio" class="btn-check zimmet-filter" name="zimmetFilter"
+                                                    id="filterSayac" value="sayac">
+                                                <label class="btn btn-outline-primary px-3"
+                                                    for="filterSayac">Sayaç</label>
 
-                                        <input type="radio" class="btn-check zimmet-filter" name="zimmetFilter"
-                                            id="filterAparat" value="aparat">
-                                        <label class="btn btn-outline-primary px-3" for="filterAparat">Aparat</label>
+                                                <input type="radio" class="btn-check zimmet-filter" name="zimmetFilter"
+                                                    id="filterAparat" value="aparat">
+                                                <label class="btn btn-outline-primary px-3"
+                                                    for="filterAparat">Aparat</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-3 ms-auto">
+                                            <select class="form-control form-control-sm select2"
+                                                id="zimmet_personel_filtre" data-placeholder="Personel Filtresi">
+                                                <option value="all">Tüm Personeller</option>
+                                                <?php foreach ($personeller as $p): ?>
+                                                    <option value="<?php echo $p->id; ?>">
+                                                        <?php echo htmlspecialchars($p->adi_soyadi); ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Zimmet İstatistikleri Akordiyon -->
+                            <style>
+                                .accordion-button:not(.collapsed) .zimmet-stats-hint {
+                                    display: none !important;
+                                }
+                            </style>
+                            <div class="accordion mb-4" id="zimmetStatsAccordion">
+                                <div class="accordion-item shadow-sm border-0 rounded-3 overflow-hidden">
+                                    <h2 class="accordion-header" id="headingZimmetStats">
+                                        <button class="accordion-button collapsed bg-white fw-bold text-dark py-3"
+                                            type="button" data-bs-toggle="collapse"
+                                            data-bs-target="#collapseZimmetStats" aria-expanded="false"
+                                            aria-controls="collapseZimmetStats" style="box-shadow: none;">
+                                            <div class="d-flex w-100 align-items-center pe-3">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="bx bx-pie-chart-alt-2 fs-5 me-2 text-warning"></i>
+                                                    <span class="text-nowrap">Zimmet Dağılım İstatistikleri</span>
+                                                    <small class="text-warning ms-2">(Grafik için tıklayınız)</small>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    </h2>
+                                    <div id="collapseZimmetStats" class="accordion-collapse collapse"
+                                        aria-labelledby="headingZimmetStats" data-bs-parent="#zimmetStatsAccordion">
+                                        <div class="accordion-body bg-white border-top">
+                                            <div class="row g-3">
+                                                <div class="col-lg-6">
+                                                    <div class="card shadow-none border mb-0">
+                                                        <div class="card-header bg-light py-2">
+                                                            <h6 class="mb-0 fw-bold small">Kategori Bazlı Dağılım</h6>
+                                                        </div>
+                                                        <div class="card-body p-3">
+                                                            <div id="zimmetKategoriChart" style="min-height: 250px;">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-lg-6">
+                                                    <div class="card shadow-none border mb-0">
+                                                        <div class="card-header bg-light py-2">
+                                                            <h6 class="mb-0 fw-bold small">Durum Bazlı Dağılım</h6>
+                                                        </div>
+                                                        <div class="card-body p-3">
+                                                            <div id="zimmetDurumChart" style="min-height: 250px;"></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

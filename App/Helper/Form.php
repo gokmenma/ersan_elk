@@ -17,6 +17,7 @@ class Form
         $maxlength = null,
         $autocomplete = "on",
         $readonly = false,
+        $disabled = false,
         $attributes = ''
     ) {
         return '
@@ -27,6 +28,7 @@ class Form
                 placeholder="' . htmlspecialchars($placeholder ?? '') . '" ' . ($required ? 'required' : '') . ' ' . ($maxlength ? 'maxlength="' . htmlspecialchars($maxlength) . '"' : '') . '
                 autocomplete="' . htmlspecialchars($autocomplete) . '"
                 ' . ($readonly ? 'readonly' : '') . '
+                ' . ($disabled ? 'disabled' : '') . '
                 ' . $attributes . '
                 >
             <label for="' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>

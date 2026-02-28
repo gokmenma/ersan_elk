@@ -262,11 +262,11 @@ class Helper
         try {
             $db = new \App\Core\Db();
             $pdo = $db->getConnection();
-            
+
             if (empty($tables)) {
                 $tables = ['yapilan_isler', 'endeks_okuma'];
             }
-            
+
             if (is_string($tables)) {
                 $tables = [$tables];
             }
@@ -276,17 +276,40 @@ class Helper
             foreach ($tables as $table) {
                 $stmt = $pdo->query("SELECT MAX(created_at) FROM $table");
                 $date = $stmt->fetchColumn();
-                
+
                 if ($date) {
                     if ($maxDate === null || strtotime($date) > strtotime($maxDate)) {
                         $maxDate = $date;
                     }
                 }
             }
-            
+
             return $maxDate ? date('d.m.Y H:i', strtotime($maxDate)) : '-';
         } catch (\Exception $e) {
             return '-';
         }
+    }
+
+    public static function slugify($text)
+    {
+        $replace = [
+            'ç' => 'c',
+            'ğ' => 'g',
+            'ı' => 'i',
+            'i' => 'i',
+            'ö' => 'o',
+            'ş' => 's',
+            'ü' => 'u',
+            'Ç' => 'C',
+            'Ğ' => 'G',
+            'İ' => 'I',
+            'Ö' => 'O',
+            'Ş' => 'S',
+            'Ü' => 'U'
+        ];
+        $text = strtr($text, $replace);
+        $text = preg_replace('/[^a-zA-Z0-9\s-]/', '', $text);
+        $text = preg_replace('/[\s-]+/', '-', $text);
+        return strtolower(trim($text, '-'));
     }
 }

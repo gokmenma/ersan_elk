@@ -542,30 +542,30 @@ if ($action == "koli-kontrol") {
         // Veritabanından bu serilere sahip ürünleri çek
         // SQL Injection'a karşı placeholder oluştur
         $placeholders = implode(',', array_fill(0, count($seriler), '?'));
-        
+
         $sql = $Demirbas->getDb()->prepare("
             SELECT id, seri_no, kalan_miktar, durum 
             FROM demirbas 
             WHERE firma_id = ? AND seri_no IN ($placeholders)
         ");
-        
+
         $params = array_merge([$_SESSION['firma_id']], $seriler);
         $sql->execute($params);
         $records = $sql->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Sonuçları işle (key olarak seri no kullan)
         $dbResults = [];
         foreach ($records as $rec) {
             $dbResults[$rec['seri_no']] = $rec;
         }
-        
+
         $response = [];
         foreach ($seriler as $seri) {
             if (isset($dbResults[$seri])) {
                 $rec = $dbResults[$seri];
                 $kalan = intval($rec['kalan_miktar']);
                 $durum = strtolower($rec['durum']);
-                
+
                 if ($kalan > 0 && !in_array($durum, ['hurda', 'arizali'])) {
                     $response[$seri] = ["status" => "ok", "id" => $rec['id']];
                 } else {
@@ -575,7 +575,7 @@ if ($action == "koli-kontrol") {
                 $response[$seri] = ["status" => "missing"];
             }
         }
-        
+
         jsonResponse("success", "Kontrol tamamlandı", ["data" => $response]);
 
     } catch (Exception $ex) {
@@ -590,7 +590,7 @@ if ($action == "zimmet-koli-kaydet-coklu") {
         $personel_id = intval($_POST["personel_id"]);
         $teslim_tarihi = Date::Ymd($_POST["teslim_tarihi"], 'Y-m-d');
         $aciklama = $_POST["aciklama"] ?? null;
-        
+
         if (empty($koli_baslangiclar) || $personel_id <= 0) {
             jsonResponse("error", "Eksik bilgi.");
         }
@@ -602,11 +602,11 @@ if ($action == "zimmet-koli-kaydet-coklu") {
             if (!preg_match('/^(.*?)(\d+)$/', $baslangic, $matches)) {
                 continue; // Hatalı formatı atla
             }
-            
+
             $prefix = $matches[1];
             $number = intval($matches[2]);
             $digits = strlen($matches[2]);
-            
+
             for ($i = 0; $i < 10; $i++) {
                 $nextNum = str_pad($number + $i, $digits, "0", STR_PAD_LEFT);
                 $seri = $prefix . $nextNum;
@@ -614,7 +614,7 @@ if ($action == "zimmet-koli-kaydet-coklu") {
                 $koliMap[$seri] = $baslangic;
             }
         }
-        
+
         if (empty($tumSeriler)) {
             jsonResponse("error", "İşlenecek seri numarası bulunamadı.");
         }
@@ -629,28 +629,28 @@ if ($action == "zimmet-koli-kaydet-coklu") {
         $params = array_merge([$_SESSION['firma_id']], $tumSeriler);
         $sql->execute($params);
         $records = $sql->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Stok kontrolü (Backend tarafında da tekrar kontrol edelim)
         $dbRecordsMap = [];
-        foreach($records as $rec) {
+        foreach ($records as $rec) {
             $dbRecordsMap[$rec['seri_no']] = $rec;
         }
 
         $eksikSeriler = [];
-        foreach($tumSeriler as $seri) {
-            if(!isset($dbRecordsMap[$seri]) || $dbRecordsMap[$seri]['kalan_miktar'] <= 0) {
+        foreach ($tumSeriler as $seri) {
+            if (!isset($dbRecordsMap[$seri]) || $dbRecordsMap[$seri]['kalan_miktar'] <= 0) {
                 $eksikSeriler[] = $seri;
             }
         }
 
         if (!empty($eksikSeriler)) {
-            jsonResponse("error", "Bazı sayaçlar stokta bulunamadı: " . implode(", ", array_slice($eksikSeriler, 0, 5)) . (count($eksikSeriler)>5 ? "..." : ""));
+            jsonResponse("error", "Bazı sayaçlar stokta bulunamadı: " . implode(", ", array_slice($eksikSeriler, 0, 5)) . (count($eksikSeriler) > 5 ? "..." : ""));
         }
-        
+
         // İşlem
         $Zimmet->getDb()->beginTransaction();
         $successCount = 0;
-        
+
         foreach ($records as $rec) {
             $seri = $rec['seri_no'];
             $koliBaslangic = $koliMap[$seri] ?? '?';
@@ -663,13 +663,13 @@ if ($action == "zimmet-koli-kaydet-coklu") {
                 "aciklama" => $aciklama ? "$aciklama (Koli: $koliBaslangic)" : "Koli: $koliBaslangic",
                 "teslim_eden_id" => $_SESSION["id"] ?? null
             ];
-            
+
             $Zimmet->zimmetVer($data);
             $successCount++;
         }
-        
+
         $Zimmet->getDb()->commit();
-        
+
         jsonResponse("success", "$successCount adet sayaç başarıyla zimmetlendi.");
 
     } catch (Exception $ex) {
@@ -729,6 +729,26 @@ if ($action == "zimmet-sil") {
     }
 }
 
+// Zimmet Hareket Sil (İadeyi Geri Al)
+if ($action == "zimmet-hareket-sil") {
+    $id = Security::decrypt($_POST["id"] ?? null);
+
+    try {
+        if (!$id) {
+            jsonResponse("error", "Geçersiz hareket ID.");
+        }
+
+        $result = $Zimmet->iadeSil($id);
+        if ($result === true) {
+            jsonResponse("success", "İşlem başarıyla geri alındı. Stok ve zimmet durumu güncellendi.");
+        } else {
+            jsonResponse("error", "İşlem başarısız.");
+        }
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+}
+
 // Zimmet Detay
 if ($action == "zimmet-detay") {
     $id = Security::decrypt($_POST["id"] ?? $_GET["id"]);
@@ -744,6 +764,7 @@ if ($action == "zimmet-detay") {
 
             // Hareket verilerini formatla
             foreach ($hareketler as $h) {
+                $h->id = Security::encrypt($h->id);
                 $h->tarih_format = date('d.m.Y', strtotime($h->tarih));
                 $h->hareket_badge = DemirbasHareketModel::getHareketTipiBadge($h->hareket_tipi);
                 $h->kaynak_badge = DemirbasHareketModel::getKaynakBadge($h->kaynak);
@@ -931,6 +952,21 @@ if ($action == "excel-upload") {
 }
 
 // ============== ARAMA İŞLEMLERİ ==============
+
+// Select2 için personel arama
+if ($action == "personel-ara") {
+    $search = $_GET["q"] ?? $_POST["q"] ?? "";
+    $type = $_GET["type"] ?? $_POST["type"] ?? "all";
+
+    try {
+        $Personel = new \App\Model\PersonelModel();
+        $results = $Personel->searchForZimmet($search, $type);
+        echo json_encode(["results" => $results]);
+    } catch (Exception $ex) {
+        echo json_encode(["results" => []]);
+    }
+    exit;
+}
 
 // Select2 için demirbaş arama
 if ($action == "demirbas-ara") {
@@ -1157,5 +1193,63 @@ if ($action == "servis-sil") {
         jsonResponse("success", "Kayıt silindi.");
     } catch (Exception $e) {
         jsonResponse("error", "Silinemedi: " . $e->getMessage());
+    }
+}
+
+// Zimmet grafik istatistikleri
+if ($action == "zimmet-stats-chart") {
+    try {
+        $personel_id = intval($_POST["personel_id"] ?? 0);
+        $where = " WHERE d.firma_id = ? ";
+        $params = [$_SESSION['firma_id']];
+        if ($personel_id > 0) {
+            $where .= " AND z.personel_id = ? ";
+            $params[] = $personel_id;
+        }
+
+        // Kategori Bazlı Dağılım
+        $sqlKat = $Demirbas->db->prepare("
+            SELECT COALESCE(k.tur_adi, 'Kategorisiz') as label, COUNT(*) as value
+            FROM demirbas_zimmet z
+            INNER JOIN demirbas d ON z.demirbas_id = d.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
+            $where
+            GROUP BY COALESCE(k.tur_adi, 'Kategorisiz')
+        ");
+        $sqlKat->execute($params);
+        $katData = $sqlKat->fetchAll(PDO::FETCH_OBJ);
+
+        // Durum Bazlı Dağılım
+        $sqlDurum = $Demirbas->db->prepare("
+            SELECT z.durum as label, COUNT(*) as value
+            FROM demirbas_zimmet z
+            INNER JOIN demirbas d ON z.demirbas_id = d.id
+            $where
+            GROUP BY z.durum
+        ");
+        $sqlDurum->execute($params);
+        $durumData = $sqlDurum->fetchAll(PDO::FETCH_OBJ);
+
+        // Durum label'larını türkçeleştir
+        $durumMap = [
+            'teslim' => 'Zimmetli',
+            'iade' => 'İade Edildi',
+            'kayip' => 'Kayıp',
+            'arizali' => 'Arızalı'
+        ];
+        $durumDataFormatted = [];
+        foreach ($durumData as $d) {
+            $durumDataFormatted[] = [
+                'label' => $durumMap[strtolower($d->label)] ?? $d->label,
+                'value' => intval($d->value)
+            ];
+        }
+
+        jsonResponse("success", "Başarılı", [
+            "katData" => $katData,
+            "durumData" => $durumDataFormatted
+        ]);
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
     }
 }

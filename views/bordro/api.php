@@ -386,6 +386,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
+                // Görev geçmişi eksik uyarılarını işle
+                if (!empty($BordroPersonel->gorev_gecmisi_eksik)) {
+                    $eksikSayisi = count($BordroPersonel->gorev_gecmisi_eksik);
+                    $ggWarningText = "<i class='bx bx-info-circle me-1'></i><strong>$eksikSayisi personelin görev geçmişi kaydı bulunamadı.</strong> Bu personellerin maaşları personel tablosundaki mevcut verilerden hesaplandı. Doğru hesaplama için lütfen görev geçmişi tanımlayın.";
+                    if ($warning) {
+                        $warning .= "<br><br>" . $ggWarningText;
+                    } else {
+                        $warning = $ggWarningText;
+                    }
+
+                    $ggDetaylar = [];
+                    foreach ($BordroPersonel->gorev_gecmisi_eksik as $gg) {
+                        $pd = $Personel->find($gg['personel_id']);
+                        $pAdi = $pd ? $pd->adi_soyadi : "Personel #" . $gg['personel_id'];
+                        $encryptedId = Security::encrypt($gg['personel_id']);
+                        $personelLink = "index.php?p=personel%2Fmanage&id=" . urlencode($encryptedId) . "&tab=gorev_gecmisi";
+                        $ggDetaylar[] = "<li><i class='bx bx-error text-warning me-2'></i><a href='" . $personelLink . "' class='text-primary fw-bold'>" . htmlspecialchars($pAdi) . "</a> — Görev geçmişi tanımlı değil</li>";
+                    }
+
+                    $ggWarningDetails = "<div class='mt-2'><strong><i class='bx bx-history me-1'></i>Görev Geçmişi Eksik:</strong></div><ul class='text-start mb-0 ps-3 mt-1' style='list-style:none;'>" . implode('', $ggDetaylar) . "</ul>";
+                    if ($warningDetails) {
+                        $warningDetails .= "<hr class='my-2'>" . $ggWarningDetails;
+                    } else {
+                        $warningDetails = $ggWarningDetails;
+                    }
+                }
+
                 echo json_encode([
                     'status' => 'success',
                     'message' => $message,
@@ -394,7 +421,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'onay_bekleyen_adet' => $toplamOnayBekleyen,
                     'onay_bekleyen_tutar' => $toplamOnayBekleyenTutar,
                     'onay_bekleyen_personeller' => $onayBekleyenPersoneller,
-                    'icra_uyarilari' => $BordroPersonel->icra_uyarilari
+                    'icra_uyarilari' => $BordroPersonel->icra_uyarilari,
+                    'gorev_gecmisi_eksik' => $BordroPersonel->gorev_gecmisi_eksik
                 ]);
 
                 $SystemLog->logAction($userId, 'Maaş Hesaplama', "$hesaplananSayisi personelin maaşı hesaplandı.", SystemLogModel::LEVEL_IMPORTANT);
@@ -543,11 +571,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     if (!empty($personel->ise_giris_tarihi)) {
                         $iseGTs = strtotime($personel->ise_giris_tarihi);
-                        if ($iseGTs > $donemBasTsApi) $iseGirisDI = true;
+                        if ($iseGTs > $donemBasTsApi)
+                            $iseGirisDI = true;
                     }
                     if (!empty($personel->isten_cikis_tarihi)) {
                         $isCTs = strtotime($personel->isten_cikis_tarihi);
-                        if ($isCTs >= $donemBasTsApi && $isCTs < $donemBitTsApi) $istenCikisDI = true;
+                        if ($isCTs >= $donemBasTsApi && $isCTs < $donemBitTsApi)
+                            $istenCikisDI = true;
                     }
 
                     if ($iseGirisDI && $istenCikisDI) {
@@ -626,25 +656,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // 6) Net Maaş = Net Alacağı - Diğer Kesintiler (İcra vs.)
                 $netMaasHesap = $netAlacak - $digerKesintilerToplam;
-                if ($netMaasHesap < 0) $netMaasHesap = 0;
+                if ($netMaasHesap < 0)
+                    $netMaasHesap = 0;
 
                 // ============================================================
                 // HTML ÇIKTISI
                 // ============================================================
                 $html .= '<tr><td class="text-muted">Ek Ödeme:</td><td class="text-success fw-medium">+' . number_format($guncelEkOdeme, 2, ',', '.') . ' ₺</td></tr>';
-                
-              
+
+
                 // Kesinti Tutarı (Yasal)
                 $html .= '<tr><td class="text-muted">Kesinti Tutarı:</td><td class="text-danger fw-medium">' . ($kesintiTutarOzet > 0 ? '-' . number_format($kesintiTutarOzet, 2, ',', '.') . ' ₺' : '0,00 ₺') . '</td></tr>';
-                
+
                 // Net Alacağı
                 $html .= '<tr><td class="text-muted fw-bold">Net Alacağı:</td><td class="fw-bold text-success">' . number_format($netAlacak, 2, ',', '.') . ' ₺</td></tr>';
-                
+
                 // İcra / Diğer Kesintiler
                 if ($digerKesintilerToplam > 0) {
                     $html .= '<tr><td class="text-muted">İcra / Diğer Kesinti:</td><td class="text-danger fw-medium">-' . number_format($digerKesintilerToplam, 2, ',', '.') . ' ₺</td></tr>';
                 }
-                
+
                 // Net Maaş (son tutar: Net Alacağı - İcra)
                 $html .= '<tr class="table-success"><td class="fw-bold">Net Maaş:</td><td class="fw-bold text-success fs-5">' . number_format($netMaasHesap, 2, ',', '.') . ' ₺</td></tr>';
                 $html .= '</table>';
@@ -962,14 +993,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Ödeme Dağılımı - Dinamik Hesapla
                 // Not: Veritabanındaki tutarlar eski/hatalı hesaplamadan kalmış olabilir.
                 // Gerçek Net Hakediş (Net Alacağı - icra/avans/kesinti) = $netMaasHesap (yukarıda hesaplandı)
-                
+
                 $sodexoOdemeModal = floatval($bp->sodexo_odemesi ?? 0);
                 $digerOdemeModal = floatval($bp->diger_odeme ?? 0);
                 $eldenOdemeModal = floatval($bp->elden_odeme ?? 0);
-                
+
                 // Banka = (Net Alacağı - İcra) - Sodexo - Elden - Diğer
                 $bankaOdemeModal = $netMaasHesap - $sodexoOdemeModal - $eldenOdemeModal - $digerOdemeModal;
-                if ($bankaOdemeModal < 0) $bankaOdemeModal = 0;
+                if ($bankaOdemeModal < 0)
+                    $bankaOdemeModal = 0;
 
                 if ($bankaOdemeModal > 0 || $sodexoOdemeModal > 0 || $digerOdemeModal > 0 || $eldenOdemeModal > 0) {
                     $html .= '<div class="row mt-4">';

@@ -41,6 +41,7 @@
                                 <th>Tarih</th>
                                 <th>Açıklama / İş Emri</th>
                                 <th>Kaynak</th>
+                                <th class="text-center">İşlemler</th>
                             </tr>
                         </thead>
                         <tbody id="zimmetHareketBody">

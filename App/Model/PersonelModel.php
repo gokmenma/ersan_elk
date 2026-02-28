@@ -79,6 +79,53 @@ class PersonelModel extends Model
         return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function searchForZimmet($term, $type = 'all')
+    {
+        $term = "%$term%";
+        $params = [
+            'firma_id' => $_SESSION['firma_id'],
+            'term' => $term
+        ];
+
+        $sql = "SELECT p.id, p.adi_soyadi, p.cep_telefonu, p.gorev
+                FROM {$this->table} p 
+                WHERE p.firma_id = :firma_id 
+                AND p.silinme_tarihi IS NULL
+                AND (p.adi_soyadi LIKE :term OR p.tc_kimlik_no LIKE :term OR p.cep_telefonu LIKE :term)";
+
+        if ($type === 'kesme_acma') {
+            $sql = "SELECT p.id, p.adi_soyadi, p.cep_telefonu, p.gorev
+                    FROM {$this->table} p 
+                    WHERE p.firma_id = :firma_id 
+                    AND p.silinme_tarihi IS NULL
+                    AND (p.departman LIKE '%Kesme%' OR p.departman LIKE '%Açma%')
+                    AND (p.adi_soyadi LIKE :term OR p.tc_kimlik_no LIKE :term OR p.cep_telefonu LIKE :term)";
+        }
+
+        $sql .= " GROUP BY p.id ORDER BY p.adi_soyadi ASC LIMIT 50";
+
+        $query = $this->db->prepare($sql);
+        $query->execute($params);
+        
+        $results = [];
+        foreach ($query->fetchAll(PDO::FETCH_OBJ) as $row) {
+            $text = $row->adi_soyadi;
+            if ($row->cep_telefonu) {
+                $text .= ' (' . $row->cep_telefonu . ')';
+            }
+            if ($row->gorev) {
+                $text .= ' - ' . $row->gorev;
+            }
+            
+            $results[] = [
+                'id' => $row->id,
+                'text' => $text
+            ];
+        }
+        
+        return $results;
+    }
+
     public function search($term)
     {
         $term = "%$term%";
@@ -890,6 +937,51 @@ class PersonelModel extends Model
         $sql = "DELETE FROM personel_gorev_gecmisi WHERE id = ?";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([$id]);
+    }
+
+    /**
+     * Personelin aktif görev geçmişi kaydını getirir (bugün geçerli olan)
+     */
+    public function getAktifGorevGecmisi($personel_id)
+    {
+        $bugun = date('Y-m-d');
+        $sql = "SELECT * FROM personel_gorev_gecmisi 
+                WHERE personel_id = ? 
+                AND baslangic_tarihi <= ?
+                AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
+                ORDER BY baslangic_tarihi DESC 
+                LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$personel_id, $bugun, $bugun]);
+        return $stmt->fetch(\PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Personel tablosunu aktif görev geçmişi kaydına göre senkronize eder
+     * Maaş Tipi Geçmişi'ndeki aktif kayıt, personel tablosundaki departman/gorev/maas alanlarını günceller
+     */
+    public function syncPersonelFromGorevGecmisi($personel_id)
+    {
+        $aktifKayit = $this->getAktifGorevGecmisi($personel_id);
+        
+        if ($aktifKayit) {
+            $sql = "UPDATE {$this->table} SET 
+                    departman = ?, 
+                    gorev = ?, 
+                    maas_durumu = ?, 
+                    maas_tutari = ? 
+                    WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                $aktifKayit->departman,
+                $aktifKayit->gorev,
+                $aktifKayit->maas_durumu,
+                $aktifKayit->maas_tutari,
+                $personel_id
+            ]);
+        }
+        
+        return $aktifKayit;
     }
 
     public function getAdvancedDashboardStats()

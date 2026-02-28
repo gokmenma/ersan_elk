@@ -119,13 +119,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $data[$key] = Date::Ymd($value);
                 }
 
-                //şifreyi hash ile kaydet (sadece boş değilse)
+                // şifreyi hash ile kaydet (sadece boş değilse)
                 if ($key == 'sifre' && !empty($value)) {
                     $data[$key] = password_hash($value, PASSWORD_DEFAULT);
                 } else if ($key == 'sifre' && empty($value)) {
                     unset($data['sifre']);
                 }
+            }
 
+            /** Atlanacak Alanlar (ReadOnly / Geçmiş Tablosundan Yönetilen Alanlar) */
+            // Kullanıcı arayüzden readonly özelliğini kaldırıp gönderse bile arka planda kabul etmiyoruz
+            $atlanacak_alanlar = [
+                'departman_gosterim', 'departman', 
+                'gorev_gosterim', 'gorev', 
+                'maas_durumu_gosterim', 'maas_durumu', 
+                'maas_tutari_gosterim', 'maas_tutari',
+                'gunluk_ucret'
+            ];
+            foreach ($atlanacak_alanlar as $alan) {
+                if (array_key_exists($alan, $data)) {
+                    unset($data[$alan]);
+                }
+            }
+
+            // Geri kalan validasyon ve dönüşümler
+            foreach ($data as $key => $value) {
                 /**Parasal tutarlar için money formatını kaldır */
                 // NOT: maas_durumu alanı 'maas' içerdiği için para dönüşümüne giriyor, onu hariç tut
                 if ($key !== 'maas_durumu' && (strpos($key, 'tutar') !== false || strpos($key, 'ucret') !== false || strpos($key, 'maas') !== false || strpos($key, 'sodexo') !== false)) {
@@ -1030,6 +1048,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
+    } elseif ($action == 'get-aktif-gorev') {
+        try {
+            $personel_id = $_POST['personel_id'] ?? 0;
+            $aktifKayit = $Personel->getAktifGorevGecmisi($personel_id);
+            if ($aktifKayit) {
+                echo json_encode(['status' => 'success', 'data' => $aktifKayit]);
+            } else {
+                // Kayıt yoksa personel tablosundan mevcut verileri dön
+                $p = $Personel->find($personel_id);
+                if ($p) {
+                    echo json_encode(['status' => 'success', 'data' => [
+                        'departman' => $p->departman,
+                        'gorev' => $p->gorev,
+                        'maas_durumu' => $p->maas_durumu,
+                        'maas_tutari' => $p->maas_tutari
+                    ]]);
+                } else {
+                    echo json_encode(['status' => 'error', 'message' => 'Personel bulunamadı.']);
+                }
+            }
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
     } elseif ($action == 'gorev-gecmisi-ekle') {
         try {
             $data = $_POST;
@@ -1052,8 +1093,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             $Personel->addGorevGecmisi($saveData);
 
-            // Eğer bugün ekleniyorsa veya aktif bir tarihteyse personel tablosunu da güncelleyelim.
-            // Bu kısım şimdilik isteğe bağlı ama işe yarar olabilir. (İleride eklenebilir)
+            // Personel tablosunu aktif kayıtla senkronize et
+            $Personel->syncPersonelFromGorevGecmisi($data['personel_id']);
 
             echo json_encode(['status' => 'success', 'message' => 'Görev geçmişi başarıyla eklendi.']);
         } catch (Exception $e) {
@@ -1095,6 +1136,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'aciklama' => $data['aciklama'] ?? null
             ];
             $Personel->updateGorevGecmisi($saveData);
+
+            // Personel tablosunu aktif kayıtla senkronize et
+            $personel_id = $Personel->getSingleGorevGecmisi($data['id'])->personel_id ?? 0;
+            if ($personel_id > 0) {
+                $Personel->syncPersonelFromGorevGecmisi($personel_id);
+            }
+
             echo json_encode(['status' => 'success', 'message' => 'Görev geçmişi başarıyla güncellendi.']);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -1102,7 +1150,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } elseif ($action == 'gorev-gecmisi-sil') {
         try {
             $id = $_POST['id'];
+            // Silinmeden önce personel_id'yi al
+            $gecmisKayit = $Personel->getSingleGorevGecmisi($id);
+            $personel_id = $gecmisKayit->personel_id ?? 0;
+
             $Personel->deleteGorevGecmisi($id);
+
+            // Personel tablosunu aktif kayıtla senkronize et
+            if ($personel_id > 0) {
+                $Personel->syncPersonelFromGorevGecmisi($personel_id);
+            }
+
             echo json_encode(['status' => 'success', 'message' => 'Görev geçmişi kaydı silindi.']);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

@@ -5932,3 +5932,1110 @@ Result (String Match Y-m-d): 2026-02-01
 Input: 2026-02-28 Type: string
 Result (String Match Y-m-d): 2026-02-28
 ----------------
+Input: 2026-02-28 Type: string
+Result (String Match Y-m-d): 28/02/2026
+----------------
+Input: 2026-02-28 Type: string
+Result (String Match Y-m-d): 28/02/2026
+----------------
+Input: 2026-02-28 Type: string
+Result (String Match Y-m-d): 2026-02-28
+----------------
+Input: 2026-02-28 Type: string
+Result (String Match Y-m-d): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 2026-02-28 Type: string
+Result (String Match Y-m-d): 28/02/2026
+----------------
+Input: 2026-02-28 Type: string
+Result (String Match Y-m-d): 28/02/2026
+----------------
+Input: 2026-02-28 Type: string
+Result (String Match Y-m-d): 2026-02-28
+----------------
+Input: 2026-02-28 Type: string
+Result (String Match Y-m-d): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 2026-02-28 Type: string
+Result (String Match Y-m-d): 28/02/2026
+----------------
+Input: 2026-02-28 Type: string
+Result (String Match Y-m-d): 28/02/2026
+----------------
+Input: 2026-02-28 Type: string
+Result (String Match Y-m-d): 2026-02-28
+----------------
+Input: 2026-02-28 Type: string
+Result (String Match Y-m-d): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------
+Input: 28-FEB-26 Type: string
+Result (String DateTime): 2026-02-28
+----------------

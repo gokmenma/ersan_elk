@@ -29,6 +29,12 @@ use App\Helper\Helper;
         z-index: 10;
         pointer-events: none;
     }
+.readonly{
+    opacity: 0.6;
+    background-color: #f8f9fa;
+
+}
+
 </style>
 
 <div class="row">
@@ -51,44 +57,38 @@ use App\Helper\Helper;
                     </div>
                 </div>
 
-                <!-- 2. Grup: Maaş & Görev Bilgileri -->
+                <!-- 2. Grup: Maaş & Görev Bilgileri (Maaş Tipi Geçmişinden otomatik güncellenir) -->
                 <div class="mb-4">
-                    <h6 class="fw-bold text-muted mb-3"><i class="bx bx-briefcase-alt-2 me-1"></i>Maaş & Görev Bilgileri</h6>
+                    <h6 class="fw-bold text-muted mb-3">
+                        <i class="bx bx-briefcase-alt-2 me-1"></i>Maaş & Görev Bilgileri
+                        <span class="badge bg-soft-info text-info ms-2 fw-normal" style="font-size: 0.7rem;">
+                            <i class="bx bx-info-circle me-1"></i>Aşağıdaki Maaş Tipi Geçmişi tablosundan yönetilir
+                        </span>
+                    </h6>
+                    <?php
+                    // Aktif görev geçmişi kaydından verileri al, yoksa personel tablosundaki mevcut değerler
+                    $aktifGorev = ($id > 0) ? $PersonelModel->getAktifGorevGecmisi($id) : null;
+                    $gosterimDepartman = $aktifGorev->departman ?? $personel->departman ?? '';
+                    $gosterimGorev = $aktifGorev->gorev ?? $personel->gorev ?? '';
+                    $gosterimMaasDurumu = $aktifGorev->maas_durumu ?? $personel->maas_durumu ?? '';
+                    $gosterimMaasTutari = $aktifGorev->maas_tutari ?? $personel->maas_tutari ?? 0;
+                    ?>
                     <div class="row">
                         <div class="col-md-3 mb-2">
-                            <?php
-                            $selectedDepartmanlar = !empty($personel->departman) ? explode(',', $personel->departman) : [];
-                            echo Form::FormMultipleSelect2("departman", Helper::DEPARTMAN, $selectedDepartmanlar, "Departman", "grid", "key", "", "form-select select2", false, "main_departman");
-                            ?>
+                            <?php echo Form::FormFloatInput("text", "departman_gosterim", htmlspecialchars($gosterimDepartman), "Departman", "Departman", "grid", "form-control readonly", false, null, "off", true); ?>
+                            <input type="hidden" name="departman" value="<?= htmlspecialchars($gosterimDepartman) ?>">
                         </div>
                         <div class="col-md-3 mb-2">
-                            <div class="d-flex align-items-start gap-1 flex-wrap">
-                                <div class="form-floating form-floating-custom flex-grow-1">
-                                    <select style="width:100%" class="form-select select2" id="main_gorev" name="gorev"
-                                        data-current-gorev="<?php echo htmlspecialchars($personel->gorev ?? ''); ?>"
-                                        data-placeholder="Görev Seçiniz">
-                                        <option value="">Görev Seçiniz</option>
-                                    </select>
-                                    <label for="main_gorev">Görev / Unvan</label>
-                                    <div class="form-floating-icon">
-                                        <i data-feather="award"></i>
-                                    </div>
-                                </div>
-                                <a href="index?p=tanimlamalar/unvan-ucret" target="_blank"
-                                    class="btn btn-soft-primary btn-sm d-flex align-items-center justify-content-center"
-                                    style="min-width:32px; height:38px; margin-top:2px;" title="Unvan / Ücret Tanımla">
-                                    <i class="bx bx-plus font-size-18"></i>
-                                </a>
-                            </div>
+                            <?php echo Form::FormFloatInput("text", "gorev_gosterim", htmlspecialchars($gosterimGorev), "Görev / Unvan", "Görev / Unvan", "award", "form-control readonly", false, null, "off", true); ?>
+                            <input type="hidden" name="gorev" value="<?= htmlspecialchars($gosterimGorev) ?>">
                         </div>
-                        <div class="col-md-2 mb-2">
-                            <?php echo Form::FormSelect2("maas_durumu", Helper::MAAS_HESAPLAMA_TIPI, $personel->maas_durumu ?? 'Brüt', "Maaş Tipi", "dollar-sign"); ?>
+                        <div class="col-md-3 mb-2">
+                            <?php echo Form::FormFloatInput("text", "maas_durumu_gosterim", htmlspecialchars($gosterimMaasDurumu), "Maaş Tipi", "Maaş Tipi", "dollar-sign", "form-control readonly", false, null, "off", true); ?>
+                            <input type="hidden" name="maas_durumu" value="<?= htmlspecialchars($gosterimMaasDurumu) ?>">
                         </div>
-                        <div class="col-md-2 mb-2">
-                            <?php echo Form::FormFloatInput("text", "maas_tutari", Helper::formattedMoney($personel->maas_tutari ?? 0), "Maaş Tutarı", "Maaş Tutarı", "dollar-sign", "form-control money"); ?>
-                        </div>
-                        <div class="col-md-2 mb-2">
-                            <?php echo Form::FormFloatInput("text", "gunluk_ucret", Helper::formattedMoney($personel->gunluk_ucret ?? 0), "Günlük Ücreti", "Günlük Ücreti", "calendar", "form-control money"); ?>
+                        <div class="col-md-3 mb-2">
+                            <?php echo Form::FormFloatInput("text", "maas_tutari_gosterim", Helper::formattedMoney($gosterimMaasTutari), "Maaş Tutarı", "Maaş Tutarı", "dollar-sign", "form-control readonly", false, null, "off", true); ?>
+                            <input type="hidden" name="maas_tutari" value="<?= Helper::formattedMoney($gosterimMaasTutari) ?>">
                         </div>
                     </div>
                 </div>

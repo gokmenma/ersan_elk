@@ -197,6 +197,9 @@ use App\Helper\Helper;
             function refreshGorevGecmisiTable() {
                 var personelId = $('#formGorevGecmisiEkle input[name="personel_id"]').val();
 
+                // Aynı zamanda readonly gösterim alanlarını güncelle
+                refreshGorevGosterimAlanlari(personelId);
+
                 $.ajax({
                     url: 'views/personel/api.php',
                     type: 'POST',
@@ -473,6 +476,30 @@ use App\Helper\Helper;
                         $maasTutari.val("₺" + formattedUcret);
                         // IMask veya diğer dinleyiciler için input event'ini tetikle
                         $maasTutari.trigger('input');
+                    }
+                });
+            }
+
+            // Ana formdaki readonly gösterim alanlarını güncelle
+            window.refreshGorevGosterimAlanlari = function(personelId) {
+                $.ajax({
+                    url: 'views/personel/api.php',
+                    type: 'POST',
+                    data: { action: 'get-aktif-gorev', personel_id: personelId },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.status === 'success' && response.data) {
+                            var d = response.data;
+                            $('#departman_gosterim').val(d.departman || '');
+                            $('input[name="departman"]').val(d.departman || '');
+                            $('#gorev_gosterim').val(d.gorev || '');
+                            $('input[name="gorev"]').val(d.gorev || '');
+                            $('#maas_durumu_gosterim').val(d.maas_durumu || '');
+                            $('input[name="maas_durumu"]').val(d.maas_durumu || '');
+                            var formattedMaas = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(d.maas_tutari || 0);
+                            $('#maas_tutari_gosterim').val('₺' + formattedMaas);
+                            $('input[name="maas_tutari"]').val(d.maas_tutari || 0);
+                        }
                     }
                 });
             }

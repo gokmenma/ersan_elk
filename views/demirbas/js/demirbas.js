@@ -83,6 +83,7 @@ $(document).ready(function () {
       data: function (d) {
         d.action = "zimmet-listesi";
         d.filter_type = $('input[name="zimmetFilter"]:checked').val() || "all";
+        d.personel_id = $("#zimmet_personel_filtre").val() || "all";
         d.sayac_kat_ids = typeof sayacKatIds !== "undefined" ? sayacKatIds : [];
         d.aparat_kat_ids =
           typeof aparatKatIds !== "undefined" ? aparatKatIds : [];
@@ -406,6 +407,26 @@ function initSelect2() {
       placeholder: "Personel arayın...",
       allowClear: true,
       width: "100%",
+      ajax: {
+        url: zimmetUrl,
+        type: "POST",
+        dataType: "json",
+        delay: 250,
+        data: function (params) {
+          return {
+            action: "personel-ara",
+            q: params.term,
+            type: $('input[name="personel_turu"]:checked').val() || "all",
+          };
+        },
+        processResults: function (data) {
+          return {
+            results: data.results,
+          };
+        },
+        cache: true,
+      },
+      minimumInputLength: 0,
     });
   }
 
@@ -458,6 +479,14 @@ function initSelect2() {
     $("#teslim_eden_personel_id").select2({
       dropdownParent: $("#servisModal"),
       placeholder: "Personel Seçin...",
+      allowClear: true,
+      width: "100%",
+    });
+  }
+
+  if ($("#zimmet_personel_filtre").length) {
+    $("#zimmet_personel_filtre").select2({
+      placeholder: "Personel seçin...",
       allowClear: true,
       width: "100%",
     });
@@ -1111,6 +1140,11 @@ $(".modal").on("shown.bs.modal", function () {
 
 // ============== ZİMMET İŞLEMLERİ ==============
 
+// Personel Türü Radio Button Değişikliği
+$(document).on("change", 'input[name="personel_turu"]', function () {
+  $("#personel_id").val(null).trigger("change");
+});
+
 // Zimmet Türü Radio Button Değişikliği
 $(document).on("change", 'input[name="zimmet_turu"]', function () {
   let type = $(this).val();
@@ -1121,15 +1155,21 @@ function filterZimmetOptions(type) {
   // AJAX kullandığımız için sadece seçimi temizliyoruz.
   // Select2, açıldığında 'type' parametresini (radio buton) okuyarak sunucudan doğru veriyi çekecek.
   $("#demirbas_id_zimmet").val(null).trigger("change");
-  
+
   // Koli Modu Göster/Gizle
-  if(type === "sayac") {
-      $("#koliModuWrapper").removeClass("d-none");
+  if (type === "sayac") {
+    $("#koliModuWrapper").removeClass("d-none");
+    $("#personelTuruWrapper").removeClass("d-none");
   } else {
-      $("#koliModuWrapper").addClass("d-none");
-      if($("#koliModuToggle").is(":checked")) {
-          $("#koliModuToggle").prop("checked", false).trigger("change");
-      }
+    $("#koliModuWrapper").addClass("d-none");
+    $("#personelTuruWrapper").addClass("d-none");
+
+    // Filtreyi sıfırla (Tüm Personeller)
+    $("#personelTuruTum").prop("checked", true).trigger("change");
+
+    if ($("#koliModuToggle").is(":checked")) {
+      $("#koliModuToggle").prop("checked", false).trigger("change");
+    }
   }
 }
 
@@ -1137,192 +1177,197 @@ function filterZimmetOptions(type) {
 let koliListesi = [];
 
 // Koli Modu Toggle
-$(document).on("change", "#koliModuToggle", function() {
-    if($(this).is(":checked")) {
-        $("#tekliSecimAlani").addClass("d-none");
-        $("#koliSecimAlani").removeClass("d-none");
-        // Miktarı 10'a sabitle ve gizle (veya disable et)
-        $("#teslim_miktar").val(10).prop("readonly", true);
-        $("#kalanMiktarText").text("-"); // Koli modunda kalan anlamsız
-        $("#demirbas_id_zimmet").removeAttr("required"); // HTML5 validation'ı engellemek için
-        koliListesi = [];
-        renderKoliListesi();
-        $("#koli_baslangic_seri").val('').focus();
-    } else {
-        $("#tekliSecimAlani").removeClass("d-none");
-        $("#koliSecimAlani").addClass("d-none");
-        $("#teslim_miktar").val(1).prop("readonly", false);
-        $("#demirbas_id_zimmet").attr("required", true);
-    }
+$(document).on("change", "#koliModuToggle", function () {
+  if ($(this).is(":checked")) {
+    $("#tekliSecimAlani").addClass("d-none");
+    $("#koliSecimAlani").removeClass("d-none");
+    // Miktarı 10'a sabitle ve gizle (veya disable et)
+    $("#teslim_miktar").val(10).prop("readonly", true);
+    $("#kalanMiktarText").text("-"); // Koli modunda kalan anlamsız
+    $("#demirbas_id_zimmet").removeAttr("required"); // HTML5 validation'ı engellemek için
+    koliListesi = [];
+    renderKoliListesi();
+    $("#koli_baslangic_seri").val("").focus();
+  } else {
+    $("#tekliSecimAlani").removeClass("d-none");
+    $("#koliSecimAlani").addClass("d-none");
+    $("#teslim_miktar").val(1).prop("readonly", false);
+    $("#demirbas_id_zimmet").attr("required", true);
+  }
 });
 
 // Koli Ekleme Fonksiyonu
 function koliEkle(inputVal) {
-    if (!inputVal) return;
-    
-    // Virgülle ayrılmış girişleri destekle
-    let girisler = inputVal.split(/[\s,]+/);
-    let eklendi = false;
+  if (!inputVal) return;
 
-    girisler.forEach(seri => {
-        seri = seri.trim();
-        if (seri.length < 3) return;
-        
-        // Zaten ekli mi?
-        if (koliListesi.some(k => k.baslangic === seri)) {
-            return; 
-        }
+  // Virgülle ayrılmış girişleri destekle
+  let girisler = inputVal.split(/[\s,]+/);
+  let eklendi = false;
 
-        let koliObj = {
-            id: 'koli_' + new Date().getTime() + '_' + Math.floor(Math.random() * 1000),
-            baslangic: seri,
-            durum: 'bekliyor',
-            mesaj: 'Kontrol ediliyor...',
-            uygunSayisi: 0,
-            seriler: []
-        };
+  girisler.forEach((seri) => {
+    seri = seri.trim();
+    if (seri.length < 3) return;
 
-        koliListesi.push(koliObj);
-        eklendi = true;
-        koliKontrolEt(koliObj);
-    });
-
-    if (eklendi) {
-        renderKoliListesi();
-        $("#koli_baslangic_seri").val('');
+    // Zaten ekli mi?
+    if (koliListesi.some((k) => k.baslangic === seri)) {
+      return;
     }
+
+    let koliObj = {
+      id:
+        "koli_" + new Date().getTime() + "_" + Math.floor(Math.random() * 1000),
+      baslangic: seri,
+      durum: "bekliyor",
+      mesaj: "Kontrol ediliyor...",
+      uygunSayisi: 0,
+      seriler: [],
+    };
+
+    koliListesi.push(koliObj);
+    eklendi = true;
+    koliKontrolEt(koliObj);
+  });
+
+  if (eklendi) {
+    renderKoliListesi();
+    $("#koli_baslangic_seri").val("");
+  }
 }
 
 // Koli Ekle Butonu
-$(document).on("click", "#btnKoliEkle", function() {
-    koliEkle($("#koli_baslangic_seri").val());
+$(document).on("click", "#btnKoliEkle", function () {
+  koliEkle($("#koli_baslangic_seri").val());
 });
 
 // Enter tuşu ile ekleme
-$(document).on("keypress", "#koli_baslangic_seri", function(e) {
-    if(e.which === 13) {
-        e.preventDefault();
-        koliEkle($(this).val());
-    }
+$(document).on("keypress", "#koli_baslangic_seri", function (e) {
+  if (e.which === 13) {
+    e.preventDefault();
+    koliEkle($(this).val());
+  }
 });
 
 // Koli Silme
-$(document).on("click", ".koli-sil", function() {
-    let id = $(this).data("id");
-    koliListesi = koliListesi.filter(k => k.id !== id);
-    renderKoliListesi();
+$(document).on("click", ".koli-sil", function () {
+  let id = $(this).data("id");
+  koliListesi = koliListesi.filter((k) => k.id !== id);
+  renderKoliListesi();
 });
 
 // Koli Listesini Render Et
 function renderKoliListesi() {
-    let $liste = $("#eklenenKolilerListesi");
-    let $info = $("#toplamKoliBilgisi");
-    
-    $liste.empty();
-    
-    if (koliListesi.length === 0) {
-        $liste.addClass("d-none");
-        $info.addClass("d-none");
-        // Eğer koli modundaysak ve liste boşsa butonu pasif yap
-        if($("#koliModuToggle").is(":checked")) {
-            $("#zimmetKaydet").prop("disabled", true);
-        }
-        return;
+  let $liste = $("#eklenenKolilerListesi");
+  let $info = $("#toplamKoliBilgisi");
+
+  $liste.empty();
+
+  if (koliListesi.length === 0) {
+    $liste.addClass("d-none");
+    $info.addClass("d-none");
+    // Eğer koli modundaysak ve liste boşsa butonu pasif yap
+    if ($("#koliModuToggle").is(":checked")) {
+      $("#zimmetKaydet").prop("disabled", true);
+    }
+    return;
+  }
+
+  $liste.removeClass("d-none");
+  $info.removeClass("d-none");
+
+  let toplamKoli = koliListesi.length;
+  let toplamSayac = toplamKoli * 10;
+  let hepsiUygun = true;
+
+  koliListesi.forEach((koli) => {
+    let badgeClass = "bg-secondary";
+    let icon = "bx-loader-alt bx-spin";
+
+    if (koli.durum === "uygun") {
+      badgeClass = "bg-success";
+      icon = "bx-check";
+    } else if (koli.durum === "hatali") {
+      badgeClass = "bg-danger";
+      icon = "bx-x";
+      hepsiUygun = false;
+    } else {
+      hepsiUygun = false;
     }
 
-    $liste.removeClass("d-none");
-    $info.removeClass("d-none");
-
-    let toplamKoli = koliListesi.length;
-    let toplamSayac = toplamKoli * 10;
-    let hepsiUygun = true;
-
-    koliListesi.forEach(koli => {
-        let badgeClass = "bg-secondary";
-        let icon = "bx-loader-alt bx-spin";
-        
-        if (koli.durum === 'uygun') {
-            badgeClass = "bg-success";
-            icon = "bx-check";
-        } else if (koli.durum === 'hatali') {
-            badgeClass = "bg-danger";
-            icon = "bx-x";
-            hepsiUygun = false;
-        } else {
-            hepsiUygun = false; 
-        }
-
-        let html = `
+    let html = `
             <div class="list-group-item d-flex justify-content-between align-items-center">
                 <div>
                     <h6 class="mb-0"><i class="bx bx-package me-1"></i>${koli.baslangic} <small class="text-muted">(10 Adet)</small></h6>
-                    <small class="${koli.durum === 'uygun' ? 'text-success' : (koli.durum === 'hatali' ? 'text-danger' : 'text-muted')}">
+                    <small class="${koli.durum === "uygun" ? "text-success" : koli.durum === "hatali" ? "text-danger" : "text-muted"}">
                         <i class='bx ${icon}'></i> ${koli.mesaj}
                     </small>
                 </div>
                 <button type="button" class="btn btn-sm btn-outline-danger koli-sil" data-id="${koli.id}"><i class="bx bx-trash"></i></button>
             </div>
         `;
-        $liste.append(html);
-    });
+    $liste.append(html);
+  });
 
-    $("#lblToplamKoli").text(toplamKoli);
-    $("#lblToplamSayac").text(toplamSayac);
-    
-    // Eğer koli modundaysak ve hepsi uygunsa butonu aç
-    if($("#koliModuToggle").is(":checked")) {
-        $("#zimmetKaydet").prop("disabled", !hepsiUygun);
-    }
+  $("#lblToplamKoli").text(toplamKoli);
+  $("#lblToplamSayac").text(toplamSayac);
+
+  // Eğer koli modundaysak ve hepsi uygunsa butonu aç
+  if ($("#koliModuToggle").is(":checked")) {
+    $("#zimmetKaydet").prop("disabled", !hepsiUygun);
+  }
 }
 
 // Backend Kontrolü
 function koliKontrolEt(koli) {
-    let parsed = parseSeriNo(koli.baslangic);
-    if(!parsed) {
-        koli.durum = 'hatali';
-        koli.mesaj = 'Geçersiz seri no formatı';
-        renderKoliListesi();
-        return;
-    }
+  let parsed = parseSeriNo(koli.baslangic);
+  if (!parsed) {
+    koli.durum = "hatali";
+    koli.mesaj = "Geçersiz seri no formatı";
+    renderKoliListesi();
+    return;
+  }
 
-    let seriler = [];
-    for(let i=0; i<10; i++) {
-        seriler.push(buildSeriNo(parsed.prefix, parsed.number + i, parsed.digits));
-    }
-    koli.seriler = seriler;
+  let seriler = [];
+  for (let i = 0; i < 10; i++) {
+    seriler.push(buildSeriNo(parsed.prefix, parsed.number + i, parsed.digits));
+  }
+  koli.seriler = seriler;
 
-    $.post(zimmetUrl, {
-        action: "koli-kontrol",
-        seriler: JSON.stringify(seriler)
-    }, function(res) {
-        let data = typeof res === "string" ? JSON.parse(res) : res;
-        
-        if(data.status === "success") {
-            let sonuclar = data.data;
-            let uygunSayisi = 0;
-            
-            seriler.forEach(seri => {
-                let info = sonuclar[seri];
-                if(info && info.status === "ok") {
-                    uygunSayisi++;
-                }
-            });
-            
-            koli.uygunSayisi = uygunSayisi;
-            
-            if(uygunSayisi === 10) {
-                koli.durum = 'uygun';
-                koli.mesaj = '10/10 Uygun';
-            } else {
-                koli.durum = 'hatali';
-                koli.mesaj = `${uygunSayisi}/10 Uygun - Stok kontrol ediniz`;
-            }
+  $.post(
+    zimmetUrl,
+    {
+      action: "koli-kontrol",
+      seriler: JSON.stringify(seriler),
+    },
+    function (res) {
+      let data = typeof res === "string" ? JSON.parse(res) : res;
+
+      if (data.status === "success") {
+        let sonuclar = data.data;
+        let uygunSayisi = 0;
+
+        seriler.forEach((seri) => {
+          let info = sonuclar[seri];
+          if (info && info.status === "ok") {
+            uygunSayisi++;
+          }
+        });
+
+        koli.uygunSayisi = uygunSayisi;
+
+        if (uygunSayisi === 10) {
+          koli.durum = "uygun";
+          koli.mesaj = "10/10 Uygun";
         } else {
-            koli.durum = 'hatali';
-            koli.mesaj = 'Sunucu hatası';
+          koli.durum = "hatali";
+          koli.mesaj = `${uygunSayisi}/10 Uygun - Stok kontrol ediniz`;
         }
-        renderKoliListesi();
-    });
+      } else {
+        koli.durum = "hatali";
+        koli.mesaj = "Sunucu hatası";
+      }
+      renderKoliListesi();
+    },
+  );
 }
 
 // Demirbaş listesinden zimmet ver
@@ -1332,18 +1377,20 @@ $(document).on("click", ".zimmet-ver", function (e) {
   let rawId = $(this).data("raw-id");
   let name = $(this).data("name");
   let kalan = $(this).data("kalan");
-  
+
   // Hangi tablodan tıklandığını bulup türü belirle
-  let tableId = $(this).closest('table').attr('id');
-  let type = 'demirbas';
-  if (tableId === 'sayacTable') type = 'sayac';
-  else if (tableId === 'aparatTable') type = 'aparat';
+  let tableId = $(this).closest("table").attr("id");
+  let type = "demirbas";
+  if (tableId === "sayacTable") type = "sayac";
+  else if (tableId === "aparatTable") type = "aparat";
 
   // Formu sıfırla (tür seçimini atla)
   resetZimmetForm(false);
-  
+
   // Türü ayarla
-  $('input[name="zimmet_turu"][value="' + type + '"]').prop('checked', true);
+  $('input[name="zimmet_turu"][value="' + type + '"]')
+    .prop("checked", true)
+    .trigger("change");
 
   $("#zimmetModal").modal("show");
 
@@ -1351,14 +1398,14 @@ $(document).on("click", ".zimmet-ver", function (e) {
   if (rawId) {
     // Eğer seçenek zaten varsa (nadir) onu seç, yoksa oluştur
     if ($("#demirbas_id_zimmet option[value='" + rawId + "']").length === 0) {
-        var newOption = new Option(name, rawId, true, true);
-        $("#demirbas_id_zimmet").append(newOption);
+      var newOption = new Option(name, rawId, true, true);
+      $("#demirbas_id_zimmet").append(newOption);
     }
     $("#demirbas_id_zimmet").val(rawId).trigger("change");
-    
+
     // Kalan bilgisini seçili elemana ekle (data-kalan)
-    $("#demirbas_id_zimmet option:selected").data('kalan', kalan);
-    
+    $("#demirbas_id_zimmet option:selected").data("kalan", kalan);
+
     $("#demirbas_id_zimmet").prop("disabled", true);
   }
 
@@ -1376,79 +1423,89 @@ $(document).on("change", "#demirbas_id_zimmet", function () {
 // Zimmet Kaydet
 $(document).on("click", "#zimmetKaydet", function () {
   var form = $("#zimmetForm");
-  
+
   // Koli Modu Kontrolü
-  if($("#koliModuToggle").is(":checked")) {
-      let personel_id = $("#personel_id").val();
-      let teslim_tarihi = $("#teslim_tarihi").val();
-      
-      if(koliListesi.length === 0) {
-          Swal.fire("Hata", "Lütfen en az bir koli ekleyin.", "warning");
-          return;
-      }
-      
-      // Hepsinin uygun olduğundan emin ol
-      if(koliListesi.some(k => k.durum !== 'uygun')) {
-          Swal.fire("Hata", "Listede uygun olmayan koliler var. Lütfen kontrol ediniz.", "warning");
-          return;
-      }
+  if ($("#koliModuToggle").is(":checked")) {
+    let personel_id = $("#personel_id").val();
+    let teslim_tarihi = $("#teslim_tarihi").val();
 
-      if(!personel_id) {
-          Swal.fire("Hata", "Lütfen personel seçiniz.", "warning");
-          return;
-      }
-      if(!teslim_tarihi) {
-          Swal.fire("Hata", "Teslim tarihi zorunludur.", "warning");
-          return;
-      }
-      
-      // Backend'e gönderilecek veri: Sadece başlangıç serileri listesi
-      let baslangicSerileri = koliListesi.map(k => k.baslangic);
+    if (koliListesi.length === 0) {
+      Swal.fire("Hata", "Lütfen en az bir koli ekleyin.", "warning");
+      return;
+    }
 
-      var formData = new FormData();
-      formData.append("action", "zimmet-koli-kaydet-coklu"); // Yeni action
-      formData.append("koli_baslangiclar", JSON.stringify(baslangicSerileri));
-      formData.append("personel_id", personel_id);
-      formData.append("teslim_tarihi", teslim_tarihi);
-      formData.append("aciklama", $("#aciklama").val());
-      
-      // Disable button
-      let $btn = $(this);
-      $btn.prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin"></i> Kaydediliyor...');
-      
-      fetch(zimmetUrl, {
-        method: "POST",
-        body: formData,
-      })
+    // Hepsinin uygun olduğundan emin ol
+    if (koliListesi.some((k) => k.durum !== "uygun")) {
+      Swal.fire(
+        "Hata",
+        "Listede uygun olmayan koliler var. Lütfen kontrol ediniz.",
+        "warning",
+      );
+      return;
+    }
+
+    if (!personel_id) {
+      Swal.fire("Hata", "Lütfen personel seçiniz.", "warning");
+      return;
+    }
+    if (!teslim_tarihi) {
+      Swal.fire("Hata", "Teslim tarihi zorunludur.", "warning");
+      return;
+    }
+
+    // Backend'e gönderilecek veri: Sadece başlangıç serileri listesi
+    let baslangicSerileri = koliListesi.map((k) => k.baslangic);
+
+    var formData = new FormData();
+    formData.append("action", "zimmet-koli-kaydet-coklu"); // Yeni action
+    formData.append("koli_baslangiclar", JSON.stringify(baslangicSerileri));
+    formData.append("personel_id", personel_id);
+    formData.append("teslim_tarihi", teslim_tarihi);
+    formData.append("aciklama", $("#aciklama").val());
+
+    // Disable button
+    let $btn = $(this);
+    $btn
+      .prop("disabled", true)
+      .html('<i class="bx bx-loader-alt bx-spin"></i> Kaydediliyor...');
+
+    fetch(zimmetUrl, {
+      method: "POST",
+      body: formData,
+    })
       .then((response) => response.json())
       .then((data) => {
-          $btn.prop("disabled", false).html('<i data-feather="check-square" class="me-1"></i>Zimmet Ver');
-          if (typeof feather !== "undefined") feather.replace();
+        $btn
+          .prop("disabled", false)
+          .html('<i data-feather="check-square" class="me-1"></i>Zimmet Ver');
+        if (typeof feather !== "undefined") feather.replace();
 
-          if (data.status === "success") {
-            $("#zimmetModal").modal("hide");
-            resetZimmetForm();
-            loadZimmetList();
-            Swal.fire({
-              icon: "success",
-              title: "Başarılı!",
-              text: data.message,
-              confirmButtonText: "Tamam",
-            }).then((result) => {
-              if (result.isConfirmed) location.reload();
-            });
-          } else {
-            Swal.fire("Hata!", data.message, "error");
-          }
+        if (data.status === "success") {
+          $("#zimmetModal").modal("hide");
+          resetZimmetForm();
+          loadZimmetList();
+          Swal.fire({
+            icon: "success",
+            title: "Başarılı!",
+            text: data.message,
+            confirmButtonText: "Tamam",
+          }).then((result) => {
+            if (result.isConfirmed) location.reload();
+          });
+        } else {
+          Swal.fire("Hata!", data.message, "error");
+        }
       })
-      .catch(err => {
-          console.error(err);
-          $btn.prop("disabled", false).html('<i data-feather="check-square" class="me-1"></i>Zimmet Ver');
-          if (typeof feather !== "undefined") feather.replace();
-          Swal.fire("Hata!", "Bir hata oluştu.", "error");
+      .catch((err) => {
+        console.error(err);
+        $btn
+          .prop("disabled", false)
+          .html('<i data-feather="check-square" class="me-1"></i>Zimmet Ver');
+        if (typeof feather !== "undefined") feather.replace();
+        Swal.fire("Hata!", "Bir hata oluştu.", "error");
       });
-      
-      return;
+
+    return;
   }
 
   form.validate({
@@ -1644,20 +1701,24 @@ function resetZimmetForm(setDefaultType = true) {
     locale: "tr",
     defaultDate: new Date(),
   });
-  
+
   if (setDefaultType) {
     // Default olarak Demirbaş seç
     $("#zimmetTurDemirbas").prop("checked", true);
     // filterZimmetOptions'a gerek yok, zaten change tetiklenince select2 sıfırlanır
     $("#demirbas_id_zimmet").val(null).trigger("change");
-    
+
     // Koli modunu sıfırla
     $("#koliModuToggle").prop("checked", false).trigger("change");
     $("#koliModuWrapper").addClass("d-none");
+
+    // Personel filtre modunu sıfırla
+    $("#personelTuruWrapper").addClass("d-none");
+    $("#personelTuruTum").prop("checked", true);
   } else {
-      // Eğer setDefaultType false ise (örn: listeden tıklandıysa), 
-      // yine de koli modunu kapatmamız lazım çünkü listeden tekil seçim yapıldı
-      $("#koliModuToggle").prop("checked", false).trigger("change");
+    // Eğer setDefaultType false ise (örn: listeden tıklandıysa),
+    // yine de koli modunu kapatmamız lazım çünkü listeden tekil seçim yapıldı
+    $("#koliModuToggle").prop("checked", false).trigger("change");
   }
 }
 
@@ -1703,6 +1764,11 @@ $(document).on("click", ".zimmet-detay", function (e) {
         hBody.empty();
         if (hareketler && hareketler.length > 0) {
           hareketler.forEach((h) => {
+            let deleteBtn = "";
+            if (h.hareket_tipi === "iade") {
+              deleteBtn = `<button class="btn btn-sm btn-outline-danger zimmet-hareket-sil" data-id="${h.id}" data-type="iade" title="İadeyi Sil"><i class="bx bx-trash"></i></button>`;
+            }
+
             let row = `
               <tr>
                 <td>${h.hareket_badge}</td>
@@ -1710,13 +1776,14 @@ $(document).on("click", ".zimmet-detay", function (e) {
                 <td>${h.tarih_format}</td>
                 <td class="small">${h.aciklama || ""}</td>
                 <td>${h.kaynak_badge}</td>
+                <td class="text-center">${deleteBtn}</td>
               </tr>
             `;
             hBody.append(row);
           });
         } else {
           hBody.append(
-            '<tr><td colspan="5" class="text-center text-muted">Hareket kaydı bulunamadı.</td></tr>',
+            '<tr><td colspan="6" class="text-center text-muted">Hareket kaydı bulunamadı.</td></tr>',
           );
         }
 
@@ -1756,6 +1823,52 @@ $(document).on("click", ".zimmet-detay", function (e) {
       Swal.close();
       Swal.fire("Hata!", "Bir hata oluştu.", "error");
     });
+});
+
+// Zimmet Hareket Sil (İadeyi Geri Al)
+$(document).on("click", ".zimmet-hareket-sil", function (e) {
+  e.preventDefault();
+  let id = $(this).data("id");
+
+  Swal.fire({
+    title: "Emin misiniz?",
+    text: "Bu iade işlemini geri almak istediğinizden emin misiniz? Stok ve zimmet durumu güncellenecektir.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#74788d",
+    confirmButtonText: "Evet, Geri Al!",
+    cancelButtonText: "İptal",
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Pace.start();
+      $.ajax({
+        url: zimmetUrl,
+        type: "POST",
+        data: {
+          action: "zimmet-hareket-sil",
+          id: id,
+        },
+        dataType: "json",
+        success: function (data) {
+          if (data.status === "success") {
+            Swal.fire("Başarılı!", data.message, "success");
+            $("#zimmetDetayModal").modal("hide");
+            loadZimmetList();
+            if (typeof demirbasTable !== "undefined")
+              demirbasTable.ajax.reload(null, false);
+            if (typeof sayacTable !== "undefined")
+              sayacTable.ajax.reload(null, false);
+          } else {
+            Swal.fire("Hata!", data.message, "error");
+          }
+        },
+        error: function () {
+          Swal.fire("Hata!", "Sunucu ile iletişim kurulamadı.", "error");
+        },
+      });
+    }
+  });
 });
 
 // ============== EXCEL İŞLEMLERİ ==============
@@ -2575,4 +2688,134 @@ $(document).on("click", ".servis-sil", function () {
       );
     }
   });
+});
+
+// ============== ZİMMET İSTATİSTİKLERİ VE GRAFİKLER ==============
+
+var katChart, durumChart;
+
+function initZimmetCharts() {
+  if (typeof ApexCharts === "undefined") return;
+
+  const katOptions = {
+    chart: { height: 260, type: "donut" },
+    series: [],
+    labels: [],
+    colors: ["#556ee6", "#34c38f", "#f1b44c", "#50a5f1", "#f46a6a", "#32394e"],
+    legend: {
+      position: "bottom",
+      formatter: function (seriesName, opts) {
+        return (
+          seriesName + ":  " + opts.w.globals.seriesTotals[opts.seriesIndex]
+        );
+      },
+    },
+    dataLabels: {
+      enabled: true,
+      formatter: function (val, opts) {
+        return opts.w.globals.seriesTotals[opts.seriesIndex];
+      },
+      style: {
+        fontSize: "12px",
+        fontWeight: "bold",
+      },
+    },
+    stroke: { width: 0 },
+    noData: { text: "Veri Yükleniyor..." },
+  };
+
+  const durumOptions = {
+    chart: { height: 260, type: "pie" },
+    series: [],
+    labels: [],
+    colors: ["#f1b44c", "#34c38f", "#f46a6a", "#50a5f1"],
+    legend: {
+      position: "bottom",
+      formatter: function (seriesName, opts) {
+        return (
+          seriesName + ":  " + opts.w.globals.seriesTotals[opts.seriesIndex]
+        );
+      },
+    },
+    dataLabels: {
+      enabled: true,
+      formatter: function (val, opts) {
+        return opts.w.globals.seriesTotals[opts.seriesIndex];
+      },
+      style: {
+        fontSize: "12px",
+        fontWeight: "bold",
+      },
+    },
+    stroke: { width: 0 },
+    noData: { text: "Veri Yükleniyor..." },
+  };
+
+  katChart = new ApexCharts(
+    document.querySelector("#zimmetKategoriChart"),
+    katOptions,
+  );
+  durumChart = new ApexCharts(
+    document.querySelector("#zimmetDurumChart"),
+    durumOptions,
+  );
+
+  katChart.render();
+  durumChart.render();
+}
+
+function loadZimmetCharts() {
+  const pId = $("#zimmet_personel_filtre").val() || "all";
+
+  $.post(
+    zimmetUrl,
+    { action: "zimmet-stats-chart", personel_id: pId },
+    function (res) {
+      if (res.status === "success") {
+        const katLabels = res.katData.map((d) => d.label);
+        const katValues = res.katData.map((d) => parseInt(d.value));
+
+        const durumLabels = res.durumData.map((d) => d.label);
+        const durumValues = res.durumData.map((d) => parseInt(d.value));
+
+        if (!katChart || !durumChart) {
+          initZimmetCharts();
+        }
+
+        if (katChart && durumChart) {
+          katChart.updateOptions({
+            labels: katLabels || [],
+            series: katValues || [],
+          });
+          durumChart.updateOptions({
+            labels: durumLabels || [],
+            series: durumValues || [],
+          });
+        }
+      }
+    },
+    "json",
+  );
+}
+
+$(document).on("change", "#zimmet_personel_filtre", function () {
+  if (typeof zimmetTable !== "undefined") {
+    zimmetTable.ajax.reload();
+  }
+  if ($("#collapseZimmetStats").hasClass("show")) {
+    loadZimmetCharts();
+  }
+});
+
+$(document).on("change", 'input[name="zimmetFilter"]', function () {
+  if (typeof zimmetTable !== "undefined") {
+    zimmetTable.ajax.reload();
+  }
+});
+
+$("#collapseZimmetStats").on("shown.bs.collapse", function () {
+  if (!katChart) {
+    initZimmetCharts();
+  }
+  loadZimmetCharts();
 });

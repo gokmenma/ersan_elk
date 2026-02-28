@@ -1128,7 +1128,7 @@ if (isset($_GET["action"]) && $_GET["action"] == "get-comparison-report") {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'online-puantaj-sorgula') {
     ob_start();
     header('Content-Type: application/json; charset=utf-8');
-    
+
     // Yalnızca firma_kodu 17 olanlar sorgulayabilir.
     if (($_SESSION["firma_kodu"] ?? 17) != 17) {
         echo json_encode(['status' => 'error', 'message' => 'API sorgulaması şu an sadece Firma Kodu 17 için desteklenmektedir. Diğer firmaların verileri şu an çekilemez.']);
@@ -1160,9 +1160,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $lockTime = strtotime($lockParts[0]);
             $lockUserId = $lockParts[1] ?? 0;
 
-            // Eğer kilit 10 dakikadan eskiyse VEYA kilidi koyan aynı kullanıcıysa devam et
-            if ((time() - $lockTime) < 600 && $lockUserId != $currentUserId) {
-                throw new Exception("Şu anda başka bir kullanıcı tarafından kesme/açma sorgulama işlemi yapılıyor. Lütfen işlemin bitmesini bekleyin.");
+            // Eğer kilit 10 dakikadan eskiyse devam et
+            if ((time() - $lockTime) < 600) {
+                if ($lockUserId == $currentUserId) {
+                    throw new Exception("Şu anda devam eden bir kesme/açma sorgulama işleminiz bulunuyor. Lütfen işlemin bitmesini bekleyin.");
+                } else {
+                    throw new Exception("Şu anda başka bir kullanıcı tarafından kesme/açma sorgulama işlemi yapılıyor. Lütfen işlemin bitmesini bekleyin.");
+                }
             }
         }
 
@@ -1284,7 +1288,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $ekipGecmisi[$h['ekip_kodu_id']][] = $h;
         }
 
-        // 2. Mevcut kayıtları temizle (Hız ve veri tutarlılığı için Sil/Yeniden Yükle)
+        // 2. Mevcut kayıtları temizle (İleride transaction içerisinde yapılacak, SQL'i hazırlıyoruz)
         $filterArray = !empty($resultsFilter) ? array_map('trim', explode(',', $resultsFilter)) : [];
         $deleteSql = "UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL";
         $deleteParams = [$firmaId, $baslangicTarihi, $bitisTarihi];
@@ -1294,10 +1298,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $deleteSql .= " AND TRIM(is_emri_sonucu) IN ($placeholders)";
             $deleteParams = array_merge($deleteParams, $filterArray);
         }
-
-        $deleteStmt = $Puantaj->db->prepare($deleteSql);
-        $deleteStmt->execute($deleteParams);
-        $silinenKayit = $deleteStmt->rowCount();
 
         // 3. API verilerini işle
         $insertBatch = [];
@@ -1422,9 +1422,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucu, $normDate, $islemId, $sonuclanmis);
         }
 
-        // 4. Toplu Kayıt (Yeni olanlar)
+        // 4. Toplu Kayıt (Yeni olanlar) ve Temizleme işlemi
+        $Puantaj->db->beginTransaction();
+
+        $deleteStmt = $Puantaj->db->prepare($deleteSql);
+        $deleteStmt->execute($deleteParams);
+        $silinenKayit = $deleteStmt->rowCount();
+
         if (!empty($insertBatch)) {
-            $Puantaj->db->beginTransaction();
             $chunks = array_chunk($insertBatch, 500);
             foreach ($chunks as $chunk) {
                 $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?)'));
@@ -1436,8 +1441,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 }
                 $stmt->execute($flatParams);
             }
-            $Puantaj->db->commit();
         }
+        $Puantaj->db->commit();
 
         // Response güncellemesi
         $response['silinen_kayit'] = $silinenKayit;
@@ -1533,9 +1538,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $lockTime = strtotime($lockParts[0]);
             $lockUserId = $lockParts[1] ?? 0;
 
-            // Eğer kilit 10 dakikadan eskiyse VEYA kilidi koyan aynı kullanıcıysa devam et
-            if ((time() - $lockTime) < 600 && $lockUserId != $currentUserId) {
-                throw new Exception("Şu anda başka bir kullanıcı tarafından sorgulama işlemi yapılıyor. Lütfen işlemin bitmesini bekleyin.");
+            // Eğer kilit 10 dakikadan eskiyse devam et
+            if ((time() - $lockTime) < 600) {
+                if ($lockUserId == $currentUserId) {
+                    throw new Exception("Şu anda devam eden bir sorgulama işleminiz bulunuyor. Lütfen işlemin bitmesini bekleyin.");
+                } else {
+                    throw new Exception("Şu anda başka bir kullanıcı tarafından sorgulama işlemi yapılıyor. Lütfen işlemin bitmesini bekleyin.");
+                }
             }
         }
 
@@ -1615,10 +1624,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $ekipGecmisi[$h['ekip_kodu_id']][] = $h;
         }
 
-        // 2. Sorgulanan tarih aralığındaki mevcut kayıtları soft-delete et
-        $deleteStmt = $EndeksOkuma->db->prepare("UPDATE endeks_okuma SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL");
-        $deleteStmt->execute([$firmaId, $baslangicTarihiDB, $bitisTarihiDB]);
-        $silinenKayit = $deleteStmt->rowCount();
+        // 2. Sorgulanan tarih aralığındaki mevcut kayıtları soft-delete et (SQL'i hazırlıyoruz, transaction içinde işlenecek)
+        $deleteSql = "UPDATE endeks_okuma SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL";
+        $deleteParams = [$firmaId, $baslangicTarihiDB, $bitisTarihiDB];
 
         // 3. API verilerini işle ve insert listesi oluştur
         $insertBatch = [];
@@ -1715,9 +1723,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $yeniKayit++;
         }
 
-        // 4. Toplu INSERT (chunk halinde, her 50 kayıtta bir)
+        // 4. Toplu INSERT (chunk halinde, her 50 kayıtta bir) ve Temizleme işlemi
+        $EndeksOkuma->db->beginTransaction();
+
+        $deleteStmt = $EndeksOkuma->db->prepare($deleteSql);
+        $deleteStmt->execute($deleteParams);
+        $silinenKayit = $deleteStmt->rowCount();
+
         if (!empty($insertBatch)) {
-            $EndeksOkuma->db->beginTransaction();
             $insertChunks = array_chunk($insertBatch, 500);
             foreach ($insertChunks as $chunk) {
                 $valuesPart = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'));
@@ -1729,8 +1742,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $stmt = $EndeksOkuma->db->prepare($sql);
                 $stmt->execute($params);
             }
-            $EndeksOkuma->db->commit();
         }
+        $EndeksOkuma->db->commit();
 
         // Log kaydet
         $SystemLog = new SystemLogModel();

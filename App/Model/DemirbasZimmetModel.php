@@ -424,6 +424,13 @@ class DemirbasZimmetModel extends Model
             }
         }
 
+        // Personel Bazlı Filtreleme
+        $personelId = $request['personel_id'] ?? 'all';
+        if ($personelId !== 'all' && $personelId > 0) {
+            $searchWhere .= " AND z.personel_id = :personel_id";
+            $params['personel_id'] = $personelId;
+        }
+
         // Toplam kayıt sayısı (filtresiz)
         $totalSql = "SELECT COUNT(*) FROM {$this->table} z LEFT JOIN demirbas d ON z.demirbas_id = d.id WHERE z.silinme_tarihi IS NULL AND d.firma_id = :firma_id_total";
         $stmtTotal = $this->db->prepare($totalSql);
@@ -684,6 +691,75 @@ class DemirbasZimmetModel extends Model
         }
 
         return $results;
+    }
+
+    /**
+     * İade işlemini siler (Geri alır)
+     */
+    public function iadeSil($hareket_id)
+    {
+        $startedTransaction = false;
+        if (!$this->db->inTransaction()) {
+            $this->db->beginTransaction();
+            $startedTransaction = true;
+        }
+
+        try {
+            // 1. Hareket bilgisini al
+            $sql = $this->db->prepare("SELECT * FROM demirbas_hareketler WHERE id = ? AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL");
+            $sql->execute([$hareket_id]);
+            $h = $sql->fetch(PDO::FETCH_OBJ);
+
+            if (!$h) {
+                throw new \Exception("İade hareket kaydı bulunamadı.");
+            }
+
+            // 2. Zimmet bilgisini al
+            $sqlZimmet = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = ?");
+            $sqlZimmet->execute([$h->zimmet_id]);
+            $z = $sqlZimmet->fetch(PDO::FETCH_OBJ);
+
+            if (!$z) {
+                throw new \Exception("Zimmet kaydı bulunamadı.");
+            }
+
+            // 3. Demirbaş stok miktarını düzelte (azalt - çünkü iade siliniyor)
+            $sqlDemirbas = $this->db->prepare("
+                UPDATE demirbas 
+                SET kalan_miktar = kalan_miktar - ?
+                WHERE id = ?
+            ");
+            $sqlDemirbas->execute([$h->miktar, $h->demirbas_id]);
+
+            // 4. Zimmet kaydını güncelle
+            $yeniIadeMiktari = (int) ($z->iade_miktar ?? 0) - (int) $h->miktar;
+            if ($yeniIadeMiktari < 0)
+                $yeniIadeMiktari = 0;
+
+            // Eğer iade miktarı teslim miktarından az ise durum 'teslim' olur
+            $yeniDurum = ($yeniIadeMiktari < (int) $z->teslim_miktar) ? 'teslim' : 'iade';
+
+            $sqlUpZimmet = $this->db->prepare("
+                UPDATE {$this->table} 
+                SET iade_miktar = ?, durum = ?, iade_tarihi = CASE WHEN ? = 0 THEN NULL ELSE iade_tarihi END
+                WHERE id = ?
+            ");
+            $sqlUpZimmet->execute([$yeniIadeMiktari, $yeniDurum, $yeniIadeMiktari, $h->zimmet_id]);
+
+            // 5. Hareketi sil (soft delete)
+            $sqlDelHareket = $this->db->prepare("UPDATE demirbas_hareketler SET silinme_tarihi = NOW() WHERE id = ?");
+            $sqlDelHareket->execute([$hareket_id]);
+
+            if ($startedTransaction) {
+                $this->db->commit();
+            }
+            return true;
+        } catch (\Exception $e) {
+            if ($startedTransaction) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
     }
 
 }

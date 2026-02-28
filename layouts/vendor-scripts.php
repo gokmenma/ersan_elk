@@ -36,11 +36,11 @@ $page = $_GET['p'] ?? 'home';
 <!-- Sayfalara Özel Scriptler -->
 <!--***************************************-->
 
-<?php if ($page == 'home') { ?>
-
+<?php if ($page == 'home' || $page == 'demirbas/list') { ?>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <script src="assets/js/pages/allchart.js"></script>
-
+    <?php if ($page == 'home') { ?>
+        <script src="assets/js/pages/allchart.js"></script>
+    <?php } ?>
 <?php } ?>
 
 

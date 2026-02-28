@@ -11,6 +11,7 @@ class BordroPersonelModel extends Model
     protected $table = 'bordro_personel';
     protected $primaryKey = 'id';
     public $icra_uyarilari = [];
+    public $gorev_gecmisi_eksik = [];
 
     public function __construct()
     {
@@ -24,7 +25,15 @@ class BordroPersonelModel extends Model
     {
         $firma_id = $_SESSION['firma_id'] ?? 0;
         $idFilter = "";
-        $params = [$firma_id, $donem_id, $donem_id, $donem_id];
+
+        // Dönem tarihlerini al (görev geçmişi filtrelemesi için)
+        $donemSql = $this->db->prepare("SELECT baslangic_tarihi, bitis_tarihi FROM bordro_donemi WHERE id = ?");
+        $donemSql->execute([$donem_id]);
+        $donemDates = $donemSql->fetch(PDO::FETCH_OBJ);
+        $donemBitis = $donemDates->bitis_tarihi ?? date('Y-m-t');
+        $donemBaslangic = $donemDates->baslangic_tarihi ?? date('Y-m-01');
+
+        $params = [$firma_id, $donemBitis, $donemBaslangic, $donem_id, $donem_id, $donem_id];
 
         if (!empty($ids)) {
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
@@ -41,6 +50,11 @@ class BordroPersonelModel extends Model
                    p.ise_giris_tarihi, p.isten_cikis_tarihi, p.maas_tutari, p.maas_durumu,
                    p.cep_telefonu, p.resim_yolu, p.sgk_yapilan_firma,
                    t_all.ekip_adi, t_all.ekip_bolge,
+                   gg.maas_tutari as gg_maas_tutari,
+                   gg.maas_durumu as gg_maas_durumu,
+                   gg.departman as gg_departman,
+                   gg.gorev as gg_gorev,
+                   CASE WHEN gg.personel_id IS NOT NULL THEN 1 ELSE 0 END as gorev_gecmisi_var,
                    COALESCE(pk_agg.toplam_kesinti, 0) as guncel_toplam_kesinti,
                    COALESCE(eo_agg.toplam_ek_odeme, 0) as guncel_toplam_ek_odeme,
                    JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.odeme_dagilimi.icra_kesintisi')) as hd_icra_kesintisi,
@@ -62,6 +76,16 @@ class BordroPersonelModel extends Model
                 AND pg.firma_id = ?
                 GROUP BY pg.personel_id
             ) t_all ON p.id = t_all.personel_id
+            LEFT JOIN personel_gorev_gecmisi gg ON gg.personel_id = p.id
+                AND gg.id = (
+                    SELECT pgg2.id 
+                    FROM personel_gorev_gecmisi pgg2 
+                    WHERE pgg2.personel_id = p.id
+                    AND pgg2.baslangic_tarihi <= ?
+                    AND (pgg2.bitis_tarihi IS NULL OR pgg2.bitis_tarihi >= ?)
+                    ORDER BY pgg2.baslangic_tarihi DESC
+                    LIMIT 1
+                )
             LEFT JOIN (
                 SELECT personel_id, donem_id, SUM(tutar) as toplam_kesinti
                 FROM personel_kesintileri 
@@ -1587,6 +1611,12 @@ class BordroPersonelModel extends Model
             $nominalBrutMaas = floatval($kayit->maas_tutari ?? 0);
             $isNetMaas = (stripos($maasDurumuRaw, 'net') !== false);
             $isPrimUsulu = (stripos($maasDurumuRaw, 'Prim') !== false || stripos($maasDurumu, 'prim') !== false);
+
+            // Görev geçmişi eksik uyarısı kaydet
+            $this->gorev_gecmisi_eksik[] = [
+                'personel_id' => $kayit->personel_id,
+                'bordro_personel_id' => $bordro_personel_id
+            ];
         }
         // ------------------------------------------------------------------------------
 
