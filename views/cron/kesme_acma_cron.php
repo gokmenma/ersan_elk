@@ -26,7 +26,11 @@ use App\Service\KesmeAcmaService;
 use App\Service\MailGonderService;
 
 // CLI modunda mı çalışıyor?
-$isCli = (php_sapi_name() === 'cli');
+if (php_sapi_name() !== 'cli') {
+    header('HTTP/1.0 403 Forbidden');
+    echo "Bu dosya sadece komut satırı (CLI) üzerinden çalıştırılabilir.";
+    exit;
+}
 
 // Başlangıç zamanı
 $startTime = microtime(true);
