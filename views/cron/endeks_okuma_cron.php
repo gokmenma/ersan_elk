@@ -235,7 +235,8 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         set_time_limit(300);
 
         while ($hasMore) {
-            $apiResponse = $apiService->getData($tarihAPI, $tarihAPI, $limit, $offset);
+            // API Service getData parametre sırası: ($startDate, $endDate, $ilkFirma, $sonFirma, $limit, $offset)
+            $apiResponse = $apiService->getData($tarihAPI, $tarihAPI, $ilkFirma, $sonFirma, $limit, $offset);
 
             if (!($apiResponse['success'] ?? false)) {
                 cronLog("API başarısız yanıt: " . json_encode($apiResponse));

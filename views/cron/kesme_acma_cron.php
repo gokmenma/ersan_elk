@@ -240,7 +240,8 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         $hasMore = true;
 
         while ($hasMore) {
-            $apiResponse = $KesmeAcmaSvc->getData($tarihAPI, $tarihAPI, $limit, $offset);
+            // API Service getData parametre sırası: ($startDate, $endDate, $ilkFirma, $sonFirma, $limit, $offset)
+            $apiResponse = $KesmeAcmaSvc->getData($tarihAPI, $tarihAPI, $ilkFirma, $sonFirma, $limit, $offset);
             if (!($apiResponse['success'] ?? false))
                 break;
 
