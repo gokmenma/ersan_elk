@@ -7405,3 +7405,9 @@ Result (String Match j.n.Y): 01/01/2026
 Input: 31.01.2026 Type: string
 Result (String Match j.n.Y): 31/01/2026
 ----------------
+Input: 14.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-14
+----------------
+Input: 14.01.2026 Type: string
+Result (String Match j.n.Y): 2026-01-14
+----------------

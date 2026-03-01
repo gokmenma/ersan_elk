@@ -6,7 +6,7 @@ $(document).ready(function () {
       serverSide: true,
       colReorder: true,
       stateSave: true,
-      responsive:true,
+      responsive: true,
       stateSaveParams: function (settings, data) {
         // Global stateSaveParams'ı taklit et ama sıralama ve görünürlüğü KORU
         data.start = 0;
@@ -155,8 +155,15 @@ $(document).ready(function () {
         },
         {
           data: "aktif_mi",
-          render: function (data) {
-            return data == 1 ? "Aktif" : "Pasif";
+          render: function (data, type, row) {
+            if (
+              row.isten_cikis_tarihi &&
+              row.isten_cikis_tarihi !== "" &&
+              row.isten_cikis_tarihi !== "0000-00-00"
+            ) {
+              return "Pasif";
+            }
+            return "Aktif";
           },
         },
         // Hidden columns
@@ -506,9 +513,11 @@ $(document).ready(function () {
             $("#detailDepartman").text(data.departman);
 
             let durumBadge =
-              data.aktif_mi == 1
-                ? '<span class="badge bg-success">Aktif</span>'
-                : '<span class="badge bg-danger">Pasif</span>';
+              data.isten_cikis_tarihi &&
+              data.isten_cikis_tarihi !== "" &&
+              data.isten_cikis_tarihi !== "0000-00-00"
+                ? '<span class="badge bg-danger">Pasif</span>'
+                : '<span class="badge bg-success">Aktif</span>';
             $("#detailDurum").html(durumBadge);
 
             // Genel Bilgiler Tab

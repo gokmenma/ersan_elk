@@ -140,7 +140,7 @@ class PersonelModel extends Model
                     p.cep_telefonu LIKE :term OR
                     p.email_adresi LIKE :term OR
                     p.gorev LIKE :term OR
-                    (CASE WHEN p.aktif_mi = 1 THEN 'Aktif' ELSE 'Pasif' END) LIKE :term
+                    (CASE WHEN (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00') THEN 'Aktif' ELSE 'Pasif' END) LIKE :term
                 )
                 GROUP BY p.id";
 
@@ -175,7 +175,7 @@ class PersonelModel extends Model
                 p.gorev LIKE :term OR
                 t.tur_adi LIKE :term OR
                 p.ekip_bolge LIKE :term OR
-                (CASE WHEN p.aktif_mi = 1 THEN 'Aktif' ELSE 'Pasif' END) LIKE :term
+                (CASE WHEN (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00') THEN 'Aktif' ELSE 'Pasif' END) LIKE :term
             )";
             $params['term'] = $term;
         }
@@ -192,7 +192,7 @@ class PersonelModel extends Model
                 8 => 'p.gorev',
                 9 => 'p.departman',
                 10 => 't.tur_adi',
-                12 => 'p.aktif_mi',
+                12 => 'p.isten_cikis_tarihi',
                 23 => 'p.sgk_yapilan_firma'
             ];
 
@@ -203,9 +203,9 @@ class PersonelModel extends Model
 
                     if ($idx == 12) { // Durum (Aktif/Pasif)
                         if (stripos('Aktif', $val) !== false) {
-                            $sql .= " AND p.aktif_mi = 1";
+                            $sql .= " AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00')";
                         } elseif (stripos('Pasif', $val) !== false) {
-                            $sql .= " AND p.aktif_mi = 0";
+                            $sql .= " AND (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '' AND p.isten_cikis_tarihi != '0000-00-00')";
                         }
                     } elseif ($idx == 10) { // Ekip / Bölge
                         $val = "%$val%";
@@ -374,7 +374,7 @@ class PersonelModel extends Model
             9 => 'p.departman',
             10 => 't_all.tur_adi',
             11 => 'bildirim_abonesi',
-            12 => 'p.aktif_mi',
+            12 => 'p.isten_cikis_tarihi',
             23 => 'p.sgk_yapilan_firma'
         ];
 
@@ -403,13 +403,7 @@ class PersonelModel extends Model
                                     $val2 = \App\Helper\Date::Ymd($val2, 'Y-m-d');
                             }
 
-                            // Özel alanlar için değer eşleme
-                            if ($field == 'p.aktif_mi') {
-                                if (stripos('Aktif', $val) !== false)
-                                    $val = 1;
-                                elseif (stripos('Pasif', $val) !== false)
-                                    $val = 0;
-                            }
+                            // Özel alanlar için değer eşleme (Durum: isten_cikis_tarihi bazlı)
 
                             // Computed (Hesaplanan) alanlar için WHERE düzenlemesi
                             if ($field == 'bildirim_abonesi') {
@@ -429,10 +423,12 @@ class PersonelModel extends Model
 
                                             if ($v === '(Boş)') {
                                                 $orConditions[] = "($field IS NULL OR $field = '' OR $field = '0000-00-00')";
-                                            } elseif ($field == 'p.aktif_mi') {
-                                                $mappedVal = (stripos($v, 'Aktif') !== false) ? 1 : 0;
-                                                $orConditions[] = "$field = :$vParam";
-                                                $params[$vParam] = $mappedVal;
+                                            } elseif ($field == 'p.isten_cikis_tarihi' && $i == 12) {
+                                                if (stripos($v, 'Aktif') !== false) {
+                                                    $orConditions[] = "(p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00')";
+                                                } else {
+                                                    $orConditions[] = "(p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '' AND p.isten_cikis_tarihi != '0000-00-00')";
+                                                }
                                             } elseif (strpos($field, 'push_subscriptions') !== false) { // bildirim_abonesi
                                                 $mappedVal = (stripos($v, 'Açık') !== false) ? 1 : 0;
                                                 $orConditions[] = "$field = :$vParam";
@@ -525,9 +521,9 @@ class PersonelModel extends Model
                         // Normal (Eski) Filtre Mantığı (Sadece LIKE)
                         if ($i == 12) { // Durum
                             if (stripos('Aktif', $searchValue) !== false) {
-                                $filterSql .= " AND p.aktif_mi = 1";
+                                $filterSql .= " AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00')";
                             } elseif (stripos('Pasif', $searchValue) !== false) {
-                                $filterSql .= " AND p.aktif_mi = 0";
+                                $filterSql .= " AND (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '' AND p.isten_cikis_tarihi != '0000-00-00')";
                             }
                         } elseif ($i == 10) { // Ekip / Bölge
                             $filterSql .= " AND (t_all.tur_adi LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
@@ -1113,7 +1109,7 @@ class PersonelModel extends Model
             9 => 'p.departman',
             10 => 't_all.tur_adi',
             11 => 'bildirim_abonesi',
-            12 => 'p.aktif_mi',
+            12 => 'p.isten_cikis_tarihi',
             23 => 'p.sgk_yapilan_firma'
         ];
 
@@ -1178,10 +1174,12 @@ class PersonelModel extends Model
                                             $vParam = $paramName . "_" . $vIdx;
                                             if ($v === '(Boş)') {
                                                 $orConditions[] = "($field IS NULL OR $field = '' OR $field = '0000-00-00')";
-                                            } elseif ($field == 'p.aktif_mi') {
-                                                $mappedVal = (stripos($v, 'Aktif') !== false) ? 1 : 0;
-                                                $orConditions[] = "$field = :$vParam";
-                                                $params[$vParam] = $mappedVal;
+                                            } elseif ($field == 'p.isten_cikis_tarihi' && $i == 12) {
+                                                if (stripos($v, 'Aktif') !== false) {
+                                                    $orConditions[] = "(p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00')";
+                                                } else {
+                                                    $orConditions[] = "(p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '' AND p.isten_cikis_tarihi != '0000-00-00')";
+                                                }
                                             } elseif ($field == 'bildirim_abonesi') {
                                                 $mappedVal = (stripos($v, 'Açık') !== false) ? 1 : 0;
                                                 $orConditions[] = "(CASE WHEN EXISTS (SELECT 1 FROM push_subscriptions WHERE personel_id = p.id) THEN 1 ELSE 0 END) = :$vParam";
@@ -1235,9 +1233,9 @@ class PersonelModel extends Model
                     } else {
                         if ($i == 12) {
                             if (stripos('Aktif', $searchValue) !== false)
-                                $filterSql .= " AND p.aktif_mi = 1";
+                                $filterSql .= " AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00')";
                             elseif (stripos('Pasif', $searchValue) !== false)
-                                $filterSql .= " AND p.aktif_mi = 0";
+                                $filterSql .= " AND (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '' AND p.isten_cikis_tarihi != '0000-00-00')";
                         } elseif ($i == 10) {
                             $filterSql .= " AND (t_all.tur_adi LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
                             $params[$paramName] = "%$searchValue%";

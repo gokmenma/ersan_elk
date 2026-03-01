@@ -11,6 +11,7 @@ use App\Model\DemirbasServisModel;
 use App\Model\DemirbasZimmetModel;
 use App\Model\TanimlamalarModel;
 use App\Model\DemirbasHareketModel;
+use App\Service\Gate;
 
 $Demirbas = new DemirbasModel();
 $Servis = new DemirbasServisModel();
@@ -236,7 +237,8 @@ if ($action == "bulk-demirbas-sil") {
 
         foreach ($ids as $enc_id) {
             $id = Security::decrypt($enc_id);
-            if (!$id) continue;
+            if (!$id)
+                continue;
 
             $zimmetler = $Zimmet->getByDemirbas($id);
             if (count($zimmetler) > 0) {
@@ -852,7 +854,7 @@ if ($action == "bulk-zimmet-iade") {
         $ids_raw = $_POST["ids"] ?? [];
         $iade_tarihi = $_POST["iade_tarihi"] ?? date('d.m.Y');
         $aciklama = $_POST["aciklama"] ?? 'Toplu İade Alındı';
-        
+
         if (empty($ids_raw)) {
             jsonResponse("error", "Lütfen en az bir zimmet kaydı seçin.");
         }
@@ -864,18 +866,20 @@ if ($action == "bulk-zimmet-iade") {
 
         foreach ($ids_raw as $enc_id) {
             $id = Security::decrypt($enc_id);
-            if (!$id) continue;
+            if (!$id)
+                continue;
 
             $zimmet = $Zimmet->find($id);
-            if (!$zimmet) continue;
+            if (!$zimmet)
+                continue;
 
             if ($zimmet->durum !== 'teslim') {
                 $errorCount++;
                 continue;
             }
 
-            $teslim_miktar = (int)($zimmet->teslim_miktar ?? 1);
-            $mevcut_iade = (int)($zimmet->iade_miktar ?? 0);
+            $teslim_miktar = (int) ($zimmet->teslim_miktar ?? 1);
+            $mevcut_iade = (int) ($zimmet->iade_miktar ?? 0);
             $kalan_zimmet = $teslim_miktar - $mevcut_iade;
 
             if ($kalan_zimmet > 0) {
