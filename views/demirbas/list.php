@@ -21,7 +21,7 @@ $Personel = new PersonelModel();
 
 $tumDemirbaslar = $Demirbas->getAllWithCategory();
 $kategoriler = $Tanimlamalar->getDemirbasKategorileri();
-$personeller = $Personel->all();
+$personeller = $Personel->all(false, 'demirbas');
 $zimmetStats = $Zimmet->getStats();
 
 // Otomatik zimmet ayarı yapılmış demirbaşları getir
@@ -127,6 +127,51 @@ if (!empty($sayacKatIds)) {
     $depoOzet->yeni_personelde = $personeldeResult->yeni_personelde ?? 0;
     $depoOzet->hurda_personelde = $personeldeResult->hurda_personelde ?? 0;
 }
+
+// ====== APARAT DEPOSU İSTATİSTİKLERİ ======
+$aparatDepoOzet = (object) ['depoda' => 0, 'personelde' => 0, 'tuketilen' => 0, 'toplam_cesit' => 0];
+if (!empty($aparatKatIds)) {
+    $aparatPlaceholders = implode(',', array_fill(0, count($aparatKatIds), '?'));
+    $aparatParamArr = $aparatKatIds;
+    $aparatParamArr[] = $_SESSION['firma_id'];
+
+    // Depodaki stok (kalan_miktar = zimmetlenmemiş adet)
+    $sqlAparatDepo = $Demirbas->db->prepare("
+        SELECT 
+            COALESCE(SUM(kalan_miktar), 0) as depoda,
+            COUNT(*) as toplam_cesit
+        FROM demirbas 
+        WHERE kategori_id IN ($aparatPlaceholders) AND firma_id = ?
+    ");
+    $sqlAparatDepo->execute($aparatParamArr);
+    $aparatDepoResult = $sqlAparatDepo->fetch(PDO::FETCH_OBJ);
+    $aparatDepoOzet->depoda = $aparatDepoResult->depoda ?? 0;
+    $aparatDepoOzet->toplam_cesit = $aparatDepoResult->toplam_cesit ?? 0;
+
+    // Personelde kalan (aktif zimmetler)
+    $sqlAparatPersonelde = $Demirbas->db->prepare("
+        SELECT 
+            COALESCE(SUM(z.teslim_miktar - COALESCE(z.iade_miktar, 0)), 0) as personelde
+        FROM demirbas_zimmet z
+        INNER JOIN demirbas d ON z.demirbas_id = d.id
+        WHERE z.durum = 'teslim' AND d.kategori_id IN ($aparatPlaceholders) AND d.firma_id = ?
+    ");
+    $sqlAparatPersonelde->execute($aparatParamArr);
+    $aparatPersoneldeResult = $sqlAparatPersonelde->fetch(PDO::FETCH_OBJ);
+    $aparatDepoOzet->personelde = $aparatPersoneldeResult->personelde ?? 0;
+
+    // Tüketilen (iade edilmiş = tüketildi olarak işaretlenen)
+    $sqlAparatTuketilen = $Demirbas->db->prepare("
+        SELECT 
+            COALESCE(SUM(z.iade_miktar), 0) as tuketilen
+        FROM demirbas_zimmet z
+        INNER JOIN demirbas d ON z.demirbas_id = d.id
+        WHERE d.kategori_id IN ($aparatPlaceholders) AND d.firma_id = ? AND z.iade_miktar > 0
+    ");
+    $sqlAparatTuketilen->execute($aparatParamArr);
+    $aparatTuketilenResult = $sqlAparatTuketilen->fetch(PDO::FETCH_OBJ);
+    $aparatDepoOzet->tuketilen = $aparatTuketilenResult->tuketilen ?? 0;
+}
 ?>
 
 
@@ -210,6 +255,17 @@ if (!empty($sayacKatIds)) {
                                             <i class="bx bx-upload me-2 text-primary fs-5"></i> Excel'den Yükle
                                         </a>
                                     </li>
+                                    <li id="hurdaIadeLi" class="<?php echo $activeTab !== 'depo' ? 'd-none' : ''; ?>">
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                    <li id="hurdaIadeButonLi"
+                                        class="<?php echo $activeTab !== 'depo' ? 'd-none' : ''; ?>">
+                                        <a class="dropdown-item py-2 fw-bold" href="javascript:void(0);"
+                                            id="btnHurdaSayacIade" style="color: #ef4444;">
+                                            <i class="bx bx-recycle me-2 fs-5" style="color: #ef4444;"></i> Hurda Sayaç
+                                            İade Al
+                                        </a>
+                                    </li>
                                     <?php if (Gate::allows('demirbas_toplu_islem_sil')): ?>
                                         <li id="zimmetIslemlerDivider"
                                             class="<?php echo $activeTab !== 'zimmet' ? 'd-none' : ''; ?>">
@@ -266,6 +322,11 @@ if (!empty($sayacKatIds)) {
                                 data-bs-toggle="modal" data-bs-target="#demirbasModal">
                                 <i class="bx bx-plus-circle fs-5 me-1"></i> Yeni Aparat
                             </button>
+                            <button type="button" id="btnAparatPersoneleVer"
+                                class="btn btn-warning btn-sm px-3 py-2 fw-bold align-items-center shadow-sm ms-1 <?php echo $activeTab === 'aparat' ? 'd-flex' : 'd-none'; ?>">
+                                <i class="bx bx-user-plus fs-5 me-1"></i> Personele Ver
+                            </button>
+
                             <button type="button" id="btnYeniServis"
                                 class="btn btn-warning btn-sm px-3 py-2 fw-bold align-items-center shadow-sm ms-1 <?php echo $activeTab === 'servis' ? 'd-flex' : 'd-none'; ?>">
                                 <i class="bx bx-wrench fs-5 me-1"></i> Yeni Servis Kaydı
@@ -592,7 +653,86 @@ if (!empty($sayacKatIds)) {
                         <!-- Aparatlar Tab -->
                         <div class="tab-pane fade <?php echo $activeTab === 'aparat' ? 'show active' : ''; ?>"
                             id="aparatContent" role="tabpanel">
+
+                            <!-- Aparat Deposu Özet Kartları -->
+                            <div class="row g-2 mb-4">
+                                <!-- Depoda -->
+                                <div class="col-xl col-md-3 col-sm-6">
+                                    <div class="card border border-light shadow-none h-100 bordro-summary-card"
+                                        style="--card-color: #556ee6; border-bottom: 2px solid var(--card-color) !important;">
+                                        <div class="card-body p-2 px-3">
+                                            <div class="icon-label-container">
+                                                <div class="icon-box"
+                                                    style="background: rgba(85, 110, 230, 0.1); width: 28px; height: 28px;">
+                                                    <i class="bx bx-package fs-6 text-primary"></i>
+                                                </div>
+                                                <span class="text-muted small fw-bold"
+                                                    style="font-size: 0.5rem; opacity: 0.5;">DEPODA</span>
+                                            </div>
+                                            <h5 class="mb-0 fw-bold mt-1"><?php echo $aparatDepoOzet->depoda; ?></h5>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Personelde -->
+                                <div class="col-xl col-md-3 col-sm-6">
+                                    <div class="card border border-light shadow-none h-100 bordro-summary-card"
+                                        style="--card-color: #f1b44c; border-bottom: 2px solid var(--card-color) !important;">
+                                        <div class="card-body p-2 px-3">
+                                            <div class="icon-label-container">
+                                                <div class="icon-box"
+                                                    style="background: rgba(241, 180, 76, 0.1); width: 28px; height: 28px;">
+                                                    <i class="bx bx-user-check fs-6 text-warning"></i>
+                                                </div>
+                                                <span class="text-muted small fw-bold"
+                                                    style="font-size: 0.5rem; opacity: 0.5;">PERSONELDE</span>
+                                            </div>
+                                            <h5 class="mb-0 fw-bold mt-1"><?php echo $aparatDepoOzet->personelde; ?>
+                                            </h5>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Tüketilen -->
+                                <div class="col-xl col-md-3 col-sm-6">
+                                    <div class="card border border-light shadow-none h-100 bordro-summary-card"
+                                        style="--card-color: #ef4444; border-bottom: 2px solid var(--card-color) !important;">
+                                        <div class="card-body p-2 px-3">
+                                            <div class="icon-label-container">
+                                                <div class="icon-box"
+                                                    style="background: rgba(239, 68, 68, 0.1); width: 28px; height: 28px;">
+                                                    <i class="bx bx-check-double fs-6" style="color: #ef4444;"></i>
+                                                </div>
+                                                <span class="text-muted small fw-bold"
+                                                    style="font-size: 0.5rem; opacity: 0.5;">TÜKETİLEN</span>
+                                            </div>
+                                            <h5 class="mb-0 fw-bold mt-1"><?php echo $aparatDepoOzet->tuketilen; ?></h5>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Toplam Çeşit -->
+                                <div class="col-xl col-md-3 col-sm-6">
+                                    <div class="card border border-light shadow-none h-100 bordro-summary-card"
+                                        style="--card-color: #34c38f; border-bottom: 2px solid var(--card-color) !important;">
+                                        <div class="card-body p-2 px-3">
+                                            <div class="icon-label-container">
+                                                <div class="icon-box"
+                                                    style="background: rgba(52, 195, 143, 0.1); width: 28px; height: 28px;">
+                                                    <i class="bx bx-grid-alt fs-6 text-success"></i>
+                                                </div>
+                                                <span class="text-muted small fw-bold"
+                                                    style="font-size: 0.5rem; opacity: 0.5;">TOPLAM ÇEŞİT</span>
+                                            </div>
+                                            <h5 class="mb-0 fw-bold mt-1"><?php echo $aparatDepoOzet->toplam_cesit; ?>
+                                            </h5>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Aparat Tablosu -->
+
                             <div class="table-responsive">
                                 <table id="aparatTable"
                                     class="table table-demirbas table-hover table-bordered nowrap w-100">
@@ -871,6 +1011,11 @@ if (!empty($sayacKatIds)) {
 </div>
 
 <style>
+    /* Dropdown menülerin tablo içinde kesilmesini engellemek için */
+    .table-responsive {
+        min-height: 300px;
+    }
+
     #demirbasTable tbody tr,
     #zimmetTable tbody tr,
     #depoPersonelTable tbody tr {
@@ -942,11 +1087,17 @@ if (!empty($sayacKatIds)) {
 <!-- Toplu İade Modal -->
 <?php include_once "modal/toplu-iade-modal.php" ?>
 
+<!-- Hurda Sayaç İade Modal -->
+<?php include_once "modal/hurda-iade-modal.php" ?>
+
 <!-- Zimmet Detay Modal -->
 <?php include_once "modal/zimmet-detay-modal.php" ?>
 
 <!-- Servis Modal -->
 <?php include_once "modal/servis-modal.php" ?>
+
+<!-- Toplu Aparat Zimmet Modal -->
+<?php include_once "modal/toplu-aparat-zimmet-modal.php" ?>
 
 <!-- Kaskiye Teslim Modal -->
 <?php include_once "modal/kasiye-teslim-modal.php" ?>
@@ -1046,7 +1197,8 @@ if (!empty($sayacKatIds)) {
             </div>
             <div class="modal-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover table-striped mb-0">
+                    <table id="demirbasGecmisTable"
+                        class="table table-hover table-striped dt-responsive nowrap w-100 mb-0">
                         <thead class="table-light">
                             <tr>
                                 <th>İşlem Tipi</th>

@@ -512,19 +512,33 @@ if ($action == "zimmet-listesi") {
             $enc_id = Security::encrypt($z->id);
             $teslimTarihi = date('d.m.Y', strtotime($z->teslim_tarihi));
 
-            // Durum badge
-            $durumBadges = [
-                'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
-                'iade' => '<span class="badge bg-success">İade Edildi</span>',
-                'kayip' => '<span class="badge bg-danger">Kayıp</span>',
-                'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
-            ];
+            // Aparat kategorisi kontrolü
+            $katAdiLower = mb_strtolower($z->kategori_adi ?? '', 'UTF-8');
+            $isAparat = str_contains($katAdiLower, 'aparat');
+
+            // Durum badge - Aparat kategorisi için "İade Edildi" yerine "Tüketildi"
+            if ($isAparat) {
+                $durumBadges = [
+                    'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
+                    'iade' => '<span class="badge bg-danger">Tüketildi</span>',
+                    'kayip' => '<span class="badge bg-danger">Kayıp</span>',
+                    'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
+                ];
+            } else {
+                $durumBadges = [
+                    'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
+                    'iade' => '<span class="badge bg-success">İade Edildi</span>',
+                    'kayip' => '<span class="badge bg-danger">Kayıp</span>',
+                    'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
+                ];
+            }
             $durumBadge = $durumBadges[$z->durum] ?? '<span class="badge bg-info">Bilinmiyor</span>';
 
             $iadeButton = $z->durum === 'teslim' ?
                 '<a href="#" data-id="' . $enc_id . '" data-demirbas="' . htmlspecialchars($z->demirbas_adi) . '" data-personel="' . htmlspecialchars($z->personel_adi) . '" data-miktar="' . $z->teslim_miktar . '" class="dropdown-item zimmet-iade">
-                    <span class="mdi mdi-undo font-size-18 text-success me-1"></span> İade Al
+                    <span class="mdi mdi-undo font-size-18 text-success me-1"></span> ' . ($isAparat ? 'Tüketildi İşaretle' : 'İade Al') . '
                 </a>' : '';
+
 
             $actions = '<div class="dropdown">
                             <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
@@ -592,6 +606,78 @@ if ($action == "zimmet-kaydet") {
         jsonResponse("success", "Zimmet işlemi başarıyla tamamlandı. Stok güncellendi.", ["son_kayit" => $son_kayit]);
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());
+    }
+}
+
+// Toplu Aparat Zimmet Kaydet
+if ($action == "toplu-aparat-zimmet-kaydet") {
+    try {
+        $items = json_decode($_POST["items"] ?? "[]", true);
+        $personel_id = intval($_POST["personel_id"] ?? 0);
+        $teslim_tarihi = Date::Ymd($_POST["teslim_tarihi"], 'Y-m-d');
+        $aciklama = $_POST["aciklama"] ?? null;
+
+        if (empty($items)) {
+            jsonResponse("error", "Zimmetlenecek aparat listesi boş.");
+        }
+
+        if ($personel_id <= 0) {
+            jsonResponse("error", "Lütfen personel seçiniz.");
+        }
+
+        if (empty($teslim_tarihi)) {
+            jsonResponse("error", "Teslim tarihi zorunludur.");
+        }
+
+        $Zimmet->getDb()->beginTransaction();
+        $successCount = 0;
+        $errorCount = 0;
+        $errors = [];
+
+        foreach ($items as $item) {
+            $rawId = $item['demirbas_id'] ?? 0;
+            // Eğer encrypted ise decrypt et, değilse direkt kullan
+            $demirbas_id = is_numeric($rawId) ? intval($rawId) : intval(Security::decrypt($rawId));
+            $miktar = intval($item['miktar'] ?? 1);
+
+            if ($demirbas_id <= 0 || $miktar <= 0) {
+                $errorCount++;
+                $errors[] = "Geçersiz veri: ID=$demirbas_id, Miktar=$miktar";
+                continue;
+            }
+
+            try {
+                $data = [
+                    "demirbas_id" => $demirbas_id,
+                    "personel_id" => $personel_id,
+                    "teslim_tarihi" => $teslim_tarihi,
+                    "teslim_miktar" => $miktar,
+                    "aciklama" => $aciklama,
+                    "teslim_eden_id" => $_SESSION["id"] ?? null,
+                    "kaynak" => "manuel"
+                ];
+
+                $Zimmet->zimmetVer($data);
+                $successCount++;
+            } catch (Exception $e) {
+                $errorCount++;
+                $errors[] = $e->getMessage();
+            }
+        }
+
+        $Zimmet->getDb()->commit();
+
+        $message = "$successCount adet aparat başarıyla zimmetlendi.";
+        if ($errorCount > 0) {
+            $message .= " $errorCount adet hata oluştu.";
+        }
+
+        jsonResponse("success", $message, ["toplam" => $successCount, "hatalar" => $errors]);
+    } catch (Exception $ex) {
+        if ($Zimmet->getDb()->inTransaction()) {
+            $Zimmet->getDb()->rollBack();
+        }
+        jsonResponse("error", "Hata: " . $ex->getMessage());
     }
 }
 
@@ -762,6 +848,198 @@ if ($action == "zimmet-iade") {
         }
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());
+    }
+}
+
+// Hurda Sayaç - Personelin zimmetindeki hurda sayaçları getir
+if ($action == "hurda-zimmet-listesi") {
+    try {
+        $personel_id = intval($_POST["personel_id"] ?? 0);
+        if ($personel_id <= 0) {
+            jsonResponse("error", "Geçersiz personel.");
+        }
+
+        // Sayaç kategorilerini bul
+        $sqlKat = $Demirbas->db->prepare("SELECT id FROM tanimlamalar WHERE grup = 'demirbas_kategorisi' AND (LOWER(tur_adi) LIKE '%sayaç%' OR LOWER(tur_adi) LIKE '%sayac%') AND firma_id = ?");
+        $sqlKat->execute([$_SESSION['firma_id']]);
+        $sayacKatIds = $sqlKat->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($sayacKatIds)) {
+            jsonResponse("success", "OK", ["data" => []]);
+        }
+
+        $katPlaceholders = implode(',', array_fill(0, count($sayacKatIds), '?'));
+        $params = $sayacKatIds;
+        $params[] = $personel_id;
+        $params[] = $_SESSION['firma_id'];
+
+        $sql = $Demirbas->db->prepare("
+            SELECT z.id, z.teslim_miktar, z.iade_miktar, z.teslim_tarihi,
+                   d.demirbas_adi, d.marka, d.model, d.seri_no, d.durum as demirbas_durum,
+                   (z.teslim_miktar - COALESCE(z.iade_miktar, 0)) as kalan_miktar
+            FROM demirbas_zimmet z
+            INNER JOIN demirbas d ON z.demirbas_id = d.id
+            WHERE d.kategori_id IN ($katPlaceholders) 
+              AND z.personel_id = ?
+              AND z.durum = 'teslim'
+              AND d.firma_id = ?
+              AND LOWER(d.durum) = 'hurda'
+              AND z.silinme_tarihi IS NULL
+            ORDER BY z.teslim_tarihi DESC
+        ");
+        $sql->execute($params);
+        $zimmetler = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        $result = [];
+        foreach ($zimmetler as $z) {
+            if ($z->kalan_miktar <= 0)
+                continue;
+            $result[] = [
+                "id" => Security::encrypt($z->id),
+                "demirbas_adi" => $z->demirbas_adi,
+                "marka_model" => trim(($z->marka ?? '') . ' ' . ($z->model ?? '')),
+                "seri_no" => $z->seri_no ?? '-',
+                "kalan_miktar" => $z->kalan_miktar,
+                "teslim_tarihi" => date('d.m.Y', strtotime($z->teslim_tarihi)),
+            ];
+        }
+
+        jsonResponse("success", "OK", ["data" => $result]);
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+}
+
+// Hurda Sayaç İade Al (Personelden depoya)
+if ($action == "hurda-sayac-iade") {
+    try {
+        $mode = $_POST["mode"] ?? "manual"; // manual veya select
+
+        if ($mode === "select") {
+            // Seçili zimmetlerden iade
+            $selectedIds = json_decode($_POST["selected_ids"] ?? "[]", true);
+            $iade_tarihi = $_POST["hurda_iade_tarihi"] ?? date('d.m.Y');
+            $aciklama = $_POST["hurda_aciklama"] ?? null;
+
+            if (empty($selectedIds)) {
+                jsonResponse("error", "Lütfen en az bir hurda sayaç seçin.");
+            }
+
+            $Zimmet->getDb()->beginTransaction();
+            $successCount = 0;
+
+            foreach ($selectedIds as $enc_id) {
+                $zimmet_id = Security::decrypt($enc_id);
+                if (!$zimmet_id)
+                    continue;
+
+                $zimmetBilgi = $Zimmet->find($zimmet_id);
+                if (!$zimmetBilgi || $zimmetBilgi->durum !== 'teslim')
+                    continue;
+
+                $kalanMiktar = (int) $zimmetBilgi->teslim_miktar - (int) ($zimmetBilgi->iade_miktar ?? 0);
+                if ($kalanMiktar <= 0)
+                    continue;
+
+                $Zimmet->iadeYap(
+                    $zimmet_id,
+                    $iade_tarihi,
+                    $kalanMiktar,
+                    $aciklama ? "Hurda Sayaç İade: " . $aciklama : "Hurda Sayaç İade (Manuel)",
+                    null,
+                    null,
+                    'manuel'
+                );
+                $successCount++;
+            }
+
+            $Zimmet->getDb()->commit();
+            jsonResponse("success", "$successCount adet hurda sayaç başarıyla depoya iade alındı.");
+
+        } else {
+            // Manuel giriş (yeni hurda kayıt oluştur ve personele zimmetle, sonra iade al)
+            $personel_id = intval($_POST["hurda_personel_id"] ?? 0);
+            $iade_tarihi = $_POST["hurda_iade_tarihi"] ?? date('d.m.Y');
+            $adet = intval($_POST["hurda_iade_adet"] ?? 1);
+            $sayac_adi = $_POST["hurda_sayac_adi"] ?? '';
+            $aciklama = $_POST["hurda_aciklama"] ?? null;
+
+            if ($personel_id <= 0) {
+                jsonResponse("error", "Lütfen bir personel seçin.");
+            }
+            if ($adet <= 0) {
+                jsonResponse("error", "Adet en az 1 olmalıdır.");
+            }
+
+            // Sayaç kategori ID'sini bul
+            $sqlKat = $Demirbas->db->prepare("SELECT id FROM tanimlamalar WHERE grup = 'demirbas_kategorisi' AND (LOWER(tur_adi) LIKE '%sayaç%' OR LOWER(tur_adi) LIKE '%sayac%') AND firma_id = ? LIMIT 1");
+            $sqlKat->execute([$_SESSION['firma_id']]);
+            $sayacKatId = $sqlKat->fetchColumn();
+
+            if (!$sayacKatId) {
+                jsonResponse("error", "Sayaç kategorisi bulunamadı. Lütfen tanımlamalardan bir sayaç kategorisi oluşturun.");
+            }
+
+            $formatted_tarih = Date::Ymd($iade_tarihi, 'Y-m-d');
+            if (empty($sayac_adi)) {
+                $sayac_adi = "Hurda Sayaç (Manuel İade)";
+            }
+
+            $Demirbas->db->beginTransaction();
+
+            // 1. Hurda sayaç demirbaş kaydı oluştur (doğrudan depoya)
+            $sqlInsert = $Demirbas->db->prepare("
+                INSERT INTO demirbas 
+                (firma_id, kategori_id, demirbas_adi, miktar, kalan_miktar, durum, aciklama, kayit_yapan, edinme_tarihi)
+                VALUES (?, ?, ?, ?, ?, 'hurda', ?, ?, ?)
+            ");
+            $sqlInsert->execute([
+                $_SESSION['firma_id'],
+                $sayacKatId,
+                $sayac_adi,
+                $adet,
+                $adet, // Önce depoda olsun zimmet verebilmek için
+                $aciklama ? "Manuel Hurda İade: " . $aciklama : "Manuel Hurda Sayaç İade",
+                $_SESSION['id'] ?? null,
+                $formatted_tarih
+            ]);
+            $yeniDemirbasId = $Demirbas->db->lastInsertId();
+
+            // 2. Personele zimmetle (Geçmişte gözükmesi için)
+            $Zimmet->zimmetVer([
+                'demirbas_id' => $yeniDemirbasId,
+                'personel_id' => $personel_id,
+                'teslim_tarihi' => $iade_tarihi, // Aynı tarih
+                'teslim_miktar' => $adet,
+                'aciklama' => "Hurda sayaç personelden iade alınırken sistem tarafından oluşturulan kayıt",
+                'kaynak' => 'manuel'
+            ]);
+
+            // 3. Zimmet IDsini bul
+            $zimmetKaydiSql = $Zimmet->getDb()->prepare("SELECT id FROM demirbas_zimmet WHERE demirbas_id = ? AND personel_id = ? ORDER BY id DESC LIMIT 1");
+            $zimmetKaydiSql->execute([$yeniDemirbasId, $personel_id]);
+            $yeniZimmetId = $zimmetKaydiSql->fetchColumn();
+
+            // 4. Hemen iadesini al (Depoda stoğu geri artacaktır)
+            $Zimmet->iadeYap(
+                $yeniZimmetId,
+                $iade_tarihi,
+                $adet,
+                $aciklama ? "Hurda Sayaç İade: " . $aciklama : "Hurda Sayaç İade (Manuel)",
+                null,
+                null,
+                'manuel'
+            );
+
+            $Demirbas->db->commit();
+
+            jsonResponse("success", "$adet adet hurda sayaç depoya başarıyla eklendi.", ["yeni_id" => Security::encrypt($yeniDemirbasId)]);
+        }
+    } catch (Exception $ex) {
+        if ($Demirbas->db->inTransaction()) {
+            $Demirbas->db->rollBack();
+        }
+        jsonResponse("error", "Hata: " . $ex->getMessage());
     }
 }
 
@@ -967,16 +1245,36 @@ if ($action == "zimmet-detay") {
             $gecmis = $gecmisSql->fetchAll(PDO::FETCH_OBJ);
 
             // Geçmiş verilerini formatla
+            // Demirbaş kategori bilgisini al (aparat kontrolü için)
+            $demirbasForKat = $Demirbas->find($zimmet->demirbas_id);
+            $detayKatAdi = '';
+            if ($demirbasForKat && $demirbasForKat->kategori_id) {
+                $katSql = $Zimmet->getDb()->prepare("SELECT tur_adi FROM tanimlamalar WHERE id = ? AND grup = 'demirbas_kategorisi' LIMIT 1");
+                $katSql->execute([$demirbasForKat->kategori_id]);
+                $katResult = $katSql->fetch(PDO::FETCH_OBJ);
+                $detayKatAdi = $katResult->tur_adi ?? '';
+            }
+            $isDetayAparat = str_contains(mb_strtolower($detayKatAdi, 'UTF-8'), 'aparat');
+
             foreach ($gecmis as $g) {
                 $g->teslim_tarihi_format = date('d.m.Y', strtotime($g->teslim_tarihi));
                 $g->iade_tarihi_format = $g->iade_tarihi ? date('d.m.Y', strtotime($g->iade_tarihi)) : '-';
 
-                $durumBadges = [
-                    'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
-                    'iade' => '<span class="badge bg-success">İade Edildi</span>',
-                    'kayip' => '<span class="badge bg-danger">Kayıp</span>',
-                    'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
-                ];
+                if ($isDetayAparat) {
+                    $durumBadges = [
+                        'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
+                        'iade' => '<span class="badge bg-danger">Tüketildi</span>',
+                        'kayip' => '<span class="badge bg-danger">Kayıp</span>',
+                        'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
+                    ];
+                } else {
+                    $durumBadges = [
+                        'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
+                        'iade' => '<span class="badge bg-success">İade Edildi</span>',
+                        'kayip' => '<span class="badge bg-danger">Kayıp</span>',
+                        'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
+                    ];
+                }
                 $g->durum_badge = $durumBadges[$g->durum] ?? '<span class="badge bg-info">Bilinmiyor</span>';
             }
 
@@ -1163,6 +1461,89 @@ if ($action == "demirbas-ara") {
     exit;
 }
 
+// Aparat Zimmet Kayıtları (Belirli bir aparata ait personel zimmet kayıtları)
+if ($action == "aparat-zimmet-kayitlari") {
+    $demirbas_id = intval($_POST["demirbas_id"] ?? 0);
+
+    try {
+        if ($demirbas_id <= 0) {
+            jsonResponse("error", "Geçersiz demirbaş ID.");
+        }
+
+        // Demirbaş bilgisi
+        $demirbas = $Demirbas->find($demirbas_id);
+        if (!$demirbas) {
+            jsonResponse("error", "Demirbaş bulunamadı.");
+        }
+
+        // Bu aparata ait zimmet kayıtları
+        $sqlZimmetler = $Zimmet->getDb()->prepare("
+            SELECT 
+                z.*,
+                p.adi_soyadi AS personel_adi,
+                p.cep_telefonu AS personel_telefon
+            FROM demirbas_zimmet z
+            LEFT JOIN personel p ON z.personel_id = p.id
+            WHERE z.demirbas_id = ? AND z.silinme_tarihi IS NULL
+            ORDER BY z.kayit_tarihi DESC
+        ");
+        $sqlZimmetler->execute([$demirbas_id]);
+        $zimmetler = $sqlZimmetler->fetchAll(PDO::FETCH_OBJ);
+
+        // Kategori bilgisi (aparat kontrolü)
+        $katAdi = '';
+        if ($demirbas->kategori_id) {
+            $katSql = $Zimmet->getDb()->prepare("SELECT tur_adi FROM tanimlamalar WHERE id = ? LIMIT 1");
+            $katSql->execute([$demirbas->kategori_id]);
+            $katResult = $katSql->fetch(PDO::FETCH_OBJ);
+            $katAdi = $katResult->tur_adi ?? '';
+        }
+        $isAparat = str_contains(mb_strtolower($katAdi, 'UTF-8'), 'aparat');
+
+        // Formatla
+        foreach ($zimmetler as $z) {
+            $z->enc_id = Security::encrypt($z->id);
+            $z->teslim_tarihi_format = date('d.m.Y', strtotime($z->teslim_tarihi));
+            $z->iade_tarihi_format = $z->iade_tarihi ? date('d.m.Y', strtotime($z->iade_tarihi)) : '-';
+
+            if ($isAparat) {
+                $durumBadges = [
+                    'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
+                    'iade' => '<span class="badge bg-danger">Tüketildi</span>',
+                    'kayip' => '<span class="badge bg-danger">Kayıp</span>',
+                    'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
+                ];
+            } else {
+                $durumBadges = [
+                    'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
+                    'iade' => '<span class="badge bg-success">İade Edildi</span>',
+                    'kayip' => '<span class="badge bg-danger">Kayıp</span>',
+                    'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
+                ];
+            }
+            $z->durum_badge = $durumBadges[$z->durum] ?? '<span class="badge bg-info">Bilinmiyor</span>';
+        }
+
+        // Özet
+        $toplam = count($zimmetler);
+        $aktif = count(array_filter($zimmetler, fn($z) => $z->durum === 'teslim'));
+        $tuketilen = count(array_filter($zimmetler, fn($z) => $z->durum === 'iade'));
+
+        jsonResponse("success", "Başarılı", [
+            "demirbas" => $demirbas,
+            "zimmetler" => $zimmetler,
+            "ozet" => [
+                "toplam" => $toplam,
+                "aktif" => $aktif,
+                "tuketilen" => $tuketilen
+            ]
+        ]);
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+
+}
+
 // Kategori listesi
 if ($action == "kategori-listesi") {
     try {
@@ -1216,16 +1597,62 @@ if ($action == "hareket-gecmisi") {
                 "hareketler" => $hareketler
             ]);
         } elseif ($demirbas_id > 0) {
-            // Demirbaş bazlı
-            $hareketler = $Hareket->getDemirbasHareketleri($demirbas_id);
-
-            foreach ($hareketler as $h) {
-                $h->tarih_format = date('d.m.Y', strtotime($h->tarih));
-                $h->hareket_badge = DemirbasHareketModel::getHareketTipiBadge($h->hareket_tipi);
-                $h->kaynak_badge = DemirbasHareketModel::getKaynakBadge($h->kaynak);
+            // Demirbaş DataTables server-side
+            $demirbas_kaydi = $Demirbas->find($demirbas_id);
+            $katAdi2 = '';
+            if ($demirbas_kaydi && $demirbas_kaydi->kategori_id) {
+                $katSql2 = $Demirbas->getDb()->prepare("SELECT tur_adi FROM tanimlamalar WHERE id = ? LIMIT 1");
+                $katSql2->execute([$demirbas_kaydi->kategori_id]);
+                $katResult2 = $katSql2->fetch(PDO::FETCH_OBJ);
+                $katAdi2 = $katResult2->tur_adi ?? '';
             }
+            $isDemirbasAparat = str_contains(mb_strtolower($katAdi2, 'UTF-8'), 'aparat');
 
-            jsonResponse("success", "Başarılı", ["hareketler" => $hareketler]);
+            // Eğer POST içinde start ve length varsa DataTable server-side talebidir
+            if (isset($_POST['draw'])) {
+                $result = $Hareket->getDemirbasHareketleriDatatable($_POST, $demirbas_id, $isDemirbasAparat);
+
+                $data = [];
+                foreach ($result['data'] as $h) {
+                    $tarih_format = date('d.m.Y', strtotime($h->tarih));
+                    $hareket_badge = DemirbasHareketModel::getHareketTipiBadge($h->hareket_tipi);
+                    $kaynak_badge = DemirbasHareketModel::getKaynakBadge($h->kaynak);
+
+                    $data[] = [
+                        $hareket_badge,
+                        '<div class="text-center fw-bold">' . $h->miktar . '</div>',
+                        $tarih_format,
+                        $h->personel_adi ?? '-',
+                        '<span class="small">' . ($h->aciklama ?? '') . '</span>',
+                        '<div class="text-end small">' . ($h->islem_yapan_adi ?? $kaynak_badge ?? '-') . '</div>'
+                    ];
+                }
+
+                echo json_encode([
+                    "draw" => intval($_POST['draw'] ?? 0),
+                    "recordsTotal" => $result['recordsTotal'],
+                    "recordsFiltered" => $result['recordsFiltered'],
+                    "data" => $data
+                ]);
+                exit;
+            } else {
+                // Standart AJAX isteği (mevcut yapıyı bozmamak için - personel bazlı vs.)
+                $hareketler = $Hareket->getDemirbasHareketleri($demirbas_id);
+                $gosterilecekHareketler = [];
+                foreach ($hareketler as $h) {
+                    if ($isDemirbasAparat && $h->kaynak === 'puantaj_excel') {
+                        continue;
+                    }
+
+                    $h->tarih_format = date('d.m.Y', strtotime($h->tarih));
+                    $h->hareket_badge = DemirbasHareketModel::getHareketTipiBadge($h->hareket_tipi);
+                    $h->kaynak_badge = DemirbasHareketModel::getKaynakBadge($h->kaynak);
+
+                    $gosterilecekHareketler[] = $h;
+                }
+
+                jsonResponse("success", "Başarılı", ["hareketler" => $gosterilecekHareketler]);
+            }
         } else {
             jsonResponse("error", "Personel veya demirbaş ID gereklidir.");
         }

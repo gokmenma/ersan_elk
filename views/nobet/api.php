@@ -548,7 +548,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             case 'get-personel-list':
                 $departman = $_POST['departman'] ?? null;
 
-                $personeller = $Personel->all(true);
+                $personeller = $Personel->all(true, 'nobet');
 
                 // Departmana göre filtrele
                 // Departman Renk Haritası Oluştur

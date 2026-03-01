@@ -187,7 +187,7 @@ $hasSubCols = !empty($workTypeCols);
 $headerRowspan = ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol') && $hasSubCols ? 3 : 2;
 
 // Personel mapping for easy access
-$allPersonel = $Personel->all();
+$allPersonel = $Personel->all(false, 'puantaj');
 $personelById = [];
 foreach ($allPersonel as $p) {
     $personelById[$p->id] = $p;
@@ -1190,7 +1190,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                 <?php endif; ?>
                 <td class="grand-total-cell"><?= number_format($grandTotal, 0, '', '') ?></td>
                 <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma'])): ?>
-                    <?php 
+                    <?php
                     $grandDusumVal = 0;
                     if (isset($manuelDusumMap)) {
                         foreach ($manuelDusumMap as $pId => $teams) {
@@ -1203,7 +1203,8 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     <td class="grand-dusum-cell table-danger"><?= $grandDusumVal ?: '0' ?></td>
                     <td class="grand-kalan-cell table-success"><?= ($grandTotal - $grandDusumVal) ?: '0' ?></td>
                 <?php endif; ?>
-                <td class="grand-region-total-cell table-light fw-bold"><?= number_format($grandTotal, 0, '', '') ?></td>
+                <td class="grand-region-total-cell table-light fw-bold"><?= number_format($grandTotal, 0, '', '') ?>
+                </td>
                 <td></td>
             </tr>
         </tfoot>

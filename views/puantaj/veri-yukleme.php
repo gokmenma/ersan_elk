@@ -19,7 +19,7 @@ $workType = $_GET['work_type'] ?? '';
 //Helper::dd([$startDate, $endDate, $ekipKodu, $workType]);
 
 // $records = $Puantaj->getFiltered($startDate, $endDate, $ekipKodu, $workType);
-$personeller = $Personel->all();
+$personeller = $Personel->all(false, 'puantaj');
 $personelOptions = ['' => 'Seçiniz'];
 $personelOptionsMultiple = []; // Kaçak kontrol multiple select için boş değer olmadan
 foreach ($personeller as $p) {
@@ -170,7 +170,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     <span class="d-none d-sm-block">Kesme/Açma İşlem.</span>
                 </a>
             </li>
-              <li class="nav-item">
+            <li class="nav-item">
                 <a class="nav-link <?= $activeTab === 'sayac_sokme_takma' ? 'active' : '' ?>" data-bs-toggle="tab"
                     href="#sayac_sokme_takma" role="tab" data-tab-name="sayac_sokme_takma">
                     <span class="d-block d-sm-none"><i class="fas fa-exchange-alt"></i></span>
@@ -191,7 +191,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     <span class="d-none d-sm-block">Kaçak Kontrol</span>
                 </a>
             </li>
-          
+
         </ul>
 
         <div class="tab-content" id="puantajTabContent">
@@ -1863,7 +1863,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         $('#importOnlineIcmalRaporuModal').on('hidden.bs.modal', function () {
             $('#onlineIcmalResult').hide().html('');
         });
-    $('#importOnlineSayacDegisimModal').on('hidden.bs.modal', function () {
+        $('#importOnlineSayacDegisimModal').on('hidden.bs.modal', function () {
             $('#onlineSayacDegisimResult').hide().html('');
         });
 

@@ -33,7 +33,7 @@ foreach ($ekip_kodlari_raw as $item) {
 
 
 
-$allPersonel = $PersonelModel->all();
+$allPersonel = $PersonelModel->all(false, 'personel');
 /**Personel id'sini şifrele */
 $selectedOption = '';
 $allPersonel = array_map(function ($item) use ($id, &$selectedOption) {

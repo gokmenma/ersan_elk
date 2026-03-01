@@ -11,7 +11,7 @@ try {
     $q = mb_strtolower(trim($_GET['q'] ?? ''), 'UTF-8');
 
     $Personel = new PersonelModel();
-    $personeller = $Personel->all();
+    $personeller = $Personel->all(false, 'mail');
 
     $Rehber = new RehberModel();
     // Assuming ->get() returns array or object for RehberModel

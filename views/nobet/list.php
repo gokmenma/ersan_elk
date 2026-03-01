@@ -13,7 +13,7 @@ $canEditPast = ($settingsData['nobet_gecmis_islem'] ?? '0') === '1';
 $showDeletedToStaff = ($settingsData['nobet_silinmis_goster'] ?? '0') === '1';
 $hasSettingPermission = Gate::allows("nobet_onceki_gunlerde_islem_yapabilir");
 
-$personeller = $Personel->all(true);
+$personeller = $Personel->all(true, 'nobet');
 
 // Departmanları doğrudan personel listesinden dinamik olarak al
 $deptList = [];

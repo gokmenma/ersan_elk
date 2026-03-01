@@ -34,7 +34,7 @@ for ($m = 1; $m <= 12; $m++) {
     $monthOptions[$m_val] = Date::monthName($m_val);
 }
 
-$personelList = $Personel->all();
+$personelList = $Personel->all(false, 'puantaj');
 $personelOptions = ['' => 'Tüm Personeller'];
 foreach ($personelList as $p) {
     $personelOptions[$p->id] = $p->adi_soyadi;

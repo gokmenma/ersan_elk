@@ -18,7 +18,7 @@ $Km = new AracKmModel();
 $Personel = new PersonelModel();
 $Servis = new AracServisModel();
 
-$personeller = $Personel->all();
+$personeller = $Personel->all(false, 'arac');
 $aracStats = $Arac->getStats();
 $evrakStats = $Arac->getAracEvrakStats(30);
 $zimmetStats = $Zimmet->getStats();
@@ -77,6 +77,7 @@ if ($filter === 'muayene') {
     .badge-filter.active {
         box-shadow: 0 0 0 2px currentColor;
     }
+
     .evrak-stat-card {
         cursor: pointer;
         transition: all 0.3s ease;
@@ -354,7 +355,8 @@ if ($filter === 'muayene') {
 
                             <!-- İstatistik Badge'leri -->
                             <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-                                <span class="badge bg-primary-subtle text-primary fs-6 badge-filter <?php echo empty($filter) ? 'active' : ''; ?>"
+                                <span
+                                    class="badge bg-primary-subtle text-primary fs-6 badge-filter <?php echo empty($filter) ? 'active' : ''; ?>"
                                     onclick="location.href='index.php?p=arac-takip/list'">
                                     <i class="bx bx-car me-1"></i> Araç:
                                     <?php echo $aracStats->toplam_arac ?? 0; ?>
@@ -363,17 +365,20 @@ if ($filter === 'muayene') {
                                     <i class="bx bx-check-circle me-1"></i> Aktif:
                                     <?php echo $aracStats->aktif_arac ?? 0; ?>
                                 </span>
-                                <span class="badge bg-warning-subtle text-warning fs-6 badge-filter <?php echo $filter === 'zimmetli' ? 'active' : ''; ?>"
+                                <span
+                                    class="badge bg-warning-subtle text-warning fs-6 badge-filter <?php echo $filter === 'zimmetli' ? 'active' : ''; ?>"
                                     onclick="location.href='index.php?p=arac-takip/list&filter=zimmetli'">
                                     <i class="bx bx-transfer me-1"></i> Zimmetli:
                                     <?php echo $zimmetliSayi; ?>
                                 </span>
-                                <span class="badge bg-info-subtle text-info fs-6 badge-filter <?php echo $filter === 'bosta' ? 'active' : ''; ?>"
+                                <span
+                                    class="badge bg-info-subtle text-info fs-6 badge-filter <?php echo $filter === 'bosta' ? 'active' : ''; ?>"
                                     onclick="location.href='index.php?p=arac-takip/list&filter=bosta'">
                                     <i class="bx bx-user-x me-1"></i> Boşta:
                                     <?php echo $aracStats->bosta_arac ?? 0; ?>
                                 </span>
-                                <span class="badge bg-danger-subtle text-danger fs-6 badge-filter <?php echo $filter === 'serviste' ? 'active' : ''; ?>" 
+                                <span
+                                    class="badge bg-danger-subtle text-danger fs-6 badge-filter <?php echo $filter === 'serviste' ? 'active' : ''; ?>"
                                     id="badge-servisteki-arac"
                                     onclick="location.href='index.php?p=arac-takip/list&filter=serviste'">
                                     <i class="bx bx-wrench me-1"></i> Servisteki:
@@ -449,10 +454,11 @@ if ($filter === 'muayene') {
                                                     <span class="small"><?php echo $arac->mulkiyet ?: '-'; ?></span>
                                                 </td>
                                                 <td>
-                                                    <span class="small fw-bold text-dark"><?php echo $arac->zimmetli_personel_adi ?: '<span class="text-muted">Boşta</span>'; ?></span>
+                                                    <span
+                                                        class="small fw-bold text-dark"><?php echo $arac->zimmetli_personel_adi ?: '<span class="text-muted">Boşta</span>'; ?></span>
                                                 </td>
                                                 <td class="text-center">
-                                                    <?php 
+                                                    <?php
                                                     if ($arac->serviste_mi) {
                                                         echo '<span class="badge bg-danger">Serviste</span>';
                                                     } else {

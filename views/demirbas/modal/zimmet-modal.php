@@ -173,7 +173,7 @@ $personelOptions = [];
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <div class="input-group">
-                                <?php echo Form::FormFloatInput('number', 'teslim_miktar', '1', null, 'Teslim Edilecek Miktar *', 'hash', 'form-control', true, null, 'on', false, 'min="1"'); ?>
+                                <?php echo Form::FormFloatInput('number', 'teslim_miktar', '1', null, 'Teslim Edilecek Miktar *', 'hash', 'form-control', false, null, 'on', false, 'min="1"'); ?>
                                 <span class="input-group-text">
                                     Kalan: <span id="kalanMiktarText" class="ms-1 fw-bold">-</span>
                                 </span>

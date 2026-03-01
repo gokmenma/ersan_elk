@@ -259,7 +259,7 @@ try {
             $firma_id = $_SESSION['firma_id'] ?? null;
 
             // Saha takibi olan ve silinmemiş tüm personelleri al
-            $query = "SELECT id FROM personel WHERE silinme_tarihi IS NULL AND aktif_mi = 1 AND saha_takibi = 1";
+            $query = "SELECT id FROM personel WHERE silinme_tarihi IS NULL AND aktif_mi = 1 AND saha_takibi = 1 AND (disardan_sigortali = 0 OR FIND_IN_SET('takip', gorunum_modulleri))";
             if ($firma_id) {
                 $query .= " AND firma_id = :firma_id";
             }
@@ -320,7 +320,7 @@ try {
             $firma_id = $_SESSION['firma_id'] ?? null;
 
             // Tüm sahada takip edilen aktif personelleri al
-            $query = "SELECT id, adi_soyadi FROM personel WHERE silinme_tarihi IS NULL AND aktif_mi = 1 AND saha_takibi = 1";
+            $query = "SELECT id, adi_soyadi FROM personel WHERE silinme_tarihi IS NULL AND aktif_mi = 1 AND saha_takibi = 1 AND (disardan_sigortali = 0 OR FIND_IN_SET('takip', gorunum_modulleri))";
             if ($firma_id) {
                 $query .= " AND firma_id = :firma_id";
             }

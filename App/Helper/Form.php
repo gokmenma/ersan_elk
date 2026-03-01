@@ -17,8 +17,8 @@ class Form
         $maxlength = null,
         $autocomplete = "on",
         $readonly = false,
-        $disabled = false,
-        $attributes = ''
+        $attributes = '',
+        $disabled = false
     ) {
         return '
         <div class="form-floating form-floating-custom">

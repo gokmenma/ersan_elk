@@ -112,13 +112,16 @@ class DemirbasModel extends Model
             $whereType = " AND NOT " . $sayacCondition . " AND NOT " . $aparatCondition;
         }
 
+        $markaModelSql = "CASE WHEN d.marka IS NOT NULL AND d.marka != '' AND d.model IS NOT NULL AND d.model != '' THEN CONCAT(' [', d.marka, ' ', d.model, ']') WHEN d.marka IS NOT NULL AND d.marka != '' THEN CONCAT(' [', d.marka, ']') WHEN d.model IS NOT NULL AND d.model != '' THEN CONCAT(' [', d.model, ']') ELSE '' END";
+        $noSql = "CASE WHEN d.demirbas_no IS NOT NULL AND d.demirbas_no != '' THEN CONCAT(d.demirbas_no, ' - ') ELSE '' END";
+
         // Sayaç ise seri numarasını da ekle
-        $textSelect = "CONCAT(d.demirbas_no, ' - ', d.demirbas_adi, ' (', COALESCE(k.tur_adi, 'Kategorisiz'), ')')";
+        $textSelect = "CONCAT($noSql, d.demirbas_adi, $markaModelSql, ' (', COALESCE(k.tur_adi, 'Kategorisiz'), ')')";
         if ($type === 'sayac') {
-            $textSelect = "CONCAT(d.demirbas_no, ' - ', d.demirbas_adi, ' (', COALESCE(k.tur_adi, 'Kategorisiz'), ') - SN: ', COALESCE(d.seri_no, '-'))";
+            $textSelect = "CONCAT($noSql, d.demirbas_adi, $markaModelSql, ' (', COALESCE(k.tur_adi, 'Kategorisiz'), ') - SN: ', COALESCE(d.seri_no, '-'))";
         } else {
             // Diğer demirbaşlarda da varsa seri numarasını göster (Tablet, Simkart vb.)
-            $textSelect = "CONCAT(d.demirbas_no, ' - ', d.demirbas_adi, ' (', COALESCE(k.tur_adi, 'Kategorisiz'), ')', CASE WHEN d.seri_no IS NOT NULL AND d.seri_no != '' THEN CONCAT(' - SN: ', d.seri_no) ELSE '' END)";
+            $textSelect = "CONCAT($noSql, d.demirbas_adi, $markaModelSql, ' (', COALESCE(k.tur_adi, 'Kategorisiz'), ')', CASE WHEN d.seri_no IS NOT NULL AND d.seri_no != '' THEN CONCAT(' - SN: ', d.seri_no) ELSE '' END)";
         }
 
         $sql = $this->db->prepare("

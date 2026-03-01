@@ -155,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 // Evet/Hayır -> 1/0 dönüşümü (tinyint alanlar için)
-                if (in_array($key, ['bes_kesintisi_varmi', 'aktif_mi'])) {
+                if (in_array($key, ['bes_kesintisi_varmi', 'aktif_mi', 'disardan_sigortali'])) {
                     if (mb_strtolower($value, 'UTF-8') == 'evet' || $value === '1' || $value === 1) {
                         $data[$key] = 1;
                     } elseif (mb_strtolower($value, 'UTF-8') == 'hayır' || mb_strtolower($value, 'UTF-8') == 'hayir' || $value === '0' || $value === 0) {
@@ -171,6 +171,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $data['aktif_mi'] = 1;
             }
 
+            // Dışarıdan Sigortalı durumunu SGK Yapılan Firma'ya göre belirle
+            if (isset($data['sgk_yapilan_firma'])) {
+                $FirmaModel = new \App\Model\FirmaModel();
+                $firma_adi = $FirmaModel->find($_SESSION['firma_id'])->firma_adi ?? '';
+                if ($data['sgk_yapilan_firma'] === 'Dışarıdan Sigortalı') {
+                    $data['disardan_sigortali'] = 1;
+                    if (!isset($data['gorunum_modulleri'])) {
+                        $data['gorunum_modulleri'] = [];
+                    } elseif (!is_array($data['gorunum_modulleri'])) {
+                        $data['gorunum_modulleri'] = explode(',', $data['gorunum_modulleri']);
+                    }
+                    if (!in_array('bordro', $data['gorunum_modulleri']))
+                        $data['gorunum_modulleri'][] = 'bordro';
+                    if (!in_array('personel', $data['gorunum_modulleri']))
+                        $data['gorunum_modulleri'][] = 'personel';
+                } else {
+                    $data['disardan_sigortali'] = 0;
+                    $data['gorunum_modulleri'] = null;
+                }
+            }
 
             // Dizileri virgülle ayrılmış stringe çevir (Örn: departman)
             foreach ($data as $key => $value) {
@@ -678,7 +698,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
 
                     // Evet/Hayır -> 1/0 dönüşümü (tinyint alanlar için)
-                    if (in_array($dbCol, ['bes_kesintisi_varmi', 'aktif_mi'])) {
+                    if (in_array($dbCol, ['bes_kesintisi_varmi', 'aktif_mi', 'disardan_sigortali'])) {
                         if (mb_strtolower($val, 'UTF-8') == 'evet' || $val === '1' || $val === 1) {
                             $val = 1;
                         } elseif (mb_strtolower($val, 'UTF-8') == 'hayır' || mb_strtolower($val, 'UTF-8') == 'hayir' || $val === '0' || $val === 0) {
@@ -1175,7 +1195,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if ($personel_id > 0) {
                 $bugun = date('Y-m-d');
                 $isNewlyActive = ($saveData['baslangic_tarihi'] <= $bugun && ($saveData['bitis_tarihi'] === null || $saveData['bitis_tarihi'] >= $bugun));
-                
+
                 if ($isNewlyActive) {
                     $aktifGorev = $Personel->getAktifGorevGecmisi($personel_id);
                     if ($aktifGorev && $aktifGorev->id != $saveData['id']) {

@@ -48,8 +48,8 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                         $firma_adi = $FirmaModel->find($_SESSION['firma_id'])->firma_adi;
                         $firma_option = [
                             $firma_adi => $firma_adi,
-                            "İŞKUR" => "İŞKUR"
-
+                            "İŞKUR" => "İŞKUR",
+                            "Dışarıdan Sigortalı" => "Dışarıdan Sigortalı"
                         ];
 
 
@@ -57,6 +57,77 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
 
                     </div>
                 </div>
+
+                <div class="row mt-2" id="gorunum_modulleri_row"
+                    style="<?= ($personel->sgk_yapilan_firma ?? '') === 'Dışarıdan Sigortalı' ? '' : 'display:none;' ?>">
+                    <div class="col-md-12 mb-2">
+                        <?php
+                        $modul_options = [
+                            'bordro' => 'Bordro',
+                            'personel' => 'Personel Listesi',
+                            'puantaj' => 'Puantaj',
+                            'nobet' => 'Nöbet',
+                            'demirbas' => 'Demirbaş',
+                            'arac' => 'Araç Takip',
+                            'evrak' => 'Evrak Takip',
+                            'mail' => 'Mail/SMS',
+                            'takip' => 'Personel Takip',
+                            'dashboard' => 'Dashboard'
+                        ];
+                        // Varsayılan olarak ikisi her zaman olsun
+                        $selected_modules = !empty($personel->gorunum_modulleri) ? explode(',', $personel->gorunum_modulleri) : ['bordro', 'personel'];
+                        if (!in_array('bordro', $selected_modules))
+                            $selected_modules[] = 'bordro';
+                        if (!in_array('personel', $selected_modules))
+                            $selected_modules[] = 'personel';
+
+                        echo Form::FormMultipleSelect2("gorunum_modulleri", $modul_options, $selected_modules, "Dışarıdan Sigortalı Olduğu İçin Görüneceği Modüller", "eye");
+                        ?>
+                        <small class="text-muted"><i class="bx bx-info-circle"></i> SGK yapılan firma ana firma değilse
+                            personelin hangi modüllerde görüneceğini seçebilirsiniz. <strong class="text-danger">Bordro
+                                ve Personel Listesi görünümü zorunludur.</strong></small>
+                    </div>
+                </div>
+
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        var sgkSelect = document.getElementById('sgk_yapilan_firma');
+                        var wrapper = document.getElementById('gorunum_modulleri_row');
+                        var firmaAdi = "<?= addslashes($firma_adi) ?>";
+
+                        function toggleGorunum() {
+                            var val = sgkSelect.value;
+                            if (val === 'Dışarıdan Sigortalı') {
+                                wrapper.style.display = '';
+                            } else {
+                                wrapper.style.display = 'none';
+                            }
+                        }
+
+                        if (sgkSelect) {
+                            sgkSelect.addEventListener('change', toggleGorunum);
+                            if (typeof $ !== 'undefined' && $(sgkSelect).data('select2')) {
+                                $(sgkSelect).on('select2:select', toggleGorunum);
+                                $(sgkSelect).on('select2:unselect', toggleGorunum);
+                            }
+                        }
+
+                        // Select2'de 'bordro' ve 'personel' seçimlerini zorunlu yap
+                        setTimeout(function () {
+                            var $gm = $('#gorunum_modulleri');
+                            if ($gm.length) {
+                                $gm.on('select2:unselecting', function (e) {
+                                    if (e.params.args.data.id === 'bordro' || e.params.args.data.id === 'personel') {
+                                        e.preventDefault();
+                                        toastr.warning(e.params.args.data.text + ' modülünde görünüm zorunludur.', 'Uyarı');
+                                    }
+                                });
+                            }
+                        }, 500);
+
+                    });
+                </script>
+
 
 
             </div>

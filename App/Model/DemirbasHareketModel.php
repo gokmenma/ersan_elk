@@ -270,4 +270,92 @@ class DemirbasHareketModel extends Model
         ];
         return $badges[$kaynak] ?? '<span class="badge bg-soft-dark text-dark">Bilinmiyor</span>';
     }
+
+    /**
+     * Demirbaşın hareket geçmişini DataTable server-side olarak getir
+     */
+    public function getDemirbasHareketleriDatatable($postData, $demirbas_id, $isAparat = false)
+    {
+        $start = intval($postData['start'] ?? 0);
+        $length = intval($postData['length'] ?? 10);
+        $search = $postData['search']['value'] ?? '';
+        $orderColIndex = $postData['order'][0]['column'] ?? 2; // Default column 2 (Tarih)
+        $orderDir = $postData['order'][0]['dir'] ?? 'desc';
+
+        $columnsCount = [
+            0 => 'h.hareket_tipi',
+            1 => 'h.miktar',
+            2 => 'h.tarih',
+            3 => 'p.adi_soyadi',
+            4 => 'h.aciklama',
+            5 => 'u.adi_soyadi'
+        ];
+        $orderBy = $columnsCount[$orderColIndex] ?? 'h.tarih';
+        $orderDir = ($orderDir === 'asc') ? 'ASC' : 'DESC';
+
+        $baseWhere = "h.demirbas_id = ? AND h.silinme_tarihi IS NULL";
+        // Eğer aparat ise puantaj_excel işlemlerini gizle
+        if ($isAparat) {
+            $baseWhere .= " AND h.kaynak != 'puantaj_excel'";
+        }
+
+        $params = [$demirbas_id];
+
+        // Arama filtresi
+        if (!empty($search)) {
+            $baseWhere .= " AND (p.adi_soyadi LIKE ? OR h.aciklama LIKE ? OR u.adi_soyadi LIKE ?)";
+            $searchTerm = "%" . $search . "%";
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+        }
+
+        // Toplam Kayıt Sayısı
+        $totalSql = $this->db->prepare("
+            SELECT COUNT(h.id) as count 
+            FROM {$this->table} h
+            WHERE h.demirbas_id = ? AND h.silinme_tarihi IS NULL
+            " . ($isAparat ? " AND h.kaynak != 'puantaj_excel'" : "") . "
+        ");
+        $totalSql->execute([$demirbas_id]);
+        $recordsTotal = $totalSql->fetch(PDO::FETCH_OBJ)->count;
+
+        // Filtrelenmiş Kayıt Sayısı
+        $filteredSql = $this->db->prepare("
+            SELECT COUNT(h.id) as count
+            FROM {$this->table} h
+            LEFT JOIN personel p ON h.personel_id = p.id
+            LEFT JOIN personel u ON h.islem_yapan_id = u.id
+            WHERE $baseWhere
+        ");
+        $filteredSql->execute($params);
+        $recordsFiltered = $filteredSql->fetch(PDO::FETCH_OBJ)->count;
+
+        // Veri Çekme Sorgusu
+        $sql = "
+            SELECT 
+                h.*,
+                p.adi_soyadi as personel_adi,
+                u.adi_soyadi as islem_yapan_adi
+            FROM {$this->table} h
+            LEFT JOIN personel p ON h.personel_id = p.id
+            LEFT JOIN personel u ON h.islem_yapan_id = u.id
+            WHERE $baseWhere
+            ORDER BY $orderBy $orderDir, h.id DESC
+        ";
+
+        if ($length > 0) {
+            $sql .= " LIMIT $start, $length";
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $data = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        return [
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data
+        ];
+    }
 }

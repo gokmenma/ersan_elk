@@ -187,7 +187,7 @@ if ($activeTab !== 'okuma' && !empty($workTypes)) {
 $subColCount = count($workTypeCols) ?: 1;
 
 // Personel mapping for easy access
-$allPersonel = $Personel->all();
+$allPersonel = $Personel->all(false, 'puantaj');
 $personelById = [];
 foreach ($allPersonel as $p) {
     $personelById[$p->id] = $p;
@@ -288,7 +288,7 @@ $sheet->mergeCells('A1:A' . $headerRows);
 if ($activeTab !== 'kacakkontrol') {
     $sheet->setCellValue('B1', 'EKİP KODU');
     $sheet->mergeCells('B1:B' . $headerRows);
-    
+
     $sheet->setCellValue('C1', 'İSİM SOYİSİM');
     $sheet->mergeCells('C1:C' . $headerRows);
     $daysColStartIdx = 4;
@@ -581,14 +581,15 @@ foreach ($regions as $regionName) {
         $personelTotal = 0;
 
         $sheet->setCellValue('A' . $row, $sira++);
-        
+
         if ($activeTab === 'kacakkontrol') {
             // Kaçak Kontrol'de B sütunu isim soyisim
             $pIdsStr = $kacakPersonelMapping[$team->tur_adi] ?? '';
             $names = [];
             if (!empty($pIdsStr)) {
                 foreach (explode(',', $pIdsStr) as $id) {
-                    if (isset($personelById[trim($id)])) $names[] = $personelById[trim($id)]->adi_soyadi;
+                    if (isset($personelById[trim($id)]))
+                        $names[] = $personelById[trim($id)]->adi_soyadi;
                 }
             }
             $persName = !empty($names) ? implode(', ', $names) : $personel->adi_soyadi;
@@ -640,7 +641,7 @@ foreach ($regions as $regionName) {
             }
         }
         $sheet->setCellValue($toplamCol . $row, $personelTotal ?: '');
-        
+
         // (-) Sayı ve Kalan verileri
         if ($hasManuelCols) {
             $dusum = $manuelDusumMap[$pId][$tId] ?? 0;
@@ -678,14 +679,15 @@ foreach ($regionGrouped as $regionName => $teamsInRegion) {
         $personelTotal = 0;
 
         $sheet->setCellValue('A' . $row, $sira++);
-        
+
         if ($activeTab === 'kacakkontrol') {
             // Kaçak Kontrol'de B sütunu isim soyisim
             $pIdsStr = $kacakPersonelMapping[$team->tur_adi] ?? '';
             $names = [];
             if (!empty($pIdsStr)) {
                 foreach (explode(',', $pIdsStr) as $id) {
-                    if (isset($personelById[trim($id)])) $names[] = $personelById[trim($id)]->adi_soyadi;
+                    if (isset($personelById[trim($id)]))
+                        $names[] = $personelById[trim($id)]->adi_soyadi;
                 }
             }
             $persName = !empty($names) ? implode(', ', $names) : $personel->adi_soyadi;
@@ -737,7 +739,7 @@ foreach ($regionGrouped as $regionName => $teamsInRegion) {
             }
         }
         $sheet->setCellValue($toplamCol . $row, $personelTotal ?: '');
-        
+
         // (-) Sayı ve Kalan verileri
         if ($hasManuelCols) {
             $dusum = $manuelDusumMap[$pId][$tId] ?? 0;
@@ -765,7 +767,7 @@ if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeC
     $sheet->setCellValue('A' . $row, 'İŞLEM BAZINDA GÜNLÜK TOPLAMLAR');
     $sheet->mergeCells('A' . $row . ':C' . $row);
     $sheet->getStyle('A' . $row . ':C' . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-    
+
     // Günlük detaylı toplamları yaz
     $colIdx = $daysColStartIdx;
     foreach ($reportDates as $date) {
@@ -778,7 +780,7 @@ if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeC
             $colIdx++;
         }
     }
-    
+
     // İŞLEM TOPLAMLARI (C) sütunu toplamlarını yaz
     $actionGrandTotals = [];
     foreach ($workTypeCols as $wt) {
@@ -793,7 +795,7 @@ if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeC
         }
         $colIdx++;
     }
-    
+
     $sheet->setCellValue($toplamCol . $row, $grandTotal ?: '');
     $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->applyFromArray(['font' => ['bold' => true], 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E3F2FD']]]);
     $row++;
@@ -809,7 +811,7 @@ foreach ($reportDates as $date) {
     $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
     if ($dailyTotals[$date] > 0)
         $sheet->setCellValue($colLetter . $row, $dailyTotals[$date]);
-    
+
     $sheet->mergeCells($colLetter . $row . ':' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx + $subColCount - 1) . $row);
     $colIdx += $subColCount;
 }

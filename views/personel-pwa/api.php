@@ -2303,6 +2303,7 @@ try {
                     AND aktif_mi = 1 
                     AND silinme_tarihi IS NULL 
                     AND id != :personel_id 
+                    AND (disardan_sigortali = 0 OR FIND_IN_SET('nobet', gorunum_modulleri))
                     AND (departman LIKE '%Kesme%' OR departman LIKE '%Açma%')
                     ORDER BY adi_soyadi ASC";
             $stmt = $db->db->prepare($sql);

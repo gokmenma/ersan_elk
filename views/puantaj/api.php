@@ -1259,7 +1259,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 } else {
                     // Zimmette aktif olarak var mı?
                     $stmtZimmet = $SayacDegisimModel->db->prepare("
-                        SELECT dz.id 
+                        SELECT dz.id, d.kategori_id, d.demirbas_adi
                         FROM demirbas_zimmet dz
                         JOIN demirbas d ON d.id = dz.demirbas_id
                         WHERE dz.personel_id = ? 
@@ -1269,11 +1269,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         LIMIT 1
                     ");
                     $stmtZimmet->execute([$personelId, $takilanSayacNo]);
-                    $zimmetId = $stmtZimmet->fetchColumn();
-                    if ($zimmetId) {
+                    $zimmetRow = $stmtZimmet->fetch(PDO::FETCH_ASSOC);
+                    if ($zimmetRow && $zimmetRow['id']) {
                         try {
+                            $zimmetId = $zimmetRow['id'];
+                            $kategoriId = $zimmetRow['kategori_id'];
+
                             $ZimmetModel = new \App\Model\DemirbasZimmetModel();
-                            $ZimmetModel->iadeYap($zimmetId, ($kayitTarihi ?: $tarih), 1, "Sayaç değişimi otomatik zimmet düşümü.\nİş Emri No: {$isemriNo}\nAbone No: {$aboneNo}", $islemId, $isemriSonucu, 'otomatik');
+
+                            // Takılan sayacı Tüketim yap (iadeYap depoya döndürür)
+                            $ZimmetModel->tuketimYap($zimmetId, ($kayitTarihi ?: $tarih), 1, "Sayaç değişimi otomatik tüketimi.\nİş Emri No: {$isemriNo}\nAbone No: {$aboneNo}", $islemId, $isemriSonucu, 'otomatik');
+
+                            // Sökülen sayacı Hurda olarak ekle ve zimmetle
+                            $yeniHurdaAdi = "Sökülen Hurda / Abone: " . $aboneNo;
+                            $sqlHurdaInsert = $SayacDegisimModel->db->prepare("
+                                INSERT INTO demirbas 
+                                (firma_id, kategori_id, demirbas_adi, seri_no, miktar, kalan_miktar, durum, kayit_yapan, aciklama)
+                                VALUES (?, ?, ?, ?, ?, ?, 'hurda', ?, ?)
+                            ");
+                            $sqlHurdaInsert->execute([
+                                $firmaId,
+                                $kategoriId, // Aynı kategori (Sayaç)
+                                $yeniHurdaAdi,
+                                '-', // seri_no bilinmiyor
+                                1, // miktar 
+                                1, // kalan_miktar
+                                $_SESSION['user_id'] ?? null,
+                                "Sayaç değişimi sonrası sökülen hurda (İş Emri: {$isemriNo})"
+                            ]);
+                            $yeniHurdaId = $SayacDegisimModel->db->lastInsertId();
+
+                            // Personele zimmetle
+                            $ZimmetModel->zimmetVer([
+                                'demirbas_id' => $yeniHurdaId,
+                                'personel_id' => $personelId,
+                                'teslim_tarihi' => ($kayitTarihi ?: $tarih),
+                                'teslim_miktar' => 1,
+                                'aciklama' => "Otomatik Hurda Sayaç Zimmeti.\nİş Emri No: {$isemriNo}",
+                                'islem_id' => $islemId . "_hurda",
+                                'is_emri_sonucu' => $isemriSonucu,
+                                'kaynak' => 'otomatik'
+                            ]);
+
                             $zimmetDusuldu = 1;
                         } catch (Exception $e) {
                             $zimmetDusuldu = 0;
@@ -1388,24 +1425,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $EndeksOkuma = new \App\Model\EndeksOkumaModel();
         $endeksRecords = $EndeksOkuma->getFiltered($dbStartDate, $dbEndDate, $ekipKodu);
         foreach ($endeksRecords as $record): ?>
-                        <tr>
-                            <td><?= $record->bolge ?></td>
-                            <td><?= $record->personel_adi ?: '<span class="text-muted">' . $record->kullanici_adi . '</span>' ?></td>
-                            <td><?= number_format($record->sarfiyat, 2, ',', '.') ?></td>
-                            <td><?= number_format($record->ort_sarfiyat_gunluk, 2, ',', '.') ?></td>
-                            <td><?= number_format($record->tahakkuk, 2, ',', '.') ?></td>
-                            <td><?= number_format($record->ort_tahakkuk_gunluk, 2, ',', '.') ?></td>
-                            <td><?= $record->okunan_gun_sayisi ?></td>
-                            <td><?= $record->okunan_abone_sayisi ?></td>
-                            <td><?= number_format($record->ort_okunan_abone_sayisi_gunluk, 2, ',', '.') ?></td>
-                            <td>%<?= number_format($record->okuma_performansi, 2, ',', '.') ?></td>
-                            <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
-                            <td>
-                                <button class="btn btn-sm btn-soft-danger delete-endeks" data-id="<?= $record->id ?>"><i
-                                        class="bx bx-trash"></i></button>
-                            </td>
-                        </tr>
-                <?php endforeach;
+            <tr>
+                <td><?= $record->bolge ?></td>
+                <td><?= $record->personel_adi ?: '<span class="text-muted">' . $record->kullanici_adi . '</span>' ?></td>
+                <td><?= number_format($record->sarfiyat, 2, ',', '.') ?></td>
+                <td><?= number_format($record->ort_sarfiyat_gunluk, 2, ',', '.') ?></td>
+                <td><?= number_format($record->tahakkuk, 2, ',', '.') ?></td>
+                <td><?= number_format($record->ort_tahakkuk_gunluk, 2, ',', '.') ?></td>
+                <td><?= $record->okunan_gun_sayisi ?></td>
+                <td><?= $record->okunan_abone_sayisi ?></td>
+                <td><?= number_format($record->ort_okunan_abone_sayisi_gunluk, 2, ',', '.') ?></td>
+                <td>%<?= number_format($record->okuma_performansi, 2, ',', '.') ?></td>
+                <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
+                <td>
+                    <button class="btn btn-sm btn-soft-danger delete-endeks" data-id="<?= $record->id ?>"><i
+                            class="bx bx-trash"></i></button>
+                </td>
+            </tr>
+        <?php endforeach;
     } elseif ($tab === 'kacak_kontrol') {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         // personel_ids artık virgülle ayrılmış ID'ler içerdiği için doğrudan ekip_adi gösteriliyor
@@ -1423,36 +1460,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $stmt->execute($params);
         $records = $stmt->fetchAll(PDO::FETCH_OBJ);
         foreach ($records as $record): ?>
-                        <tr>
-                            <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
-                            <td><?= $record->ekip_adi ?: '<span class="text-muted">-</span>' ?></td>
-                            <td><?= $record->sayi ?></td>
-                            <td><?= $record->aciklama ?></td>
-                            <td>
-                                <button class="btn btn-sm btn-soft-primary edit-kacak" data-id="<?= $record->id ?>"><i
-                                        class="bx bx-edit"></i></button>
-                                <button class="btn btn-sm btn-soft-danger delete-kacak" data-id="<?= $record->id ?>"><i
-                                        class="bx bx-trash"></i></button>
-                            </td>
-                        </tr>
-                <?php endforeach;
+            <tr>
+                <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
+                <td><?= $record->ekip_adi ?: '<span class="text-muted">-</span>' ?></td>
+                <td><?= $record->sayi ?></td>
+                <td><?= $record->aciklama ?></td>
+                <td>
+                    <button class="btn btn-sm btn-soft-primary edit-kacak" data-id="<?= $record->id ?>"><i
+                            class="bx bx-edit"></i></button>
+                    <button class="btn btn-sm btn-soft-danger delete-kacak" data-id="<?= $record->id ?>"><i
+                            class="bx bx-trash"></i></button>
+                </td>
+            </tr>
+        <?php endforeach;
     } else {
         $records = $Puantaj->getFiltered($dbStartDate, $dbEndDate, $ekipKodu, $workType, $workResult);
         foreach ($records as $record): ?>
-                        <tr>
-                            <td><?= $record->firma ?></td>
-                            <td><?= $record->is_emri_tipi ?></td>
-                            <td><?= $record->personel_adi ?: '<span class="text-muted">' . $record->ekip_kodu . '</span>' ?></td>
-                            <td><?= $record->is_emri_sonucu ?></td>
-                            <td><?= $record->sonuclanmis ?></td>
-                            <td><?= $record->acik_olanlar ?></td>
-                            <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
-                            <td>
-                                <button class="btn btn-sm btn-soft-danger delete-puantaj" data-id="<?= $record->id ?>"><i
-                                        class="bx bx-trash"></i></button>
-                            </td>
-                        </tr>
-                <?php endforeach;
+            <tr>
+                <td><?= $record->firma ?></td>
+                <td><?= $record->is_emri_tipi ?></td>
+                <td><?= $record->personel_adi ?: '<span class="text-muted">' . $record->ekip_kodu . '</span>' ?></td>
+                <td><?= $record->is_emri_sonucu ?></td>
+                <td><?= $record->sonuclanmis ?></td>
+                <td><?= $record->acik_olanlar ?></td>
+                <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
+                <td>
+                    <button class="btn btn-sm btn-soft-danger delete-puantaj" data-id="<?= $record->id ?>"><i
+                            class="bx bx-trash"></i></button>
+                </td>
+            </tr>
+        <?php endforeach;
     }
     $html = ob_get_clean();
     echo $html;

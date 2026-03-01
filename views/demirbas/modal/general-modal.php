@@ -180,12 +180,18 @@ foreach ($isEmriSonuclari as $sonuc) {
                                 <i class="bx bx-info-circle me-2"></i>
                                 <strong>Otomatik Zimmet Sistemi:</strong> Puantaj verileri yüklendiğinde, belirtilen iş
                                 emri sonuçlarına göre bu demirbaş otomatik olarak zimmetlenebilir veya iade alınabilir.
+                                <br>
+                                <small class="text-primary fw-bold mt-1 d-block">
+                                    <i class="bx bx-plug me-1"></i> Aparat kategorisinde: Zimmet İş Emri = Personeldeki
+                                    aparatı TÜKETİR (depoya dokunmaz).
+                                    Aparatlar depoya MANUEL olarak eklenir, personele MANUEL olarak verilir.
+                                </small>
                             </div>
 
                             <div class="card border mb-3">
                                 <div class="card-header bg-light py-2">
                                     <h6 class="mb-0"><i class="bx bx-transfer text-warning me-2"></i>Otomatik Zimmet
-                                        Verme</h6>
+                                        Verme / Tüketim</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
@@ -205,7 +211,12 @@ foreach ($isEmriSonuclari as $sonuc) {
                                     </div>
                                     <small class="text-muted">
                                         <i class="bx bx-info-circle me-1"></i>
-                                        Bu iş emri sonucu geldiğinde, demirbaş personele otomatik olarak zimmetlenir.
+                                        <strong>Genel Demirbaş:</strong> Bu iş emri sonucu geldiğinde, demirbaş
+                                        personele otomatik olarak zimmetlenir.<br>
+                                        <i class="bx bx-plug me-1 text-warning"></i>
+                                        <strong class="text-warning">Aparat:</strong> Bu iş emri sonucu geldiğinde,
+                                        personeldeki mevcut aparat <strong>tüketildi</strong> olarak işaretlenir. Depoya
+                                        dokunulmaz.
                                     </small>
                                 </div>
                             </div>
@@ -233,7 +244,7 @@ foreach ($isEmriSonuclari as $sonuc) {
                                     <small class="text-muted">
                                         <i class="bx bx-info-circle me-1"></i>
                                         Bu iş emri sonucu geldiğinde, personelden demirbaş otomatik olarak iade alınır
-                                        (tüketildi olarak işaretlenir).
+                                        (depoya geri döner).
                                     </small>
                                 </div>
                             </div>
@@ -242,13 +253,16 @@ foreach ($isEmriSonuclari as $sonuc) {
                                 <i class="bx bx-bulb me-2"></i>
                                 <strong>Örnek Kullanım:</strong><br>
                                 <ul class="mb-0 mt-2">
-                                    <li><strong>Aparat:</strong> İade İş Emri = "APARATLA KESİM YAPILDI" → Kesme işi
-                                        yapıldığında aparat tüketilir</li>
+                                    <li><strong>Aparat:</strong> Zimmet İş Emri = "APARATLA KESİM YAPILDI" → Kesme işi
+                                        yapıldığında personeldeki aparat <strong>tüketilir</strong> (stok depoya döner)
+                                    </li>
+                                    <li><strong>Sayaç:</strong> Zimmet İş Emri = Normal zimmet (depodan personele)</li>
                                     <li><strong>Sayaç:</strong> İade İş Emri = "Sayaç Kullanıma açıldı" → Sayaç
                                         açıldığında zimmet iade alınır</li>
                                 </ul>
                             </div>
                         </div>
+
                     </div>
                 </div>
                 <div class="modal-footer">

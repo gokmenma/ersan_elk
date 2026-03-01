@@ -51,16 +51,33 @@ try {
 
         // Aktif personelleri ve o ay veya sonrasında işten çıkanları getir
         $personeller = $Personel->db->prepare("
-            SELECT id, adi_soyadi, resim_yolu, ekip_no, tc_kimlik_no, isten_cikis_tarihi, ise_giris_tarihi 
-            FROM personel 
-            WHERE firma_id = ? 
-            AND silinme_tarihi IS NULL 
-            AND (aktif_mi = 1 OR (isten_cikis_tarihi IS NOT NULL AND isten_cikis_tarihi >= ?))
-            AND ise_giris_tarihi <= ?
-            ORDER BY adi_soyadi ASC
+            SELECT p.id, p.adi_soyadi, p.resim_yolu, p.ekip_no, p.tc_kimlik_no, p.isten_cikis_tarihi, p.ise_giris_tarihi 
+            FROM personel p
+            WHERE p.firma_id = ? 
+            AND p.silinme_tarihi IS NULL 
+            AND (p.aktif_mi = 1 OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi >= ?))
+            AND (p.disardan_sigortali = 0 OR FIND_IN_SET('puantaj', p.gorunum_modulleri))
+            AND (p.ise_giris_tarihi IS NULL OR p.ise_giris_tarihi = '' OR p.ise_giris_tarihi <= ?)
+            AND NOT EXISTS (
+                SELECT 1 FROM personel_gorev_gecmisi pgg
+                WHERE pgg.personel_id = p.id
+                AND pgg.baslangic_tarihi <= ?
+                AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)
+                AND (pgg.maas_durumu = 'Maaş Hesaplanmayan')
+            )
+            ORDER BY p.adi_soyadi ASC
         ");
-        $personeller->execute([$firma_id, $startDate, $endDate]);
+        $personeller->execute([$firma_id, $startDate, $endDate, $endDate, $startDate]);
         $personel_list = $personeller->fetchAll(PDO::FETCH_OBJ);
+
+        // Varsayılan tanımlamaları al
+        $varsayilan_X = $Tanimlamalar->db->prepare("SELECT id, tur_adi, kisa_kod, renk FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod = 'X' OR kisa_kod = 'x' OR tur_adi LIKE '%Çalışılan Gün%') AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");
+        $varsayilan_X->execute([$firma_id]);
+        $x_tanim = $varsayilan_X->fetch(PDO::FETCH_OBJ);
+
+        $varsayilan_HT = $Tanimlamalar->db->prepare("SELECT id, tur_adi, kisa_kod, renk FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod = 'HT' OR kisa_kod = 'ht' OR tur_adi LIKE '%Hafta Tatili%') AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");
+        $varsayilan_HT->execute([$firma_id]);
+        $ht_tanim = $varsayilan_HT->fetch(PDO::FETCH_OBJ);
 
         // Puantaj ve İzin verilerini getir
         // yapilan_isler (puantaj) ve personel_izinleri tablolarından
@@ -89,6 +106,7 @@ try {
             $izin_stmt->execute([$p->id, $startDate, $endDate, $startDate, $endDate]);
             $izinler = $izin_stmt->fetchAll(PDO::FETCH_OBJ);
 
+            $mevcut_gunler = [];
             foreach ($izinler as $izin) {
                 $cur = strtotime($izin->baslangic_tarihi);
                 $end = strtotime($izin->bitis_tarihi);
@@ -103,9 +121,45 @@ try {
                             'kisa_kod' => $izin->kisa_kod,
                             'color' => $izin->renk ?: '#34c38f'
                         ];
+                        $mevcut_gunler[$date_str] = true;
                     }
                     $cur = strtotime("+1 day", $cur);
                 }
+            }
+
+            // Boş günleri X ve HT ile doldur
+            $cur = strtotime($startDate);
+            $end = strtotime($endDate);
+            $p_giris = $p->ise_giris_tarihi && $p->ise_giris_tarihi != '0000-00-00' ? strtotime($p->ise_giris_tarihi) : 0;
+            $p_cikis = $p->isten_cikis_tarihi && $p->isten_cikis_tarihi != '0000-00-00' ? strtotime($p->isten_cikis_tarihi) : PHP_INT_MAX;
+
+            while ($cur <= $end) {
+                $date_str = date('Y-m-d', $cur);
+                $isWeekend = date('w', $cur) == 0; // Sadece Pazar
+                if (!isset($mevcut_gunler[$date_str])) {
+                    if ($cur >= $p_giris && $cur <= $p_cikis) {
+                        if ($isWeekend && $ht_tanim) {
+                            $p_info['entries'][$date_str][] = [
+                                'type' => 'default',
+                                'id' => 0,
+                                'tip_id' => $ht_tanim->id,
+                                'name' => $ht_tanim->tur_adi,
+                                'kisa_kod' => $ht_tanim->kisa_kod,
+                                'color' => $ht_tanim->renk ?: '#f46a6a'
+                            ];
+                        } elseif (!$isWeekend && $x_tanim) {
+                            $p_info['entries'][$date_str][] = [
+                                'type' => 'default',
+                                'id' => 0,
+                                'tip_id' => $x_tanim->id,
+                                'name' => $x_tanim->tur_adi,
+                                'kisa_kod' => $x_tanim->kisa_kod,
+                                'color' => $x_tanim->renk ?: '#556ee6'
+                            ];
+                        }
+                    }
+                }
+                $cur = strtotime("+1 day", $cur);
             }
 
             $data[] = $p_info;
@@ -360,7 +414,7 @@ try {
         $raporlar = $sgkService->onayliRaporlariGetir($tarih1, $tarih2);
 
         // Personel listesini getir (TC Kimlik No eşleştirmesi için)
-        $personelStmt = $Personel->db->prepare("SELECT id, adi_soyadi, tc_kimlik_no FROM personel WHERE firma_id = ? AND aktif_mi = 1 AND silinme_tarihi IS NULL");
+        $personelStmt = $Personel->db->prepare("SELECT id, adi_soyadi, tc_kimlik_no FROM personel WHERE firma_id = ? AND aktif_mi = 1 AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET('puantaj', gorunum_modulleri))");
         $personelStmt->execute([$firma_id]);
         $personelList = $personelStmt->fetchAll(PDO::FETCH_OBJ);
 
@@ -495,7 +549,7 @@ try {
         $raporlar = $sgkService->raporlariGetir($tarih, false); // arsiv=false -> sadece aktif raporlar
 
         // Personel listesini getir (TC Kimlik No eşleştirmesi için)
-        $personelStmt = $Personel->db->prepare("SELECT id, adi_soyadi, tc_kimlik_no FROM personel WHERE firma_id = ? AND aktif_mi = 1 AND silinme_tarihi IS NULL");
+        $personelStmt = $Personel->db->prepare("SELECT id, adi_soyadi, tc_kimlik_no FROM personel WHERE firma_id = ? AND aktif_mi = 1 AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET('puantaj', gorunum_modulleri))");
         $personelStmt->execute([$firma_id]);
         $personelList = $personelStmt->fetchAll(PDO::FETCH_OBJ);
 
@@ -725,17 +779,33 @@ try {
         $daysCount = date('t', strtotime($startDate));
         $endDate = "$yil-$ay-$daysCount";
 
-        // Aktif personelleri ve o ay veya sonrasında işten çıkanları getir
         $personeller = $Personel->db->prepare("
-            SELECT id, adi_soyadi, tc_kimlik_no, isten_cikis_tarihi, ise_giris_tarihi
-            FROM personel 
-            WHERE firma_id = ? 
-            AND silinme_tarihi IS NULL 
-            AND (aktif_mi = 1 OR (isten_cikis_tarihi IS NOT NULL AND isten_cikis_tarihi >= ?))
-            ORDER BY adi_soyadi ASC
+            SELECT p.id, p.adi_soyadi, p.tc_kimlik_no, p.isten_cikis_tarihi, p.ise_giris_tarihi
+            FROM personel p
+            WHERE p.firma_id = ? 
+            AND p.silinme_tarihi IS NULL 
+            AND (p.aktif_mi = 1 OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi >= ?))
+            AND (p.disardan_sigortali = 0 OR FIND_IN_SET('puantaj', p.gorunum_modulleri))
+            AND (p.ise_giris_tarihi IS NULL OR p.ise_giris_tarihi = '' OR p.ise_giris_tarihi <= ?)
+            AND NOT EXISTS (
+                SELECT 1 FROM personel_gorev_gecmisi pgg
+                WHERE pgg.personel_id = p.id
+                AND pgg.baslangic_tarihi <= ?
+                AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)
+                AND (pgg.maas_durumu = 'Maaş Hesaplanmayan')
+            )
+            ORDER BY p.adi_soyadi ASC
         ");
-        $personeller->execute([$firma_id, $startDate]);
+        $personeller->execute([$firma_id, $startDate, $endDate, $endDate, $startDate]);
         $personel_list = $personeller->fetchAll(PDO::FETCH_OBJ);
+
+        $varsayilan_X = $Tanimlamalar->db->prepare("SELECT id, tur_adi, kisa_kod, renk FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod = 'X' OR kisa_kod = 'x' OR tur_adi LIKE '%Çalışılan Gün%') AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");
+        $varsayilan_X->execute([$firma_id]);
+        $x_tanim = $varsayilan_X->fetch(PDO::FETCH_OBJ);
+
+        $varsayilan_HT = $Tanimlamalar->db->prepare("SELECT id, tur_adi, kisa_kod, renk FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod = 'HT' OR kisa_kod = 'ht' OR tur_adi LIKE '%Hafta Tatili%') AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");
+        $varsayilan_HT->execute([$firma_id]);
+        $ht_tanim = $varsayilan_HT->fetch(PDO::FETCH_OBJ);
 
         // Ücretsiz izin türlerini getir
         $ucretsizIdsStmt = $Tanimlamalar->db->prepare("SELECT id FROM tanimlamalar WHERE grup = 'izin_turu' AND (ucretli_mi = 0 OR ucretli_mi IS NULL) AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL");
@@ -805,6 +875,7 @@ try {
             $izinler = $izin_stmt->fetchAll(PDO::FETCH_OBJ);
 
             $dayData = [];
+            $mevcut_gunler = [];
             foreach ($izinler as $izin) {
                 $cur = strtotime($izin->baslangic_tarihi);
                 $end = strtotime($izin->bitis_tarihi);
@@ -832,11 +903,44 @@ try {
                         $dayData[date('j', $cur)] = [
                             'code' => $izin->kisa_kod,
                             'color' => $hexColor,
-                            'tip_id' => $izin->izin_tipi_id
+                            'tip_id' => $izin->izin_tipi_id,
+                            'is_default' => false
                         ];
+                        $mevcut_gunler[$date_str] = true;
                     }
                     $cur = strtotime("+1 day", $cur);
                 }
+            }
+
+            // Boş günleri X ve HT ile doldur
+            $cur = strtotime($startDate);
+            $end = strtotime($endDate);
+            $p_giris = $p->ise_giris_tarihi && $p->ise_giris_tarihi != '0000-00-00' ? strtotime($p->ise_giris_tarihi) : 0;
+            $p_cikis = $p->isten_cikis_tarihi && $p->isten_cikis_tarihi != '0000-00-00' ? strtotime($p->isten_cikis_tarihi) : PHP_INT_MAX;
+
+            while ($cur <= $end) {
+                $date_str = date('Y-m-d', $cur);
+                $d = (int)date('j', $cur);
+                $isWeekend = date('w', $cur) == 0; // Sadece Pazar
+
+                if (!isset($mevcut_gunler[$date_str]) && $cur >= $p_giris && $cur <= $p_cikis) {
+                    if ($isWeekend && $ht_tanim) {
+                        $dayData[$d] = [
+                            'code' => $ht_tanim->kisa_kod,
+                            'color' => 'F46A6A', // Default red
+                            'tip_id' => $ht_tanim->id,
+                            'is_default' => true
+                        ];
+                    } elseif (!$isWeekend && $x_tanim) {
+                        $dayData[$d] = [
+                            'code' => $x_tanim->kisa_kod,
+                            'color' => '556EE6', // Default blue
+                            'tip_id' => $x_tanim->id,
+                            'is_default' => true
+                        ];
+                    }
+                }
+                $cur = strtotime("+1 day", $cur);
             }
 
             for ($d = 1; $d <= $daysCount; $d++) {
@@ -884,27 +988,33 @@ try {
             for ($d = 1; $d <= $daysCount; $d++) {
                 $dateObj = new DateTime(sprintf("%s-%s-%02d", $yil, $ay, $d));
                 $isDisabled = false;
-                
+
                 if (!empty($p->isten_cikis_tarihi) && $p->isten_cikis_tarihi != '0000-00-00') {
                     $cikisDate = new DateTime($p->isten_cikis_tarihi);
-                    if ($dateObj > $cikisDate) $isDisabled = true;
+                    if ($dateObj > $cikisDate)
+                        $isDisabled = true;
                 }
-                
+
                 if (!empty($p->ise_giris_tarihi) && $p->ise_giris_tarihi != '0000-00-00') {
                     $baslamaDate = new DateTime($p->ise_giris_tarihi);
-                    if ($dateObj < $baslamaDate) $isDisabled = true;
+                    if ($dateObj < $baslamaDate)
+                        $isDisabled = true;
                 }
-                
-                if ($isDisabled) $disabledDaysCount++;
+
+                if ($isDisabled)
+                    $disabledDaysCount++;
             }
 
             $unpaidCount = 0;
+            $allEntriesCount = 0;
             foreach ($dayData as $dEntry) {
                 if (in_array($dEntry['tip_id'], $ucretsizIds)) {
                     $unpaidCount++;
                 }
+                if (empty($dEntry['is_default'])) {
+                    $allEntriesCount++;
+                }
             }
-            $allEntriesCount = count($dayData);
 
             $calisilmasiGerekenGun = max(0, $daysCount - $disabledDaysCount);
             $toplamCalismaGunu = max(0, $calisilmasiGerekenGun - $unpaidCount);
@@ -923,6 +1033,22 @@ try {
                 'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
             ]);
 
+            $row++;
+        }
+
+        // İzin Türleri Açıklamalarını Ekle
+        $row += 2;
+        $sheet->setCellValue('B' . $row, 'İzin Kodları Açıklamaları');
+        $sheet->getStyle('B' . $row)->getFont()->setBold(true);
+        $row++;
+
+        $izinTurleriQuery = $Tanimlamalar->db->prepare("SELECT kisa_kod, tur_adi, ucretli_mi FROM tanimlamalar WHERE grup = 'izin_turu' AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL ORDER BY ucretli_mi DESC, kisa_kod ASC");
+        $izinTurleriQuery->execute([$firma_id]);
+        $izinTurleriData = $izinTurleriQuery->fetchAll(PDO::FETCH_OBJ);
+
+        foreach ($izinTurleriData as $it) {
+            $typeStr = ($it->ucretli_mi == 1) ? "(Ücretli)" : "(Ücretsiz)";
+            $sheet->setCellValue('B' . $row, $it->kisa_kod . " : " . $it->tur_adi . " " . $typeStr);
             $row++;
         }
 

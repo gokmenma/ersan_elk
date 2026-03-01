@@ -20,6 +20,7 @@ use App\Model\SystemLogModel;
 use App\Model\SayacDegisimModel;
 use App\Service\SayacDegisimService;
 use App\Service\MailGonderService;
+use App\Helper\Security;
 
 // CLI modunda mı çalışıyor?
 if (php_sapi_name() !== 'cli') {
@@ -131,18 +132,30 @@ try {
 
             cronLog("Sorgulama tamamlandı: " . json_encode($sonuc));
 
-            // Mail gönderimi (opsiyonel tutulabilir)
-            try {
-                $mailIcerik = "<h3>Sayaç Değişim Cron Sonucu</h3>";
-                $mailIcerik .= "<p><b>Tarih:</b> " . date('d.m.Y H:i:s') . "</p>";
-                $mailIcerik .= "<p><b>Sorgulanan Tarih:</b> " . $bugun . "</p>";
-                $mailIcerik .= "<ul>";
-                $mailIcerik .= "<li><b>Yeni/Güncellenen Kayıt:</b> " . $sonuc['yeni_kayit'] . "</li>";
-                $mailIcerik .= "<li><b>Toplam API Kaydı:</b> " . $sonuc['toplam_api'] . "</li>";
-                $mailIcerik .= "</ul>";
-                MailGonderService::gonder(['beyzade83@gmail.com'], 'Sayaç Değişim Cron Özeti - ' . $bugun, $mailIcerik);
-            } catch (Exception $e) {
-                cronLog("Mail gönderim hatası: " . $e->getMessage());
+            // Mail gönderimi sadece 18:00'da yapılacak
+            if ($simdikiSaat === '18:00') {
+                try {
+                    $mailIcerik = "<h3>Sayaç Değişim Cron Sonucu</h3>";
+                    $mailIcerik .= "<p><b>Tarih:</b> " . date('d.m.Y H:i:s') . "</p>";
+                    $mailIcerik .= "<p><b>Sorgulanan Tarih:</b> " . $bugun . "</p>";
+                    $mailIcerik .= "<ul>";
+                    $mailIcerik .= "<li><b>Yeni/Güncellenen Kayıt:</b> " . $sonuc['yeni_kayit'] . "</li>";
+                    $mailIcerik .= "<li><b>Toplam API Kaydı:</b> " . $sonuc['toplam_api'] . "</li>";
+                    $mailIcerik .= "</ul>";
+
+                    if (!empty($sonuc['atlanAnListesi'])) {
+                        $mailIcerik .= "<h4>Eşleşmeyen Ekip Listesi:</h4>";
+                        $mailIcerik .= "<ul>";
+                        foreach ($sonuc['atlanAnListesi'] as $item) {
+                            $mailIcerik .= "<li>" . Security::escape($item) . "</li>";
+                        }
+                        $mailIcerik .= "</ul>";
+                    }
+
+                    MailGonderService::gonder(['beyzade83@gmail.com'], 'Sayaç Değişim Cron Özeti - ' . $bugun, $mailIcerik);
+                } catch (Exception $e) {
+                    cronLog("Mail gönderim hatası: " . $e->getMessage());
+                }
             }
 
         } else {
@@ -237,6 +250,7 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
         }
 
         $insertBatch = [];
+        $atlanAnListesi = [];
         foreach ($apiData as $veri) {
             $ekipKoduStr = trim($veri['EKIP'] ?? '');
 
@@ -270,6 +284,9 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
             }
 
             // Eger personelId bulamadiysak 0 atariz
+            if ($defId === 0) {
+                $atlanAnListesi[] = $ekipKoduStr;
+            }
 
             $kayitTarihi = null;
             if (!empty($veri['KAYIT_TARIHI'])) {
@@ -278,6 +295,77 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
                     $kayitTarihi = $kDate->format('Y-m-d H:i:s');
                 } else {
                     $kayitTarihi = date('Y-m-d H:i:s', strtotime(str_replace('/', '-', $veri['KAYIT_TARIHI'])));
+                }
+            }
+
+            $zimmetDusuldu = 0;
+            // Zimmet işlemi
+            $takilanSayacNo = trim($veri['TAKILAN_SAYACNO'] ?? '');
+            if ($personelId > 0 && !empty($takilanSayacNo)) {
+                $stmtCheck = $db->prepare("SELECT id FROM demirbas_hareketler WHERE islem_id = ? AND hareket_tipi = 'sarf' LIMIT 1");
+                $stmtCheck->execute([$islemId]);
+                if ($stmtCheck->fetchColumn()) {
+                    $zimmetDusuldu = 1;
+                } else {
+                    $stmtZimmet = $db->prepare("
+                        SELECT dz.id, d.kategori_id, d.demirbas_adi
+                        FROM demirbas_zimmet dz
+                        JOIN demirbas d ON d.id = dz.demirbas_id
+                        WHERE dz.personel_id = ? 
+                        AND d.seri_no = ? 
+                        AND dz.silinme_tarihi IS NULL 
+                        AND (dz.durum = 'teslim' OR dz.teslim_miktar > IFNULL(dz.iade_miktar, 0))
+                        LIMIT 1
+                    ");
+                    $stmtZimmet->execute([$personelId, $takilanSayacNo]);
+                    $zimmetRow = $stmtZimmet->fetch(PDO::FETCH_ASSOC);
+                    if ($zimmetRow && $zimmetRow['id']) {
+                        try {
+                            $zimmetId = $zimmetRow['id'];
+                            $kategoriId = $zimmetRow['kategori_id'];
+                            
+                            $ZimmetModel = new \App\Model\DemirbasZimmetModel();
+                            
+                            // Takılan sayacı Tüketim yap
+                            $isemriSonucu = trim($veri['ISEMRI_SONUCU'] ?? '');
+                            $aboneNo = trim($veri['ABONE_NO'] ?? '');
+                            $ZimmetModel->tuketimYap($zimmetId, ($kayitTarihi ?: $normDate), 1, "Sayaç değişimi otomatik tüketimi.\nİş Emri No: {$isemriNo}\nAbone No: {$aboneNo}", $islemId, $isemriSonucu, 'otomatik');
+                            
+                            // Sökülen sayacı Hurda olarak ekle ve zimmetle
+                            $yeniHurdaAdi = "Sökülen Hurda / Abone: " . $aboneNo;
+                            $sqlHurdaInsert = $db->prepare("
+                                INSERT INTO demirbas 
+                                (firma_id, kategori_id, demirbas_adi, seri_no, miktar, kalan_miktar, durum, log_kaydi, aciklama)
+                                VALUES (?, ?, ?, ?, ?, ?, 'hurda', '', ?)
+                            ");
+                            $sqlHurdaInsert->execute([
+                                $firmaId,
+                                $kategoriId, // Aynı kategori (Sayaç)
+                                $yeniHurdaAdi,
+                                '-', // seri_no bilinmiyor
+                                1, // miktar 
+                                1, // kalan_miktar
+                                "Sayaç değişimi sonrası sökülen hurda (İş Emri: {$isemriNo})"
+                            ]);
+                            $yeniHurdaId = $db->lastInsertId();
+
+                            // Personele zimmetle
+                            $ZimmetModel->zimmetVer([
+                                'demirbas_id' => $yeniHurdaId,
+                                'personel_id' => $personelId,
+                                'teslim_tarihi' => ($kayitTarihi ?: $normDate),
+                                'teslim_miktar' => 1,
+                                'aciklama' => "Otomatik Hurda Sayaç Zimmeti.\nİş Emri No: {$isemriNo}",
+                                'islem_id' => $islemId . "_hurda",
+                                'is_emri_sonucu' => $isemriSonucu,
+                                'kaynak' => 'otomatik'
+                            ]);
+
+                            $zimmetDusuldu = 1;
+                        } catch (Exception $e) {
+                            $zimmetDusuldu = 0;
+                        }
+                    }
                 }
             }
 
@@ -295,9 +383,10 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
                 trim($veri['BOLGE'] ?? ''),
                 trim($veri['ISEMRI_SONUCU'] ?? ''),
                 trim($veri['SONUC_ACIKLAMA'] ?? ''),
-                trim($veri['TAKILAN_SAYACNO'] ?? ''),
+                $takilanSayacNo,
                 $kayitTarihi,
-                $normDate
+                $normDate,
+                $zimmetDusuldu
             ];
             $yeniKayit++;
         }
@@ -313,8 +402,8 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
         if (!empty($insertBatch)) {
             $chunks = array_chunk($insertBatch, 500);
             foreach ($chunks as $chunk) {
-                $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'));
-                $sql = "INSERT INTO sayac_degisim (islem_id, firma_id, personel_id, ekip_kodu_id, isemri_no, abone_no, isemri_sebep, ekip, memur, sonuclandiran_kullanici, bolge, isemri_sonucu, sonuc_aciklama, takilan_sayacno, kayit_tarihi, tarih) VALUES $placeholders";
+                $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'));
+                $sql = "INSERT INTO sayac_degisim (islem_id, firma_id, personel_id, ekip_kodu_id, isemri_no, abone_no, isemri_sebep, ekip, memur, sonuclandiran_kullanici, bolge, isemri_sonucu, sonuc_aciklama, takilan_sayacno, kayit_tarihi, tarih, zimmet_dusuldu) VALUES $placeholders";
                 $stmt = $db->prepare($sql);
                 $flatParams = [];
                 foreach ($chunk as $row) {
@@ -331,7 +420,7 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
         $SystemLog = new \App\Model\SystemLogModel();
         $SystemLog->logAction(0, 'Cron - Online Sayaç Değişim Sorgulama', "Firma ID: $firmaId, Tarih: $tarih. $yeniKayit yeni kayıt, $silinenKayit silinen.", \App\Model\SystemLogModel::LEVEL_IMPORTANT);
 
-        return ['yeni_kayit' => $yeniKayit, 'silinen_kayit' => $silinenKayit, 'toplam_api' => count($apiData)];
+        return ['yeni_kayit' => $yeniKayit, 'silinen_kayit' => $silinenKayit, 'toplam_api' => count($apiData), 'atlanAnListesi' => array_unique($atlanAnListesi)];
     } catch (Exception $e) {
         if ($db->inTransaction()) {
             $db->rollBack();

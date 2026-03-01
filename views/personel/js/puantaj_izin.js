@@ -346,12 +346,19 @@ $(document).ready(function () {
                       const entry = entries[0];
                       const styleObj = getStyleFromTailwind(entry.color);
                       const typeId = entry.tip_id?.toString();
-                      allCount++;
+                      if (entry.type !== 'default') {
+                          allCount++;
+                      }
                       if (ucretsizIzinIds.has(typeId)) unpaidCount++;
 
                       cellStyle = `background-color: ${styleObj.bg} !important; color: ${styleObj.color} !important; border: 1px solid ${styleObj.color}33 !important;`;
                       hasEntryClass = "has-entry";
                       const shortCode = getShortCode(entry);
+
+                      let deleteBtn = "";
+                      if (entry.type !== 'default') {
+                          deleteBtn = `<span class="btn-delete-cell" onclick="deleteEntry(${entry.id}, event)">×</span>`;
+                      }
 
                       cellContent = `
                                 <div class="cell-content draggable-izin" 
@@ -361,9 +368,10 @@ $(document).ready(function () {
                                      data-shortcode="${shortCode}"
                                      data-name="${entry.name}"
                                      data-color="${entry.color}"
+                                     data-is-default="${entry.type === 'default'}"
                                      style="font-weight: 700;">
                                     ${shortCode}
-                                    <span class="btn-delete-cell" onclick="deleteEntry(${entry.id}, event)">×</span>
+                                    ${deleteBtn}
                                 </div>`;
                     }
 
@@ -647,7 +655,10 @@ $(document).ready(function () {
       }
       const $content = $cell.find(".cell-content");
       if ($content.length) {
-        allCount++;
+        const isDefault = $content.attr("data-is-default") === "true";
+        if (!isDefault) {
+             allCount++;
+        }
         const typeId = $content.data("id")?.toString();
         if (typeId && ucretsizIzinIds.has(typeId)) {
           unpaidCount++;

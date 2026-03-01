@@ -164,36 +164,38 @@ try {
 
             cronLog("Kesme/Açma sorgulama tamamlandı: " . json_encode($sonuc));
 
-            // Mail gönderimi
-            try {
-                $mailIcerik = "<h3>Kesme/Açma (Puantaj) Cron Sonucu</h3>";
-                $mailIcerik .= "<p><b>Tarih:</b> " . date('d.m.Y H:i:s') . "</p>";
-                $mailIcerik .= "<p><b>Sorgulanan Tarih:</b> " . $bugun . "</p>";
-                $mailIcerik .= "<ul>";
-                $mailIcerik .= "<li><b>Yeni Kayıt:</b> " . $sonuc['yeni_kayit'] . "</li>";
-                $mailIcerik .= "<li><b>Güncellenen Kayıt:</b> " . $sonuc['guncellenen_kayit'] . "</li>";
-                $mailIcerik .= "<li><b>Toplam API Kaydı:</b> " . $sonuc['toplam_api'] . "</li>";
-                $mailIcerik .= "<li><b>Eşleşmeyen Ekip:</b> " . $sonuc['atlanAn'] . "</li>";
-                $mailIcerik .= "<li><b>Boş Sonuç (Sonuçlanmamış):</b> " . $sonuc['bos_sonuc'] . "</li>";
-                $mailIcerik .= "</ul>";
-
-                if (!empty($sonuc['atlanAnListesi'])) {
-                    $mailIcerik .= "<h4>Eşleşmeyen Ekip Listesi:</h4>";
+            // Mail gönderimi sadece 18:00'da yapılacak
+            if ($simdikiSaat === '18:00') {
+                try {
+                    $mailIcerik = "<h3>Kesme/Açma (Puantaj) Cron Sonucu</h3>";
+                    $mailIcerik .= "<p><b>Tarih:</b> " . date('d.m.Y H:i:s') . "</p>";
+                    $mailIcerik .= "<p><b>Sorgulanan Tarih:</b> " . $bugun . "</p>";
                     $mailIcerik .= "<ul>";
-                    foreach ($sonuc['atlanAnListesi'] as $item) {
-                        $mailIcerik .= "<li>" . Security::escape($item) . "</li>";
-                    }
+                    $mailIcerik .= "<li><b>Yeni Kayıt:</b> " . $sonuc['yeni_kayit'] . "</li>";
+                    $mailIcerik .= "<li><b>Güncellenen Kayıt:</b> " . $sonuc['guncellenen_kayit'] . "</li>";
+                    $mailIcerik .= "<li><b>Toplam API Kaydı:</b> " . $sonuc['toplam_api'] . "</li>";
+                    $mailIcerik .= "<li><b>Eşleşmeyen Ekip:</b> " . $sonuc['atlanAn'] . "</li>";
+                    $mailIcerik .= "<li><b>Boş Sonuç (Sonuçlanmamış):</b> " . $sonuc['bos_sonuc'] . "</li>";
                     $mailIcerik .= "</ul>";
-                }
 
-                MailGonderService::gonder(
-                    ['beyzade83@gmail.com'],
-                    'Kesme/Açma Cron Özeti - ' . $bugun,
-                    $mailIcerik
-                );
-                cronLog("Sonuç maili gönderildi: beyzade83@gmail.com");
-            } catch (Exception $e) {
-                cronLog("Mail gönderim hatası: " . $e->getMessage());
+                    if (!empty($sonuc['atlanAnListesi'])) {
+                        $mailIcerik .= "<h4>Eşleşmeyen Ekip Listesi:</h4>";
+                        $mailIcerik .= "<ul>";
+                        foreach ($sonuc['atlanAnListesi'] as $item) {
+                            $mailIcerik .= "<li>" . Security::escape($item) . "</li>";
+                        }
+                        $mailIcerik .= "</ul>";
+                    }
+
+                    MailGonderService::gonder(
+                        ['beyzade83@gmail.com'],
+                        'Kesme/Açma Cron Özeti - ' . $bugun,
+                        $mailIcerik
+                    );
+                    cronLog("Sonuç maili gönderildi: beyzade83@gmail.com");
+                } catch (Exception $e) {
+                    cronLog("Mail gönderim hatası: " . $e->getMessage());
+                }
             }
         } else {
             cronLog("Kesme/Açma sorgulama bu saat ($simdikiSaat) için bugün zaten çalıştırılmış.");
