@@ -114,56 +114,6 @@ sort($kategoriler);
         transition: opacity 0.2s ease;
     }
 
-    #zimmetKategoriFiltreleri .btn {
-        border-radius: 20px;
-        padding: 6px 16px;
-        font-weight: 500;
-        transition: all 0.2s;
-    }
-
-    #zimmetKategoriFiltreleri .btn.active {
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        transform: translateY(-1px);
-    }
-
-    .group-header {
-        transition: all 0.2s;
-        border-left: 4px solid transparent;
-    }
-
-    .group-header:hover {
-        background-color: rgba(var(--bs-primary-rgb), 0.03) !important;
-        border-left-color: var(--bs-primary);
-    }
-
-    .group-header[aria-expanded="true"] {
-        background-color: rgba(var(--bs-primary-rgb), 0.05) !important;
-        border-left-color: var(--bs-primary);
-    }
-
-    .group-content {
-        border-left: 4px solid var(--bs-primary);
-    }
-
-    .table-custom-row:hover {
-        background-color: #f8f9fa;
-    }
-
-    .badge-soft-success {
-        background-color: #e6fcf5;
-        color: #0ca678;
-    }
-
-    .badge-soft-warning {
-        background-color: #fff9db;
-        color: #f08c00;
-    }
-
-    .badge-soft-danger {
-        background-color: #fff5f5;
-        color: #f03e3e;
-    }
-
     .badge-soft-info {
         background-color: #e7f5ff;
         color: #1c7ed6;
@@ -205,41 +155,50 @@ sort($kategoriler);
                             </div>
                         </div>
                     </div>
-                    <div class="d-flex gap-2">
-                        <div class="btn-group btn-group-sm rounded-pill overflow-hidden border" role="group">
-                            <input type="radio" class="btn-check" name="zimmetViewMode" id="zimmetViewListe"
+                    <div class="d-flex align-items-center gap-3">
+                        <!-- Görünüm Modu -->
+                        <div class="segmented-control-container bg-light-subtle">
+                            <input type="radio" class="segmented-control-input" name="zimmetViewMode" id="zimmetViewListe"
                                 autocomplete="off" onchange="toggleZimmetView('liste')">
-                            <label class="btn btn-outline-light text-muted border-0" for="zimmetViewListe"><i
-                                    class="bx bx-list-ul me-1"></i>Liste</label>
+                            <label class="segmented-control-label py-1" for="zimmetViewListe">
+                                <i class="bx bx-list-ul me-1"></i>Liste
+                            </label>
 
-                            <input type="radio" class="btn-check" name="zimmetViewMode" id="zimmetViewGruplu"
+                            <input type="radio" class="segmented-control-input" name="zimmetViewMode" id="zimmetViewGruplu"
                                 autocomplete="off" checked onchange="toggleZimmetView('gruplu')">
-                            <label class="btn btn-outline-light text-muted border-0" for="zimmetViewGruplu"><i
-                                    class="bx bx-grid-alt me-1"></i>Gruplu</label>
+                            <label class="segmented-control-label py-1" for="zimmetViewGruplu">
+                                <i class="bx bx-grid-alt me-1"></i>Gruplu
+                            </label>
                         </div>
-                        <button type="button" class="btn btn-sm btn-soft-success border-0 px-3 rounded-pill"
-                            id="btnExportZimmetExcel" onclick="exportZimmetExcel()">
-                            <i class="bx bx-file me-1"></i> Excel
-                        </button>
-                        <button type="button" class="btn btn-sm btn-primary px-3 rounded-pill shadow-sm"
-                            id="btnOpenZimmetModal">
-                            <i data-feather="plus" class="icon-xs"></i> Yeni Zimmet
-                        </button>
+
+                        <!-- İşlemler -->
+                        <div class="action-container">
+                            <button type="button" class="btn btn-link text-success p-1 px-3 d-flex align-items-center text-decoration-none"
+                                id="btnExportZimmetExcel" onclick="exportZimmetExcel()" title="Excel'e Aktar">
+                                <i class="bx bx-file-blank fs-5 me-1"></i> Excel
+                            </button>
+                            <div class="action-divider"></div>
+                            <button type="button" class="btn btn-primary d-flex align-items-center"
+                                id="btnOpenZimmetModal">
+                                <i class="bx bx-plus me-1 fs-5"></i> Yeni Zimmet
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Kategori Filtreleri -->
-                <div class="d-flex gap-2 overflow-auto pb-1" id="zimmetKategoriFiltreleri">
-                    <button type="button" class="btn btn-sm btn-soft-primary active"
-                        onclick="filterZimmetKategori('all', this)">
-                        Tümü
-                    </button>
-                    <?php foreach ($kategoriler as $kat): ?>
-                        <button type="button" class="btn btn-sm btn-soft-secondary"
-                            onclick="filterZimmetKategori('<?= htmlspecialchars($kat) ?>', this)">
-                            <?= htmlspecialchars($kat) ?>
-                        </button>
-                    <?php endforeach; ?>
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="segmented-control-container" id="zimmetKategoriFiltreleri">
+                        <input type="radio" name="katFilter" id="kat_all" class="segmented-control-input" checked
+                            onclick="filterZimmetKategori('all', this)">
+                        <label for="kat_all" class="segmented-control-label">Tümü</label>
+                        
+                        <?php foreach ($kategoriler as $idx => $kat): ?>
+                            <input type="radio" name="katFilter" id="kat_<?= $idx ?>" class="segmented-control-input"
+                                onclick="filterZimmetKategori('<?= htmlspecialchars($kat) ?>', this)">
+                            <label for="kat_<?= $idx ?>" class="segmented-control-label"><?= htmlspecialchars($kat) ?></label>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
             </div>
             <div class="card-body p-0">
@@ -429,8 +388,9 @@ sort($kategoriler);
 
     function exportZimmetExcel() {
         var personelId = '<?= $id ?>';
-        var activeBtn = document.querySelector('#zimmetKategoriFiltreleri button.active');
-        var activeKat = activeBtn ? activeBtn.innerText.trim() : 'Tümü';
+        var activeInput = document.querySelector('input[name="katFilter"]:checked');
+        var label = document.querySelector('label[for="' + (activeInput ? activeInput.id : '') + '"]');
+        var activeKat = label ? label.innerText.trim() : 'Tümü';
 
         // Eğer 'Tümü' ise boş geç
         var katParam = (activeKat === 'Tümü') ? '' : activeKat;
@@ -441,16 +401,7 @@ sort($kategoriler);
 
     const zimmetStats = <?= json_encode($stats_per_kategori) ?>;
 
-    function filterZimmetKategori(kategori, btn) {
-        // Buton aktiflik durumu
-        var buttons = document.querySelectorAll('#zimmetKategoriFiltreleri button');
-        buttons.forEach(b => {
-            b.classList.remove('active', 'btn-soft-primary');
-            b.classList.add('btn-soft-secondary');
-        });
-        btn.classList.remove('btn-soft-secondary');
-        btn.classList.add('active', 'btn-soft-primary');
-
+    function filterZimmetKategori(kategori, el) {
         // İstatistikleri güncelle
         const stats = zimmetStats[kategori] || { aktif: 0, iade: 0 };
         const aktifEl = document.getElementById('stat_aktif_count');

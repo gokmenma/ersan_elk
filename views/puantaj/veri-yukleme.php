@@ -5,6 +5,7 @@ use App\Helper\Helper;
 use App\Model\PuantajModel;
 use App\Model\PersonelModel;
 use App\Model\EndeksOkumaModel;
+use App\Model\SayacDegisimModel;
 
 $Puantaj = new PuantajModel();
 $Personel = new PersonelModel();
@@ -169,6 +170,20 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     <span class="d-none d-sm-block">Kesme/Açma İşlem.</span>
                 </a>
             </li>
+              <li class="nav-item">
+                <a class="nav-link <?= $activeTab === 'sayac_sokme_takma' ? 'active' : '' ?>" data-bs-toggle="tab"
+                    href="#sayac_sokme_takma" role="tab" data-tab-name="sayac_sokme_takma">
+                    <span class="d-block d-sm-none"><i class="fas fa-exchange-alt"></i></span>
+                    <span class="d-none d-sm-block">Sayaç Sökme Takma</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <?= $activeTab === 'muhurleme' ? 'active' : '' ?>" data-bs-toggle="tab"
+                    href="#muhurleme" role="tab" data-tab-name="muhurleme">
+                    <span class="d-block d-sm-none"><i class="fas fa-lock"></i></span>
+                    <span class="d-none d-sm-block">Mühürleme</span>
+                </a>
+            </li>
             <li class="nav-item">
                 <a class="nav-link <?= $activeTab === 'kacak_kontrol' ? 'active' : '' ?>" data-bs-toggle="tab"
                     href="#kacak_kontrol" role="tab" data-tab-name="kacak_kontrol">
@@ -176,6 +191,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     <span class="d-none d-sm-block">Kaçak Kontrol</span>
                 </a>
             </li>
+          
         </ul>
 
         <div class="tab-content" id="puantajTabContent">
@@ -308,6 +324,75 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 </tr>
                             </thead>
                             <tbody id="kacakKontrolBody">
+                                <!-- AJAX Content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane <?= $activeTab === 'sayac_sokme_takma' ? 'active' : '' ?>" id="sayac_sokme_takma"
+                role="tabpanel">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4 class="card-title">Sayaç Sökme Takma Listesi</h4>
+                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                            <button type="button"
+                                class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center"
+                                data-bs-toggle="modal" data-bs-target="#importOnlineSayacDegisimModal">
+                                <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Online Sorgula
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <table id="sayacDegisimTable" class="table table-bordered dt-responsive nowrap w-100">
+                            <thead>
+                                <tr class="table-light">
+                                    <th>Kayıt Tarihi</th>
+                                    <th>Ekip</th>
+                                    <th>Personel</th>
+                                    <th>Bölge</th>
+                                    <th>İş Emri Sebebi</th>
+                                    <th>İş Emri Sonucu</th>
+                                    <th>Abone No</th>
+                                    <th>Takılan Sayaç No</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sayacDegisimBody">
+                                <!-- AJAX Content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane <?= $activeTab === 'muhurleme' ? 'active' : '' ?>" id="muhurleme" role="tabpanel">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4 class="card-title">Mühürleme İş Listesi</h4>
+                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                            <button type="button"
+                                class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center"
+                                data-bs-toggle="modal" data-bs-target="#importOnlinePuantajModal"
+                                id="btnOnlineMuhurlemeSorgula">
+                                <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Online Sorgula
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <table id="muhurlemeTable" class="table table-bordered dt-responsive nowrap w-100">
+                            <thead>
+                                <tr class="table-light">
+                                    <th>Tarih</th>
+                                    <th>Ekip Kodu</th>
+                                    <th>Personel</th>
+                                    <th>İş Emri Tipi</th>
+                                    <th>İş Emri Sonucu</th>
+                                    <th>Sonuçlanmış</th>
+                                    <th>Açık Olanlar</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="muhurlemeBody">
                                 <!-- AJAX Content -->
                             </tbody>
                         </table>
@@ -467,6 +552,67 @@ $activeTab = $_GET['tab'] ?? 'okuma';
     </div>
 </div>
 
+
+<!-- Online Sayaç Değişim Sorgulama Modal -->
+<div class="modal fade" id="importOnlineSayacDegisimModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Online Sayaç Değişim Sorgula</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="onlineSayacDegisimForm">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bx bx-info-circle me-2"></i>
+                        Sayaç Sökme/Takma (Değişim) verilerini API üzerinden sorgulayarak sisteme aktarır.
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(
+                                    type: 'text',
+                                    name: 'baslangic_tarihi',
+                                    value: Date::today(),
+                                    placeholder: '',
+                                    label: "Başlangıç Tarihi",
+                                    icon: "calendar",
+                                    required: true,
+                                    class: "form-control flatpickr"
+                                ); ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatInput(
+                                    type: 'text',
+                                    name: 'bitis_tarihi',
+                                    value: Date::today(),
+                                    placeholder: '',
+                                    label: "Bitiş Tarihi",
+                                    icon: "calendar",
+                                    required: true,
+                                    class: "form-control flatpickr"
+                                ); ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="onlineSayacDegisimSpinner" class="text-center p-2" style="display: none;">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Sorgulanıyor...</p>
+                    </div>
+                    <div id="onlineSayacDegisimResult" class="mt-3" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="submit" class="btn btn-primary" id="btnOnlineSayacDegisimSorgula">
+                        <i class="bx bx-search me-1"></i> Sorgula
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <!-- Kaçak Kontrol Manuel Modal -->
 <div class="modal fade" id="kacakModal" tabindex="-1" aria-hidden="true">
@@ -749,6 +895,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         var endeksDataTable = null;
         var puantajDataTable = null;
         var kacakDataTable = null;
+        var sayacDegisimDataTable = null;
+        var muhurlemeDataTable = null;
 
         var tabContentLoading = false;
         var initialTabLoaded = false;
@@ -1055,6 +1203,83 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             });
         }
 
+        // Sayaç Değişim (Sökme Takma) tablosu için Server-Side DataTable
+        function initSayacDegisimDataTable() {
+            if (sayacDegisimDataTable) {
+                sayacDegisimDataTable.ajax.reload(null, false);
+                return;
+            }
+
+            sayacDegisimDataTable = $('#sayacDegisimTable').DataTable(getServerSideOptions({
+                ajax: {
+                    url: 'views/puantaj/api.php',
+                    type: 'GET',
+                    data: function (d) {
+                        d.action = 'sayac-degisim-datatable';
+                        d.start_date = $('input[name="start_date"]').val();
+                        d.end_date = $('input[name="end_date"]').val();
+                        d.ekip_kodu = $('select[name="ekip_kodu"]').val();
+                    }
+                },
+                columns: [
+                    { data: 'kayit_tarihi' },
+                    { data: 'ekip' },
+                    { data: 'personel_adi' },
+                    { data: 'bolge' },
+                    { data: 'isemri_sebep' },
+                    { data: 'isemri_sonucu' },
+                    { data: 'abone_no' },
+                    { data: 'takilan_sayacno' },
+                    {
+                        data: 'id',
+                        render: function (data, type, row) {
+                            return `<button class="btn btn-sm btn-soft-danger delete-sayac-degisim" data-id="${data}"><i class="bx bx-trash"></i></button>`;
+                        },
+                        orderable: false
+                    }
+                ],
+                order: [[0, 'desc']]
+            }));
+        }
+
+        // Mühürleme tablosu için Server-Side DataTable (yapilan_isler'den MÜHÜRLEME olanlar)
+        function initMuhurlemeDataTable() {
+            if (muhurlemeDataTable) {
+                muhurlemeDataTable.ajax.reload(null, false);
+                return;
+            }
+
+            muhurlemeDataTable = $('#muhurlemeTable').DataTable(getServerSideOptions({
+                ajax: {
+                    url: 'views/puantaj/api.php',
+                    type: 'GET',
+                    data: function (d) {
+                        d.action = 'muhurleme-datatable';
+                        d.start_date = $('input[name="start_date"]').val();
+                        d.end_date = $('input[name="end_date"]').val();
+                        d.ekip_kodu = $('select[name="ekip_kodu"]').val();
+                    }
+                },
+                columns: [
+                    { data: 'tarih' },
+                    { data: 'ekip_kodu', defaultContent: '-' },
+                    { data: 'personel_adi' },
+                    { data: 'is_emri_tipi' },
+                    { data: 'is_emri_sonucu' },
+                    { data: 'sonuclanmis' },
+                    { data: 'acik_olanlar' },
+                    {
+                        data: 'id',
+                        render: function (data, type, row) {
+                            return `<button class="btn btn-sm btn-soft-danger delete-puantaj" data-id="${data}"><i class="bx bx-trash"></i></button>`;
+                        },
+                        orderable: false
+                    }
+                ],
+                order: [[0, 'desc']]
+            }));
+        }
+
         function loadTabContent(tabName) {
             initialTabLoaded = true;
             if (tabName === 'okuma') {
@@ -1063,6 +1288,10 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 initPuantajDataTable();
             } else if (tabName === 'kacak_kontrol') {
                 loadKacakContent();
+            } else if (tabName === 'sayac_sokme_takma') {
+                initSayacDegisimDataTable();
+            } else if (tabName === 'muhurleme') {
+                initMuhurlemeDataTable();
             }
         }
 
@@ -1633,6 +1862,97 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         });
         $('#importOnlineIcmalRaporuModal').on('hidden.bs.modal', function () {
             $('#onlineIcmalResult').hide().html('');
+        });
+    $('#importOnlineSayacDegisimModal').on('hidden.bs.modal', function () {
+            $('#onlineSayacDegisimResult').hide().html('');
+        });
+
+        // Online Sayaç Değişim Sorgulama
+        $('#onlineSayacDegisimForm').on('submit', function (e) {
+            e.preventDefault();
+            var formData = $(this).serialize();
+            formData += '&action=online-sayac-degisim-sorgula';
+
+            $('#onlineSayacDegisimSpinner').show();
+            $('#onlineSayacDegisimResult').hide();
+            $('#btnOnlineSayacDegisimSorgula').prop('disabled', true);
+
+            $.ajax({
+                url: 'views/puantaj/api.php',
+                type: 'POST',
+                data: formData,
+                success: function (response) {
+                    $('#onlineSayacDegisimSpinner').hide();
+                    $('#btnOnlineSayacDegisimSorgula').prop('disabled', false);
+                    try {
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
+                        var resultHtml = '';
+                        if (res.status === 'success') {
+                            resultHtml = '<div class="alert alert-success">';
+                            resultHtml += '<strong><i class="bx bx-check-circle me-2"></i>Sorgu Başarılı! (Toplam ' + (res.toplam_api_kayit || 0) + ' kayıt)</strong><br>';
+                            resultHtml += '<span class="fs-5">' + res.yeni_kayit + ' adet yeni kayıt eklendi.</span>';
+                            if (res.atlanan_kayit > 0) {
+                                resultHtml += '<br><small class="text-secondary">' + res.atlanan_kayit + ' adet kayıt daha önce işlendiği için atlandı.</small>';
+                            }
+                            if (res.atlanAn_kayitlar && res.atlanAn_kayitlar.length > 0) {
+                                resultHtml += '<hr><div class="alert alert-warning mb-0 p-2"><strong>⚠️ Eşleşmeyen Ekipler (' + res.atlanAn_kayitlar.length + '):</strong><br>';
+                                resultHtml += '<small>Sistemde tanımlı olmadığı için atlandı:</small><ul class="mb-0 mt-1 small" style="max-height:100px; overflow-y:auto;">';
+                                res.atlanAn_kayitlar.forEach(function (item) {
+                                    resultHtml += '<li>' + item.ekip_kodu + '</li>';
+                                });
+                                resultHtml += '</ul></div>';
+                            }
+                            resultHtml += '</div>';
+                            // Tabloyu güncelle
+                            loadTabContent('sayac_sokme_takma');
+                        } else {
+                            resultHtml = '<div class="alert alert-danger">';
+                            resultHtml += '<strong><i class="bx bx-error-circle me-2"></i>Hata!</strong><br>';
+                            resultHtml += res.message;
+                            resultHtml += '</div>';
+                        }
+                        $('#onlineSayacDegisimResult').html(resultHtml).show();
+                    } catch (err) {
+                        $('#onlineSayacDegisimResult').html('<div class="alert alert-danger">Sunucudan geçersiz yanıt alındı.</div>').show();
+                    }
+                },
+                error: function () {
+                    $('#onlineSayacDegisimSpinner').hide();
+                    $('#btnOnlineSayacDegisimSorgula').prop('disabled', false);
+                    $('#onlineSayacDegisimResult').html('<div class="alert alert-danger">Bağlantı hatası oluştu.</div>').show();
+                }
+            });
+        });
+
+        // Sayaç Değişim kaydı silme
+        $(document).on('click', '.delete-sayac-degisim', function () {
+            var id = $(this).data('id');
+            Swal.fire({
+                title: 'Emin misiniz?',
+                text: "Bu kayıt silinecektir!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Evet, sil!',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('views/puantaj/api.php', { action: 'sayac-degisim-sil', id: id }, function (response) {
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
+                        if (res.status === 'success') {
+                            Swal.fire('Silindi!', 'Kayıt başarıyla silindi.', 'success');
+                            if (sayacDegisimDataTable) {
+                                sayacDegisimDataTable.ajax.reload(null, false);
+                            } else {
+                                loadTabContent('sayac_sokme_takma');
+                            }
+                        } else {
+                            Swal.fire('Hata', 'Kayıt silinemedi.', 'error');
+                        }
+                    });
+                }
+            });
         });
     });
 

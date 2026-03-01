@@ -13,10 +13,12 @@ $allSettings = $Settings->getAllSettingsAsKeyValue($firma_id);
 $online_sorgulama_aktif = ($allSettings['online_sorgulama_aktif'] ?? '0') === '1';
 $online_sorgulama_endeks_saat = $allSettings['online_sorgulama_endeks_saat'] ?? '08:00';
 $online_sorgulama_puantaj_saat = $allSettings['online_sorgulama_puantaj_saat'] ?? '08:30';
+$online_sorgulama_sayac_degisim_saat = $allSettings['online_sorgulama_sayac_degisim_saat'] ?? '08:45';
 
 // Çoklu saat değerlerini diziye çevir
 $endeks_saatleri = array_filter(array_map('trim', explode(',', $online_sorgulama_endeks_saat)));
 $puantaj_saatleri = array_filter(array_map('trim', explode(',', $online_sorgulama_puantaj_saat)));
+$sayac_degisim_saatleri = array_filter(array_map('trim', explode(',', $online_sorgulama_sayac_degisim_saat)));
 $online_sorgulama_firma_baslangic = $allSettings['online_sorgulama_firma_baslangic'] ?? ($_SESSION['firma_kodu'] ?? '17');
 $online_sorgulama_firma_bitis = $allSettings['online_sorgulama_firma_bitis'] ?? ($_SESSION['firma_kodu'] ?? '17');
 
@@ -37,10 +39,15 @@ $api_puantaj_url = $firmaOzelAyarlar['api_puantaj_url'] ?? ($firma_kodu == 17 ? 
 $api_puantaj_kullanici = $firmaOzelAyarlar['api_puantaj_kullanici'] ?? ($firma_kodu == 17 ? ($allSettings['api_puantaj_kullanici'] ?? '') : '');
 $api_puantaj_sifre = $firmaOzelAyarlar['api_puantaj_sifre'] ?? ($firma_kodu == 17 ? ($allSettings['api_puantaj_sifre'] ?? 'sk_live_DSOSTjHN195B4NUpEaB9NdYtW7xQ8EVjZD2p2ssW') : '');
 
+// Sayaç Değişim API Ayarları
+$api_sayac_degisim_url = $firmaOzelAyarlar['api_sayac_degisim_url'] ?? ($firma_kodu == 17 ? ($allSettings['api_sayac_degisim_url'] ?? 'https://yonetim.maraskaski.gov.tr/api/api_sayac_degisim.php?action=getMeterChanges') : '');
+$api_sayac_degisim_sifre = $firmaOzelAyarlar['api_sayac_degisim_sifre'] ?? ($firma_kodu == 17 ? ($allSettings['api_sayac_degisim_sifre'] ?? 'sk_live_DSOSTjHN195B4NUpEaB9NdYtW7xQ8EVjZD2p2ssW') : '');
+
 
 // Son çalışma zamanları
 $online_sorgulama_endeks_son_calistirma = $allSettings['online_sorgulama_endeks_son_calistirma'] ?? '08:15';
 $online_sorgulama_puantaj_son_calistirma = $allSettings['online_sorgulama_puantaj_son_calistirma'] ?? '08:45';
+$online_sorgulama_sayac_degisim_son_calistirma = $allSettings['online_sorgulama_sayac_degisim_son_calistirma'] ?? '09:00';
 
 // Saat seçenekleri oluştur (tam saat aralıklarla - cron 15 dk'da bir çalışsa bile sadece tam saatlerde tetiklenir)
 // Saat seçenekleri oluştur (08:00 - 18:00 arası sistem otomatik her saat çalışır)
@@ -129,11 +136,13 @@ for ($saat = 0; $saat < 24; $saat++) {
                         value="<?php echo htmlspecialchars($online_sorgulama_endeks_saat); ?>">
                     <div class="form-text text-primary mb-1 mt-1">
                         <i data-feather="info" style="width:14px;height:14px" class="me-1"></i>
-                        <strong>Sistem 08:00 ile 18:00 saatleri arasında (dahil) her saat başı otomatik çalışmaktadır.</strong>
+                        <strong>Sistem 08:00 ile 18:00 saatleri arasında (dahil) her saat başı otomatik
+                            çalışmaktadır.</strong>
                     </div>
                     <div class="form-text">
                         <i data-feather="info" style="width:14px;height:14px" class="me-1"></i>
-                        Mesai dışı kontroller için en fazla <strong>6 saat</strong> seçilebilir, en az <strong>1 saat</strong> fark olmalıdır.
+                        Mesai dışı kontroller için en fazla <strong>6 saat</strong> seçilebilir, en az <strong>1
+                            saat</strong> fark olmalıdır.
                     </div>
                 </div>
             </div>
@@ -167,17 +176,60 @@ for ($saat = 0; $saat < 24; $saat++) {
                         value="<?php echo htmlspecialchars($online_sorgulama_puantaj_saat); ?>">
                     <div class="form-text text-primary mb-1 mt-1">
                         <i data-feather="info" style="width:14px;height:14px" class="me-1"></i>
-                        <strong>Sistem 08:00 ile 18:00 saatleri arasında (dahil) her saat başı otomatik çalışmaktadır.</strong>
+                        <strong>Sistem 08:00 ile 18:00 saatleri arasında (dahil) her saat başı otomatik
+                            çalışmaktadır.</strong>
                     </div>
                     <div class="form-text">
                         <i data-feather="info" style="width:14px;height:14px" class="me-1"></i>
-                        Mesai dışı kontroller için en fazla <strong>6 saat</strong> seçilebilir, en az <strong>1 saat</strong> fark olmalıdır.
+                        Mesai dışı kontroller için en fazla <strong>6 saat</strong> seçilebilir, en az <strong>1
+                            saat</strong> fark olmalıdır.
                     </div>
                 </div>
             </div>
             <div class="row mt-2">
                 <div class="col-md-12">
                     <button type="button" id="btnManuelPuantajSorgula" class="btn btn-outline-primary btn-sm">
+                        <i data-feather="play" class="me-1"></i> Manuel Sorgula (Test)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SAYAÇ DEĞİŞİM İŞLEMLERİ ZAMANLAMA -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0 text-primary"><i data-feather="tool" class="me-2"></i>Sayaç Değişim İşlemleri Sorgulama
+                Zamanlaması</h5>
+        </div>
+        <div class="card-body p-4">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <?php echo Form::FormMultipleSelect2(
+                        "online_sorgulama_sayac_degisim_saat_select",
+                        $saatSecenekleri,
+                        $sayac_degisim_saatleri,
+                        "Sorgulama Saatleri (En fazla 6)",
+                        "clock"
+                    ); ?>
+                    <input type="hidden" name="online_sorgulama_sayac_degisim_saat"
+                        id="online_sorgulama_sayac_degisim_saat"
+                        value="<?php echo htmlspecialchars($online_sorgulama_sayac_degisim_saat); ?>">
+                    <div class="form-text text-primary mb-1 mt-1">
+                        <i data-feather="info" style="width:14px;height:14px" class="me-1"></i>
+                        <strong>Sistem 08:00 ile 18:00 saatleri arasında (dahil) her saat başı otomatik
+                            çalışmaktadır.</strong>
+                    </div>
+                    <div class="form-text">
+                        <i data-feather="info" style="width:14px;height:14px" class="me-1"></i>
+                        Mesai dışı kontroller için en fazla <strong>6 saat</strong> seçilebilir, en az <strong>1
+                            saat</strong> fark olmalıdır.
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-md-12">
+                    <button type="button" id="btnManuelSayacDegisimSorgula" class="btn btn-outline-primary btn-sm">
                         <i data-feather="play" class="me-1"></i> Manuel Sorgula (Test)
                     </button>
                 </div>
@@ -255,6 +307,41 @@ for ($saat = 0; $saat < 24; $saat++) {
         </div>
     </div>
 
+    <!-- SAYAÇ DEĞİŞİM API AYARLARI -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0 text-primary"><i data-feather="link" class="me-2"></i>Sayaç Değişim API Ayarları</h5>
+        </div>
+        <div class="card-body p-4">
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <?php echo Form::FormFloatInput(
+                        "url",
+                        "api_sayac_degisim_url",
+                        $api_sayac_degisim_url,
+                        "",
+                        "Sayaç Değişim API URL",
+                        "link",
+                        "form-control"
+                    ); ?>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <?php echo Form::FormFloatInput(
+                        "password",
+                        "api_sayac_degisim_sifre_yeni",
+                        "",
+                        "",
+                        "Sayaç Değişim API Key / Şifre (Değiştirmek için doldurun)",
+                        "key",
+                        "form-control"
+                    ); ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- CRON BİLGİSİ -->
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-light">
@@ -269,6 +356,7 @@ for ($saat = 0; $saat < 24; $saat++) {
             // Windows-style path'leri Linux formatına çevir (eğer lazımsa, genellikle PHP ikisini de anlar ama temiz görünmesi için)
             $endeksPath = str_replace('\\', '/', $basePath . '/cron/endeks_okuma_cron.php');
             $kesmePath = str_replace('\\', '/', $basePath . '/cron/kesme_acma_cron.php');
+            $sayacDegisimPath = str_replace('\\', '/', $basePath . '/cron/sayac_degisim_cron.php');
             $logPath = str_replace('\\', '/', $basePath . '/cron/logs/cron.log');
             ?>
             <h6 class="text-primary mt-3 mb-2"><i data-feather="activity" class="me-1"
@@ -284,6 +372,14 @@ for ($saat = 0; $saat < 24; $saat++) {
             <div class="bg-dark text-light p-3 rounded mb-3">
                 <code class="text-warning" style="word-break:break-all;">
                 */15 * * * * /usr/local/bin/php -q <?= $kesmePath ?> >> <?= $logPath ?> 2>&1
+                </code>
+            </div>
+
+            <h6 class="text-info mt-3 mb-2"><i data-feather="tool" class="me-1" style="width:16px;height:16px"></i> 3.
+                Sayaç Değişim Cron</h6>
+            <div class="bg-dark text-light p-3 rounded mb-3">
+                <code class="text-warning" style="word-break:break-all;">
+                */15 * * * * /usr/local/bin/php -q <?= $sayacDegisimPath ?> >> <?= $logPath ?> 2>&1
                 </code>
             </div>
 
@@ -315,6 +411,7 @@ for ($saat = 0; $saat < 24; $saat++) {
         const saveButton = document.getElementById('saveOnlineSorgulamaAyarlariButton');
         const btnManuelPuantajSorgula = document.getElementById('btnManuelPuantajSorgula');
         const btnManuelEndeksSorgula = document.getElementById('btnManuelEndeksSorgula');
+        const btnManuelSayacDegisimSorgula = document.getElementById('btnManuelSayacDegisimSorgula');
 
         // ========== Çoklu Saat Seçimi İşlevleri (Select2) ==========
 
@@ -392,6 +489,7 @@ for ($saat = 0; $saat < 24; $saat++) {
         // Select2 handler'ları başlat
         setupSelect2Handler('online_sorgulama_endeks_saat_select', 'online_sorgulama_endeks_saat');
         setupSelect2Handler('online_sorgulama_puantaj_saat_select', 'online_sorgulama_puantaj_saat');
+        setupSelect2Handler('online_sorgulama_sayac_degisim_saat_select', 'online_sorgulama_sayac_degisim_saat');
 
         // ========== Kaydetme ==========
         if (saveButton) {
@@ -421,6 +519,20 @@ for ($saat = 0; $saat < 24; $saat++) {
                     const sonuc = saatlerGecerliMi(arr);
                     if (!sonuc.gecerli) {
                         Swal.fire('Hata', 'Kesme/Açma: ' + sonuc.mesaj, 'error');
+                        return;
+                    }
+                }
+
+                const sayacDegisimSaatler = document.getElementById('online_sorgulama_sayac_degisim_saat').value;
+                if (sayacDegisimSaatler) {
+                    const arr = sayacDegisimSaatler.split(',');
+                    if (arr.length > 6) {
+                        Swal.fire('Hata', 'Sayaç Değişim için en fazla 6 saat seçebilirsiniz.', 'error');
+                        return;
+                    }
+                    const sonuc = saatlerGecerliMi(arr);
+                    if (!sonuc.gecerli) {
+                        Swal.fire('Hata', 'Sayaç Değişim: ' + sonuc.mesaj, 'error');
                         return;
                     }
                 }
@@ -532,6 +644,47 @@ for ($saat = 0; $saat < 24; $saat++) {
                             }
                             if (data.mevcut_kayitlar && data.mevcut_kayitlar.length > 0) {
                                 message += '\n\nDaha önce çekilmiş ' + data.mevcut_kayitlar.length + ' kayıt var.';
+                            }
+                            Swal.fire('Sorgulama Tamamlandı', message, 'success');
+                        } else {
+                            Swal.fire('Hata', data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        Swal.fire('Hata', 'Sorgulama sırasında bir hata oluştu.', 'error');
+                    })
+                    .finally(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                    });
+            });
+        }
+
+        // ========== Manuel Sayaç Değişim Sorgulama ==========
+        if (btnManuelSayacDegisimSorgula) {
+            btnManuelSayacDegisimSorgula.addEventListener('click', function () {
+                const btn = this;
+                const originalText = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Sorgulanıyor...';
+
+                const firmaBaslangic = form.querySelector('input[name="online_sorgulama_firma_baslangic"]').value || 17;
+
+                const formData = new FormData();
+                formData.append('action', 'online-sayac-degisim-sorgula');
+                formData.append('baslangic_tarihi', '<?php echo date('d.m.Y'); ?>');
+                formData.append('bitis_tarihi', '<?php echo date('d.m.Y'); ?>');
+
+                fetch('/views/puantaj/api.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            let message = data.yeni_kayit + ' adet yeni kayıt eklendi.';
+                            if (data.guncellenen_kayit && data.guncellenen_kayit > 0) {
+                                message += '\n' + data.guncellenen_kayit + ' adet kayıt güncellendi.';
                             }
                             Swal.fire('Sorgulama Tamamlandı', message, 'success');
                         } else {

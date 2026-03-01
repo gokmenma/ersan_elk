@@ -65,17 +65,29 @@ foreach ($kesintiler as $k) {
                                 class="bx bx-refresh me-1"></i><?= $aktifSurekliKesinti ?> Sürekli Kesinti</span>
                     <?php endif; ?>
                 </div>
-                <div class="d-flex gap-2">
-                    <div class="btn-group btn-group-sm" role="group">
-                        <input type="radio" class="btn-check" name="kesintiViewMode" id="kesintiViewListe" autocomplete="off" onchange="toggleKesintiView('liste')">
-                        <label class="btn btn-outline-secondary" for="kesintiViewListe"><i class="bx bx-list-ul me-1"></i>Liste</label>
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Görünüm Modu -->
+                    <div class="segmented-control-container bg-light-subtle">
+                        <input type="radio" class="segmented-control-input" name="kesintiViewMode" id="kesintiViewListe"
+                            autocomplete="off" onchange="toggleKesintiView('liste')">
+                        <label class="segmented-control-label py-1" for="kesintiViewListe">
+                            <i class="bx bx-list-ul me-1"></i>Liste
+                        </label>
 
-                        <input type="radio" class="btn-check" name="kesintiViewMode" id="kesintiViewGruplu" autocomplete="off" checked onchange="toggleKesintiView('gruplu')">
-                        <label class="btn btn-outline-secondary" for="kesintiViewGruplu"><i class="bx bx-grid-alt me-1"></i>Gruplu</label>
+                        <input type="radio" class="segmented-control-input" name="kesintiViewMode" id="kesintiViewGruplu"
+                            autocomplete="off" checked onchange="toggleKesintiView('gruplu')">
+                        <label class="segmented-control-label py-1" for="kesintiViewGruplu">
+                            <i class="bx bx-grid-alt me-1"></i>Gruplu
+                        </label>
                     </div>
-                    <button type="button" class="btn btn-sm btn-primary" id="btnOpenKesintiModal">
-                        <i class="bx bx-plus"></i> Yeni Kesinti Ekle
-                    </button>
+
+                    <!-- İşlemler -->
+                    <div class="action-container">
+                        <button type="button" class="btn btn-primary d-flex align-items-center"
+                            id="btnOpenKesintiModal">
+                            <i class="bx bx-plus me-1 fs-5"></i> Yeni Kesinti Ekle
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="card-body p-0">

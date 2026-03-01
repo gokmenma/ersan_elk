@@ -13,6 +13,8 @@ use App\Model\SystemLogModel;
 use App\Model\DemirbasZimmetModel; // Yeni eklendi
 use App\Service\EndeskOkumaService;
 use App\Service\KesmeAcmaService;
+use App\Service\SayacDegisimService;
+use App\Model\SayacDegisimModel;
 
 // Set header to JSON
 // header('Content-Type: application/json');
@@ -957,6 +959,416 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 }
 
+// Server-side DataTable için Sayaç Değişim verileri
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'sayac-degisim-datatable') {
+    header('Content-Type: application/json');
+
+    $startDate = $_GET['start_date'] ?? '';
+    $endDate = $_GET['end_date'] ?? '';
+    $ekipKodu = $_GET['ekip_kodu'] ?? '';
+
+    $SayacDegisim = new SayacDegisimModel();
+    $result = $SayacDegisim->getDataTable($_GET, $startDate, $endDate, $ekipKodu);
+
+    // Veriyi DataTable formatına dönüştür
+    $formattedData = [];
+    foreach ($result['data'] as $record) {
+        $zimmetBadgeClass = '';
+        if (!empty($record->takilan_sayacno)) {
+            if ($record->zimmet_dusuldu == 1) {
+                $zimmetBadgeClass = 'bg-success';
+            } else {
+                $zimmetBadgeClass = 'bg-danger';
+            }
+        }
+
+        $takilanSayacNoHtml = $record->takilan_sayacno ?? '-';
+        if ($zimmetBadgeClass && $takilanSayacNoHtml != '-') {
+            $takilanSayacNoHtml = '<span class="badge ' . $zimmetBadgeClass . '">' . htmlspecialchars($record->takilan_sayacno) . '</span>';
+        }
+
+        $formattedData[] = [
+            'kayit_tarihi' => $record->kayit_tarihi ? date('d.m.Y H:i', strtotime($record->kayit_tarihi)) : '-',
+            'ekip' => $record->ekip ?? '-',
+            'personel_adi' => $record->personel_adi ?: '<span class="text-muted">' . htmlspecialchars($record->ekip ?? '') . '</span>',
+            'bolge' => $record->bolge ?? '-',
+            'isemri_sebep' => $record->isemri_sebep ?? '-',
+            'isemri_sonucu' => $record->isemri_sonucu ?? '-',
+            'abone_no' => $record->abone_no ?? '-',
+            'takilan_sayacno' => $takilanSayacNoHtml,
+            'id' => $record->id,
+            'zimmet_dusuldu' => $record->zimmet_dusuldu ?? 0
+        ];
+    }
+
+    echo json_encode([
+        'draw' => $result['draw'],
+        'recordsTotal' => $result['recordsTotal'],
+        'recordsFiltered' => $result['recordsFiltered'],
+        'data' => $formattedData
+    ]);
+    exit;
+}
+
+// Server-side DataTable için Mühürleme verileri (yapilan_isler'den is_emri_tipi = MÜHÜRLEME olanlar)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'muhurleme-datatable') {
+    header('Content-Type: application/json');
+
+    $startDate = $_GET['start_date'] ?? '';
+    $endDate = $_GET['end_date'] ?? '';
+    $ekipKodu = $_GET['ekip_kodu'] ?? '';
+
+    $Puantaj = new PuantajModel();
+
+    // Mühürleme is_emri_tipi'lerini al
+    $Tanimlamalar = new TanimlamalarModel();
+    $muhurlemeTypes = $Tanimlamalar->getIsTurleriByRaporTuru('muhurleme');
+    $muhurlemeTypeNames = [];
+    foreach ($muhurlemeTypes as $mt) {
+        $muhurlemeTypeNames[] = $mt->tur_adi;
+    }
+    // Fallback: Eğer tanımlama yoksa MÜHÜRLEME kelimesini ara
+    if (empty($muhurlemeTypeNames)) {
+        $muhurlemeTypeNames = ['MÜHÜRLEME'];
+    }
+    // Tek bir iş tipi olarak birleştir (ilk bulunan)
+    $workTypeFilter = !empty($muhurlemeTypeNames) ? $muhurlemeTypeNames[0] : 'MÜHÜRLEME';
+
+    $result = $Puantaj->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $workTypeFilter);
+
+    // Veriyi DataTable formatına dönüştür
+    $formattedData = [];
+    foreach ($result['data'] as $record) {
+        $formattedData[] = [
+            'tarih' => \App\Helper\Date::dmY($record->tarih),
+            'ekip_kodu' => $record->ekip_kodu_adi ?? ($record->ekip_kodu ?? '-'),
+            'personel_adi' => $record->personel_adi ?: '<span class="text-muted">' . htmlspecialchars($record->ekip_kodu ?? '') . '</span>',
+            'is_emri_tipi' => $record->is_emri_tipi ?? '',
+            'is_emri_sonucu' => $record->is_emri_sonucu ?? '',
+            'sonuclanmis' => $record->sonuclanmis ?? 0,
+            'acik_olanlar' => $record->acik_olanlar ?? 0,
+            'id' => $record->id
+        ];
+    }
+
+    echo json_encode([
+        'draw' => $result['draw'],
+        'recordsTotal' => $result['recordsTotal'],
+        'recordsFiltered' => $result['recordsFiltered'],
+        'data' => $formattedData
+    ]);
+    exit;
+}
+
+// Sayaç Değişim kaydı silme
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'sayac-degisim-sil') {
+    $id = $_POST['id'] ?? 0;
+    $SayacDegisim = new SayacDegisimModel();
+    $stmt = $SayacDegisim->db->prepare("UPDATE sayac_degisim SET silinme_tarihi = NOW() WHERE id = ?");
+    $result = $stmt->execute([$id]);
+    echo json_encode(['status' => $result ? 'success' : 'error']);
+    exit;
+}
+
+// Online Sayaç Değişim Sorgulama
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'online-sayac-degisim-sorgula') {
+    ob_start();
+    header('Content-Type: application/json; charset=utf-8');
+
+    $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
+
+    try {
+        ini_set('memory_limit', '512M');
+        $baslangicTarihiRaw = $_POST['baslangic_tarihi'] ?? date('Y-m-d');
+        $bitisTarihiRaw = $_POST['bitis_tarihi'] ?? date('Y-m-d');
+
+        $baslangicTarihi = \App\Helper\Date::convertExcelDate($baslangicTarihiRaw, 'Y-m-d') ?: date('Y-m-d');
+        $bitisTarihi = \App\Helper\Date::convertExcelDate($bitisTarihiRaw, 'Y-m-d') ?: date('Y-m-d');
+
+        // API dd/mm/yyyy format
+        $baslangicTarihiAPI = \App\Helper\Date::convertExcelDate($baslangicTarihiRaw, 'd/m/Y') ?: date('d/m/Y');
+        $bitisTarihiAPI = \App\Helper\Date::convertExcelDate($bitisTarihiRaw, 'd/m/Y') ?: date('d/m/Y');
+
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $Settings = new \App\Model\SettingsModel();
+
+        // ========== CONCURRENCY LOCK ==========
+        $lockKey = 'lock_online_sayac_degisim_' . $firmaId;
+        $activeLock = $Settings->getSettings($lockKey);
+        $currentUserId = $_SESSION['user_id'] ?? 0;
+
+        if (!empty($activeLock)) {
+            $lockParts = explode('|', $activeLock);
+            $lockTime = strtotime($lockParts[0]);
+            $lockUserId = $lockParts[1] ?? 0;
+
+            if ((time() - $lockTime) < 600) {
+                if ($lockUserId == $currentUserId) {
+                    throw new Exception("Şu anda devam eden bir sayaç değişim sorgulama işleminiz bulunuyor. Lütfen bekleyin.");
+                } else {
+                    throw new Exception("Şu anda başka bir kullanıcı tarafından sorgulama yapılıyor. Lütfen bekleyin.");
+                }
+            }
+        }
+
+        $Settings->upsertSetting($lockKey, date('Y-m-d H:i:s') . '|' . $currentUserId);
+        // =======================================
+
+        $SayacDegisimSvc = new SayacDegisimService();
+        $SayacDegisimModel = new SayacDegisimModel();
+        $apiData = [];
+
+        // Ekip ve personel lookup
+        $stmtAllEkip = $SayacDegisimModel->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
+        $stmtAllEkip->execute();
+        $ekipKodlariByNo = [];
+        $ekipKodlariByName = [];
+        while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
+            $name = trim($ek['tur_adi']);
+            $ekipKodlariByName[mb_strtolower($name, 'UTF-8')] = $ek['id'];
+            if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $name, $m)) {
+                $ekipKodlariByNo[$m[1]] = $ek['id'];
+            }
+        }
+
+        $stmtAllPersonel = $SayacDegisimModel->db->prepare("SELECT id, adi_soyadi, ekip_no FROM personel WHERE silinme_tarihi IS NULL");
+        $stmtAllPersonel->execute();
+        $personelByName = [];
+        $personelByEkip = [];
+        while ($p = $stmtAllPersonel->fetch(PDO::FETCH_ASSOC)) {
+            $name = trim($p['adi_soyadi']);
+            $personelByName[mb_strtolower($name, 'UTF-8')] = $p;
+            if (($p['ekip_no'] ?? 0) > 0) {
+                $personelByEkip[$p['ekip_no']] = $p['id'];
+            }
+        }
+
+        $stmtAllHist = $SayacDegisimModel->db->prepare("SELECT ekip_kodu_id, personel_id, baslangic_tarihi, bitis_tarihi FROM personel_ekip_gecmisi WHERE firma_id = ?");
+        $stmtAllHist->execute([$firmaId]);
+        $ekipGecmisi = [];
+        while ($h = $stmtAllHist->fetch(PDO::FETCH_ASSOC)) {
+            $ekipGecmisi[$h['ekip_kodu_id']][] = $h;
+        }
+
+        // API'den veri çek
+        set_time_limit(300);
+        $apiResponse = $SayacDegisimSvc->getData($baslangicTarihiAPI, $bitisTarihiAPI, 5000, 0);
+
+        if (!($apiResponse['success'] ?? false)) {
+            throw new Exception("API yanıtı başarısız: " . json_encode($apiResponse));
+        }
+
+        $apiData = $apiResponse['data']['data'] ?? [];
+
+        // Mevcut kayıtları sil (tarih aralığına göre)
+        $SayacDegisimModel->db->beginTransaction();
+
+        $deleteStmt = $SayacDegisimModel->db->prepare("UPDATE sayac_degisim SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL");
+        $deleteStmt->execute([$firmaId, $baslangicTarihi, $bitisTarihi]);
+        $silinenKayit = $deleteStmt->rowCount();
+
+        $yeniKayit = 0;
+        $atlanAnKayitlar = [];
+        $mevcutHatalar = [];
+
+        $insertBatch = [];
+
+        foreach ($apiData as $veri) {
+            $isemriSebep = trim($veri['ISEMRI_SEBEP'] ?? '');
+            $ekipStr = trim($veri['EKIP'] ?? '');
+            $memur = trim($veri['MEMUR'] ?? '');
+            $sonuclandiranKullanici = trim($veri['SONUCLANDIRAN_KULLANICI'] ?? '');
+            $bolge = trim($veri['BOLGE'] ?? '');
+            $kayitTarihiRaw = trim($veri['KAYIT_TARIHI'] ?? '');
+            $isemriNo = trim($veri['ISEMRI_NO'] ?? '');
+            $aboneNo = trim($veri['ABONE_NO'] ?? '');
+            $isemriSonucu = trim($veri['ISEMRI_SONUCU'] ?? '');
+            $sonucAciklama = $veri['SONUC_ACIKLAMA'] ?? null;
+            $takilanSayacNo = trim($veri['TAKILAN_SAYACNO'] ?? '');
+
+            // Kayıt tarihini parse et
+            $kayitTarihi = null;
+            $tarih = null;
+            if (!empty($kayitTarihiRaw)) {
+                // Format: dd/mm/yyyy HH:ii:ss
+                $dt = DateTime::createFromFormat('d/m/Y H:i:s', $kayitTarihiRaw);
+                if ($dt) {
+                    $kayitTarihi = $dt->format('Y-m-d H:i:s');
+                    $tarih = $dt->format('Y-m-d');
+                }
+            }
+            if (!$tarih) {
+                $tarih = $baslangicTarihi; // Fallback
+            }
+
+            // Unique ID
+            $islemId = md5($isemriNo . '|' . $aboneNo . '|' . $takilanSayacNo . '|' . $ekipStr);
+
+            // Ekip ve Personel bul
+            $personelId = 0;
+            $defId = 0;
+            $ekipKoduStrClean = trim($ekipStr);
+            $ekipKoduStrLower = mb_strtolower($ekipKoduStrClean, 'UTF-8');
+
+            if (isset($personelByName[$ekipKoduStrLower])) {
+                $personelId = $personelByName[$ekipKoduStrLower]['id'];
+                $defId = $personelByName[$ekipKoduStrLower]['ekip_no'];
+            } else {
+                if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $ekipKoduStrClean, $m)) {
+                    $defId = $ekipKodlariByNo[$m[1]] ?? 0;
+                }
+                if (!$defId && isset($ekipKodlariByName[$ekipKoduStrLower])) {
+                    $defId = $ekipKodlariByName[$ekipKoduStrLower];
+                }
+                if ($defId > 0) {
+                    if (isset($ekipGecmisi[$defId])) {
+                        foreach ($ekipGecmisi[$defId] as $hist) {
+                            if ($hist['baslangic_tarihi'] <= $tarih && ($hist['bitis_tarihi'] === null || $hist['bitis_tarihi'] >= $tarih)) {
+                                $personelId = $hist['personel_id'];
+                                break;
+                            }
+                        }
+                    }
+                    if (!$personelId) {
+                        $personelId = $personelByEkip[$defId] ?? 0;
+                    }
+                }
+            }
+
+            // Eşleşmeyen ekipler
+            if ($defId === 0 && !empty($ekipKoduStrClean)) {
+                $uniqKey = "EKIP|" . $ekipKoduStrClean;
+                if (!isset($mevcutHatalar[$uniqKey])) {
+                    $atlanAnKayitlar[] = [
+                        'ekip_kodu' => $ekipKoduStrClean,
+                        'tarih' => $tarih
+                    ];
+                    $mevcutHatalar[$uniqKey] = true;
+                }
+            }
+
+            $zimmetDusuldu = 0;
+            // Zimmet işlemi
+            if ($personelId > 0 && !empty($takilanSayacNo)) {
+                // Daha önce bu islem_id ile iade yapıldı mı?
+                $stmtCheck = $SayacDegisimModel->db->prepare("SELECT id FROM demirbas_hareketler WHERE islem_id = ? AND hareket_tipi = 'iade' LIMIT 1");
+                $stmtCheck->execute([$islemId]);
+                if ($stmtCheck->fetchColumn()) {
+                    // Daha önce düşülmüş
+                    $zimmetDusuldu = 1;
+                } else {
+                    // Zimmette aktif olarak var mı?
+                    $stmtZimmet = $SayacDegisimModel->db->prepare("
+                        SELECT dz.id 
+                        FROM demirbas_zimmet dz
+                        JOIN demirbas d ON d.id = dz.demirbas_id
+                        WHERE dz.personel_id = ? 
+                        AND d.seri_no = ? 
+                        AND dz.silinme_tarihi IS NULL 
+                        AND (dz.durum = 'teslim' OR dz.teslim_miktar > IFNULL(dz.iade_miktar, 0))
+                        LIMIT 1
+                    ");
+                    $stmtZimmet->execute([$personelId, $takilanSayacNo]);
+                    $zimmetId = $stmtZimmet->fetchColumn();
+                    if ($zimmetId) {
+                        try {
+                            $ZimmetModel = new \App\Model\DemirbasZimmetModel();
+                            $ZimmetModel->iadeYap($zimmetId, ($kayitTarihi ?: $tarih), 1, "Sayaç değişimi otomatik zimmet düşümü.\nİş Emri No: {$isemriNo}\nAbone No: {$aboneNo}", $islemId, $isemriSonucu, 'otomatik');
+                            $zimmetDusuldu = 1;
+                        } catch (Exception $e) {
+                            $zimmetDusuldu = 0;
+                        }
+                    }
+                }
+            }
+
+            $insertBatch[] = [
+                $islemId,
+                $firmaId,
+                $personelId,
+                $defId,
+                $isemriNo,
+                $aboneNo,
+                $isemriSebep,
+                $ekipStr,
+                $memur,
+                $sonuclandiranKullanici,
+                $bolge,
+                $isemriSonucu,
+                $sonucAciklama,
+                $takilanSayacNo,
+                $kayitTarihi,
+                $tarih,
+                $zimmetDusuldu
+            ];
+            $yeniKayit++;
+        }
+
+        // Toplu kayıt
+        if (!empty($insertBatch)) {
+            $chunks = array_chunk($insertBatch, 500);
+            foreach ($chunks as $chunk) {
+                // Placeholder sayısını 17 yapıyoruz (zimmet_dusuldu eklendi)
+                $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'));
+                $sql = "INSERT INTO sayac_degisim (islem_id, firma_id, personel_id, ekip_kodu_id, isemri_no, abone_no, isemri_sebep, ekip, memur, sonuclandiran_kullanici, bolge, isemri_sonucu, sonuc_aciklama, takilan_sayacno, kayit_tarihi, tarih, zimmet_dusuldu) 
+                        VALUES $placeholders
+                        ON DUPLICATE KEY UPDATE 
+                            silinme_tarihi = NULL,
+                            personel_id = VALUES(personel_id),
+                            ekip_kodu_id = VALUES(ekip_kodu_id),
+                            isemri_sebep = VALUES(isemri_sebep),
+                            ekip = VALUES(ekip),
+                            memur = VALUES(memur),
+                            sonuclandiran_kullanici = VALUES(sonuclandiran_kullanici),
+                            bolge = VALUES(bolge),
+                            isemri_sonucu = VALUES(isemri_sonucu),
+                            sonuc_aciklama = VALUES(sonuc_aciklama),
+                            kayit_tarihi = VALUES(kayit_tarihi),
+                            tarih = VALUES(tarih),
+                            zimmet_dusuldu = VALUES(zimmet_dusuldu)";
+                $stmt = $SayacDegisimModel->db->prepare($sql);
+                $flatParams = [];
+                foreach ($chunk as $row) {
+                    $flatParams = array_merge($flatParams, $row);
+                }
+                $stmt->execute($flatParams);
+            }
+        }
+
+        $SayacDegisimModel->db->commit();
+
+        // Log
+        $SystemLog = new SystemLogModel();
+        $userId = $_SESSION['user_id'] ?? 0;
+        $SystemLog->logAction($userId, 'Online Sayaç Değişim Sorgulama', "API Sorgu, Tarih: $baslangicTarihiAPI - $bitisTarihiAPI. $yeniKayit yeni kayıt, $silinenKayit eski kayıt silindi.", SystemLogModel::LEVEL_IMPORTANT);
+
+        $response['status'] = 'success';
+        $response['yeni_kayit'] = $yeniKayit;
+        $response['silinen_kayit'] = $silinenKayit;
+        $response['toplam_api_kayit'] = count($apiData);
+        $response['atlanan_kayit'] = 0;
+        $response['atlanAn_kayitlar'] = $atlanAnKayitlar;
+        $response['message'] = "$yeniKayit kayıt başarıyla güncellendi.";
+
+        unset($apiData);
+        unset($insertBatch);
+
+    } catch (Exception $e) {
+        if (isset($SayacDegisimModel) && $SayacDegisimModel->db->inTransaction()) {
+            $SayacDegisimModel->db->rollBack();
+        }
+        $response['message'] = $e->getMessage();
+    } finally {
+        if (isset($Settings) && isset($lockKey)) {
+            $Settings->upsertSetting($lockKey, '');
+        }
+    }
+
+    ob_end_clean();
+    echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get-tab-content') {
     $tab = $_GET['tab'] ?? 'okuma';
     $startDate = $_GET['start_date'] ?? '';
@@ -976,24 +1388,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $EndeksOkuma = new \App\Model\EndeksOkumaModel();
         $endeksRecords = $EndeksOkuma->getFiltered($dbStartDate, $dbEndDate, $ekipKodu);
         foreach ($endeksRecords as $record): ?>
-            <tr>
-                <td><?= $record->bolge ?></td>
-                <td><?= $record->personel_adi ?: '<span class="text-muted">' . $record->kullanici_adi . '</span>' ?></td>
-                <td><?= number_format($record->sarfiyat, 2, ',', '.') ?></td>
-                <td><?= number_format($record->ort_sarfiyat_gunluk, 2, ',', '.') ?></td>
-                <td><?= number_format($record->tahakkuk, 2, ',', '.') ?></td>
-                <td><?= number_format($record->ort_tahakkuk_gunluk, 2, ',', '.') ?></td>
-                <td><?= $record->okunan_gun_sayisi ?></td>
-                <td><?= $record->okunan_abone_sayisi ?></td>
-                <td><?= number_format($record->ort_okunan_abone_sayisi_gunluk, 2, ',', '.') ?></td>
-                <td>%<?= number_format($record->okuma_performansi, 2, ',', '.') ?></td>
-                <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
-                <td>
-                    <button class="btn btn-sm btn-soft-danger delete-endeks" data-id="<?= $record->id ?>"><i
-                            class="bx bx-trash"></i></button>
-                </td>
-            </tr>
-        <?php endforeach;
+                        <tr>
+                            <td><?= $record->bolge ?></td>
+                            <td><?= $record->personel_adi ?: '<span class="text-muted">' . $record->kullanici_adi . '</span>' ?></td>
+                            <td><?= number_format($record->sarfiyat, 2, ',', '.') ?></td>
+                            <td><?= number_format($record->ort_sarfiyat_gunluk, 2, ',', '.') ?></td>
+                            <td><?= number_format($record->tahakkuk, 2, ',', '.') ?></td>
+                            <td><?= number_format($record->ort_tahakkuk_gunluk, 2, ',', '.') ?></td>
+                            <td><?= $record->okunan_gun_sayisi ?></td>
+                            <td><?= $record->okunan_abone_sayisi ?></td>
+                            <td><?= number_format($record->ort_okunan_abone_sayisi_gunluk, 2, ',', '.') ?></td>
+                            <td>%<?= number_format($record->okuma_performansi, 2, ',', '.') ?></td>
+                            <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
+                            <td>
+                                <button class="btn btn-sm btn-soft-danger delete-endeks" data-id="<?= $record->id ?>"><i
+                                        class="bx bx-trash"></i></button>
+                            </td>
+                        </tr>
+                <?php endforeach;
     } elseif ($tab === 'kacak_kontrol') {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         // personel_ids artık virgülle ayrılmış ID'ler içerdiği için doğrudan ekip_adi gösteriliyor
@@ -1011,36 +1423,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $stmt->execute($params);
         $records = $stmt->fetchAll(PDO::FETCH_OBJ);
         foreach ($records as $record): ?>
-            <tr>
-                <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
-                <td><?= $record->ekip_adi ?: '<span class="text-muted">-</span>' ?></td>
-                <td><?= $record->sayi ?></td>
-                <td><?= $record->aciklama ?></td>
-                <td>
-                    <button class="btn btn-sm btn-soft-primary edit-kacak" data-id="<?= $record->id ?>"><i
-                            class="bx bx-edit"></i></button>
-                    <button class="btn btn-sm btn-soft-danger delete-kacak" data-id="<?= $record->id ?>"><i
-                            class="bx bx-trash"></i></button>
-                </td>
-            </tr>
-        <?php endforeach;
+                        <tr>
+                            <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
+                            <td><?= $record->ekip_adi ?: '<span class="text-muted">-</span>' ?></td>
+                            <td><?= $record->sayi ?></td>
+                            <td><?= $record->aciklama ?></td>
+                            <td>
+                                <button class="btn btn-sm btn-soft-primary edit-kacak" data-id="<?= $record->id ?>"><i
+                                        class="bx bx-edit"></i></button>
+                                <button class="btn btn-sm btn-soft-danger delete-kacak" data-id="<?= $record->id ?>"><i
+                                        class="bx bx-trash"></i></button>
+                            </td>
+                        </tr>
+                <?php endforeach;
     } else {
         $records = $Puantaj->getFiltered($dbStartDate, $dbEndDate, $ekipKodu, $workType, $workResult);
         foreach ($records as $record): ?>
-            <tr>
-                <td><?= $record->firma ?></td>
-                <td><?= $record->is_emri_tipi ?></td>
-                <td><?= $record->personel_adi ?: '<span class="text-muted">' . $record->ekip_kodu . '</span>' ?></td>
-                <td><?= $record->is_emri_sonucu ?></td>
-                <td><?= $record->sonuclanmis ?></td>
-                <td><?= $record->acik_olanlar ?></td>
-                <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
-                <td>
-                    <button class="btn btn-sm btn-soft-danger delete-puantaj" data-id="<?= $record->id ?>"><i
-                            class="bx bx-trash"></i></button>
-                </td>
-            </tr>
-        <?php endforeach;
+                        <tr>
+                            <td><?= $record->firma ?></td>
+                            <td><?= $record->is_emri_tipi ?></td>
+                            <td><?= $record->personel_adi ?: '<span class="text-muted">' . $record->ekip_kodu . '</span>' ?></td>
+                            <td><?= $record->is_emri_sonucu ?></td>
+                            <td><?= $record->sonuclanmis ?></td>
+                            <td><?= $record->acik_olanlar ?></td>
+                            <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
+                            <td>
+                                <button class="btn btn-sm btn-soft-danger delete-puantaj" data-id="<?= $record->id ?>"><i
+                                        class="bx bx-trash"></i></button>
+                            </td>
+                        </tr>
+                <?php endforeach;
     }
     $html = ob_get_clean();
     echo $html;

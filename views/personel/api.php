@@ -130,10 +130,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             /** Atlanacak Alanlar (ReadOnly / Geçmiş Tablosundan Yönetilen Alanlar) */
             // Kullanıcı arayüzden readonly özelliğini kaldırıp gönderse bile arka planda kabul etmiyoruz
             $atlanacak_alanlar = [
-                'departman_gosterim', 'departman', 
-                'gorev_gosterim', 'gorev', 
-                'maas_durumu_gosterim', 'maas_durumu', 
-                'maas_tutari_gosterim', 'maas_tutari',
+                'departman_gosterim',
+                'departman',
+                'gorev_gosterim',
+                'gorev',
+                'maas_durumu_gosterim',
+                'maas_durumu',
+                'maas_tutari_gosterim',
+                'maas_tutari',
                 'gunluk_ucret'
             ];
             foreach ($atlanacak_alanlar as $alan) {
@@ -209,9 +213,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $res = $Personel->saveWithAttr($data);
             $currentPid = ($personel_id > 0) ? $personel_id : Security::decrypt($res);
 
-            // İşten çıkış tarihi varsa aktif ekip atamalarını kapat
+            // İşten çıkış tarihi varsa aktif ekip atamalarını ve görev geçmişini kapat
             if (!empty($data['isten_cikis_tarihi']) && $data['isten_cikis_tarihi'] != '0000-00-00') {
                 $Personel->closeActiveEkipAssignments($currentPid, $data['isten_cikis_tarihi']);
+                $Personel->closeActiveGorevGecmisi($currentPid, $data['isten_cikis_tarihi']);
+            }
+
+            $warningMessage = "";
+            if (empty($data['isten_cikis_tarihi']) || $data['isten_cikis_tarihi'] == '0000-00-00') {
+                $bugun = date('Y-m-d');
+                $aktifGorev = $Personel->getAktifGorevGecmisi($currentPid);
+
+                // Eğer aktif görev bulunamadıysa VEYA aktif görev bugün/geçmişte bitmişse (Devam eden açık bir kaydı yoksa)
+                if (!$aktifGorev || (!empty($aktifGorev->bitis_tarihi) && $aktifGorev->bitis_tarihi <= $bugun)) {
+                    $warningMessage = "<br><br><span class=\"text-danger fw-bold\">Ancak Personelin Aktif Görev (Maaş Tipi) kaydı bulunmamaktadır.<br>Lütfen ekleyiniz!</span>";
+                }
             }
 
             if ($personel_id > 0) {
@@ -279,6 +295,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $SystemLog->logAction($userId, 'Personel Kayıt', "Yeni personel eklendi: $tcNo - $adiSoyadi", SystemLogModel::LEVEL_IMPORTANT);
 
                 $message = "Personel başarıyla kaydedildi.";
+            }
+
+            if (!empty($warningMessage)) {
+                $message .= $warningMessage;
             }
 
             echo json_encode(['status' => 'success', 'message' => $message, 'id' => $personel_id]);
@@ -1058,12 +1078,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Kayıt yoksa personel tablosundan mevcut verileri dön
                 $p = $Personel->find($personel_id);
                 if ($p) {
-                    echo json_encode(['status' => 'success', 'data' => [
-                        'departman' => $p->departman,
-                        'gorev' => $p->gorev,
-                        'maas_durumu' => $p->maas_durumu,
-                        'maas_tutari' => $p->maas_tutari
-                    ]]);
+                    echo json_encode([
+                        'status' => 'success',
+                        'data' => [
+                            'departman' => $p->departman,
+                            'gorev' => $p->gorev,
+                            'maas_durumu' => $p->maas_durumu,
+                            'maas_tutari' => $p->maas_tutari
+                        ]
+                    ]);
                 } else {
                     echo json_encode(['status' => 'error', 'message' => 'Personel bulunamadı.']);
                 }
@@ -1074,7 +1097,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } elseif ($action == 'gorev-gecmisi-ekle') {
         try {
             $data = $_POST;
-            
+
             // Departman array ise virgülle ayır
             if (isset($data['departman']) && is_array($data['departman'])) {
                 $data['departman'] = implode(',', $data['departman']);
@@ -1090,6 +1113,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'bitis_tarihi' => !empty($data['gorev_bitis']) ? Date::Ymd($data['gorev_bitis'], 'Y-m-d') : (!empty($data['bitis_tarihi']) ? Date::Ymd($data['bitis_tarihi'], 'Y-m-d') : null),
                 'aciklama' => $data['aciklama'] ?? null
             ];
+
+            // Aktif görev kontrolü
+            $aktifGorevCheck = $Personel->getAktifGorevGecmisi($data['personel_id']);
+            if ($aktifGorevCheck) {
+                throw new Exception("Personelin aktif bir görev geçmişi bulunmaktadır. Yeni bir görev kaydı eklemeden önce mevcut görev kaydına bitiş tarihi ekleyerek sonlandırmalısınız.");
+            }
 
             $Personel->addGorevGecmisi($saveData);
 
@@ -1135,6 +1164,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'bitis_tarihi' => !empty($data['gorev_bitis']) ? Date::Ymd($data['gorev_bitis'], 'Y-m-d') : (!empty($data['bitis_tarihi']) ? Date::Ymd($data['bitis_tarihi'], 'Y-m-d') : null),
                 'aciklama' => $data['aciklama'] ?? null
             ];
+
+            // Aktif görev kontrolü (Güncellenen kayıt aktif hale geliyorsa)
+            $personel_id = $data['personel_id'] ?? 0;
+            if ($personel_id <= 0) {
+                $gecmisKayit = $Personel->getSingleGorevGecmisi($saveData['id']);
+                $personel_id = $gecmisKayit->personel_id ?? 0;
+            }
+
+            if ($personel_id > 0) {
+                $bugun = date('Y-m-d');
+                $isNewlyActive = ($saveData['baslangic_tarihi'] <= $bugun && ($saveData['bitis_tarihi'] === null || $saveData['bitis_tarihi'] >= $bugun));
+                
+                if ($isNewlyActive) {
+                    $aktifGorev = $Personel->getAktifGorevGecmisi($personel_id);
+                    if ($aktifGorev && $aktifGorev->id != $saveData['id']) {
+                        throw new Exception("Personelin zaten aktif bir görev geçmişi bulunmaktadır. Bu kaydı aktif hale getirmek için önce diğer aktif kaydı sonlandırmalısınız.");
+                    }
+                }
+            }
+
             $Personel->updateGorevGecmisi($saveData);
 
             // Personel tablosunu aktif kayıtla senkronize et

@@ -10,9 +10,11 @@ use App\Helper\Helper;
         padding-top: 20px !important;
         padding-bottom: 4px !important;
     }
+
     .form-floating-custom .select2-container--default .select2-selection--multiple .select2-selection__rendered {
         padding-left: 45px !important;
     }
+
     .form-floating-custom .select2-container--default .select2-selection--multiple .select2-selection__choice {
         margin-top: 2px !important;
         background-color: rgba(28, 132, 238, 0.1) !important;
@@ -20,21 +22,23 @@ use App\Helper\Helper;
         color: #1c84ee !important;
         font-weight: 500;
     }
+
     .form-floating-custom .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
         color: #ef4444 !important;
         margin-right: 5px !important;
     }
+
     /* Fixed icon alignment for multiple select */
     .form-floating-custom .form-floating-icon {
         z-index: 10;
         pointer-events: none;
     }
-.readonly{
-    opacity: 0.6;
-    background-color: #f8f9fa;
 
-}
+    .readonly {
+        opacity: 0.6;
+        background-color: #f8f9fa;
 
+    }
 </style>
 
 <div class="row">
@@ -57,41 +61,7 @@ use App\Helper\Helper;
                     </div>
                 </div>
 
-                <!-- 2. Grup: Maaş & Görev Bilgileri (Maaş Tipi Geçmişinden otomatik güncellenir) -->
-                <div class="mb-4">
-                    <h6 class="fw-bold text-muted mb-3">
-                        <i class="bx bx-briefcase-alt-2 me-1"></i>Maaş & Görev Bilgileri
-                        <span class="badge bg-soft-info text-info ms-2 fw-normal" style="font-size: 0.7rem;">
-                            <i class="bx bx-info-circle me-1"></i>Aşağıdaki Maaş Tipi Geçmişi tablosundan yönetilir
-                        </span>
-                    </h6>
-                    <?php
-                    // Aktif görev geçmişi kaydından verileri al, yoksa personel tablosundaki mevcut değerler
-                    $aktifGorev = ($id > 0) ? $PersonelModel->getAktifGorevGecmisi($id) : null;
-                    $gosterimDepartman = $aktifGorev->departman ?? $personel->departman ?? '';
-                    $gosterimGorev = $aktifGorev->gorev ?? $personel->gorev ?? '';
-                    $gosterimMaasDurumu = $aktifGorev->maas_durumu ?? $personel->maas_durumu ?? '';
-                    $gosterimMaasTutari = $aktifGorev->maas_tutari ?? $personel->maas_tutari ?? 0;
-                    ?>
-                    <div class="row">
-                        <div class="col-md-3 mb-2">
-                            <?php echo Form::FormFloatInput("text", "departman_gosterim", htmlspecialchars($gosterimDepartman), "Departman", "Departman", "grid", "form-control readonly", false, null, "off", true); ?>
-                            <input type="hidden" name="departman" value="<?= htmlspecialchars($gosterimDepartman) ?>">
-                        </div>
-                        <div class="col-md-3 mb-2">
-                            <?php echo Form::FormFloatInput("text", "gorev_gosterim", htmlspecialchars($gosterimGorev), "Görev / Unvan", "Görev / Unvan", "award", "form-control readonly", false, null, "off", true); ?>
-                            <input type="hidden" name="gorev" value="<?= htmlspecialchars($gosterimGorev) ?>">
-                        </div>
-                        <div class="col-md-3 mb-2">
-                            <?php echo Form::FormFloatInput("text", "maas_durumu_gosterim", htmlspecialchars($gosterimMaasDurumu), "Maaş Tipi", "Maaş Tipi", "dollar-sign", "form-control readonly", false, null, "off", true); ?>
-                            <input type="hidden" name="maas_durumu" value="<?= htmlspecialchars($gosterimMaasDurumu) ?>">
-                        </div>
-                        <div class="col-md-3 mb-2">
-                            <?php echo Form::FormFloatInput("text", "maas_tutari_gosterim", Helper::formattedMoney($gosterimMaasTutari), "Maaş Tutarı", "Maaş Tutarı", "dollar-sign", "form-control readonly", false, null, "off", true); ?>
-                            <input type="hidden" name="maas_tutari" value="<?= Helper::formattedMoney($gosterimMaasTutari) ?>">
-                        </div>
-                    </div>
-                </div>
+                <!-- YAN HAKLAR VE BANKA BİLGİLERİ -->
 
                 <!-- 3. Grup: Yan Haklar & Kesintiler -->
                 <div>
@@ -113,7 +83,7 @@ use App\Helper\Helper;
     </div>
 
     <!-- Bilgilendirme Mesajı -->
-    <div class="col-md-12 mt-3">
+    <!-- <div class="col-md-12 mt-3">
         <div class="alert alert-success border-success border-dashed d-flex align-items-center mb-0" role="alert">
             <i class="bx bx-info-circle fs-4 me-3"></i>
             <div>
@@ -129,18 +99,29 @@ use App\Helper\Helper;
                 </p>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <!-- Görev/Maaş Geçmişi Tablosu -->
     <div class="col-md-12 mt-3">
         <div class="card border h-100">
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0 text-primary"><i class="bx bx-briefcase me-2"></i>Maaş Tipi Geçmişi</h5>
-                <?php if ($id > 0): ?>
-                    <button type="button" class="btn btn-sm btn-primary" id="btnOpenGorevGecmisiModal">
-                        <i class="bx bx-plus"></i> Yeni Maaş Tipi Tanımla
-                    </button>
-                <?php endif; ?>
+                <div id="gorevGecmisiButtonContainer">
+                    <?php if ($id > 0): ?>
+                        <?php 
+                        $aktifGorevCheck = $PersonelModel->getAktifGorevGecmisi($id);
+                        if (!$aktifGorevCheck): 
+                        ?>
+                            <button type="button" class="btn btn-sm btn-primary" id="btnOpenGorevGecmisiModal">
+                                <i class="bx bx-plus"></i> Yeni Maaş Tipi Tanımla
+                            </button>
+                        <?php else: ?>
+                            <span class="badge bg-soft-warning text-warning p-2">
+                                <i class="bx bx-info-circle me-1"></i> Aktif görev kaydı varken yenisi eklenemez.
+                            </span>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div>
             </div>
             <div class="card-body p-0">
                 <?php if ($id > 0): ?>
@@ -148,6 +129,7 @@ use App\Helper\Helper;
                         <table id="tblGorevGecmisi" class="table table-hover mb-0 w-100">
                             <thead class="table-light">
                                 <tr>
+                                    <th style="display:none">ID</th>
                                     <th>Departman & Görev</th>
                                     <th>Maaş Tipi</th>
                                     <th>Tutar</th>
@@ -164,9 +146,11 @@ use App\Helper\Helper;
                                     foreach ($gorevGecmisi as $g):
                                         ?>
                                         <tr>
+                                            <td style="display:none"><?= $g->id ?></td>
                                             <td>
                                                 <div class="d-flex flex-column">
-                                                    <span class="fw-bold text-dark"><?= htmlspecialchars($g->gorev ?? 'Belirtilmemiş') ?></span>
+                                                    <span
+                                                        class="fw-bold text-dark"><?= htmlspecialchars($g->gorev ?? 'Belirtilmemiş') ?></span>
                                                     <small class="text-muted"><?= htmlspecialchars($g->departman ?? '') ?></small>
                                                 </div>
                                             </td>

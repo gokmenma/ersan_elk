@@ -219,6 +219,57 @@ if ($action == "demirbas-getir") {
     }
 }
 
+// Toplu Demirbaş Sil
+if ($action == "bulk-demirbas-sil") {
+    Gate::can('demirbas_toplu_islem_sil');
+    $ids = $_POST["ids"] ?? [];
+    if (empty($ids)) {
+        jsonResponse("error", "Lütfen silmek için en az bir kayıt seçin.");
+    }
+
+    try {
+        $successCount = 0;
+        $errorCount = 0;
+        $hatalar = [];
+
+        $Demirbas->db->beginTransaction();
+
+        foreach ($ids as $enc_id) {
+            $id = Security::decrypt($enc_id);
+            if (!$id) continue;
+
+            $zimmetler = $Zimmet->getByDemirbas($id);
+            if (count($zimmetler) > 0) {
+                $errorCount++;
+                continue;
+            }
+
+            if ($Demirbas->delete($enc_id)) {
+                $successCount++;
+            } else {
+                $errorCount++;
+            }
+        }
+
+        $Demirbas->db->commit();
+
+        if ($successCount > 0) {
+            $msg = "$successCount kayıt başarıyla silindi.";
+            if ($errorCount > 0) {
+                $msg .= " ($errorCount kayıt zimmet geçmişi olduğu için silinemedi!)";
+            }
+            jsonResponse("success", $msg);
+        } else {
+            jsonResponse("error", "Seçilen kayıtlar zimmet geçmişi olduğu için silinemedi.");
+        }
+    } catch (Exception $ex) {
+        if ($Demirbas->db->inTransaction()) {
+            $Demirbas->db->rollBack();
+        }
+        jsonResponse("error", "Hata: " . $ex->getMessage());
+    }
+}
+
 // Demirbaş Sil
 if ($action == "demirbas-sil") {
     $id = $_POST["id"] ?? null;
@@ -351,7 +402,11 @@ if ($action == "demirbas-listesi") {
                         "bosta" => ($kalan > 0) ? '1' : '0',
                         "zimmetli" => ($kalan < $miktar) ? '1' : '0'
                     ],
-                    "checkbox" => '<div class="text-center"><input type="checkbox" class="form-check-input sayac-select" value="' . $enc_id . '"></div>',
+                    "checkbox" => '
+                                <div class="custom-checkbox-container d-inline-block">
+                                    <input type="checkbox" class="custom-checkbox-input sayac-select" value="' . $enc_id . '" id="chk_' . $d->id . '">
+                                    <label class="custom-checkbox-label" for="chk_' . $d->id . '"></label>
+                                </div>',
                     "sira_no" => '<div class="text-center">' . $start . '</div>',
                     "id" => '<div class="text-center">' . $start . '</div>',
                     "demirbas_no" => '<div class="text-center">' . ($d->demirbas_no ?? '-') . '</div>',
@@ -478,13 +533,20 @@ if ($action == "zimmet-listesi") {
                                 <a href="#" data-id="' . $enc_id . '" class="dropdown-item zimmet-detay">
                                     <span class="mdi mdi-eye font-size-18 text-info me-1"></span> Detay
                                 </a>
+                                ' . ($z->durum !== 'iade' ? '
                                 <a href="#" class="dropdown-item zimmet-sil" data-id="' . $enc_id . '">
                                     <span class="mdi mdi-delete font-size-18 text-danger me-1"></span> Sil
-                                </a>
+                                </a>' : '') . '
                             </div>
                         </div>';
 
+            $disabledCheckbox = ($z->durum === 'iade') ? 'disabled' : '';
             $data[] = [
+                "checkbox" => '
+                    <div class="custom-checkbox-container">
+                        <input type="checkbox" ' . $disabledCheckbox . ' class="custom-checkbox-input zimmet-select" id="zimmet_check_' . $z->id . '" value="' . $enc_id . '">
+                        <label for="zimmet_check_' . $z->id . '" class="custom-checkbox-label"></label>
+                    </div>',
                 "id" => $z->id,
                 "enc_id" => $enc_id,
                 "kategori_adi" => '<span class="badge bg-soft-primary text-primary">' . ($z->kategori_adi ?? '-') . '</span>',
@@ -713,19 +775,134 @@ if ($action == "zimmet-sil") {
             jsonResponse("error", "Zimmet kaydı bulunamadı.");
         }
 
-        // Eğer teslim durumundaysa, silmeye izin verme (iade alınmalı)
-        if ($zimmet->durum === 'teslim') {
-            jsonResponse("error", "Aktif (teslim edilmiş) durumdaki bir zimmet kaydını silemezsiniz. Lütfen önce 'İade Al' işlemini gerçekleştiriniz.");
+        if ($zimmet->durum === 'iade') {
+            jsonResponse("error", "İade alınmış (arşiv) kayıtları silemezsiniz.");
         }
 
         $result = $Zimmet->delete($id);
         if ($result === true) {
-            jsonResponse("success", "Zimmet kaydı başarıyla silindi.");
+            jsonResponse("success", "Zimmet kaydı başarıyla silindi. Stok bilgisi güncellendi.");
         } else {
             jsonResponse("error", "Silme işlemi başarısız.");
         }
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());
+    }
+}
+
+// Zimmet Toplu Sil
+if ($action == "bulk-zimmet-sil") {
+    Gate::can('demirbas_toplu_islem_sil');
+    try {
+        $ids_raw = $_POST["ids"] ?? [];
+        if (empty($ids_raw)) {
+            jsonResponse("error", "Lütfen en az bir zimmet kaydı seçin.");
+        }
+
+        $successCount = 0;
+        $errorCount = 0;
+
+        $Zimmet->getDb()->beginTransaction();
+
+        foreach ($ids_raw as $enc_id) {
+            $id = Security::decrypt($enc_id);
+            if (!$id)
+                continue;
+
+            $zimmet = $Zimmet->find($id);
+            if (!$zimmet) {
+                continue;
+            }
+
+            // User requested to NOT allow deleting iade records in bulk? 
+            // "iade alındı durumundaki kayıtların seçilmesine ve silinmesine... izin verme"
+            if ($zimmet->durum === 'iade') {
+                $errorCount++;
+                continue;
+            }
+
+            $result = $Zimmet->delete($enc_id);
+            if ($result === true) {
+                $successCount++;
+            } else {
+                $errorCount++;
+            }
+        }
+
+        $Zimmet->getDb()->commit();
+
+        $message = "$successCount adet aktif zimmet kaydı başarıyla silindi ve stoklar güncellendi.";
+        if ($errorCount > 0) {
+            $message .= " $errorCount kayıt iade edildi durumunda olduğu için veya hata nedeniyle silinemedi.";
+        }
+
+        jsonResponse("success", $message);
+    } catch (Exception $ex) {
+        if ($Zimmet->getDb()->inTransaction()) {
+            $Zimmet->getDb()->rollBack();
+        }
+        jsonResponse("error", "Hata: " . $ex->getMessage());
+    }
+}
+
+// Zimmet Toplu İade
+if ($action == "bulk-zimmet-iade") {
+    Gate::can('demirbas_toplu_islem_sil');
+    try {
+        $ids_raw = $_POST["ids"] ?? [];
+        $iade_tarihi = $_POST["iade_tarihi"] ?? date('d.m.Y');
+        $aciklama = $_POST["aciklama"] ?? 'Toplu İade Alındı';
+        
+        if (empty($ids_raw)) {
+            jsonResponse("error", "Lütfen en az bir zimmet kaydı seçin.");
+        }
+
+        $successCount = 0;
+        $errorCount = 0;
+
+        $Zimmet->getDb()->beginTransaction();
+
+        foreach ($ids_raw as $enc_id) {
+            $id = Security::decrypt($enc_id);
+            if (!$id) continue;
+
+            $zimmet = $Zimmet->find($id);
+            if (!$zimmet) continue;
+
+            if ($zimmet->durum !== 'teslim') {
+                $errorCount++;
+                continue;
+            }
+
+            $teslim_miktar = (int)($zimmet->teslim_miktar ?? 1);
+            $mevcut_iade = (int)($zimmet->iade_miktar ?? 0);
+            $kalan_zimmet = $teslim_miktar - $mevcut_iade;
+
+            if ($kalan_zimmet > 0) {
+                $result = $Zimmet->iadeYap($id, $iade_tarihi, $kalan_zimmet, $aciklama);
+                if ($result === true) {
+                    $successCount++;
+                } else {
+                    $errorCount++;
+                }
+            } else {
+                $successCount++;
+            }
+        }
+
+        $Zimmet->getDb()->commit();
+
+        $message = "$successCount adet zimmet kaydı başarıyla iade alındı.";
+        if ($errorCount > 0) {
+            $message .= " $errorCount kayıt iade alınırken hata oluştu.";
+        }
+
+        jsonResponse("success", $message);
+    } catch (Exception $ex) {
+        if ($Zimmet->getDb()->inTransaction()) {
+            $Zimmet->getDb()->rollBack();
+        }
+        jsonResponse("error", "Hata: " . $ex->getMessage());
     }
 }
 

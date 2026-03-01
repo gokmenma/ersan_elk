@@ -46,7 +46,8 @@ switch ($action) {
             'sms_api_sifre_yeni' => 'sms_api_sifre',
             'online_sorgulama_api_sifre_yeni' => 'online_sorgulama_api_sifre',
             'api_endeks_sifre_yeni' => 'api_endeks_sifre',
-            'api_puantaj_sifre_yeni' => 'api_puantaj_sifre'
+            'api_puantaj_sifre_yeni' => 'api_puantaj_sifre',
+            'api_sayac_degisim_sifre_yeni' => 'api_sayac_degisim_sifre'
         ];
         foreach ($passwordKeys as $passKey => $dbKey) {
             if (isset($settingsToUpdate[$passKey])) {
@@ -58,7 +59,7 @@ switch ($action) {
         }
 
         // Ayar olmayan alanları temizle
-        $excludeKeys = ['action', 'firma_id', 'user_id', 'config_id', 'online_sorgulama_endeks_saat_select', 'online_sorgulama_puantaj_saat_select'];
+        $excludeKeys = ['action', 'firma_id', 'user_id', 'config_id', 'online_sorgulama_endeks_saat_select', 'online_sorgulama_puantaj_saat_select', 'online_sorgulama_sayac_degisim_saat_select'];
         foreach ($excludeKeys as $key) {
             unset($settingsToUpdate[$key]);
         }

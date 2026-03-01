@@ -24,6 +24,12 @@ $(document).ready(function () {
     },
     columns: [
       {
+        data: "checkbox",
+        className: "text-center",
+        orderable: false,
+        searchable: false,
+      },
+      {
         data: "id",
         className: "text-center",
         orderable: true,
@@ -54,7 +60,7 @@ $(document).ready(function () {
         searchable: false,
       },
     ],
-    order: [[0, "desc"]],
+    order: [[1, "desc"]],
     createdRow: function (row, data, dataIndex) {
       if (data.DT_RowData) {
         $(row).attr("data-id", data.DT_RowData.id);
@@ -90,6 +96,12 @@ $(document).ready(function () {
       },
     },
     columns: [
+      {
+        data: "checkbox",
+        className: "text-center",
+        orderable: false,
+        searchable: false,
+      },
       { data: "id", className: "text-center" },
       { data: "kategori_adi" },
       { data: "demirbas_adi" },
@@ -164,7 +176,7 @@ $(document).ready(function () {
           searchable: false,
         },
       ],
-      order: [[0, "desc"]],
+      order: [[1, "desc"]],
       createdRow: function (row, data, dataIndex) {
         if (data.DT_RowData) {
           $(row).attr("data-id", data.DT_RowData.id);
@@ -198,6 +210,12 @@ $(document).ready(function () {
       },
       columns: [
         {
+          data: "checkbox",
+          className: "text-center",
+          orderable: false,
+          searchable: false,
+        },
+        {
           data: "id",
           className: "text-center",
           orderable: false,
@@ -222,7 +240,7 @@ $(document).ready(function () {
           searchable: false,
         },
       ],
-      order: [[0, "desc"]],
+      order: [[1, "desc"]],
       createdRow: function (row, data, dataIndex) {
         if (data.DT_RowData) {
           $(row).attr("data-id", data.DT_RowData.id);
@@ -308,20 +326,30 @@ function updateButtonVisibility() {
     .addClass("d-none")
     .removeClass("d-flex");
   $("#importExcelLi").addClass("d-none");
+  $("#topluZimmetSilLi").addClass("d-none");
+  $("#topluIadeLi").addClass("d-none");
+  $("#topluDemirbasSilLi").addClass("d-none");
+  $("#zimmetIslemlerDivider").addClass("d-none");
 
   if (activeTab === "demirbas-tab") {
     $("#btnYeniDemirbas").removeClass("d-none").addClass("d-flex");
     $("#importExcelLi").removeClass("d-none");
+    $("#topluDemirbasSilLi").removeClass("d-none");
   } else if (activeTab === "zimmet-tab") {
     $("#btnZimmetVer").removeClass("d-none").addClass("d-flex");
+    $("#topluZimmetSilLi").removeClass("d-none");
+    $("#topluIadeLi").removeClass("d-none");
+    $("#zimmetIslemlerDivider").removeClass("d-none");
     if (typeof zimmetTable !== "undefined") {
       zimmetTable.ajax.reload(null, false);
     }
   } else if (activeTab === "depo-tab") {
     $("#btnYeniSayac").removeClass("d-none").addClass("d-flex");
     $("#btnTopluKaskiyeTeslim").removeClass("d-none").addClass("d-flex");
+    $("#topluDemirbasSilLi").removeClass("d-none");
   } else if (activeTab === "aparat-tab") {
     $("#btnYeniAparat").removeClass("d-none").addClass("d-flex");
+    $("#topluDemirbasSilLi").removeClass("d-none");
   } else if (activeTab === "servis-tab") {
     $("#btnYeniServis").removeClass("d-none").addClass("d-flex");
     if (typeof servisTable !== "undefined") {
@@ -2181,17 +2209,20 @@ $(document).on("submit", "#kasiyeTeslimForm", function (e) {
 
 // Toplu Kaskiye Teslim Checkbox Logic
 $(document).on("click", "#checkAllSayac", function () {
-  $(".sayac-select").prop("checked", this.checked);
+  $("#sayacTable .sayac-select").prop("checked", this.checked).trigger("change");
 });
 
 $(document).on("click", ".sayac-select", function () {
-  if (
-    $(".sayac-select:checked").length === $(".sayac-select").length &&
-    $(".sayac-select").length > 0
-  ) {
-    $("#checkAllSayac").prop("checked", true);
-  } else {
-    $("#checkAllSayac").prop("checked", false);
+  let tableId = $(this).closest("table").attr("id"); 
+  let checkAllId = "";
+  if (tableId === "demirbasTable") checkAllId = "#checkAllDemirbas";
+  else if (tableId === "sayacTable") checkAllId = "#checkAllSayac";
+  else if (tableId === "aparatTable") checkAllId = "#checkAllAparat";
+  
+  if (checkAllId) {
+    let allChecks = $("#" + tableId + " .sayac-select").length;
+    let checkedCount = $("#" + tableId + " .sayac-select:checked").length;
+    $(checkAllId).prop("checked", checkedCount === allChecks && allChecks > 0);
   }
 });
 
@@ -2818,4 +2849,297 @@ $("#collapseZimmetStats").on("shown.bs.collapse", function () {
     initZimmetCharts();
   }
   loadZimmetCharts();
+});
+
+// Zimmet Tablosu Toplu Seçim ve Silme
+$(document).on("change", "#checkAllZimmet", function () {
+  const isChecked = $(this).prop("checked");
+  $(".zimmet-select:not(:disabled)").prop("checked", isChecked).trigger("change");
+});
+
+// Update check-all status and row highlighting when single checkbox changes
+$(document).on("change", ".zimmet-select", function () {
+  const totalSelectable = $(".zimmet-select:not(:disabled)").length;
+  const totalChecked = $(".zimmet-select:checked:not(:disabled)").length;
+
+  if (totalSelectable > 0 && totalChecked === totalSelectable) {
+    $("#checkAllZimmet").prop("checked", true);
+  } else {
+    $("#checkAllZimmet").prop("checked", false);
+  }
+
+  if ($(this).prop("checked")) {
+    $(this).closest("tr").addClass("selected-row");
+  } else {
+    $(this).closest("tr").removeClass("selected-row");
+  }
+});
+
+$(document).on("change", "#checkAllDemirbas", function () {
+  $("#demirbasTable .sayac-select").prop("checked", this.checked).trigger("change");
+});
+$(document).on("change", "#checkAllSayac", function () {
+  $("#sayacTable .sayac-select").prop("checked", this.checked).trigger("change");
+});
+$(document).on("change", "#checkAllAparat", function () {
+  $("#aparatTable .sayac-select").prop("checked", this.checked).trigger("change");
+});
+
+$(document).on("change", ".sayac-select", function () {
+  if ($(this).prop("checked")) {
+    $(this).closest("tr").addClass("selected-row");
+  } else {
+    $(this).closest("tr").removeClass("selected-row");
+  }
+});
+
+// Row Click selection for Demirbas Tables
+$(document).on("click", "#demirbasTable tbody tr, #sayacTable tbody tr, #aparatTable tbody tr", function (e) {
+  if ($(e.target).closest('.dropdown, .dropdown-menu, .custom-checkbox-input, .sayac-select, a, button').length) {
+    return;
+  }
+  const checkbox = $(this).find(".sayac-select");
+  if (checkbox.length) {
+    const isChecked = !checkbox.prop("checked");
+    checkbox.prop("checked", isChecked).trigger("change");
+  }
+});
+
+$(document).on("click", "#btnTopluDemirbasSil", function (e) {
+  e.preventDefault();
+  let secilenKayıtlar = [];
+  
+  let activeTabBtn = $("#demirbasTab button.active");
+  if (activeTabBtn.length === 0) return;
+
+  let activeTab = activeTabBtn.attr("id");
+  let tableId = "";
+  if (activeTab === "demirbas-tab") tableId = "#demirbasTable";
+  else if (activeTab === "depo-tab") tableId = "#sayacTable";
+  else if (activeTab === "aparat-tab") tableId = "#aparatTable";
+  
+  if (!tableId) return;
+
+  $(tableId + " .sayac-select:checked").each(function () {
+    secilenKayıtlar.push($(this).val());
+  });
+
+  if (secilenKayıtlar.length === 0) {
+    Swal.fire({
+      icon: "warning",
+      title: "Hata",
+      text: "Lütfen silmek için en az bir kayıt seçin!",
+      confirmButtonText: "Tamam",
+    });
+    return;
+  }
+
+  Swal.fire({
+    title: "Emin misiniz?",
+    text: "Seçilen kayıtlar silinecektir. Zimmet geçmişi olanlar silinemez.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#3085d6",
+    confirmButtonText: "Evet, Sil!",
+    cancelButtonText: "İptal",
+  }).then((result) => {
+    if (result.isConfirmed) {
+      $.ajax({
+        url: zimmetUrl,
+        type: "POST",
+        dataType: "json",
+        data: {
+          action: "bulk-demirbas-sil",
+          ids: secilenKayıtlar
+        },
+        success: function (res) {
+          if (res.status === "success") {
+            Swal.fire("Başarılı", res.message, "success");
+            
+            if (activeTab === "demirbas-tab" && typeof demirbasTable !== "undefined") demirbasTable.ajax.reload(null, false);
+            else if (activeTab === "depo-tab" && typeof sayacTable !== "undefined") sayacTable.ajax.reload(null, false);
+            else if (activeTab === "aparat-tab" && typeof aparatTable !== "undefined") aparatTable.ajax.reload(null, false);
+            
+            $("#checkAllDemirbas").prop("checked", false);
+            $("#checkAllSayac").prop("checked", false);
+            $("#checkAllAparat").prop("checked", false);
+          } else {
+            Swal.fire("Hata", res.message, "error");
+          }
+        },
+        error: function () {
+          Swal.fire("Hata", "Bir ağ hatası oluştu.", "error");
+        },
+      });
+    }
+  });
+});
+
+
+// Row Click selection for Zimmet Table
+$(document).on("click", "#zimmetTable tbody tr", function (e) {
+  // If clicked on an action button, dropdown, or checkbox itself, don't trigger row selection
+  if ($(e.target).closest('.dropdown, .dropdown-menu, .custom-checkbox-container, .zimmet-select, a, button').length) {
+    return;
+  }
+
+  const checkbox = $(this).find(".zimmet-select");
+  if (checkbox.is(":disabled")) return;
+
+  const isChecked = !checkbox.prop("checked");
+  checkbox.prop("checked", isChecked).trigger("change");
+});
+
+
+$(document).on("click", "#btnTopluIadeAl", function (e) {
+  e.preventDefault();
+  let secilenZimmetler = [];
+  $(".zimmet-select:checked:not(:disabled)").each(function () {
+    secilenZimmetler.push($(this).val());
+  });
+
+  if (secilenZimmetler.length === 0) {
+    Swal.fire({
+      icon: "warning",
+      title: "Hata",
+      text: "Lütfen iade almak için en az bir aktif zimmet kaydı seçin!",
+      confirmButtonText: "Tamam",
+    });
+    return;
+  }
+
+  $("#toplu_iade_sayisi").text(secilenZimmetler.length);
+  $("#topluIadeModal").modal("show");
+});
+
+$(document).on("click", "#btnTopluIadeKaydet", function () {
+  let secilenZimmetler = [];
+  $(".zimmet-select:checked:not(:disabled)").each(function () {
+    secilenZimmetler.push($(this).val());
+  });
+
+  const iadeTarihi = $("#toplu_iade_tarihi").val();
+  const aciklama = $("#toplu_iade_aciklama").val();
+
+  if (!iadeTarihi) {
+    Swal.fire("Hata", "Lütfen iade tarihini seçin.", "error");
+    return;
+  }
+
+  Swal.fire({
+    title: 'Toplu İade Yapılıyor...',
+    didOpen: () => { Swal.showLoading(); }
+  });
+
+  $.ajax({
+    url: zimmetUrl,
+    type: "POST",
+    dataType: "json",
+    data: {
+      action: "bulk-zimmet-iade",
+      ids: secilenZimmetler,
+      iade_tarihi: iadeTarihi,
+      aciklama: aciklama
+    },
+    success: function (res) {
+      if (res.status === "success") {
+        $("#topluIadeModal").modal("hide");
+        $("#toplu_iade_aciklama").val("");
+        
+        Swal.fire({
+          icon: "success",
+          title: "Başarılı",
+          text: res.message,
+          timer: 3000,
+          showConfirmButton: false,
+        });
+        $("#checkAllZimmet").prop("checked", false);
+        if (typeof zimmetTable !== "undefined") {
+          zimmetTable.ajax.reload(null, false);
+        }
+      } else {
+        Swal.fire({ icon: "error", title: "Hata", text: res.message, confirmButtonText: "Tamam" });
+      }
+    },
+    error: function () {
+      Swal.fire({ icon: "error", title: "Hata", text: "Bir ağ hatası oluştu." });
+    }
+  });
+});
+
+$(document).on("click", "#btnTopluZimmetSil", function (e) {
+  e.preventDefault();
+  let secilenZimmetler = [];
+  $(".zimmet-select:checked:not(:disabled)").each(function () {
+    secilenZimmetler.push($(this).val());
+  });
+
+  if (secilenZimmetler.length === 0) {
+    Swal.fire({
+      icon: "warning",
+      title: "Hata",
+      text: "Lütfen silmek için en az bir aktif zimmet kaydı seçin!",
+      confirmButtonText: "Tamam",
+    });
+    return;
+  }
+
+  Swal.fire({
+    title: "Emin misiniz?",
+    text: secilenZimmetler.length + " adet aktif zimmet kaydını kalıcı olarak silmek istediğinize emin misiniz? Arşivlenmiş (iade edilmiş) kayıtlar silinmeyecektir. Zimmetli durumdaki kayıtların stoğu otomatik olarak demirbaş listesinde artırılacaktır.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#3085d6",
+    confirmButtonText: "Evet, Sil!",
+    cancelButtonText: "İptal",
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire({
+        title: 'Siliniyor...',
+        didOpen: () => { Swal.showLoading(); }
+      });
+
+      $.ajax({
+        url: zimmetUrl,
+        type: "POST",
+        dataType: "json",
+        data: {
+          action: "bulk-zimmet-sil",
+          ids: secilenZimmetler,
+        },
+        success: function (res) {
+          if (res.status === "success") {
+            Swal.fire({
+              icon: "success",
+              title: "Başarılı",
+              text: res.message,
+              timer: 3000,
+              showConfirmButton: false,
+            });
+            $("#checkAllZimmet").prop("checked", false);
+            if (typeof zimmetTable !== "undefined") {
+              zimmetTable.ajax.reload(null, false);
+            }
+          } else {
+            Swal.fire({
+              icon: "error",
+              title: "Hata",
+              text: res.message,
+              confirmButtonText: "Tamam",
+            });
+          }
+        },
+        error: function () {
+          Swal.fire({
+            icon: "error",
+            title: "Bağlantı Hatası",
+            text: "Lütfen internet bağlantınızı kontrol edip tekrar deneyin.",
+            confirmButtonText: "Tamam",
+          });
+        },
+      });
+    }
+  });
 });

@@ -81,6 +81,9 @@ if ($compareTab === 'okuma') {
     $data = $EndeksOkuma->getComparisonByPeriods($periods);
 } elseif ($compareTab === 'kacakkontrol') {
     $data = $Puantaj->getKacakComparisonByPeriods($periods);
+} elseif ($compareTab === 'sokme_takma') {
+    $SayacDegisim = new \App\Model\SayacDegisimModel();
+    $data = $SayacDegisim->getComparisonByPeriods($periods);
 } else {
     $data = $Puantaj->getComparisonByPeriods($periods, $compareTab);
 }

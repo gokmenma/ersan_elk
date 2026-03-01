@@ -52,8 +52,8 @@ class BordroPersonelModel extends Model
                    t_all.ekip_adi, t_all.ekip_bolge,
                    gg.maas_tutari as gg_maas_tutari,
                    gg.maas_durumu as gg_maas_durumu,
-                   gg.departman as gg_departman,
                    gg.gorev as gg_gorev,
+                   gg_days.toplam_gun as gg_toplam_gun,
                    CASE WHEN gg.personel_id IS NOT NULL THEN 1 ELSE 0 END as gorev_gecmisi_var,
                    COALESCE(pk_agg.toplam_kesinti, 0) as guncel_toplam_kesinti,
                    COALESCE(eo_agg.toplam_ek_odeme, 0) as guncel_toplam_ek_odeme,
@@ -87,6 +87,13 @@ class BordroPersonelModel extends Model
                     LIMIT 1
                 )
             LEFT JOIN (
+                SELECT pgg.personel_id, 
+                       SUM(DATEDIFF(LEAST(COALESCE(pgg.bitis_tarihi, ?), ?), GREATEST(pgg.baslangic_tarihi, ?)) + 1) as toplam_gun
+                FROM personel_gorev_gecmisi pgg
+                WHERE pgg.baslangic_tarihi <= ? AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)
+                GROUP BY pgg.personel_id
+            ) gg_days ON p.id = gg_days.personel_id
+            LEFT JOIN (
                 SELECT personel_id, donem_id, SUM(tutar) as toplam_kesinti
                 FROM personel_kesintileri 
                 WHERE donem_id = ? AND silinme_tarihi IS NULL AND (durum = 'onaylandi' OR tur = 'icra')
@@ -101,7 +108,27 @@ class BordroPersonelModel extends Model
             WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL $idFilter
             ORDER BY p.adi_soyadi ASC
         ");
-        $sql->execute($params);
+
+        // Parametreleri yeniden düzenle
+        $sqlParams = [
+            $firma_id,
+            $donemBitis,
+            $donemBaslangic,
+            $donemBitis,
+            $donemBitis,
+            $donemBaslangic,
+            $donemBitis,
+            $donemBaslangic, // gg_days için (5 adet)
+            $donem_id,
+            $donem_id,
+            $donem_id
+        ];
+
+        if (!empty($ids)) {
+            $sqlParams = array_merge($sqlParams, $ids);
+        }
+
+        $sql->execute($sqlParams);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -1760,6 +1787,12 @@ class BordroPersonelModel extends Model
         }
         if ($gunlukBase < 0)
             $gunlukBase = 0;
+
+        // USER REQ: Maaş hesaplaması görev geçmişi kapsamına göre olmalı (Örn: Geçmiş 1 günlük ise 1 gün ödenmeli)
+        if (count($gecmisKayitlar) > 0) {
+            $workingHistoryCoverage = $toplamGecerliGun;
+            $gunlukBase = min($gunlukBase, $workingHistoryCoverage);
+        }
 
         // Ücretsiz izin günü varsa brüt maaşı düşür (Günlük ücret × izin günü kadar)
         if ($isNetMaas || $maasDurumu === 'brüt') {

@@ -1191,68 +1191,7 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
             });
         });
 
-        // Online Sayaç Sorgulama
-        $('#onlineSayacForm').on('submit', function (e) {
-            e.preventDefault();
-            var formData = $(this).serialize();
-            formData += '&action=online-puantaj-sorgula';
-            formData += '&active_tab=sokme_takma';
 
-            $('#onlineSayacSpinner').show();
-            $('#onlineSayacResult').hide();
-            $('#btnOnlineSayacSorgula').prop('disabled', true);
-
-            $.ajax({
-                url: 'views/puantaj/api.php',
-                type: 'POST',
-                data: formData,
-                success: function (response) {
-                    $('#onlineSayacSpinner').hide();
-                    $('#btnOnlineSayacSorgula').prop('disabled', false);
-                    try {
-                        var res = typeof response === 'object' ? response : JSON.parse(response);
-                        var resultHtml = '';
-                        if (res.status === 'success') {
-                            resultHtml = '<div class="alert alert-success">';
-                            resultHtml += '<strong><i class="bx bx-check-circle me-2"></i>Sorgu Başarılı!</strong><br>';
-                            resultHtml += '<span class="fs-5">' + (res.message || res.yeni_kayit + ' adet yeni kayıt eklendi.') + '</span>';
-                            if (res.guncellenen_kayit > 0) {
-                                resultHtml += '<br><span class="text-warning">' + res.guncellenen_kayit + ' adet kayıt güncellendi.</span>';
-                            }
-
-                            if (res.atlanAn_kayitlar && res.atlanAn_kayitlar.length > 0) {
-                                resultHtml += '<hr><div class="alert alert-warning mb-0 p-2"><strong>⚠️ Eşleşmeyen Ekipler (' + res.atlanAn_kayitlar.length + '):</strong><br>';
-                                if (res.atlanAn_kayitlar.length > 5) {
-                                    resultHtml += '<div class="d-flex align-items-center justify-content-between mt-1">';
-                                    resultHtml += '<span>' + res.atlanAn_kayitlar.length + ' adet kayıt ekip kodu uyuşmadığı için atlandı.</span>';
-                                    resultHtml += '<button type="button" class="btn btn-sm btn-outline-dark fw-bold" onclick=\'exportToCsv(this, ' + JSON.stringify(res.atlanAn_kayitlar) + ', {"ekip_kodu":"Ekip Kodu","is_emri_tipi":"İş Emri Tipi","is_emri_sonucu":"İş Emri Sonucu","tarih":"Tarih"}, "eslesmeyen_ekipler")\' style="font-size: 11px;"><i class="mdi mdi-file-excel me-1"></i>Excel Olarak İndir</button>';
-                                    resultHtml += '</div>';
-                                } else {
-                                    resultHtml += '<ul class="mb-0 mt-1 small" style="max-height:100px; overflow-y:auto;">';
-                                    res.atlanAn_kayitlar.forEach(function (item) {
-                                        resultHtml += '<li>' + item.ekip_kodu + ' (' + item.tarih + ')</li>';
-                                    });
-                                    resultHtml += '</ul>';
-                                }
-                                resultHtml += '</div>';
-                            }
-                            resultHtml += '</div>';
-                            loadReport();
-                        } else {
-                            resultHtml = '<div class="alert alert-danger"><strong>Hata!</strong><br>' + res.message + '</div>';
-                        }
-                        $('#onlineSayacResult').html(resultHtml).show();
-                    } catch (err) {
-                        $('#onlineSayacResult').html('<div class="alert alert-danger">Sunucudan geçersiz yanıt alındı.</div>').show();
-                    }
-                },
-                error: function () {
-                    $('#onlineSayacSpinner').hide();
-                    $('#btnOnlineSayacSorgula').prop('disabled', false);
-                    $('#onlineSayacResult').html('<div class="alert alert-danger">Bağlantı hatası oluştu.</div>').show();
-                }
-            });
-        });
 
         // Online Mühürleme Sorgulama
         $('#onlineMuhurlemeForm').on('submit', function (e) {
@@ -1375,6 +1314,63 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                     $('#onlineIcmalSpinner').hide();
                     $('#btnOnlineIcmalSorgula').prop('disabled', false);
                     $('#onlineIcmalResult').html('<div class="alert alert-danger">Bağlantı hatası oluştu.</div>').show();
+                }
+            });
+        });
+
+        // Online Sayaç Değişim Sorgulama
+        $('#onlineSayacForm').on('submit', function (e) {
+            e.preventDefault();
+            var formData = $(this).serialize();
+            formData += '&action=online-sayac-degisim-sorgula';
+
+            $('#onlineSayacSpinner').show();
+            $('#onlineSayacResult').hide();
+            $('#btnOnlineSayacSorgula').prop('disabled', true);
+
+            $.ajax({
+                url: 'views/puantaj/api.php',
+                type: 'POST',
+                data: formData,
+                success: function (response) {
+                    $('#onlineSayacSpinner').hide();
+                    $('#btnOnlineSayacSorgula').prop('disabled', false);
+                    try {
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
+                        var resultHtml = '';
+                        if (res.status === 'success') {
+                            resultHtml = '<div class="alert alert-success">';
+                            resultHtml += '<strong><i class="bx bx-check-circle me-2"></i>Sorgu Başarılı! (Toplam ' + (res.toplam_api_kayit || 0) + ' kayıt)</strong><br>';
+                            resultHtml += '<span class="fs-5">' + res.yeni_kayit + ' adet yeni kayıt eklendi.</span>';
+                            if (res.atlanan_kayit > 0) {
+                                resultHtml += '<br><small class="text-secondary">' + res.atlanan_kayit + ' adet kayıt daha önce işlendiği için atlandı.</small>';
+                            }
+                            if (res.atlanAn_kayitlar && res.atlanAn_kayitlar.length > 0) {
+                                resultHtml += '<hr><div class="alert alert-warning mb-0 p-2"><strong>⚠️ Eşleşmeyen Ekipler (' + res.atlanAn_kayitlar.length + '):</strong><br>';
+                                resultHtml += '<small>Sistemde tanımlı olmadığı için atlandı:</small><ul class="mb-0 mt-1 small" style="max-height:100px; overflow-y:auto;">';
+                                res.atlanAn_kayitlar.forEach(function (item) {
+                                    resultHtml += '<li>' + item.ekip_kodu + '</li>';
+                                });
+                                resultHtml += '</ul></div>';
+                            }
+                            resultHtml += '</div>';
+                            // Tabloyu güncelle
+                            loadReport();
+                        } else {
+                            resultHtml = '<div class="alert alert-danger">';
+                            resultHtml += '<strong><i class="bx bx-error-circle me-2"></i>Hata!</strong><br>';
+                            resultHtml += res.message;
+                            resultHtml += '</div>';
+                        }
+                        $('#onlineSayacResult').html(resultHtml).show();
+                    } catch (err) {
+                        $('#onlineSayacResult').html('<div class="alert alert-danger">Sunucudan geçersiz yanıt alındı.</div>').show();
+                    }
+                },
+                error: function () {
+                    $('#onlineSayacSpinner').hide();
+                    $('#btnOnlineSayacSorgula').prop('disabled', false);
+                    $('#onlineSayacResult').html('<div class="alert alert-danger">Bağlantı hatası oluştu.</div>').show();
                 }
             });
         });

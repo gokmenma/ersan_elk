@@ -1436,25 +1436,6 @@ $(document).ready(function () {
   });
 });
 
-// function initDataTable() {
-//   if ($.fn.DataTable && $.fn.DataTable.isDataTable("#bordroTable")) {
-//     return;
-//   }
-
-//   if ($.fn.DataTable) {
-//     $("#bordroTable").DataTable({
-//       responsive: true,
-//       language: {
-//         url: "//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json",
-//       },
-//       columnDefs: [{ orderable: false, targets: [0, 10] }],
-//       order: [[1, "asc"]],
-//       pageLength: 25,
-//       dom: '<"row"<"col-md-6"l><"col-md-6"f>>rt<"row"<"col-md-6"i><"col-md-6"p>>',
-//     });
-//   }
-// }
-
 function getSelectedIds() {
   const ids = [];
   const table = $("#bordroTable").DataTable();

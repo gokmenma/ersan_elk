@@ -305,6 +305,15 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             $ekipKoduStr = trim($veri['EKIP'] ?? '');
             $isEmriSonucu = trim($veri['SONUC'] ?? '');
 
+            // Sayaç değişim işlemlerini geç (yeni cron'a alındı)
+            $isEmriTipiUpper = mb_strtoupper($isEmriTipi, 'UTF-8');
+            if (
+                strpos($isEmriTipiUpper, 'DEGISME SÖKME TAKMA') !== false ||
+                strpos($isEmriTipiUpper, 'DEĞİŞME SÖKME TAKMA') !== false
+            ) {
+                continue;
+            }
+
             if (!empty($isEmriSonucu)) {
                 $resultNamesInApi[] = $isEmriSonucu;
             }

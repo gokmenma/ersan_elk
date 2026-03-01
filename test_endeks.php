@@ -39,7 +39,7 @@ try {
     $settingsModel = new SettingsModel();
     $settings = $settingsModel->getAllSettingsAsKeyValue();
 
-    $apiUrl = $settings['api_endeks_url'] ?? 'https://yonetim.maraskaski.gov.tr/api/api_okuma_secure.php?action=getData';
+    $apiUrl = $settings['api_endeks_url'] ?? 'https://yonetim.maraskaski.gov.tr/api/okuma_detay_secure.php?action=getData';
     $apiKey = $settings['api_endeks_sifre'] ?? 'sk_live_DSOSTjHN195B4NUpEaB9NdYtW7xQ8EVjZD2p2ssW';
 
     echo "<div class='card'>";

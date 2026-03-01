@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\PuantajModel;
+use App\Model\EndeksOkumaModel;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -86,6 +87,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'selected_month' => $aylarUzun[$month - 1]
                     ]
                 ]);
+                break;
+
+            case 'get-endeks-comparison':
+                $endeksModel = new EndeksOkumaModel();
+                $data = $endeksModel->getMonthlyComparisonByDay();
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => $data
+                ], JSON_UNESCAPED_UNICODE);
                 break;
 
             default:

@@ -77,24 +77,44 @@ if ($selectedDonemId) {
 // Dönem kapalı mı kontrolü
 $donemKapali = $selectedDonem ? ($selectedDonem->kapali_mi ?? 0) : 0;
 
-$kesinti_turleri = [
-    '' => "Seçiniz",
-    'icra' => 'İcra',
-    'avans' => 'Avans',
-    'nafaka' => 'Nafaka',
-    'izin_kesinti' => 'Ücretsiz İzin',
-    'diger' => 'Diğer'
-];
+$paramTarih = $selectedDonem ? $selectedDonem->baslangic_tarihi : date('Y-m-d');
 
-$ek_odeme_turleri = [
-    '' => "Seçiniz",
-    'prim' => 'Prim',
-    'mesai' => 'Fazla Mesai',
-    'ikramiye' => 'İkramiye',
-    'yol' => 'Yol Yardımı',
-    'yemek' => 'Yemek Yardımı',
-    'diger' => 'Diğer'
-];
+$kesinti_turleri = ['' => 'Seçiniz'];
+$dbKesintiler = $BordroParametre->getKesintiTurleri($paramTarih);
+if (!empty($dbKesintiler)) {
+    foreach ($dbKesintiler as $k) {
+        $kesinti_turleri[$k->kod] = $k->etiket;
+    }
+} else {
+    // Veritabanında henüz tanımlı değilse varsayılan liste
+    $kesinti_turleri = [
+        '' => "Seçiniz",
+        'icra' => 'İcra',
+        'avans' => 'Avans',
+        'nafaka' => 'Nafaka',
+        'izin_kesinti' => 'Ücretsiz İzin',
+        'diger' => 'Diğer'
+    ];
+}
+
+$ek_odeme_turleri = ['' => 'Seçiniz'];
+$dbGelirler = $BordroParametre->getGelirTurleri($paramTarih);
+if (!empty($dbGelirler)) {
+    foreach ($dbGelirler as $g) {
+        $ek_odeme_turleri[$g->kod] = $g->etiket;
+    }
+} else {
+    // Veritabanında henüz tanımlı değilse varsayılan liste
+    $ek_odeme_turleri = [
+        '' => "Seçiniz",
+        'prim' => 'Prim',
+        'mesai' => 'Fazla Mesai',
+        'ikramiye' => 'İkramiye',
+        'yol' => 'Yol Yardımı',
+        'yemek' => 'Yemek Yardımı',
+        'diger' => 'Diğer'
+    ];
+}
 ?>
 
 <div class="container-fluid">
@@ -157,6 +177,10 @@ $ek_odeme_turleri = [
             opacity: 0;
             height: 0;
             overflow: hidden;
+        }
+
+        .dropdown-menu .show {
+            z-index: 1060;
         }
     </style>
 
@@ -326,15 +350,22 @@ $ek_odeme_turleri = [
                         foreach ($personeller as $p) {
                             $rawEkOdeme = floatval($p->guncel_toplam_ek_odeme);
 
-                            // Görev geçmişi varsa oradan, yoksa personel tablosundan al
+                            // Maaş tutarı ve durumunu belirle
                             if (!empty($p->gorev_gecmisi_var)) {
-                                $pMaasTutari = floatval($p->gg_maas_tutari ?? 0);
                                 $pMaasDurumu = $p->gg_maas_durumu ?? '';
+                                $fallbackMaasTutari = floatval($p->gg_maas_tutari ?? 0);
                             } else {
-                                $pMaasTutari = floatval($p->maas_tutari ?? 0);
                                 $pMaasDurumu = $p->maas_durumu ?? '';
+                                $fallbackMaasTutari = floatval($p->maas_tutari ?? 0);
                                 // Görev geçmişi eksik personeli kaydet
                                 $gorevGecmisiEksikPersoneller[] = $p->adi_soyadi;
+                            }
+
+                            // Eğer daha önce hesaplama yapılmışsa ve ağırlıklı nominal maaş varsa onu kullan (Pro-rata gösterimi için)
+                            if ($p->hd_nominal_maas !== null && floatval($p->hd_nominal_maas) > 0) {
+                                $pMaasTutari = floatval($p->hd_nominal_maas);
+                            } else {
+                                $pMaasTutari = $fallbackMaasTutari;
                             }
 
                             $pNetMaas = floatval($p->net_maas ?? 0);
@@ -394,6 +425,11 @@ $ek_odeme_turleri = [
                             }
                             if ($pGunlukBase < 0)
                                 $pGunlukBase = 0;
+
+                            // USER REQ: Maaş hesaplaması görev geçmişi kapsamına göre olmalı (Örn: Geçmiş 1 günlük ise 1 gün ödenmeli)
+                            if (!empty($p->gorev_gecmisi_var) && isset($p->gg_toplam_gun)) {
+                                $pGunlukBase = min($pGunlukBase, intval($p->gg_toplam_gun));
+                            }
 
                             $pCalismaGunu = $pGunlukBase;
                             if ($p->hd_fiili_calisma_gunu !== null) {

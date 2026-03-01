@@ -56,17 +56,29 @@ foreach ($ek_odemeler as $k) {
                             Sürekli Ödeme</span>
                     <?php endif; ?>
                 </div>
-                <div class="d-flex gap-2">
-                    <div class="btn-group btn-group-sm" role="group">
-                        <input type="radio" class="btn-check" name="ekOdemeViewMode" id="ekOdemeViewListe" autocomplete="off" onchange="toggleEkOdemeView('liste')">
-                        <label class="btn btn-outline-secondary" for="ekOdemeViewListe"><i class="bx bx-list-ul me-1"></i>Liste</label>
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Görünüm Modu -->
+                    <div class="segmented-control-container bg-light-subtle">
+                        <input type="radio" class="segmented-control-input" name="ekOdemeViewMode" id="ekOdemeViewListe"
+                            autocomplete="off" onchange="toggleEkOdemeView('liste')">
+                        <label class="segmented-control-label py-1" for="ekOdemeViewListe">
+                            <i class="bx bx-list-ul me-1"></i>Liste
+                        </label>
 
-                        <input type="radio" class="btn-check" name="ekOdemeViewMode" id="ekOdemeViewGruplu" autocomplete="off" checked onchange="toggleEkOdemeView('gruplu')">
-                        <label class="btn btn-outline-secondary" for="ekOdemeViewGruplu"><i class="bx bx-grid-alt me-1"></i>Gruplu</label>
+                        <input type="radio" class="segmented-control-input" name="ekOdemeViewMode" id="ekOdemeViewGruplu"
+                            autocomplete="off" checked onchange="toggleEkOdemeView('gruplu')">
+                        <label class="segmented-control-label py-1" for="ekOdemeViewGruplu">
+                            <i class="bx bx-grid-alt me-1"></i>Gruplu
+                        </label>
                     </div>
-                    <button type="button" class="btn btn-sm btn-success" id="btnOpenEkOdemeModal">
-                        <i class="bx bx-plus"></i> Yeni Ek Ödeme Ekle
-                    </button>
+
+                    <!-- İşlemler -->
+                    <div class="action-container">
+                        <button type="button" class="btn btn-success d-flex align-items-center"
+                            id="btnOpenEkOdemeModal">
+                            <i class="bx bx-plus me-1 fs-5"></i> Yeni Ek Ödeme Ekle
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="card-body p-0">

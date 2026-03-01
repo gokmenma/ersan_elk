@@ -128,9 +128,9 @@ $(document).ready(function () {
 
     // Validasyon kontrolü
     if (!form.valid()) {
-      swal.fire({
+      Swal.fire({
         title: "Hata",
-        text: "Lütfen formu doldurunuz.",
+        html: "Lütfen formu doldurunuz.",
         icon: "error",
         confirmButtonText: "Tamam",
       });
@@ -174,8 +174,8 @@ $(document).ready(function () {
         console.log(res);
         if (res.status === "success") {
           Swal.fire({
-            title: "Başarılı",
-            text: res.message,
+            title: "İşlem Başarılı",
+            html: res.message,
             icon: "success",
             confirmButtonText: "Tamam",
           }).then((result) => {
@@ -189,7 +189,7 @@ $(document).ready(function () {
         } else {
           Swal.fire({
             title: "Hata",
-            text: res.message,
+            html: res.message,
             icon: "error",
             confirmButtonText: "Tamam",
           });
@@ -201,7 +201,7 @@ $(document).ready(function () {
         console.error(error);
         Swal.fire({
           title: "Hata",
-          text: "Bir sunucu hatası oluştu.",
+          html: "Bir sunucu hatası oluştu.",
           icon: "error",
         });
       },
@@ -224,5 +224,4 @@ $(document).ready(function () {
       }
     }
   });
-
 });

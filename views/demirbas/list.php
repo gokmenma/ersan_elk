@@ -11,6 +11,7 @@ use App\Model\DemirbasZimmetModel;
 use App\Model\DemirbasHareketModel;
 use App\Model\PersonelModel;
 use App\Model\TanimlamalarModel;
+use App\Service\Gate;
 
 $Demirbas = new DemirbasModel();
 $Tanimlamalar = new TanimlamalarModel();
@@ -128,6 +129,7 @@ if (!empty($sayacKatIds)) {
 }
 ?>
 
+
 <div class="container-fluid">
 
     <!-- start page title -->
@@ -208,6 +210,31 @@ if (!empty($sayacKatIds)) {
                                             <i class="bx bx-upload me-2 text-primary fs-5"></i> Excel'den Yükle
                                         </a>
                                     </li>
+                                    <li id="zimmetIslemlerDivider"
+                                        class="<?php echo $activeTab !== 'zimmet' ? 'd-none' : ''; ?>">
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                    <li id="topluIadeLi"
+                                        class="<?php echo $activeTab !== 'zimmet' ? 'd-none' : ''; ?>">
+                                        <a class="dropdown-item py-2 text-info fw-bold" href="javascript:void(0);" id="btnTopluIadeAl">
+                                            <i class="bx bx-undo me-2 text-info fs-5"></i> Toplu İade Al
+                                        </a>
+                                    </li>
+                                    <li id="topluZimmetSilLi"
+                                        class="<?php echo $activeTab !== 'zimmet' ? 'd-none' : ''; ?>">
+                                        <a class="dropdown-item py-2 text-danger fw-bold" href="javascript:void(0);"
+                                            id="btnTopluZimmetSil">
+                                            <i class="bx bx-trash me-2 text-danger fs-5"></i> Toplu Zimmet Sil
+                                        </a>
+                                    </li>
+                                    <?php if (Gate::allows('demirbas_toplu_islem_sil')): ?>
+                                    <li id="topluDemirbasSilLi" class="d-none">
+                                        <a class="dropdown-item py-2 text-danger fw-bold" href="javascript:void(0);"
+                                            id="btnTopluDemirbasSil">
+                                            <i class="bx bx-trash me-2 text-danger fs-5"></i> Seçilileri Sil
+                                        </a>
+                                    </li>
+                                    <?php endif; ?>
                                 </ul>
                             </div>
 
@@ -417,6 +444,12 @@ if (!empty($sayacKatIds)) {
                                     class="table table-demirbas table-hover table-bordered nowrap w-100">
                                     <thead class="table-light">
                                         <tr>
+                                            <th class="text-center" style="width:3%">
+                                                <div class="custom-checkbox-container d-inline-block">
+                                                    <input type="checkbox" id="checkAllDemirbas" class="custom-checkbox-input">
+                                                    <label class="custom-checkbox-label" for="checkAllDemirbas"></label>
+                                                </div>
+                                            </th>
                                             <th class="text-center" style="width:5%">Sıra</th>
                                             <th style="width:8%" class="text-center">D.No</th>
                                             <th style="width:12%" data-filter="select">Kategori</th>
@@ -424,7 +457,8 @@ if (!empty($sayacKatIds)) {
                                             <th style="width:15%" data-filter="string">Marka/Model</th>
                                             <th style="width:10%" class="text-center" data-filter="number">Stok</th>
                                             <th style="width:10%" class="text-center" data-filter="select">Durum</th>
-                                            <th style="width:10%" class="text-end" data-filter="number">Edinme Tutarı</th>
+                                            <th style="width:10%" class="text-end" data-filter="number">Edinme Tutarı
+                                            </th>
                                             <th style="width:10%" data-filter="date">Edinme Tarihi</th>
                                             <th style="width:5%" class="text-center">İşlemler</th>
                                         </tr>
@@ -528,7 +562,10 @@ if (!empty($sayacKatIds)) {
                                     <thead class="table-light">
                                         <tr>
                                             <th class="text-center" style="width:3%">
-                                                <input class="form-check-input" type="checkbox" id="checkAllSayac">
+                                                <div class="custom-checkbox-container d-inline-block">
+                                                    <input type="checkbox" id="checkAllSayac" class="custom-checkbox-input">
+                                                    <label class="custom-checkbox-label" for="checkAllSayac"></label>
+                                                </div>
                                             </th>
                                             <th class="text-center" style="width:5%">Sıra</th>
                                             <th style="width:8%" class="text-center">D.No</th>
@@ -558,6 +595,12 @@ if (!empty($sayacKatIds)) {
                                     class="table table-demirbas table-hover table-bordered nowrap w-100">
                                     <thead class="table-light">
                                         <tr>
+                                            <th class="text-center" style="width:3%">
+                                                <div class="custom-checkbox-container d-inline-block">
+                                                    <input type="checkbox" id="checkAllAparat" class="custom-checkbox-input">
+                                                    <label class="custom-checkbox-label" for="checkAllAparat"></label>
+                                                </div>
+                                            </th>
                                             <th class="text-center" style="width:5%">Sıra</th>
                                             <th style="width:8%" class="text-center">D.No</th>
                                             <th style="width:20%">Aparat Adı</th>
@@ -686,46 +729,38 @@ if (!empty($sayacKatIds)) {
                             id="zimmetContent" role="tabpanel">
 
                             <!-- Zimmet Filtre Butonları -->
-                            <div class="card bg-light border-0 shadow-none mb-3">
+                            <div class="card bg-white border shadow-sm mb-3">
                                 <div class="card-body p-2 d-flex align-items-center">
-                                    <div class="me-3 ps-2">
-                                        <i class="bx bx-filter-alt text-primary"></i> <span
-                                            class="fw-bold small text-muted">FİLTRELE:</span>
+                                    <div class="me-3 ps-2 d-flex align-items-center">
+                                        <div class="avatar-xs me-2 rounded bg-soft-primary text-primary d-flex align-items-center justify-content-center" style="width: 24px; height: 24px;">
+                                            <i class="bx bx-filter-alt fs-6"></i>
+                                        </div>
+                                        <span class="fw-bold small text-muted text-uppercase" style="font-size: 0.65rem; letter-spacing: 0.5px;">FİLTRELE:</span>
                                     </div>
-                                    <div class="row g-2 align-items-center flex-grow-1">
-                                        <div class="col-md-auto ms-2">
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                <input type="radio" class="btn-check zimmet-filter" name="zimmetFilter"
-                                                    id="filterTum" value="all" checked>
-                                                <label class="btn btn-outline-primary px-3" for="filterTum">Tümü</label>
-
-                                                <input type="radio" class="btn-check zimmet-filter" name="zimmetFilter"
-                                                    id="filterDemirbas" value="demirbas">
-                                                <label class="btn btn-outline-primary px-3"
-                                                    for="filterDemirbas">Demirbaş</label>
-
-                                                <input type="radio" class="btn-check zimmet-filter" name="zimmetFilter"
-                                                    id="filterSayac" value="sayac">
-                                                <label class="btn btn-outline-primary px-3"
-                                                    for="filterSayac">Sayaç</label>
-
-                                                <input type="radio" class="btn-check zimmet-filter" name="zimmetFilter"
-                                                    id="filterAparat" value="aparat">
-                                                <label class="btn btn-outline-primary px-3"
-                                                    for="filterAparat">Aparat</label>
-                                            </div>
+                                    <div class="d-flex align-items-center flex-grow-1">
+                                        <!-- Modern Segmented Control for List Filter -->
+                                        <div class="segmented-control-container ms-1">
+                                            <input type="radio" name="zimmetFilter" id="filterTum" value="all" class="segmented-control-input zimmet-filter" checked>
+                                            <label for="filterTum" class="segmented-control-label"><i class="bx bx-list-ul me-1 fs-5"></i> Tümü</label>
+                                            
+                                            <input type="radio" name="zimmetFilter" id="filterDemirbas" value="demirbas" class="segmented-control-input zimmet-filter">
+                                            <label for="filterDemirbas" class="segmented-control-label"><i class="bx bx-package me-1 fs-5"></i> Demirbaş</label>
+                                            
+                                            <input type="radio" name="zimmetFilter" id="filterSayac" value="sayac" class="segmented-control-input zimmet-filter">
+                                            <label for="filterSayac" class="segmented-control-label"><i class="bx bx-tachometer me-1 fs-5"></i> Sayaç</label>
+                                            
+                                            <input type="radio" name="zimmetFilter" id="filterAparat" value="aparat" class="segmented-control-input zimmet-filter">
+                                            <label for="filterAparat" class="segmented-control-label"><i class="bx bx-wrench me-1 fs-5"></i> Aparat</label>
                                         </div>
 
-                                        <div class="col-md-3 ms-auto">
-                                            <select class="form-control form-control-sm select2"
-                                                id="zimmet_personel_filtre" data-placeholder="Personel Filtresi">
-                                                <option value="all">Tüm Personeller</option>
-                                                <?php foreach ($personeller as $p): ?>
-                                                    <option value="<?php echo $p->id; ?>">
-                                                        <?php echo htmlspecialchars($p->adi_soyadi); ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
+                                        <div class="col-md-3 ms-auto pe-2">
+                                            <?php
+                                            $personelOptions = ['all' => 'Tüm Personeller'];
+                                            foreach ($personeller as $p) {
+                                                $personelOptions[$p->id] = $p->adi_soyadi;
+                                            }
+                                            echo Form::FormSelect2('zimmet_personel_filtre', $personelOptions, 'all', 'Personel Filtresi', 'users', 'key', '', 'form-control form-control-sm select2', false, 'width:100%', 'data-placeholder="Personel Filtresi"');
+                                            ?>
                                         </div>
                                     </div>
                                 </div>
@@ -789,6 +824,12 @@ if (!empty($sayacKatIds)) {
                                     class="table table-demirbas table-hover table-bordered nowrap w-100">
                                     <thead class="table-light">
                                         <tr>
+                                            <th class="text-center" style="width:3%">
+                                                <div class="custom-checkbox-container">
+                                                    <input type="checkbox" id="checkAllZimmet" class="custom-checkbox-input">
+                                                    <label for="checkAllZimmet" class="custom-checkbox-label"></label>
+                                                </div>
+                                            </th>
                                             <th class="text-center" style="width:5%">ID</th>
                                             <th style="width:12%">Kategori</th>
                                             <th style="width:20%">Demirbaş</th>
@@ -882,6 +923,9 @@ if (!empty($sayacKatIds)) {
 
 <!-- İade Modal -->
 <?php include_once "modal/iade-modal.php" ?>
+
+<!-- Toplu İade Modal -->
+<?php include_once "modal/toplu-iade-modal.php" ?>
 
 <!-- Zimmet Detay Modal -->
 <?php include_once "modal/zimmet-detay-modal.php" ?>

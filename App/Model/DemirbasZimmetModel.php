@@ -18,6 +18,50 @@ class DemirbasZimmetModel extends Model
     }
 
     /**
+     * Override delete to handle stock management
+     */
+    public function delete($id, $decrypt = true)
+    {
+        $raw_id = $decrypt ? Security::decrypt($id) : $id;
+        
+        $zimmet = $this->find($raw_id);
+        if (!$zimmet) return false;
+
+        $startedTransaction = false;
+        if (!$this->db->inTransaction()) {
+            $this->db->beginTransaction();
+            $startedTransaction = true;
+        }
+
+        try {
+            // If it's active (teslim), restore stock to demirbas
+            if ($zimmet->durum === 'teslim') {
+                $kalan_zimmet = (int)$zimmet->teslim_miktar - (int)($zimmet->iade_miktar ?? 0);
+                if ($kalan_zimmet > 0) {
+                    $sqlStok = $this->db->prepare("UPDATE demirbas SET kalan_miktar = kalan_miktar + ? WHERE id = ?");
+                    $sqlStok->execute([$kalan_zimmet, $zimmet->demirbas_id]);
+                }
+            }
+
+            // Delete related movements (optional but recommended for data integrity since the zimmet is as if it never happened)
+            $sqlDelHareketArr = $this->db->prepare("DELETE FROM demirbas_hareketler WHERE zimmet_id = ?");
+            $sqlDelHareketArr->execute([$raw_id]);
+
+            $result = parent::delete($id, $decrypt);
+
+            if ($startedTransaction) {
+                $this->db->commit();
+            }
+            return $result;
+        } catch (\Exception $e) {
+            if ($startedTransaction) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
      * Tüm zimmet kayıtlarını detaylı getirir
      */
     public function getAllWithDetails()
@@ -319,12 +363,12 @@ class DemirbasZimmetModel extends Model
         }
 
         if (!empty($colSearches)) {
-            $colMap = [0 => 'z.id', 1 => 'k.kategori_adi', 2 => 'd.demirbas_adi', 3 => 'd.marka', 4 => 'p.adi_soyadi', 5 => 'z.teslim_miktar', 6 => 'z.teslim_tarihi', 7 => 'z.durum'];
+            $colMap = [1 => 'z.id', 2 => 'k.kategori_adi', 3 => 'd.demirbas_adi', 4 => 'd.marka', 5 => 'p.adi_soyadi', 6 => 'z.teslim_miktar', 7 => 'z.teslim_tarihi', 8 => 'z.durum'];
             foreach ($colSearches as $idx => $val) {
                 if (isset($colMap[$idx]) && $val !== '') {
                     $field = $colMap[$idx];
                     $paramName = "col_" . $idx;
-                    if ($idx == 6) {
+                    if ($idx == 7) {
                         $sql .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramName";
                     } else {
                         $sql .= " AND $field LIKE :$paramName";
@@ -378,20 +422,21 @@ class DemirbasZimmetModel extends Model
                             OR k.tur_adi LIKE :search
                             OR d.marka LIKE :search
                             OR d.model LIKE :search
+                            OR d.seri_no LIKE :search
                             OR z.id LIKE :search)";
             $params['search'] = "%$search%";
         }
 
         // Sütun Bazlı Arama
         $colSearchMap = [
-            0 => 'z.id',
-            1 => 'k.tur_adi',
-            2 => 'd.demirbas_adi',
-            3 => 'CONCAT_WS(" ", d.marka, d.model)',
-            4 => 'p.adi_soyadi',
-            5 => 'z.teslim_miktar',
-            6 => 'z.teslim_tarihi',
-            7 => 'z.durum'
+            1 => 'z.id',
+            2 => 'k.tur_adi',
+            3 => 'd.demirbas_adi',
+            4 => 'CONCAT_WS(" ", d.marka, d.model, d.seri_no)',
+            5 => 'p.adi_soyadi',
+            6 => 'z.teslim_miktar',
+            7 => 'z.teslim_tarihi',
+            8 => 'z.durum'
         ];
 
         if (isset($request['columns']) && is_array($request['columns'])) {
@@ -419,8 +464,8 @@ class DemirbasZimmetModel extends Model
                                 'Arızalı' => 'arizali'
                             ];
 
-                            // Tarih sütunu (index 6) için d.m.Y -> Y-m-d dönüşümü
-                            if ($colIdx == 6) {
+                            // Tarih sütunu (index 7) için d.m.Y -> Y-m-d dönüşümü
+                            if ($colIdx == 7) {
                                 if ($val && strpos($val, '.') !== false)
                                     $val = \App\Helper\Date::Ymd($val, 'Y-m-d');
                                 if ($val2 && strpos($val2, '.') !== false)
@@ -449,7 +494,7 @@ class DemirbasZimmetModel extends Model
                                             if ($v === '(Boş)') {
                                                 $orConditions[] = "($field IS NULL OR $field = '' OR $field = '0000-00-00')";
                                             } else {
-                                                if ($colIdx == 6 && strpos($v, '.') !== false) {
+                                                if ($colIdx == 7 && strpos($v, '.') !== false) {
                                                     $v = \App\Helper\Date::Ymd($v, 'Y-m-d');
                                                     $orConditions[] = "$field = :$vParam";
                                                     $params[$vParam] = $v;
@@ -513,7 +558,7 @@ class DemirbasZimmetModel extends Model
                         }
                     } else {
                         // Normal (Eski) Filtre Mantığı (Sadece LIKE)
-                        if ($colIdx == 6) { // Tarih
+                        if ($colIdx == 7) { // Tarih
                             $searchWhere .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramKey";
                         } else {
                             $searchWhere .= " AND $field LIKE :$paramKey";
@@ -567,14 +612,14 @@ class DemirbasZimmetModel extends Model
 
         // Sıralama
         $colMapOrder = [
-            0 => 'z.id',
-            1 => 'k.kategori_adi',
-            2 => 'd.demirbas_adi',
-            3 => 'd.marka',
-            4 => 'p.adi_soyadi',
-            5 => 'z.teslim_miktar',
-            6 => 'z.teslim_tarihi',
-            7 => 'z.durum'
+            1 => 'z.id',
+            2 => 'k.kategori_adi',
+            3 => 'd.demirbas_adi',
+            4 => 'd.marka',
+            5 => 'p.adi_soyadi',
+            6 => 'z.teslim_miktar',
+            7 => 'z.teslim_tarihi',
+            8 => 'z.durum'
         ];
 
         $orderSql = "";

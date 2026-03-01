@@ -106,7 +106,7 @@ class PersonelModel extends Model
 
         $query = $this->db->prepare($sql);
         $query->execute($params);
-        
+
         $results = [];
         foreach ($query->fetchAll(PDO::FETCH_OBJ) as $row) {
             $text = $row->adi_soyadi;
@@ -116,13 +116,13 @@ class PersonelModel extends Model
             if ($row->gorev) {
                 $text .= ' - ' . $row->gorev;
             }
-            
+
             $results[] = [
                 'id' => $row->id,
                 'text' => $text
             ];
         }
-        
+
         return $results;
     }
 
@@ -364,19 +364,19 @@ class PersonelModel extends Model
 
         // Sütun Bazlı Arama
         $colMap = [
-                2 => 'p.tc_kimlik_no',
-                3 => 'p.adi_soyadi',
-                4 => 'p.ise_giris_tarihi',
-                5 => 'p.isten_cikis_tarihi',
-                6 => 'p.cep_telefonu',
-                7 => 'p.email_adresi',
-                8 => 'p.gorev',
-                9 => 'p.departman',
-                10 => 't_all.tur_adi',
-                11 => 'bildirim_abonesi',
-                12 => 'p.aktif_mi',
-                23 => 'p.sgk_yapilan_firma'
-            ];
+            2 => 'p.tc_kimlik_no',
+            3 => 'p.adi_soyadi',
+            4 => 'p.ise_giris_tarihi',
+            5 => 'p.isten_cikis_tarihi',
+            6 => 'p.cep_telefonu',
+            7 => 'p.email_adresi',
+            8 => 'p.gorev',
+            9 => 'p.departman',
+            10 => 't_all.tur_adi',
+            11 => 'bildirim_abonesi',
+            12 => 'p.aktif_mi',
+            23 => 'p.sgk_yapilan_firma'
+        ];
 
         if (isset($request['columns'])) {
             foreach ($request['columns'] as $i => $column) {
@@ -769,6 +769,20 @@ class PersonelModel extends Model
     }
 
     /**
+     * Personelin açıkta kalan (bitiş tarihi olmayan veya işten çıkış tarihinden büyük olan) görev (maaş) atamalarını kapatır
+     */
+    public function closeActiveGorevGecmisi($personel_id, $endDate)
+    {
+        if (empty($endDate))
+            return false;
+
+        $sql = "UPDATE personel_gorev_gecmisi SET bitis_tarihi = ? 
+                WHERE personel_id = ? AND (bitis_tarihi IS NULL OR bitis_tarihi > ?)";
+        $query = $this->db->prepare($sql);
+        return $query->execute([$endDate, $personel_id, $endDate]);
+    }
+
+    /**
      * Personelin belirli bir ekip kodu için tarih çakışması olup olmadığını kontrol eder
      */
     public function hasEkipOverlap($personel_id, $ekip_kodu_id, $startDate, $endDate, $exclude_id = null)
@@ -861,7 +875,7 @@ class PersonelModel extends Model
         $sql = "SELECT * 
                 FROM personel_gorev_gecmisi 
                 WHERE personel_id = ? 
-                ORDER BY bitis_tarihi IS NULL DESC, baslangic_tarihi DESC";
+                ORDER BY id DESC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$personel_id]);
         return $stmt->fetchAll(\PDO::FETCH_OBJ);
@@ -963,7 +977,7 @@ class PersonelModel extends Model
     public function syncPersonelFromGorevGecmisi($personel_id)
     {
         $aktifKayit = $this->getAktifGorevGecmisi($personel_id);
-        
+
         if ($aktifKayit) {
             $sql = "UPDATE {$this->table} SET 
                     departman = ?, 
@@ -980,7 +994,7 @@ class PersonelModel extends Model
                 $personel_id
             ]);
         }
-        
+
         return $aktifKayit;
     }
 

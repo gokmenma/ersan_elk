@@ -9,7 +9,7 @@ function getDatatableOptions() {
 
   return {
     stateSave: false,
-    responsive: false,
+    responsive: true,
     scrollX: false,
     fixedHeader: {
       header: true,

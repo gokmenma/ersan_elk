@@ -44,6 +44,29 @@ if (Gate::allows("ana_sayfa")) {
     $extraStatsMonthly = $personelModel->getMonthlyAdvancedDashboardStats();
     $saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['dashboard_settings'], true) : [];
 
+    $last_update_endeks = $last_update_isler = $last_update_sayac = null;
+    $db_conn = $personelModel->getDb();
+    try {
+        $stmt_ue = $db_conn->prepare("SELECT MAX(created_at) FROM endeks_okuma WHERE firma_id = ? AND DATE(created_at) = CURDATE()");
+        $stmt_ue->execute([$_SESSION['firma_id'] ?? 0]);
+        $last_update_endeks = $stmt_ue->fetchColumn();
+    } catch (\Exception $e) {
+    }
+
+    try {
+        $stmt_ui = $db_conn->prepare("SELECT MAX(created_at) FROM yapilan_isler WHERE firma_id = ? AND DATE(created_at) = CURDATE()");
+        $stmt_ui->execute([$_SESSION['firma_id'] ?? 0]);
+        $last_update_isler = $stmt_ui->fetchColumn();
+    } catch (\Exception $e) {
+    }
+
+    try {
+        $stmt_us = $db_conn->prepare("SELECT MAX(created_at) FROM sayac_degisim WHERE firma_id = ? AND DATE(created_at) = CURDATE()");
+        $stmt_us->execute([$_SESSION['firma_id'] ?? 0]);
+        $last_update_sayac = $stmt_us->fetchColumn();
+    } catch (\Exception $e) {
+    }
+
     if (!function_exists('getWidgetWidth')) {
         function getWidgetWidth($id, $default)
         {
@@ -365,37 +388,49 @@ if (Gate::allows("ana_sayfa")) {
 
     <?php ob_start(); ?>
     <div class="col-md-6 col-xl-4 widget-item" id="widget-personel-ozet">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card" style="border-radius: 12px; background: #fff;">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            style="border-radius: 12px; background: #fff;">
             <div class="card-body p-4 d-flex flex-column">
                 <div class="d-flex justify-content-between align-items-start mb-4">
                     <div>
-                        <h6 class="fw-bold text-dark mb-1 d-flex align-items-center" style="font-size: 1.1rem; letter-spacing: -0.01em;">
+                        <h6 class="fw-bold text-dark mb-1 d-flex align-items-center"
+                            style="font-size: 1.1rem; letter-spacing: -0.01em;">
                             <i class='bx bx-grid-vertical drag-handle me-1 text-muted'></i> Personel Durumu
                         </h6>
                         <p class="text-muted mb-0 ms-4" style="font-size: 0.8rem;">Toplam Personel</p>
-                        <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $istatistik->toplam_personel ?? 0; ?> <span style="font-size: 0.9rem; font-weight: normal; color: #6c757d;">adet</span></h4>
+                        <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $istatistik->toplam_personel ?? 0; ?> <span
+                                style="font-size: 0.9rem; font-weight: normal; color: #6c757d;">adet</span></h4>
                     </div>
-                    <a href="index.php?p=personel/list" class="text-primary fw-semibold small text-decoration-none" style="font-size: 0.8rem;">Personel Listesine Git</a>
+                    <a href="index.php?p=personel/list" class="text-primary fw-semibold small text-decoration-none"
+                        style="font-size: 0.8rem;">Personel Listesine Git</a>
                 </div>
 
-                <?php 
-                    $toplam_p = ($istatistik->toplam_personel ?? 0) ?: 1;
-                    $aktif_p = $istatistik->aktif_personel ?? 0;
-                    $saha_p = $extraStats->sahadaki_personel ?? 0;
-                    $izinli_p = $extraStats->izinli_personel ?? 0;
-                    $diger_p = max(0, $aktif_p - $saha_p - $izinli_p);
-                    $pasif_p = $istatistik->pasif_personel ?? 0;
-                    
-                    $s_rate = ($saha_p / $toplam_p) * 100;
-                    $d_rate = ($diger_p / $toplam_p) * 100;
-                    $i_rate = ($izinli_p / $toplam_p) * 100;
-                    $p_rate = ($pasif_p / $toplam_p) * 100;
+                <?php
+                $toplam_p = ($istatistik->toplam_personel ?? 0) ?: 1;
+                $aktif_p = $istatistik->aktif_personel ?? 0;
+                $saha_p = $extraStats->sahadaki_personel ?? 0;
+                $izinli_p = $extraStats->izinli_personel ?? 0;
+                $diger_p = max(0, $aktif_p - $saha_p - $izinli_p);
+                $pasif_p = $istatistik->pasif_personel ?? 0;
+
+                $s_rate = ($saha_p / $toplam_p) * 100;
+                $d_rate = ($diger_p / $toplam_p) * 100;
+                $i_rate = ($izinli_p / $toplam_p) * 100;
+                $p_rate = ($pasif_p / $toplam_p) * 100;
                 ?>
                 <div class="progress mb-4" style="height: 20px; border-radius: 4px;">
-                    <div class="progress-bar" role="progressbar" style="width: <?php echo $s_rate; ?>%; background-color: #0d6efd;" title="Saha: <?php echo $saha_p; ?>"></div>
-                    <div class="progress-bar" role="progressbar" style="width: <?php echo $d_rate; ?>%; background-color: #0dcaf0;" title="İçeride/Diğer: <?php echo $diger_p; ?>"></div>
-                    <div class="progress-bar" role="progressbar" style="width: <?php echo $i_rate; ?>%; background-color: #ffc107;" title="İzinli: <?php echo $izinli_p; ?>"></div>
-                    <div class="progress-bar" role="progressbar" style="width: <?php echo $p_rate; ?>%; background-color: #adb5bd;" title="Pasif: <?php echo $pasif_p; ?>"></div>
+                    <div class="progress-bar" role="progressbar"
+                        style="width: <?php echo $s_rate; ?>%; background-color: #0d6efd;"
+                        title="Saha: <?php echo $saha_p; ?>"></div>
+                    <div class="progress-bar" role="progressbar"
+                        style="width: <?php echo $d_rate; ?>%; background-color: #0dcaf0;"
+                        title="İçeride/Diğer: <?php echo $diger_p; ?>"></div>
+                    <div class="progress-bar" role="progressbar"
+                        style="width: <?php echo $i_rate; ?>%; background-color: #ffc107;"
+                        title="İzinli: <?php echo $izinli_p; ?>"></div>
+                    <div class="progress-bar" role="progressbar"
+                        style="width: <?php echo $p_rate; ?>%; background-color: #adb5bd;"
+                        title="Pasif: <?php echo $pasif_p; ?>"></div>
                 </div>
 
                 <div class="row mt-auto">
@@ -443,33 +478,43 @@ if (Gate::allows("ana_sayfa")) {
 
     ob_start(); ?>
     <div class="col-md-6 col-xl-4 widget-item" id="widget-arac-ozet">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card" style="border-radius: 12px; background: #fff;">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            style="border-radius: 12px; background: #fff;">
             <div class="card-body p-4 d-flex flex-column">
                 <div class="d-flex justify-content-between align-items-start mb-4">
                     <div>
-                        <h6 class="fw-bold text-dark mb-1 d-flex align-items-center" style="font-size: 1.1rem; letter-spacing: -0.01em;">
+                        <h6 class="fw-bold text-dark mb-1 d-flex align-items-center"
+                            style="font-size: 1.1rem; letter-spacing: -0.01em;">
                             <i class='bx bx-grid-vertical drag-handle me-1 text-muted'></i> Araç Durumu
                         </h6>
-                        <?php 
-                            $sahadaki_arac = $extraStats->sahadaki_arac ?? 0;
-                            $servisteki_arac = $extraStats->servisteki_arac ?? 0;
-                            $bosta_arac = $aracStats->bosta_arac ?? 0;
-                            $toplam_arac = $aracStats->toplam_arac ?? ($sahadaki_arac + $servisteki_arac + $bosta_arac);
-                            $toplam_a_div = $toplam_arac ?: 1;
-                            $saha_a_yuzde = ($sahadaki_arac / $toplam_a_div) * 100;
-                            $servis_a_yuzde = ($servisteki_arac / $toplam_a_div) * 100;
-                            $bosta_a_yuzde = ($bosta_arac / $toplam_a_div) * 100;
+                        <?php
+                        $sahadaki_arac = $extraStats->sahadaki_arac ?? 0;
+                        $servisteki_arac = $extraStats->servisteki_arac ?? 0;
+                        $bosta_arac = $aracStats->bosta_arac ?? 0;
+                        $toplam_arac = $aracStats->toplam_arac ?? ($sahadaki_arac + $servisteki_arac + $bosta_arac);
+                        $toplam_a_div = $toplam_arac ?: 1;
+                        $saha_a_yuzde = ($sahadaki_arac / $toplam_a_div) * 100;
+                        $servis_a_yuzde = ($servisteki_arac / $toplam_a_div) * 100;
+                        $bosta_a_yuzde = ($bosta_arac / $toplam_a_div) * 100;
                         ?>
                         <p class="text-muted mb-0 ms-4" style="font-size: 0.8rem;">Toplam Araç</p>
-                        <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $toplam_arac; ?> <span style="font-size: 0.9rem; font-weight: normal; color: #6c757d;">adet</span></h4>
+                        <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $toplam_arac; ?> <span
+                                style="font-size: 0.9rem; font-weight: normal; color: #6c757d;">adet</span></h4>
                     </div>
-                    <a href="index.php?p=arac-takip/list" class="text-primary fw-semibold small text-decoration-none" style="font-size: 0.8rem;">Araç Listesine Git</a>
+                    <a href="index.php?p=arac-takip/list" class="text-primary fw-semibold small text-decoration-none"
+                        style="font-size: 0.8rem;">Araç Listesine Git</a>
                 </div>
 
                 <div class="progress mb-4" style="height: 20px; border-radius: 4px;">
-                    <div class="progress-bar" role="progressbar" style="width: <?php echo $saha_a_yuzde; ?>%; background-color: #198754;" title="Sahada: <?php echo $sahadaki_arac; ?>"></div>
-                    <div class="progress-bar" role="progressbar" style="width: <?php echo $servis_a_yuzde; ?>%; background-color: #dc3545;" title="Serviste: <?php echo $servisteki_arac; ?>"></div>
-                    <div class="progress-bar" role="progressbar" style="width: <?php echo $bosta_a_yuzde; ?>%; background-color: #ffc107;" title="Boşta: <?php echo $bosta_arac; ?>"></div>
+                    <div class="progress-bar" role="progressbar"
+                        style="width: <?php echo $saha_a_yuzde; ?>%; background-color: #198754;"
+                        title="Sahada: <?php echo $sahadaki_arac; ?>"></div>
+                    <div class="progress-bar" role="progressbar"
+                        style="width: <?php echo $servis_a_yuzde; ?>%; background-color: #dc3545;"
+                        title="Serviste: <?php echo $servisteki_arac; ?>"></div>
+                    <div class="progress-bar" role="progressbar"
+                        style="width: <?php echo $bosta_a_yuzde; ?>%; background-color: #ffc107;"
+                        title="Boşta: <?php echo $bosta_arac; ?>"></div>
                 </div>
 
                 <div class="row mt-auto">
@@ -664,6 +709,11 @@ if (Gate::allows("ana_sayfa")) {
                         <i class="bx bx-right-arrow-alt"></i> Git
                     </a>
                 </div>
+                <div class="mt-2 text-center py-1 rounded"
+                    style="background: rgba(133, 135, 150, 0.05); font-size: 10px; color: #858796; border-top: 1px dashed rgba(133, 135, 150, 0.2);">
+                    <i class="bx bx-time-five"></i> Son Güncelleme: <span
+                        class="fw-bold"><?php echo $last_update_isler ? date('d.m.Y H:i', strtotime($last_update_isler)) : '-'; ?></span>
+                </div>
             </div>
         </div>
     </div>
@@ -710,6 +760,11 @@ if (Gate::allows("ana_sayfa")) {
                         <i class="bx bx-right-arrow-alt"></i> Git
                     </a>
                 </div>
+                <div class="mt-2 text-center py-1 rounded"
+                    style="background: rgba(231, 74, 59, 0.05); font-size: 10px; color: #e74a3b; border-top: 1px dashed rgba(231, 74, 59, 0.2);">
+                    <i class="bx bx-time-five"></i> Son Güncelleme: <span
+                        class="fw-bold"><?php echo $last_update_isler ? date('d.m.Y H:i', strtotime($last_update_isler)) : '-'; ?></span>
+                </div>
             </div>
         </div>
     </div>
@@ -752,6 +807,11 @@ if (Gate::allows("ana_sayfa")) {
                     <a href="index.php?p=puantaj/raporlar&tab=okuma" class="btn btn-xs btn-soft-info rounded-pill">
                         <i class="bx bx-right-arrow-alt"></i> Git
                     </a>
+                </div>
+                <div class="mt-2 text-center py-1 rounded"
+                    style="background: rgba(54, 185, 204, 0.05); font-size: 10px; color: #36b9cc; border-top: 1px dashed rgba(54, 185, 204, 0.2);">
+                    <i class="bx bx-time-five"></i> Son Güncelleme: <span
+                        class="fw-bold"><?php echo $last_update_endeks ? date('d.m.Y H:i', strtotime($last_update_endeks)) : '-'; ?></span>
                 </div>
             </div>
         </div>
@@ -796,6 +856,11 @@ if (Gate::allows("ana_sayfa")) {
                     <a href="index.php?p=puantaj/raporlar&tab=sokme_takma" class="btn btn-xs btn-soft-success rounded-pill">
                         <i class="bx bx-right-arrow-alt"></i> Git
                     </a>
+                </div>
+                <div class="mt-2 text-center py-1 rounded"
+                    style="background: rgba(28, 200, 138, 0.05); font-size: 10px; color: #1cc88a; border-top: 1px dashed rgba(28, 200, 138, 0.2);">
+                    <i class="bx bx-time-five"></i> Son Güncelleme: <span
+                        class="fw-bold"><?php echo $last_update_sayac ? date('d.m.Y H:i', strtotime($last_update_sayac)) : '-'; ?></span>
                 </div>
             </div>
         </div>
@@ -844,6 +909,56 @@ if (Gate::allows("ana_sayfa")) {
     </div>
     <?php $widgets['widget-kacak-sayisi'] = ob_get_clean();
 
+    ob_start(); ?>
+    <div class="<?php echo getWidgetWidth('widget-endeks-karsilastirma', 'col-12'); ?> widget-item"
+        id="widget-endeks-karsilastirma">
+        <div class="card summary-card"
+            style="background: linear-gradient(145deg, rgba(255,255,255,0.98), rgba(248,250,252,0.99)); border: 1px solid rgba(226,232,240,0.8); border-radius: 12px; box-shadow: 0 4px 15px -3px rgba(0,0,0,0.05), 0 2px 5px -2px rgba(0,0,0,0.02);">
+            <div class="card-header align-items-center d-flex flex-wrap gap-2"
+                style="border-bottom: 1px solid rgba(226,232,240,0.6);">
+                <h5 class="card-title mb-0 d-flex align-items-center gap-2" style="font-family: 'Outfit', sans-serif;">
+                    <i class='bx bx-grid-vertical drag-handle' style="cursor: move;"></i>
+                    <i class='bx bx-git-compare' style="color: #6366f1;"></i>
+                    Endeks Okuma Karşılaştırması
+                </h5>
+                <div class="d-flex align-items-center gap-2 ms-auto">
+                    <span id="endeksCompGunBadge" class="badge bg-primary-subtle text-primary d-none"
+                        style="font-size: 11px; font-weight: 600; border-radius: 6px; padding: 5px 10px; border: 1px solid rgba(99,102,241,0.2);">
+                        <i class="bx bx-calendar-event me-1"></i>Ayın 1'i - <span id="endeksCompGunNo"></span>'ı arası
+                    </span>
+                    <div class="btn-group btn-group-sm" role="group" id="endeksCompViewToggle">
+                        <button type="button" class="btn btn-outline-primary btn-sm active fw-semibold" data-view="bolge"
+                            style="font-size: 11px;">
+                            <i class="bx bx-map-alt me-1"></i>Bölge
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-sm fw-semibold" data-view="personel"
+                            style="font-size: 11px;">
+                            <i class="bx bx-user me-1"></i>Personel
+                        </button>
+                    </div>
+                    <?php echo getWidthControl(); ?>
+                </div>
+            </div>
+            <div class="card-body p-0"
+                style="min-height: <?php echo getWidgetHeight('widget-endeks-karsilastirma', 'auto'); ?>;">
+                <div id="endeksCompLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+                    <p class="mt-2 text-muted small mb-0">Karşılaştırma verisi yükleniyor...</p>
+                </div>
+                <div id="endeksCompContent" style="display: none;">
+                    <!-- Bölge bazlı görünüm -->
+                    <div id="endeksCompBolge"></div>
+                    <!-- Personel bazlı görünüm -->
+                    <div id="endeksCompPersonel" style="display: none;"></div>
+                </div>
+                <div id="endeksCompEmpty" style="display: none;" class="text-center py-5">
+                    <i class="bx bx-bar-chart-alt-2" style="font-size: 48px; opacity: 0.2; color: #94a3b8;"></i>
+                    <p class="text-muted mt-2 mb-0">Karşılaştırma verisi bulunamadı.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php $widgets['widget-endeks-karsilastirma'] = ob_get_clean();
 
 
     // Giriş kayıtları sorgusu
@@ -1590,6 +1705,16 @@ if (Gate::allows("ana_sayfa")) {
                                 <input type="checkbox" class="form-check-input widget-toggle me-2"
                                     data-widget="widget-kacak-sayisi" checked>
                                 Kaçak Kontrol
+                            </label>
+                        </li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                    data-widget="widget-endeks-karsilastirma" checked>
+                                <strong>Endeks Karşılaştırma</strong>
                             </label>
                         </li>
                     </ul>
@@ -3570,6 +3695,333 @@ if (Gate::allows("ana_sayfa")) {
                     }
                 });
             });
+
+            // ========== ENDEKS KARŞILAŞTIRMA KART LOGIC ==========
+            (function () {
+                let endeksCompData = null;
+                let currentView = 'bolge';
+
+                function loadEndeksComparison() {
+                    $.ajax({
+                        url: 'views/home/api.php',
+                        type: 'POST',
+                        data: { action: 'get-endeks-comparison' },
+                        success: function (response) {
+                            try {
+                                const res = typeof response === 'object' ? response : JSON.parse(response);
+                                if (res.status === 'success' && res.data) {
+                                    endeksCompData = res.data;
+                                    $('#endeksCompGunNo').text(res.data.gun);
+                                    $('#endeksCompGunBadge').removeClass('d-none');
+                                    renderEndeksComparison();
+                                } else {
+                                    showEndeksEmpty();
+                                }
+                            } catch (e) {
+                                showEndeksEmpty();
+                            }
+                        },
+                        error: function () {
+                            showEndeksEmpty();
+                        }
+                    });
+                }
+
+                function showEndeksEmpty() {
+                    $('#endeksCompLoading').hide();
+                    $('#endeksCompContent').hide();
+                    $('#endeksCompEmpty').show();
+                }
+
+                function renderEndeksComparison() {
+                    if (!endeksCompData) return;
+                    $('#endeksCompLoading').hide();
+
+                    const bolgeData = endeksCompData.bolge || {};
+                    const personelData = endeksCompData.personel || {};
+                    const periods = endeksCompData.periods || [];
+
+                    if (Object.keys(bolgeData).length === 0) {
+                        showEndeksEmpty();
+                        return;
+                    }
+
+                    renderBolgeView(bolgeData, periods);
+                    renderPersonelView(personelData, periods);
+
+                    $('#endeksCompContent').show();
+                    if (currentView === 'bolge') {
+                        $('#endeksCompBolge').show();
+                        $('#endeksCompPersonel').hide();
+                    } else {
+                        $('#endeksCompBolge').hide();
+                        $('#endeksCompPersonel').show();
+                    }
+                }
+
+                function getTrendInfo(current, previous) {
+                    if (!previous || previous === 0) return { text: '-', class: 'text-muted', icon: '', pct: 0 };
+                    const diff = current - previous;
+                    const pct = ((diff / previous) * 100).toFixed(1);
+                    if (diff > 0) return { text: '+' + pct + '%', class: 'text-success', icon: 'bx-trending-up', pct: parseFloat(pct) };
+                    if (diff < 0) return { text: pct + '%', class: 'text-danger', icon: 'bx-trending-down', pct: parseFloat(pct) };
+                    return { text: '0%', class: 'text-muted', icon: 'bx-minus', pct: 0 };
+                }
+
+                function formatNumber(n) {
+                    return new Intl.NumberFormat('tr-TR').format(n || 0);
+                }
+
+                function renderBolgeView(bolgeData, periods) {
+                    const periodLabels = periods.map(p => p.label);
+                    let html = '';
+
+                    html += '<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">';
+                    html += '<table class="table table-hover table-nowrap align-middle mb-0" style="font-size: 13px;">';
+
+                    // Header
+                    html += '<thead style="background: #f8fafc; position: sticky; top: 0; z-index: 5;">';
+                    html += '<tr>';
+                    html += '<th style="padding: 10px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700; min-width: 160px;">Bölge</th>';
+                    periodLabels.forEach((label, idx) => {
+                        const isCurrent = periods[idx].is_current;
+                        const bgColor = isCurrent ? 'rgba(99,102,241,0.08)' : 'transparent';
+                        html += `<th class="text-center" style="padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: ${isCurrent ? '#6366f1' : '#64748b'}; font-weight: 700; background: ${bgColor}; min-width: 120px;">${label}</th>`;
+                    });
+                    html += '<th class="text-center" style="padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700; min-width: 100px;">Değişim</th>';
+                    html += '<th style="width: 40px;"></th>';
+                    html += '</tr>';
+                    html += '</thead>';
+
+                    html += '<tbody>';
+                    const bolgeKeys = Object.keys(bolgeData).sort();
+
+                    // Firma toplamları
+                    let firmaToplam = {};
+                    periodLabels.forEach(label => { firmaToplam[label] = 0; });
+
+                    bolgeKeys.forEach((bolge, bIdx) => {
+                        const bData = bolgeData[bolge];
+                        const periodValues = [];
+                        periodLabels.forEach(label => {
+                            const val = bData.periods[label]?.toplam || 0;
+                            periodValues.push(val);
+                            firmaToplam[label] += val;
+                        });
+
+                        const lastVal = periodValues[periodValues.length - 1];
+                        const prevVal = periodValues.length > 1 ? periodValues[periodValues.length - 2] : 0;
+                        const trend = getTrendInfo(lastVal, prevVal);
+                        const hasPersonel = bData.personeller && Object.keys(bData.personeller).length > 0;
+
+                        html += `<tr class="bolge-row cursor-pointer" data-bolge="${bIdx}" style="border-bottom: 1px solid #f1f5f9; transition: all 0.2s;" ${hasPersonel ? `onclick="toggleBolgeDetail(${bIdx})"` : ''}>`;
+                        html += `<td style="padding: 10px 16px;">`;
+                        html += `<div class="d-flex align-items-center gap-2">`;
+                        if (hasPersonel) {
+                            html += `<i class="bx bx-chevron-right bolge-chevron-${bIdx} text-muted" style="font-size: 14px; transition: transform 0.2s;"></i>`;
+                        } else {
+                            html += `<span style="width: 14px;"></span>`;
+                        }
+                        html += `<div>`;
+                        html += `<span class="fw-semibold" style="color: #334155;">${bolge}</span>`;
+                        const pSayisi = bData.periods[periodLabels[periodLabels.length - 1]]?.personel_sayisi || 0;
+                        if (pSayisi > 0) {
+                            html += `<br><span class="text-muted" style="font-size: 10px;">${pSayisi} personel</span>`;
+                        }
+                        html += `</div></div></td>`;
+
+                        periodValues.forEach((val, pIdx) => {
+                            const isCurrent = periods[pIdx].is_current;
+                            const bgColor = isCurrent ? 'rgba(99,102,241,0.04)' : 'transparent';
+                            html += `<td class="text-center" style="padding: 10px 12px; background: ${bgColor};">`;
+                            html += `<span class="fw-bold" style="color: #1e293b; font-size: 14px;">${formatNumber(val)}</span>`;
+                            html += `</td>`;
+                        });
+
+                        // Trend
+                        html += `<td class="text-center" style="padding: 10px 12px;">`;
+                        if (trend.icon) {
+                            html += `<span class="${trend.class} fw-bold" style="font-size: 13px;"><i class="bx ${trend.icon} me-1"></i>${trend.text}</span>`;
+                        } else {
+                            html += `<span class="text-muted">-</span>`;
+                        }
+                        html += `</td>`;
+                        html += `<td style="padding: 10px 8px;">`;
+                        if (hasPersonel) html += `<i class="bx bx-expand-vertical text-muted" style="font-size: 12px; opacity: 0.5;"></i>`;
+                        html += `</td>`;
+                        html += `</tr>`;
+
+                        // Personel detay satırları (gizli)
+                        if (hasPersonel) {
+                            const personeller = bData.personeller;
+                            Object.keys(personeller).forEach(pKey => {
+                                const p = personeller[pKey];
+                                const pPeriods = [];
+                                periodLabels.forEach(l => pPeriods.push(p.periods[l]?.toplam || 0));
+                                const pLastVal = pPeriods[pPeriods.length - 1];
+                                const pPrevVal = pPeriods.length > 1 ? pPeriods[pPeriods.length - 2] : 0;
+                                const pTrend = getTrendInfo(pLastVal, pPrevVal);
+
+                                html += `<tr class="bolge-detail-${bIdx}" style="display: none; background: #fafbfc; border-bottom: 1px solid #f1f5f9; animation: fadeInDown 0.2s;">`;
+                                html += `<td style="padding: 8px 16px 8px 48px;">`;
+                                html += `<div>`;
+                                html += `<span style="color: #475569; font-size: 12px;">${p.personel_adi}</span>`;
+                                html += `<br><span class="text-muted" style="font-size: 10px;">${p.ekip_adi}</span>`;
+                                html += `</div></td>`;
+
+                                pPeriods.forEach((val, ppIdx) => {
+                                    const isCurrent = periods[ppIdx].is_current;
+                                    const bgColor = isCurrent ? 'rgba(99,102,241,0.04)' : 'transparent';
+                                    html += `<td class="text-center" style="padding: 8px 12px; background: ${bgColor}; font-size: 12px;">`;
+                                    html += `<span class="fw-semibold" style="color: #475569;">${formatNumber(val)}</span>`;
+                                    html += `</td>`;
+                                });
+
+                                html += `<td class="text-center" style="padding: 8px 12px; font-size: 11px;">`;
+                                if (pTrend.icon) {
+                                    html += `<span class="${pTrend.class}"><i class="bx ${pTrend.icon} me-1"></i>${pTrend.text}</span>`;
+                                } else {
+                                    html += `<span class="text-muted">-</span>`;
+                                }
+                                html += `</td>`;
+                                html += `<td></td>`;
+                                html += `</tr>`;
+                            });
+                        }
+                    });
+
+                    // Firma toplam footer
+                    html += '<tr style="background: linear-gradient(135deg, #f0f1ff 0%, #e8eaff 100%); border-top: 2px solid #c7d2fe; font-weight: 700;">';
+                    html += '<td style="padding: 12px 16px; color: #4338ca; font-size: 13px;"><i class="bx bx-buildings me-2"></i>GENEL TOPLAM</td>';
+                    periodLabels.forEach((label, idx) => {
+                        const isCurrent = periods[idx].is_current;
+                        const bgColor = isCurrent ? 'rgba(99,102,241,0.12)' : 'transparent';
+                        html += `<td class="text-center" style="padding: 12px 12px; color: #312e81; font-size: 15px; background: ${bgColor};">${formatNumber(firmaToplam[label])}</td>`;
+                    });
+                    const fLastVal = firmaToplam[periodLabels[periodLabels.length - 1]];
+                    const fPrevVal = periodLabels.length > 1 ? firmaToplam[periodLabels[periodLabels.length - 2]] : 0;
+                    const fTrend = getTrendInfo(fLastVal, fPrevVal);
+                    html += `<td class="text-center" style="padding: 12px 12px;">`;
+                    if (fTrend.icon) {
+                        html += `<span class="${fTrend.class} fw-bold" style="font-size: 14px;"><i class="bx ${fTrend.icon} me-1"></i>${fTrend.text}</span>`;
+                    }
+                    html += `</td><td></td></tr>`;
+
+                    html += '</tbody></table></div>';
+
+                    // Küçük açıklama 
+                    html += '<div class="px-3 py-2 d-flex align-items-center gap-3" style="border-top: 1px solid #f1f5f9; background: #fafbfc;">';
+                    html += '<span style="font-size: 10px; color: #94a3b8;"><i class="bx bx-info-circle me-1"></i>Her ayın 1\'i ile ' + endeksCompData.gun + '\'ı arası abone okuma sayıları karşılaştırılmaktadır.</span>';
+                    html += '<a href="index.php?p=puantaj/raporlar&tab=karsilastirma" class="ms-auto btn btn-sm btn-outline-primary" style="font-size: 11px; border-radius: 6px;"><i class="bx bx-right-arrow-alt me-1"></i>Detaylı Rapor</a>';
+                    html += '</div>';
+
+                    $('#endeksCompBolge').html(html);
+                }
+
+                function renderPersonelView(personelData, periods) {
+                    const periodLabels = periods.map(p => p.label);
+                    let html = '';
+
+                    html += '<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">';
+                    html += '<table class="table table-hover table-nowrap align-middle mb-0" style="font-size: 13px;">';
+
+                    html += '<thead style="background: #f8fafc; position: sticky; top: 0; z-index: 5;">';
+                    html += '<tr>';
+                    html += '<th style="padding: 10px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700; min-width: 180px;">Personel</th>';
+                    html += '<th style="padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700; min-width: 100px;">Bölge</th>';
+                    periodLabels.forEach((label, idx) => {
+                        const isCurrent = periods[idx].is_current;
+                        const bgColor = isCurrent ? 'rgba(99,102,241,0.08)' : 'transparent';
+                        html += `<th class="text-center" style="padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: ${isCurrent ? '#6366f1' : '#64748b'}; font-weight: 700; background: ${bgColor}; min-width: 110px;">${label}</th>`;
+                    });
+                    html += '<th class="text-center" style="padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700; min-width: 90px;">Değişim</th>';
+                    html += '</tr>';
+                    html += '</thead>';
+
+                    html += '<tbody>';
+
+                    // Personel listesini sırala (toplam azalan)
+                    const sortedKeys = Object.keys(personelData).sort((a, b) => {
+                        const lastLabel = periodLabels[periodLabels.length - 1];
+                        const aVal = personelData[a].periods[lastLabel]?.toplam || 0;
+                        const bVal = personelData[b].periods[lastLabel]?.toplam || 0;
+                        return bVal - aVal;
+                    });
+
+                    sortedKeys.forEach(pKey => {
+                        const p = personelData[pKey];
+                        const pPeriods = [];
+                        periodLabels.forEach(l => pPeriods.push(p.periods[l]?.toplam || 0));
+                        const pLastVal = pPeriods[pPeriods.length - 1];
+                        const pPrevVal = pPeriods.length > 1 ? pPeriods[pPeriods.length - 2] : 0;
+                        const pTrend = getTrendInfo(pLastVal, pPrevVal);
+
+                        html += `<tr style="border-bottom: 1px solid #f1f5f9;">`;
+                        html += `<td style="padding: 10px 16px;">`;
+                        html += `<span class="fw-semibold" style="color: #334155; font-size: 12px;">${p.personel_adi}</span>`;
+                        html += `<br><span class="text-muted" style="font-size: 10px;">${p.ekip_adi}</span>`;
+                        html += `</td>`;
+                        html += `<td style="padding: 10px 12px;"><span class="badge bg-light text-dark" style="font-size: 10px; font-weight: 500;">${p.bolge}</span></td>`;
+
+                        pPeriods.forEach((val, ppIdx) => {
+                            const isCurrent = periods[ppIdx].is_current;
+                            const bgColor = isCurrent ? 'rgba(99,102,241,0.04)' : 'transparent';
+                            html += `<td class="text-center" style="padding: 10px 12px; background: ${bgColor};">`;
+                            html += `<span class="fw-bold" style="color: #1e293b; font-size: 13px;">${formatNumber(val)}</span>`;
+                            html += `</td>`;
+                        });
+
+                        html += `<td class="text-center" style="padding: 10px 12px;">`;
+                        if (pTrend.icon) {
+                            html += `<span class="${pTrend.class} fw-bold" style="font-size: 12px;"><i class="bx ${pTrend.icon} me-1"></i>${pTrend.text}</span>`;
+                        } else {
+                            html += `<span class="text-muted">-</span>`;
+                        }
+                        html += `</td>`;
+                        html += `</tr>`;
+                    });
+
+                    html += '</tbody></table></div>';
+
+                    html += '<div class="px-3 py-2" style="border-top: 1px solid #f1f5f9; background: #fafbfc;">';
+                    html += '<span style="font-size: 10px; color: #94a3b8;"><i class="bx bx-info-circle me-1"></i>Personeller mevcut ay okuma sayısına göre sıralanmıştır.</span>';
+                    html += '</div>';
+
+                    $('#endeksCompPersonel').html(html);
+                }
+
+                // Bölge detay toggle
+                window.toggleBolgeDetail = function (bIdx) {
+                    const rows = $(`.bolge-detail-${bIdx}`);
+                    const chevron = $(`.bolge-chevron-${bIdx}`);
+                    if (rows.first().is(':visible')) {
+                        rows.slideUp(200);
+                        chevron.css('transform', 'rotate(0deg)');
+                    } else {
+                        rows.slideDown(200);
+                        chevron.css('transform', 'rotate(90deg)');
+                    }
+                };
+
+                // View toggle
+                $('#endeksCompViewToggle button').on('click', function () {
+                    $('#endeksCompViewToggle button').removeClass('active');
+                    $(this).addClass('active');
+                    currentView = $(this).data('view');
+                    if (currentView === 'bolge') {
+                        $('#endeksCompBolge').fadeIn(200);
+                        $('#endeksCompPersonel').hide();
+                    } else {
+                        $('#endeksCompBolge').hide();
+                        $('#endeksCompPersonel').fadeIn(200);
+                    }
+                });
+
+                // Sayfa yüklendiğinde veri çek
+                loadEndeksComparison();
+            })();
+            // ========== /ENDEKS KARŞILAŞTIRMA KART LOGIC ==========
+
         });
     </script>
     <?php

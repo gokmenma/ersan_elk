@@ -71,6 +71,24 @@ if (count($reportDates) > 0) {
         $isCrossMonth = true;
 }
 $daysCount = count($reportDates);
+
+// Fetch Manuel Düşüm totals for the range for all relevant tabs
+$manuelDusumMap = [];
+if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma'])) {
+    $sqlDusum = "SELECT personel_id, ekip_kodu_id, SUM(ABS(sonuclanmis)) as total_dusum 
+                 FROM yapilan_isler 
+                 WHERE firma_id = ? 
+                 AND is_emri_tipi = 'Manuel Düşüm' 
+                 AND tarih BETWEEN ? AND ? 
+                 AND silinme_tarihi IS NULL 
+                 GROUP BY personel_id, ekip_kodu_id";
+    $stmtDusum = $Puantaj->db->prepare($sqlDusum);
+    $stmtDusum->execute([$_SESSION['firma_id'], $startDateStr, $endDateStr]);
+    while ($row = $stmtDusum->fetch(PDO::FETCH_OBJ)) {
+        $manuelDusumMap[$row->personel_id][$row->ekip_kodu_id] = $row->total_dusum;
+    }
+}
+
 $regions = $Tanimlamalar->getEkipBolgeleri();
 
 if ($filterRegion) {
@@ -86,14 +104,14 @@ if ($activeTab === 'okuma') {
 } elseif ($activeTab === 'kacakkontrol') {
     $summary = $Puantaj->getKacakSummaryByRange($startDateStr, $endDateStr);
     $title = "Kaçak Kontrol Özet Raporu";
+} elseif ($activeTab === 'sokme_takma') {
+    $SayacDegisim = new \App\Model\SayacDegisimModel();
+    $summary = $SayacDegisim->getSummaryDetailedByRange($startDateStr, $endDateStr);
+    $workTypes = $SayacDegisim->getDistinctWorkTypes();
+    $title = "Sayaç Sökme Takma Özet Raporu";
 } else {
     $summary = $Puantaj->getSummaryDetailedByRange($startDateStr, $endDateStr);
     $workTypes = $Tanimlamalar->getIsTurleriByRaporTuru($activeTab);
-
-    // Fallback for sokme_takma if no records found
-    if (empty($workTypes) && $activeTab === 'sokme_takma') {
-        $workTypes = $Tanimlamalar->getIsTurleriByRaporTuru('sokme');
-    }
 
     // Fallback for kesme if no rapor_turu is set yet
     if (empty($workTypes) && $activeTab === 'kesme') {
@@ -267,14 +285,17 @@ $headerRows = ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty
 
 $sheet->setCellValue('A1', 'SIRA');
 $sheet->mergeCells('A1:A' . $headerRows);
-$sheet->setCellValue('B1', 'EKİP KODU');
-$sheet->mergeCells('B1:B' . $headerRows);
-
 if ($activeTab !== 'kacakkontrol') {
+    $sheet->setCellValue('B1', 'EKİP KODU');
+    $sheet->mergeCells('B1:B' . $headerRows);
+    
     $sheet->setCellValue('C1', 'İSİM SOYİSİM');
     $sheet->mergeCells('C1:C' . $headerRows);
     $daysColStartIdx = 4;
 } else {
+    // Kaçak Kontrol'de Ekip Kodu yok, İsim Soyisim B'den başlar
+    $sheet->setCellValue('B1', 'İSİM SOYİSİM');
+    $sheet->mergeCells('B1:B' . $headerRows);
     $daysColStartIdx = 3;
 }
 
@@ -283,28 +304,70 @@ $lastDayColIdx = ($daysColStartIdx - 1) + ($daysCount * $subColCount);
 $lastDayCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($lastDayColIdx);
 $sheet->mergeCells(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($daysColStartIdx) . '1:' . $lastDayCol . '1');
 
-// Sadece okuma ve kacakkontrol için TOPLAM, BÖLGE TOPLAMI, BÖLGE ADI sütunlarını buradan tanımla
-// Diğer detaylı raporlar için İŞLEM TOPLAMLARI bölümünde tanımlanacak
-if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol' || empty($workTypeCols)) {
-    $toplamColIdx = $lastDayColIdx + 1;
-    $toplamCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($toplamColIdx);
-    $sheet->setCellValue($toplamCol . '1', 'TOPLAM');
-    $sheet->mergeCells($toplamCol . '1:' . $toplamCol . $headerRows);
+// Sonraki sütunların (TOPLAM, Manuel Düşüm, BÖLGE vb.) başlangıç indeksini belirle
+$currentColIdx = $lastDayColIdx + 1;
 
-    if ($activeTab !== 'kacakkontrol') {
-        $bolgeToplamColIdx = $toplamColIdx + 1;
-        $bolgeToplamCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($bolgeToplamColIdx);
-        $sheet->setCellValue($bolgeToplamCol . '1', 'BÖLGE TOPLAMI');
-        $sheet->mergeCells($bolgeToplamCol . '1:' . $bolgeToplamCol . $headerRows);
+// İŞLEM TOPLAMLARI (Eğer varsa)
+if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeCols)) {
+    $islemToplamStartIdx = $currentColIdx;
+    $islemToplamEndIdx = $currentColIdx + $subColCount - 1;
+    $islemToplamStartCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($islemToplamStartIdx);
+    $islemToplamEndCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($islemToplamEndIdx);
 
-        $bolgeAdiColIdx = $bolgeToplamColIdx + 1;
-        $bolgeAdiCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($bolgeAdiColIdx);
-        $sheet->setCellValue($bolgeAdiCol . '1', 'BÖLGE ADI');
-        $sheet->mergeCells($bolgeAdiCol . '1:' . $bolgeAdiCol . $headerRows);
-        $lastCol = $bolgeAdiCol;
-    } else {
-        $lastCol = $toplamCol;
+    $sheet->setCellValue($islemToplamStartCol . '1', 'İŞLEM TOPLAMLARI');
+    if ($subColCount > 1) {
+        $sheet->mergeCells($islemToplamStartCol . '1:' . $islemToplamEndCol . '1');
     }
+
+    // Row 2: GENEL
+    $sheet->setCellValue($islemToplamStartCol . '2', 'GENEL');
+    if ($subColCount > 1) {
+        $sheet->mergeCells($islemToplamStartCol . '2:' . $islemToplamEndCol . '2');
+    }
+
+    // Row 3: İş türü kodları (Aşağıdaki döngüde hallediliyor)
+    $currentColIdx = $islemToplamEndIdx + 1;
+}
+
+// TOPLAM sütunu
+$toplamColIdx = $currentColIdx;
+$toplamCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($toplamColIdx);
+$sheet->setCellValue($toplamCol . '1', 'TOPLAM');
+$sheet->mergeCells($toplamCol . '1:' . $toplamCol . $headerRows);
+$currentColIdx++;
+
+// (-) Sayı ve Kalan sütunları (Sadece belirli sekmeler için)
+$hasManuelCols = in_array($activeTab, ['kesme', 'okuma', 'sokme_takma']);
+if ($hasManuelCols) {
+    $dusumColIdx = $currentColIdx;
+    $dusumCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($dusumColIdx);
+    $sheet->setCellValue($dusumCol . '1', '(-) Sayı');
+    $sheet->mergeCells($dusumCol . '1:' . $dusumCol . $headerRows);
+    $currentColIdx++;
+
+    $kalanColIdx = $currentColIdx;
+    $kalanCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($kalanColIdx);
+    $sheet->setCellValue($kalanCol . '1', 'Kalan');
+    $sheet->mergeCells($kalanCol . '1:' . $kalanCol . $headerRows);
+    $currentColIdx++;
+}
+
+// BÖLGE TOPLAMI ve BÖLGE ADI sütunları
+if ($activeTab !== 'kacakkontrol') {
+    $bolgeToplamColIdx = $currentColIdx;
+    $bolgeToplamCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($bolgeToplamColIdx);
+    $sheet->setCellValue($bolgeToplamCol . '1', 'BÖLGE TOPLAMI');
+    $sheet->mergeCells($bolgeToplamCol . '1:' . $bolgeToplamCol . $headerRows);
+    $currentColIdx++;
+
+    $bolgeAdiColIdx = $currentColIdx;
+    $bolgeAdiCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($bolgeAdiColIdx);
+    $sheet->setCellValue($bolgeAdiCol . '1', 'BÖLGE ADI');
+    $sheet->mergeCells($bolgeAdiCol . '1:' . $bolgeAdiCol . $headerRows);
+    $currentColIdx++;
+    $lastCol = $bolgeAdiCol;
+} else {
+    $lastCol = $toplamCol;
 }
 
 // Headers - Row 2 (Days)
@@ -332,55 +395,16 @@ foreach ($reportDates as $date) {
     }
 }
 
-// İŞLEM TOPLAMLARI için GENEL header'ı (Row 2 ve Row 3)
+// Row 3: İş türü kodları (İŞLEM TOPLAMLARI altı)
 if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeCols)) {
-    // İŞLEM TOPLAMLARI header'ı satır 1'de - colIndex şu an son gün kolonlarından sonra
-    $islemToplamStartIdx = $colIndex;
-    $islemToplamEndIdx = $colIndex + $subColCount - 1;
-
-    $islemToplamStartCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($islemToplamStartIdx);
-    $islemToplamEndCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($islemToplamEndIdx);
-
-    // Row 1: İŞLEM TOPLAMLARI başlığı zaten toplamCol ile yönetiliyor, ancak bu bölüm ekstra
-    $sheet->setCellValue($islemToplamStartCol . '1', 'İŞLEM TOPLAMLARI');
-    if ($subColCount > 1) {
-        $sheet->mergeCells($islemToplamStartCol . '1:' . $islemToplamEndCol . '1');
-    }
-
-    // Row 2: GENEL
-    $sheet->setCellValue($islemToplamStartCol . '2', 'GENEL');
-    if ($subColCount > 1) {
-        $sheet->mergeCells($islemToplamStartCol . '2:' . $islemToplamEndCol . '2');
-    }
-
-    // Row 3: İş türü kodları
     $tempColIdx = $islemToplamStartIdx;
     foreach ($workTypeCols as $wt) {
         $wtColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($tempColIdx);
         $sheet->setCellValue($wtColLetter . '3', $wt['code']);
-        // Dikey metin - yukarı doğru
         $sheet->getStyle($wtColLetter . '3')->getAlignment()->setTextRotation(90);
         $sheet->getColumnDimension($wtColLetter)->setWidth(4);
         $tempColIdx++;
     }
-
-    // TOPLAM sütunu indexini güncelle
-    $toplamColIdx = $islemToplamEndIdx + 1;
-    $toplamCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($toplamColIdx);
-    $sheet->setCellValue($toplamCol . '1', 'TOPLAM');
-    $sheet->mergeCells($toplamCol . '1:' . $toplamCol . $headerRows);
-
-    // BÖLGE TOPLAMI ve BÖLGE ADI sütunlarını güncelle
-    $bolgeToplamColIdx = $toplamColIdx + 1;
-    $bolgeToplamCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($bolgeToplamColIdx);
-    $sheet->setCellValue($bolgeToplamCol . '1', 'BÖLGE TOPLAMI');
-    $sheet->mergeCells($bolgeToplamCol . '1:' . $bolgeToplamCol . $headerRows);
-
-    $bolgeAdiColIdx = $bolgeToplamColIdx + 1;
-    $bolgeAdiCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($bolgeAdiColIdx);
-    $sheet->setCellValue($bolgeAdiCol . '1', 'BÖLGE ADI');
-    $sheet->mergeCells($bolgeAdiCol . '1:' . $bolgeAdiCol . $headerRows);
-    $lastCol = $bolgeAdiCol;
 }
 
 // Row 3 için satır yüksekliği (dikey text için)
@@ -400,6 +424,7 @@ foreach ($reportDates as $date) {
 }
 $dailyDetailedTotals = [];
 $grandTotal = 0;
+$grandDusum = 0;
 
 // 1. Build Valid Pairs
 $validPairs = []; // key: [pId]_[tId] => ['pId' => X, 'tId' => Y]
@@ -556,9 +581,23 @@ foreach ($regions as $regionName) {
         $personelTotal = 0;
 
         $sheet->setCellValue('A' . $row, $sira++);
-        $sheet->setCellValue('B' . $row, shortenTeamName($team->tur_adi, $firmaAdi));
-        if ($activeTab !== 'kacakkontrol')
+        
+        if ($activeTab === 'kacakkontrol') {
+            // Kaçak Kontrol'de B sütunu isim soyisim
+            $pIdsStr = $kacakPersonelMapping[$team->tur_adi] ?? '';
+            $names = [];
+            if (!empty($pIdsStr)) {
+                foreach (explode(',', $pIdsStr) as $id) {
+                    if (isset($personelById[trim($id)])) $names[] = $personelById[trim($id)]->adi_soyadi;
+                }
+            }
+            $persName = !empty($names) ? implode(', ', $names) : $personel->adi_soyadi;
+            $sheet->setCellValue('B' . $row, $persName);
+        } else {
+            // Standart Raporlar: B = Ekip, C = İsim
+            $sheet->setCellValue('B' . $row, shortenTeamName($team->tur_adi, $firmaAdi));
             $sheet->setCellValue('C' . $row, $personel->adi_soyadi);
+        }
 
         $colIdx = $daysColStartIdx;
         if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol') {
@@ -601,6 +640,15 @@ foreach ($regions as $regionName) {
             }
         }
         $sheet->setCellValue($toplamCol . $row, $personelTotal ?: '');
+        
+        // (-) Sayı ve Kalan verileri
+        if ($hasManuelCols) {
+            $dusum = $manuelDusumMap[$pId][$tId] ?? 0;
+            $sheet->setCellValue($dusumCol . $row, $dusum ?: '');
+            $sheet->setCellValue($kalanCol . $row, ($personelTotal - $dusum) ?: '');
+            $grandDusum += $dusum;
+        }
+
         $regionTotal += $personelTotal;
         $grandTotal += $personelTotal;
         $row++;
@@ -628,18 +676,34 @@ foreach ($regionGrouped as $regionName => $teamsInRegion) {
         $pId = $tData['pId'];
         $tId = $tData['tId'];
         $personelTotal = 0;
+
         $sheet->setCellValue('A' . $row, $sira++);
-        $sheet->setCellValue('B' . $row, shortenTeamName($team->tur_adi, $firmaAdi));
-        if ($activeTab !== 'kacakkontrol')
+        
+        if ($activeTab === 'kacakkontrol') {
+            // Kaçak Kontrol'de B sütunu isim soyisim
+            $pIdsStr = $kacakPersonelMapping[$team->tur_adi] ?? '';
+            $names = [];
+            if (!empty($pIdsStr)) {
+                foreach (explode(',', $pIdsStr) as $id) {
+                    if (isset($personelById[trim($id)])) $names[] = $personelById[trim($id)]->adi_soyadi;
+                }
+            }
+            $persName = !empty($names) ? implode(', ', $names) : $personel->adi_soyadi;
+            $sheet->setCellValue('B' . $row, $persName);
+        } else {
+            // Standart Raporlar: B = Ekip, C = İsim
+            $sheet->setCellValue('B' . $row, shortenTeamName($team->tur_adi, $firmaAdi));
             $sheet->setCellValue('C' . $row, $personel->adi_soyadi);
+        }
+
         $colIdx = $daysColStartIdx;
         if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol') {
-            for ($d = 1; $d <= $daysInMonth; $d++) {
-                $val = ($activeTab === 'kacakkontrol') ? ($summary[$team->tur_adi][$d] ?? 0) : ($summary[$pId][$tId][$d] ?? 0);
+            foreach ($reportDates as $date) {
+                $val = ($activeTab === 'kacakkontrol') ? ($summary[$team->tur_adi][$date] ?? 0) : ($summary[$pId][$tId][$date] ?? 0);
                 if ($val > 0) {
                     $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
                     $sheet->setCellValue($colLetter . $row, $val);
-                    $dailyTotals[$d] += $val;
+                    $dailyTotals[$date] += $val;
                     $personelTotal += $val;
                 }
                 $colIdx++;
@@ -648,16 +712,16 @@ foreach ($regionGrouped as $regionName => $teamsInRegion) {
             $personelWorkTypeTotals = [];
             foreach ($workTypeCols as $wt)
                 $personelWorkTypeTotals[$wt['name']] = 0;
-            for ($d = 1; $d <= $daysInMonth; $d++) {
+            foreach ($reportDates as $date) {
                 foreach ($workTypeCols as $wt) {
-                    $val = $summary[$pId][$tId][$d][$wt['name']] ?? 0;
+                    $val = $summary[$pId][$tId][$date][$wt['name']] ?? 0;
                     if ($val > 0) {
                         $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
                         $sheet->setCellValue($colLetter . $row, $val);
-                        if (!isset($dailyDetailedTotals[$d][$wt['name']]))
-                            $dailyDetailedTotals[$d][$wt['name']] = 0;
-                        $dailyDetailedTotals[$d][$wt['name']] += $val;
-                        $dailyTotals[$d] += $val;
+                        if (!isset($dailyDetailedTotals[$date][$wt['name']]))
+                            $dailyDetailedTotals[$date][$wt['name']] = 0;
+                        $dailyDetailedTotals[$date][$wt['name']] += $val;
+                        $dailyTotals[$date] += $val;
                         $personelTotal += $val;
                         $personelWorkTypeTotals[$wt['name']] += $val;
                     }
@@ -673,6 +737,15 @@ foreach ($regionGrouped as $regionName => $teamsInRegion) {
             }
         }
         $sheet->setCellValue($toplamCol . $row, $personelTotal ?: '');
+        
+        // (-) Sayı ve Kalan verileri
+        if ($hasManuelCols) {
+            $dusum = $manuelDusumMap[$pId][$tId] ?? 0;
+            $sheet->setCellValue($dusumCol . $row, $dusum ?: '');
+            $sheet->setCellValue($kalanCol . $row, ($personelTotal - $dusum) ?: '');
+            $grandDusum += $dusum;
+        }
+
         $regionTotal += $personelTotal;
         $grandTotal += $personelTotal;
         $row++;
@@ -688,15 +761,13 @@ foreach ($regionGrouped as $regionName => $teamsInRegion) {
     }
 }
 
-// 6. Footer (Action Totals)
 if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeCols)) {
     $sheet->setCellValue('A' . $row, 'İŞLEM BAZINDA GÜNLÜK TOPLAMLAR');
     $sheet->mergeCells('A' . $row . ':C' . $row);
     $sheet->getStyle('A' . $row . ':C' . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+    
+    // Günlük detaylı toplamları yaz
     $colIdx = $daysColStartIdx;
-    $actionGrandTotals = [];
-    foreach ($workTypeCols as $wt)
-        $actionGrandTotals[$wt['name']] = 0;
     foreach ($reportDates as $date) {
         foreach ($workTypeCols as $wt) {
             $val = $dailyDetailedTotals[$date][$wt['name']] ?? 0;
@@ -704,19 +775,26 @@ if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeC
                 $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
                 $sheet->setCellValue($colLetter . $row, $val);
             }
-            $actionGrandTotals[$wt['name']] += $val;
             $colIdx++;
         }
     }
-    $actionTypesGrandTotal = 0;
+    
+    // İŞLEM TOPLAMLARI (C) sütunu toplamlarını yaz
+    $actionGrandTotals = [];
     foreach ($workTypeCols as $wt) {
+        $wtGrandTotal = 0;
+        foreach ($reportDates as $date) {
+            $wtGrandTotal += $dailyDetailedTotals[$date][$wt['name']] ?? 0;
+        }
+        $actionGrandTotals[$wt['name']] = $wtGrandTotal;
         $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
-        if ($actionGrandTotals[$wt['name']] > 0)
-            $sheet->setCellValue($colLetter . $row, $actionGrandTotals[$wt['name']]);
-        $actionTypesGrandTotal += $actionGrandTotals[$wt['name']];
+        if ($wtGrandTotal > 0) {
+            $sheet->setCellValue($colLetter . $row, $wtGrandTotal);
+        }
         $colIdx++;
     }
-    $sheet->setCellValue($toplamCol . $row, $actionTypesGrandTotal ?: '');
+    
+    $sheet->setCellValue($toplamCol . $row, $grandTotal ?: '');
     $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->applyFromArray(['font' => ['bold' => true], 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E3F2FD']]]);
     $row++;
 }
@@ -731,22 +809,26 @@ foreach ($reportDates as $date) {
     $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
     if ($dailyTotals[$date] > 0)
         $sheet->setCellValue($colLetter . $row, $dailyTotals[$date]);
-    if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && $subColCount > 1) {
-        $endColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx + $subColCount - 1);
-        $sheet->mergeCells($colLetter . $row . ':' . $endColLetter . $row);
-        $colIdx += $subColCount;
-    } else {
-        $colIdx++;
-    }
+    
+    $sheet->mergeCells($colLetter . $row . ':' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx + $subColCount - 1) . $row);
+    $colIdx += $subColCount;
 }
+
+// İŞLEM TOPLAMLARI bölümü altındaki genel toplam (Eğer hasSubCols varsa)
 if ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol' && !empty($workTypeCols)) {
     $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
-    $endColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx + $subColCount - 1);
     $sheet->setCellValue($colLetter . $row, $grandTotal ?: '');
-    if ($subColCount > 1)
-        $sheet->mergeCells($colLetter . $row . ':' . $endColLetter . $row);
+    $sheet->mergeCells($colLetter . $row . ':' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx + $subColCount - 1) . $row);
 }
+
 $sheet->setCellValue($toplamCol . $row, $grandTotal ?: '');
+
+if ($hasManuelCols) {
+    // Toplam düşüm ve kalan hesaplanmış olmalı
+    $sheet->setCellValue($dusumCol . $row, $grandDusum ?: '');
+    $sheet->setCellValue($kalanCol . $row, ($grandTotal - $grandDusum) ?: '');
+}
+
 $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->applyFromArray($footerStyle);
 
 // 8. Styles
@@ -776,6 +858,11 @@ if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol') {
 
 // TOPLAM sütunu
 $sheet->getColumnDimension($toplamCol)->setWidth(9);
+
+if ($hasManuelCols) {
+    $sheet->getColumnDimension($dusumCol)->setWidth(9);
+    $sheet->getColumnDimension($kalanCol)->setWidth(9);
+}
 
 if ($activeTab !== 'kacakkontrol') {
     $sheet->getColumnDimension($bolgeToplamCol)->setWidth(11); // BÖLGE TOP.

@@ -233,6 +233,7 @@ use App\Helper\Helper;
                                     var maasTutariFormatted = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(item.maas_tutari);
 
                                     var row = '<tr>' +
+                                        '<td style="display:none">' + item.id + '</td>' +
                                         '<td>' +
                                         '<div class="d-flex flex-column">' +
                                         '<span class="fw-bold text-dark">' + (item.gorev ? item.gorev : 'Belirtilmemiş') + '</span>' +
@@ -257,6 +258,23 @@ use App\Helper\Helper;
                                 });
                             }
 
+                            // Buton container'ını güncelle (Aktif kayıt varsa yenisine izin verme)
+                            var isAnyActive = false;
+                            var todayStr = new Date().toISOString().split('T')[0];
+                            $.each(response.data, function(i, item) {
+                                var bitisDate = item.bitis_tarihi ? item.bitis_tarihi : null;
+                                if (item.baslangic_tarihi <= todayStr && (bitisDate === null || bitisDate >= todayStr)) {
+                                    isAnyActive = true;
+                                    return false; // break
+                                }
+                            });
+                            
+                            if (isAnyActive) {
+                                $('#gorevGecmisiButtonContainer').html('<span class="badge bg-soft-warning text-warning p-2"><i class="bx bx-info-circle me-1"></i> Aktif görev kaydı varken yenisi eklenemez.</span>');
+                            } else {
+                                $('#gorevGecmisiButtonContainer').html('<button type="button" class="btn btn-sm btn-primary" id="btnOpenGorevGecmisiModal"><i class="bx bx-plus"></i> Yeni Maaş Tipi Tanımla</button>');
+                            }
+
                             if (typeof window.invalidateAllTabs === 'function') {
                                 window.invalidateAllTabs();
                             }
@@ -273,7 +291,7 @@ use App\Helper\Helper;
                     }
                     var dtOptions = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
                     $('#tblGorevGecmisi').DataTable($.extend(true, {}, dtOptions, {
-                        order: [[3, 'desc']],
+                        order: [[0, 'desc']],
                         pageLength: 5
                     }));
                 }

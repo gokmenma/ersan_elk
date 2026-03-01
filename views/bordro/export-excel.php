@@ -123,12 +123,28 @@ try {
     // Personel verilerini ekle
     $satir = 2;
     foreach ($personeller as $personel) {
-        // --- UI HESAPLAMA MANTIĞI ---
+        // --- UI HESAPLAMA MANTIĞI (list.php ile senkronize) ---
         $rawEkOdeme = floatval($personel->guncel_toplam_ek_odeme);
-        $pMaasTutari = floatval($personel->maas_tutari ?? 0);
+
+        // Maaş tutarı ve durumunu belirle (görev geçmişi öncelikli)
+        if (!empty($personel->gorev_gecmisi_var)) {
+            $pMaasDurumu = $personel->gg_maas_durumu ?? '';
+            $fallbackMaasTutari = floatval($personel->gg_maas_tutari ?? 0);
+        } else {
+            $pMaasDurumu = $personel->maas_durumu ?? '';
+            $fallbackMaasTutari = floatval($personel->maas_tutari ?? 0);
+        }
+
+        // Eğer daha önce hesaplama yapılmışsa ve ağırlıklı nominal maaş varsa onu kullan
+        if ($personel->hd_nominal_maas !== null && floatval($personel->hd_nominal_maas) > 0) {
+            $pMaasTutari = floatval($personel->hd_nominal_maas);
+        } else {
+            $pMaasTutari = $fallbackMaasTutari;
+        }
+
         $pToplamKesinti = floatval($personel->kesinti_tutar ?? 0);
-        $pIsNet = ($personel->maas_durumu ?? '') == 'Net';
-        $pIsPrimUsulu = (stripos($personel->maas_durumu ?? '', 'Prim') !== false);
+        $pIsNet = $pMaasDurumu == 'Net';
+        $pIsPrimUsulu = (stripos($pMaasDurumu, 'Prim') !== false);
 
         // İcra ve Kesinti
         $pIcra = floatval($personel->hd_icra_kesintisi ?? 0);
@@ -174,7 +190,13 @@ try {
         } else {
             $pGunlukBase = 30;
         }
-        if ($pGunlukBase < 0) $pGunlukBase = 0;
+        if ($pGunlukBase < 0)
+            $pGunlukBase = 0;
+
+        // Görev geçmişi kapsamına göre gün limitlemesi
+        if (!empty($personel->gorev_gecmisi_var) && isset($personel->gg_toplam_gun)) {
+            $pGunlukBase = min($pGunlukBase, intval($personel->gg_toplam_gun));
+        }
 
         $pCalismaGunu = $pGunlukBase;
         if ($personel->hd_fiili_calisma_gunu !== null) {
@@ -186,7 +208,7 @@ try {
         // Toplam Alacağı
         if ($pIsPrimUsulu) {
             $pToplamAlacagi = floatval($personel->brut_maas ?? 0) + $rawEkOdeme;
-        } elseif ($pIsNet || ($personel->maas_durumu ?? '') == 'Brüt') {
+        } elseif ($pIsNet || $pMaasDurumu == 'Brüt') {
             $pToplamAlacagi = (($pMaasTutari / 30) * $pCalismaGunu) + $rawEkOdeme;
         } else {
             $pToplamAlacagi = $pMaasTutari + $rawEkOdeme;
@@ -218,10 +240,14 @@ try {
         $deptName = $personel->departman ?? '-';
         $deptUp = mb_convert_case($deptName, MB_CASE_UPPER, "UTF-8");
         $birimCode = '';
-        if (strpos($deptUp, 'OKUMA') !== false) $birimCode = 'EO';
-        elseif (strpos($deptUp, 'KESME') !== false) $birimCode = 'KA';
-        elseif (strpos($deptUp, 'SAYAÇ') !== false || strpos($deptUp, 'DEGİŞ') !== false) $birimCode = 'ST';
-        elseif (strpos($deptUp, 'KAÇAK') !== false) $birimCode = 'KÇ';
+        if (strpos($deptUp, 'OKUMA') !== false)
+            $birimCode = 'EO';
+        elseif (strpos($deptUp, 'KESME') !== false)
+            $birimCode = 'KA';
+        elseif (strpos($deptUp, 'SAYAÇ') !== false || strpos($deptUp, 'DEGİŞ') !== false)
+            $birimCode = 'ST';
+        elseif (strpos($deptUp, 'KAÇAK') !== false)
+            $birimCode = 'KÇ';
         else {
             $words = explode(' ', $deptUp);
             if (count($words) >= 2) {
@@ -237,7 +263,7 @@ try {
         $sheet->setCellValue('C' . $satir, $personel->ekip_bolge ?? '');
         $sheet->setCellValue('D' . $satir, $personel->adi_soyadi);
         $sheet->setCellValueExplicit('E' . $satir, $personel->tc_kimlik_no ?? '', DataType::TYPE_STRING);
-        $sheet->setCellValue('F' . $satir, $personel->maas_durumu ?? '-');
+        $sheet->setCellValue('F' . $satir, $pMaasDurumu ?: '-');
         $sheet->setCellValue('G' . $satir, $pCalismaGunu);
         $sheet->setCellValue('H' . $satir, $pToplamAlacagi);
         $sheet->setCellValue('I' . $satir, $pKesintiHaricIcra);

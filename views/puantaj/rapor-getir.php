@@ -100,15 +100,14 @@ if ($activeTab === 'okuma') {
     $summary = $EndeksOkuma->getSummaryByRange($startDateStr, $endDateStr);
 } elseif ($activeTab === 'kacakkontrol') {
     $summary = $Puantaj->getKacakSummaryByRange($startDateStr, $endDateStr);
+} elseif ($activeTab === 'sokme_takma') {
+    $SayacDegisim = new \App\Model\SayacDegisimModel();
+    $summary = $SayacDegisim->getSummaryDetailedByRange($startDateStr, $endDateStr);
+    $workTypes = $SayacDegisim->getDistinctWorkTypes();
 } else {
     $summary = $Puantaj->getSummaryDetailedByRange($startDateStr, $endDateStr);
     // Fetch work types based on active tab from tanimlamalar
     $workTypes = $Tanimlamalar->getIsTurleriByRaporTuru($activeTab);
-
-    // Fallback for sokme_takma if no records found
-    if (empty($workTypes) && $activeTab === 'sokme_takma') {
-        $workTypes = $Tanimlamalar->getIsTurleriByRaporTuru('sokme');
-    }
 
     // Fallback for kesme if no rapor_turu is set yet
     if (empty($workTypes) && $activeTab === 'kesme') {
@@ -541,10 +540,10 @@ $currentTabName = $tabNames[$activeTab] ?? 'Rapor';
         display: table-cell !important;
     }
 
-    #raporTable.summary-mode #actionTotalsHeader {
-        display: none !important;
-    }
-
+    #raporTable.summary-mode #actionTotalsHeader,
+    #raporTable.summary-mode .tfoot-action,
+    #raporTable.summary-mode .action-grand-total-consolidated,
+    #raporTable.summary-mode .action-types-grand-total,
     #raporTable.summary-mode .row-action-total {
         display: none !important;
     }
@@ -1085,7 +1084,8 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                             $grandTotal += $personelTotal;
                             ?>
                             <?php foreach ($workTypeCols as $wt): ?>
-                                <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> table-info fw-bold row-action-total" data-wt-code="<?= $wt['code'] ?>">
+                                <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> table-info fw-bold row-action-total"
+                                    data-wt-code="<?= $wt['code'] ?>">
                                     <?= $personelActTotals[$wt['name']] ?: '' ?>
                                 </td>
                             <?php endforeach; ?>
@@ -1188,12 +1188,23 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                         <?= $grandTotal ?: '' ?>
                     </td>
                 <?php endif; ?>
-                <td class="grand-total-cell"><?= $grandTotal ?: '' ?></td>
+                <td class="grand-total-cell"><?= number_format($grandTotal, 0, '', '') ?></td>
                 <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma'])): ?>
-                    <td class="grand-dusum-cell table-danger"></td>
-                    <td class="grand-kalan-cell table-success"></td>
+                    <?php 
+                    $grandDusumVal = 0;
+                    if (isset($manuelDusumMap)) {
+                        foreach ($manuelDusumMap as $pId => $teams) {
+                            foreach ($teams as $tId => $val) {
+                                $grandDusumVal += $val;
+                            }
+                        }
+                    }
+                    ?>
+                    <td class="grand-dusum-cell table-danger"><?= $grandDusumVal ?: '0' ?></td>
+                    <td class="grand-kalan-cell table-success"><?= ($grandTotal - $grandDusumVal) ?: '0' ?></td>
                 <?php endif; ?>
-                <td colspan="2"></td>
+                <td class="grand-region-total-cell table-light fw-bold"><?= number_format($grandTotal, 0, '', '') ?></td>
+                <td></td>
             </tr>
         </tfoot>
     </table>
@@ -1207,9 +1218,9 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
         const activeFilters = document.querySelectorAll('#workTypeLegend .legend-item.active-filter');
         const defaultSubColCount = <?= $subColCount ?>;
         const wtSubCells = table.querySelectorAll('.wt-cell-sub');
-        
+
         if (activeFilters.length === 0) {
-            for(let i=0; i<wtSubCells.length; i++) wtSubCells[i].classList.remove('legend-hidden');
+            for (let i = 0; i < wtSubCells.length; i++) wtSubCells[i].classList.remove('legend-hidden');
             document.querySelectorAll('.day-num-header, .daily-total-cell').forEach(h => {
                 h.style.display = '';
                 h.setAttribute('colspan', isSummaryMode ? 1 : defaultSubColCount);
@@ -1218,11 +1229,17 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             const mainGunlerHeader = document.getElementById('mainGunlerHeader');
             if (mainGunlerHeader) mainGunlerHeader.setAttribute('colspan', totalCols);
             const actionTotalsHeader = document.getElementById('actionTotalsHeader');
-            if (actionTotalsHeader) actionTotalsHeader.setAttribute('colspan', defaultSubColCount);
-            document.querySelectorAll('.action-grand-total-consolidated').forEach(c => c.setAttribute('colspan', defaultSubColCount));
+            if (actionTotalsHeader) {
+                actionTotalsHeader.style.display = isSummaryMode ? 'none' : '';
+                actionTotalsHeader.setAttribute('colspan', defaultSubColCount);
+            }
+            document.querySelectorAll('.action-grand-total-consolidated').forEach(c => {
+                c.style.display = isSummaryMode ? 'none' : '';
+                c.setAttribute('colspan', defaultSubColCount);
+            });
         } else {
             const activeCodes = Array.from(activeFilters).map(f => f.dataset.wtCode);
-            for(let i=0; i<wtSubCells.length; i++) {
+            for (let i = 0; i < wtSubCells.length; i++) {
                 if (activeCodes.indexOf(wtSubCells[i].dataset.wtCode) > -1) wtSubCells[i].classList.remove('legend-hidden');
                 else wtSubCells[i].classList.add('legend-hidden');
             }
@@ -1359,11 +1376,11 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     const cell = subCells[c];
                     const date = cell.dataset.date;
                     const code = cell.dataset.wtCode;
-                    
+
                     if (typeof rowActTotals[code] === 'undefined') rowActTotals[code] = 0;
-                    
+
                     const val = parseInt(cell.textContent) || 0;
-                    
+
                     rowActTotals[code] += val;
                     rowDayTotals[date] = (rowDayTotals[date] || 0) + val;
 
@@ -1400,14 +1417,26 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             overallGrandTotal += rowTotal;
 
             if (['kesme', 'okuma', 'sokme_takma'].includes(activeTab)) {
+                // Manuel düşüm ve Kalan sütunları için toplam hesaplama
                 const dusumInput = row.querySelector('.manual-dusum-input');
+                let dusumVal = 0;
                 if (dusumInput) {
-                    const dusumVal = parseInt(dusumInput.value) || 0;
+                    dusumVal = parseInt(dusumInput.value) || 0;
                     overallGrandDusum += dusumVal;
+
                     const kalanCell = row.querySelector('.kalan-toplam-cell');
-                    if (kalanCell) kalanCell.textContent = (rowTotal - dusumVal) || '0';
-                    overallGrandKalan += (rowTotal - dusumVal);
+                    if (kalanCell) {
+                        kalanCell.textContent = (rowTotal - dusumVal) || '0';
+                    }
+                } else {
+                    // Input yoksa (bazı satır tipleri için), kalan hücresindeki değeri almayı dene veya rowTotal kullan
+                    const kalanCell = row.querySelector('.kalan-toplam-cell');
+                    if (kalanCell) {
+                        dusumVal = 0; // Manuel düşüm yoksa 0'dır
+                        kalanCell.textContent = rowTotal || '0';
+                    }
                 }
+                overallGrandKalan += (rowTotal - dusumVal);
             }
         }
 
@@ -1448,13 +1477,16 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             if (cell) cell.textContent = dailyGrandTotals[date] || '';
         });
 
-        const grandCell = document.querySelector('.grand-total-cell');
+        const grandCell = table.querySelector('.grand-total-cell');
         if (grandCell) grandCell.textContent = overallGrandTotal || '';
 
+        const grandRegionCell = table.querySelector('.grand-region-total-cell');
+        if (grandRegionCell) grandRegionCell.textContent = overallGrandTotal || '';
+
         if (['kesme', 'okuma', 'sokme_takma'].includes(activeTab)) {
-            const gdCell = document.querySelector('.grand-dusum-cell');
+            const gdCell = table.querySelector('.grand-dusum-cell');
             if (gdCell) gdCell.textContent = overallGrandDusum || '0';
-            const gkCell = document.querySelector('.grand-kalan-cell');
+            const gkCell = table.querySelector('.grand-kalan-cell');
             if (gkCell) gkCell.textContent = overallGrandKalan || '0';
         }
 
