@@ -19,18 +19,57 @@ class PersonelEkOdemelerModel extends Model
      * Personelin tüm ek ödemelerini getirir (listeleme için)
      * Sürekli ödemeler için ana_odeme_id NULL olanları gösterir
      */
-    public function getPersonelEkOdemeler($personel_id)
+    public function getPersonelEkOdemeler($personel_id, $filters = [])
     {
+        $where = "peo.personel_id = ? AND peo.silinme_tarihi IS NULL AND peo.ana_odeme_id IS NULL";
+        $params = [$personel_id];
+        $mode = $filters['filter_ek_mode'] ?? 'donem';
+
+        if ($mode === 'tarih') {
+            // Başlangıç Tarihi Filtresi
+            if (!empty($filters['filter_ek_baslangic'])) {
+                $baslangic = $filters['filter_ek_baslangic'];
+                if (preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $baslangic)) {
+                    $baslangic = \DateTime::createFromFormat('d.m.Y', $baslangic)->format('Y-m-d');
+                }
+                $where .= " AND peo.tarih >= ?";
+                $params[] = $baslangic;
+            }
+
+            // Bitiş Tarihi Filtresi
+            if (!empty($filters['filter_ek_bitis'])) {
+                $bitis = $filters['filter_ek_bitis'];
+                if (preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $bitis)) {
+                    $bitis = \DateTime::createFromFormat('d.m.Y', $bitis)->format('Y-m-d');
+                }
+                $where .= " AND peo.tarih <= ?";
+                $params[] = $bitis;
+            }
+        } elseif ($mode === 'donem') {
+            // Dönem Filtresi
+            if (!empty($filters['filter_ek_donem'])) {
+                $where .= " AND (peo.tekrar_tipi = 'surekli' OR peo.donem_id = ?)";
+                $params[] = $filters['filter_ek_donem'];
+            }
+        } elseif ($mode === 'ay_yil') {
+            // Ay-Yıl Filtresi
+            if (!empty($filters['filter_ek_ay_yil'])) {
+                $where .= " AND DATE_FORMAT(peo.tarih, '%Y-%m') = ?";
+                $params[] = $filters['filter_ek_ay_yil'];
+            }
+        }
+
         $sql = $this->db->prepare("
-            SELECT peo.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu
+            SELECT peo.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bd.donem_adi,
+                   p.adi_soyadi as kayit_yapan_ad_soyad
             FROM {$this->table} peo
             LEFT JOIN bordro_parametreleri bp ON peo.parametre_id = bp.id
-            WHERE peo.personel_id = ? 
-              AND peo.silinme_tarihi IS NULL 
-              AND peo.ana_odeme_id IS NULL
+            LEFT JOIN bordro_donemi bd ON peo.donem_id = bd.id
+            LEFT JOIN personeller p ON peo.kayit_yapan = p.id
+            WHERE {$where}
             ORDER BY peo.tekrar_tipi DESC, peo.baslangic_donemi DESC, peo.donem_id DESC, peo.created_at DESC
         ");
-        $sql->execute([$personel_id]);
+        $sql->execute($params);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 

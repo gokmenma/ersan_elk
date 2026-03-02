@@ -8,39 +8,12 @@ use App\Model\BordroParametreModel;
 $BordroParametreModel = new BordroParametreModel();
 $gelir_turleri_param = $BordroParametreModel->getGelirTurleri();
 
-// PHP TABANLI FİLTRELEME
+// PHP TABANLI FİLTRELEME (Server-side filtreleme yapıldığı için sadece input değerlerini $_GET üzerinden alır)
+$filter_mode = $_GET['filter_mode'] ?? $_GET['filter_ek_mode'] ?? 'donem';
 $filter_baslangic = $_GET['filter_ek_baslangic'] ?? '';
 $filter_bitis = $_GET['filter_ek_bitis'] ?? '';
 $filter_donem = $_GET['filter_ek_donem'] ?? '';
-
-// Tarihleri DB formatına (Y-m-d) çevir (Eğer d.m.Y formatında geliyorsa)
-if (!empty($filter_baslangic) && preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $filter_baslangic)) {
-    $filter_baslangic = DateTime::createFromFormat('d.m.Y', $filter_baslangic)->format('Y-m-d');
-}
-
-if (!empty($filter_bitis) && preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $filter_bitis)) {
-    $filter_bitis = DateTime::createFromFormat('d.m.Y', $filter_bitis)->format('Y-m-d');
-}
-
-$filtered_ek_odemeler = [];
-foreach ($ek_odemeler as $k) {
-    $include = true;
-
-    if (!empty($filter_baslangic) && !empty($k->tarih) && $k->tarih < $filter_baslangic) {
-        $include = false;
-    }
-    if (!empty($filter_bitis) && !empty($k->tarih) && $k->tarih > $filter_bitis) {
-        $include = false;
-    }
-    if (!empty($filter_donem) && ($k->tekrar_tipi ?? 'tek_sefer') != 'surekli' && $k->donem_id != $filter_donem) {
-        $include = false;
-    }
-
-    if ($include) {
-        $filtered_ek_odemeler[] = $k;
-    }
-}
-$ek_odemeler = $filtered_ek_odemeler;
+$filter_ay_yil = $_GET['filter_ek_ay_yil'] ?? date('Y-m');
 
 // İstatistikler ve Gruplama
 $toplamEkOdeme = 0;
@@ -131,18 +104,38 @@ foreach ($ek_odemeler as $k) {
                 <div class="p-4 bg-light-subtle">
                     <form id="formEkOdemeFilter" method="GET">
                         <?php foreach ($_GET as $key => $val): ?>
-                                <?php if (!str_starts_with($key, 'filter_ek_')): ?>
+                                <?php if (!str_starts_with($key, 'filter_ek_') && $key !== 'filter_mode'): ?>
                                         <input type="hidden" name="<?= htmlspecialchars($key) ?>" value="<?= htmlspecialchars($val) ?>">
                                 <?php endif; ?>
                         <?php endforeach; ?>
-                        <div class="row g-3 align-items-center">
+
+                       
+
+                        <div class="row g-2 align-items-center">
+                            <!-- Mod Seçimi -->
                             <div class="col-md-3">
+                                <div class="segmented-control-container bg-white border w-100">
+                                    <input type="radio" class="segmented-control-input" name="filter_mode" id="modeEkTarih" value="tarih" <?= $filter_mode === 'tarih' ? 'checked' : '' ?>>
+                                    <label class="segmented-control-label py-2" for="modeEkTarih">Tarih</label>
+
+                                    <input type="radio" class="segmented-control-input" name="filter_mode" id="modeEkDonem" value="donem" <?= $filter_mode === 'donem' ? 'checked' : '' ?>>
+                                    <label class="segmented-control-label py-2" for="modeEkDonem">Dönem</label>
+
+                                    <input type="radio" class="segmented-control-input" name="filter_mode" id="modeEkAyYil" value="ay_yil" <?= $filter_mode === 'ay_yil' ? 'checked' : '' ?>>
+                                    <label class="segmented-control-label py-2" for="modeEkAyYil">Ay-Yıl</label>
+                                </div>
+                            </div>
+
+                            <!-- Tarih Aralığı Inputları -->
+                            <div class="col-md-3 filter-group filter-tarih <?= $filter_mode !== 'tarih' ? 'd-none' : '' ?>">
                                 <?= Form::FormFloatInput("text", "filter_ek_baslangic", $_GET['filter_ek_baslangic'] ?? '', "Başlangıç Tarihi", "Tarih Seçin", "calendar", "form-control flatpickr", false, null, "off", false, 'id="filter_ek_baslangic"') ?>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 filter-group filter-tarih <?= $filter_mode !== 'tarih' ? 'd-none' : '' ?>">
                                 <?= Form::FormFloatInput("text", "filter_ek_bitis", $_GET['filter_ek_bitis'] ?? '', "Bitiş Tarihi", "Tarih Seçin", "calendar", "form-control flatpickr", false, null, "off", false, 'id="filter_ek_bitis"') ?>
                             </div>
-                            <div class="col-md-4">
+
+                            <!-- Dönem Inputu -->
+                            <div class="col-md-6 filter-group filter-donem <?= $filter_mode !== 'donem' ? 'd-none' : '' ?>">
                                 <?= Form::FormSelect2(
                                     name: "filter_ek_donem",
                                     options: ['' => 'Tüm Dönemler'] + ($acik_donemler ?? []),
@@ -154,9 +147,15 @@ foreach ($ek_odemeler as $k) {
                                     required: false,
                                 ) ?>
                             </div>
-                            <div class="col-md-2 d-flex gap-2 justify-content-end">
+
+                            <!-- Ay-Yıl Inputu -->
+                            <div class="col-md-6 filter-group filter-ay_yil <?= $filter_mode !== 'ay_yil' ? 'd-none' : '' ?>">
+                                <?= Form::FormFloatInput("text", "filter_ek_ay_yil", $filter_ay_yil, "Ay / Yıl Seçin", "", "calendar", "form-control month-picker", false, null, "off", false, 'id="filter_ek_ay_yil"') ?>
+                            </div>
+
+                            <div class="col-md-3 filter-button-col">
                                 <button type="submit"
-                                    class="btn btn-dark d-flex align-items-center flex-grow-1 justify-content-center"
+                                    class="btn btn-dark d-flex align-items-center w-100 justify-content-center"
                                     style="height: 48px;">
                                     <i data-feather="search" class="me-1" style="width: 18px; height: 18px;"></i>
                                     Uygula
@@ -168,18 +167,53 @@ foreach ($ek_odemeler as $k) {
             </div>
 
             <script>
-                setTimeout(function () { if (typeof feather !== 'undefined') { feather.replace(); } }, 200);
+                setTimeout(function () { 
+                    if (typeof feather !== 'undefined') { feather.replace(); } 
+                    
+                    // Month Picker initialization
+                    if (typeof flatpickr !== 'undefined') {
+                        flatpickr(".month-picker", {
+                            locale: "tr",
+                            dateFormat: "Y-m",
+                            altFormat: "F Y",
+                            altInput: true,
+                            // MonthSelectPlugin support if available
+                            plugins: typeof monthSelectPlugin !== 'undefined' ? [
+                                new monthSelectPlugin({
+                                    shorthand: true,
+                                    dateFormat: "Y-m",
+                                    altFormat: "F Y"
+                                })
+                            ] : []
+                        });
+                    }
+                }, 200);
+
+                // Mod değişimini dinle
+                $(document).on('change', 'input[name="filter_mode"]', function() {
+                    const mode = $(this).val();
+                    $('.filter-group').addClass('d-none');
+                    $('.filter-' + mode).removeClass('d-none');
+                });
 
                 // AJAX tabanlı filtreleme
                 $(document).off('submit', '#formEkOdemeFilter').on('submit', '#formEkOdemeFilter', function (e) {
                     e.preventDefault();
+                    var mode = $('input[name="filter_mode"]:checked').val();
                     var filter_baslangic = $('#filter_ek_baslangic').val();
                     var filter_bitis = $('#filter_ek_bitis').val();
                     var filter_donem = $('[name="filter_ek_donem"]').val() || '';
+                    var filter_ay_yil = $('#filter_ek_ay_yil').val();
 
                     var targetPane = document.getElementById('ek_odemeler');
                     if (targetPane) {
-                        var url = 'views/personel/get-tab-content.php?tab=ek_odemeler&id=<?= $id ?>&filter_ek_baslangic=' + filter_baslangic + '&filter_ek_bitis=' + filter_bitis + '&filter_ek_donem=' + filter_donem;
+                        var url = 'views/personel/get-tab-content.php?tab=ek_odemeler&id=<?= $id ?>' + 
+                                  '&filter_mode=' + mode + 
+                                  '&filter_ek_baslangic=' + filter_baslangic + 
+                                  '&filter_ek_bitis=' + filter_bitis + 
+                                  '&filter_ek_donem=' + filter_donem + 
+                                  '&filter_ek_ay_yil=' + filter_ay_yil;
+
                         targetPane.setAttribute('data-url', url);
                         targetPane.setAttribute('data-loaded', 'false');
                         if (typeof window.loadTabContent === 'function') {
@@ -222,7 +256,7 @@ foreach ($ek_odemeler as $k) {
                                                         <th>Tekrar</th>
                                                         <th>Hesaplama</th>
                                                         <th>Tutar / Oran</th>
-                                                        <th>Tarih</th>
+                                                        <th>Personel / Kayıt Tarihi</th>
                                                         <th>Dönem</th>
                                                         <th>Açıklama</th>
                                                         <th>Durum</th>
@@ -263,7 +297,9 @@ foreach ($ek_odemeler as $k) {
                                                                             %<?= number_format($k->oran ?? 0, 2, ',', '.') ?>
                                                                     <?php endif; ?>
                                                                 </td>
-                                                                <td><?= !empty($k->tarih) ? date('d.m.Y', strtotime($k->tarih)) : '-' ?>
+                                                                <td>
+                                                                    <div class="fw-bold text-dark"><?= htmlspecialchars($k->kayit_yapan_ad_soyad ?? 'Sistem') ?></div>
+                                                                    <div class="text-muted small"><?= !empty($k->created_at) ? date('d.m.Y H:i', strtotime($k->created_at)) : '-' ?></div>
                                                                 </td>
                                                                 <td>
                                                                     <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
@@ -273,7 +309,7 @@ foreach ($ek_odemeler as $k) {
                                                                                 <?= $k->bitis_donemi ? date('d.m.Y', strtotime($k->bitis_donemi)) : '<span class="text-success">Süresiz</span>' ?>
                                                                             </small>
                                                                     <?php else: ?>
-                                                                            <?= App\Helper\Helper::getDonemAdi($k->donem_id) ?>
+                                                                            <?= $k->donem_adi ?? App\Helper\Helper::getDonemAdi($k->donem_id) ?>
                                                                     <?php endif; ?>
                                                                 </td>
                                                                 <td><?= htmlspecialchars($k->aciklama ?? '-') ?></td>
@@ -326,7 +362,7 @@ foreach ($ek_odemeler as $k) {
                             <th>Tekrar</th>
                             <th>Hesaplama</th>
                             <th>Tutar / Oran</th>
-                            <th>Tarih</th>
+                            <th>Personel / Kayıt Tarihi</th>
                             <th>Dönem</th>
                             <th>Açıklama</th>
                             <th>Durum</th>
@@ -367,7 +403,10 @@ foreach ($ek_odemeler as $k) {
                                                 %<?= number_format($k->oran ?? 0, 2, ',', '.') ?>
                                         <?php endif; ?>
                                     </td>
-                                    <td><?= !empty($k->tarih) ? date('d.m.Y', strtotime($k->tarih)) : '-' ?></td>
+                                    <td>
+                                        <div class="fw-bold text-dark"><?= htmlspecialchars($k->kayit_yapan_ad_soyad ?? 'Sistem') ?></div>
+                                        <div class="text-muted small"><?= !empty($k->created_at) ? date('d.m.Y H:i', strtotime($k->created_at)) : '-' ?></div>
+                                    </td>
                                     <td>
                                         <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
                                                 <small>
@@ -376,7 +415,7 @@ foreach ($ek_odemeler as $k) {
                                                     <?= $k->bitis_donemi ? date('d.m.Y', strtotime($k->bitis_donemi)) : '<span class="text-success">Süresiz</span>' ?>
                                                 </small>
                                         <?php else: ?>
-                                                <?= App\Helper\Helper::getDonemAdi($k->donem_id) ?>
+                                                <?= $k->donem_adi ?? App\Helper\Helper::getDonemAdi($k->donem_id) ?>
                                         <?php endif; ?>
                                     </td>
                                     <td><?= htmlspecialchars($k->aciklama ?? '-') ?></td>

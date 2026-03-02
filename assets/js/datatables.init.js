@@ -10,13 +10,13 @@ function getDatatableOptions() {
   return {
     stateSave: false,
     responsive: true,
-    scrollX: false,
-    fixedHeader: {
-      header: true,
-      headerOffset: $("#page-topbar").length
-        ? $("#page-topbar").outerHeight()
-        : 70,
-    },
+    // scrollX: false,
+    // fixedHeader: {
+    //   header: true,
+    //   headerOffset: $("#page-topbar").length
+    //     ? $("#page-topbar").outerHeight()
+    //     : 70,
+    // },
     pageLength: 10,
     dom: 't<"row"<"col-sm-12 col-md-6 d-flex align-items-center justify-content-start"i<"ms-3 text-nowrap"l>><"col-sm-12 col-md-6 d-flex justify-content-end"p>>',
     language: {

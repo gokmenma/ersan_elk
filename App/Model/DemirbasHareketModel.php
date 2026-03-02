@@ -245,12 +245,16 @@ class DemirbasHareketModel extends Model
     /**
      * Hareket tipi badge'i döndür
      */
-    public static function getHareketTipiBadge($tip)
+    public static function getHareketTipiBadge($tip, $aciklama = '')
     {
+        if ($tip === 'sarf' && (strpos($aciklama, 'Zimmetten Düşüldü') !== false || strpos($aciklama, 'Zimmetten Düsüldü') !== false)) {
+            return '<span class="badge bg-danger">Zimmetten Düşüldü</span>';
+        }
+
         $badges = [
             'zimmet' => '<span class="badge bg-warning">Zimmet</span>',
             'iade' => '<span class="badge bg-success">İade</span>',
-            'sarf' => '<span class="badge bg-info">Sarf</span>',
+            'sarf' => '<span class="badge bg-info">Tüketildi</span>',
             'kayip' => '<span class="badge bg-danger">Kayıp</span>',
             'duzelme' => '<span class="badge bg-secondary">Düzeltme</span>'
         ];

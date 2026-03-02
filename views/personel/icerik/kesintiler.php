@@ -8,39 +8,12 @@ use App\Model\BordroParametreModel;
 $BordroParametreModel = new BordroParametreModel();
 $kesinti_turleri_param = $BordroParametreModel->getKesintiTurleri();
 
-// PHP TABANLI FİLTRELEME
+// PHP TABANLI FİLTRELEME (Server-side filtreleme yapıldığı için sadece input değerlerini $_GET üzerinden alır)
+$filter_mode = $_GET['filter_mode'] ?? $_GET['filter_kesinti_mode'] ?? 'donem';
 $filter_baslangic = $_GET['filter_kesinti_baslangic'] ?? '';
 $filter_bitis = $_GET['filter_kesinti_bitis'] ?? '';
 $filter_donem = $_GET['filter_kesinti_donem'] ?? '';
-
-// Tarihleri DB formatına (Y-m-d) çevir (Eğer d.m.Y formatında geliyorsa)
-if (!empty($filter_baslangic) && preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $filter_baslangic)) {
-    $filter_baslangic = DateTime::createFromFormat('d.m.Y', $filter_baslangic)->format('Y-m-d');
-}
-
-if (!empty($filter_bitis) && preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $filter_bitis)) {
-    $filter_bitis = DateTime::createFromFormat('d.m.Y', $filter_bitis)->format('Y-m-d');
-}
-
-$filtered_kesintiler = [];
-foreach ($kesintiler as $k) {
-    $include = true;
-
-    if (!empty($filter_baslangic) && !empty($k->tarih) && $k->tarih < $filter_baslangic) {
-        $include = false;
-    }
-    if (!empty($filter_bitis) && !empty($k->tarih) && $k->tarih > $filter_bitis) {
-        $include = false;
-    }
-    if (!empty($filter_donem) && ($k->tekrar_tipi ?? 'tek_sefer') != 'surekli' && $k->donem_id != $filter_donem) {
-        $include = false;
-    }
-
-    if ($include) {
-        $filtered_kesintiler[] = $k;
-    }
-}
-$kesintiler = $filtered_kesintiler;
+$filter_ay_yil = $_GET['filter_kesinti_ay_yil'] ?? date('Y-m');
 
 // İstatistikler ve Gruplama
 $toplamKesinti = 0;
@@ -138,59 +111,118 @@ foreach ($kesintiler as $k) {
                     <div class="collapse border-bottom <?= !empty($_GET['filter_kesinti_baslangic']) || !empty($_GET['filter_kesinti_bitis']) || !empty($_GET['filter_kesinti_donem']) ? 'show' : '' ?>"
                         id="filterKesintiCollapse">
                         <div class="p-4 bg-light-subtle">
-                            <form id="formKesintiFilter" method="GET">
-                                <?php foreach ($_GET as $key => $val): ?>
-                                        <?php if (!str_starts_with($key, 'filter_kesinti_')): ?>
-                                                <input type="hidden" name="<?= htmlspecialchars($key) ?>"
-                                                    value="<?= htmlspecialchars($val) ?>">
-                                        <?php endif; ?>
-                                <?php endforeach; ?>
-                                <div class="row g-3 align-items-center">
-                                    <div class="col-md-3">
-                                        <?= Form::FormFloatInput("text", "filter_kesinti_baslangic", $_GET['filter_kesinti_baslangic'] ?? '', "Başlangıç Tarihi", "Tarih Seçin", "calendar", "form-control flatpickr", false, null, "off", false, 'id="filter_kesinti_baslangic"') ?>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <?= Form::FormFloatInput("text", "filter_kesinti_bitis", $_GET['filter_kesinti_bitis'] ?? '', "Bitiş Tarihi", "Tarih Seçin", "calendar", "form-control flatpickr", false, null, "off", false, 'id="filter_kesinti_bitis"') ?>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <?= Form::FormSelect2(
-                                            name: "filter_kesinti_donem",
-                                            options: ['' => 'Tüm Dönemler'] + ($acik_donemler ?? []),
-                                            selectedValue: $_GET['filter_kesinti_donem'] ?? '',
-                                            label: "Dönem Filtresi",
-                                            icon: "calendar",
-                                            valueField: '',
-                                            textField: '',
-                                            required: false,
-                                        ) ?>
-                                    </div>
-                                    <div class="col-md-2 d-flex gap-2 justify-content-end">
-                                        <button type="submit"
-                                            class="btn btn-dark d-flex align-items-center flex-grow-1 justify-content-center"
-                                            style="height: 48px;">
-                                            <i data-feather="search" class="me-1"
-                                                style="width: 18px; height: 18px;"></i>
-                                            Uygula
-                                        </button>
-                                    </div>
+                    <form id="formKesintiFilter" method="GET">
+                        <?php foreach ($_GET as $key => $val): ?>
+                                <?php if (!str_starts_with($key, 'filter_kesinti_') && $key !== 'filter_mode'): ?>
+                                        <input type="hidden" name="<?= htmlspecialchars($key) ?>"
+                                            value="<?= htmlspecialchars($val) ?>">
+                                <?php endif; ?>
+                        <?php endforeach; ?>
+                        
+                        <div class="row g-2 align-items-center">
+                            <!-- Mod Seçimi -->
+                            <div class="col-md-3">
+                                <div class="segmented-control-container bg-white border w-100">
+                                    <input type="radio" class="segmented-control-input" name="filter_mode" id="modeTarih" value="tarih" <?= $filter_mode === 'tarih' ? 'checked' : '' ?>>
+                                    <label class="segmented-control-label py-2" for="modeTarih">Tarih</label>
+
+                                    <input type="radio" class="segmented-control-input" name="filter_mode" id="modeDonem" value="donem" <?= $filter_mode === 'donem' ? 'checked' : '' ?>>
+                                    <label class="segmented-control-label py-2" for="modeDonem">Dönem</label>
+
+                                    <input type="radio" class="segmented-control-input" name="filter_mode" id="modeAyYil" value="ay_yil" <?= $filter_mode === 'ay_yil' ? 'checked' : '' ?>>
+                                    <label class="segmented-control-label py-2" for="modeAyYil">Ay-Yıl</label>
                                 </div>
-                            </form>
+                            </div>
+
+                            <!-- Tarih Aralığı Inputları -->
+                            <div class="col-md-3 filter-group filter-tarih <?= $filter_mode !== 'tarih' ? 'd-none' : '' ?>">
+                                <?= Form::FormFloatInput("text", "filter_kesinti_baslangic", $_GET['filter_kesinti_baslangic'] ?? '', "Başlangıç Tarihi", "Tarih Seçin", "calendar", "form-control flatpickr", false, null, "off", false, 'id="filter_kesinti_baslangic"') ?>
+                            </div>
+                            <div class="col-md-3 filter-group filter-tarih <?= $filter_mode !== 'tarih' ? 'd-none' : '' ?>">
+                                <?= Form::FormFloatInput("text", "filter_kesinti_bitis", $_GET['filter_kesinti_bitis'] ?? '', "Bitiş Tarihi", "Tarih Seçin", "calendar", "form-control flatpickr", false, null, "off", false, 'id="filter_kesinti_bitis"') ?>
+                            </div>
+
+                            <!-- Dönem Inputu -->
+                            <div class="col-md-6 filter-group filter-donem <?= $filter_mode !== 'donem' ? 'd-none' : '' ?>">
+                                <?= Form::FormSelect2(
+                                    name: "filter_kesinti_donem",
+                                    options: ['' => 'Tüm Dönemler'] + ($acik_donemler ?? []),
+                                    selectedValue: $_GET['filter_kesinti_donem'] ?? '',
+                                    label: "Dönem Filtresi",
+                                    icon: "calendar",
+                                    valueField: '',
+                                    textField: '',
+                                    required: false,
+                                ) ?>
+                            </div>
+
+                            <!-- Ay-Yıl Inputu -->
+                            <div class="col-md-6 filter-group filter-ay_yil <?= $filter_mode !== 'ay_yil' ? 'd-none' : '' ?>">
+                                <?= Form::FormFloatInput("text", "filter_kesinti_ay_yil", $filter_ay_yil, "Ay / Yıl Seçin", "", "calendar", "form-control month-picker", false, null, "off", false, 'id="filter_kesinti_ay_yil"') ?>
+                            </div>
+
+                            <div class="col-md-3">
+                                <button type="submit"
+                                    class="btn btn-dark d-flex align-items-center w-100 justify-content-center"
+                                    style="height: 48px;">
+                                    <i data-feather="search" class="me-1"
+                                        style="width: 18px; height: 18px;"></i>
+                                    Uygula
+                                </button>
+                            </div>
                         </div>
+                    </form>
+                </div>
                     </div>
 
                     <script>
-                        setTimeout(function () { if (typeof feather !== 'undefined') { feather.replace(); } }, 200);
+                        setTimeout(function () { 
+                            if (typeof feather !== 'undefined') { feather.replace(); } 
+                            
+                            // Month Picker initialization
+                            if (typeof flatpickr !== 'undefined') {
+                                flatpickr(".month-picker", {
+                                    locale: "tr",
+                                    dateFormat: "Y-m",
+                                    altFormat: "F Y",
+                                    altInput: true,
+                                    // MonthSelectPlugin support if available
+                                    plugins: typeof monthSelectPlugin !== 'undefined' ? [
+                                        new monthSelectPlugin({
+                                            shorthand: true,
+                                            dateFormat: "Y-m",
+                                            altFormat: "F Y"
+                                        })
+                                    ] : []
+                                });
+                            }
+                        }, 200);
+
+                        // Mod değişimini dinle
+                        $(document).on('change', 'input[name="filter_mode"]', function() {
+                            const mode = $(this).val();
+                            $('.filter-group').addClass('d-none');
+                            $('.filter-' + mode).removeClass('d-none');
+                        });
 
                         // AJAX tabanlı filtreleme
                         $(document).off('submit', '#formKesintiFilter').on('submit', '#formKesintiFilter', function (e) {
                             e.preventDefault();
+                            var mode = $('input[name="filter_mode"]:checked').val();
                             var filter_baslangic = $('#filter_kesinti_baslangic').val();
                             var filter_bitis = $('#filter_kesinti_bitis').val();
                             var filter_donem = $('[name="filter_kesinti_donem"]').val() || '';
+                            var filter_ay_yil = $('#filter_kesinti_ay_yil').val();
 
                             var targetPane = document.getElementById('kesintiler');
                             if (targetPane) {
-                                var url = 'views/personel/get-tab-content.php?tab=kesintiler&id=<?= $id ?>&filter_kesinti_baslangic=' + filter_baslangic + '&filter_kesinti_bitis=' + filter_bitis + '&filter_kesinti_donem=' + filter_donem;
+                                var url = 'views/personel/get-tab-content.php?tab=kesintiler&id=<?= $id ?>' + 
+                                          '&filter_mode=' + mode + 
+                                          '&filter_kesinti_baslangic=' + filter_baslangic + 
+                                          '&filter_kesinti_bitis=' + filter_bitis + 
+                                          '&filter_kesinti_donem=' + filter_donem + 
+                                          '&filter_kesinti_ay_yil=' + filter_ay_yil;
+                                          
                                 targetPane.setAttribute('data-url', url);
                                 targetPane.setAttribute('data-loaded', 'false');
                                 if (typeof window.loadTabContent === 'function') {
@@ -236,7 +268,7 @@ foreach ($kesintiler as $k) {
                                                                 <th>Tekrar</th>
                                                                 <th>Hesaplama</th>
                                                                 <th>Tutar / Oran</th>
-                                                                <th>Tarih</th>
+                                                                <th>Personel / Kayıt Tarihi</th>
                                                                 <th>Dönem</th>
                                                                 <th>Açıklama</th>
                                                                 <th>Durum</th>
@@ -281,7 +313,9 @@ foreach ($kesintiler as $k) {
                                                                                     %<?= number_format($k->oran ?? 0, 2, ',', '.') ?>
                                                                             <?php endif; ?>
                                                                         </td>
-                                                                        <td><?= !empty($k->tarih) ? date('d.m.Y', strtotime($k->tarih)) : '-' ?>
+                                                                        <td>
+                                                                            <div class="fw-bold text-dark"><?= htmlspecialchars($k->kayit_yapan_ad_soyad ?? 'Sistem') ?></div>
+                                                                            <div class="text-muted small"><?= !empty($k->olusturma_tarihi) ? date('d.m.Y H:i', strtotime($k->olusturma_tarihi)) : '-' ?></div>
                                                                         </td>
                                                                         <td>
                                                                             <?php if ($k->tekrar_tipi == 'surekli'): ?>
@@ -358,7 +392,7 @@ foreach ($kesintiler as $k) {
                                     <th>Tekrar</th>
                                     <th>Hesaplama</th>
                                     <th>Tutar / Oran</th>
-                                    <th>Tarih</th>
+                                    <th>Personel / Kayıt Tarihi</th>
                                     <th>Dönem</th>
                                     <th>Açıklama</th>
                                     <th>Durum</th>
@@ -403,7 +437,10 @@ foreach ($kesintiler as $k) {
                                                         %<?= number_format($k->oran ?? 0, 2, ',', '.') ?>
                                                 <?php endif; ?>
                                             </td>
-                                            <td><?= !empty($k->tarih) ? date('d.m.Y', strtotime($k->tarih)) : '-' ?></td>
+                                            <td>
+                                                <div class="fw-bold text-dark"><?= htmlspecialchars($k->kayit_yapan_ad_soyad ?? 'Sistem') ?></div>
+                                                <div class="text-muted small"><?= !empty($k->olusturma_tarihi) ? date('d.m.Y H:i', strtotime($k->olusturma_tarihi)) : '-' ?></div>
+                                            </td>
                                             <td>
                                                 <?php if ($k->tekrar_tipi == 'surekli'): ?>
                                                         <small>

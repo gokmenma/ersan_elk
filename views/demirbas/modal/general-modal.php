@@ -8,12 +8,17 @@ $Tanimlamalar = new TanimlamalarModel();
 $kategoriler = $Tanimlamalar->getDemirbasKategorileri();
 
 // İş emri sonuçlarını al (otomatik zimmet ayarları için)
-$isEmriSonuclari = $Tanimlamalar->getIsEmriSonuclari();
+$isEmriSonuclariList = $Tanimlamalar->getIsEmriSonuclariWithId();
 
 // İş emri sonuçları dropdown için hazırla
 $isEmriOptions = ['' => 'Seçiniz (Yok)'];
-foreach ($isEmriSonuclari as $sonuc) {
-    $isEmriOptions[$sonuc] = $sonuc;
+$isEmriOptionsDus = [];
+foreach ($isEmriSonuclariList as $sonuc) {
+    if (!empty($sonuc->is_emri_sonucu)) {
+        $name = $sonuc->tur_adi . ' - ' . $sonuc->is_emri_sonucu;
+        $isEmriOptions[$sonuc->id] = $name;
+        $isEmriOptionsDus[$sonuc->id] = $name;
+    }
 }
 ?>
 
@@ -197,7 +202,7 @@ foreach ($isEmriSonuclari as $sonuc) {
                                     <div class="row">
                                         <div class="col-md-12 mb-2">
                                             <?php echo Form::FormSelect2(
-                                                'otomatik_zimmet_is_emri',
+                                                'otomatik_zimmet_is_emri_id',
                                                 $isEmriOptions,
                                                 '',
                                                 'Zimmetlenecek İş Emri Sonucu',
@@ -221,7 +226,7 @@ foreach ($isEmriSonuclari as $sonuc) {
                                 </div>
                             </div>
 
-                            <div class="card border">
+                            <div class="card border mb-3">
                                 <div class="card-header bg-light py-2">
                                     <h6 class="mb-0"><i class="bx bx-undo text-success me-2"></i>Otomatik İade Alma</h6>
                                 </div>
@@ -229,7 +234,7 @@ foreach ($isEmriSonuclari as $sonuc) {
                                     <div class="row">
                                         <div class="col-md-12 mb-2">
                                             <?php echo Form::FormSelect2(
-                                                'otomatik_iade_is_emri',
+                                                'otomatik_iade_is_emri_id',
                                                 $isEmriOptions,
                                                 '',
                                                 'İade Alınacak İş Emri Sonucu',
@@ -245,6 +250,35 @@ foreach ($isEmriSonuclari as $sonuc) {
                                         <i class="bx bx-info-circle me-1"></i>
                                         Bu iş emri sonucu geldiğinde, personelden demirbaş otomatik olarak iade alınır
                                         (depoya geri döner).
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div class="card border">
+                                <div class="card-header bg-light py-2">
+                                    <h6 class="mb-0"><i class="bx bx-trash text-danger me-2"></i>Tamamen Düşülecek /
+                                        Kırılma - Çalınma Durumları</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-12 mb-2">
+                                            <?php echo Form::FormMultipleSelect2(
+                                                'otomatik_zimmetten_dus_is_emri_ids',
+                                                $isEmriOptionsDus,
+                                                [],
+                                                'Tamamen Düşülecek İş Emri Sonuçları',
+                                                'trash-2',
+                                                'key',
+                                                '',
+                                                'form-select select2'
+                                            ); ?>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">
+                                        <i class="bx bx-info-circle me-1"></i>
+                                        Bu iş emri sonuçlarından <strong>biri</strong> geldiğinde, personeldeki
+                                        <strong>tüm aparatlar veya zimmetler</strong> stoktan tamamen düşülür. (Aparat
+                                        kırıldı, çalındı vb. durumlar için)
                                     </small>
                                 </div>
                             </div>

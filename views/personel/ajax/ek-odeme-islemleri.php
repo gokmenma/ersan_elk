@@ -47,6 +47,7 @@ try {
                 'tarih' => $_POST['tarih'] ?? date('Y-m-d'),
                 'aciklama' => $_POST['aciklama'] ?? '',
                 'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
+                'kayit_yapan' => $_SESSION['id'] ?? null,
                 'aktif' => 1
             ];
 
@@ -89,7 +90,8 @@ try {
                 'oran' => floatval($_POST['oran'] ?? 0),
                 'tarih' => $_POST['tarih'] ?? date('Y-m-d'),
                 'aciklama' => $_POST['aciklama'] ?? '',
-                'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null
+                'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
+                'kayit_yapan' => $_SESSION['id'] ?? null
             ];
 
             if ($tekrarTipi === 'tek_sefer') {

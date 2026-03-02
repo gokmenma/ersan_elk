@@ -406,6 +406,23 @@ if (true) { // Always use unified logic for all standard tabs
         if (!empty($regionGrouped[$rName])) {
             $teams = $regionGrouped[$rName];
             usort($teams, function ($a, $b) {
+                $teamA = $a['team']->tur_adi ?? '';
+                $teamB = $b['team']->tur_adi ?? '';
+                preg_match('/(?:EK[İI\?]?P-?\s?)(\d+)/ui', $teamA, $matchA);
+                $numA = isset($matchA[1]) ? (int) $matchA[1] : 999999;
+
+                preg_match('/(?:EK[İI\?]?P-?\s?)(\d+)/ui', $teamB, $matchB);
+                $numB = isset($matchB[1]) ? (int) $matchB[1] : 999999;
+
+                if ($numA !== $numB) {
+                    return $numA - $numB;
+                }
+
+                $cmp = strcoll((string) $teamA, (string) $teamB);
+                if ($cmp !== 0) {
+                    return $cmp;
+                }
+
                 return strcoll((string) ($a['personel']->adi_soyadi ?? ''), (string) ($b['personel']->adi_soyadi ?? ''));
             });
             $tableData[] = [
@@ -419,6 +436,23 @@ if (true) { // Always use unified logic for all standard tabs
     // Remaining (Tanımsızlar)
     foreach ($regionGrouped as $rName => $teams) {
         usort($teams, function ($a, $b) {
+            $teamA = $a['team']->tur_adi ?? '';
+            $teamB = $b['team']->tur_adi ?? '';
+            preg_match('/(?:EK[İI\?]?P-?\s?)(\d+)/ui', $teamA, $matchA);
+            $numA = isset($matchA[1]) ? (int) $matchA[1] : 999999;
+
+            preg_match('/(?:EK[İI\?]?P-?\s?)(\d+)/ui', $teamB, $matchB);
+            $numB = isset($matchB[1]) ? (int) $matchB[1] : 999999;
+
+            if ($numA !== $numB) {
+                return $numA - $numB;
+            }
+
+            $cmp = strcoll((string) $teamA, (string) $teamB);
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+
             return strcoll((string) ($a['personel']->adi_soyadi ?? ''), (string) ($b['personel']->adi_soyadi ?? ''));
         });
         $tableData[] = [
@@ -528,8 +562,12 @@ $currentTabName = $tabNames[$activeTab] ?? 'Rapor';
     .sunday-cell.day-bg-alt,
     td.sunday-cell,
     th.sunday-cell {
-        background-color: rgba(244, 106, 106, 0.1) !important;
+        background-image: linear-gradient(rgba(244, 106, 106, 0.1), rgba(244, 106, 106, 0.1)) !important;
         color: #f46a6a !important;
+    }
+
+    #raporTable tbody tr[data-region-id] td:not(.sticky-col-1):not(.sticky-col-2):not(.sticky-col-3):not(.kacakkontrol-name-col):not(.table-light):not(.table-info):not(.table-danger):not(.table-success):not(.table-warning) {
+        background-color: transparent !important;
     }
 
     #raporTable.summary-mode .wt-cell-sub {
@@ -590,7 +628,7 @@ $currentTabName = $tabNames[$activeTab] ?? 'Rapor';
     }
 
     .day-bg-alt {
-        background-color: rgba(0, 0, 0, 0.02) !important;
+        background-image: linear-gradient(rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.03)) !important;
     }
 
     #raporTable thead th {
@@ -918,6 +956,28 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
         </thead>
         <tbody>
             <?php
+            // Renk paletini tanımlayıp bölgelere atayalım
+            $regionColorPalette = [
+                'rgb(227, 242, 253)', // light blue
+                'rgb(243, 229, 245)', // light purple
+                'rgb(232, 245, 233)', // light green
+                'rgb(255, 243, 224)', // light orange
+                'rgb(255, 235, 238)', // light red
+                'rgb(224, 247, 250)', // light cyan
+                'rgb(252, 228, 236)', // light pink
+                'rgb(241, 248, 233)', // light lime
+                'rgb(255, 248, 225)', // light amber
+                'rgb(237, 231, 246)'  // deep purple light
+            ];
+            $regionColorsMap = [];
+            $colorIndex = 0;
+            foreach ($tableData as $item) {
+                if (!isset($regionColorsMap[$item['region']])) {
+                    $regionColorsMap[$item['region']] = $regionColorPalette[$colorIndex % count($regionColorPalette)];
+                    $colorIndex++;
+                }
+            }
+
             $sira = 1;
             $dailyTotals = [];
             foreach ($reportDates as $date) {
@@ -977,16 +1037,17 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     }
                     // Bölge ID'si olarak bölge adının hash'i kullanılıyor
                     $regionId = md5($item['region']);
+                    $rColor = $regionColorsMap[$item['region']] ?? 'transparent';
                     ?>
-                    <tr data-region-id="<?= $regionId ?>">
-                        <td class="sticky-col-1"><?= $sira++ ?></td>
+                    <tr data-region-id="<?= $regionId ?>" style="background-color: <?= $rColor ?>;">
+                        <td class="sticky-col-1" style="background-color: <?= $rColor ?> !important;"><?= $sira++ ?></td>
                         <?php if ($activeTab !== 'kacakkontrol'): ?>
-                            <td class="sticky-col-2">
+                            <td class="sticky-col-2" style="background-color: <?= $rColor ?> !important;">
                                 <?= shortenTeamName($team->tur_adi, $firmaAdi) ?>
                             </td>
                         <?php endif; ?>
-                        <td
-                            class="<?= ($activeTab === 'kacakkontrol') ? 'kacakkontrol-name-col' : 'sticky-col-3' ?> text-start">
+                        <td class="<?= ($activeTab === 'kacakkontrol') ? 'kacakkontrol-name-col' : 'sticky-col-3' ?> text-start"
+                            style="background-color: <?= $rColor ?> !important;">
                             <?php if ($activeTab === 'kacakkontrol'): ?>
                                 <?php
                                 $pIdsStr = $kacakPersonelMapping[$team->tur_adi] ?? '';
@@ -1107,8 +1168,11 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                         <?php endif; ?>
                         <?php if ($firstRow): ?>
                             <td rowspan="<?= count($item['teams']) ?>" class="fw-bold region-total-cell"
-                                data-region-id="<?= $regionId ?>"><?= $regionTotal ?: '' ?></td>
-                            <td rowspan="<?= count($item['teams']) ?>" class="fw-bold text-uppercase" style="font-size: 9px;">
+                                data-region-id="<?= $regionId ?>" style="background-color: <?= $rColor ?>; vertical-align: middle;">
+                                <?= $regionTotal ?: '' ?>
+                            </td>
+                            <td rowspan="<?= count($item['teams']) ?>" class="fw-bold text-uppercase"
+                                style="background-color: <?= $rColor ?>; font-size: 9px; vertical-align: middle;">
                                 <?= $item['region'] ?>
                             </td>
                             <?php $firstRow = false; ?>

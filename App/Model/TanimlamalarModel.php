@@ -510,6 +510,25 @@ class TanimlamalarModel extends Model
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
+    /**
+     * İş emri sonuçlarını id ve adıyla getirir (Demirbaş otomatik zimmet için)
+     * @return array İş emri sonuçları listesi (id, tur_adi, is_emri_sonucu)
+     */
+    public function getIsEmriSonuclariWithId()
+    {
+        $sql = "SELECT id, is_emri_sonucu, tur_adi 
+                FROM {$this->table} 
+                WHERE grup = 'is_turu' 
+                AND is_emri_sonucu IS NOT NULL 
+                AND is_emri_sonucu != '' 
+                AND firma_id = ? 
+                AND silinme_tarihi IS NULL 
+                ORDER BY tur_adi ASC, is_emri_sonucu ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$_SESSION['firma_id']]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
 
     /**
      * Departmana göre unvan/ücret tanımlamalarını getirir

@@ -586,8 +586,8 @@ function initSelect2() {
   }
 
   // Otomatik Zimmet Ayarları Select2'leri
-  if ($("#otomatik_zimmet_is_emri").length) {
-    $("#otomatik_zimmet_is_emri").select2({
+  if ($("#otomatik_zimmet_is_emri_id").length) {
+    $("#otomatik_zimmet_is_emri_id").select2({
       dropdownParent: $("#demirbasModal"),
       placeholder: "Seçiniz (Yok)",
       allowClear: true,
@@ -595,8 +595,17 @@ function initSelect2() {
     });
   }
 
-  if ($("#otomatik_iade_is_emri").length) {
-    $("#otomatik_iade_is_emri").select2({
+  if ($("#otomatik_iade_is_emri_id").length) {
+    $("#otomatik_iade_is_emri_id").select2({
+      dropdownParent: $("#demirbasModal"),
+      placeholder: "Seçiniz (Yok)",
+      allowClear: true,
+      width: "100%",
+    });
+  }
+
+  if ($("#otomatik_zimmetten_dus_is_emri_ids").length) {
+    $("#otomatik_zimmetten_dus_is_emri_ids").select2({
       dropdownParent: $("#demirbasModal"),
       placeholder: "Seçiniz (Yok)",
       allowClear: true,
@@ -764,40 +773,9 @@ function initSelect2() {
 }
 
 // ============== İŞ EMRİ SONUÇLARINI GETİR ==============
+// PHP tarafında yüklendiği için artık JS den çekmeye gerek yok, ancak başka yer kullanıyorsa kalabilir.
 function fetchIsEmriSonuclari(callback) {
-  fetch(zimmetUrl + "?action=is-emri-sonuclari")
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.status === "success") {
-        const options = data.data;
-        const selects = ["#otomatik_zimmet_is_emri", "#otomatik_iade_is_emri"];
-
-        selects.forEach((selector) => {
-          const $select = $(selector);
-          if ($select.length) {
-            // Mevcut seçili değeri sakla
-            const currentVal = $select.val();
-
-            // Seçenekleri temizle ve yeniden doldur
-            $select.empty();
-            options.forEach((opt) => {
-              const selected = opt.id === currentVal ? "selected" : "";
-              $select.append(
-                new Option(opt.text, opt.id, false, opt.id === currentVal),
-              );
-            });
-
-            // Tekrar tetikle
-            if (currentVal) {
-              $select.val(currentVal).trigger("change.select2");
-            }
-          }
-        });
-
-        if (typeof callback === "function") callback();
-      }
-    })
-    .catch((err) => console.error("İş emri sonuçları yüklenemedi:", err));
+  if (typeof callback === "function") callback();
 }
 
 // ============== TAB DEĞİŞİKLİĞİNDE ==============
@@ -1155,8 +1133,8 @@ $(document).on("click", ".duzenle", function (e) {
               } else if (
                 key === "kategori_id" ||
                 key === "durum" ||
-                key === "otomatik_zimmet_is_emri" ||
-                key === "otomatik_iade_is_emri"
+                key === "otomatik_zimmet_is_emri_id" ||
+                key === "otomatik_iade_is_emri_id"
               ) {
                 // Select2 alanları için
                 $("#" + key)
@@ -1169,6 +1147,21 @@ $(document).on("click", ".duzenle", function (e) {
                   } else {
                     $("#" + key).prop("disabled", false);
                   }
+                }
+              } else if (key === "otomatik_zimmetten_dus_is_emri_ids") {
+                // Çoklu select2 - virgülle ayrılmış ID'leri diziye çevir
+                if (d[key]) {
+                  let ids = String(d[key])
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter((s) => s !== "");
+                  $("#otomatik_zimmetten_dus_is_emri_ids")
+                    .val(ids)
+                    .trigger("change");
+                } else {
+                  $("#otomatik_zimmetten_dus_is_emri_ids")
+                    .val(null)
+                    .trigger("change");
                 }
               } else {
                 $("#" + key).val(d[key]);
@@ -1228,8 +1221,9 @@ function resetDemirbasForm() {
   $("#miktar").val(1);
   $("#minimun_stok_uyari_miktari").val(0);
   // Otomatik zimmet ayarları
-  $("#otomatik_zimmet_is_emri").val("").trigger("change");
-  $("#otomatik_iade_is_emri").val("").trigger("change");
+  $("#otomatik_zimmet_is_emri_id").val("").trigger("change");
+  $("#otomatik_iade_is_emri_id").val("").trigger("change");
+  $("#otomatik_zimmetten_dus_is_emri_ids").val(null).trigger("change");
   // Toplu seri alanlarını sıfırla
   $("#seriModTekli").prop("checked", true).trigger("change");
   $("#seriTekliAlani").show();
@@ -1897,23 +1891,46 @@ $(document).on("click", ".zimmet-detay", function (e) {
         let gecmis = data.gecmis;
         let hareketler = data.hareketler;
 
-        // Üst bilgi kartını doldur
+        // Üst bilgi kartını ve özet kartlarını doldur
         $("#detay_demirbas_adi").text(d.demirbas_detay.demirbas_adi || "-");
         $("#detay_marka_model").text(
           (d.demirbas_detay.marka || "") + " " + (d.demirbas_detay.model || ""),
         );
         $("#detay_seri_no").text(d.demirbas_detay.seri_no || "-");
         $("#detay_durum_badge").html(d.durum_badge);
-        $("#detay_personel").text(d.personel_detay.adi_soyadi || "-");
+        $("#detay_personel_adi").text(d.personel_detay.adi_soyadi || "-");
+
+        // Özet Hesabı (Zimmet Detayı)
+        let toplamZimmet = parseInt(d.teslim_miktar || 0);
+        let tuketilen = parseInt(d.iade_miktar || 0); // Bu iade_miktar tüketilen (sarf) kısımdır
+        let kalan = toplamZimmet - tuketilen;
+
+        $("#ozet_toplam").text(toplamZimmet);
+        $("#ozet_tuketilen").text(tuketilen);
+        $("#ozet_kalan").text(kalan);
 
         // 1. HAREKET DETAYLARI TABLOSUNU DOLDUR
         let hBody = $("#zimmetHareketBody");
         hBody.empty();
         if (hareketler && hareketler.length > 0) {
+          // getZimmetHareketleri ASC (eskiden yeniye) geliyor.
+          // İlk kayıt ana zimmet kaydıdır, onu yukarıda gösterdiğimiz için tabloda skip ediyoruz.
+
+          let ilkZimmetAtlandi = false;
+
           hareketler.forEach((h) => {
+            // İlk "zimmet" hareketini atla
+            if (
+              !ilkZimmetAtlandi &&
+              (h.hareket_tipi === "zimmet" || h.hareket_tipi === "Zimmet")
+            ) {
+              ilkZimmetAtlandi = true;
+              return;
+            }
+
             let deleteBtn = "";
-            if (h.hareket_tipi === "iade") {
-              deleteBtn = `<button class="btn btn-sm btn-outline-danger zimmet-hareket-sil" data-id="${h.id}" data-type="iade" title="İadeyi Sil"><i class="bx bx-trash"></i></button>`;
+            if (h.hareket_tipi === "iade" || h.hareket_tipi === "sarf") {
+              deleteBtn = `<button class="btn btn-sm btn-outline-danger zimmet-hareket-sil" data-id="${h.id}" data-type="${h.hareket_tipi}" title="Geri Al / Sil"><i class="bx bx-trash"></i></button>`;
             }
 
             let row = `
@@ -1922,15 +1939,20 @@ $(document).on("click", ".zimmet-detay", function (e) {
                 <td class="text-center fw-bold">${h.miktar}</td>
                 <td>${h.tarih_format}</td>
                 <td class="small">${h.aciklama || ""}</td>
-                <td>${h.kaynak_badge}</td>
                 <td class="text-center">${deleteBtn}</td>
               </tr>
             `;
             hBody.append(row);
           });
+
+          if (hBody.children().length === 0) {
+            hBody.append(
+              '<tr><td colspan="5" class="text-center text-muted border-0 py-3 italic">Başka bir hareket bulunmuyor.</td></tr>',
+            );
+          }
         } else {
           hBody.append(
-            '<tr><td colspan="6" class="text-center text-muted">Hareket kaydı bulunamadı.</td></tr>',
+            '<tr><td colspan="5" class="text-center text-muted py-3">Hareket kaydı bulunamadı.</td></tr>',
           );
         }
 
@@ -1958,6 +1980,10 @@ $(document).on("click", ".zimmet-detay", function (e) {
           tbody.append(
             '<tr><td colspan="6" class="text-center text-muted py-3">Geçmiş kaydı bulunamadı.</td></tr>',
           );
+        }
+
+        if (typeof feather !== "undefined") {
+          setTimeout(() => feather.replace(), 10);
         }
 
         $("#zimmetDetayModal").modal("show");

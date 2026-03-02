@@ -266,7 +266,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 // İşlemleri biriktir (iki aşamalı işleme için)
                 $pendingMovements[] = [
                     'personel_id' => $personelId,
-                    'is_emri_sonucu' => $isEmriSonucu,
+                    'is_emri_sonucu_id' => $isEmriSonucuId,
                     'tarih' => $uploadDate,
                     'islem_id' => $islemId,
                     'miktar' => $sonuclanmis
@@ -278,12 +278,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         if (!empty($pendingMovements)) {
             // 1. Aşama: Önce tüm satırların ZİMMETLERİNİ işle
             foreach ($pendingMovements as $pm) {
-                $Zimmet->checkAndProcessAutomaticZimmet($pm['personel_id'], $pm['is_emri_sonucu'], $pm['tarih'], $pm['islem_id'], $pm['miktar'], 'zimmet');
+                $Zimmet->checkAndProcessAutomaticZimmet($pm['personel_id'], $pm['is_emri_sonucu_id'], $pm['tarih'], $pm['islem_id'], $pm['miktar'], 'zimmet');
             }
 
             // 2. Aşama: Sonra tüm satırların İADELERİNİ işle
             foreach ($pendingMovements as $pm) {
-                $Zimmet->checkAndProcessAutomaticZimmet($pm['personel_id'], $pm['is_emri_sonucu'], $pm['tarih'], $pm['islem_id'], $pm['miktar'], 'iade');
+                $Zimmet->checkAndProcessAutomaticZimmet($pm['personel_id'], $pm['is_emri_sonucu_id'], $pm['tarih'], $pm['islem_id'], $pm['miktar'], 'iade');
+            }
+
+            // 3. Aşama: Zimmetten düşme işlemlerini yap (kırılma, çalınma vb.)
+            foreach ($pendingMovements as $pm) {
+                $Zimmet->checkAndProcessAutomaticZimmet($pm['personel_id'], $pm['is_emri_sonucu_id'], $pm['tarih'], $pm['islem_id'], $pm['miktar'], 'dus');
             }
         }
 
@@ -1866,9 +1871,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $insertBatch[] = [$islemId, $personelId, $defId, $firmaId, $isEmriSonucuId, $isEmriTipi, $ekipKoduStr, $isEmriSonucu, $sonuclanmis, $acikOlanlar, $normDate];
             $yeniKayit++;
 
-            // Demirbaş işlemi
-            if ($personelId > 0)
-                $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucu, $normDate, $islemId, $sonuclanmis);
+            // Demirbaş işlemi (zimmet, iade ve düşme)
+            if ($personelId > 0 && $isEmriSonucuId > 0)
+                $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucuId, $normDate, $islemId, $sonuclanmis);
         }
 
         // 4. Toplu Kayıt (Yeni olanlar) ve Temizleme işlemi

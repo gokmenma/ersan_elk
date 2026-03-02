@@ -60,8 +60,9 @@ if ($action == "demirbas-kaydet") {
             "minimun_stok_uyari_miktari" => intval($_POST["minimun_stok_uyari_miktari"] ?? 0),
             "durum" => $_POST["durum"] ?? 'aktif',
             "aciklama" => $_POST["aciklama"] ?? null,
-            "otomatik_zimmet_is_emri" => !empty($_POST["otomatik_zimmet_is_emri"]) ? $_POST["otomatik_zimmet_is_emri"] : null,
-            "otomatik_iade_is_emri" => !empty($_POST["otomatik_iade_is_emri"]) ? $_POST["otomatik_iade_is_emri"] : null,
+            "otomatik_zimmet_is_emri_id" => !empty($_POST["otomatik_zimmet_is_emri_id"]) ? intval($_POST["otomatik_zimmet_is_emri_id"]) : null,
+            "otomatik_iade_is_emri_id" => !empty($_POST["otomatik_iade_is_emri_id"]) ? intval($_POST["otomatik_iade_is_emri_id"]) : null,
+            "otomatik_zimmetten_dus_is_emri_ids" => !empty($_POST["otomatik_zimmetten_dus_is_emri_ids"]) ? implode(',', $_POST["otomatik_zimmetten_dus_is_emri_ids"]) : null,
         ];
 
         // Yeni kayıtta kalan_miktar = miktar
@@ -113,8 +114,9 @@ if ($action == "demirbas-toplu-kaydet") {
             "edinme_tutari" => Helper::formattedMoneyToNumber($_POST["edinme_tutari"] ?? 0),
             "durum" => $_POST["durum"] ?? 'aktif',
             "aciklama" => $_POST["aciklama"] ?? null,
-            "otomatik_zimmet_is_emri" => !empty($_POST["otomatik_zimmet_is_emri"]) ? $_POST["otomatik_zimmet_is_emri"] : null,
-            "otomatik_iade_is_emri" => !empty($_POST["otomatik_iade_is_emri"]) ? $_POST["otomatik_iade_is_emri"] : null,
+            "otomatik_zimmet_is_emri_id" => !empty($_POST["otomatik_zimmet_is_emri_id"]) ? intval($_POST["otomatik_zimmet_is_emri_id"]) : null,
+            "otomatik_iade_is_emri_id" => !empty($_POST["otomatik_iade_is_emri_id"]) ? intval($_POST["otomatik_iade_is_emri_id"]) : null,
+            "otomatik_zimmetten_dus_is_emri_ids" => !empty($_POST["otomatik_zimmetten_dus_is_emri_ids"]) ? implode(',', $_POST["otomatik_zimmetten_dus_is_emri_ids"]) : null,
         ];
 
         $successCount = 0;
@@ -211,6 +213,27 @@ if ($action == "demirbas-getir") {
     try {
         $data = $Demirbas->find($id);
         if ($data) {
+            // Eski text alanlarını yeni ID alanlarına otomatik eşle (geriye uyumluluk)
+            if (empty($data->otomatik_zimmet_is_emri_id) && !empty($data->otomatik_zimmet_is_emri)) {
+                $matchSql = $Demirbas->db->prepare("SELECT id FROM tanimlamalar WHERE TRIM(is_emri_sonucu) = ? AND grup = 'is_turu' AND firma_id = ? AND silinme_tarihi IS NULL LIMIT 1");
+                $matchSql->execute([trim($data->otomatik_zimmet_is_emri), $_SESSION['firma_id']]);
+                $matchId = $matchSql->fetchColumn();
+                if ($matchId) {
+                    $data->otomatik_zimmet_is_emri_id = $matchId;
+                    // Veritabanını da güncelle (bir kerelik migration)
+                    $Demirbas->db->prepare("UPDATE demirbas SET otomatik_zimmet_is_emri_id = ? WHERE id = ?")->execute([$matchId, $id]);
+                }
+            }
+            if (empty($data->otomatik_iade_is_emri_id) && !empty($data->otomatik_iade_is_emri)) {
+                $matchSql = $Demirbas->db->prepare("SELECT id FROM tanimlamalar WHERE TRIM(is_emri_sonucu) = ? AND grup = 'is_turu' AND firma_id = ? AND silinme_tarihi IS NULL LIMIT 1");
+                $matchSql->execute([trim($data->otomatik_iade_is_emri), $_SESSION['firma_id']]);
+                $matchId = $matchSql->fetchColumn();
+                if ($matchId) {
+                    $data->otomatik_iade_is_emri_id = $matchId;
+                    // Veritabanını da güncelle (bir kerelik migration)
+                    $Demirbas->db->prepare("UPDATE demirbas SET otomatik_iade_is_emri_id = ? WHERE id = ?")->execute([$matchId, $id]);
+                }
+            }
             jsonResponse("success", "Başarılı", ["data" => $data]);
         } else {
             jsonResponse("error", "Demirbaş bulunamadı.");
@@ -1225,7 +1248,7 @@ if ($action == "zimmet-detay") {
             foreach ($hareketler as $h) {
                 $h->id = Security::encrypt($h->id);
                 $h->tarih_format = date('d.m.Y', strtotime($h->tarih));
-                $h->hareket_badge = DemirbasHareketModel::getHareketTipiBadge($h->hareket_tipi);
+                $h->hareket_badge = DemirbasHareketModel::getHareketTipiBadge($h->hareket_tipi, $h->aciklama);
                 $h->kaynak_badge = DemirbasHareketModel::getKaynakBadge($h->kaynak);
             }
 

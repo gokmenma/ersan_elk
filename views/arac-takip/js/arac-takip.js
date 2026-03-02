@@ -1728,6 +1728,12 @@ $(document).ready(function () {
     const id = $(this).data("id");
     if (id) AracTakip.aracDuzenle(id);
   });
+  $(document).on("click", ".arac-sil", function (e) {
+    e.preventDefault();
+    const id = $(this).data("id");
+    const plaka = $(this).data("plaka");
+    if (id) AracTakip.aracSil(id, plaka);
+  });
   $(document).on("click", ".yakit-duzenle", function (e) {
     e.preventDefault();
     const id = $(this).data("id");

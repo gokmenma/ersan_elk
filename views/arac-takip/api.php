@@ -89,15 +89,60 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                 // Silmeden önce araç bilgisini al
                 $silinecekArac = $Arac->getById($id);
-                $Arac->softDelete($id);
+                if (!$silinecekArac) {
+                    throw new Exception("Araç bulunamadı.");
+                }
 
-                // Logla
-                $SystemLog = new SystemLogModel();
-                $userId = $_SESSION['user_id'] ?? 0;
-                $plaka = $silinecekArac->plaka ?? 'Bilinmiyor';
-                $SystemLog->logAction($userId, 'Araç Silme', "{$plaka} plakalı araç silindi.", SystemLogModel::LEVEL_IMPORTANT);
+                $pdo = $Arac->getDb();
+                $kullaniciId = $_SESSION['user_id'] ?? null;
 
-                echo json_encode(['status' => 'success', 'message' => 'Araç başarıyla silindi.']);
+                try {
+                    $pdo->beginTransaction();
+
+                    // 1. silen_kullanici sütunu olan tablolar
+                    $tablesWithUser = [
+                        'arac_zimmetleri',
+                        'arac_yakit_kayitlari',
+                        'arac_servis_kayitlari',
+                        'arac_sigorta_kayitlari'
+                    ];
+
+                    foreach ($tablesWithUser as $table) {
+                        $stmt = $pdo->prepare("UPDATE {$table} SET silinme_tarihi = NOW(), silen_kullanici = ? WHERE arac_id = ? AND silinme_tarihi IS NULL");
+                        $stmt->execute([$kullaniciId, $id]);
+                    }
+
+                    // 2. Sadece silinme_tarihi sütunu olan tablolar
+                    $tablesWithoutUser = [
+                        'arac_km_kayitlari',
+                        'arac_bakim_kayitlari'
+                    ];
+
+                    foreach ($tablesWithoutUser as $table) {
+                        $stmt = $pdo->prepare("UPDATE {$table} SET silinme_tarihi = NOW() WHERE arac_id = ? AND silinme_tarihi IS NULL");
+                        $stmt->execute([$id]);
+                    }
+
+                    // 3. En son ana tabloyu sil (araclar tablosunda silen_kullanici yok)
+                    $stmtArac = $pdo->prepare("UPDATE araclar SET silinme_tarihi = NOW() WHERE id = ? AND silinme_tarihi IS NULL");
+                    $stmtArac->execute([$id]);
+
+                    $pdo->commit();
+
+                    // Logla
+                    $SystemLog = new SystemLogModel();
+                    $userId = $_SESSION['user_id'] ?? 0;
+                    $plaka = $silinecekArac->plaka ?? 'Bilinmiyor';
+                    $SystemLog->logAction($userId, 'Araç Silme', "{$plaka} plakalı araç tüm verileriyle beraber silindi.", SystemLogModel::LEVEL_IMPORTANT);
+
+                    echo json_encode(['status' => 'success', 'message' => 'Araç başarıyla silindi.']);
+
+                } catch (Exception $e) {
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
+                    throw new Exception("Araç silinirken bir hata oluştu: " . $e->getMessage());
+                }
                 break;
 
             case 'arac-detay':

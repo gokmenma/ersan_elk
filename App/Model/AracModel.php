@@ -243,8 +243,9 @@ class AracModel extends Model
      */
     public function plakaKontrol($plaka, $excludeId = null)
     {
-        $sql = "SELECT id FROM {$this->table} WHERE plaka = :plaka AND firma_id = :firma_id AND silinme_tarihi IS NULL";
-        $params = ['plaka' => $plaka, 'firma_id' => $_SESSION['firma_id']];
+        $plakaBosluksuz = str_replace(' ', '', $plaka);
+        $sql = "SELECT id FROM {$this->table} WHERE REPLACE(plaka, ' ', '') = :plaka AND firma_id = :firma_id AND silinme_tarihi IS NULL";
+        $params = ['plaka' => $plakaBosluksuz, 'firma_id' => $_SESSION['firma_id']];
 
         if ($excludeId) {
             $sql .= " AND id != :exclude_id";

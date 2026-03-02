@@ -55,6 +55,7 @@ try {
                 'aciklama' => $_POST['aciklama'] ?? '',
                 'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
                 'icra_id' => !empty($_POST['icra_id']) ? intval($_POST['icra_id']) : null,
+                'kayit_yapan' => $_SESSION['id'] ?? null,
                 'aktif' => 1
             ];
 
@@ -98,7 +99,8 @@ try {
                 'tarih' => $_POST['tarih'] ?? date('Y-m-d'),
                 'aciklama' => $_POST['aciklama'] ?? '',
                 'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
-                'icra_id' => !empty($_POST['icra_id']) ? intval($_POST['icra_id']) : null
+                'icra_id' => !empty($_POST['icra_id']) ? intval($_POST['icra_id']) : null,
+                'kayit_yapan' => $_SESSION['id'] ?? null
             ];
 
             if ($tekrarTipi === 'tek_sefer') {
