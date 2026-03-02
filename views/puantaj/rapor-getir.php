@@ -69,20 +69,34 @@ if (count($reportDates) > 0) {
 
 $daysCount = count($reportDates);
 
-// Fetch Manuel Düşüm totals for the range for all relevant tabs
 $manuelDusumMap = [];
-if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma'])) {
-    $sqlDusum = "SELECT personel_id, ekip_kodu_id, SUM(ABS(sonuclanmis)) as total_dusum 
-                 FROM yapilan_isler 
-                 WHERE firma_id = ? 
-                 AND is_emri_tipi = 'Manuel Düşüm' 
-                 AND tarih BETWEEN ? AND ? 
-                 AND silinme_tarihi IS NULL 
-                 GROUP BY personel_id, ekip_kodu_id";
-    $stmtDusum = $Puantaj->db->prepare($sqlDusum);
-    $stmtDusum->execute([$_SESSION['firma_id'], $startDateStr, $endDateStr]);
-    while ($row = $stmtDusum->fetch(PDO::FETCH_OBJ)) {
-        $manuelDusumMap[$row->personel_id][$row->ekip_kodu_id] = $row->total_dusum;
+if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])) {
+    if ($activeTab === 'kacakkontrol') {
+        $sqlDusum = "SELECT ekip_adi as ekip_kodu_id, SUM(ABS(sayi)) as total_dusum 
+                     FROM kacak_kontrol 
+                     WHERE firma_id = ? 
+                     AND aciklama = 'Manuel Düşüm' 
+                     AND tarih BETWEEN ? AND ? 
+                     AND silinme_tarihi IS NULL 
+                     GROUP BY ekip_adi";
+        $stmtDusum = $Puantaj->db->prepare($sqlDusum);
+        $stmtDusum->execute([$_SESSION['firma_id'], $startDateStr, $endDateStr]);
+        while ($row = $stmtDusum->fetch(PDO::FETCH_OBJ)) {
+            $manuelDusumMap[0][$row->ekip_kodu_id] = $row->total_dusum;
+        }
+    } else {
+        $sqlDusum = "SELECT personel_id, ekip_kodu_id, SUM(ABS(sonuclanmis)) as total_dusum 
+                    FROM yapilan_isler 
+                    WHERE firma_id = ? 
+                    AND is_emri_tipi = 'Manuel Düşüm' 
+                    AND tarih BETWEEN ? AND ? 
+                    AND silinme_tarihi IS NULL 
+                    GROUP BY personel_id, ekip_kodu_id";
+        $stmtDusum = $Puantaj->db->prepare($sqlDusum);
+        $stmtDusum->execute([$_SESSION['firma_id'], $startDateStr, $endDateStr]);
+        while ($row = $stmtDusum->fetch(PDO::FETCH_OBJ)) {
+            $manuelDusumMap[$row->personel_id][$row->ekip_kodu_id] = $row->total_dusum;
+        }
     }
 }
 
@@ -244,7 +258,7 @@ if (true) { // Always use unified logic for all standard tabs
 
                 $validPairs['kacak_' . $teamName] = [
                     'pId' => 'kacak_' . $teamName,
-                    'tId' => $tId,
+                    'tId' => $teamName,
                     'isKacak' => true,
                     'teamName' => $teamName
                 ];
@@ -883,7 +897,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                 <?php if ($hasSubCols): ?>
                     <th colspan="<?= $subColCount ?>" id="actionTotalsHeader">İŞLEM TOPLAMLARI</th><?php endif; ?>
                 <th>TOPLAM</th>
-                <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma'])): ?>
+                <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])): ?>
                     <th>(-) Sayı</th>
                     <th>Kalan</th>
                 <?php endif; ?>
@@ -946,7 +960,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                 class="vertical-text"><?= $wt['code'] ?></span></th><?php endforeach; ?>
                 <?php endif; ?>
                 <th></th>
-                <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma'])): ?>
+                <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])): ?>
                     <th></th>
                     <th></th>
                 <?php endif; ?>
@@ -1153,14 +1167,18 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                         <?php endif; ?>
 
                         <td class="table-light fw-bold row-total-cell"><?= $personelTotal ?: '' ?></td>
-                        <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma'])): ?>
+                        <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])): ?>
                             <?php
-                            $dusum = $manuelDusumMap[$pId][$tId] ?? 0;
+                            if ($activeTab === 'kacakkontrol') {
+                                $dusum = $manuelDusumMap[0][$tId] ?? 0;
+                            } else {
+                                $dusum = $manuelDusumMap[$pId][$tId] ?? 0;
+                            }
                             ?>
                             <td class="table-danger" style="width: 80px;">
                                 <input type="number" class="form-control form-control-sm text-center fw-bold manual-dusum-input"
-                                    data-pid="<?= $pId ?>" data-tid="<?= $tId ?>" value="<?= $dusum ?: '' ?>" min="0"
-                                    style="width: 70px; display:inline-block; padding: 2px;">
+                                    data-pid="<?= ($activeTab === 'kacakkontrol') ? 0 : $pId ?>" data-tid="<?= $tId ?>"
+                                    value="<?= $dusum ?: '' ?>" min="0" style="width: 70px; display:inline-block; padding: 2px;">
                             </td>
                             <td class="table-success fw-bold kalan-toplam-cell">
                                 <?= $personelTotal - $dusum ?>
@@ -1225,7 +1243,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     <?php endforeach; ?>
                     <td class="table-warning fw-bold action-types-grand-total"><?= $allActionTypesGrandTotal ?: '' ?>
                     </td>
-                    <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma'])): ?>
+                    <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])): ?>
                         <td colspan="2"></td>
                     <?php endif; ?>
                     <td colspan="2"></td>
@@ -1253,7 +1271,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     </td>
                 <?php endif; ?>
                 <td class="grand-total-cell"><?= number_format($grandTotal, 0, '', '') ?></td>
-                <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma'])): ?>
+                <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])): ?>
                     <?php
                     $grandDusumVal = 0;
                     if (isset($manuelDusumMap)) {
@@ -1379,6 +1397,16 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
 
     $(document).off('change', '.manual-dusum-input').on('change', '.manual-dusum-input', function () {
         const $input = $(this);
+        saveManualDusum($input);
+    });
+
+    $(document).off('keydown', '.manual-dusum-input').on('keydown', '.manual-dusum-input', function (e) {
+        if (e.key === 'Enter') {
+            $(this).blur(); // Trigger change
+        }
+    });
+
+    function saveManualDusum($input) {
         const pId = $input.data('pid');
         const tId = $input.data('tid');
         const dusumValue = parseInt($input.val()) || 0;
@@ -1394,11 +1422,35 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                 ekip_kodu_id: tId,
                 dusum_value: dusumValue,
                 year: '<?= $year ?>',
-                month: '<?= $month ?>'
+                month: '<?= $month ?>',
+                tab: '<?= $activeTab ?>'
             },
-            success: function (res) { }
+            dataType: 'json',
+            success: function (res) {
+                if (res.status === 'success') {
+                    if (typeof Toastify !== 'undefined') {
+                        Toastify({
+                            text: "Kayıt işlemi başarıyla tamamlandı",
+                            duration: 2000,
+                            gravity: "top",
+                            position: "right",
+                            backgroundColor: "#34c38f",
+                        }).showToast();
+                    }
+                } else {
+                    if (typeof Toastify !== 'undefined') {
+                        Toastify({
+                            text: "Hata: " + (res.message || "Kaydedilemedi"),
+                            duration: 3000,
+                            gravity: "top",
+                            position: "right",
+                            backgroundColor: "#f46a6a",
+                        }).showToast();
+                    }
+                }
+            }
         });
-    });
+    }
 
     function updateDynamicTotals() {
         const table = document.getElementById('raporTable');
@@ -1481,7 +1533,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             if (totalCell) totalCell.textContent = rowTotal || '';
             overallGrandTotal += rowTotal;
 
-            if (['kesme', 'okuma', 'sokme_takma'].includes(activeTab)) {
+            if (['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'].includes(activeTab)) {
                 // Manuel düşüm ve Kalan sütunları için toplam hesaplama
                 const dusumInput = row.querySelector('.manual-dusum-input');
                 let dusumVal = 0;
@@ -1548,7 +1600,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
         const grandRegionCell = table.querySelector('.grand-region-total-cell');
         if (grandRegionCell) grandRegionCell.textContent = overallGrandTotal || '';
 
-        if (['kesme', 'okuma', 'sokme_takma'].includes(activeTab)) {
+        if (['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'].includes(activeTab)) {
             const gdCell = table.querySelector('.grand-dusum-cell');
             if (gdCell) gdCell.textContent = overallGrandDusum || '0';
             const gkCell = table.querySelector('.grand-kalan-cell');

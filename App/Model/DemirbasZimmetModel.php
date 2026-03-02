@@ -871,15 +871,15 @@ class DemirbasZimmetModel extends Model
         // Tetikleyicileri bir kez çek ve cache'le (Performans için) - ID bazlı
         if (self::$_autoTriggers === null) {
             $sql = $this->db->prepare("
-                SELECT d.id, d.demirbas_adi, d.otomatik_zimmet_is_emri_id, d.otomatik_iade_is_emri_id, 
+                SELECT d.id, d.demirbas_adi, d.otomatik_zimmet_is_emri_ids, d.otomatik_iade_is_emri_ids, 
                        d.otomatik_zimmetten_dus_is_emri_ids, d.kategori_id,
                        COALESCE(k.tur_adi, '') as kategori_adi,
                        d.otomatik_zimmet_is_emri, d.otomatik_iade_is_emri
                 FROM demirbas d
                 LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
                 WHERE (
-                    (d.otomatik_zimmet_is_emri_id IS NOT NULL)
-                    OR (d.otomatik_iade_is_emri_id IS NOT NULL)
+                    (d.otomatik_zimmet_is_emri_ids IS NOT NULL AND d.otomatik_zimmet_is_emri_ids != '')
+                    OR (d.otomatik_iade_is_emri_ids IS NOT NULL AND d.otomatik_iade_is_emri_ids != '')
                     OR (d.otomatik_zimmetten_dus_is_emri_ids IS NOT NULL AND d.otomatik_zimmetten_dus_is_emri_ids != '')
                     OR (d.otomatik_zimmet_is_emri IS NOT NULL AND d.otomatik_zimmet_is_emri != '')
                     OR (d.otomatik_iade_is_emri IS NOT NULL AND d.otomatik_iade_is_emri != '')
@@ -915,13 +915,21 @@ class DemirbasZimmetModel extends Model
         $dusAdaylari = [];
 
         foreach (self::$_autoTriggers as $t) {
-            // ID bazlı eşleşme (yeni sistem)
+            // ID bazlı eşleşme (yeni sistem - tüm alanlar çoklu)
             if ($incomingId) {
-                if ($t->otomatik_zimmet_is_emri_id && (int) $t->otomatik_zimmet_is_emri_id === $incomingId) {
-                    $zimmetAdaylari[] = $t;
+                // Zimmet - virgülle ayrılmış ID listesi
+                if (!empty($t->otomatik_zimmet_is_emri_ids)) {
+                    $zimmetIds = array_map('intval', array_filter(explode(',', $t->otomatik_zimmet_is_emri_ids)));
+                    if (in_array($incomingId, $zimmetIds)) {
+                        $zimmetAdaylari[] = $t;
+                    }
                 }
-                if ($t->otomatik_iade_is_emri_id && (int) $t->otomatik_iade_is_emri_id === $incomingId) {
-                    $iadeAdaylari[] = $t;
+                // İade - virgülle ayrılmış ID listesi
+                if (!empty($t->otomatik_iade_is_emri_ids)) {
+                    $iadeIds = array_map('intval', array_filter(explode(',', $t->otomatik_iade_is_emri_ids)));
+                    if (in_array($incomingId, $iadeIds)) {
+                        $iadeAdaylari[] = $t;
+                    }
                 }
                 // Zimmetten düşme - virgülle ayrılmış ID listesi
                 if (!empty($t->otomatik_zimmetten_dus_is_emri_ids)) {
@@ -933,12 +941,12 @@ class DemirbasZimmetModel extends Model
             }
 
             // Text bazlı eşleşme (eski sistem - geriye uyumluluk)
-            if ($t->otomatik_zimmet_is_emri && !$t->otomatik_zimmet_is_emri_id && mb_strtolower(trim($t->otomatik_zimmet_is_emri), 'UTF-8') === $searchSonucLower) {
+            if ($t->otomatik_zimmet_is_emri && empty($t->otomatik_zimmet_is_emri_ids) && mb_strtolower(trim($t->otomatik_zimmet_is_emri), 'UTF-8') === $searchSonucLower) {
                 if (!in_array($t, $zimmetAdaylari, true)) {
                     $zimmetAdaylari[] = $t;
                 }
             }
-            if ($t->otomatik_iade_is_emri && !$t->otomatik_iade_is_emri_id && mb_strtolower(trim($t->otomatik_iade_is_emri), 'UTF-8') === $searchSonucLower) {
+            if ($t->otomatik_iade_is_emri && empty($t->otomatik_iade_is_emri_ids) && mb_strtolower(trim($t->otomatik_iade_is_emri), 'UTF-8') === $searchSonucLower) {
                 if (!in_array($t, $iadeAdaylari, true)) {
                     $iadeAdaylari[] = $t;
                 }
@@ -1175,7 +1183,8 @@ class DemirbasZimmetModel extends Model
             if (!empty($normalIadeAdaylari)) {
                 // ID bazlı sorgu
                 $normalIadeDbIds = array_map(function ($d) {
-                    return $d->id; }, $normalIadeAdaylari);
+                    return $d->id;
+                }, $normalIadeAdaylari);
                 $iadePlaceholders = implode(',', array_fill(0, count($normalIadeDbIds), '?'));
 
                 $sqlIade = $this->db->prepare("
@@ -1261,16 +1270,21 @@ class DemirbasZimmetModel extends Model
         if (($mode === 'both' || $mode === 'dus') && !empty($dusAdaylari)) {
             foreach ($dusAdaylari as $d) {
                 try {
-                    // Bu demirbaşın personeldeki aktif zimmetlerini çek
+                    // Ek Güvenlik: Demirbaşın gerçekten bu tetikleyiciye sahip olduğunu doğrula
+                    $dusIds = array_map('intval', array_filter(explode(',', $d->otomatik_zimmetten_dus_is_emri_ids ?? '')));
+                    if (!in_array($incomingId, $dusIds)) {
+                        continue; // Tetikleyici bu demirbaş için aslında tanımlı değil (başka bir demirbaştan gelmiş olabilir)
+                    }
+
+                    // Bu demirbaşın personeldeki aktif zimmetlerini çek (sadece bu demirbaşa ait olanlar)
                     $sqlAktifZimmet = $this->db->prepare("
                         SELECT z.id, z.demirbas_id, z.teslim_miktar, z.iade_miktar, d.demirbas_adi
                         FROM {$this->table} z
-                        INNER JOIN demirbas dd ON z.demirbas_id = dd.id
-                        INNER JOIN demirbas d ON d.id = dd.id
-                        WHERE dd.kategori_id = ? AND z.personel_id = ? AND z.durum = 'teslim'
+                        INNER JOIN demirbas d ON z.demirbas_id = d.id
+                        WHERE z.demirbas_id = ? AND z.personel_id = ? AND z.durum = 'teslim'
                         ORDER BY z.teslim_tarihi ASC, z.id ASC
                     ");
-                    $sqlAktifZimmet->execute([$d->kategori_id, $personel_id]);
+                    $sqlAktifZimmet->execute([$d->id, $personel_id]);
                     $aktifZimmetler = $sqlAktifZimmet->fetchAll(PDO::FETCH_OBJ);
 
                     $kalanDusMiktari = $miktar;

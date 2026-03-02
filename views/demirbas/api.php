@@ -60,8 +60,8 @@ if ($action == "demirbas-kaydet") {
             "minimun_stok_uyari_miktari" => intval($_POST["minimun_stok_uyari_miktari"] ?? 0),
             "durum" => $_POST["durum"] ?? 'aktif',
             "aciklama" => $_POST["aciklama"] ?? null,
-            "otomatik_zimmet_is_emri_id" => !empty($_POST["otomatik_zimmet_is_emri_id"]) ? intval($_POST["otomatik_zimmet_is_emri_id"]) : null,
-            "otomatik_iade_is_emri_id" => !empty($_POST["otomatik_iade_is_emri_id"]) ? intval($_POST["otomatik_iade_is_emri_id"]) : null,
+            "otomatik_zimmet_is_emri_ids" => !empty($_POST["otomatik_zimmet_is_emri_ids"]) ? implode(',', $_POST["otomatik_zimmet_is_emri_ids"]) : null,
+            "otomatik_iade_is_emri_ids" => !empty($_POST["otomatik_iade_is_emri_ids"]) ? implode(',', $_POST["otomatik_iade_is_emri_ids"]) : null,
             "otomatik_zimmetten_dus_is_emri_ids" => !empty($_POST["otomatik_zimmetten_dus_is_emri_ids"]) ? implode(',', $_POST["otomatik_zimmetten_dus_is_emri_ids"]) : null,
         ];
 
@@ -114,8 +114,8 @@ if ($action == "demirbas-toplu-kaydet") {
             "edinme_tutari" => Helper::formattedMoneyToNumber($_POST["edinme_tutari"] ?? 0),
             "durum" => $_POST["durum"] ?? 'aktif',
             "aciklama" => $_POST["aciklama"] ?? null,
-            "otomatik_zimmet_is_emri_id" => !empty($_POST["otomatik_zimmet_is_emri_id"]) ? intval($_POST["otomatik_zimmet_is_emri_id"]) : null,
-            "otomatik_iade_is_emri_id" => !empty($_POST["otomatik_iade_is_emri_id"]) ? intval($_POST["otomatik_iade_is_emri_id"]) : null,
+            "otomatik_zimmet_is_emri_ids" => !empty($_POST["otomatik_zimmet_is_emri_ids"]) ? implode(',', $_POST["otomatik_zimmet_is_emri_ids"]) : null,
+            "otomatik_iade_is_emri_ids" => !empty($_POST["otomatik_iade_is_emri_ids"]) ? implode(',', $_POST["otomatik_iade_is_emri_ids"]) : null,
             "otomatik_zimmetten_dus_is_emri_ids" => !empty($_POST["otomatik_zimmetten_dus_is_emri_ids"]) ? implode(',', $_POST["otomatik_zimmetten_dus_is_emri_ids"]) : null,
         ];
 
@@ -214,24 +214,22 @@ if ($action == "demirbas-getir") {
         $data = $Demirbas->find($id);
         if ($data) {
             // Eski text alanlarını yeni ID alanlarına otomatik eşle (geriye uyumluluk)
-            if (empty($data->otomatik_zimmet_is_emri_id) && !empty($data->otomatik_zimmet_is_emri)) {
+            if (empty($data->otomatik_zimmet_is_emri_ids) && !empty($data->otomatik_zimmet_is_emri)) {
                 $matchSql = $Demirbas->db->prepare("SELECT id FROM tanimlamalar WHERE TRIM(is_emri_sonucu) = ? AND grup = 'is_turu' AND firma_id = ? AND silinme_tarihi IS NULL LIMIT 1");
                 $matchSql->execute([trim($data->otomatik_zimmet_is_emri), $_SESSION['firma_id']]);
                 $matchId = $matchSql->fetchColumn();
                 if ($matchId) {
-                    $data->otomatik_zimmet_is_emri_id = $matchId;
-                    // Veritabanını da güncelle (bir kerelik migration)
-                    $Demirbas->db->prepare("UPDATE demirbas SET otomatik_zimmet_is_emri_id = ? WHERE id = ?")->execute([$matchId, $id]);
+                    $data->otomatik_zimmet_is_emri_ids = (string) $matchId;
+                    $Demirbas->db->prepare("UPDATE demirbas SET otomatik_zimmet_is_emri_ids = ? WHERE id = ?")->execute([$matchId, $id]);
                 }
             }
-            if (empty($data->otomatik_iade_is_emri_id) && !empty($data->otomatik_iade_is_emri)) {
+            if (empty($data->otomatik_iade_is_emri_ids) && !empty($data->otomatik_iade_is_emri)) {
                 $matchSql = $Demirbas->db->prepare("SELECT id FROM tanimlamalar WHERE TRIM(is_emri_sonucu) = ? AND grup = 'is_turu' AND firma_id = ? AND silinme_tarihi IS NULL LIMIT 1");
                 $matchSql->execute([trim($data->otomatik_iade_is_emri), $_SESSION['firma_id']]);
                 $matchId = $matchSql->fetchColumn();
                 if ($matchId) {
-                    $data->otomatik_iade_is_emri_id = $matchId;
-                    // Veritabanını da güncelle (bir kerelik migration)
-                    $Demirbas->db->prepare("UPDATE demirbas SET otomatik_iade_is_emri_id = ? WHERE id = ?")->execute([$matchId, $id]);
+                    $data->otomatik_iade_is_emri_ids = (string) $matchId;
+                    $Demirbas->db->prepare("UPDATE demirbas SET otomatik_iade_is_emri_ids = ? WHERE id = ?")->execute([$matchId, $id]);
                 }
             }
             jsonResponse("success", "Başarılı", ["data" => $data]);
@@ -1253,22 +1251,22 @@ if ($action == "zimmet-detay") {
             }
 
 
-            // Sadece seçili zimmet kaydına ait geçmişi getir (aynı personel + aynı demirbaş) - eski tablo
-            $gecmisSql = $Zimmet->getDb()->prepare("
-                SELECT 
-                    z.*,
-                    p.adi_soyadi AS personel_adi,
-                    p.cep_telefonu AS personel_telefon
-                FROM demirbas_zimmet z
-                LEFT JOIN personel p ON z.personel_id = p.id
-                WHERE z.demirbas_id = ? AND z.personel_id = ?
-                ORDER BY z.teslim_tarihi DESC
-            ");
-            $gecmisSql->execute([$zimmet->demirbas_id, $zimmet->personel_id]);
-            $gecmis = $gecmisSql->fetchAll(PDO::FETCH_OBJ);
+            // Personel bilgisini al
+            $personel = $Zimmet->getDb()->query("SELECT * FROM personel WHERE id = {$zimmet->personel_id}")->fetch(PDO::FETCH_OBJ);
+            $zimmet->personel_detay = $personel;
+
+            // Personel+Demirbaş geçmişini 'demirbas_hareketler' tablosundan alıyoruz
+            $gecmis = $Hareket->getPersonelHareketleri($zimmet->personel_id, $zimmet->demirbas_id, 100);
 
             // Geçmiş verilerini formatla
-            // Demirbaş kategori bilgisini al (aparat kontrolü için)
+            foreach ($gecmis as $g) {
+                $g->tarih_format = date('d.m.Y', strtotime($g->tarih));
+                $g->hareket_badge = DemirbasHareketModel::getHareketTipiBadge($g->hareket_tipi, $g->aciklama);
+                $g->personel_adi = $personel->adi_soyadi ?? ''; // js de personel_adi var
+                $g->personel_telefon = $personel->cep_telefonu ?? '';
+            }
+
+            // Şu anki zimmet detaylarını da zenginleştir
             $demirbasForKat = $Demirbas->find($zimmet->demirbas_id);
             $detayKatAdi = '';
             if ($demirbasForKat && $demirbasForKat->kategori_id) {
@@ -1279,39 +1277,27 @@ if ($action == "zimmet-detay") {
             }
             $isDetayAparat = str_contains(mb_strtolower($detayKatAdi, 'UTF-8'), 'aparat');
 
-            foreach ($gecmis as $g) {
-                $g->teslim_tarihi_format = date('d.m.Y', strtotime($g->teslim_tarihi));
-                $g->iade_tarihi_format = $g->iade_tarihi ? date('d.m.Y', strtotime($g->iade_tarihi)) : '-';
-
-                if ($isDetayAparat) {
-                    $durumBadges = [
-                        'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
-                        'iade' => '<span class="badge bg-danger">Tüketildi</span>',
-                        'kayip' => '<span class="badge bg-danger">Kayıp</span>',
-                        'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
-                    ];
-                } else {
-                    $durumBadges = [
-                        'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
-                        'iade' => '<span class="badge bg-success">İade Edildi</span>',
-                        'kayip' => '<span class="badge bg-danger">Kayıp</span>',
-                        'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
-                    ];
-                }
-                $g->durum_badge = $durumBadges[$g->durum] ?? '<span class="badge bg-info">Bilinmiyor</span>';
+            if ($isDetayAparat) {
+                $durumBadges = [
+                    'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
+                    'iade' => '<span class="badge bg-danger">Tüketildi</span>',
+                    'kayip' => '<span class="badge bg-danger">Kayıp</span>',
+                    'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
+                ];
+            } else {
+                $durumBadges = [
+                    'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
+                    'iade' => '<span class="badge bg-success">İade Edildi</span>',
+                    'kayip' => '<span class="badge bg-danger">Kayıp</span>',
+                    'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
+                ];
             }
-
-            // Şu anki zimmet detaylarını da zenginleştir
             $zimmet->teslim_tarihi_format = date('d.m.Y', strtotime($zimmet->teslim_tarihi));
             $zimmet->durum_badge = $durumBadges[$zimmet->durum] ?? '<span class="badge bg-info">Bilinmiyor</span>';
 
             // Demirbaş bilgilerini al
             $demirbas = $Demirbas->find($zimmet->demirbas_id);
             $zimmet->demirbas_detay = $demirbas;
-
-            // Personel bilgisini al
-            $personel = $Zimmet->getDb()->query("SELECT * FROM personel WHERE id = {$zimmet->personel_id}")->fetch(PDO::FETCH_OBJ);
-            $zimmet->personel_detay = $personel;
 
             jsonResponse("success", "Başarılı", [
                 "data" => $zimmet,

@@ -14,7 +14,7 @@
                                 <h6 class="text-muted mb-1 small">Demirbaş Bilgileri</h6>
                                 <h5 class="mb-1" id="detay_demirbas_adi">-</h5>
                                 <p class="mb-0 text-muted small">
-                                    <span id="detay_marka_model">-</span> | 
+                                    <span id="detay_marka_model">-</span> |
                                     Seri No: <span id="detay_seri_no">-</span>
                                 </p>
                             </div>
@@ -31,13 +31,16 @@
                 <div class="row g-2 mb-4 mt-1" id="detay_ozet_kartlari">
                     <!-- Toplam Zimmet -->
                     <div class="col-md-4">
-                        <div class="card border-0 bg-light rounded-3 h-100 shadow-sm border-start border-4 border-secondary">
+                        <div
+                            class="card border-0 bg-light rounded-3 h-100 shadow-sm border-start border-4 border-secondary">
                             <div class="card-body p-3">
                                 <div class="d-flex align-items-center mb-1">
-                                    <div class="bg-secondary bg-opacity-10 text-secondary rounded-circle p-1 me-2 d-flex align-items-center justify-content-center" style="width: 20px; height: 20px;">
+                                    <div class="bg-secondary bg-opacity-10 text-secondary rounded-circle p-1 me-2 d-flex align-items-center justify-content-center"
+                                        style="width: 20px; height: 20px;">
                                         <i data-feather="package" style="width: 12px; height: 12px;"></i>
                                     </div>
-                                    <span class="text-secondary small fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 0.5px;">TOPLAM ZİMMET</span>
+                                    <span class="text-secondary small fw-bold text-uppercase"
+                                        style="font-size: 0.65rem; letter-spacing: 0.5px;">TOPLAM ZİMMET</span>
                                 </div>
                                 <div class="h4 mb-0 fw-bold text-dark" id="ozet_toplam">0</div>
                             </div>
@@ -45,13 +48,16 @@
                     </div>
                     <!-- Tüketilen / İade -->
                     <div class="col-md-4">
-                        <div class="card border-0 bg-light rounded-3 h-100 shadow-sm border-start border-4 border-danger">
+                        <div
+                            class="card border-0 bg-light rounded-3 h-100 shadow-sm border-start border-4 border-danger">
                             <div class="card-body p-3">
                                 <div class="d-flex align-items-center mb-1">
-                                    <div class="bg-danger bg-opacity-10 text-danger rounded-circle p-1 me-2 d-flex align-items-center justify-content-center" style="width: 20px; height: 20px;">
+                                    <div class="bg-danger bg-opacity-10 text-danger rounded-circle p-1 me-2 d-flex align-items-center justify-content-center"
+                                        style="width: 20px; height: 20px;">
                                         <i data-feather="minus-circle" style="width: 12px; height: 12px;"></i>
                                     </div>
-                                    <span class="text-danger small fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 0.5px;">TÜKETİLEN / İADE</span>
+                                    <span class="text-danger small fw-bold text-uppercase"
+                                        style="font-size: 0.65rem; letter-spacing: 0.5px;">TÜKETİLEN / İADE</span>
                                 </div>
                                 <div class="h4 mb-0 fw-bold text-danger" id="ozet_tuketilen">0</div>
                             </div>
@@ -59,13 +65,16 @@
                     </div>
                     <!-- Kalan Miktar -->
                     <div class="col-md-4">
-                        <div class="card border-0 bg-light rounded-3 h-100 shadow-sm border-start border-4 border-success">
+                        <div
+                            class="card border-0 bg-light rounded-3 h-100 shadow-sm border-start border-4 border-success">
                             <div class="card-body p-3">
                                 <div class="d-flex align-items-center mb-1">
-                                    <div class="bg-success bg-opacity-10 text-success rounded-circle p-1 me-2 d-flex align-items-center justify-content-center" style="width: 20px; height: 20px;">
+                                    <div class="bg-success bg-opacity-10 text-success rounded-circle p-1 me-2 d-flex align-items-center justify-content-center"
+                                        style="width: 20px; height: 20px;">
                                         <i data-feather="check-circle" style="width: 12px; height: 12px;"></i>
                                     </div>
-                                    <span class="text-success small fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 0.5px;">KALAN MİKTAR</span>
+                                    <span class="text-success small fw-bold text-uppercase"
+                                        style="font-size: 0.65rem; letter-spacing: 0.5px;">KALAN MİKTAR</span>
                                 </div>
                                 <div class="h4 mb-0 fw-bold text-success" id="ozet_kalan">0</div>
                             </div>
@@ -102,9 +111,8 @@
                             <tr>
                                 <th>Personel</th>
                                 <th class="text-center">Miktar</th>
-                                <th>Teslim Tarihi</th>
-                                <th>İade Tarihi</th>
-                                <th class="text-center">Durum</th>
+                                <th>Tarih</th>
+                                <th class="text-center">Hareket Tipi</th>
                                 <th>Açıklama</th>
                             </tr>
                         </thead>

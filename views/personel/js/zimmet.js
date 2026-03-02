@@ -196,6 +196,131 @@ $(document).ready(function () {
     });
   });
 
+  // Zimmet Detay
+  $(document).on("click", ".btn-personel-zimmet-detay", function (e) {
+    e.preventDefault();
+    let id = $(this).data("id");
+
+    var formData = new FormData();
+    formData.append("action", "zimmet-detay");
+    formData.append("id", id);
+
+    $.ajax({
+      url: "views/demirbas/api.php",
+      type: "POST",
+      data: formData,
+      processData: false,
+      contentType: false,
+      dataType: "json",
+      success: function (data) {
+        if (data.status === "success") {
+          let d = data.data;
+          let gecmis = data.gecmis;
+          let hareketler = data.hareketler;
+
+          // Üst bilgi kartını ve özet kartlarını doldur
+          $("#detay_demirbas_adi").text(d.demirbas_detay.demirbas_adi || "-");
+          $("#detay_marka_model").text(
+            (d.demirbas_detay.marka || "") +
+              " " +
+              (d.demirbas_detay.model || ""),
+          );
+          $("#detay_seri_no").text(d.demirbas_detay.seri_no || "-");
+          $("#detay_durum_badge").html(d.durum_badge);
+          $("#detay_personel_adi").text(d.personel_detay.adi_soyadi || "-");
+
+          let toplamZimmet = parseInt(d.teslim_miktar || 0);
+          let tuketilen = parseInt(d.iade_miktar || 0);
+          let kalan = toplamZimmet - tuketilen;
+
+          $("#ozet_toplam").text(toplamZimmet);
+          $("#ozet_tuketilen").text(tuketilen);
+          $("#ozet_kalan").text(kalan);
+
+          // 1. HAREKET DETAYLARI TABLOSUNU DOLDUR
+          let hBody = $("#zimmetHareketBody");
+          hBody.empty();
+          if (hareketler && hareketler.length > 0) {
+            let ilkZimmetAtlandi = false;
+
+            hareketler.forEach((h) => {
+              if (
+                !ilkZimmetAtlandi &&
+                (h.hareket_tipi === "zimmet" || h.hareket_tipi === "Zimmet")
+              ) {
+                ilkZimmetAtlandi = true;
+                return;
+              }
+
+              let deleteBtn = "";
+              if (h.hareket_tipi === "iade" || h.hareket_tipi === "sarf") {
+                deleteBtn = `<button class="btn btn-sm btn-outline-danger zimmet-hareket-sil" data-id="${h.id}" data-type="${h.hareket_tipi}" title="Geri Al / Sil"><i class="bx bx-trash"></i></button>`;
+              }
+
+              let row = `
+                <tr>
+                  <td>${h.hareket_badge}</td>
+                  <td class="text-center fw-bold">${h.miktar}</td>
+                  <td>${h.tarih_format}</td>
+                  <td class="small">${h.aciklama || ""}</td>
+                  <td class="text-center">${deleteBtn}</td>
+                </tr>
+              `;
+              hBody.append(row);
+            });
+
+            if (hBody.children().length === 0) {
+              hBody.append(
+                '<tr><td colspan="5" class="text-center text-muted border-0 py-3 italic">Başka bir hareket bulunmuyor.</td></tr>',
+              );
+            }
+          } else {
+            hBody.append(
+              '<tr><td colspan="5" class="text-center text-muted py-3">Hareket kaydı bulunamadı.</td></tr>',
+            );
+          }
+
+          // 2. GEÇMİŞ TABLOSUNU DOLDUR
+          let tbody = $("#zimmetGecmisBody");
+          tbody.empty();
+          if (gecmis && gecmis.length > 0) {
+            gecmis.forEach((item) => {
+              let row = `
+                <tr>
+                  <td>
+                    <div class="fw-medium">${item.personel_adi || "-"}</div>
+                    <div class="small text-muted">${item.personel_telefon || ""}</div>
+                  </td>
+                  <td class="text-center fw-bold">${item.miktar}</td>
+                  <td>${item.tarih_format}</td>
+                  <td class="text-center">${item.hareket_badge}</td>
+                  <td class="small text-muted">${item.aciklama || "-"}</td>
+                </tr>
+              `;
+              tbody.append(row);
+            });
+          } else {
+            tbody.append(
+              '<tr><td colspan="5" class="text-center text-muted py-3">Geçmiş kaydı bulunamadı.</td></tr>',
+            );
+          }
+
+          if (typeof feather !== "undefined") {
+            setTimeout(() => feather.replace(), 10);
+          }
+
+          $("#zimmetDetayModal").modal("show");
+        } else {
+          Swal.fire("Hata!", data.message, "error");
+        }
+      },
+      error: function (xhr, status, error) {
+        console.error("AJAX Hatası:", status, error);
+        Swal.fire("Hata!", "Bir hata oluştu.", "error");
+      },
+    });
+  });
+
   // Zimmet Sil
   $(document).on("click", ".btn-personel-zimmet-sil", function () {
     var btn = $(this);

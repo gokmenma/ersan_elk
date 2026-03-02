@@ -25,7 +25,7 @@ $personeller = $Personel->all(false, 'demirbas');
 $zimmetStats = $Zimmet->getStats();
 
 // Otomatik zimmet ayarı yapılmış demirbaşları getir
-$sqlAyarlar = $Demirbas->db->prepare("SELECT * FROM demirbas WHERE (otomatik_zimmet_is_emri_id IS NOT NULL OR otomatik_iade_is_emri_id IS NOT NULL OR otomatik_zimmetten_dus_is_emri_ids IS NOT NULL) AND firma_id = ?");
+$sqlAyarlar = $Demirbas->db->prepare("SELECT * FROM demirbas WHERE (otomatik_zimmet_is_emri_ids IS NOT NULL OR otomatik_iade_is_emri_ids IS NOT NULL OR otomatik_zimmetten_dus_is_emri_ids IS NOT NULL) AND firma_id = ?");
 $sqlAyarlar->execute([$_SESSION['firma_id']]);
 $ayarYapilmisDemirbaslar = $sqlAyarlar->fetchAll(PDO::FETCH_OBJ);
 

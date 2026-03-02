@@ -585,9 +585,9 @@ function initSelect2() {
     });
   }
 
-  // Otomatik Zimmet Ayarları Select2'leri
-  if ($("#otomatik_zimmet_is_emri_id").length) {
-    $("#otomatik_zimmet_is_emri_id").select2({
+  // Otomatik Zimmet Ayarları Select2'leri (hepsi multiple)
+  if ($("#otomatik_zimmet_is_emri_ids").length) {
+    $("#otomatik_zimmet_is_emri_ids").select2({
       dropdownParent: $("#demirbasModal"),
       placeholder: "Seçiniz (Yok)",
       allowClear: true,
@@ -595,8 +595,8 @@ function initSelect2() {
     });
   }
 
-  if ($("#otomatik_iade_is_emri_id").length) {
-    $("#otomatik_iade_is_emri_id").select2({
+  if ($("#otomatik_iade_is_emri_ids").length) {
+    $("#otomatik_iade_is_emri_ids").select2({
       dropdownParent: $("#demirbasModal"),
       placeholder: "Seçiniz (Yok)",
       allowClear: true,
@@ -1130,12 +1130,7 @@ $(document).on("click", ".duzenle", function (e) {
                     minimumFractionDigits: 2,
                   }),
                 );
-              } else if (
-                key === "kategori_id" ||
-                key === "durum" ||
-                key === "otomatik_zimmet_is_emri_id" ||
-                key === "otomatik_iade_is_emri_id"
-              ) {
+              } else if (key === "kategori_id" || key === "durum") {
                 // Select2 alanları için
                 $("#" + key)
                   .val(d[key])
@@ -1148,18 +1143,22 @@ $(document).on("click", ".duzenle", function (e) {
                     $("#" + key).prop("disabled", false);
                   }
                 }
-              } else if (key === "otomatik_zimmetten_dus_is_emri_ids") {
+              } else if (
+                key === "otomatik_zimmet_is_emri_ids" ||
+                key === "otomatik_iade_is_emri_ids" ||
+                key === "otomatik_zimmetten_dus_is_emri_ids"
+              ) {
                 // Çoklu select2 - virgülle ayrılmış ID'leri diziye çevir
                 if (d[key]) {
                   let ids = String(d[key])
                     .split(",")
                     .map((s) => s.trim())
                     .filter((s) => s !== "");
-                  $("#otomatik_zimmetten_dus_is_emri_ids")
+                  $("#" + key)
                     .val(ids)
                     .trigger("change");
                 } else {
-                  $("#otomatik_zimmetten_dus_is_emri_ids")
+                  $("#" + key)
                     .val(null)
                     .trigger("change");
                 }
@@ -1220,9 +1219,9 @@ function resetDemirbasForm() {
   $("#durum").prop("disabled", false).val("aktif").trigger("change");
   $("#miktar").val(1);
   $("#minimun_stok_uyari_miktari").val(0);
-  // Otomatik zimmet ayarları
-  $("#otomatik_zimmet_is_emri_id").val("").trigger("change");
-  $("#otomatik_iade_is_emri_id").val("").trigger("change");
+  // Otomatik zimmet ayarları (hepsi multiple)
+  $("#otomatik_zimmet_is_emri_ids").val(null).trigger("change");
+  $("#otomatik_iade_is_emri_ids").val(null).trigger("change");
   $("#otomatik_zimmetten_dus_is_emri_ids").val(null).trigger("change");
   // Toplu seri alanlarını sıfırla
   $("#seriModTekli").prop("checked", true).trigger("change");
@@ -1967,10 +1966,9 @@ $(document).on("click", ".zimmet-detay", function (e) {
                   <div class="fw-medium">${item.personel_adi || "-"}</div>
                   <div class="small text-muted">${item.personel_telefon || ""}</div>
                 </td>
-                <td class="text-center">${item.teslim_miktar}</td>
-                <td>${item.teslim_tarihi_format}</td>
-                <td>${item.iade_tarihi_format}</td>
-                <td class="text-center">${item.durum_badge}</td>
+                <td class="text-center fw-bold">${item.miktar}</td>
+                <td>${item.tarih_format}</td>
+                <td class="text-center">${item.hareket_badge}</td>
                 <td class="small text-muted">${item.aciklama || "-"}</td>
               </tr>
             `;
@@ -1978,7 +1976,7 @@ $(document).on("click", ".zimmet-detay", function (e) {
           });
         } else {
           tbody.append(
-            '<tr><td colspan="6" class="text-center text-muted py-3">Geçmiş kaydı bulunamadı.</td></tr>',
+            '<tr><td colspan="5" class="text-center text-muted py-3">Geçmiş kaydı bulunamadı.</td></tr>',
           );
         }
 

@@ -1508,57 +1508,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $dusumValue = (int) ($_POST['dusum_value'] ?? 0);
     $year = $_POST['year'] ?? date('Y');
     $month = $_POST['month'] ?? date('m');
+    $tab = $_POST['tab'] ?? '';
     $firmaId = $_SESSION['firma_id'] ?? 0;
 
-    if (!$personelId || !$ekipKoduId) {
-        echo json_encode(['status' => 'error', 'message' => 'Personel veya Ekip bulunamadı.']);
+    if (!$ekipKoduId) {
+        echo json_encode(['status' => 'error', 'message' => 'Ekip bulunamadı.']);
         exit;
     }
 
     $monthPadded = str_pad($month, 2, '0', STR_PAD_LEFT);
     $tarih = "$year-$monthPadded-01";
-
-    $Tanimlamalar = new \App\Model\TanimlamalarModel();
     $Puantaj = new \App\Model\PuantajModel();
 
-    $isEmriTipi = 'Manuel Düşüm';
-    $isEmriSonucu = 'Manuel Düşüm';
-    $existingTur = $Tanimlamalar->isEmriSonucu($isEmriTipi, $isEmriSonucu);
-    $isEmriSonucuId = $existingTur ? $existingTur->id : 0;
+    if ($tab === 'kacakkontrol') {
+        $ekipAdi = $ekipKoduId;
+        $islemId = md5("$tarih|$ekipAdi|MANUELDUSUM");
 
-    if (!$isEmriSonucuId) {
-        $encryptedId = $Tanimlamalar->saveWithAttr([
-            'firma_id' => $firmaId,
-            'grup' => 'is_turu',
-            'tur_adi' => $isEmriTipi,
-            'is_emri_sonucu' => $isEmriSonucu,
-            'aciklama' => "Kullanıcı tanımlı manuel düşüm"
-        ]);
-        $isEmriSonucuId = \App\Helper\Security::decrypt($encryptedId);
-    }
-
-    $islemId = md5("$tarih|$ekipKoduId|$personelId|MANUELDUSUM");
-
-    if ($dusumValue <= 0) {
-        $stmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE islem_id = ?");
-        $stmt->execute([$islemId]);
-    } else {
-        $sonuclanmis = -$dusumValue;
-
-        $stmtCheck = $Puantaj->db->prepare("SELECT id FROM yapilan_isler WHERE islem_id = ?");
-        $stmtCheck->execute([$islemId]);
-        $existing = $stmtCheck->fetchColumn();
-
-        if ($existing) {
-            $stmtUpdate = $Puantaj->db->prepare("UPDATE yapilan_isler SET sonuclanmis = ?, silinme_tarihi = NULL WHERE id = ?");
-            $stmtUpdate->execute([$sonuclanmis, $existing]);
+        if ($dusumValue <= 0) {
+            $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET silinme_tarihi = NOW() WHERE islem_id = ?");
+            $stmt->execute([$islemId]);
         } else {
-            $stmtEkip = $Puantaj->db->prepare("SELECT tur_adi FROM tanimlamalar WHERE id = ?");
-            $stmtEkip->execute([$ekipKoduId]);
-            $ekipAdi = $stmtEkip->fetchColumn() ?: 'BİLİNMEYEN EKİP';
+            $sonuclanmis = -$dusumValue;
+            $stmtCheck = $Puantaj->db->prepare("SELECT id FROM kacak_kontrol WHERE islem_id = ?");
+            $stmtCheck->execute([$islemId]);
+            $existing = $stmtCheck->fetchColumn();
 
-            $stmtInsert = $Puantaj->db->prepare("INSERT INTO yapilan_isler (islem_id, personel_id, ekip_kodu_id, firma_id, is_emri_sonucu_id, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmtInsert->execute([$islemId, $personelId, $ekipKoduId, $firmaId, $isEmriSonucuId, $isEmriTipi, $ekipAdi, $isEmriSonucu, $sonuclanmis, 0, $tarih]);
+            if ($existing) {
+                $stmtUpdate = $Puantaj->db->prepare("UPDATE kacak_kontrol SET sayi = ?, silinme_tarihi = NULL WHERE id = ?");
+                $stmtUpdate->execute([$sonuclanmis, $existing]);
+            } else {
+                $stmtInsert = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, ekip_adi, tarih, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmtInsert->execute([$firmaId, '0', $ekipAdi, $tarih, $sonuclanmis, 'Manuel Düşüm', $islemId]);
+            }
+        }
+    } else {
+        $Tanimlamalar = new \App\Model\TanimlamalarModel();
+
+        $isEmriTipi = 'Manuel Düşüm';
+        $isEmriSonucu = 'Manuel Düşüm';
+        $existingTur = $Tanimlamalar->isEmriSonucu($isEmriTipi, $isEmriSonucu);
+        $isEmriSonucuId = $existingTur ? $existingTur->id : 0;
+
+        if (!$isEmriSonucuId) {
+            $encryptedId = $Tanimlamalar->saveWithAttr([
+                'firma_id' => $firmaId,
+                'grup' => 'is_turu',
+                'tur_adi' => $isEmriTipi,
+                'is_emri_sonucu' => $isEmriSonucu,
+                'aciklama' => "Kullanıcı tanımlı manuel düşüm"
+            ]);
+            $isEmriSonucuId = \App\Helper\Security::decrypt($encryptedId);
+        }
+
+        $islemId = md5("$tarih|$ekipKoduId|$personelId|MANUELDUSUM");
+
+        if ($dusumValue <= 0) {
+            $stmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE islem_id = ?");
+            $stmt->execute([$islemId]);
+        } else {
+            $sonuclanmis = -$dusumValue;
+
+            $stmtCheck = $Puantaj->db->prepare("SELECT id FROM yapilan_isler WHERE islem_id = ?");
+            $stmtCheck->execute([$islemId]);
+            $existing = $stmtCheck->fetchColumn();
+
+            if ($existing) {
+                $stmtUpdate = $Puantaj->db->prepare("UPDATE yapilan_isler SET sonuclanmis = ?, silinme_tarihi = NULL WHERE id = ?");
+                $stmtUpdate->execute([$sonuclanmis, $existing]);
+            } else {
+                $stmtEkip = $Puantaj->db->prepare("SELECT tur_adi FROM tanimlamalar WHERE id = ?");
+                $stmtEkip->execute([$ekipKoduId]);
+                $ekipAdi = $stmtEkip->fetchColumn() ?: 'BİLİNMEYEN EKİP';
+
+                $stmtInsert = $Puantaj->db->prepare("INSERT INTO yapilan_isler (islem_id, personel_id, ekip_kodu_id, firma_id, is_emri_sonucu_id, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmtInsert->execute([$islemId, $personelId, $ekipKoduId, $firmaId, $isEmriSonucuId, $isEmriTipi, $ekipAdi, $isEmriSonucu, $sonuclanmis, 0, $tarih]);
+            }
         }
     }
 
@@ -1871,9 +1895,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $insertBatch[] = [$islemId, $personelId, $defId, $firmaId, $isEmriSonucuId, $isEmriTipi, $ekipKoduStr, $isEmriSonucu, $sonuclanmis, $acikOlanlar, $normDate];
             $yeniKayit++;
 
-            // Demirbaş işlemi (zimmet, iade ve düşme)
-            if ($personelId > 0 && $isEmriSonucuId > 0)
-                $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucuId, $normDate, $islemId, $sonuclanmis);
+            // Demirbaş işlemi (zimmet, iade ve düşme - 3 aşamalı)
+            if ($personelId > 0 && $isEmriSonucuId > 0) {
+                $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucuId, $normDate, $islemId, $sonuclanmis, 'zimmet');
+                $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucuId, $normDate, $islemId, $sonuclanmis, 'iade');
+                $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucuId, $normDate, $islemId, $sonuclanmis, 'dus');
+            }
         }
 
         // 4. Toplu Kayıt (Yeni olanlar) ve Temizleme işlemi

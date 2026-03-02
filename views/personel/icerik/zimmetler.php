@@ -158,14 +158,14 @@ sort($kategoriler);
                     <div class="d-flex align-items-center gap-3">
                         <!-- Görünüm Modu -->
                         <div class="segmented-control-container bg-light-subtle">
-                            <input type="radio" class="segmented-control-input" name="zimmetViewMode" id="zimmetViewListe"
-                                autocomplete="off" onchange="toggleZimmetView('liste')">
+                            <input type="radio" class="segmented-control-input" name="zimmetViewMode"
+                                id="zimmetViewListe" autocomplete="off" onchange="toggleZimmetView('liste')">
                             <label class="segmented-control-label py-1" for="zimmetViewListe">
                                 <i class="bx bx-list-ul me-1"></i>Liste
                             </label>
 
-                            <input type="radio" class="segmented-control-input" name="zimmetViewMode" id="zimmetViewGruplu"
-                                autocomplete="off" checked onchange="toggleZimmetView('gruplu')">
+                            <input type="radio" class="segmented-control-input" name="zimmetViewMode"
+                                id="zimmetViewGruplu" autocomplete="off" checked onchange="toggleZimmetView('gruplu')">
                             <label class="segmented-control-label py-1" for="zimmetViewGruplu">
                                 <i class="bx bx-grid-alt me-1"></i>Gruplu
                             </label>
@@ -173,7 +173,8 @@ sort($kategoriler);
 
                         <!-- İşlemler -->
                         <div class="action-container">
-                            <button type="button" class="btn btn-link text-success p-1 px-3 d-flex align-items-center text-decoration-none"
+                            <button type="button"
+                                class="btn btn-link text-success p-1 px-3 d-flex align-items-center text-decoration-none"
                                 id="btnExportZimmetExcel" onclick="exportZimmetExcel()" title="Excel'e Aktar">
                                 <i class="bx bx-file-blank fs-5 me-1"></i> Excel
                             </button>
@@ -192,11 +193,12 @@ sort($kategoriler);
                         <input type="radio" name="katFilter" id="kat_all" class="segmented-control-input" checked
                             onclick="filterZimmetKategori('all', this)">
                         <label for="kat_all" class="segmented-control-label">Tümü</label>
-                        
+
                         <?php foreach ($kategoriler as $idx => $kat): ?>
                             <input type="radio" name="katFilter" id="kat_<?= $idx ?>" class="segmented-control-input"
                                 onclick="filterZimmetKategori('<?= htmlspecialchars($kat) ?>', this)">
-                            <label for="kat_<?= $idx ?>" class="segmented-control-label"><?= htmlspecialchars($kat) ?></label>
+                            <label for="kat_<?= $idx ?>"
+                                class="segmented-control-label"><?= htmlspecialchars($kat) ?></label>
                         <?php endforeach; ?>
                     </div>
                 </div>
@@ -283,6 +285,11 @@ sort($kategoriler);
                                                                     </button>
                                                                 <?php endif; ?>
                                                                 <button type="button"
+                                                                    class="btn btn-sm btn-secondary btn-personel-zimmet-detay"
+                                                                    data-id="<?= $enc_id ?>" title="Detay">
+                                                                    <i class="bx bx-list-ul"></i>
+                                                                </button>
+                                                                <button type="button"
                                                                     class="btn btn-sm btn-danger btn-personel-zimmet-sil"
                                                                     data-id="<?= $enc_id ?>" title="Sil">
                                                                     <i data-feather="trash-2" class="icon-xs"></i>
@@ -357,6 +364,10 @@ sort($kategoriler);
                                                     <i data-feather="rotate-ccw" class="icon-xs"></i>
                                                 </button>
                                             <?php endif; ?>
+                                            <button type="button" class="btn btn-sm btn-secondary btn-personel-zimmet-detay"
+                                                data-id="<?= $enc_id ?>" title="Detay">
+                                                <i class="bx bx-list-ul"></i>
+                                            </button>
                                             <button type="button" class="btn btn-sm btn-danger btn-personel-zimmet-sil"
                                                 data-id="<?= $enc_id ?>" title="Sil">
                                                 <i data-feather="trash-2" class="icon-xs"></i>
@@ -634,3 +645,5 @@ sort($kategoriler);
         </div>
     </div>
 </div>
+
+<?php include_once __DIR__ . '/../../demirbas/modal/zimmet-detay-modal.php'; ?>

@@ -19,59 +19,20 @@ class PersonelKesintileriModel extends Model
      * Personelin tüm kesintilerini getirir (listeleme için)
      * Sürekli kesintiler için ana_kesinti_id NULL olanları gösterir
      */
-    public function getPersonelKesintileri($personel_id, $filters = [])
+    public function getPersonelKesintileri($personel_id)
     {
-        $where = "pk.personel_id = ? AND pk.silinme_tarihi IS NULL AND pk.ana_kesinti_id IS NULL";
-        $params = [$personel_id];
-        $mode = $filters['filter_mode'] ?? $filters['filter_kesinti_mode'] ?? 'donem';
-
-        if ($mode === 'tarih') {
-            // Başlangıç Tarihi Filtresi
-            if (!empty($filters['filter_kesinti_baslangic'])) {
-                $baslangic = $filters['filter_kesinti_baslangic'];
-                if (preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $baslangic)) {
-                    $baslangic = \DateTime::createFromFormat('d.m.Y', $baslangic)->format('Y-m-d');
-                }
-                $where .= " AND pk.tarih >= ?";
-                $params[] = $baslangic;
-            }
-
-            // Bitiş Tarihi Filtresi
-            if (!empty($filters['filter_kesinti_bitis'])) {
-                $bitis = $filters['filter_kesinti_bitis'];
-                if (preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $bitis)) {
-                    $bitis = \DateTime::createFromFormat('d.m.Y', $bitis)->format('Y-m-d');
-                }
-                $where .= " AND pk.tarih <= ?";
-                $params[] = $bitis;
-            }
-        } elseif ($mode === 'donem') {
-            // Dönem Filtresi
-            if (!empty($filters['filter_kesinti_donem'])) {
-                $where .= " AND (pk.tekrar_tipi = 'surekli' OR pk.donem_id = ?)";
-                $params[] = $filters['filter_kesinti_donem'];
-            }
-        } elseif ($mode === 'ay_yil') {
-            // Ay-Yıl Filtresi
-            if (!empty($filters['filter_kesinti_ay_yil'])) {
-                $where .= " AND DATE_FORMAT(pk.tarih, '%Y-%m') = ?";
-                $params[] = $filters['filter_kesinti_ay_yil'];
-            }
-        }
-
         $sql = $this->db->prepare("
             SELECT pk.*, pi.dosya_no, pi.icra_dairesi, bp.etiket as parametre_adi, bp.kod as parametre_kodu,
-                   COALESCE(pk.durum, 'beklemede') as durum, bd.donem_adi, bd.kapali_mi,
-                   p.adi_soyadi as kayit_yapan_ad_soyad
+                   COALESCE(pk.durum, 'beklemede') as durum
             FROM {$this->table} pk
             LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
             LEFT JOIN bordro_parametreleri bp ON pk.parametre_id = bp.id
-            LEFT JOIN bordro_donemi bd ON pk.donem_id = bd.id
-            LEFT JOIN personeller p ON pk.kayit_yapan = p.id
-            WHERE {$where}
+            WHERE pk.personel_id = ? 
+              AND pk.silinme_tarihi IS NULL 
+              AND pk.ana_kesinti_id IS NULL
             ORDER BY pk.tekrar_tipi DESC, pk.baslangic_donemi DESC, pk.donem_id DESC, pk.olusturma_tarihi DESC
         ");
-        $sql->execute($params);
+        $sql->execute([$personel_id]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -83,9 +44,8 @@ class PersonelKesintileriModel extends Model
      */
     public function getAktifSurekliKesintiler($personel_id, $donem)
     {
-        // Dönemden tarih oluştur
-        $donemBaslangic = $donem . '-01';
-        $donemBitis = date('Y-m-t', strtotime($donemBaslangic));
+        // Dönemden tarih oluştur (ayın ilk günü)
+        $donemTarih = $donem . '-01';
 
         $sql = $this->db->prepare("
             SELECT pk.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bp.hesaplama_tipi as param_hesaplama_tipi
@@ -96,17 +56,16 @@ class PersonelKesintileriModel extends Model
               AND pk.aktif = 1
               AND pk.silinme_tarihi IS NULL
               AND pk.ana_kesinti_id IS NULL
-              AND pk.baslangic_donemi <= ? -- Ayın son gününden önce başlamış olmalı
-              AND (pk.bitis_donemi IS NULL OR pk.bitis_donemi >= ?) -- Ayın ilk gününden sonra bitiyor (veya açık uçlu) olmalı
+              AND pk.baslangic_donemi <= ?
+              AND (pk.bitis_donemi IS NULL OR pk.bitis_donemi >= ?)
             ORDER BY pk.olusturma_tarihi ASC
         ");
-        $sql->execute([$personel_id, $donemBitis, $donemBaslangic]);
+        $sql->execute([$personel_id, $donemTarih, $donemTarih]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**
      * Dönem için sürekli kesintiden otomatik oluşturulan kayıt var mı kontrol eder
-     * Soft-delete yapılan kayıtları dikkate almaz (yeniden oluşturulabilir)
      */
     public function donemdeKaynakKayitVarMi($ana_kesinti_id, $donem_id)
     {
@@ -128,34 +87,14 @@ class PersonelKesintileriModel extends Model
      */
     public function olusturDonemKesintisi($surekliKesinti, $donem_id, $tutar)
     {
-        // Bu dönem için zaten kayıt var mı kontrol et (Silinmişler dahil)
-        $sql = $this->db->prepare("
-            SELECT id, durum, silinme_tarihi FROM {$this->table} 
-            WHERE ana_kesinti_id = ? AND donem_id = ?
-            ORDER BY id DESC LIMIT 1
-        ");
-        $sql->execute([$surekliKesinti->id, $donem_id]);
-        $mevcut = $sql->fetch(PDO::FETCH_OBJ);
-
-        if ($mevcut) {
-            // Kayıt varsa güncelle ve silinmişse geri getir
-            $updateSql = "UPDATE {$this->table} SET 
-                silinme_tarihi = NULL, 
-                durum = 'onaylandi', 
-                tutar = ?, 
-                updated_at = NOW() 
-                WHERE id = ?";
-            
-            $updateStmt = $this->db->prepare($updateSql);
-            $updateStmt->execute([$tutar, $mevcut->id]);
-            
-            return true;
+        // Bu dönem için zaten kayıt var mı kontrol et
+        if ($this->donemdeKaynakKayitVarMi($surekliKesinti->id, $donem_id)) {
+            return false; // Zaten mevcut
         }
 
         $data = [
             'personel_id' => $surekliKesinti->personel_id,
             'donem_id' => $donem_id,
-            'tarih' => date('Y-m-d'), // Kayıt tarihi
             'tur' => $surekliKesinti->tur,
             'tekrar_tipi' => 'tek_sefer', // Oluşturulan kayıt tek seferlik olarak işaretlenir
             'hesaplama_tipi' => $surekliKesinti->hesaplama_tipi,
@@ -165,8 +104,7 @@ class PersonelKesintileriModel extends Model
             'parametre_id' => $surekliKesinti->parametre_id,
             'icra_id' => $surekliKesinti->icra_id,
             'ana_kesinti_id' => $surekliKesinti->id, // Ana kayıt referansı
-            'aktif' => 1,
-            'durum' => 'onaylandi'
+            'aktif' => 1
         ];
 
         return $this->saveWithAttr($data);

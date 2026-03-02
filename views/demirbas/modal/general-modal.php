@@ -10,8 +10,8 @@ $kategoriler = $Tanimlamalar->getDemirbasKategorileri();
 // İş emri sonuçlarını al (otomatik zimmet ayarları için)
 $isEmriSonuclariList = $Tanimlamalar->getIsEmriSonuclariWithId();
 
-// İş emri sonuçları dropdown için hazırla
-$isEmriOptions = ['' => 'Seçiniz (Yok)'];
+// İş emri sonuçları dropdown için hazırla (hepsi multiple)
+$isEmriOptions = [];
 $isEmriOptionsDus = [];
 foreach ($isEmriSonuclariList as $sonuc) {
     if (!empty($sonuc->is_emri_sonucu)) {
@@ -201,16 +201,15 @@ foreach ($isEmriSonuclariList as $sonuc) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-12 mb-2">
-                                            <?php echo Form::FormSelect2(
-                                                'otomatik_zimmet_is_emri_id',
+                                            <?php echo Form::FormMultipleSelect2(
+                                                'otomatik_zimmet_is_emri_ids',
                                                 $isEmriOptions,
-                                                '',
-                                                'Zimmetlenecek İş Emri Sonucu',
+                                                [],
+                                                'Zimmetlenecek İş Emri Sonuçları',
                                                 'log-in',
                                                 'key',
                                                 '',
-                                                'form-select select2',
-                                                false
+                                                'form-select select2'
                                             ); ?>
                                         </div>
                                     </div>
@@ -233,16 +232,15 @@ foreach ($isEmriSonuclariList as $sonuc) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-12 mb-2">
-                                            <?php echo Form::FormSelect2(
-                                                'otomatik_iade_is_emri_id',
+                                            <?php echo Form::FormMultipleSelect2(
+                                                'otomatik_iade_is_emri_ids',
                                                 $isEmriOptions,
-                                                '',
-                                                'İade Alınacak İş Emri Sonucu',
+                                                [],
+                                                'İade Alınacak İş Emri Sonuçları',
                                                 'log-out',
                                                 'key',
                                                 '',
-                                                'form-select select2',
-                                                false
+                                                'form-select select2'
                                             ); ?>
                                         </div>
                                     </div>

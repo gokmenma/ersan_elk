@@ -72,20 +72,34 @@ if (count($reportDates) > 0) {
 }
 $daysCount = count($reportDates);
 
-// Fetch Manuel Düşüm totals for the range for all relevant tabs
 $manuelDusumMap = [];
-if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma'])) {
-    $sqlDusum = "SELECT personel_id, ekip_kodu_id, SUM(ABS(sonuclanmis)) as total_dusum 
-                 FROM yapilan_isler 
-                 WHERE firma_id = ? 
-                 AND is_emri_tipi = 'Manuel Düşüm' 
-                 AND tarih BETWEEN ? AND ? 
-                 AND silinme_tarihi IS NULL 
-                 GROUP BY personel_id, ekip_kodu_id";
-    $stmtDusum = $Puantaj->db->prepare($sqlDusum);
-    $stmtDusum->execute([$_SESSION['firma_id'], $startDateStr, $endDateStr]);
-    while ($row = $stmtDusum->fetch(PDO::FETCH_OBJ)) {
-        $manuelDusumMap[$row->personel_id][$row->ekip_kodu_id] = $row->total_dusum;
+if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])) {
+    if ($activeTab === 'kacakkontrol') {
+        $sqlDusum = "SELECT ekip_adi as ekip_kodu_id, SUM(ABS(sayi)) as total_dusum 
+                     FROM kacak_kontrol 
+                     WHERE firma_id = ? 
+                     AND aciklama = 'Manuel Düşüm' 
+                     AND tarih BETWEEN ? AND ? 
+                     AND silinme_tarihi IS NULL 
+                     GROUP BY ekip_adi";
+        $stmtDusum = $Puantaj->db->prepare($sqlDusum);
+        $stmtDusum->execute([$_SESSION['firma_id'], $startDateStr, $endDateStr]);
+        while ($row = $stmtDusum->fetch(PDO::FETCH_OBJ)) {
+            $manuelDusumMap[0][$row->ekip_kodu_id] = $row->total_dusum;
+        }
+    } else {
+        $sqlDusum = "SELECT personel_id, ekip_kodu_id, SUM(ABS(sonuclanmis)) as total_dusum 
+                     FROM yapilan_isler 
+                     WHERE firma_id = ? 
+                     AND is_emri_tipi = 'Manuel Düşüm' 
+                     AND tarih BETWEEN ? AND ? 
+                     AND silinme_tarihi IS NULL 
+                     GROUP BY personel_id, ekip_kodu_id";
+        $stmtDusum = $Puantaj->db->prepare($sqlDusum);
+        $stmtDusum->execute([$_SESSION['firma_id'], $startDateStr, $endDateStr]);
+        while ($row = $stmtDusum->fetch(PDO::FETCH_OBJ)) {
+            $manuelDusumMap[$row->personel_id][$row->ekip_kodu_id] = $row->total_dusum;
+        }
     }
 }
 
@@ -337,7 +351,7 @@ $sheet->mergeCells($toplamCol . '1:' . $toplamCol . $headerRows);
 $currentColIdx++;
 
 // (-) Sayı ve Kalan sütunları (Sadece belirli sekmeler için)
-$hasManuelCols = in_array($activeTab, ['kesme', 'okuma', 'sokme_takma']);
+$hasManuelCols = in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol']);
 if ($hasManuelCols) {
     $dusumColIdx = $currentColIdx;
     $dusumCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($dusumColIdx);
@@ -435,19 +449,20 @@ foreach ($summary as $pId => $teams) {
             return $t->tur_adi === $teamName;
         });
         $team = !empty($matchingTeams) ? reset($matchingTeams) : null;
+        $tId = $team ? $team->id : 0;
+
         if ($team && preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
             $teamNo = (int) $m[1];
             if (!\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'kacakkontrol', $Settings)) {
                 continue;
             }
         }
-        foreach ($matchingTeams as $mt) {
-            foreach ($activeAssignments as $assign) {
-                if ($assign->ekip_kodu_id == $mt->id) {
-                    $validPairs[$assign->personel_id . '_' . $mt->id] = ['pId' => $assign->personel_id, 'tId' => $mt->id];
-                }
-            }
-        }
+        $validPairs['kacak_' . $teamName] = [
+            'pId' => 'kacak_' . $teamName,
+            'tId' => $teamName,
+            'isKacak' => true,
+            'teamName' => $teamName
+        ];
     } else {
         foreach ($teams as $tId => $data) {
             if ($filterPersonelId && $pId != $filterPersonelId)
@@ -557,7 +572,9 @@ foreach ($validPairs as $pair) {
         'team' => $team,
         'personel' => $p,
         'pId' => $pId,
-        'tId' => $tId
+        'tId' => $tId,
+        'isKacak' => $pair['isKacak'] ?? false,
+        'teamName' => $pair['teamName'] ?? ''
     ];
 }
 
@@ -644,7 +661,11 @@ foreach ($regions as $regionName) {
 
         // (-) Sayı ve Kalan verileri
         if ($hasManuelCols) {
-            $dusum = $manuelDusumMap[$pId][$tId] ?? 0;
+            if ($activeTab === 'kacakkontrol') {
+                $dusum = $manuelDusumMap[0][$tId] ?? 0;
+            } else {
+                $dusum = $manuelDusumMap[$pId][$tId] ?? 0;
+            }
             $sheet->setCellValue($dusumCol . $row, $dusum ?: '');
             $sheet->setCellValue($kalanCol . $row, ($personelTotal - $dusum) ?: '');
             $grandDusum += $dusum;

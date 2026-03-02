@@ -177,6 +177,7 @@ class PuantajModel extends Model
         $sql = "SELECT ekip_adi, tarih, SUM(sayi) as toplam 
                 FROM kacak_kontrol 
                 WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL
+                AND (aciklama != 'Manuel Düşüm' OR aciklama IS NULL)
                 GROUP BY ekip_adi, tarih";
 
         $stmt = $this->db->prepare($sql);
@@ -559,7 +560,8 @@ class PuantajModel extends Model
                 FROM kacak_kontrol 
                 WHERE firma_id = ? 
                 AND tarih = ? 
-                AND silinme_tarihi IS NULL";
+                AND silinme_tarihi IS NULL
+                AND (aciklama != 'Manuel Düşüm' OR aciklama IS NULL)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $bugun]);
@@ -576,7 +578,8 @@ class PuantajModel extends Model
                 FROM kacak_kontrol 
                 WHERE firma_id = ? 
                 AND tarih >= ? AND tarih <= ?
-                AND silinme_tarihi IS NULL";
+                AND silinme_tarihi IS NULL
+                AND (aciklama != 'Manuel Düşüm' OR aciklama IS NULL)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $buAy, $sonGun]);
@@ -699,6 +702,7 @@ class PuantajModel extends Model
             $sql = "SELECT k.ekip_adi, SUM(k.sayi) as toplam, COUNT(DISTINCT k.tarih) as gun_sayisi
                     FROM kacak_kontrol k
                     WHERE k.firma_id = ? AND k.tarih BETWEEN ? AND ? AND k.silinme_tarihi IS NULL
+                    AND (k.aciklama != 'Manuel Düşüm' OR k.aciklama IS NULL)
                     GROUP BY k.ekip_adi";
 
             $stmt = $this->db->prepare($sql);
