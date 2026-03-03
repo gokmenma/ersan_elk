@@ -6,6 +6,8 @@ $(document).ready(function () {
   let personnelMap = {}; // { nameOrTc: personObj }
   let ucretsizIzinIds = new Set();
   let excelReplacedPersonnel = new Set(); // Excel'den yüklenen personellerin ID'leri
+  let cellSortablesInitialized = false;
+  let filterTimer = null;
 
   // Initial Load from LocalStorage or default
   const savedAy = localStorage.getItem("puantaj_ay");
@@ -41,6 +43,14 @@ $(document).ready(function () {
     return text.replace(/İ/g, "i").replace(/I/g, "ı").toLowerCase();
   }
 
+  function debouncedFilterAndTotals() {
+    if (filterTimer) clearTimeout(filterTimer);
+    filterTimer = setTimeout(function () {
+      applyFilter();
+      calculateTotals();
+    }, 180);
+  }
+
   // Personel Filtreleme
   function applyFilter() {
     const value = turkceKucukHarf($("#personel-filter").val());
@@ -52,8 +62,7 @@ $(document).ready(function () {
 
   $("#personel-filter").on("keyup", function () {
     localStorage.setItem("puantaj_filter", $(this).val());
-    applyFilter();
-    calculateTotals();
+    debouncedFilterAndTotals();
   });
 
   // Tam Ekran Modu
@@ -391,6 +400,7 @@ $(document).ready(function () {
                   bodyHtml += "</tr>";
                 });
                 $("#table-body").html(bodyHtml);
+                cellSortablesInitialized = false;
                 initTableEvents();
                 initTooltips();
                 applyFilter();
@@ -421,11 +431,42 @@ $(document).ready(function () {
     const yil = $("#select-yil").val();
     const daysCount = getDaysInMonth(ay, yil);
 
-    let secilenPersonelSayisi = 0;
-    $("#table-body tr").each(function () {
-      if ($(this).css("display") !== "none") {
-        secilenPersonelSayisi++;
-      }
+    const visibleRows = Array.from(document.querySelectorAll("#table-body tr")).filter(
+      (row) => row.style.display !== "none",
+    );
+    const secilenPersonelSayisi = visibleRows.length;
+
+    const dayTotals = Array(daysCount).fill(0);
+    const dayTypeCounts = Array.from({ length: daysCount }, () => ({}));
+
+    let totalGenelCalisma = 0;
+    let totalFiiliCalisma = 0;
+
+    visibleRows.forEach((row) => {
+      const dayCells = row.querySelectorAll(".day-cell");
+
+      dayCells.forEach((cell, index) => {
+        if (!cell.classList.contains("has-entry")) return;
+
+        const content = cell.querySelector(".cell-content");
+        if (!content) return;
+
+        dayTotals[index]++;
+
+        const shortcode = content.dataset.shortcode || "?";
+        const name = content.dataset.name || "";
+        if (!dayTypeCounts[index][shortcode]) {
+          dayTypeCounts[index][shortcode] = { count: 0, name: name };
+        }
+        dayTypeCounts[index][shortcode].count++;
+      });
+
+      totalGenelCalisma +=
+        parseInt(row.querySelector(".toplam-calisma-gunu")?.textContent || "0", 10) ||
+        0;
+      totalFiiliCalisma +=
+        parseInt(row.querySelector(".fiili-calisma-gunu")?.textContent || "0", 10) ||
+        0;
     });
 
     let footerHtml = `<tr>
@@ -436,33 +477,10 @@ $(document).ready(function () {
                 </div>
             </td>`;
 
-    let totalGenelCalisma = 0;
-    let totalFiiliCalisma = 0;
     for (let d = 1; d <= daysCount; d++) {
-      let typeCounts = {};
-      let totalEntries = 0;
-
-      const dateStr = `${yil}-${ay}-${d.toString().padStart(2, "0")}`;
-
-      $("#table-body tr").each(function () {
-        if ($(this).css("display") === "none") return;
-
-        let cell = $(this).find(`.day-cell[data-date="${dateStr}"]`);
-        if (cell.length && cell.hasClass("has-entry")) {
-          const content = cell.find(".cell-content");
-          if (content.length) {
-            const shortcode = content.data("shortcode");
-            const name = content.data("name");
-            const idStr = content.data("id")?.toString();
-
-            if (!typeCounts[shortcode]) {
-              typeCounts[shortcode] = { count: 0, name: name, typeId: idStr };
-            }
-            typeCounts[shortcode].count++;
-            totalEntries++;
-          }
-        }
-      });
+      const idx = d - 1;
+      const typeCounts = dayTypeCounts[idx];
+      const totalEntries = dayTotals[idx];
 
       let tooltipText = "";
       Object.keys(typeCounts).forEach(function (code) {
@@ -481,14 +499,6 @@ $(document).ready(function () {
         footerHtml += `<td class="text-center ${sundayClass}">0</td>`;
       }
     }
-
-    $("#table-body tr").each(function () {
-      if ($(this).css("display") === "none") return;
-      totalGenelCalisma +=
-        parseInt($(this).find(".toplam-calisma-gunu").text()) || 0;
-      totalFiiliCalisma +=
-        parseInt($(this).find(".fiili-calisma-gunu").text()) || 0;
-    });
 
     footerHtml += `<td class="sticky-col-right-1 text-center">${totalGenelCalisma}</td>`;
     footerHtml += `<td class="sticky-col-right-2 text-center">${totalFiiliCalisma}</td>`;
@@ -512,13 +522,10 @@ $(document).ready(function () {
 
   // Table Interaction Events
   function initTableEvents() {
-    // Selection and range extension disabled as per user request
-    $(".day-cell").off("mousedown mouseenter mouseup mousemove");
-
-    // Table cell click event for single day addition
-    $(".day-cell")
-      .off("click")
-      .on("click", function (e) {
+    // Table cell click event for single day addition (delegated)
+    $(document)
+      .off("click", "#table-body .day-cell")
+      .on("click", "#table-body .day-cell", function (e) {
         if (!selectedType || $(this).hasClass("disabled")) return;
 
         const cell = this;
@@ -562,7 +569,21 @@ $(document).ready(function () {
         updateRowTotals(pId);
       });
 
-    // Drop Logic for cells
+    // Drag başladığında hücre sortables kur (ilk açılışta maliyeti ertele)
+    $(document)
+      .off("pointerdown mousedown touchstart", "#ucretli-list .draggable-izin, #ucretsiz-list .draggable-izin")
+      .on(
+        "pointerdown mousedown touchstart",
+        "#ucretli-list .draggable-izin, #ucretsiz-list .draggable-izin",
+        function () {
+          initCellSortablesIfNeeded();
+        },
+      );
+  }
+
+  function initCellSortablesIfNeeded() {
+    if (cellSortablesInitialized) return;
+
     $(".day-cell").each(function () {
       const cell = this;
       new Sortable(cell, {
@@ -634,6 +655,8 @@ $(document).ready(function () {
         },
       });
     });
+
+    cellSortablesInitialized = true;
   }
 
   function updateRowTotals(pId) {
@@ -1420,6 +1443,23 @@ $(document).ready(function () {
   // EXCEL IMPORT & TEMPLATE (MODAL VERSION)
   // =====================================================
 
+  let xlsxLoaderPromise = null;
+
+  function ensureXlsxLoaded() {
+    if (window.XLSX) return Promise.resolve();
+    if (xlsxLoaderPromise) return xlsxLoaderPromise;
+
+    xlsxLoaderPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("XLSX yüklenemedi."));
+      document.head.appendChild(script);
+    });
+
+    return xlsxLoaderPromise;
+  }
+
   // Modal Açma
   $("#btn-open-excel-modal").on("click", function () {
     const modal = new bootstrap.Modal(
@@ -1440,12 +1480,19 @@ $(document).ready(function () {
   // Modal içindeki Yükle Butonu (Dosya seçimi ve okuma aynı kalabilir veya o da taşınabilir ama şimdilik export isteniyor)
 
   // Modal içindeki Yükle Butonu
-  $("#btn-import-excel-submit").on("click", function () {
+  $("#btn-import-excel-submit").on("click", async function () {
     const fileInput = document.getElementById("import-excel-file-modal");
     const file = fileInput.files[0];
 
     if (!file) {
       showToast("Lütfen bir Excel dosyası seçin.", "error");
+      return;
+    }
+
+    try {
+      await ensureXlsxLoaded();
+    } catch (e) {
+      showToast("Excel modülü yüklenemedi. Lütfen tekrar deneyin.", "error");
       return;
     }
 

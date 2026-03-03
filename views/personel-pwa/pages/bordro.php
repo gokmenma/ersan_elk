@@ -118,7 +118,7 @@
             <div>
                 <label class="form-label">Geri Ödeme Seçeneği</label>
                 <select name="odeme_sekli" class="form-input form-select">
-                    <option value="tek">Gelecek Maaştan (Tek Seferde)</option>
+                    <option value="tek">En Yakın Maaştan (Tek Seferde)</option>
                     <option value="2">2 Taksit</option>
                     <option value="3">3 Taksit</option>
                 </select>
@@ -415,7 +415,7 @@
                 <div class="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-800">
                     <span class="text-slate-500 text-sm">Ödeme Şekli</span>
                     <span class="font-medium text-slate-800 dark:text-slate-200">
-                        ${avans.odeme_sekli === 'tek' ? 'Tek Seferde' : avans.odeme_sekli + ' Taksit'}
+                        ${avans.odeme_sekli === 'tek' ? 'En Yakın Maaştan (Tek Seferde)' : avans.odeme_sekli + ' Taksit'}
                     </span>
                 </div>
                 

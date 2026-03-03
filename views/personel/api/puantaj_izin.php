@@ -79,8 +79,40 @@ try {
         $varsayilan_HT->execute([$firma_id]);
         $ht_tanim = $varsayilan_HT->fetch(PDO::FETCH_OBJ);
 
+        // Personellerin izinlerini tek sorguda çek (N+1 sorgu optimizasyonu)
+        $personelIds = array_map(static function ($personel) {
+            return (int) $personel->id;
+        }, $personel_list);
+
+        $izinlerByPersonel = [];
+        if (!empty($personelIds)) {
+            $placeholders = implode(',', array_fill(0, count($personelIds), '?'));
+            $izinQuery = "
+                SELECT pi.id, pi.personel_id, pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id, t.tur_adi, t.kisa_kod, t.renk
+                FROM personel_izinleri pi
+                JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+                WHERE pi.personel_id IN ($placeholders)
+                AND pi.silinme_tarihi IS NULL
+                AND pi.onay_durumu != 'Reddedildi'
+                AND pi.baslangic_tarihi <= ?
+                AND pi.bitis_tarihi >= ?
+            ";
+
+            $izin_stmt = $PersonelIzinleri->db->prepare($izinQuery);
+            $params = array_merge($personelIds, [$endDate, $startDate]);
+            $izin_stmt->execute($params);
+            $izinler = $izin_stmt->fetchAll(PDO::FETCH_OBJ);
+
+            foreach ($izinler as $izin) {
+                $pid = (int) $izin->personel_id;
+                if (!isset($izinlerByPersonel[$pid])) {
+                    $izinlerByPersonel[$pid] = [];
+                }
+                $izinlerByPersonel[$pid][] = $izin;
+            }
+        }
+
         // Puantaj ve İzin verilerini getir
-        // yapilan_isler (puantaj) ve personel_izinleri tablolarından
         $data = [];
 
         foreach ($personel_list as $p) {
@@ -95,16 +127,8 @@ try {
                 'entries' => []
             ];
 
-            // İzinler
-            $izin_stmt = $PersonelIzinleri->db->prepare("
-                SELECT pi.id, pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id, t.tur_adi, t.kisa_kod, t.renk 
-                FROM personel_izinleri pi
-                JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-                WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL AND pi.onay_durumu != 'Reddedildi'
-                AND ((pi.baslangic_tarihi BETWEEN ? AND ?) OR (pi.bitis_tarihi BETWEEN ? AND ?))
-            ");
-            $izin_stmt->execute([$p->id, $startDate, $endDate, $startDate, $endDate]);
-            $izinler = $izin_stmt->fetchAll(PDO::FETCH_OBJ);
+            // İzinler (tek seferde çekilen ve personele göre gruplanan veri)
+            $izinler = $izinlerByPersonel[(int) $p->id] ?? [];
 
             $mevcut_gunler = [];
             foreach ($izinler as $izin) {
