@@ -173,6 +173,7 @@ $onay_durumlari = [
                                     <th>Süre (Gün)</th>
                                     <th>Durum</th>
                                     <th>Onay Bilgisi</th>
+                                    <th>Açıklama</th>
                                     <th>İşlem</th>
                                 </tr>
                             </thead>
@@ -212,6 +213,7 @@ $onay_durumlari = [
                                                     <span class="text-muted">-</span>
                                                 <?php endif; ?>
                                             </td>
+                                            <td><?= htmlspecialchars($izin->aciklama ?? '-') ?></td>
                                             <td>
                                                 <div class="btn-group" role="group">
                                                     <?php

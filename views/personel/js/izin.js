@@ -434,20 +434,16 @@ $(document).ready(function () {
       // Tarihleri doldur
       function setFpDate(name, dateStr) {
         if (!dateStr) return;
-        var el = $('[name="' + name + '"]')[0];
-        if (el && el._flatpickr) {
-          // YYYY-MM-DD HH:mm:ss formatını Date objesine çeviriyoruz
-          // Sadece tarih varsa YYYY-MM-DD olarak gelir
-          var d = new Date(dateStr.replace(/-/g, "/")); // Bazı tarayıcılarda "-" parsing sorunu olabiliyor
-          if (isNaN(d.getTime())) d = new Date(dateStr);
+        var form = $("#formIzinEkle");
+        var el = form.find('[name="' + name + '"]')[0];
 
-          if (!isNaN(d.getTime())) {
-            el._flatpickr.setDate(d, true);
-          } else {
-            el._flatpickr.setDate(dateStr, true);
-          }
+        // Tarih formatını temizle (sadece YYYY-MM-DD kısmını al)
+        var cleanDate = dateStr.includes(" ") ? dateStr.split(" ")[0] : dateStr;
+
+        if (el && el._flatpickr) {
+          el._flatpickr.setDate(cleanDate, true);
         } else {
-          $('[name="' + name + '"]').val(dateStr);
+          form.find('[name="' + name + '"]').val(cleanDate);
         }
       }
 

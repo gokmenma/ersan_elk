@@ -19,20 +19,75 @@ class PersonelKesintileriModel extends Model
      * Personelin tüm kesintilerini getirir (listeleme için)
      * Sürekli kesintiler için ana_kesinti_id NULL olanları gösterir
      */
-    public function getPersonelKesintileri($personel_id)
+    public function getPersonelKesintileri($personel_id, $filters = [])
     {
-        $sql = $this->db->prepare("
+        $where = "pk.personel_id = ? AND pk.silinme_tarihi IS NULL AND pk.ana_kesinti_id IS NULL";
+        $params = [$personel_id];
+        $mode = $filters['filter_kesinti_mode'] ?? 'donem';
+
+        if ($mode === 'tarih') {
+            if (!empty($filters['filter_kesinti_baslangic'])) {
+                $baslangic = $filters['filter_kesinti_baslangic'];
+                if (preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $baslangic)) {
+                    $baslangic = \DateTime::createFromFormat('d.m.Y', $baslangic)->format('Y-m-d');
+                }
+                $where .= " AND pk.olusturma_tarihi >= ?";
+                $params[] = $baslangic . ' 00:00:00';
+            }
+            if (!empty($filters['filter_kesinti_bitis'])) {
+                $bitis = $filters['filter_kesinti_bitis'];
+                if (preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $bitis)) {
+                    $bitis = \DateTime::createFromFormat('d.m.Y', $bitis)->format('Y-m-d');
+                }
+                $where .= " AND pk.olusturma_tarihi <= ?";
+                $params[] = $bitis . ' 23:59:59';
+            }
+        } elseif ($mode === 'donem') {
+            if (!empty($filters['filter_kesinti_donem'])) {
+                // donem_id = 0 olanları (yeni/dönemsiz kayıtlar) da her zaman göster ki kaybolmasınlar
+                $where .= " AND (pk.tekrar_tipi = 'surekli' OR pk.donem_id = ? OR pk.donem_id = 0 OR pk.donem_id IS NULL)";
+                $params[] = $filters['filter_kesinti_donem'];
+            }
+        } elseif ($mode === 'ay_yil') {
+            if (!empty($filters['filter_kesinti_ay_yil'])) {
+                $where .= " AND DATE_FORMAT(pk.olusturma_tarihi, '%Y-%m') = ?";
+                $params[] = $filters['filter_kesinti_ay_yil'];
+            }
+        }
+
+        $sql_text = "
             SELECT pk.*, pi.dosya_no, pi.icra_dairesi, bp.etiket as parametre_adi, bp.kod as parametre_kodu,
-                   COALESCE(pk.durum, 'beklemede') as durum
+                   COALESCE(pk.durum, 'beklemede') as durum,
+                   u.name as kayit_yapan_ad_soyad
             FROM {$this->table} pk
             LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
             LEFT JOIN bordro_parametreleri bp ON pk.parametre_id = bp.id
-            WHERE pk.personel_id = ? 
-              AND pk.silinme_tarihi IS NULL 
-              AND pk.ana_kesinti_id IS NULL
-            ORDER BY pk.tekrar_tipi DESC, pk.baslangic_donemi DESC, pk.donem_id DESC, pk.olusturma_tarihi DESC
-        ");
-        $sql->execute([$personel_id]);
+            LEFT JOIN users u ON pk.kayit_yapan = u.id
+            WHERE {$where}
+            
+            UNION ALL
+            
+            SELECT 
+                -pa.id as id, pa.personel_id, 0 as donem_id, 'avans' as tur, 
+                pa.aciklama, pa.tutar, pa.talep_tarihi as olusturma_tarihi,
+                NULL as parametre_id, NULL as icra_id, NULL as ana_kesinti_id, 
+                1 as aktif, pa.durum, 'tek_sefer' as tekrar_tipi, 
+                NULL as baslangic_donemi, NULL as bitis_donemi, 0 as kapali_mi,
+                pa.silinme_tarihi, pa.talep_tarihi as updated_at,
+                NULL as dosya_no, NULL as icra_dairesi, 'Avans Talebi' as parametre_adi, 'AVANS' as parametre_kodu,
+                p.adi_soyadi as kayit_yapan_ad_soyad
+            FROM personel_avanslari pa
+            LEFT JOIN personel p ON pa.kayit_yapan = p.id
+            WHERE pa.personel_id = ? AND pa.durum = 'beklemede' AND pa.silinme_tarihi IS NULL
+            
+            ORDER BY tekrar_tipi DESC, baslangic_donemi DESC, donem_id DESC, olusturma_tarihi DESC
+        ";
+
+        // UNION ALL'daki ikinci parametre personel_id
+        $params[] = $personel_id;
+
+        $sql = $this->db->prepare($sql_text);
+        $sql->execute($params);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 

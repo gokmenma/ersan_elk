@@ -198,27 +198,26 @@ class AvansModel extends Model
             return false;
         }
 
-        // Eğer dönem ID verilmediyse mevcut dönemi bul
+        // Eğer dönem ID verilmediyse avansın talep tarihine uygun dönemi bul
         if (!$donem_id) {
+            $talepTarihi = !empty($avans->talep_tarihi) ? date('Y-m-d', strtotime($avans->talep_tarihi)) : date('Y-m-d');
             $donemSql = $this->db->prepare("
                 SELECT id FROM bordro_donemi 
-                WHERE baslangic_tarihi <= CURDATE() AND bitis_tarihi >= CURDATE() AND kapali_mi = 0
+                WHERE baslangic_tarihi <= :talep_tarihi AND bitis_tarihi >= :talep_tarihi AND kapali_mi = 0
                 LIMIT 1
             ");
-            $donemSql->execute();
+            $donemSql->execute([':talep_tarihi' => $talepTarihi]);
             $donem = $donemSql->fetch(PDO::FETCH_OBJ);
-            $donem_id = $donem ? $donem->id : null;
+            $donem_id = $donem ? $donem->id : 0;
         }
 
-        if ($donem_id) {
-            // Avansı kesinti olarak ekle
-            $sql = $this->db->prepare("
-                INSERT INTO personel_kesintileri (personel_id, donem_id, tur, aciklama, tutar, olusturma_tarihi)
-                VALUES (?, ?, 'avans', ?, ?, NOW())
-            ");
-            $aciklama = 'Avans - ' . date('d.m.Y', strtotime($avans->talep_tarihi));
-            return $sql->execute([$avans->personel_id, $donem_id, $aciklama, $avans->tutar]);
-        }
+        // Avansı kesinti olarak ekle (donem_id 0 olsa bile ekle)
+        $sql = $this->db->prepare("
+            INSERT INTO personel_kesintileri (personel_id, donem_id, tur, aciklama, tutar, olusturma_tarihi, durum)
+            VALUES (?, ?, 'avans', ?, ?, NOW(), 'onaylandi')
+        ");
+        $aciklama = 'Avans - ' . date('d.m.Y', strtotime($avans->talep_tarihi));
+        return $sql->execute([$avans->personel_id, $donem_id, $aciklama, $avans->tutar]);
 
         return true;
     }

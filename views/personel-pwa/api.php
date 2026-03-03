@@ -438,6 +438,7 @@ try {
                 'odeme_sekli' => $odeme_sekli,
                 'aciklama' => $aciklama,
                 'durum' => 'beklemede',
+                'kayit_yapan' => $personel_id,
                 'talep_tarihi' => date('Y-m-d H:i:s')
             ]);
             $newId = $AvansModel->getDb()->lastInsertId();
