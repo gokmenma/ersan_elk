@@ -564,7 +564,7 @@ $izinTurleri = [
 
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="hesaba_isle" id="hesabaIsle" value="1"
-                            checked>
+                            >
                         <label class="form-check-label" for="hesabaIsle">
                             Avansı bordroya kesinti olarak işle
                         </label>

@@ -76,6 +76,37 @@ class BildirimModel extends Model
     }
 
     /**
+     * Talep/avans/izin bildiriminin ilgili kaydını okundu işaretle
+     */
+    public function markRequestNotificationAsRead($userId, $tab, $requestId)
+    {
+        $userId = (int) $userId;
+        $requestId = (int) $requestId;
+        $tab = trim((string) $tab);
+
+        if ($userId <= 0 || $requestId <= 0 || !in_array($tab, ['avans', 'izin', 'talep'], true)) {
+            return false;
+        }
+
+        $exactLink = "index.php?p=talepler/list&tab={$tab}&id={$requestId}";
+        $pattern = "%p=talepler/list%tab={$tab}%id={$requestId}%";
+
+        $sql = "UPDATE {$this->table}
+                SET is_read = 1
+                WHERE user_id = ?
+                  AND is_read = 0
+                  AND (
+                    link = ?
+                    OR REPLACE(link, '&amp;', '&') = ?
+                    OR link LIKE ?
+                    OR REPLACE(link, '&amp;', '&') LIKE ?
+                  )";
+
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([$userId, $exactLink, $exactLink, $pattern, $pattern]);
+    }
+
+    /**
      * Okunmamış bildirim sayısını getir
      */
     public function getUnreadCount($userId)
