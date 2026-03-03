@@ -198,27 +198,33 @@ class AvansModel extends Model
             return false;
         }
 
-        // Eğer dönem ID verilmediyse avansın talep tarihine uygun dönemi bul
+        $kayitYapan = $_SESSION['id'] ?? $_SESSION['user_id'] ?? 0;
+
+        // Eğer dönem ID verilmediyse talep tarihini kapsayan dönemi bul
         if (!$donem_id) {
-            $talepTarihi = !empty($avans->talep_tarihi) ? date('Y-m-d', strtotime($avans->talep_tarihi)) : date('Y-m-d');
+            $talepTarihi = !empty($avans->talep_tarihi)
+                ? date('Y-m-d', strtotime($avans->talep_tarihi))
+                : date('Y-m-d');
+
             $donemSql = $this->db->prepare("
                 SELECT id FROM bordro_donemi 
-                WHERE baslangic_tarihi <= :talep_tarihi AND bitis_tarihi >= :talep_tarihi AND kapali_mi = 0
+                WHERE baslangic_tarihi <= ? AND bitis_tarihi >= ?
+                ORDER BY id DESC
                 LIMIT 1
             ");
-            $donemSql->execute([':talep_tarihi' => $talepTarihi]);
+            $donemSql->execute([$talepTarihi, $talepTarihi]);
             $donem = $donemSql->fetch(PDO::FETCH_OBJ);
-            $donem_id = $donem ? $donem->id : 0;
+            $donem_id = $donem ? (int) $donem->id : 0;
         }
 
-        // Avansı kesinti olarak ekle (donem_id 0 olsa bile ekle)
+        // Dönem bulunamazsa 0 olarak kaydet
+        $donem_id = (int) ($donem_id ?: 0);
+
         $sql = $this->db->prepare("
-            INSERT INTO personel_kesintileri (personel_id, donem_id, tur, aciklama, tutar, olusturma_tarihi, durum)
-            VALUES (?, ?, 'avans', ?, ?, NOW(), 'onaylandi')
+            INSERT INTO personel_kesintileri (personel_id, donem_id, tur, aciklama, tutar, kayit_yapan, olusturma_tarihi, durum)
+            VALUES (?, ?, 'avans', ?, ?, ?, NOW(), 'onaylandi')
         ");
         $aciklama = 'Avans - ' . date('d.m.Y', strtotime($avans->talep_tarihi));
-        return $sql->execute([$avans->personel_id, $donem_id, $aciklama, $avans->tutar]);
-
-        return true;
+        return $sql->execute([$avans->personel_id, $donem_id, $aciklama, $avans->tutar, $kayitYapan]);
     }
 }

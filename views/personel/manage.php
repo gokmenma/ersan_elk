@@ -587,7 +587,7 @@ if ($id > 0) {
                 if (!this._flatpickr) {
                     $(this).flatpickr({
                         enableTime: true,
-                        dateFormat: "Y-m-d H:i",
+                        dateFormat: "d.m.Y H:i",
                         time_24hr: true,
                         locale: "tr",
                         onChange: function (selectedDates, dateStr, instance) {

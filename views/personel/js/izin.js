@@ -433,22 +433,43 @@ $(document).ready(function () {
 
       // Tarihleri doldur
       function setFpDate(name, dateStr) {
-        if (!dateStr) return;
+        if (!dateStr || dateStr.startsWith("0000")) return;
         var form = $("#formIzinEkle");
         var el = form.find('[name="' + name + '"]')[0];
 
-        // Tarih formatını temizle (sadece YYYY-MM-DD kısmını al)
-        var cleanDate = dateStr.includes(" ") ? dateStr.split(" ")[0] : dateStr;
-
-        if (el && el._flatpickr) {
-          el._flatpickr.setDate(cleanDate, true);
+        var d = null;
+        if (dateStr.includes(".")) {
+          var parts = dateStr.split(" ")[0].split(".");
+          d = new Date(parts[2], parts[1] - 1, parts[0]);
+          if (dateStr.includes(":")) {
+            var t = dateStr.split(" ")[1].split(":");
+            d.setHours(t[0] || 0, t[1] || 0);
+          }
         } else {
-          form.find('[name="' + name + '"]').val(cleanDate);
+          d = new Date(dateStr.replace(/-/g, "/"));
+        }
+
+        if (d && !isNaN(d.getTime())) {
+          if (el && el._flatpickr) {
+            el._flatpickr.setDate(d, true);
+          } else {
+            var day = String(d.getDate()).padStart(2, "0");
+            var month = String(d.getMonth() + 1).padStart(2, "0");
+            var year = d.getFullYear();
+            var formatted = day + "." + month + "." + year;
+            if (name == "onay_tarihi") {
+              var h = String(d.getHours()).padStart(2, "0");
+              var m = String(d.getMinutes()).padStart(2, "0");
+              formatted += " " + h + ":" + m;
+            }
+            $(el).val(formatted);
+          }
         }
       }
 
       setFpDate("baslangic_tarihi", data.baslangic_tarihi);
       setFpDate("bitis_tarihi", data.bitis_tarihi);
+      setFpDate("onay_tarihi", data.onay_tarihi);
 
       // Diğer alanlar
       $('[name="sure"]').val(data.toplam_gun || data.sure || "");
@@ -480,10 +501,6 @@ $(document).ready(function () {
       }
 
       $("#onay_aciklama").val(data.onay_aciklama || "");
-
-      if (data.onay_tarihi) {
-        setFpDate("onay_tarihi", data.onay_tarihi);
-      }
 
       $("#modalIzinEkleLabel").text("İzin Düzenle");
       $("#modalIzinEkle").modal("show");
