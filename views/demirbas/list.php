@@ -151,7 +151,7 @@ if (!empty($aparatKatIds)) {
     // Personelde kalan (aktif zimmetler)
     $sqlAparatPersonelde = $Demirbas->db->prepare("
         SELECT 
-            COALESCE(SUM(z.teslim_miktar - COALESCE(z.iade_miktar, 0)), 0) as personelde
+            COALESCE(SUM(z.teslim_miktar - (SELECT COALESCE(SUM(miktar), 0) FROM demirbas_hareketler WHERE zimmet_id = z.id AND hareket_tipi IN ('iade', 'sarf', 'kayip') AND silinme_tarihi IS NULL)), 0) as personelde
         FROM demirbas_zimmet z
         INNER JOIN demirbas d ON z.demirbas_id = d.id
         WHERE z.durum = 'teslim' AND d.kategori_id IN ($aparatPlaceholders) AND d.firma_id = ?
@@ -163,10 +163,10 @@ if (!empty($aparatKatIds)) {
     // Tüketilen (iade edilmiş = tüketildi olarak işaretlenen)
     $sqlAparatTuketilen = $Demirbas->db->prepare("
         SELECT 
-            COALESCE(SUM(z.iade_miktar), 0) as tuketilen
+            COALESCE(SUM((SELECT COALESCE(SUM(miktar), 0) FROM demirbas_hareketler WHERE zimmet_id = z.id AND hareket_tipi IN ('iade', 'sarf', 'kayip') AND silinme_tarihi IS NULL)), 0) as tuketilen
         FROM demirbas_zimmet z
         INNER JOIN demirbas d ON z.demirbas_id = d.id
-        WHERE d.kategori_id IN ($aparatPlaceholders) AND d.firma_id = ? AND z.iade_miktar > 0
+        WHERE d.kategori_id IN ($aparatPlaceholders) AND d.firma_id = ? AND (SELECT COALESCE(SUM(miktar), 0) FROM demirbas_hareketler WHERE zimmet_id = z.id AND hareket_tipi IN ('iade', 'sarf', 'kayip') AND silinme_tarihi IS NULL) > 0
     ");
     $sqlAparatTuketilen->execute($aparatParamArr);
     $aparatTuketilenResult = $sqlAparatTuketilen->fetch(PDO::FETCH_OBJ);

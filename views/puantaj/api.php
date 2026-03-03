@@ -94,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $skippedRows = []; // Atlanan satırların detayları
         $workTypeCache = []; // Aynı yükleme sırasında yeni eklenen türleri takip etmek için cache
         $pendingMovements = []; // Otomatik demirbaş işlemleri için kuyruk
+        $eksikZimmetListesi = []; // Zimmet kaydı bulunamayan personeller için liste
 
         // Process rows
 
@@ -283,12 +284,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             // 2. Aşama: Sonra tüm satırların İADELERİNİ işle
             foreach ($pendingMovements as $pm) {
-                $Zimmet->checkAndProcessAutomaticZimmet($pm['personel_id'], $pm['is_emri_sonucu_id'], $pm['tarih'], $pm['islem_id'], $pm['miktar'], 'iade');
+                $zRes = $Zimmet->checkAndProcessAutomaticZimmet($pm['personel_id'], $pm['is_emri_sonucu_id'], $pm['tarih'], $pm['islem_id'], $pm['miktar'], 'iade');
+                if (!empty($zRes['iade'])) {
+                    foreach ($zRes['iade'] as $iRes) {
+                        if (($iRes['status'] ?? '') === 'error' && ($iRes['type'] ?? '') === 'no_zimmet_found') {
+                            $eksikZimmetListesi[] = $iRes['personel_adi'];
+                        }
+                    }
+                }
             }
 
             // 3. Aşama: Zimmetten düşme işlemlerini yap (kırılma, çalınma vb.)
             foreach ($pendingMovements as $pm) {
-                $Zimmet->checkAndProcessAutomaticZimmet($pm['personel_id'], $pm['is_emri_sonucu_id'], $pm['tarih'], $pm['islem_id'], $pm['miktar'], 'dus');
+                $zRes = $Zimmet->checkAndProcessAutomaticZimmet($pm['personel_id'], $pm['is_emri_sonucu_id'], $pm['tarih'], $pm['islem_id'], $pm['miktar'], 'dus');
+                if (!empty($zRes['dus'])) {
+                    foreach ($zRes['dus'] as $iRes) {
+                        if (($iRes['status'] ?? '') === 'error' && ($iRes['type'] ?? '') === 'no_zimmet_found') {
+                            $eksikZimmetListesi[] = $iRes['personel_adi'];
+                        }
+                    }
+                }
             }
         }
 
@@ -308,7 +323,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         if ($skippedCount > 0) {
             $message .= " $skippedCount kayıt atlandı.";
         }
+        if (!empty($eksikZimmetListesi)) {
+            $uniqueEksik = array_unique($eksikZimmetListesi);
+            $message .= "\n\nUYARI: Aşağıdaki personellerin zimmetinde aparat bulunmadığı için otomatik aparat iadeleri işlenemedi: " . implode(', ', $uniqueEksik);
+        }
         $response['message'] = $message;
+        $response['eksik_zimmetler'] = array_unique($eksikZimmetListesi);
 
         // Log Action
         $SystemLog = new SystemLogModel();
@@ -1270,7 +1290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         WHERE dz.personel_id = ? 
                         AND d.seri_no = ? 
                         AND dz.silinme_tarihi IS NULL 
-                        AND (dz.durum = 'teslim' OR dz.teslim_miktar > IFNULL(dz.iade_miktar, 0))
+                        AND (dz.durum = 'teslim' OR dz.teslim_miktar > (SELECT COALESCE(SUM(miktar), 0) FROM demirbas_hareketler WHERE zimmet_id = dz.id AND hareket_tipi IN ('iade', 'sarf', 'kayip') AND silinme_tarihi IS NULL))
                         LIMIT 1
                     ");
                     $stmtZimmet->execute([$personelId, $takilanSayacNo]);
@@ -1686,6 +1706,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $mevcutHatalar = []; // Eşleşmeyen ekipleri unique yapmak için
         $bosSonucSayisi = 0;
         $mevcutKayitlar = [];
+        $eksikZimmetListesi = [];
 
         $KesmeAcmaSvc = new KesmeAcmaService();
         $apiData = [];
@@ -1897,9 +1918,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             // Demirbaş işlemi (zimmet, iade ve düşme - 3 aşamalı)
             if ($personelId > 0 && $isEmriSonucuId > 0) {
-                $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucuId, $normDate, $islemId, $sonuclanmis, 'zimmet');
-                $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucuId, $normDate, $islemId, $sonuclanmis, 'iade');
-                $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucuId, $normDate, $islemId, $sonuclanmis, 'dus');
+                $zRes1 = $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucuId, $normDate, $islemId, $sonuclanmis, 'zimmet');
+                $zRes2 = $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucuId, $normDate, $islemId, $sonuclanmis, 'iade');
+                $zRes3 = $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucuId, $normDate, $islemId, $sonuclanmis, 'dus');
+
+                $allRes = [$zRes1, $zRes2, $zRes3];
+                foreach ($allRes as $rArray) {
+                    if (is_array($rArray)) {
+                        foreach (['zimmet', 'iade', 'dus'] as $rKey) {
+                            if (!empty($rArray[$rKey]) && is_array($rArray[$rKey])) {
+                                foreach ($rArray[$rKey] as $iRes) {
+                                    if (($iRes['status'] ?? '') === 'error' && ($iRes['type'] ?? '') === 'no_zimmet_found') {
+                                        $eksikZimmetListesi[] = $iRes['personel_adi'];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -1943,6 +1979,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $response['atlanAn_kayitlar'] = $atlanAnKayitlar;
         $response['toplam_api_kayit'] = count($apiData);
         $response['atlanAn_listesi'] = $atlanAnListesi;
+        $response['eksik_zimmetler'] = array_unique($eksikZimmetListesi);
         // Hata ayıklama verisini kaldırıyoruz (Yüzlerce MB JSON oluşmasını engellemek için)
         // $response['api_raw_data'] = $apiData; 
         $response['message'] = "$yeniKayit kayıt başarıyla güncellendi.";

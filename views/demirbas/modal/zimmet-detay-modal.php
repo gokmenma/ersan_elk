@@ -102,25 +102,7 @@
                     </table>
                 </div>
 
-                <!-- Geçmiş Tablosu -->
-                <h6 class="mb-3 border-bottom pb-2"><i data-feather="clock" class="me-1"></i> Personel Demirbaş Geçmişi
-                </h6>
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover table-bordered table-striped">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Personel</th>
-                                <th class="text-center">Miktar</th>
-                                <th>Tarih</th>
-                                <th class="text-center">Hareket Tipi</th>
-                                <th>Açıklama</th>
-                            </tr>
-                        </thead>
-                        <tbody id="zimmetGecmisBody">
-                            <!-- JS ile doldurulacak -->
-                        </tbody>
-                    </table>
-                </div>
+               
 
             </div>
             <div class="modal-footer">

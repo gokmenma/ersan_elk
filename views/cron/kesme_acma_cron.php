@@ -229,6 +229,7 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
     $atlanAnKayitlar = 0;
     $bosSonucSayisi = 0;
     $atlanAnListesi = [];
+    $eksikZimmetListesi = [];
 
     try {
         $KesmeAcmaSvc = new KesmeAcmaService();
@@ -376,8 +377,17 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             $yeniKayit++;
 
             // Demirbaş işlemi
-            if ($personelId > 0)
-                $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucuId, $normDate, $islemId, $sonuclanmis);
+            if ($personelId > 0) {
+                $zRes = $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucuId, $normDate, $islemId, $sonuclanmis);
+                // Zimmet eksikliği uyarısını topla
+                if (!empty($zRes['iade'])) {
+                    foreach ($zRes['iade'] as $iRes) {
+                        if (($iRes['status'] ?? '') === 'error' && ($iRes['type'] ?? '') === 'no_zimmet_found') {
+                            $eksikZimmetListesi[] = $iRes['personel_adi'];
+                        }
+                    }
+                }
+            }
         }
 
         $Puantaj->db->beginTransaction();
@@ -415,6 +425,20 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         cronLog("HATA: " . $e->getMessage());
     }
 
-    $SystemLog->logAction(0, 'Cron - Online Kesme/Açma Sorgulama', "Firma ID: $firmaId, Tarih: $tarih. $yeniKayit yeni kayıt, $silinenKayit silinen.", SystemLogModel::LEVEL_IMPORTANT);
-    return ['yeni_kayit' => $yeniKayit, 'silinen_kayit' => $silinenKayit, 'guncellenen_kayit' => 0, 'atlanAn' => $atlanAnKayitlar, 'atlanAnListesi' => array_unique($atlanAnListesi), 'bos_sonuc' => $bosSonucSayisi, 'toplam_api' => count($apiData ?? [])];
+    $logMsg = "Firma ID: $firmaId, Tarih: $tarih. $yeniKayit yeni kayıt, $silinenKayit silinen.";
+    if (!empty($eksikZimmetListesi)) {
+        $uniqueEksik = array_unique($eksikZimmetListesi);
+        $logMsg .= " UYARI: Aşağıdaki personellerin zimmetinde aparat olmadığı için iade/düşüm işlenemedi: " . implode(', ', $uniqueEksik);
+    }
+    $SystemLog->logAction(0, 'Cron - Online Kesme/Açma Sorgulama', $logMsg, SystemLogModel::LEVEL_IMPORTANT);
+    return [
+        'yeni_kayit' => $yeniKayit,
+        'silinen_kayit' => $silinenKayit,
+        'guncellenen_kayit' => 0,
+        'atlanAn' => $atlanAnKayitlar,
+        'atlanAnListesi' => array_unique($atlanAnListesi),
+        'bos_sonuc' => $bosSonucSayisi,
+        'toplam_api' => count($apiData ?? []),
+        'eksikZimmetListesi' => array_unique($eksikZimmetListesi)
+    ];
 }

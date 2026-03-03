@@ -1173,6 +1173,16 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                                 }
                                 resultHtml += '</div>';
                             }
+
+                            if (res.eksik_zimmetler && Object.keys(res.eksik_zimmetler).length > 0) {
+                                resultHtml += '<hr><div class="alert alert-danger mb-0 p-2"><strong>⚠️ Aparat Zimmeti Eksik Personeller (' + Object.keys(res.eksik_zimmetler).length + '):</strong><br>';
+                                resultHtml += '<small>Şu personellerin zimmetinde aparat olmadığı için tüketim düşülemedi:</small><ul class="mb-0 mt-1 small" style="max-height:100px; overflow-y:auto;">';
+                                Object.values(res.eksik_zimmetler).forEach(function (isim) {
+                                    resultHtml += '<li>' + isim + '</li>';
+                                });
+                                resultHtml += '</ul></div>';
+                            }
+
                             resultHtml += '</div>';
                             loadReport();
                         } else {

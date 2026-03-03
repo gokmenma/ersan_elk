@@ -280,30 +280,7 @@ $(document).ready(function () {
             );
           }
 
-          // 2. GEÇMİŞ TABLOSUNU DOLDUR
-          let tbody = $("#zimmetGecmisBody");
-          tbody.empty();
-          if (gecmis && gecmis.length > 0) {
-            gecmis.forEach((item) => {
-              let row = `
-                <tr>
-                  <td>
-                    <div class="fw-medium">${item.personel_adi || "-"}</div>
-                    <div class="small text-muted">${item.personel_telefon || ""}</div>
-                  </td>
-                  <td class="text-center fw-bold">${item.miktar}</td>
-                  <td>${item.tarih_format}</td>
-                  <td class="text-center">${item.hareket_badge}</td>
-                  <td class="small text-muted">${item.aciklama || "-"}</td>
-                </tr>
-              `;
-              tbody.append(row);
-            });
-          } else {
-            tbody.append(
-              '<tr><td colspan="5" class="text-center text-muted py-3">Geçmiş kaydı bulunamadı.</td></tr>',
-            );
-          }
+          
 
           if (typeof feather !== "undefined") {
             setTimeout(() => feather.replace(), 10);

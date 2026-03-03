@@ -11,10 +11,55 @@ use PDO;
 class DemirbasZimmetModel extends Model
 {
     protected $table = 'demirbas_zimmet';
+    private $Hareket;
 
     public function __construct()
     {
         parent::__construct($this->table);
+        $this->Hareket = new DemirbasHareketModel();
+    }
+
+    /**
+     * Bir zimmet kaydı için işlenmiş (iade/sarf) toplam miktarı getirir
+     */
+    public function getProcessedAmount($zimmet_id)
+    {
+        $sql = $this->db->prepare("SELECT COALESCE(SUM(miktar), 0) FROM demirbas_hareketler WHERE zimmet_id = ? AND hareket_tipi IN ('iade', 'sarf', 'kayip') AND silinme_tarihi IS NULL");
+        $sql->execute([$zimmet_id]);
+        return (int) $sql->fetchColumn();
+    }
+
+    public function getZimmetCols()
+    {
+        return "z.id, z.demirbas_id, z.personel_id, z.teslim_tarihi, z.teslim_miktar, z.durum, z.aciklama, z.teslim_eden_id, z.kayit_tarihi, z.guncelleme_tarihi, z.silinme_tarihi";
+    }
+
+    public function find($id)
+    {
+        $id = is_numeric($id) ? $id : Security::decrypt($id);
+        if (!$id)
+            return null;
+
+        $sql = $this->db->prepare("
+            SELECT 
+                " . $this->getZimmetCols() . ",
+                " . $this->getProcessedAmountSubquery() . " as iade_miktar,
+                " . $this->getProcessedDateSubquery() . " as iade_tarihi
+            FROM {$this->table} z
+            WHERE z.id = ?
+        ");
+        $sql->execute([$id]);
+        return $sql->fetch(PDO::FETCH_OBJ) ?? null;
+    }
+
+    private function getProcessedAmountSubquery()
+    {
+        return "(SELECT COALESCE(SUM(miktar), 0) FROM demirbas_hareketler h_sub WHERE h_sub.zimmet_id = z.id AND h_sub.hareket_tipi IN ('iade', 'sarf', 'kayip') AND h_sub.silinme_tarihi IS NULL)";
+    }
+
+    private function getProcessedDateSubquery()
+    {
+        return "(SELECT MAX(tarih) FROM demirbas_hareketler h_sub WHERE h_sub.zimmet_id = z.id AND h_sub.hareket_tipi IN ('iade', 'sarf', 'kayip') AND h_sub.silinme_tarihi IS NULL)";
     }
 
     /**
@@ -37,7 +82,8 @@ class DemirbasZimmetModel extends Model
         try {
             // If it's active (teslim), restore stock to demirbas
             if ($zimmet->durum === 'teslim') {
-                $kalan_zimmet = (int) $zimmet->teslim_miktar - (int) ($zimmet->iade_miktar ?? 0);
+                $processed = $this->getProcessedAmount($raw_id);
+                $kalan_zimmet = (int) $zimmet->teslim_miktar - $processed;
                 if ($kalan_zimmet > 0) {
                     $sqlStok = $this->db->prepare("UPDATE demirbas SET kalan_miktar = kalan_miktar + ? WHERE id = ?");
                     $sqlStok->execute([$kalan_zimmet, $zimmet->demirbas_id]);
@@ -69,7 +115,9 @@ class DemirbasZimmetModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT 
-                z.*,
+                " . $this->getZimmetCols() . ",
+                " . $this->getProcessedAmountSubquery() . " as iade_miktar,
+                " . $this->getProcessedDateSubquery() . " as iade_tarihi,
                 d.demirbas_no,
                 d.demirbas_adi,
                 d.marka,
@@ -96,7 +144,9 @@ class DemirbasZimmetModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT 
-                z.*,
+                " . $this->getZimmetCols() . ",
+                " . $this->getProcessedAmountSubquery() . " as iade_miktar,
+                " . $this->getProcessedDateSubquery() . " as iade_tarihi,
                 d.demirbas_no,
                 d.demirbas_adi,
                 d.marka,
@@ -120,7 +170,9 @@ class DemirbasZimmetModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT 
-                z.*,
+                " . $this->getZimmetCols() . ",
+                " . $this->getProcessedAmountSubquery() . " as iade_miktar,
+                " . $this->getProcessedDateSubquery() . " as iade_tarihi,
                 p.adi_soyadi AS personel_adi,
                 p.cep_telefonu AS personel_telefon
             FROM {$this->table} z
@@ -139,7 +191,9 @@ class DemirbasZimmetModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT 
-                z.*,
+                " . $this->getZimmetCols() . ",
+                " . $this->getProcessedAmountSubquery() . " as iade_miktar,
+                " . $this->getProcessedDateSubquery() . " as iade_tarihi,
                 d.demirbas_no,
                 d.demirbas_adi,
                 d.marka,
@@ -204,22 +258,18 @@ class DemirbasZimmetModel extends Model
             $lastId = $this->db->lastInsertId();
 
             // Hareket tablosuna kaydet (yeni sistem)
-            $hareketSql = $this->db->prepare("
-                INSERT INTO demirbas_hareketler 
-                (demirbas_id, personel_id, zimmet_id, hareket_tipi, miktar, tarih, islem_id, is_emri_sonucu, aciklama, islem_yapan_id, kaynak)
-                VALUES (?, ?, ?, 'zimmet', ?, ?, ?, ?, ?, ?, ?)
-            ");
-            $hareketSql->execute([
-                $data['demirbas_id'],
-                $data['personel_id'],
-                $lastId,
-                $teslim_miktar,
-                $data['teslim_tarihi'],
-                $data['islem_id'] ?? null,
-                $data['is_emri_sonucu'] ?? null,
-                $data['aciklama'] ?? null,
-                $data['teslim_eden_id'] ?? ($_SESSION['id'] ?? null),
-                $data['kaynak'] ?? 'manuel'
+            $this->Hareket->hareketEkle([
+                'demirbas_id' => $data['demirbas_id'],
+                'personel_id' => $data['personel_id'],
+                'zimmet_id' => $lastId,
+                'hareket_tipi' => 'zimmet',
+                'miktar' => $teslim_miktar,
+                'tarih' => $data['teslim_tarihi'],
+                'islem_id' => $data['islem_id'] ?? null,
+                'is_emri_sonucu' => $data['is_emri_sonucu'] ?? null,
+                'aciklama' => $data['aciklama'] ?? null,
+                'islem_yapan_id' => $data['teslim_eden_id'] ?? ($_SESSION['id'] ?? null),
+                'kaynak' => $data['kaynak'] ?? 'manuel'
             ]);
 
             // Stok miktarını düşür
@@ -269,7 +319,9 @@ class DemirbasZimmetModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT 
-                z.*,
+                " . $this->getZimmetCols() . ",
+                " . $this->getProcessedAmountSubquery() . " as iade_miktar,
+                " . $this->getProcessedDateSubquery() . " as iade_tarihi,
                 d.demirbas_no,
                 d.demirbas_adi,
                 d.marka,
@@ -354,7 +406,9 @@ class DemirbasZimmetModel extends Model
     public function filter($term = null, $colSearches = [])
     {
         $sql = "SELECT 
-                    z.*,
+                    " . $this->getZimmetCols() . ",
+                    " . $this->getProcessedAmountSubquery() . " as iade_miktar,
+                    " . $this->getProcessedDateSubquery() . " as iade_tarihi,
                     d.demirbas_no,
                     d.demirbas_adi,
                     d.marka,
@@ -411,7 +465,9 @@ class DemirbasZimmetModel extends Model
         $orderDir = $request['order'][0]['dir'] ?? 'DESC';
 
         $baseSql = "SELECT 
-                        z.*,
+                        " . $this->getZimmetCols() . ",
+                        " . $this->getProcessedAmountSubquery() . " as iade_miktar,
+                        " . $this->getProcessedDateSubquery() . " as iade_tarihi,
                         d.demirbas_no,
                         d.demirbas_adi,
                         d.marka,
@@ -684,54 +740,33 @@ class DemirbasZimmetModel extends Model
                 throw new \Exception("Zimmet kaydı bulunamadı.");
             }
 
-            // Mevcut iade edilmiş miktar ve kalan kontrolü
-            $mevcutIadeMiktari = (int) ($zimmet->iade_miktar ?? 0);
+            $processed = $this->getProcessedAmount($zimmet_id);
             $teslimMiktari = (int) $zimmet->teslim_miktar;
-            $kalanZimmetMiktari = $teslimMiktari - $mevcutIadeMiktari;
-
-            // İade edilecek miktar, elimizdeki zimmetten fazla olamaz
-            if ($iade_miktar > $kalanZimmetMiktari) {
-                $iade_miktar = $kalanZimmetMiktari;
-            }
-
-            if ($iade_miktar <= 0) {
-                if ($startedTransaction) {
-                    $this->db->rollBack();
-                }
-                return true; // Zaten iade edilmiş veya kalan yok
-            }
-
-            $yeniToplamIade = $mevcutIadeMiktari + $iade_miktar;
+            $yeniToplamIade = $processed + $iade_miktar;
             $yeniDurum = ($yeniToplamIade >= $teslimMiktari) ? 'iade' : 'teslim';
 
             // Zimmet durumunu güncelle (eski tablo - geriye uyumluluk)
             $sql = $this->db->prepare("
                 UPDATE {$this->table} 
                 SET durum = ?, 
-                    iade_tarihi = ?, 
-                    iade_miktar = ?,
                     aciklama = CONCAT(COALESCE(aciklama, ''), '\n', ?)
                 WHERE id = ?
             ");
-            $sql->execute([$yeniDurum, Date::Ymd($iade_tarihi, 'Y-m-d'), $yeniToplamIade, $aciklama ?? '', $zimmet_id]);
+            $sql->execute([$yeniDurum, $aciklama ?? '', $zimmet_id]);
 
             // Hareket tablosuna kaydet (yeni sistem)
-            $hareketSql = $this->db->prepare("
-                INSERT INTO demirbas_hareketler 
-                (demirbas_id, personel_id, zimmet_id, hareket_tipi, miktar, tarih, islem_id, is_emri_sonucu, aciklama, islem_yapan_id, kaynak)
-                VALUES (?, ?, ?, 'iade', ?, ?, ?, ?, ?, ?, ?)
-            ");
-            $hareketSql->execute([
-                $zimmet->demirbas_id,
-                $zimmet->personel_id,
-                $zimmet_id,
-                $iade_miktar,
-                Date::Ymd($iade_tarihi, 'Y-m-d'),
-                $islem_id,
-                $is_emri_sonucu,
-                $aciklama,
-                $_SESSION['id'] ?? null,
-                $kaynak
+            $this->Hareket->hareketEkle([
+                'demirbas_id' => $zimmet->demirbas_id,
+                'personel_id' => $zimmet->personel_id,
+                'zimmet_id' => $zimmet_id,
+                'hareket_tipi' => 'iade',
+                'miktar' => $iade_miktar,
+                'tarih' => $iade_tarihi,
+                'islem_id' => $islem_id,
+                'is_emri_sonucu' => $is_emri_sonucu,
+                'aciklama' => $aciklama,
+                'islem_yapan_id' => $_SESSION['id'] ?? null,
+                'kaynak' => $kaynak
             ]);
 
             // Demirbaş stok miktarını artır
@@ -776,53 +811,33 @@ class DemirbasZimmetModel extends Model
                 throw new \Exception("Zimmet kaydı bulunamadı.");
             }
 
-            // Mevcut iade/tüketilmiş miktar ve kalan kontrolü
-            $mevcutTuketimMiktari = (int) ($zimmet->iade_miktar ?? 0);
+            $processed = $this->getProcessedAmount($zimmet_id);
             $teslimMiktari = (int) $zimmet->teslim_miktar;
-            $kalanZimmetMiktari = $teslimMiktari - $mevcutTuketimMiktari;
-
-            if ($tuketim_miktar > $kalanZimmetMiktari) {
-                $tuketim_miktar = $kalanZimmetMiktari;
-            }
-
-            if ($tuketim_miktar <= 0) {
-                if ($startedTransaction) {
-                    $this->db->rollBack();
-                }
-                return true;
-            }
-
-            $yeniToplamTuketim = $mevcutTuketimMiktari + $tuketim_miktar;
+            $yeniToplamTuketim = $processed + $tuketim_miktar;
             $yeniDurum = ($yeniToplamTuketim >= $teslimMiktari) ? 'iade' : 'teslim'; // iade means closed in this context
 
             // Zimmet durumunu güncelle
             $sql = $this->db->prepare("
                 UPDATE {$this->table} 
                 SET durum = ?, 
-                    iade_tarihi = ?, 
-                    iade_miktar = ?,
                     aciklama = CONCAT(COALESCE(aciklama, ''), '\n', ?)
                 WHERE id = ?
             ");
-            $sql->execute([$yeniDurum, Date::Ymd($tarih, 'Y-m-d'), $yeniToplamTuketim, $aciklama ?? '', $zimmet_id]);
+            $sql->execute([$yeniDurum, $aciklama ?? '', $zimmet_id]);
 
             // Hareket tablosuna kaydet (sarf hareketi)
-            $hareketSql = $this->db->prepare("
-                INSERT INTO demirbas_hareketler 
-                (demirbas_id, personel_id, zimmet_id, hareket_tipi, miktar, tarih, islem_id, is_emri_sonucu, aciklama, islem_yapan_id, kaynak)
-                VALUES (?, ?, ?, 'sarf', ?, ?, ?, ?, ?, ?, ?)
-            ");
-            $hareketSql->execute([
-                $zimmet->demirbas_id,
-                $zimmet->personel_id,
-                $zimmet_id,
-                $tuketim_miktar,
-                Date::Ymd($tarih, 'Y-m-d'),
-                $islem_id,
-                $is_emri_sonucu,
-                $aciklama,
-                $_SESSION['id'] ?? null,
-                $kaynak
+            $this->Hareket->hareketEkle([
+                'demirbas_id' => $zimmet->demirbas_id,
+                'personel_id' => $zimmet->personel_id,
+                'zimmet_id' => $zimmet_id,
+                'hareket_tipi' => 'sarf',
+                'miktar' => $tuketim_miktar,
+                'tarih' => $tarih,
+                'islem_id' => $islem_id,
+                'is_emri_sonucu' => $is_emri_sonucu,
+                'aciklama' => $aciklama,
+                'islem_yapan_id' => $_SESSION['id'] ?? null,
+                'kaynak' => $kaynak
             ]);
 
             // Tüketim olduğu için demirbaşın toplam miktarını düşür. (kalan_miktar zimmet verildiğinde düşmüştü zaten)
@@ -999,37 +1014,56 @@ class DemirbasZimmetModel extends Model
                         $sqlMevcutZimmet->execute($params);
                         $mevcutZimmetler = $sqlMevcutZimmet->fetchAll(PDO::FETCH_OBJ);
 
-                        foreach ($mevcutZimmetler as $z) {
-                            if ($kalanTuketimIhtiyaci <= 0)
-                                break;
-
-                            // Mükerrer kontrolü
-                            if ($islem_id) {
-                                $sqlCheckAuto = $this->db->prepare("SELECT id FROM demirbas_hareketler WHERE zimmet_id = ? AND islem_id = ? AND hareket_tipi = 'sarf' AND silinme_tarihi IS NULL LIMIT 1");
-                                $sqlCheckAuto->execute([$z->id, $islem_id]);
-                                if ($sqlCheckAuto->fetch())
-                                    continue;
+                        if (empty($mevcutZimmetler)) {
+                            $pName = "Personel ID: $personel_id";
+                            try {
+                                $stmtP = $this->db->prepare("SELECT adi_soyadi FROM personel WHERE id = ?");
+                                $stmtP->execute([$personel_id]);
+                                $pName = $stmtP->fetchColumn() ?: $pName;
+                            } catch (\Exception $e) {
                             }
 
-                            $mevcutIade = (int) ($z->iade_miktar ?? 0);
-                            $kalanZimmet = (int) $z->teslim_miktar - $mevcutIade;
-                            if ($kalanZimmet <= 0)
-                                continue;
+                            $results['zimmet'][] = [
+                                'status' => 'error',
+                                'type' => 'no_zimmet_found',
+                                'personel_id' => $personel_id,
+                                'personel_adi' => $pName,
+                                'demirbas_adi' => 'Aparat'
+                            ];
+                            $kalanTuketimIhtiyaci = 0;
+                        } else {
+                            foreach ($mevcutZimmetler as $z) {
+                                if ($kalanTuketimIhtiyaci <= 0)
+                                    break;
 
-                            $suAnkiTuketim = min($kalanZimmet, $kalanTuketimIhtiyaci);
-                            try {
-                                $this->tuketimYap(
-                                    $z->id,
-                                    $tarih,
-                                    $suAnkiTuketim,
-                                    "Otomatik Tüketim - Aparat (İşlem ID: $islem_id - Sonuç: $searchSonuc)",
-                                    $islem_id,
-                                    $searchSonuc,
-                                    'puantaj_excel'
-                                );
-                                $kalanTuketimIhtiyaci -= $suAnkiTuketim;
-                                $results['iade'][] = ['status' => 'success', 'type' => 'aparat_tuketim'];
-                            } catch (\Exception $e) {
+                                // Mükerrer kontrolü
+                                if ($islem_id) {
+                                    $sqlCheckAuto = $this->db->prepare("SELECT id FROM demirbas_hareketler WHERE zimmet_id = ? AND islem_id = ? AND hareket_tipi = 'sarf' AND silinme_tarihi IS NULL LIMIT 1");
+                                    $sqlCheckAuto->execute([$z->id, $islem_id]);
+                                    if ($sqlCheckAuto->fetch())
+                                        continue;
+                                }
+
+                                $mevcutIade = (int) ($z->iade_miktar ?? 0);
+                                $kalanZimmet = (int) $z->teslim_miktar - $mevcutIade;
+                                if ($kalanZimmet <= 0)
+                                    continue;
+
+                                $suAnkiTuketim = min($kalanZimmet, $kalanTuketimIhtiyaci);
+                                try {
+                                    $this->tuketimYap(
+                                        $z->id,
+                                        $tarih,
+                                        $suAnkiTuketim,
+                                        "Otomatik Tüketim - Aparat (İşlem ID: $islem_id - Sonuç: $searchSonuc)",
+                                        $islem_id,
+                                        $searchSonuc,
+                                        'puantaj_excel'
+                                    );
+                                    $kalanTuketimIhtiyaci -= $suAnkiTuketim;
+                                    $results['iade'][] = ['status' => 'success', 'type' => 'aparat_tuketim'];
+                                } catch (\Exception $e) {
+                                }
                             }
                         }
                     } catch (\Exception $e) {
@@ -1097,22 +1131,23 @@ class DemirbasZimmetModel extends Model
                     $mevcutZimmetler = $sqlMevcut->fetchAll(PDO::FETCH_OBJ);
 
                     if (empty($mevcutZimmetler)) {
+                        // Personelde zimmet yoksa otomatik zimmet açmıyoruz, sadece raporlama için bilgi dönüyoruz.
+                        $pName = "Personel ID: $personel_id";
                         try {
-                            $this->db->prepare("UPDATE demirbas SET miktar = miktar + ?, kalan_miktar = kalan_miktar + ? WHERE id = ?")
-                                ->execute([$kalanIadeIhtiyaci, $kalanIadeIhtiyaci, $dAuto->id]);
-                            $this->zimmetVer([
-                                'demirbas_id' => $dAuto->id,
-                                'personel_id' => $personel_id,
-                                'teslim_tarihi' => $tarih,
-                                'teslim_miktar' => $kalanIadeIhtiyaci,
-                                'aciklama' => "Sahadan İade (Sistemde Zimmet Yoktu) - (İşlem ID: $islem_id - Sonuç: $is_emri_sonucu_id)",
-                                'islem_id' => $islem_id,
-                                'is_emri_sonucu' => $searchSonuc,
-                                'kaynak' => 'puantaj_excel'
-                            ]);
-                            $kalanIadeIhtiyaci = 0;
+                            $stmtP = $this->db->prepare("SELECT adi_soyadi FROM personel WHERE id = ?");
+                            $stmtP->execute([$personel_id]);
+                            $pName = $stmtP->fetchColumn() ?: $pName;
                         } catch (\Exception $e) {
                         }
+
+                        $results['iade'][] = [
+                            'status' => 'error',
+                            'type' => 'no_zimmet_found',
+                            'personel_id' => $personel_id,
+                            'personel_adi' => $pName,
+                            'demirbas_adi' => $dAuto->demirbas_adi
+                        ];
+                        $kalanIadeIhtiyaci = 0;
                     } else {
                         foreach ($mevcutZimmetler as $z) {
                             if ($kalanIadeIhtiyaci <= 0)
@@ -1127,49 +1162,40 @@ class DemirbasZimmetModel extends Model
                                 }
                             }
 
-                            $mevcutSarf = (int) $z->iade_miktar;
-                            $buKayitIcinKullanilacak = min($mevcutSarf, $kalanIadeIhtiyaci);
+                            $processed = $this->getProcessedAmount($z->id);
+                            $buKayitIcinKullanilacak = min($processed, $kalanIadeIhtiyaci);
 
                             if ($buKayitIcinKullanilacak > 0) {
-                                $this->db->prepare("UPDATE demirbas_zimmet SET iade_miktar = iade_miktar - ? WHERE id = ?")
-                                    ->execute([$buKayitIcinKullanilacak, $z->id]);
 
-                                $this->db->prepare("
-                                    INSERT INTO demirbas_hareketler 
-                                    (demirbas_id, personel_id, zimmet_id, hareket_tipi, miktar, tarih, islem_id, is_emri_sonucu, aciklama, kaynak)
-                                    VALUES (?, ?, ?, 'iade', ?, ?, ?, ?, ?, 'puantaj_excel')
-                                ")->execute([
-                                            $z->demirbas_id,
-                                            $personel_id,
-                                            $z->id,
-                                            $buKayitIcinKullanilacak,
-                                            $tarih,
-                                            $islem_id,
-                                            $searchSonuc,
-                                            "Sahadan Geri Alındı (Tüketimden İptal) - $searchSonuc"
-                                        ]);
+                                $this->Hareket->hareketEkle([
+                                    'demirbas_id' => $z->demirbas_id,
+                                    'personel_id' => $personel_id,
+                                    'zimmet_id' => $z->id,
+                                    'hareket_tipi' => 'iade',
+                                    'miktar' => $buKayitIcinKullanilacak,
+                                    'tarih' => $tarih,
+                                    'islem_id' => $islem_id,
+                                    'is_emri_sonucu' => $searchSonuc,
+                                    'aciklama' => "Sahadan Geri Alındı (Tüketimden İptal) - $searchSonuc",
+                                    'kaynak' => 'puantaj_excel'
+                                ]);
 
-                                $kalanIadeIhtiyaci -= $buKayitIcinKullanilacak;
                             }
 
                             if ($kalanIadeIhtiyaci > 0) {
-                                $this->db->prepare("UPDATE demirbas_zimmet SET teslim_miktar = teslim_miktar + ? WHERE id = ?")
-                                    ->execute([$kalanIadeIhtiyaci, $z->id]);
 
-                                $this->db->prepare("
-                                    INSERT INTO demirbas_hareketler 
-                                    (demirbas_id, personel_id, zimmet_id, hareket_tipi, miktar, tarih, islem_id, is_emri_sonucu, aciklama, kaynak)
-                                    VALUES (?, ?, ?, 'iade', ?, ?, ?, ?, ?, 'puantaj_excel')
-                                ")->execute([
-                                            $z->demirbas_id,
-                                            $personel_id,
-                                            $z->id,
-                                            $kalanIadeIhtiyaci,
-                                            $tarih,
-                                            $islem_id,
-                                            $searchSonuc,
-                                            "Sahadan Geri Alındı (Ekstra İade) - $searchSonuc"
-                                        ]);
+                                $this->Hareket->hareketEkle([
+                                    'demirbas_id' => $z->demirbas_id,
+                                    'personel_id' => $personel_id,
+                                    'zimmet_id' => $z->id,
+                                    'hareket_tipi' => 'iade',
+                                    'miktar' => $kalanIadeIhtiyaci,
+                                    'tarih' => $tarih,
+                                    'islem_id' => $islem_id,
+                                    'is_emri_sonucu' => $searchSonuc,
+                                    'aciklama' => "Sahadan Geri Alındı (Ekstra İade) - $searchSonuc",
+                                    'kaynak' => 'puantaj_excel'
+                                ]);
 
                                 $kalanIadeIhtiyaci = 0;
                             }
@@ -1213,8 +1239,8 @@ class DemirbasZimmetModel extends Model
                             continue;
                     }
 
-                    $mevcutIade = (int) ($z->iade_miktar ?? 0);
-                    $kalanZimmet = (int) $z->teslim_miktar - $mevcutIade;
+                    $processed = $this->getProcessedAmount($z->id);
+                    $kalanZimmet = (int) $z->teslim_miktar - $processed;
                     if ($kalanZimmet <= 0)
                         continue;
 
@@ -1301,8 +1327,8 @@ class DemirbasZimmetModel extends Model
                                 continue;
                         }
 
-                        $mevcutIade = (int) ($z->iade_miktar ?? 0);
-                        $kalanZimmet = (int) $z->teslim_miktar - $mevcutIade;
+                        $processed = $this->getProcessedAmount($z->id);
+                        $kalanZimmet = (int) $z->teslim_miktar - $processed;
                         if ($kalanZimmet <= 0)
                             continue;
 
@@ -1378,20 +1404,15 @@ class DemirbasZimmetModel extends Model
             }
             $sqlDemirbas->execute([$h->miktar, $h->demirbas_id]);
 
-            // 4. Zimmet kaydını güncelle
-            $yeniIadeMiktari = (int) ($z->iade_miktar ?? 0) - (int) $h->miktar;
-            if ($yeniIadeMiktari < 0)
-                $yeniIadeMiktari = 0;
-
-            // Eğer iade miktarı teslim miktarından az ise durum 'teslim' olur
-            $yeniDurum = ($yeniIadeMiktari < (int) $z->teslim_miktar) ? 'teslim' : 'iade';
+            $processed = $this->getProcessedAmount($h->zimmet_id);
+            $yeniDurum = ($processed < (int) $z->teslim_miktar) ? 'teslim' : 'iade';
 
             $sqlUpZimmet = $this->db->prepare("
                 UPDATE {$this->table} 
-                SET iade_miktar = ?, durum = ?, iade_tarihi = CASE WHEN ? = 0 THEN NULL ELSE iade_tarihi END
+                SET durum = ?
                 WHERE id = ?
             ");
-            $sqlUpZimmet->execute([$yeniIadeMiktari, $yeniDurum, $yeniIadeMiktari, $h->zimmet_id]);
+            $sqlUpZimmet->execute([$yeniDurum, $h->zimmet_id]);
 
             // 5. Hareketi sil (soft delete)
             $sqlDelHareket = $this->db->prepare("UPDATE demirbas_hareketler SET silinme_tarihi = NOW() WHERE id = ?");

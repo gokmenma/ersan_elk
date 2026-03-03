@@ -37,6 +37,11 @@ class DemirbasHareketModel extends Model
      */
     public function hareketEkle($data)
     {
+        // Zimmet kaydı olmayan hareketlerin demirbas_hareketler tablosuna kaydedilmemesi kuralı
+        if (!isset($data['zimmet_id']) || empty($data['zimmet_id'])) {
+            return false;
+        }
+
         $sql = $this->db->prepare("
             INSERT INTO {$this->table} 
             (demirbas_id, personel_id, zimmet_id, hareket_tipi, miktar, tarih, islem_id, is_emri_sonucu, aciklama, islem_yapan_id, kaynak)
@@ -46,7 +51,7 @@ class DemirbasHareketModel extends Model
         $sql->execute([
             $data['demirbas_id'],
             $data['personel_id'],
-            $data['zimmet_id'] ?? null,
+            $data['zimmet_id'],
             $data['hareket_tipi'],
             $data['miktar'] ?? 1,
             Date::Ymd($data['tarih'], 'Y-m-d'),

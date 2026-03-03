@@ -314,7 +314,7 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
                         WHERE dz.personel_id = ? 
                         AND d.seri_no = ? 
                         AND dz.silinme_tarihi IS NULL 
-                        AND (dz.durum = 'teslim' OR dz.teslim_miktar > IFNULL(dz.iade_miktar, 0))
+                        AND (dz.durum = 'teslim' OR dz.teslim_miktar > (SELECT COALESCE(SUM(miktar), 0) FROM demirbas_hareketler WHERE zimmet_id = dz.id AND hareket_tipi IN ('iade', 'sarf', 'kayip') AND silinme_tarihi IS NULL))
                         LIMIT 1
                     ");
                     $stmtZimmet->execute([$personelId, $takilanSayacNo]);
@@ -323,14 +323,14 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
                         try {
                             $zimmetId = $zimmetRow['id'];
                             $kategoriId = $zimmetRow['kategori_id'];
-                            
+
                             $ZimmetModel = new \App\Model\DemirbasZimmetModel();
-                            
+
                             // Takılan sayacı Tüketim yap
                             $isemriSonucu = trim($veri['ISEMRI_SONUCU'] ?? '');
                             $aboneNo = trim($veri['ABONE_NO'] ?? '');
                             $ZimmetModel->tuketimYap($zimmetId, ($kayitTarihi ?: $normDate), 1, "Sayaç değişimi otomatik tüketimi.\nİş Emri No: {$isemriNo}\nAbone No: {$aboneNo}", $islemId, $isemriSonucu, 'otomatik');
-                            
+
                             // Sökülen sayacı Hurda olarak ekle ve zimmetle
                             $yeniHurdaAdi = "Sökülen Hurda / Abone: " . $aboneNo;
                             $sqlHurdaInsert = $db->prepare("

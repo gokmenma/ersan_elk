@@ -3610,12 +3610,16 @@ if (Gate::allows("ana_sayfa")) {
                         try {
                             const res = typeof response === 'object' ? response : JSON.parse(response);
                             if (res.status === 'success') {
+                                let msg = res.message || (res.yeni_kayit || 0) + ' adet yeni kayıt eklendi.';
+                                if (res.eksik_zimmetler && Object.keys(res.eksik_zimmetler).length > 0) {
+                                    msg += '<br><br><span class="text-danger fw-bold">⚠️ Aparat Zimmeti Eksik Personeller (' + Object.keys(res.eksik_zimmetler).length + '):</span><br><small>Şu personellerin zimmetinde aparat olmadığı için tüketim düşülemedi.</small>';
+                                }
                                 Swal.fire({
                                     icon: 'success',
                                     title: 'Sorgulama Başarılı',
-                                    text: res.message || (res.yeni_kayit || 0) + ' adet yeni kayıt eklendi.',
-                                    timer: 2000,
-                                    showConfirmButton: false
+                                    html: msg,
+                                    timer: res.eksik_zimmetler && Object.keys(res.eksik_zimmetler).length > 0 ? 5000 : 2000,
+                                    showConfirmButton: res.eksik_zimmetler && Object.keys(res.eksik_zimmetler).length > 0
                                 }).then(() => {
                                     location.reload();
                                 });

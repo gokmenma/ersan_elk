@@ -598,6 +598,12 @@ for ($saat = 0; $saat < 24; $saat++) {
                             if (data.mevcut_kayitlar && data.mevcut_kayitlar.length > 0) {
                                 message += '\n\nDaha önce çekilmiş ' + data.mevcut_kayitlar.length + ' kayıt var.';
                             }
+                            if (data.eksik_zimmetler && Object.keys(data.eksik_zimmetler).length > 0) {
+                                message += '\n\n⚠️ Aparat Zimmeti Eksik Personeller (' + Object.keys(data.eksik_zimmetler).length + '):\n';
+                                Object.values(data.eksik_zimmetler).forEach(function (isim) {
+                                    message += isim + '\n';
+                                });
+                            }
                             Swal.fire('Sorgulama Tamamlandı', message, 'success');
                         } else {
                             Swal.fire('Hata', data.message, 'error');

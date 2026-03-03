@@ -184,21 +184,8 @@ if ($action == "kasiye-teslim") {
         $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Kaskiye Teslim Edildi', kaskiye_teslim_tarihi = ?, kaskiye_teslim_eden = ?, aciklama = ?, kalan_miktar = 0, miktar = 0 WHERE id = ?");
         $sqlUpdate->execute([$formatted_tarih, $teslim_eden, ($aciklama ?? null), $demirbas_id]);
 
-        // Hareket kaydı oluştur (audit trail)
-        try {
-            $Hareket->hareketEkle([
-                'demirbas_id' => $demirbas_id,
-                'personel_id' => $_SESSION["id"] ?? 1,
-                'hareket_tipi' => 'sarf',
-                'miktar' => $demirbas->kalan_miktar > 0 ? $demirbas->kalan_miktar : 1,
-                'tarih' => $formatted_tarih,
-                'aciklama' => 'Kaskiye teslim edildi. Teslim eden: ' . $teslim_eden . '. Not: ' . ($aciklama ?? ''),
-                'islem_yapan_id' => $_SESSION["id"] ?? null,
-                'kaynak' => 'manuel',
-            ]);
-        } catch (Exception $e) {
-            // Hareket kaydı hata verse bile ana işlemi etkilemesin
-        }
+        // Kaskiye teslimatı demirbaş tablosunda takip edildiği için artık demirbas_hareketler tablosuna zimmet-siz hareket kaydı eklemiyoruz.
+        // Zimmet kaydı olmayan hareketlerin bu tabloya eklenmemesi kuralına uyulmuştur.
 
         jsonResponse("success", "Sayaç başarıyla Kaskiye teslim edildi. Durum güncellendi.");
     } catch (Exception $ex) {
@@ -492,22 +479,8 @@ if ($action == "bulk-kasiye-teslim") {
             $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Kaskiye Teslim Edildi', kaskiye_teslim_tarihi = ?, kaskiye_teslim_eden = ?, aciklama = ?, kalan_miktar = 0, miktar = 0 WHERE id = ?");
             $sqlUpdate->execute([$formatted_tarih, $teslim_eden, ($aciklama ?? null), $id]);
 
-            // Hareket kaydı
-            try {
-                $Hareket->hareketEkle([
-                    'demirbas_id' => $id,
-                    'personel_id' => $_SESSION["id"] ?? 1,
-                    'hareket_tipi' => 'sarf',
-                    'miktar' => $demirbas->kalan_miktar > 0 ? $demirbas->kalan_miktar : 1,
-                    'tarih' => $formatted_tarih,
-                    'aciklama' => 'Toplu Kaskiye teslim edildi. Teslim eden: ' . $teslim_eden . '. Not: ' . ($aciklama ?? ''),
-                    'islem_yapan_id' => $_SESSION["id"] ?? null,
-                    'kaynak' => 'manuel',
-                ]);
-                $successCount++;
-            } catch (Exception $e) {
-                // Ignore harekete ekle errors for bulk
-            }
+            // Kaskiye teslimatı demirbaş tablosunda takip edildiği için artık demirbas_hareketler tablosuna zimmet-siz hareket kaydı eklemiyoruz.
+            $successCount++;
         }
 
         $Demirbas->db->commit();
@@ -895,9 +868,10 @@ if ($action == "hurda-zimmet-listesi") {
         $params[] = $_SESSION['firma_id'];
 
         $sql = $Demirbas->db->prepare("
-            SELECT z.id, z.teslim_miktar, z.iade_miktar, z.teslim_tarihi,
+            SELECT z.id, z.teslim_miktar, z.teslim_tarihi,
                    d.demirbas_adi, d.marka, d.model, d.seri_no, d.durum as demirbas_durum,
-                   (z.teslim_miktar - COALESCE(z.iade_miktar, 0)) as kalan_miktar
+                   (SELECT COALESCE(SUM(miktar), 0) FROM demirbas_hareketler WHERE zimmet_id = z.id AND hareket_tipi IN ('iade', 'sarf', 'kayip') AND silinme_tarihi IS NULL) as iade_miktar,
+                   (z.teslim_miktar - (SELECT COALESCE(SUM(miktar), 0) FROM demirbas_hareketler WHERE zimmet_id = z.id AND hareket_tipi IN ('iade', 'sarf', 'kayip') AND silinme_tarihi IS NULL)) as kalan_miktar
             FROM demirbas_zimmet z
             INNER JOIN demirbas d ON z.demirbas_id = d.id
             WHERE d.kategori_id IN ($katPlaceholders) 
@@ -1488,7 +1462,9 @@ if ($action == "aparat-zimmet-kayitlari") {
         // Bu aparata ait zimmet kayıtları
         $sqlZimmetler = $Zimmet->getDb()->prepare("
             SELECT 
-                z.*,
+                z.id, z.demirbas_id, z.personel_id, z.teslim_tarihi, z.teslim_miktar, z.durum, z.aciklama, z.teslim_eden_id, z.kayit_tarihi, z.guncelleme_tarihi, z.silinme_tarihi,
+                (SELECT COALESCE(SUM(miktar), 0) FROM demirbas_hareketler WHERE zimmet_id = z.id AND hareket_tipi IN ('iade', 'sarf', 'kayip') AND silinme_tarihi IS NULL) as iade_miktar,
+                (SELECT MAX(tarih) FROM demirbas_hareketler WHERE zimmet_id = z.id AND hareket_tipi IN ('iade', 'sarf', 'kayip') AND silinme_tarihi IS NULL) as iade_tarihi,
                 p.adi_soyadi AS personel_adi,
                 p.cep_telefonu AS personel_telefon
             FROM demirbas_zimmet z
