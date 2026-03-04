@@ -4,7 +4,6 @@ require_once "vendor/autoload.php";
 use App\Model\FirmaModel;
 use App\Model\UserModel;
 use App\Helper\Helper;
-use App\Helper\Security;
 use App\Helper\Form;
 
 session_start();
@@ -51,6 +50,20 @@ if (isset($_GET['action'])) {
 
 $branchs = $Firma->all();
 
+// Kullanıcının yetkili olduğu firmaları filtrele
+$currentUser = $_SESSION['user'] ?? null;
+if ($currentUser && isset($currentUser->firma_ids)) {
+    $rawFirmaIds = trim((string) $currentUser->firma_ids);
+    if ($rawFirmaIds !== '') {
+        $allowedFirmaIds = array_map('intval', array_filter(array_map('trim', explode(',', $rawFirmaIds)), 'strlen'));
+        if (!empty($allowedFirmaIds)) {
+            $branchs = array_filter($branchs, function ($branch) use ($allowedFirmaIds) {
+                return isset($branch->id) && in_array((int) $branch->id, $allowedFirmaIds, true);
+            });
+        }
+    }
+}
+
 // Varsayılan firma cookie kontrolü - otomatik yönlendirme
 $defaultFirma = $Firma->resolveDefaultFirmaFromCookies($_COOKIE, $branchs);
 if ($defaultFirma && !isset($_GET['change'])) {
@@ -72,6 +85,7 @@ $branchs = array_filter($branchs, function ($b) {
 if (count($branchs) == 1 && !isset($_GET['change'])) {
     $only_branch = reset($branchs);
     $_SESSION['sube_id'] = $only_branch->id;
+    $_SESSION['firma_id'] = (int) $only_branch->id;
     $redirect = "/set-session.php?firma_id=" . $only_branch->id;
     if (isset($only_branch->firma_kodu) && !empty($only_branch->firma_kodu)) {
         $redirect .= "&firma_kodu=" . urlencode($only_branch->firma_kodu);

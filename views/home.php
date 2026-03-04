@@ -47,23 +47,27 @@ if (Gate::allows("ana_sayfa")) {
     $last_update_endeks = $last_update_isler = $last_update_sayac = null;
     $db_conn = $personelModel->getDb();
     try {
-        $stmt_ue = $db_conn->prepare("SELECT MAX(created_at) FROM endeks_okuma WHERE firma_id = ? AND DATE(created_at) = CURDATE()");
-        $stmt_ue->execute([$_SESSION['firma_id'] ?? 0]);
-        $last_update_endeks = $stmt_ue->fetchColumn();
-    } catch (\Exception $e) {
-    }
-
-    try {
-        $stmt_ui = $db_conn->prepare("SELECT MAX(created_at) FROM yapilan_isler WHERE firma_id = ? AND DATE(created_at) = CURDATE()");
-        $stmt_ui->execute([$_SESSION['firma_id'] ?? 0]);
-        $last_update_isler = $stmt_ui->fetchColumn();
-    } catch (\Exception $e) {
-    }
-
-    try {
-        $stmt_us = $db_conn->prepare("SELECT MAX(created_at) FROM sayac_degisim WHERE firma_id = ? AND DATE(created_at) = CURDATE()");
-        $stmt_us->execute([$_SESSION['firma_id'] ?? 0]);
-        $last_update_sayac = $stmt_us->fetchColumn();
+        $stmt_updates = $db_conn->prepare("SELECT
+                (SELECT MAX(created_at)
+                 FROM endeks_okuma
+                 WHERE firma_id = :firma_id
+                   AND created_at >= CURDATE()
+                   AND created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)) AS last_update_endeks,
+                (SELECT MAX(created_at)
+                 FROM yapilan_isler
+                 WHERE firma_id = :firma_id
+                   AND created_at >= CURDATE()
+                   AND created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)) AS last_update_isler,
+                (SELECT MAX(created_at)
+                 FROM sayac_degisim
+                 WHERE firma_id = :firma_id
+                   AND created_at >= CURDATE()
+                   AND created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)) AS last_update_sayac");
+        $stmt_updates->execute([':firma_id' => $_SESSION['firma_id'] ?? 0]);
+        $updates = $stmt_updates->fetch(PDO::FETCH_ASSOC) ?: [];
+        $last_update_endeks = $updates['last_update_endeks'] ?? null;
+        $last_update_isler = $updates['last_update_isler'] ?? null;
+        $last_update_sayac = $updates['last_update_sayac'] ?? null;
     } catch (\Exception $e) {
     }
 
@@ -320,7 +324,9 @@ if (Gate::allows("ana_sayfa")) {
     // Widget İçeriklerini Tanımla
     $widgets = [];
 
-    if (!empty($slider_notifications) && !empty($duyurular)) {
+    
+
+    if (!empty($slider_notifications)) {
         ob_start(); ?>
         <div class="col-12 col-lg-6 widget-item" id="widget-ana-slider" style="margin-bottom: 1.5rem; position: relative;">
             <!-- Drag Handle (Separated from Carousel to avoid event blocking) -->
@@ -329,7 +335,7 @@ if (Gate::allows("ana_sayfa")) {
                 <i class='bx bx-grid-vertical text-white' style="font-size: 1.2rem; opacity: 0.8;"></i>
             </div>
 
-            <div id="dashboardCarousel" class="carousel slide animate-card bordro-summary-card" data-bs-ride="carousel"
+            <div id="dashboardCarousel" class="carousel slide animate-card bordro-summary-card h-100" data-bs-ride="carousel"
                 style="--delay: 0s; cursor: grab;">
                 <div class="carousel-indicators" style="margin-bottom: 0.5rem;">
                     <?php foreach ($slider_notifications as $index => $notif): ?>
@@ -340,12 +346,12 @@ if (Gate::allows("ana_sayfa")) {
                             style="width: 8px; height: 8px; border-radius: 50%;"></button>
                     <?php endforeach; ?>
                 </div>
-                <div class="carousel-inner shadow-sm rounded-3 overflow-hidden border-0">
+                <div class="carousel-inner shadow-sm rounded-3 overflow-hidden border-0 h-100">
                     <?php foreach ($slider_notifications as $index => $notif): ?>
-                        <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
-                            <div class="carousel-content p-4 px-5 d-flex align-items-center <?= $notif['link_class'] ?>"
+                        <div class="carousel-item h-100 <?php echo $index === 0 ? 'active' : ''; ?>">
+                            <div class="carousel-content p-4 px-5 d-flex align-items-center <?= $notif['link_class'] ?> h-100"
                                 <?= $notif['link_action'] ?>
-                                style="background: <?php echo $notif['gradient']; ?>; min-height: 230px; position: relative; overflow: hidden;">
+                                style="background: <?php echo $notif['gradient']; ?>; min-height: 260px; position: relative; overflow: hidden;">
                                 <div class="circles" style="opacity: 0.12;">
                                     <div></div>
                                     <div></div>
@@ -941,9 +947,14 @@ if (Gate::allows("ana_sayfa")) {
             </div>
             <div class="card-body p-0"
                 style="min-height: <?php echo getWidgetHeight('widget-endeks-karsilastirma', 'auto'); ?>;">
-                <div id="endeksCompLoading" class="text-center py-5">
-                    <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
-                    <p class="mt-2 text-muted small mb-0">Karşılaştırma verisi yükleniyor...</p>
+                <div id="endeksCompLoading" class="p-3">
+                    <div class="dashboard-skeleton-table">
+                        <div class="skeleton-line w-35 mb-3"></div>
+                        <div class="skeleton-line w-100 mb-2"></div>
+                        <div class="skeleton-line w-100 mb-2"></div>
+                        <div class="skeleton-line w-90 mb-2"></div>
+                        <div class="skeleton-line w-95"></div>
+                    </div>
                 </div>
                 <div id="endeksCompContent" style="display: none;">
                     <!-- Bölge bazlı görünüm -->
@@ -1496,7 +1507,21 @@ if (Gate::allows("ana_sayfa")) {
             </div>
             <div class="card-body"
                 style="height: <?php echo getWidgetHeight('widget-is-turu-istatistikleri', 'auto'); ?>; overflow-y: auto;">
-                <div id="work-type-stats-chart" style="min-height: 400px; height: 100%;"></div>
+                <div id="work-type-stats-chart" style="min-height: 400px; height: 100%;">
+                    <div id="work-type-stats-skeleton" class="dashboard-chart-skeleton">
+                        <div class="skeleton-line w-40 mb-3"></div>
+                        <div class="skeleton-chart-bars">
+                            <span style="height: 32%;"></span>
+                            <span style="height: 46%;"></span>
+                            <span style="height: 64%;"></span>
+                            <span style="height: 52%;"></span>
+                            <span style="height: 75%;"></span>
+                            <span style="height: 58%;"></span>
+                            <span style="height: 80%;"></span>
+                            <span style="height: 43%;"></span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1535,7 +1560,18 @@ if (Gate::allows("ana_sayfa")) {
             </div>
             <div class="card-body"
                 style="height: <?php echo getWidgetHeight('widget-is-emri-sonucu-istatistikleri', 'auto'); ?>; overflow-y: auto;">
-                <div id="work-result-stats-chart" style="min-height: 400px; height: 100%;"></div>
+                <div id="work-result-stats-chart" style="min-height: 400px; height: 100%;">
+                    <div id="work-result-stats-skeleton" class="dashboard-chart-skeleton">
+                        <div class="skeleton-line w-50 mb-3"></div>
+                        <div class="skeleton-chart-lines">
+                            <span class="w-100"></span>
+                            <span class="w-85"></span>
+                            <span class="w-70"></span>
+                            <span class="w-92"></span>
+                            <span class="w-60"></span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1565,6 +1601,110 @@ if (Gate::allows("ana_sayfa")) {
         ?>
 
     <div class="container-fluid">
+
+        <style id="dashboard-skeleton-critical">
+            #dashboard-page-skeleton {
+                padding: 0.5rem 0 1rem;
+                display: block;
+            }
+
+            #dashboard-page-skeleton .skeleton-toolbar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 1rem;
+            }
+
+            #dashboard-page-skeleton .skeleton-toolbar-right {
+                display: flex;
+                gap: 8px;
+            }
+
+            #dashboard-page-skeleton .skeleton-grid {
+                display: grid;
+                grid-template-columns: repeat(12, minmax(0, 1fr));
+                gap: 16px;
+            }
+
+            #dashboard-page-skeleton .skeleton-card {
+                min-height: 140px;
+                border-radius: 12px;
+                padding: 14px;
+                border: 1px solid rgba(203, 213, 225, 0.45);
+                background: rgba(248, 250, 252, 0.8);
+            }
+
+            #dashboard-page-skeleton .skeleton-card-lg {
+                min-height: 260px;
+                grid-column: span 6;
+            }
+
+            #dashboard-page-skeleton .skeleton-card-sm {
+                grid-column: span 3;
+            }
+
+            #dashboard-page-skeleton .skeleton-card-full {
+                min-height: 260px;
+                grid-column: span 12;
+            }
+
+            #dashboard-page-skeleton .skeleton-line {
+                display: block;
+                height: 12px;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                background: linear-gradient(90deg, rgba(203, 213, 225, 0.35) 25%, rgba(203, 213, 225, 0.6) 50%, rgba(203, 213, 225, 0.35) 75%);
+                background-size: 200% 100%;
+                animation: skeleton-shimmer 1.4s linear infinite;
+            }
+
+            @media (max-width: 991.98px) {
+
+                #dashboard-page-skeleton .skeleton-card-lg,
+                #dashboard-page-skeleton .skeleton-card-sm,
+                #dashboard-page-skeleton .skeleton-card-full {
+                    grid-column: span 12;
+                }
+            }
+        </style>
+
+        <div id="dashboard-page-skeleton" class="dashboard-page-skeleton">
+            <div class="skeleton-toolbar">
+                <div class="skeleton-line w-35"></div>
+                <div class="skeleton-toolbar-right">
+                    <div class="skeleton-line" style="width: 170px;"></div>
+                    <div class="skeleton-line" style="width: 190px;"></div>
+                </div>
+            </div>
+
+            <div class="skeleton-grid">
+                <div class="skeleton-card skeleton-card-lg">
+                    <div class="skeleton-line w-60"></div>
+                    <div class="skeleton-line w-95"></div>
+                    <div class="skeleton-line w-85"></div>
+                </div>
+                <div class="skeleton-card skeleton-card-lg">
+                    <div class="skeleton-line w-50"></div>
+                    <div class="skeleton-line w-90"></div>
+                    <div class="skeleton-line w-70"></div>
+                </div>
+
+                <div class="skeleton-card skeleton-card-sm"><div class="skeleton-line w-60"></div><div class="skeleton-line w-90"></div><div class="skeleton-line w-50"></div></div>
+                <div class="skeleton-card skeleton-card-sm"><div class="skeleton-line w-50"></div><div class="skeleton-line w-85"></div><div class="skeleton-line w-60"></div></div>
+                <div class="skeleton-card skeleton-card-sm"><div class="skeleton-line w-55"></div><div class="skeleton-line w-95"></div><div class="skeleton-line w-40"></div></div>
+                <div class="skeleton-card skeleton-card-sm"><div class="skeleton-line w-45"></div><div class="skeleton-line w-80"></div><div class="skeleton-line w-65"></div></div>
+
+                <div class="skeleton-card skeleton-card-full">
+                    <div class="skeleton-line w-40"></div>
+                    <div class="skeleton-line w-100"></div>
+                    <div class="skeleton-line w-100"></div>
+                    <div class="skeleton-line w-95"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="dashboard-page-content" style="display: none;">
 
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
@@ -1739,6 +1879,8 @@ if (Gate::allows("ana_sayfa")) {
                 echo $widget_html;
             }
             ?>
+        </div>
+
         </div>
     </div>
 
@@ -2716,6 +2858,148 @@ if (Gate::allows("ana_sayfa")) {
             border-color: var(--dashboard-theme-color, #5156be) !important;
         }
 
+        .dashboard-chart-skeleton,
+        .dashboard-skeleton-table {
+            animation: skeleton-pulse 1.4s ease-in-out infinite;
+        }
+
+        #dashboard-widgets .dashboard-phase2-hidden {
+            display: none !important;
+        }
+
+        .dashboard-page-skeleton {
+            padding: 0.5rem 0 1rem;
+        }
+
+        .dashboard-page-skeleton .skeleton-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .dashboard-page-skeleton .skeleton-toolbar-right {
+            display: flex;
+            gap: 8px;
+        }
+
+        .dashboard-page-skeleton .skeleton-grid {
+            display: grid;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .dashboard-page-skeleton .skeleton-card {
+            min-height: 140px;
+            border-radius: 12px;
+            padding: 14px;
+            border: 1px solid rgba(203, 213, 225, 0.45);
+            background: rgba(248, 250, 252, 0.8);
+        }
+
+        .dashboard-page-skeleton .skeleton-card-lg {
+            min-height: 260px;
+            grid-column: span 6;
+        }
+
+        .dashboard-page-skeleton .skeleton-card-sm {
+            grid-column: span 3;
+        }
+
+        .dashboard-page-skeleton .skeleton-card-full {
+            min-height: 260px;
+            grid-column: span 12;
+        }
+
+        .dashboard-page-skeleton .skeleton-card .skeleton-line {
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 991.98px) {
+
+            .dashboard-page-skeleton .skeleton-card-lg,
+            .dashboard-page-skeleton .skeleton-card-sm,
+            .dashboard-page-skeleton .skeleton-card-full {
+                grid-column: span 12;
+            }
+        }
+
+        .skeleton-line {
+            display: block;
+            height: 12px;
+            border-radius: 8px;
+            background: linear-gradient(90deg, rgba(203, 213, 225, 0.35) 25%, rgba(203, 213, 225, 0.6) 50%, rgba(203, 213, 225, 0.35) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.4s linear infinite;
+        }
+
+        .skeleton-chart-bars {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 10px;
+            height: 280px;
+            padding-top: 8px;
+        }
+
+        .skeleton-chart-bars span {
+            display: block;
+            flex: 1;
+            border-radius: 6px 6px 0 0;
+            background: rgba(148, 163, 184, 0.35);
+        }
+
+        .skeleton-chart-lines {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-top: 8px;
+        }
+
+        .skeleton-chart-lines span {
+            display: block;
+            height: 18px;
+            border-radius: 8px;
+            background: rgba(148, 163, 184, 0.35);
+        }
+
+        .w-100 { width: 100%; }
+        .w-95 { width: 95%; }
+        .w-92 { width: 92%; }
+        .w-90 { width: 90%; }
+        .w-85 { width: 85%; }
+        .w-70 { width: 70%; }
+        .w-60 { width: 60%; }
+        .w-50 { width: 50%; }
+        .w-40 { width: 40%; }
+        .w-35 { width: 35%; }
+
+        @keyframes skeleton-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        @keyframes skeleton-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.75; }
+        }
+
+        [data-bs-theme="dark"] .skeleton-line {
+            background: linear-gradient(90deg, rgba(51, 65, 85, 0.45) 25%, rgba(71, 85, 105, 0.65) 50%, rgba(51, 65, 85, 0.45) 75%);
+            background-size: 200% 100%;
+        }
+
+        [data-bs-theme="dark"] .skeleton-chart-bars span,
+        [data-bs-theme="dark"] .skeleton-chart-lines span {
+            background: rgba(71, 85, 105, 0.55);
+        }
+
+        [data-bs-theme="dark"] .dashboard-page-skeleton .skeleton-card {
+            background: rgba(15, 23, 42, 0.8);
+            border-color: rgba(71, 85, 105, 0.45);
+        }
+
         .widget-toggle:focus {
             box-shadow: 0 0 0 0.15rem rgba(var(--dashboard-theme-color-rgb, 81, 86, 190), 0.25) !important;
         }
@@ -2888,6 +3172,16 @@ if (Gate::allows("ana_sayfa")) {
         // new ApexCharts(document.querySelector("#chart3"), options3).render();
 
         let workTypeChart;
+        function showChartSkeleton(chartElement, mode = 'bar') {
+            if (!chartElement) return;
+
+            const skeletonHtml = mode === 'line'
+                ? `<div class="dashboard-chart-skeleton"><div class="skeleton-line w-50 mb-3"></div><div class="skeleton-chart-lines"><span class="w-100"></span><span class="w-85"></span><span class="w-70"></span><span class="w-92"></span><span class="w-60"></span></div></div>`
+                : `<div class="dashboard-chart-skeleton"><div class="skeleton-line w-40 mb-3"></div><div class="skeleton-chart-bars"><span style="height: 32%;"></span><span style="height: 46%;"></span><span style="height: 64%;"></span><span style="height: 52%;"></span><span style="height: 75%;"></span><span style="height: 58%;"></span><span style="height: 80%;"></span><span style="height: 43%;"></span></div></div>`;
+
+            chartElement.innerHTML = skeletonHtml;
+        }
+
         function loadWorkTypeStats(year) {
             if (typeof ApexCharts === 'undefined') {
                 console.log('ApexCharts henüz yüklenmedi, 500ms sonra tekrar denenecek...');
@@ -2897,6 +3191,7 @@ if (Gate::allows("ana_sayfa")) {
 
             const chartElement = document.querySelector("#work-type-stats-chart");
             if (!chartElement) return;
+            showChartSkeleton(chartElement, 'bar');
 
             const formData = new FormData();
             formData.append('action', 'get-work-type-stats');
@@ -2955,7 +3250,7 @@ if (Gate::allows("ana_sayfa")) {
                             }
                         };
 
-                        chartElement.innerHTML = ''; // Temizle
+                        chartElement.innerHTML = '';
                         if (workTypeChart) {
                             workTypeChart.destroy();
                         }
@@ -2979,6 +3274,7 @@ if (Gate::allows("ana_sayfa")) {
 
             const chartElement = document.querySelector("#work-result-stats-chart");
             if (!chartElement) return;
+            showChartSkeleton(chartElement, 'line');
 
             const formData = new FormData();
             formData.append('action', 'get-work-result-stats');
@@ -3054,6 +3350,59 @@ if (Gate::allows("ana_sayfa")) {
 
 
         document.addEventListener('DOMContentLoaded', function () {
+            const pageSkeleton = document.getElementById('dashboard-page-skeleton');
+            const pageContent = document.getElementById('dashboard-page-content');
+            const criticalSkeletonStyle = document.getElementById('dashboard-skeleton-critical');
+            const criticalWidgetIds = new Set([
+                'widget-ana-slider',
+                'widget-personel-ozet',
+                'widget-arac-ozet',
+                'widget-bekleyen-talepler',
+                'widget-gec-kalanlar',
+                'widget-nobetciler'
+            ]);
+            let dashboardRevealed = false;
+
+            const prepareStagedWidgets = () => {
+                document.querySelectorAll('#dashboard-widgets .widget-item').forEach((widget) => {
+                    if (!criticalWidgetIds.has(widget.id)) {
+                        widget.classList.add('dashboard-phase2-hidden');
+                    }
+                });
+            };
+
+            const revealPhase2Widgets = () => {
+                document.querySelectorAll('#dashboard-widgets .dashboard-phase2-hidden').forEach((widget) => {
+                    widget.classList.remove('dashboard-phase2-hidden');
+                });
+            };
+
+            const revealDashboardPage = () => {
+                if (dashboardRevealed) return;
+                dashboardRevealed = true;
+                if (pageSkeleton) pageSkeleton.style.display = 'none';
+                if (pageContent) pageContent.style.display = '';
+                if (criticalSkeletonStyle) criticalSkeletonStyle.remove();
+
+                if ('requestIdleCallback' in window) {
+                    requestIdleCallback(() => revealPhase2Widgets(), { timeout: 500 });
+                } else {
+                    setTimeout(revealPhase2Widgets, 350);
+                }
+            };
+
+            prepareStagedWidgets();
+
+            window.addEventListener('load', () => {
+                setTimeout(revealDashboardPage, 120);
+            }, { once: true });
+
+            setTimeout(() => {
+                if (document.readyState === 'complete') {
+                    revealDashboardPage();
+                }
+            }, 1800);
+
             const API_URL = 'views/talepler/api.php';
 
             // Load widget visibility from localStorage

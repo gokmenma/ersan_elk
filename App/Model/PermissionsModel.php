@@ -131,6 +131,28 @@ class PermissionsModel extends Model
         return $result !== false ? (int) $result : null;
     }
 
+    /**
+     * Menü linkine göre sayfa için kullanılacak auth_name değerini döndürür.
+     * Öncelik: permissions.id = menus.id eşleşmesi, ardından permissions.name = menus.menu_name eşleşmesi.
+     */
+    public function getAuthNameByMenuLink(string $menuLink): ?string
+    {
+        $sql = "SELECT p.auth_name
+                FROM menus m
+                INNER JOIN permissions p
+                    ON (p.id = m.id OR p.name = m.menu_name)
+                WHERE m.menu_link = ?
+                  AND p.is_active = 1
+                ORDER BY (p.id = m.id) DESC
+                LIMIT 1";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$menuLink]);
+
+        $authName = $stmt->fetchColumn();
+        return $authName !== false ? (string) $authName : null;
+    }
+
 
 
     /**
@@ -175,7 +197,7 @@ class PermissionsModel extends Model
     /**Personelin yetkili olduğu ilk sayfaya yönlendir */
     public function redirectFirstPersmissionPage(): void
     {
-        $userId = $_SESSION["user_id"] ?? null;
+        $userId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
         if (!$userId) {
             return;
         }
@@ -196,10 +218,12 @@ class PermissionsModel extends Model
         $sql = "SELECT m.menu_link 
                 FROM user_role_permissions urp
                 JOIN permissions p ON urp.permission_id = p.id
-                JOIN menus m ON m.menu_name = p.name
+            JOIN menus m ON (m.id = p.id OR m.menu_name = p.name)
                 WHERE urp.role_id IN ($placeholders) 
                 AND m.menu_link IS NOT NULL 
                 AND m.menu_link != ''
+            AND m.is_active = 1
+            ORDER BY m.group_order, m.menu_order
                 LIMIT 1";
 
         $stmt = $this->db->prepare($sql);
@@ -216,6 +240,14 @@ class PermissionsModel extends Model
                 exit;
             }
         }
+
+        if (!headers_sent()) {
+            header("Location: /unauthorize.php");
+            exit;
+        }
+
+        echo '<script>window.location.href = "/unauthorize.php";</script>';
+        exit;
     }
 
 }

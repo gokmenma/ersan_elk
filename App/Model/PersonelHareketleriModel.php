@@ -467,8 +467,6 @@ class PersonelHareketleriModel extends Model
      */
     public function getGecKalanlarCount($firma_id = null, $tarih = null, $limit_saat = '08:30')
     {
-        $personeller = $this->getTumPersonelDurumu($firma_id, $tarih);
-        $gec_kalan = 0;
         $gun = $tarih ?? date('Y-m-d');
         $now = new \DateTime();
 
@@ -479,23 +477,49 @@ class PersonelHareketleriModel extends Model
             $limit_saat = '08:30';
         }
 
-        foreach ($personeller as $p) {
-            if ($p->durum === 'aktif') {
-                if (!empty($p->son_baslama) && $p->son_baslama !== '0000-00-00 00:00:00') {
-                    try {
-                        $baslama_dt = new \DateTime($p->son_baslama);
-                        if ($baslama_dt->format('Y-m-d') === $gun && $baslama_dt->format('H:i') > $limit_saat) {
-                            $gec_kalan++;
-                        }
-                    } catch (\Exception $e) {
-                    }
-                }
-            } elseif ($p->durum === 'baslamadi') {
-                if ($now > $limit_time) {
-                    $gec_kalan++;
-                }
-            }
+        $countNotStartedAsLate = $now > $limit_time ? 1 : 0;
+
+        $sql = "SELECT
+                    SUM(
+                        CASE
+                            WHEN hareket.first_start IS NOT NULL
+                                 AND TIME(hareket.first_start) > :limit_saat THEN 1
+                            WHEN hareket.first_start IS NULL
+                                 AND :count_not_started = 1 THEN 1
+                            ELSE 0
+                        END
+                    ) AS gec_kalan
+                FROM personel p
+                LEFT JOIN (
+                    SELECT
+                        ph.personel_id,
+                        MIN(CASE WHEN ph.islem_tipi = 'BASLA' THEN ph.zaman END) AS first_start
+                    FROM {$this->table} ph
+                    WHERE ph.silinme_tarihi IS NULL
+                      AND ph.zaman >= :gun_start
+                      AND ph.zaman < :gun_end
+                    GROUP BY ph.personel_id
+                ) hareket ON hareket.personel_id = p.id
+                WHERE p.silinme_tarihi IS NULL
+                  AND p.aktif_mi = 1
+                  AND p.saha_takibi = 1";
+
+        $params = [
+            ':limit_saat' => $limit_saat,
+            ':count_not_started' => $countNotStartedAsLate,
+            ':gun_start' => $gun . ' 00:00:00',
+            ':gun_end' => date('Y-m-d 00:00:00', strtotime($gun . ' +1 day')),
+        ];
+
+        if ($firma_id) {
+            $sql .= " AND p.firma_id = :firma_id";
+            $params[':firma_id'] = $firma_id;
         }
-        return $gec_kalan;
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $result = $stmt->fetch(PDO::FETCH_OBJ);
+
+        return (int) ($result->gec_kalan ?? 0);
     }
 }

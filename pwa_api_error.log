@@ -18,3 +18,4 @@ Stack trace:
 Stack trace:
 #0 {main}
   thrown in C:\xampp\htdocs\ersan_elk\views\personel-pwa\api.php on line 1919
+[04-Mar-2026 08:55:58 Europe/Istanbul] PHP Parse error:  syntax error, unexpected token "<<" in C:\xampp\htdocs\ersan_elk\App\Model\BordroPersonelModel.php on line 981

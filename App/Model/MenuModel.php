@@ -258,4 +258,43 @@ class MenuModel extends Model
 
         return $activeIds;
     }
+
+    /**
+     * Kullanıcının, verilen menü linkine erişim yetkisi olup olmadığını kontrol eder.
+     * Kontrol user_role_permissions.permission_id -> menus.id eşleşmesi üzerinden yapılır.
+     */
+    public function userCanAccessMenuLink(int $userId, string $menuLink): bool
+    {
+        $menu = $this->getMenuByLink($menuLink);
+
+        if (!$menu) {
+            return true;
+        }
+
+        $users = new UserModel();
+        $roleIds = $users->getUserRoleID($userId);
+
+        if (empty($roleIds)) {
+            return false;
+        }
+
+        $roleIdArray = is_string($roleIds) ? array_filter(explode(',', $roleIds)) : [(string) $roleIds];
+
+        if (empty($roleIdArray)) {
+            return false;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($roleIdArray), '?'));
+
+        $sql = "SELECT COUNT(*)
+                FROM user_role_permissions
+                WHERE role_id IN ({$placeholders})
+                  AND permission_id = ?";
+
+        $stmt = $this->db->prepare($sql);
+        $params = array_merge(array_values($roleIdArray), [(int) $menu->id]);
+        $stmt->execute($params);
+
+        return (int) $stmt->fetchColumn() > 0;
+    }
 }

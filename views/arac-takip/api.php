@@ -40,9 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     throw new Exception("Plaka zorunludur.");
                 }
 
-                $mevcutArac = $Arac->plakaKontrol($plaka, $arac_id > 0 ? $arac_id : null);
+                $mevcutArac = $Arac->plakaKontrol($plaka, $arac_id);
                 if ($mevcutArac) {
-                    throw new Exception("Bu plaka zaten kayıtlı.");
+                    throw new Exception("Bu plaka ($plaka) zaten kayıtlı baska bir araca ait.");
                 }
 
                 // Veriyi hazırla
@@ -893,7 +893,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             if (is_numeric($tarihVal) && $tarihVal > 30000) { // Excel format check
                                 $tarihVal = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($tarihVal)->format('Y-m-d');
                             } else {
-                                $tarihVal = trim($tarihVal);
+                                $tarihVal = trim($tarihVal ?? '');
                                 if (!empty($tarihVal)) {
                                     $timestamp = strtotime(str_replace(['.', '/'], '-', $tarihVal));
                                     $tarihVal = $timestamp ? date('Y-m-d', $timestamp) : date('Y-m-d');
@@ -926,7 +926,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             if (is_numeric($ft) && $ft > 30000) {
                                 $newData['fatura_tarihi'] = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($ft)->format('Y-m-d');
                             } else {
-                                $ft = trim($ft);
+                                $ft = trim($ft ?? '');
                                 if (!empty($ft)) {
                                     $timestamp = strtotime(str_replace(['.', '/'], '-', $ft));
                                     $newData['fatura_tarihi'] = $timestamp ? date('Y-m-d', $timestamp) : null;

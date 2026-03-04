@@ -118,7 +118,7 @@
             <div>
                 <label class="form-label">Geri Ödeme Seçeneği</label>
                 <select name="odeme_sekli" class="form-input form-select">
-                    <option value="tek">Gelecek Maaştan (Tek Seferde)</option>
+                    <option value="tek">En Yakın Maaş (Tek Seferde)</option>
                     <option value="2">2 Taksit</option>
                     <option value="3">3 Taksit</option>
                 </select>

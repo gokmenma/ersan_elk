@@ -5,12 +5,12 @@ require_once dirname(__DIR__, 1) . '/Autoloader.php';
 use App\Helper\Helper;
 use App\Helper\Route;
 use App\Model\MenuModel;
-use App\Helper\Security;
 
 $Menus = new MenuModel();
+$currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
 
 // Tüm menü verisini tek bir fonksiyona göndererek hiyerarşik yapıyı oluştur.
-$menu_data = $Menus->getHierarchicalMenuForRole($_SESSION['id']);
+$menu_data = $Menus->getHierarchicalMenuForRole($currentUserId);
 
 // Aktif menü tespiti
 $currentPath = $_GET['p'] ?? '';

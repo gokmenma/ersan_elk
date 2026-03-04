@@ -375,9 +375,10 @@ class BordroPersonelModel extends Model
         // 2. Alınan Ödeme: Personelin bugüne kadar aldığı tüm onaylanmış avanslar
         // 3. Kalan Bakiye: Toplam Hakediş - Alınan Ödeme
 
-        // Kapatılmış dönemlerdeki net maaş toplamı (Burası personelin eline geçecek net tutardır)
+        // Kapatılmış dönemlerdeki banka ödemesi toplamı (Burası personelin bankadan alacağı net tutardır)
+        // Eğer banka_odemesi 0 veya NULL ise net_maas kullanılır
         $sqlNet = $this->db->prepare("
-            SELECT SUM(bp.net_maas) as toplam_net
+            SELECT SUM(IF(bp.banka_odemesi > 0, bp.banka_odemesi, bp.net_maas)) as toplam_net
             FROM {$this->table} bp
             INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
             WHERE bp.personel_id = ? AND bp.silinme_tarihi IS NULL AND bd.kapali_mi = 1
@@ -978,28 +979,15 @@ class BordroPersonelModel extends Model
      */
     public function olusturAvansKesintileri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
     {
-<<<<<<< HEAD
-        // Dönem içindeki onaylanmış avansları getir
-        // NOT: talep_tarihi datetime formatında olduğu için DATE() fonksiyonu ile karşılaştırıyoruz
-        // Aksi halde 2026-01-31 14:30:00 gibi bir değer, 2026-01-31 bitiş tarihinden büyük sayılır
-=======
         // Onaylanmış tüm avansları alıp hedef döneme kod tarafında eşliyoruz.
         // Bu sayede hem "ayın 14'ü" kuralı hem de taksitli avanslar doğru dönemlere dağıtılır.
->>>>>>> 1262d72011f19189b127b5e32ff74f886720a75d
         $sql = $this->db->prepare("
             SELECT id, tutar, talep_tarihi, aciklama, odeme_sekli
             FROM personel_avanslari
-<<<<<<< HEAD
-            WHERE personel_id = ? 
-            AND durum = 'onaylandi'
-            AND silinme_tarihi IS NULL
-            AND DATE(talep_tarihi) BETWEEN ? AND ?
-=======
             WHERE personel_id = ?
               AND durum = 'onaylandi'
               AND silinme_tarihi IS NULL
             ORDER BY talep_tarihi ASC, id ASC
->>>>>>> 1262d72011f19189b127b5e32ff74f886720a75d
         ");
         $sql->execute([$personel_id]);
         $avanslar = $sql->fetchAll(PDO::FETCH_OBJ);
@@ -1045,20 +1033,20 @@ class BordroPersonelModel extends Model
                 // Bu taksit için dönemde kayıt var mı kontrol et,
                 // varsa (soft-delete edilmiş de olabilir) geri getir.
                 $mevcutKontrol = $this->db->prepare("
-            SELECT id, durum FROM personel_kesintileri
-            WHERE personel_id = ? AND donem_id = ? AND tur = 'avans' 
-            AND aciklama LIKE ?
-            ORDER BY id DESC LIMIT 1
-        ");
+                    SELECT id, durum FROM personel_kesintileri
+                    WHERE personel_id = ? AND donem_id = ? AND tur = 'avans' 
+                    AND aciklama LIKE ?
+                    ORDER BY id DESC LIMIT 1
+                ");
                 $mevcutKontrol->execute([$personel_id, $donem_id, $aciklamaPattern]);
                 $mevcut = $mevcutKontrol->fetch();
 
                 if ($mevcut) {
                     $restoreSql = $this->db->prepare("
-                UPDATE personel_kesintileri 
-                SET silinme_tarihi = NULL, tutar = ?, durum = 'onaylandi', updated_at = NOW()
-                WHERE id = ?
-            ");
+                        UPDATE personel_kesintileri 
+                        SET silinme_tarihi = NULL, tutar = ?, durum = 'onaylandi', updated_at = NOW()
+                        WHERE id = ?
+                    ");
                     $restoreSql->execute([$tutar, $mevcut['id']]);
                     $toplamAvans += $tutar;
                     continue;
