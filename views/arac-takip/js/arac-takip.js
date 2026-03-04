@@ -1247,7 +1247,7 @@ const AracTakip = {
     });
   },
 
-  servisDuzenle: function (id) {
+  servisDuzenle: function (id, showCikisTab = false) {
     const self = this;
     $.post(
       this.apiUrl,
@@ -1288,6 +1288,15 @@ const AracTakip = {
           });
 
           $("#servisModal").modal("show");
+          if (showCikisTab) {
+            setTimeout(() => {
+              $('#servis-cikis-tab').tab('show');
+            }, 100);
+          } else {
+            setTimeout(() => {
+              $('#servis-giris-tab').tab('show');
+            }, 100);
+          }
         } else {
           Swal.fire("Hata", response.message, "error");
         }
@@ -1355,9 +1364,16 @@ const AracTakip = {
                             <td class="text-end">${self.formatNumber(s.cikis_km)} km</td>
                             <td class="text-truncate" style="max-width: 200px;" title="${s.servis_nedeni}">${s.servis_nedeni || "-"}</td>
                             <td class="text-center">
-                                <div class="btn-group btn-group-sm">
-                                    <button class="btn btn-warning servis-duzenle" data-id="${s.id}" title="Düzenle"><i class="bx bx-edit"></i></button>
-                                    <button class="btn btn-danger servis-sil" data-id="${s.id}" title="Sil"><i class="bx bx-trash"></i></button>
+                                <div class="dropdown">
+                                    <a href="javascript:void(0);" class="text-muted" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 0.5rem; display: inline-block; line-height: 1;">
+                                        <i class="bx bx-dots-vertical-rounded" style="font-size: 1.4rem;"></i>
+                                    </a>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" style="min-width: 160px; border-radius: 8px;">
+                                        ${!s.iade_tarihi ? `<li><a class="dropdown-item servis-duzenle-cikis text-success fw-bold py-2" href="#" data-id="${s.id}"><i class="bx bx-log-out-circle me-1" style="font-size: 1.1rem; vertical-align: middle;"></i> Servis Çıkış Kaydı</a></li><li><hr class="dropdown-divider my-1"></li>` : ''}
+                                        <li><a class="dropdown-item servis-duzenle text-warning py-2" href="#" data-id="${s.id}"><i class="bx bx-edit me-1" style="font-size: 1.1rem; vertical-align: middle;"></i> Düzenle</a></li>
+                                        <li><hr class="dropdown-divider my-1"></li>
+                                        <li><a class="dropdown-item servis-sil text-danger py-2" href="#" data-id="${s.id}"><i class="bx bx-trash me-1" style="font-size: 1.1rem; vertical-align: middle;"></i> Sil</a></li>
+                                    </ul>
                                 </div>
                             </td>
                         </tr>`;
@@ -1438,6 +1454,7 @@ const AracTakip = {
     $("#servisModal")
       .find(".modal-title")
       .html('<i class="bx bx-wrench me-2"></i>Yeni Servis Kaydı');
+    $('#servis-giris-tab').tab('show');
   },
 
   // KM Excel Yükleme İşlemleri
@@ -1788,6 +1805,11 @@ $(document).ready(function () {
   $(document).on("click", "#btnServisKaydet", (e) => {
     e.preventDefault();
     AracTakip.servisKaydet();
+  });
+  $(document).on("click", ".servis-duzenle-cikis", function (e) {
+    e.preventDefault();
+    const id = $(this).data("id");
+    if (id) AracTakip.servisDuzenle(id, true);
   });
   $(document).on("click", ".servis-duzenle", function (e) {
     e.preventDefault();

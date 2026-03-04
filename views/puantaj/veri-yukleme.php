@@ -205,22 +205,28 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 id="btnShowStats">
                                 <i class="mdi mdi-chart-box-outline fs-5 me-1"></i> İstatistikler
                             </button>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button" id="btnExportEndeksExcel"
-                                class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
-                                <i class="mdi mdi-file-excel fs-5 me-1"></i> Excele Aktar
-                            </button>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button"
-                                class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center"
-                                data-bs-toggle="modal" data-bs-target="#importOnlineIcmalRaporuModal">
-                                <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Online Sorgula
-                            </button>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button" class="btn btn-success px-3 fw-bold shadow-success"
-                                data-bs-toggle="modal" data-bs-target="#importEndeksModal">
-                                <i class="mdi mdi-upload me-1"></i> Dosya Yükle
-                            </button>
+                            <div class="dropdown ms-2">
+                                <button class="btn btn-soft-primary btn-sm px-3 fw-bold dropdown-toggle d-flex align-items-center" type="button" id="okumaIslemlerDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 6px 12px;">
+                                    <i class="bx bx-cog fs-5 me-1"></i> İşlemler
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="okumaIslemlerDropdown">
+                                    <li>
+                                        <button class="dropdown-item d-flex align-items-center text-success fw-medium" type="button" id="btnExportEndeksExcel">
+                                            <i class="mdi mdi-file-excel fs-5 me-2"></i> Excel'e Aktar
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item d-flex align-items-center text-info fw-medium" type="button" data-bs-toggle="modal" data-bs-target="#importOnlineIcmalRaporuModal">
+                                            <i class="mdi mdi-cloud-search-outline fs-5 me-2"></i> Online Sorgula
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item d-flex align-items-center text-primary fw-medium" type="button" data-bs-toggle="modal" data-bs-target="#importEndeksModal">
+                                            <i class="mdi mdi-upload fs-5 me-2"></i> Dosya Yükle
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
@@ -255,22 +261,28 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 id="btnShowPuantajStats">
                                 <i class="mdi mdi-chart-box-outline fs-5 me-1"></i> İstatistikler
                             </button>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button" id="btnExportPuantajExcel"
-                                class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
-                                <i class="mdi mdi-file-excel fs-5 me-1"></i> Excele Aktar
-                            </button>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button"
-                                class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center"
-                                data-bs-toggle="modal" data-bs-target="#importOnlinePuantajModal">
-                                <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Online Sorgula
-                            </button>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button" class="btn btn-success px-3 fw-bold shadow-success"
-                                data-bs-toggle="modal" data-bs-target="#importPuantajModal">
-                                <i class="mdi mdi-upload me-1"></i> Excel Yükle
-                            </button>
+                            <div class="dropdown ms-2">
+                                <button class="btn btn-soft-primary btn-sm px-3 fw-bold dropdown-toggle d-flex align-items-center" type="button" id="puantajIslemlerDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 6px 12px;">
+                                    <i class="bx bx-cog fs-5 me-1"></i> İşlemler
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="puantajIslemlerDropdown">
+                                    <li>
+                                        <button class="dropdown-item d-flex align-items-center text-success fw-medium" type="button" id="btnExportPuantajExcel">
+                                            <i class="mdi mdi-file-excel fs-5 me-2"></i> Excel'e Aktar
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item d-flex align-items-center text-info fw-medium" type="button" data-bs-toggle="modal" data-bs-target="#importOnlinePuantajModal">
+                                            <i class="mdi mdi-cloud-search-outline fs-5 me-2"></i> Online Sorgula
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item d-flex align-items-center text-primary fw-medium" type="button" data-bs-toggle="modal" data-bs-target="#importPuantajModal">
+                                            <i class="mdi mdi-upload fs-5 me-2"></i> Excel Yükle
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
@@ -305,11 +317,18 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 id="btnNewKacak">
                                 <i class="mdi mdi-plus-circle fs-5 me-1"></i> Yeni Ekle
                             </button>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button" class="btn btn-success px-3 fw-bold shadow-success"
-                                data-bs-toggle="modal" data-bs-target="#importKacakModal">
-                                <i class="mdi mdi-upload me-1"></i> Excel Yükle
-                            </button>
+                            <div class="dropdown ms-2">
+                                <button class="btn btn-soft-primary btn-sm px-3 fw-bold dropdown-toggle d-flex align-items-center" type="button" id="kacakIslemlerDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 6px 12px;">
+                                    <i class="bx bx-cog fs-5 me-1"></i> İşlemler
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="kacakIslemlerDropdown">
+                                    <li>
+                                        <button class="dropdown-item d-flex align-items-center text-primary fw-medium" type="button" data-bs-toggle="modal" data-bs-target="#importKacakModal">
+                                            <i class="mdi mdi-upload fs-5 me-2"></i> Excel Yükle
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
@@ -336,11 +355,18 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="card-title">Sayaç Sökme Takma Listesi</h4>
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
-                            <button type="button"
-                                class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center"
-                                data-bs-toggle="modal" data-bs-target="#importOnlineSayacDegisimModal">
-                                <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Online Sorgula
-                            </button>
+                            <div class="dropdown ms-2">
+                                <button class="btn btn-soft-primary btn-sm px-3 fw-bold dropdown-toggle d-flex align-items-center" type="button" id="sayacIslemlerDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 6px 12px;">
+                                    <i class="bx bx-cog fs-5 me-1"></i> İşlemler
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="sayacIslemlerDropdown">
+                                    <li>
+                                        <button class="dropdown-item d-flex align-items-center text-info fw-medium" type="button" data-bs-toggle="modal" data-bs-target="#importOnlineSayacDegisimModal">
+                                            <i class="mdi mdi-cloud-search-outline fs-5 me-2"></i> Online Sorgula
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
@@ -370,12 +396,18 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="card-title">Mühürleme İş Listesi</h4>
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
-                            <button type="button"
-                                class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center"
-                                data-bs-toggle="modal" data-bs-target="#importOnlinePuantajModal"
-                                id="btnOnlineMuhurlemeSorgula">
-                                <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Online Sorgula
-                            </button>
+                            <div class="dropdown ms-2">
+                                <button class="btn btn-soft-primary btn-sm px-3 fw-bold dropdown-toggle d-flex align-items-center" type="button" id="muhurlemeIslemlerDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 6px 12px;">
+                                    <i class="bx bx-cog fs-5 me-1"></i> İşlemler
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="muhurlemeIslemlerDropdown">
+                                    <li>
+                                        <button class="dropdown-item d-flex align-items-center text-info fw-medium" type="button" data-bs-toggle="modal" data-bs-target="#importOnlinePuantajModal" id="btnOnlineMuhurlemeSorgula">
+                                            <i class="mdi mdi-cloud-search-outline fs-5 me-2"></i> Online Sorgula
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
@@ -641,12 +673,12 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         <label for="kacak_personel_ids">Personel Seçimi(En Fazla 2 Personel)</label>
                         <?php echo Form::FormMultipleSelect2(
                             name: 'kacak_personel_ids',
-                            options: $personelOptionsMultiple,
+                            options: $personeller,
                             selectedValues: [],
                             label: 'Personel',
                             icon: 'users',
-                            valueField: 'key',
-                            textField: '',
+                            valueField: 'id',
+                            textField: 'adi_soyadi',
                             class: 'form-select select2',
                             required: true
                         ); ?>

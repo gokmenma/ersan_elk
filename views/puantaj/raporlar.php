@@ -303,11 +303,6 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                     <i class="mdi mdi-fullscreen fs-5 me-1"></i> Tam Ekran
                 </button>
                 <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                <button type="button"
-                    class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center"
-                    id="btnExportExcel">
-                    <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel'e Aktar
-                </button>
                 <div class="vr mx-1 vr-online-sorgula <?= in_array($activeTab, ['okuma', 'kesme', 'sokme_takma', 'muhurleme']) ? '' : 'd-none' ?>"
                     style="height: 25px; align-self: center;"></div>
                 <button type="button"
@@ -330,6 +325,31 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                     id="btnOnlineSorgulaMuhurleme" data-bs-toggle="modal" data-bs-target="#importOnlineMuhurlemeModal">
                     <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Mühürleme Sorgula
                 </button>
+                <div class="vr mx-1 vr-kacak-action <?= $activeTab === 'kacakkontrol' ? '' : 'd-none' ?>"
+                    style="height: 25px; align-self: center;"></div>
+                <button type="button"
+                    class="btn btn-link btn-sm text-primary text-decoration-none px-2 align-items-center btn-kacak-action <?= $activeTab === 'kacakkontrol' ? 'd-flex' : 'd-none' ?>"
+                    id="btnNewKacak">
+                    <i class="mdi mdi-plus-circle fs-5 me-1"></i> Yeni Ekle
+                </button>
+
+                <div class="dropdown ms-2">
+                    <button class="btn btn-soft-primary btn-sm px-3 fw-bold dropdown-toggle d-flex align-items-center" type="button" id="islemlerDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 6px 12px;">
+                        <i class="bx bx-cog fs-5 me-1"></i> İşlemler
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="islemlerDropdown">
+                        <li>
+                            <button class="dropdown-item d-flex align-items-center text-success fw-medium" type="button" id="btnExportExcel">
+                                <i class="mdi mdi-file-excel fs-5 me-2"></i> Excel'e Aktar
+                            </button>
+                        </li>
+                        <li>
+                            <button class="dropdown-item align-items-center text-primary fw-medium btn-kacak-action <?= $activeTab === 'kacakkontrol' ? 'd-flex' : 'd-none' ?>" type="button" data-bs-toggle="modal" data-bs-target="#importKacakModal">
+                                <i class="mdi mdi-upload fs-5 me-2"></i> Excel Yükle
+                            </button>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
 
@@ -641,6 +661,8 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
         const updateOnlineSorgulaVisibility = function () {
             $('.btn-online-sorgula').addClass('d-none').removeClass('d-flex');
             $('.vr-online-sorgula').addClass('d-none');
+            $('.btn-kacak-action').addClass('d-none').removeClass('d-flex');
+            $('.vr-kacak-action').addClass('d-none');
 
             if (currentTab === 'okuma') {
                 $('#btnOnlineSorgulaEndeks').addClass('d-flex').removeClass('d-none');
@@ -654,6 +676,9 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
             } else if (currentTab === 'muhurleme') {
                 $('#btnOnlineSorgulaMuhurleme').addClass('d-flex').removeClass('d-none');
                 $('.vr-online-sorgula').removeClass('d-none');
+            } else if (currentTab === 'kacakkontrol') {
+                $('.btn-kacak-action').addClass('d-flex').removeClass('d-none');
+                $('.vr-kacak-action').removeClass('d-none');
             }
 
             // Show/Hide Kacak Help Info
@@ -1409,16 +1434,186 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
         document.body.removeChild(link);
     }
 
+    $(document).ready(function() {
+        $('#btnNewKacak').on('click', function () {
+            if (typeof openKacakModal === 'function') {
+                let today = new Date().toLocaleDateString('tr-TR');
+                openKacakModal(today, '', 0, '');
+            } else {
+                // Fallback if not defined
+                $('#kacakManualForm input[name="id"]').val(0);
+                $('#kacakManualForm')[0].reset();
+                $('#kacakModal').modal('show');
+            }
+        });
+
+        $('#kacakUploadForm input[name="upload_date"]').on('change', function () {
+            $('#kacakUploadForm input[name="excel_file"]').val('');
+        });
+
+        $('#kacakUploadForm').on('submit', function (e) {
+            e.preventDefault();
+            var formData = new FormData(this);
+            formData.append('action', 'kacak-excel-kaydet');
+
+            $('#kacakSpinner').show();
+            $('#btnKacakUpload').prop('disabled', true);
+
+            $.ajax({
+                url: 'views/puantaj/api.php',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (response) {
+                    $('#kacakSpinner').hide();
+                    $('#btnKacakUpload').prop('disabled', false);
+                    try {
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
+                        if (res.status === 'success') {
+                            var htmlMessage = res.message;
+                            if (res.skipped_rows && res.skipped_rows.length > 0) {
+                                htmlMessage += '<br><br><div class="alert alert-warning mb-0 mt-2"><strong>⚠️ Atlanan Satırlar (' + res.skipped_rows.length + '):</strong><ul class="mb-0 mt-2" style="max-height: 200px; overflow-y: auto;">';
+                                res.skipped_rows.forEach(function (row) {
+                                    htmlMessage += '<li><strong>Satır ' + row.satir + ':</strong> ' + row.ekip + ' - <em>' + row.neden + '</em></li>';
+                                });
+                                htmlMessage += '</ul></div>';
+                            }
+                            Swal.fire({
+                                title: 'Başarılı',
+                                html: htmlMessage,
+                                icon: 'success',
+                                width: res.skipped_rows && res.skipped_rows.length > 0 ? '600px' : '400px'
+                            }).then(() => {
+                                $('#importKacakModal').modal('hide');
+                                loadReport();
+                            });
+                        } else {
+                            Swal.fire('Hata', res.message, 'error');
+                        }
+                    } catch (err) {
+                        Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
+                    }
+                },
+                error: function () {
+                    $('#kacakSpinner').hide();
+                    $('#btnKacakUpload').prop('disabled', false);
+                    Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
+                }
+            });
+        });
+
+        $(document).on('click', '.delete-kacak', function () {
+            var id = $(this).data('id');
+            Swal.fire({
+                title: 'Emin misiniz?',
+                text: "Bu kayıt silinecektir!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Evet, sil!',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('views/puantaj/api.php', { action: 'kacak-sil', id: id }, function (response) {
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
+                        if (res.status === 'success') {
+                            Swal.fire('Silindi!', 'Kayıt başarıyla silindi.', 'success');
+                            loadReport();
+                        } else {
+                            Swal.fire('Hata', 'Kayıt silinemedi.', 'error');
+                        }
+                    });
+                }
+            });
+        });
+        
+        $(document).on('click', '.edit-kacak', function () {
+            var id = $(this).data('id');
+            $.get('views/puantaj/api.php', { action: 'get-kacak-record', id: id }, function (response) {
+                var record = typeof response === 'object' ? response : JSON.parse(response);
+                $('#kacakManualForm input[name="id"]').val(record.id);
+                $('#kacakManualForm input[name="tarih"]').val(record.tarih_formatted);
+                $('#kacakManualForm input[name="sayi"]').val(record.sayi);
+                $('#kacakManualForm input[name="aciklama"]').val(record.aciklama);
+                $('#kacakModalTitle').text('Kaydı Düzenle');
+
+                var $el = $('#kacak_personel_ids');
+                if ($el.hasClass('select2-hidden-accessible')) {
+                    $el.select2('destroy');
+                }
+                $el.select2({
+                    dropdownParent: $('#kacakModal'),
+                    placeholder: '',
+                    allowClear: true,
+                    maximumSelectionLength: 2,
+                    width: '100%'
+                });
+
+                if (record.personel_ids_array && record.personel_ids_array.length > 0) {
+                    $el.val(record.personel_ids_array).trigger('change');
+                } else {
+                    $el.val([]).trigger('change');
+                }
+
+                $('#kacakModal').modal('show');
+            });
+        });
+    });
+
 </script>
 
+<!-- Kaçak Kontrol Excel Modal -->
+<div class="modal fade" id="importKacakModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Kaçak Kontrol Excel Yükle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="kacakUploadForm" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bx bx-info-circle me-2"></i>
+                        Excel dosyasında "Ekip", "Sayı" ve "Açıklama" sütunları bulunmalıdır. Tarih alanını aşağıdan seçiniz.
+                    </div>
+                    <div class="mb-3">
+                        <?php echo Form::FormFloatInput(
+                            type: 'text',
+                            name: 'upload_date',
+                            value: date('d.m.Y'),
+                            placeholder: '',
+                            label: "Tarih",
+                            icon: "calendar",
+                            required: true,
+                            class: "form-control flatpickr"
+                        ); ?>
+                    </div>
+                    <div class="mb-3">
+                        <?php echo Form::FormFileInput(
+                            name: 'excel_file',
+                            label: "Excel Dosyası (.xlsx, .xls)",
+                            icon: "file",
+                            required: true,
+                            class: "form-control"
+                        ); ?>
+                    </div>
+                    <div id="kacakSpinner" class="text-center p-2" style="display: none;">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Yükleniyor...</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="submit" class="btn btn-primary" id="btnKacakUpload">Yükle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Kaçak Kontrol Manuel Modal -->
-<?php
-$personelOptionsMultiple = [];
-foreach ($personelList as $p) {
-    if ($p->id)
-        $personelOptionsMultiple[$p->id] = $p->adi_soyadi;
-}
-?>
 <div class="modal fade" id="kacakModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -1446,12 +1641,12 @@ foreach ($personelList as $p) {
                         <label for="kacak_personel_ids">Personel Seçimi (En Fazla 2 Personel)</label>
                         <?php echo Form::FormMultipleSelect2(
                             name: 'kacak_personel_ids',
-                            options: $personelOptionsMultiple,
+                            options: $personelList,
                             selectedValues: [],
-                            label: '',
+                            label: 'Personel Seçiniz (En Fazla 2)',
                             icon: 'users',
-                            valueField: 'key',
-                            textField: '',
+                            valueField: 'id',
+                            textField: 'adi_soyadi',
                             class: 'form-select select2',
                             required: true
                         ); ?>

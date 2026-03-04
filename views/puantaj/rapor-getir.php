@@ -544,12 +544,14 @@ $currentTabName = $tabNames[$activeTab] ?? 'Rapor';
                 <i class="bx bx-show me-1"></i> Günlük Topl. Göster
             </button>
         <?php endif; ?>
+        <?php if (\App\Service\Gate::allows('is_takip_ayarlar')): ?>
         <button type="button"
             class="btn btn-outline-secondary btn-sm btn-tab-settings d-flex align-items-center justify-content-center"
             style="width: 32px; height: 32px; padding: 0;" data-tab="<?= $activeTab ?>"
             data-tab-name="<?= $currentTabName ?>" title="<?= $currentTabName ?> Ayarları">
             <i class="bx bx-cog fs-4"></i>
         </button>
+        <?php endif; ?>
     </div>
 </div>
 

@@ -41,56 +41,83 @@
                 <div class="col-md-8 ps-3">
                     <div class="d-flex flex-column shadow-sm bg-white rounded-3 overflow-hidden h-100">
                         <div class="modal-body p-4 pt-4 flex-grow-1">
-                            <form id="servisForm" class="pe-5">
+                            <form id="servisForm" class="pe-0 pe-md-3">
                                 <input type="hidden" name="id" value="">
-                                <div class="row g-3">
-                                    <div class="col-md-8">
-                                        <?php
-                                        $araclar = (new App\Model\AracModel())->getAktifAraclar();
-                                        $aracOptions = ['' => 'Araç Seçin'];
-                                        foreach ($araclar as $arac) {
-                                            $aracOptions[$arac->id] = $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? '');
-                                        }
-                                        echo Form::FormSelect2('arac_id', $aracOptions, null, 'Araç *', 'truck', 'key', '', 'form-select select2', true);
-                                        ?>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <?php echo Form::FormFloatInput('text', 'servis_tarihi', date('d.m.Y'), '', 'Servis Tarihi *', 'calendar', 'form-control flatpickr', true); ?>
-                                    </div>
+                                
+                                <!-- Tab Navigation -->
+                                <ul class="nav nav-pills nav-justified mb-4 p-1 bg-light border rounded-3" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active fw-semibold" id="servis-giris-tab" data-bs-toggle="pill" data-bs-target="#servis-giris-bilgileri" type="button" role="tab" aria-controls="servis-giris-bilgileri" aria-selected="true" style="border-radius: 8px;">
+                                            <i class="bx bx-log-in-circle me-1"></i> Giriş Bilgileri
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link fw-semibold" id="servis-cikis-tab" data-bs-toggle="pill" data-bs-target="#servis-cikis-bilgileri" type="button" role="tab" aria-controls="servis-cikis-bilgileri" aria-selected="false" style="border-radius: 8px;">
+                                            <i class="bx bx-log-out-circle me-1"></i> Çıkış Bilgileri
+                                        </button>
+                                    </li>
+                                </ul>
 
-                                    <div class="col-md-6">
-                                        <?php echo Form::FormFloatInput('number', 'giris_km', null, '0', 'Servis Giriş KM *', 'activity', 'form-control', true, null, 'on', false, 'min="0"'); ?>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <?php echo Form::FormFloatInput('number', 'cikis_km', null, '0', 'Servis Çıkış KM', 'activity', 'form-control', false, null, 'on', false, 'min="0"'); ?>
-                                    </div>
+                                <!-- Tab Content -->
+                                <div class="tab-content">
+                                    <!-- Giriş Bilgileri Tab -->
+                                    <div class="tab-pane fade show active" id="servis-giris-bilgileri" role="tabpanel" aria-labelledby="servis-giris-tab">
+                                        <div class="row g-3">
+                                            <div class="col-md-8">
+                                                <?php
+                                                $araclar = (new App\Model\AracModel())->getAktifAraclar();
+                                                $aracOptions = ['' => 'Araç Seçin'];
+                                                foreach ($araclar as $arac) {
+                                                    $aracOptions[$arac->id] = $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? '');
+                                                }
+                                                echo Form::FormSelect2('arac_id', $aracOptions, null, 'Araç *', 'truck', 'key', '', 'form-select select2', true);
+                                                ?>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <?php echo Form::FormFloatInput('text', 'servis_tarihi', date('d.m.Y'), '', 'Servis Tarihi *', 'calendar', 'form-control flatpickr', true); ?>
+                                            </div>
 
-                                    <div class="col-md-12">
-                                        <?php echo Form::FormFloatInput('text', 'servis_adi', null, 'Servis/Usta Adı', 'Servis Noktası', 'bx bx-store'); ?>
-                                    </div>
+                                            <div class="col-md-6">
+                                                <?php echo Form::FormFloatInput('number', 'giris_km', null, '0', 'Servis Giriş KM *', 'activity', 'form-control', true, null, 'on', false, 'min="0"'); ?>
+                                            </div>
+                                            
+                                            <div class="col-md-6">
+                                                <?php echo Form::FormFloatInput('text', 'servis_adi', null, 'Servis/Usta Adı', 'Servis Noktası', 'bx bx-store'); ?>
+                                            </div>
 
-                                    <div class="col-12">
-                                        <div class="p-3 border rounded bg-light bg-opacity-50">
-                                            <div class="text-muted small mb-3 fw-semibold"><i class="bx bx-receipt me-1"></i>İşlem Notları</div>
-                                            <div class="row g-2">
-                                                <div class="col-12 mb-2">
-                                                    <?php echo Form::FormFloatTextarea('servis_nedeni', null, 'Bakım, Onarım, Kaza vs.', 'Servis Nedeni / Şikayet', 'help-circle', 'form-control', false, '80px'); ?>
-                                                </div>
-                                                <div class="col-12">
-                                                    <?php echo Form::FormFloatTextarea('yapilan_islemler', null, 'Yağ değişimi, fren balatası vs.', 'Yapılan İşlemler', 'bx bx-list-check', 'form-control', false, '100px'); ?>
+                                            <div class="col-12">
+                                                <div class="p-3 border rounded bg-light bg-opacity-50 mt-1">
+                                                    <div class="text-muted small mb-3 fw-semibold"><i class="bx bx-error-circle me-1"></i>Şikayet / Neden</div>
+                                                    <?php echo Form::FormFloatTextarea('servis_nedeni', null, 'Bakım, Onarım, Kaza vs.', 'Servis Nedeni / Şikayet', 'help-circle', 'form-control', false, '100px'); ?>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div class="col-md-4 mt-2">
-                                        <?php echo Form::FormFloatInput('text', 'tutar', null, '0.00', 'Toplam Tutar (₺)', 'bx bx-purchase-tag', 'form-control masker-money'); ?>
-                                    </div>
-                                    <div class="col-md-4 mt-2">
-                                        <?php echo Form::FormFloatInput('text', 'fatura_no', null, '', 'Fatura/Fiş No', 'bx bx-receipt'); ?>
-                                    </div>
-                                    <div class="col-md-4 mt-2">
-                                        <?php echo Form::FormFloatInput('text', 'iade_tarihi', null, '', 'Servis Çıkış Tarihi', 'calendar', 'form-control flatpickr'); ?>
+                                    <!-- Çıkış Bilgileri Tab -->
+                                    <div class="tab-pane fade" id="servis-cikis-bilgileri" role="tabpanel" aria-labelledby="servis-cikis-tab">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <?php echo Form::FormFloatInput('text', 'iade_tarihi', null, '', 'Servis Çıkış Tarihi', 'calendar', 'form-control flatpickr'); ?>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <?php echo Form::FormFloatInput('number', 'cikis_km', null, '0', 'Servis Çıkış KM', 'activity', 'form-control', false, null, 'on', false, 'min="0"'); ?>
+                                            </div>
+
+                                            <div class="col-12">
+                                                <div class="p-3 border rounded bg-light bg-opacity-50 mt-1 mb-1">
+                                                    <div class="text-muted small mb-3 fw-semibold"><i class="bx bx-wrench me-1"></i>Yapılan İşlemler</div>
+                                                    <?php echo Form::FormFloatTextarea('yapilan_islemler', null, 'Yağ değişimi, fren balatası değiştirildi vs.', 'Yapılan İşlemler', 'bx bx-list-check', 'form-control', false, '100px'); ?>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <?php echo Form::FormFloatInput('text', 'tutar', null, '0.00', 'Toplam Tutar (₺)', 'bx bx-purchase-tag', 'form-control masker-money'); ?>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <?php echo Form::FormFloatInput('text', 'fatura_no', null, '', 'Fatura/Fiş No', 'bx bx-receipt'); ?>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </form>
