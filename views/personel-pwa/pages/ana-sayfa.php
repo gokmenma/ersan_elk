@@ -153,71 +153,8 @@ use App\Helper\Helper;
         </section>
     <?php endif; ?>
 
-    <!-- Stats Cards -->
-    <section class="px-4 relative z-20">
-        <div class="grid grid-cols-1 gap-3">
-            <!-- Toplam Hakediş -->
-            <div class="card p-4 flex items-center gap-4">
-                <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-primary text-2xl">account_balance_wallet</span>
-                </div>
-                <div class="flex-1">
-                    <div class="flex items-center gap-2">
-                        <p class="text-slate-500 dark:text-slate-400 text-sm">Toplam Hakediş</p>
-                        <span id="hakedis-donem" class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded-md font-medium hidden"></span>
-                    </div>
-                    <p class="text-xl font-bold text-slate-900 dark:text-white" id="total-earning">0,00 ₺</p>
-                </div>
-                <div class="flex items-center gap-1">
-                    <span class="badge badge-success">+%5.2</span>
-                </div>
-            </div>
-
-            <!-- 2 Column Stats -->
-            <div class="grid grid-cols-2 gap-3">
-                <!-- Alınan Ödeme -->
-                <a href="?page=bordro" class="card p-4 active:scale-95 transition-transform">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="material-symbols-outlined text-primary text-xl">payments</span>
-                        <p class="text-slate-500 dark:text-slate-400 text-xs">Alınan Ödeme</p>
-                    </div>
-                    <p class="text-lg font-bold text-slate-900 dark:text-white" id="received-payment">0,00 ₺</p>
-                </a>
-
-                <!-- Kalan Bakiye -->
-                <div class="card p-4 bg-gradient-primary text-white stat-card">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="material-symbols-outlined text-xl">savings</span>
-                        <p class="text-white/80 text-xs">Kalan Bakiye</p>
-                    </div>
-                    <p class="text-lg font-bold" id="remaining-balance">0,00 ₺</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Çalışma Bilgileri -->
-    <section class="px-4 mt-6">
-        <div class="flex items-center justify-between mb-3">
-            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Çalışma Bilgileri</h2>
-            <span class="text-xs text-slate-400 font-medium" id="calisma-donem-label"></span>
-        </div>
-
-        <div class="card p-4 relative overflow-hidden">
-            <div class="absolute -right-3 -bottom-3 opacity-[0.04]">
-                <span class="material-symbols-outlined text-8xl text-primary">date_range</span>
-            </div>
-
-            <div id="calisma-stats-container" class="relative z-10">
-                <!-- Loading -->
-                <div class="py-4 flex justify-center">
-                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Performance Summary -->
+   
+      <!-- Performance Summary -->
     <section class="px-4 mt-6">
         <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-bold text-slate-900 dark:text-white">Performans Özeti</h2>
@@ -231,71 +168,154 @@ use App\Helper\Helper;
         </div>
     </section>
 
-    <!-- Quick Actions -->
-    <section class="px-4 mt-6">
+
+    <!-- Özet Bilgiler (Combined) -->
+    <section class="px-4 relative z-20 mt-5">
+        <div class="flex items-center justify-between mb-3 px-1">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Genel Özet</h2>
+            <span class="text-xs text-slate-400 font-medium" id="combined-donem-label">Mart 2026</span>
+        </div>
+
+        <div class="card overflow-hidden border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none bg-white dark:bg-slate-900">
+            <!-- Financial Header (Minimal) -->
+            <div class="p-5 relative border-b border-slate-50 dark:border-slate-800">
+                <div class="relative z-10">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex flex-col">
+                            <div class="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 mb-1">
+                                <span class="material-symbols-outlined text-xs">savings</span>
+                                <span class="text-[10px] font-bold uppercase tracking-[0.1em]">Kalan Bakiye</span>
+                            </div>
+                            <h3 class="text-2xl font-black tracking-tight text-slate-900 dark:text-white" id="combined-remaining-balance">0,00 ₺</h3>
+                        </div>
+                        <div class="flex flex-col items-end">
+                            <span id="combined-hakedis-donem" class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2.5 py-1 rounded-full font-bold mb-2"></span>
+                            <div class="badge badge-success bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-none text-[10px] font-bold">+%5.2</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 pt-4 mt-2 border-t border-slate-50 dark:border-slate-800/50">
+                        <div>
+                            <p class="text-[10px] text-slate-400 dark:text-slate-500 font-medium mb-0.5">Toplam Hakediş</p>
+                            <p class="text-sm font-bold text-slate-700 dark:text-slate-300" id="combined-total-earning">0,00 ₺</p>
+                        </div>
+                        <div class="border-l border-slate-50 dark:border-slate-800 pl-4">
+                            <p class="text-[10px] text-slate-400 dark:text-slate-500 font-medium mb-0.5">Alınan Ödeme</p>
+                            <p class="text-sm font-bold text-slate-700 dark:text-slate-300" id="combined-received-payment">0,00 ₺</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Working Stats Grid with Neon Effects -->
+            <div class="p-4">
+                <div class="grid grid-cols-3 gap-3">
+                    <!-- Çalışılan -->
+                    <div class="flex flex-col items-center p-3 rounded-2xl bg-blue-50/30 dark:bg-blue-900/10 border border-blue-100/40 dark:border-blue-800/20 active:scale-95 transition-all shadow-[0_0_15px_-3px_rgba(59,130,246,0.15)]">
+                        <div class="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-2 shadow-sm">
+                            <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-lg">work</span>
+                        </div>
+                        <span id="combined-actual-worked" class="text-lg font-black text-slate-800 dark:text-white leading-none">0</span>
+                        <span class="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase mt-1.5 tracking-tighter">Çalışılan</span>
+                    </div>
+
+                    <!-- Ücretsiz İzin -->
+                    <div class="flex flex-col items-center p-3 rounded-2xl bg-amber-50/30 dark:bg-amber-900/10 border border-amber-100/40 dark:border-amber-800/20 active:scale-95 transition-all shadow-[0_0_15px_-3px_rgba(245,158,11,0.15)]">
+                        <div class="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-2 shadow-sm">
+                            <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-lg">money_off</span>
+                        </div>
+                        <span id="combined-unpaid-leave" class="text-lg font-black text-slate-800 dark:text-white leading-none">0</span>
+                        <span class="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase mt-1.5 tracking-tighter text-center">Ücretsiz</span>
+                    </div>
+
+                    <!-- Ücretli İzin -->
+                    <div class="flex flex-col items-center p-3 rounded-2xl bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100/40 dark:border-emerald-800/20 active:scale-95 transition-all shadow-[0_0_15px_-3px_rgba(16,185,129,0.15)]">
+                        <div class="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-2 shadow-sm">
+                            <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-lg">beach_access</span>
+                        </div>
+                        <span id="combined-paid-leave" class="text-lg font-black text-slate-800 dark:text-white leading-none">0</span>
+                        <span class="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase mt-1.5 tracking-tighter text-center">Ücretli</span>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between">
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-1.5 h-1.5 rounded-full bg-primary/60 dark:bg-primary/40 animate-pulse"></div>
+                        <span class="text-[10px] text-slate-400 dark:text-slate-500 font-medium" id="combined-footer-label">Yükleniyor...</span>
+                    </div>
+                    <a href="?page=bordro" class="text-[10px] font-bold text-primary flex items-center gap-0.5 active:opacity-60 transition-opacity">
+                        DETAYLAR <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+  
+
+    <section class="px-4 mt-6 overflow-hidden">
         <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-3">Hızlı İşlemler</h2>
-        <div class="grid grid-cols-2 gap-3 pb-8">
+        <div class="flex overflow-x-auto hide-scrollbar gap-3 pb-6 snap-x snap-mandatory">
             <a href="?page=izin"
-                class="quick-action group border-2 neon-indigo bg-gradient-to-br from-indigo-500 to-indigo-700 p-5 transition-all active:scale-95">
+                class="quick-action group border-2 neon-indigo bg-gradient-to-br from-indigo-500 to-indigo-700 p-4 transition-all active:scale-95 w-[140px] flex-shrink-0 snap-start">
                 <div
-                    class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
-                    <span class="material-symbols-outlined text-white text-2xl filled">event_busy</span>
+                    class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2.5 shadow-inner">
+                    <span class="material-symbols-outlined text-white text-xl filled">event_busy</span>
                 </div>
                 <div>
-                    <h3 class="font-bold text-sm text-white">İzin Talebi</h3>
-                    <p class="text-[10px] text-indigo-100/80 font-medium">Yeni izin planla</p>
+                    <h3 class="font-bold text-[13px] text-white">İzin Talebi</h3>
+                    <p class="text-[9px] text-indigo-100/80 font-medium">Yeni izin planla</p>
                 </div>
                 <div
-                    class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-                    <span class="material-symbols-outlined text-7xl text-white">event_busy</span>
+                    class="absolute -right-3 -bottom-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                    <span class="material-symbols-outlined text-5xl text-white">event_busy</span>
                 </div>
             </a>
 
             <a href="?page=talep"
-                class="quick-action group border-2 neon-emerald bg-gradient-to-br from-emerald-500 to-emerald-700 p-5 transition-all active:scale-95">
+                class="quick-action group border-2 neon-emerald bg-gradient-to-br from-emerald-500 to-emerald-700 p-4 transition-all active:scale-95 w-[140px] flex-shrink-0 snap-start">
                 <div
-                    class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
-                    <span class="material-symbols-outlined text-white text-2xl filled">assignment</span>
+                    class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2.5 shadow-inner">
+                    <span class="material-symbols-outlined text-white text-xl filled">assignment</span>
                 </div>
                 <div>
-                    <h3 class="font-bold text-sm text-white">Talep Oluştur</h3>
-                    <p class="text-[10px] text-emerald-100/80 font-medium">Öneri ve Şikayet</p>
+                    <h3 class="font-bold text-[13px] text-white">Talep Oluştur</h3>
+                    <p class="text-[9px] text-emerald-100/80 font-medium">Öneri ve Şikayet</p>
                 </div>
                 <div
-                    class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-                    <span class="material-symbols-outlined text-7xl text-white">assignment</span>
+                    class="absolute -right-3 -bottom-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                    <span class="material-symbols-outlined text-5xl text-white">assignment</span>
                 </div>
             </a>
 
             <a href="?page=bordro"
-                class="quick-action group border-2 neon-orange bg-gradient-to-br from-orange-500 to-orange-700 p-5 transition-all active:scale-95">
+                class="quick-action group border-2 neon-orange bg-gradient-to-br from-orange-500 to-orange-700 p-4 transition-all active:scale-95 w-[140px] flex-shrink-0 snap-start">
                 <div
-                    class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
-                    <span class="material-symbols-outlined text-white text-2xl filled">receipt_long</span>
+                    class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2.5 shadow-inner">
+                    <span class="material-symbols-outlined text-white text-xl filled">receipt_long</span>
                 </div>
                 <div>
-                    <h3 class="font-bold text-sm text-white">Avanslar</h3>
-                    <p class="text-[10px] text-orange-100/80 font-medium">Avans Talebi Yap</p>
+                    <h3 class="font-bold text-[13px] text-white">Avanslar</h3>
+                    <p class="text-[9px] text-orange-100/80 font-medium">Avans Talebi Yap</p>
                 </div>
                 <div
-                    class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-                    <span class="material-symbols-outlined text-7xl text-white">receipt_long</span>
+                    class="absolute -right-3 -bottom-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                    <span class="material-symbols-outlined text-5xl text-white">receipt_long</span>
                 </div>
             </a>
 
             <a href="?page=zimmetler"
-                class="quick-action group border-2 neon-amber bg-gradient-to-br from-amber-500 to-amber-700 p-5 transition-all active:scale-95">
+                class="quick-action group border-2 neon-amber bg-gradient-to-br from-amber-500 to-amber-700 p-4 transition-all active:scale-95 w-[140px] flex-shrink-0 snap-start">
                 <div
-                    class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner">
-                    <span class="material-symbols-outlined text-white text-2xl filled">inventory_2</span>
+                    class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2.5 shadow-inner">
+                    <span class="material-symbols-outlined text-white text-xl filled">inventory_2</span>
                 </div>
                 <div>
-                    <h3 class="font-bold text-sm text-white">Zimmetler</h3>
-                    <p class="text-[10px] text-amber-100/80 font-medium">Demirbaş Takibi</p>
+                    <h3 class="font-bold text-[13px] text-white">Zimmetler</h3>
+                    <p class="text-[9px] text-amber-100/80 font-medium">Demirbaş Takibi</p>
                 </div>
                 <div
-                    class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-                    <span class="material-symbols-outlined text-7xl text-white">inventory_2</span>
+                    class="absolute -right-3 -bottom-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                    <span class="material-symbols-outlined text-5xl text-white">inventory_2</span>
                 </div>
             </a>
         </div>
@@ -804,8 +824,8 @@ use App\Helper\Helper;
                                             #${stat.siralama.ekip_sira}
                                         </div>
                                         <div>
-                                            <p class="text-[10px] text-slate-400">Kendi Ekibinde</p>
-                                            <p class="text-xs font-medium text-slate-800 dark:text-slate-200 line-clamp-1" title="${stat.ekip_adi || 'Ekip Bulunamadı'}">${stat.ekip_adi || 'Ekip Bulunamadı'}</p>
+                                            <p class="text-[10px] text-slate-400">Bulunduğu Bölgede</p>
+                                            <p class="text-xs font-medium text-slate-800 dark:text-slate-200 line-clamp-1" title="${stat.ekip_bolge || 'Bölge Bulunamadı'}">${stat.ekip_bolge || 'Bölge Bulunamadı'}</p>
                                             <p class="text-[9px] text-slate-400 pt-0.5">${stat.siralama.ekip_kisi} Kişi Arasında</p>
                                         </div>
                                     </div>
@@ -864,20 +884,23 @@ use App\Helper\Helper;
         }
 
         async function loadCalismaStats() {
-            var container = document.getElementById('calisma-stats-container');
-            var donemLabel = document.getElementById('calisma-donem-label');
+            var donemLabel = document.getElementById('combined-donem-label');
+            var footerLabel = document.getElementById('combined-footer-label');
+            var workedEl = document.getElementById('combined-actual-worked');
+            var unpaidEl = document.getElementById('combined-unpaid-leave');
+            var paidEl = document.getElementById('combined-paid-leave');
+
             var aylar = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
             var now = new Date();
             var year = now.getFullYear();
             var month = now.getMonth();
             var daysInMonth = new Date(year, month + 1, 0).getDate();
 
-            // Saat 17:00'den sonraysa bugünü de dahil et
             var includeToday = now.getHours() >= 17;
             var totalDays = includeToday ? now.getDate() : Math.max(0, now.getDate() - 1);
             var limitDay = totalDays;
 
-            donemLabel.textContent = aylar[month] + ' ' + year;
+            if (donemLabel) donemLabel.textContent = aylar[month] + ' ' + year;
 
             try {
                 var response = await API.request('getIzinler');
@@ -920,39 +943,13 @@ use App\Helper\Helper;
 
                 var actualWorked = Math.max(0, totalDays - (paidLeaveDays + unpaidLeaveDays));
 
-                container.innerHTML = `
-                    <div class="grid grid-cols-3 gap-3">
-                        <div class="flex flex-col items-center justify-center bg-blue-50/60 dark:bg-blue-900/15 rounded-xl py-3 px-2 border border-blue-100 dark:border-blue-800/30">
-                            <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-1.5">
-                                <span class="material-symbols-outlined text-blue-600 text-base">work</span>
-                            </div>
-                            <span class="text-xl font-black text-blue-700 dark:text-blue-300 leading-none">${actualWorked}</span>
-                            <span class="text-[9px] text-blue-600/80 dark:text-blue-400/80 font-bold uppercase tracking-wider mt-1">Çalışılan</span>
-                        </div>
-                        <div class="flex flex-col items-center justify-center bg-amber-50/60 dark:bg-amber-900/15 rounded-xl py-3 px-2 border border-amber-100 dark:border-amber-800/30">
-                            <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-1.5">
-                                <span class="material-symbols-outlined text-amber-600 text-base">money_off</span>
-                            </div>
-                            <span class="text-xl font-black text-amber-700 dark:text-amber-300 leading-none">${unpaidLeaveDays}</span>
-                            <span class="text-[9px] text-amber-600/80 dark:text-amber-400/80 font-bold uppercase tracking-wider mt-1">Ücretsiz İzin</span>
-                        </div>
-                        <div class="flex flex-col items-center justify-center bg-green-50/60 dark:bg-green-900/15 rounded-xl py-3 px-2 border border-green-100 dark:border-green-800/30">
-                            <div class="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-1.5">
-                                <span class="material-symbols-outlined text-green-600 text-base">beach_access</span>
-                            </div>
-                            <span class="text-xl font-black text-green-700 dark:text-green-300 leading-none">${paidLeaveDays}</span>
-                            <span class="text-[9px] text-green-600/80 dark:text-green-400/80 font-bold uppercase tracking-wider mt-1">Ücretli İzin</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-center mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-700/40">
-                        <span class="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                            ${includeToday ? 'Bugün dahil' : 'Düne kadar'} · Toplam ${totalDays} / ${daysInMonth} gün
-                        </span>
-                    </div>
-                `;
+                if (workedEl) workedEl.textContent = actualWorked;
+                if (unpaidEl) unpaidEl.textContent = unpaidLeaveDays;
+                if (paidEl) paidEl.textContent = paidLeaveDays;
+                if (footerLabel) footerLabel.textContent = (includeToday ? 'Bugün dahil' : 'Düne kadar') + ' · Toplam ' + totalDays + ' / ' + daysInMonth + ' gün';
+
             } catch (error) {
                 console.error('Çalışma stats load error:', error);
-                container.innerHTML = '<div class="text-center py-3 text-slate-400 text-sm">Veriler yüklenemedi</div>';
             }
         }
 
@@ -969,12 +966,16 @@ use App\Helper\Helper;
             try {
                 var response = await API.request('getDashboardData');
                 if (response.success) {
-                    document.getElementById('total-earning').textContent = Format.currency(response.data.total_earning || 0);
-                    document.getElementById('received-payment').textContent = Format.currency(response.data.received_payment || 0);
-                    document.getElementById('remaining-balance').textContent = Format.currency(response.data.remaining_balance || 0);
+                    var totalEarningEl = document.getElementById('combined-total-earning');
+                    var receivedPaymentEl = document.getElementById('combined-received-payment');
+                    var remainingBalanceEl = document.getElementById('combined-remaining-balance');
+                    var donemEl = document.getElementById('combined-hakedis-donem');
+
+                    if (totalEarningEl) totalEarningEl.textContent = Format.currency(response.data.total_earning || 0);
+                    if (receivedPaymentEl) receivedPaymentEl.textContent = Format.currency(response.data.received_payment || 0);
+                    if (remainingBalanceEl) remainingBalanceEl.textContent = Format.currency(response.data.remaining_balance || 0);
                     
-                    if (response.data.son_donem_adi) {
-                        var donemEl = document.getElementById('hakedis-donem');
+                    if (response.data.son_donem_adi && donemEl) {
                         donemEl.textContent = response.data.son_donem_adi;
                         donemEl.classList.remove('hidden');
                     }

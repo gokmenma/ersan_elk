@@ -38,7 +38,7 @@ class PersonelIzinleriModel extends Model
                 LEFT JOIN izin_onaylari as io ON io.izin_id = pi.id
                 LEFT JOIN users as u ON u.id = io.onaylayan_id
                 LEFT JOIN tanimlamalar as t ON t.id = pi.izin_tipi_id
-                WHERE pi.personel_id = ?
+                WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL
                 ORDER BY pi.id DESC, io.id ASC";
 
         $query = $this->db->prepare($sql);
@@ -76,7 +76,7 @@ class PersonelIzinleriModel extends Model
             SELECT COUNT(*) as count 
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
-            WHERE pi.onay_durumu = 'beklemede' AND p.firma_id = ?
+            WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
         ");
         $sql->execute([$_SESSION['firma_id']]);
         return $sql->fetch(PDO::FETCH_OBJ)->count ?? 0;
@@ -94,7 +94,7 @@ class PersonelIzinleriModel extends Model
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.onay_durumu = 'beklemede' AND p.firma_id = ? 
+            WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ? 
             LIMIT {$limit}
         ");
         $sql->execute([$_SESSION['firma_id']]);
@@ -113,7 +113,7 @@ class PersonelIzinleriModel extends Model
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ? AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = ?
+            WHERE pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ? AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
             ORDER BY pi.bitis_tarihi ASC
             LIMIT {$limit}
         ");
@@ -131,7 +131,7 @@ class PersonelIzinleriModel extends Model
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.onay_durumu = 'beklemede' AND p.firma_id = ?
+            WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
             ORDER BY pi.talep_tarihi DESC
         ");
         $sql->execute([$_SESSION['firma_id']]);
@@ -149,7 +149,7 @@ class PersonelIzinleriModel extends Model
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.onay_durumu IN ('Onaylandı', 'Reddedildi') AND p.firma_id = ?
+            WHERE pi.onay_durumu IN ('Onaylandı', 'Reddedildi') AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
             AND pi.id NOT IN (
                 SELECT izin_id FROM izin_onaylari 
                 WHERE aciklama LIKE 'Puantaj üzerinden%' 
@@ -174,7 +174,7 @@ class PersonelIzinleriModel extends Model
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.onay_durumu = 'Reddedildi' AND p.firma_id = ?
+            WHERE pi.onay_durumu = 'Reddedildi' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
             ORDER BY pi.talep_tarihi DESC
             LIMIT {$limit}
         ");

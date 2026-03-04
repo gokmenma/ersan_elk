@@ -155,7 +155,7 @@ if (Gate::allows("ana_sayfa")) {
     }
 
     // Talepler
-    $stmt = $db->prepare("SELECT count(*) as count FROM personel_talepleri WHERE durum != 'cozuldu' AND deleted_at IS NULL");
+    $stmt = $db->prepare("SELECT count(*) as count FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL");
     $stmt->execute();
     $talep_count = $stmt->fetch(PDO::FETCH_OBJ)->count;
 
@@ -175,7 +175,7 @@ if (Gate::allows("ana_sayfa")) {
     }
 
     // Talepler
-    $stmt = $db->prepare("SELECT 'Talep' as tip, id, personel_id, olusturma_tarihi as tarih, durum, baslik as detay FROM personel_talepleri WHERE durum != 'cozuldu' AND deleted_at IS NULL LIMIT 5");
+    $stmt = $db->prepare("SELECT 'Talep' as tip, id, personel_id, olusturma_tarihi as tarih, durum, baslik as detay FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL LIMIT 5");
     $stmt->execute();
     $talepler = $stmt->fetchAll(PDO::FETCH_OBJ);
 

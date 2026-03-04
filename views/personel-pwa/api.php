@@ -200,20 +200,27 @@ try {
             $departman = $personelDetails->departman ?? '';
             $aktifEkipGecmisi = $PersonelModel->getEkipGecmisi($personel_id);
             $aktifEkipId = null;
-            $aktifEkipAdi = '';
+            $aktifEkipBolge = '';
             foreach ($aktifEkipGecmisi as $gecmis) {
                 if (empty($gecmis->bitis_tarihi) || $gecmis->bitis_tarihi >= date('Y-m-d')) {
                     $aktifEkipId = $gecmis->ekip_kodu_id;
-                    $aktifEkipAdi = $gecmis->ekip_adi;
                     break;
                 }
             }
+            if ($aktifEkipId) {
+                $TanimlamalarModel = new \App\Model\TanimlamalarModel();
+                $ekip = $TanimlamalarModel->find($aktifEkipId);
+                if ($ekip) {
+                    $aktifEkipBolge = $ekip->ekip_bolge ?? '';
+                }
+            }
             
-            // Tüm aktif personelleri departman ve ekibine göre çekelim
+            // Tüm aktif personelleri departman ve bölgesine göre çekelim
             $allActiveQuery = "SELECT p.id, p.departman, 
-                (SELECT peg.ekip_kodu_id FROM personel_ekip_gecmisi peg 
+                (SELECT t.ekip_bolge FROM personel_ekip_gecmisi peg 
+                 LEFT JOIN tanimlamalar t ON peg.ekip_kodu_id = t.id
                  WHERE peg.personel_id = p.id AND (peg.bitis_tarihi IS NULL OR peg.bitis_tarihi >= CURDATE())
-                 ORDER BY peg.baslangic_tarihi DESC LIMIT 1) as ekip_id 
+                 ORDER BY peg.baslangic_tarihi DESC LIMIT 1) as bolge 
                 FROM personel p 
                 WHERE p.firma_id = ? AND p.silinme_tarihi IS NULL 
                 AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00')";
@@ -228,12 +235,12 @@ try {
                 if ($p->departman == $departman) {
                     $departmanPersonelIds[] = $p->id;
                 }
-                if ($aktifEkipId && $p->ekip_id == $aktifEkipId) {
+                if ($aktifEkipBolge && $p->bolge == $aktifEkipBolge) {
                     $ekipPersonelIds[] = $p->id;
                 }
             }
             if (!in_array($personel_id, $departmanPersonelIds)) $departmanPersonelIds[] = $personel_id;
-            if ($aktifEkipId && !in_array($personel_id, $ekipPersonelIds)) $ekipPersonelIds[] = $personel_id;
+            if ($aktifEkipBolge && !in_array($personel_id, $ekipPersonelIds)) $ekipPersonelIds[] = $personel_id;
             
             // Aylık skor tablosu hesabı
             $skorSorgusu = "SELECT personel_id, SUM(toplam) as skor FROM (
@@ -280,7 +287,7 @@ try {
                 'month' => $monthlyTotal,
                 'is_sayac_ekibi' => $isSayacSokmeTakma,
                 'departman' => $departman,
-                'ekip_adi' => $aktifEkipAdi,
+                'ekip_bolge' => $aktifEkipBolge,
                 'siralama' => [
                     'departman_sira' => $myDeptRank,
                     'departman_kisi' => count($departmanPersonelIds),

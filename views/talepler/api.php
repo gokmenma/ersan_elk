@@ -450,6 +450,132 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 ]);
                 break;
 
+            // Avans Sil
+            case 'avans-sil':
+                $id = intval($_POST['id'] ?? 0);
+                $aciklama = trim($_POST['aciklama'] ?? '');
+
+                if ($id <= 0) {
+                    throw new Exception('Geçersiz avans ID.');
+                }
+                if (empty($aciklama)) {
+                    throw new Exception('Silme gerekçesi zorunludur.');
+                }
+
+                $avans = $avansModel->find($id);
+                if ($avans) {
+                    // Bildirimi gönder
+                    try {
+                        if ($avans->personel_id) {
+                            $pushService = new PushNotificationService();
+                            $pushService->sendToPersonel($avans->personel_id, [
+                                'title' => '🗑️ Avans Talebi Silindi',
+                                'body' => 'Avans talebiniz sistemden silindi. Sebep: ' . $aciklama,
+                                'url' => 'index.php?page=bordro'
+                            ]);
+                        }
+                    } catch (Exception $e) {
+                        error_log('Push notification error: ' . $e->getMessage());
+                    }
+
+                    // Kaydı soft delete ile işaretle
+                    $db = $avansModel->getDb();
+                    $stmt = $db->prepare("UPDATE personel_avanslari SET silinme_tarihi = NOW(), silen_kullanici = ?, silinme_aciklama = ? WHERE id = ?");
+                    $stmt->execute([$currentUserId, $aciklama, $id]);
+                    
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Avans talebi başarıyla silindi.'
+                    ]);
+                } else {
+                    throw new Exception('Silinecek avans bulunamadı.');
+                }
+                break;
+
+            // İzin Sil
+            case 'izin-sil':
+                $id = intval($_POST['id'] ?? 0);
+                $aciklama = trim($_POST['aciklama'] ?? '');
+
+                if ($id <= 0) {
+                    throw new Exception('Geçersiz izin ID.');
+                }
+                if (empty($aciklama)) {
+                    throw new Exception('Silme gerekçesi zorunludur.');
+                }
+
+                $izin = $izinModel->find($id);
+                if ($izin) {
+                    // Bildirimi gönder
+                    try {
+                        if ($izin->personel_id) {
+                            $pushService = new PushNotificationService();
+                            $pushService->sendToPersonel($izin->personel_id, [
+                                'title' => '🗑️ İzin Talebi Silindi',
+                                'body' => 'İzin talebiniz sistemden silindi. Sebep: ' . $aciklama,
+                                'url' => 'index.php?page=izin'
+                            ]);
+                        }
+                    } catch (Exception $e) {
+                        error_log('Push notification error: ' . $e->getMessage());
+                    }
+
+                    // Kaydı soft delete ile işaretle
+                    $db = $izinModel->getDb();
+                    $stmt = $db->prepare("UPDATE personel_izinleri SET silinme_tarihi = NOW(), silen_kullanici = ?, silinme_aciklama = ? WHERE id = ?");
+                    $stmt->execute([$currentUserId, $aciklama, $id]);
+                    
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'İzin talebi başarıyla silindi.'
+                    ]);
+                } else {
+                    throw new Exception('Silinecek izin bulunamadı.');
+                }
+                break;
+
+            // Talep Sil
+            case 'talep-sil':
+                $id = intval($_POST['id'] ?? 0);
+                $aciklama = trim($_POST['aciklama'] ?? '');
+
+                if ($id <= 0) {
+                    throw new Exception('Geçersiz talep ID.');
+                }
+                if (empty($aciklama)) {
+                    throw new Exception('Silme gerekçesi zorunludur.');
+                }
+
+                $talep = $talepModel->find($id);
+                if ($talep) {
+                    // Bildirimi gönder
+                    try {
+                        if ($talep->personel_id) {
+                            $pushService = new PushNotificationService();
+                            $pushService->sendToPersonel($talep->personel_id, [
+                                'title' => '🗑️ Talep Silindi',
+                                'body' => 'Talebiniz sistemden silindi. Sebep: ' . $aciklama,
+                                'url' => 'index.php?page=talep'
+                            ]);
+                        }
+                    } catch (Exception $e) {
+                        error_log('Push notification error: ' . $e->getMessage());
+                    }
+
+                    // Kaydı soft delete ile işaretle
+                    $db = $talepModel->getDb();
+                    $stmt = $db->prepare("UPDATE personel_talepleri SET silinme_tarihi = NOW(), silen_kullanici = ?, silinme_aciklama = ? WHERE id = ?");
+                    $stmt->execute([$currentUserId, $aciklama, $id]);
+                    
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Talep başarıyla silindi.'
+                    ]);
+                } else {
+                    throw new Exception('Silinecek talep bulunamadı.');
+                }
+                break;
+
             default:
                 throw new Exception('Geçersiz işlem.');
         }

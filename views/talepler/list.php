@@ -290,6 +290,12 @@ $izinTurleri = [
                                                     data-id="<?= $avans->id ?>" title="Detay">
                                                     <i class="bx bx-show"></i>
                                                 </button>
+                                                <?php if ($avans->durum != 'onaylandi'): ?>
+                                                    <button class="btn btn-sm btn-soft-danger btn-sil" type="button"
+                                                        data-id="<?= $avans->id ?>" data-tip="avans" title="Sil">
+                                                        <i class="bx bx-trash"></i>
+                                                    </button>
+                                                <?php endif; ?>
                                             </div>
                                         </td>
                                     </tr>
@@ -398,6 +404,12 @@ $izinTurleri = [
                                                     data-id="<?= $izin->id ?>" title="Detay">
                                                     <i class="bx bx-show"></i>
                                                 </button>
+                                                <?php if ($izin->onay_durumu != 'Onaylandı'): ?>
+                                                    <button class="btn btn-sm btn-soft-danger btn-sil" type="button"
+                                                        data-id="<?= $izin->id ?>" data-tip="izin" title="Sil">
+                                                        <i class="bx bx-trash"></i>
+                                                    </button>
+                                                <?php endif; ?>
                                             </div>
                                         </td>
                                     </tr>
@@ -526,6 +538,12 @@ $izinTurleri = [
                                                     data-id="<?= $talep->id ?>" title="Detay">
                                                     <i class="bx bx-show"></i>
                                                 </button>
+                                                <?php if ($talep->durum == 'beklemede' || $talep->durum == 'reddedildi' || $talep->durum == 'iptal_edildi'): ?>
+                                                    <button class="btn btn-sm btn-soft-danger btn-sil" type="button"
+                                                        data-id="<?= $talep->id ?>" data-tip="talep" title="Sil">
+                                                        <i class="bx bx-trash"></i>
+                                                    </button>
+                                                <?php endif; ?>
                                             </div>
                                         </td>
                                     </tr>
@@ -725,6 +743,35 @@ $izinTurleri = [
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Silme Modal -->
+<div class="modal fade" id="modalSil" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bx bx-trash me-2"></i>Kayıt Silme</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formSil">
+                <input type="hidden" name="id" id="sil_id">
+                <input type="hidden" name="action" id="sil_action">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        Bu kaydı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Silme Gerekçesi <span class="text-danger">*</span></label>
+                        <textarea class="form-control" name="aciklama" rows="3" placeholder="Silme sebebini açıklayınız..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-danger"><i class="bx bx-trash me-1"></i>Sil</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -973,6 +1020,27 @@ $izinTurleri = [
             const formData = new FormData(this);
             formData.append('action', 'talep-cozuldu');
             submitFormAction(formData, 'modalTalepCozuldu');
+        });
+
+        // Sil Modal Aç
+        document.querySelectorAll('.btn-sil').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const id = this.dataset.id;
+                const tip = this.dataset.tip; // 'avans', 'izin', 'talep'
+
+                document.getElementById('sil_id').value = id;
+                document.getElementById('sil_action').value = tip + '-sil';
+                document.getElementById('formSil').reset();
+
+                new bootstrap.Modal(document.getElementById('modalSil')).show();
+            });
+        });
+
+        // Sil Form Gönder
+        document.getElementById('formSil')?.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            submitFormAction(formData, 'modalSil');
         });
 
         // Helper Functions
