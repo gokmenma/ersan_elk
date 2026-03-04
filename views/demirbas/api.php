@@ -1203,6 +1203,49 @@ if ($action == "zimmet-hareket-sil") {
     }
 }
 
+// Zimmet Hareket Toplu Sil
+if ($action == "zimmet-hareket-toplu-sil") {
+    $ids = $_POST["ids"] ?? [];
+
+    try {
+        if (empty($ids) || !is_array($ids)) {
+            jsonResponse("error", "Lütfen en az bir işlem seçin.");
+        }
+
+        $successCount = 0;
+        $errorCount = 0;
+        
+        $Zimmet->getDb()->beginTransaction();
+        
+        foreach($ids as $enc_id) {
+            $id = Security::decrypt($enc_id);
+            if(!$id) continue;
+            
+            $result = $Zimmet->iadeSil($id);
+            if ($result === true) {
+                $successCount++;
+            } else {
+                $errorCount++;
+            }
+        }
+        
+        $Zimmet->getDb()->commit();
+        
+        $message = "$successCount işlem başarıyla geri alındı. Stok ve zimmet durumu güncellendi.";
+        if($errorCount > 0) {
+            $message .= " $errorCount işlem başarısız oldu.";
+        }
+
+        jsonResponse("success", $message);
+    } catch (Exception $ex) {
+        if ($Zimmet->getDb()->inTransaction()) {
+            $Zimmet->getDb()->rollBack();
+        }
+        jsonResponse("error", $ex->getMessage());
+    }
+}
+
+
 // Zimmet Detay
 if ($action == "zimmet-detay") {
     $id = Security::decrypt($_POST["id"] ?? $_GET["id"]);

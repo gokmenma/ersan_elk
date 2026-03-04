@@ -1927,18 +1927,22 @@ $(document).on("click", ".zimmet-detay", function (e) {
               return;
             }
 
-            let deleteBtn = "";
+            let checkbox = "";
+            let trClass = "";
+            let trStyle = "";
             if (h.hareket_tipi === "iade" || h.hareket_tipi === "sarf") {
-              deleteBtn = `<button class="btn btn-sm btn-outline-danger zimmet-hareket-sil" data-id="${h.id}" data-type="${h.hareket_tipi}" title="Geri Al / Sil"><i class="bx bx-trash"></i></button>`;
+              checkbox = `<div class="form-check d-flex justify-content-center m-0"><input class="form-check-input hareket-check" type="checkbox" value="${h.id}"></div>`;
+              trClass = "hareket-row";
+              trStyle = "cursor: pointer;";
             }
 
             let row = `
-              <tr>
+              <tr class="${trClass}" style="${trStyle}">
+                <td class="text-center" width="40">${checkbox}</td>
                 <td>${h.hareket_badge}</td>
                 <td class="text-center fw-bold">${h.miktar}</td>
                 <td>${h.tarih_format}</td>
                 <td class="small">${h.aciklama || ""}</td>
-                <td class="text-center">${deleteBtn}</td>
               </tr>
             `;
             hBody.append(row);
@@ -1954,6 +1958,11 @@ $(document).on("click", ".zimmet-detay", function (e) {
             '<tr><td colspan="5" class="text-center text-muted py-3">Hareket kaydı bulunamadı.</td></tr>',
           );
         }
+
+        // Reset toplu işlem butonu ve select all checkbox
+        $("#btnTopluHareketSil").addClass("d-none");
+        $("#seciliHareketSayisi").text("0");
+        $("#checkAllZimmetHareket").prop("checked", false);
 
         // 2. GEÇMİŞ TABLOSUNU DOLDUR
         
@@ -1974,7 +1983,7 @@ $(document).on("click", ".zimmet-detay", function (e) {
     });
 });
 
-// Zimmet Hareket Sil (İadeyi Geri Al)
+// Zimmet Hareket Sil (İadeyi Geri Al) - BU ARTIK KULLANILMIYOR FAKAT ESKİ YERLERDE VARSA DİYE DURABİLİR
 $(document).on("click", ".zimmet-hareket-sil", function (e) {
   e.preventDefault();
   let id = $(this).data("id");
@@ -2008,6 +2017,87 @@ $(document).on("click", ".zimmet-hareket-sil", function (e) {
               demirbasTable.ajax.reload(null, false);
             if (typeof sayacTable !== "undefined")
               sayacTable.ajax.reload(null, false);
+          } else {
+            Swal.fire("Hata!", data.message, "error");
+          }
+        },
+        error: function () {
+          Swal.fire("Hata!", "Sunucu ile iletişim kurulamadı.", "error");
+        },
+      });
+    }
+  });
+});
+
+// Toplu Hareket Checkbox İşlemleri
+$(document).on("change", "#checkAllZimmetHareket", function() {
+  $(".hareket-check").prop("checked", $(this).prop("checked"));
+  updateTopluHareketSilBtn();
+});
+
+$(document).on("change", ".hareket-check", function() {
+  let total = $(".hareket-check").length;
+  let checked = $(".hareket-check:checked").length;
+  $("#checkAllZimmetHareket").prop("checked", total === checked && total > 0);
+  updateTopluHareketSilBtn();
+});
+
+$(document).on("click", ".hareket-row", function (e) {
+  if ($(e.target).closest('.form-check').length > 0) return;
+  let chk = $(this).find('.hareket-check');
+  if (chk.length > 0) {
+    chk.prop("checked", !chk.prop("checked")).trigger("change");
+  }
+});
+
+function updateTopluHareketSilBtn() {
+  let checkedCount = $(".hareket-check:checked").length;
+  if(checkedCount > 0) {
+    $("#btnTopluHareketSil").removeClass("d-none");
+    $("#seciliHareketSayisi").text(checkedCount);
+  } else {
+    $("#btnTopluHareketSil").addClass("d-none");
+  }
+}
+
+// Toplu Hareket Sil (İadeleri Geri Al)
+$(document).on("click", "#btnTopluHareketSil", function (e) {
+  e.preventDefault();
+  
+  let selectedIds = [];
+  $(".hareket-check:checked").each(function () {
+    selectedIds.push($(this).val());
+  });
+
+  if(selectedIds.length === 0) return;
+
+  Swal.fire({
+    title: "Emin misiniz?",
+    text: "Seçilen " + selectedIds.length + " iade/sarf işlemi geri alınacak. Stok ve zimmet durumu güncellenecektir.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#74788d",
+    confirmButtonText: "Evet, Seçilenleri Geri Al!",
+    cancelButtonText: "İptal",
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Pace.start();
+      $.ajax({
+        url: zimmetUrl,
+        type: "POST",
+        data: {
+          action: "zimmet-hareket-toplu-sil",
+          ids: selectedIds
+        },
+        dataType: "json",
+        success: function (data) {
+          if (data.status === "success") {
+            Swal.fire("Başarılı!", data.message, "success");
+            $("#zimmetDetayModal").modal("hide");
+            loadZimmetList();
+            if (typeof demirbasTable !== "undefined") demirbasTable.ajax.reload(null, false);
+            if (typeof sayacTable !== "undefined") sayacTable.ajax.reload(null, false);
           } else {
             Swal.fire("Hata!", data.message, "error");
           }

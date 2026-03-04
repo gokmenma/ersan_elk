@@ -83,17 +83,26 @@
                 </div>
 
                 <!-- Hareket Detayları -->
-                <h6 class="mb-3 border-bottom pb-2 text-primary"><i data-feather="repeat" class="me-1"></i> Zimmet
-                    Hareketleri (Detay)</h6>
+                <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                    <h6 class="mb-0 text-primary"><i data-feather="repeat" class="me-1"></i> Zimmet
+                        Hareketleri (Detay)</h6>
+                    <button class="btn btn-sm btn-danger d-none" id="btnTopluHareketSil">
+                        <i class="bx bx-trash me-1"></i> Seçilenleri Sil (<span id="seciliHareketSayisi">0</span>)
+                    </button>
+                </div>
                 <div class="table-responsive mb-4">
                     <table class="table table-sm table-hover table-bordered border-primary-subtle">
                         <thead class="table-primary fw-bold">
                             <tr>
+                                <th style="width: 40px;" class="text-center">
+                                    <div class="form-check d-flex justify-content-center m-0">
+                                        <input class="form-check-input" type="checkbox" id="checkAllZimmetHareket">
+                                    </div>
+                                </th>
                                 <th>İşlem Tipi</th>
                                 <th class="text-center">Miktar</th>
                                 <th>Tarih</th>
                                 <th>Açıklama / İş Emri</th>
-                                <th class="text-center">İşlemler</th>
                             </tr>
                         </thead>
                         <tbody id="zimmetHareketBody">

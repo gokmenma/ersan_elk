@@ -173,13 +173,13 @@ use App\Helper\Helper;
             <!-- 2 Column Stats -->
             <div class="grid grid-cols-2 gap-3">
                 <!-- Alınan Ödeme -->
-                <div class="card p-4">
+                <a href="?page=bordro" class="card p-4 active:scale-95 transition-transform">
                     <div class="flex items-center gap-2 mb-2">
                         <span class="material-symbols-outlined text-primary text-xl">payments</span>
                         <p class="text-slate-500 dark:text-slate-400 text-xs">Alınan Ödeme</p>
                     </div>
                     <p class="text-lg font-bold text-slate-900 dark:text-white" id="received-payment">0,00 ₺</p>
-                </div>
+                </a>
 
                 <!-- Kalan Bakiye -->
                 <div class="card p-4 bg-gradient-primary text-white stat-card">
