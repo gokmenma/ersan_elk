@@ -408,9 +408,32 @@ class BordroPersonelModel extends Model
         $sqlAvans->execute([$personel_id]);
         $alinan_odeme = $sqlAvans->fetch(PDO::FETCH_OBJ)->toplam_avans ?? 0;
 
+        // Son kapatılmış dönemin adını bul
+        $sqlSonDonem = $this->db->prepare("
+            SELECT bd.donem_adi, bd.baslangic_tarihi 
+            FROM {$this->table} bp
+            INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
+            WHERE bp.personel_id = ? AND bp.silinme_tarihi IS NULL AND bd.kapali_mi = 1
+            ORDER BY bd.baslangic_tarihi DESC LIMIT 1
+        ");
+        $sqlSonDonem->execute([$personel_id]);
+        $son_donem = $sqlSonDonem->fetch(PDO::FETCH_OBJ);
+        
+        $son_donem_adi = null;
+        if ($son_donem) {
+            if (!empty($son_donem->donem_adi)) {
+                $son_donem_adi = $son_donem->donem_adi;
+            } else {
+                $tarih = strtotime($son_donem->baslangic_tarihi);
+                $aylar = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+                $son_donem_adi = $aylar[date('n', $tarih) - 1] . ' ' . date('Y', $tarih);
+            }
+        }
+
         return (object) [
             'toplam_hakedis' => $toplam_hakedis,
-            'alinan_odeme' => $alinan_odeme
+            'alinan_odeme' => $alinan_odeme,
+            'son_donem_adi' => $son_donem_adi
         ];
     }
 

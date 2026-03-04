@@ -234,13 +234,13 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         <table id="endeksTable" class="table table-bordered dt-responsive nowrap w-100">
                             <thead>
                                 <tr class="table-light">
-                                    <th>Tarih</th>
-                                    <th>Defter</th>
-                                    <th>Bölgesi</th>
-                                    <th>Ekip No</th>
-                                    <th>Personel</th>
-                                    <th>Abone Sayısı</th>
-                                    <th>Sayaç Durumu</th>
+                                    <th data-filter="date">Tarih</th>
+                                    <th data-filter="string">Defter</th>
+                                    <th data-filter="string">Bölgesi</th>
+                                    <th data-filter="string">Ekip No</th>
+                                    <th data-filter="string">Personel</th>
+                                    <th data-filter="number">Abone Sayısı</th>
+                                    <th data-filter="select">Sayaç Durumu</th>
                                     <th>İşlem</th>
                                 </tr>
                             </thead>
@@ -291,15 +291,16 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         <table id="puantajTable" class="table table-bordered dt-responsive nowrap w-100">
                             <thead>
                                 <tr class="table-light">
-                                    <th>Tarih</th>
-                                    <th>Ekip Kodu</th>
-                                    <th>Personel</th>
-                                    <th>İş Emri Tipi</th>
-                                    <th>İş Emri Sonucu</th>
-                                    <th>Sonuçlanmış</th>
-                                    <th>Açık Olanlar</th>
+                                    <th data-filter="date">Tarih</th>
+                                    <th data-filter="string">Ekip Kodu</th>
+                                    <th data-filter="string">Personel</th>
+                                    <th data-filter="select">İş Emri Tipi</th>
+                                    <th data-filter="select">İş Emri Sonucu</th>
+                                    <th data-filter="number">Sonuçlanmış</th>
+                                    <th data-filter="number">Açık Olanlar</th>
                                     <th>İşlem</th>
                                 </tr>
+
                             </thead>
                             <tbody id="yapilanIslerBody">
                                 <!-- AJAX Content -->
@@ -337,12 +338,13 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         <table id="kacakTable" class="table table-bordered dt-responsive nowrap w-100">
                             <thead>
                                 <tr class="table-light">
-                                    <th>Tarih</th>
-                                    <th>Ekip (Personel)</th>
-                                    <th>Sayı</th>
-                                    <th>Açıklama</th>
+                                    <th data-filter="date">Tarih</th>
+                                    <th data-filter="string">Ekip (Personel)</th>
+                                    <th data-filter="number">Sayı</th>
+                                    <th data-filter="string">Açıklama</th>
                                     <th>İşlem</th>
                                 </tr>
+
                             </thead>
                             <tbody id="kacakKontrolBody">
                                 <!-- AJAX Content -->
@@ -368,16 +370,17 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         <table id="sayacDegisimTable" class="table table-bordered dt-responsive nowrap w-100">
                             <thead>
                                 <tr class="table-light">
-                                    <th>Kayıt Tarihi</th>
-                                    <th>Ekip</th>
-                                    <th>Personel</th>
-                                    <th>Bölge</th>
-                                    <th>İş Emri Sebebi</th>
-                                    <th>İş Emri Sonucu</th>
-                                    <th>Abone No</th>
-                                    <th>Takılan Sayaç No</th>
+                                    <th data-filter="date">Kayıt Tarihi</th>
+                                    <th data-filter="string">Ekip</th>
+                                    <th data-filter="string">Personel</th>
+                                    <th data-filter="string">Bölge</th>
+                                    <th data-filter="select">İş Emri Sebebi</th>
+                                    <th data-filter="select">İş Emri Sonucu</th>
+                                    <th data-filter="string">Abone No</th>
+                                    <th data-filter="string">Takılan Sayaç No</th>
                                     <th>İşlem</th>
                                 </tr>
+
                             </thead>
                             <tbody id="sayacDegisimBody">
                                 <!-- AJAX Content -->
@@ -403,15 +406,16 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         <table id="muhurlemeTable" class="table table-bordered dt-responsive nowrap w-100">
                             <thead>
                                 <tr class="table-light">
-                                    <th>Tarih</th>
-                                    <th>Ekip Kodu</th>
-                                    <th>Personel</th>
-                                    <th>İş Emri Tipi</th>
-                                    <th>İş Emri Sonucu</th>
-                                    <th>Sonuçlanmış</th>
-                                    <th>Açık Olanlar</th>
+                                    <th data-filter="date">Tarih</th>
+                                    <th data-filter="string">Ekip Kodu</th>
+                                    <th data-filter="string">Personel</th>
+                                    <th data-filter="select">İş Emri Tipi</th>
+                                    <th data-filter="select">İş Emri Sonucu</th>
+                                    <th data-filter="number">Sonuçlanmış</th>
+                                    <th data-filter="number">Açık Olanlar</th>
                                     <th>İşlem</th>
                                 </tr>
+
                             </thead>
                             <tbody id="muhurlemeBody">
                                 <!-- AJAX Content -->

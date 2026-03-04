@@ -485,20 +485,37 @@
         const month = currentDate.getMonth();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         
-        // 1. Calculate Total Days in Month (including weekends)
-        const totalDays = daysInMonth;
+        const now = new Date();
+        const isCurrentMonth = (year === now.getFullYear() && month === now.getMonth());
+        const isPastMonth = (year < now.getFullYear() || (year === now.getFullYear() && month < now.getMonth()));
+        
+        let totalDays = 0;
+        let limitDay = 0;
+        
+        if (isCurrentMonth) {
+            // Saat 17:00'den sonraysa bugünü de dahil et
+            const includeToday = now.getHours() >= 17;
+            totalDays = includeToday ? now.getDate() : Math.max(0, now.getDate() - 1);
+            limitDay = totalDays;
+        } else if (isPastMonth) {
+            totalDays = daysInMonth;
+            limitDay = daysInMonth;
+        } else {
+            totalDays = 0;
+            limitDay = 0;
+        }
 
-        // 2. Calculate Leaves in this month (including weekends)
+        // 2. Calculate Leaves in this month up to limitDay
         let unpaidLeaveDays = 0;
         let paidLeaveDays = 0;
 
         const monthStart = new Date(year, month, 1);
-        const monthEnd = new Date(year, month + 1, 0);
-        // Normalize times to start of day for accurate comparison
+        const monthEnd = new Date(year, month, Math.max(1, limitDay));
+        
         monthStart.setHours(0,0,0,0);
         monthEnd.setHours(0,0,0,0);
 
-        if (izinlerData && izinlerData.length > 0) {
+        if (totalDays > 0 && izinlerData && izinlerData.length > 0) {
             izinlerData.forEach(izin => {
                 // Check if status is approved (case-insensitive and handling Turkish chars)
                 const status = (izin.durum || '').toLowerCase();
@@ -535,7 +552,7 @@
         }
 
         // 3. Update UI
-        // Worked = Total Days in Month - (Paid + Unpaid Leaves)
+        // Worked = Total Days in Limit - (Paid + Unpaid Leaves)
         const actualWorked = Math.max(0, totalDays - (paidLeaveDays + unpaidLeaveDays));
 
         document.getElementById('stat-calisilan').textContent = actualWorked;

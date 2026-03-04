@@ -742,7 +742,7 @@
                         </div>
                         <div class="flex-1">
                             <p class="font-bold ${titleClass}">${gunAdi}</p>
-                            <p class="text-sm text-slate-500 ${isDeleted ? 'line-through' : ''}">${nobet.baslangic_saati?.substring(0, 5) || '18:00'} - ${nobet.bitis_saati?.substring(0, 5) || '08:00'}</p>
+                            <p class="text-sm text-slate-500 ${isDeleted ? 'line-through' : ''}">${nobet.baslangic_saati?.substring(0, 5) || '18:00'} - ${nobet.bitis_saati?.substring(0, 5) || '23:00'}</p>
                             <div class="flex items-center gap-2 mt-1">
                                 ${badgeHtml}
                             </div>
@@ -812,7 +812,7 @@
                     </div>
                     <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl">
                         <p class="text-xs text-slate-500 mb-1">Bitiş</p>
-                        <p class="font-semibold text-slate-900 dark:text-white">${nobet.bitis_saati?.substring(0, 5) || '08:00'}</p>
+                        <p class="font-semibold text-slate-900 dark:text-white">${nobet.bitis_saati?.substring(0, 5) || '23:00'}</p>
                     </div>
                 </div>
 

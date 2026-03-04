@@ -112,7 +112,8 @@ try {
             response(true, [
                 'total_earning' => $toplam_hakedis,
                 'received_payment' => $alinan_odeme,
-                'remaining_balance' => $kalan_bakiye
+                'remaining_balance' => $kalan_bakiye,
+                'son_donem_adi' => $ozet->son_donem_adi ?? null
             ]);
             break;
 
@@ -195,10 +196,97 @@ try {
             $dailyTotal = $dailyIsler + $dailyEndeks;
             $monthlyTotal = $monthlyIsler + $monthlyEndeks;
 
+            // ---- YENİ: SIRALAMA EKLENMESİ ----
+            $departman = $personelDetails->departman ?? '';
+            $aktifEkipGecmisi = $PersonelModel->getEkipGecmisi($personel_id);
+            $aktifEkipId = null;
+            $aktifEkipAdi = '';
+            foreach ($aktifEkipGecmisi as $gecmis) {
+                if (empty($gecmis->bitis_tarihi) || $gecmis->bitis_tarihi >= date('Y-m-d')) {
+                    $aktifEkipId = $gecmis->ekip_kodu_id;
+                    $aktifEkipAdi = $gecmis->ekip_adi;
+                    break;
+                }
+            }
+            
+            // Tüm aktif personelleri departman ve ekibine göre çekelim
+            $allActiveQuery = "SELECT p.id, p.departman, 
+                (SELECT peg.ekip_kodu_id FROM personel_ekip_gecmisi peg 
+                 WHERE peg.personel_id = p.id AND (peg.bitis_tarihi IS NULL OR peg.bitis_tarihi >= CURDATE())
+                 ORDER BY peg.baslangic_tarihi DESC LIMIT 1) as ekip_id 
+                FROM personel p 
+                WHERE p.firma_id = ? AND p.silinme_tarihi IS NULL 
+                AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00')";
+            $stmt = $PersonelModel->getDb()->prepare($allActiveQuery);
+            $stmt->execute([$firmaId]);
+            $tumPersoneller = $stmt->fetchAll(PDO::FETCH_OBJ);
+            
+            $departmanPersonelIds = [];
+            $ekipPersonelIds = [];
+            
+            foreach ($tumPersoneller as $p) {
+                if ($p->departman == $departman) {
+                    $departmanPersonelIds[] = $p->id;
+                }
+                if ($aktifEkipId && $p->ekip_id == $aktifEkipId) {
+                    $ekipPersonelIds[] = $p->id;
+                }
+            }
+            if (!in_array($personel_id, $departmanPersonelIds)) $departmanPersonelIds[] = $personel_id;
+            if ($aktifEkipId && !in_array($personel_id, $ekipPersonelIds)) $ekipPersonelIds[] = $personel_id;
+            
+            // Aylık skor tablosu hesabı
+            $skorSorgusu = "SELECT personel_id, SUM(toplam) as skor FROM (
+                SELECT t.personel_id, t.sonuclanmis as toplam
+                FROM yapilan_isler t
+                LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ?
+                AND tn.is_turu_ucret > 0 AND tn.rapor_sekmesi IS NOT NULL AND tn.rapor_sekmesi != ''
+                UNION ALL
+                SELECT t.personel_id, t.okunan_abone_sayisi as toplam
+                FROM endeks_okuma t
+                LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ?
+                AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'
+            ) AS birlesik GROUP BY personel_id";
+            
+            $stmt = $db->prepare($skorSorgusu);
+            $stmt->execute([$firmaId, $startOfMonth, $endOfMonth, $firmaId, $startOfMonth, $endOfMonth]);
+            $skorlarArray = $stmt->fetchAll(PDO::FETCH_OBJ);
+            
+            $skorMap = [];
+            foreach ($skorlarArray as $sk) {
+                $skorMap[$sk->personel_id] = (int)$sk->skor;
+            }
+            
+            $departmanSiralama = [];
+            foreach ($departmanPersonelIds as $id) {
+                $departmanSiralama[$id] = $skorMap[$id] ?? 0;
+            }
+            arsort($departmanSiralama);
+            
+            $ekipSiralama = [];
+            foreach ($ekipPersonelIds as $id) {
+                $ekipSiralama[$id] = $skorMap[$id] ?? 0;
+            }
+            arsort($ekipSiralama);
+            
+            $myDeptRank = array_search($personel_id, array_keys($departmanSiralama)) !== false ? array_search($personel_id, array_keys($departmanSiralama)) + 1 : 0;
+            $myEkipRank = array_search($personel_id, array_keys($ekipSiralama)) !== false ? array_search($personel_id, array_keys($ekipSiralama)) + 1 : 0;
+            // ------------------------------------
+
             response(true, [
                 'today' => $dailyTotal,
                 'month' => $monthlyTotal,
                 'is_sayac_ekibi' => $isSayacSokmeTakma,
+                'departman' => $departman,
+                'ekip_adi' => $aktifEkipAdi,
+                'siralama' => [
+                    'departman_sira' => $myDeptRank,
+                    'departman_kisi' => count($departmanPersonelIds),
+                    'ekip_sira' => $myEkipRank,
+                    'ekip_kisi' => count($ekipPersonelIds)
+                ],
                 'details' => [
                     'daily_isler' => $dailyIsler,
                     'daily_endeks' => $dailyEndeks,

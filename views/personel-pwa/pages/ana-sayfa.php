@@ -162,7 +162,10 @@ use App\Helper\Helper;
                     <span class="material-symbols-outlined text-primary text-2xl">account_balance_wallet</span>
                 </div>
                 <div class="flex-1">
-                    <p class="text-slate-500 dark:text-slate-400 text-sm">Toplam Hakediş</p>
+                    <div class="flex items-center gap-2">
+                        <p class="text-slate-500 dark:text-slate-400 text-sm">Toplam Hakediş</p>
+                        <span id="hakedis-donem" class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded-md font-medium hidden"></span>
+                    </div>
                     <p class="text-xl font-bold text-slate-900 dark:text-white" id="total-earning">0,00 ₺</p>
                 </div>
                 <div class="flex items-center gap-1">
@@ -188,6 +191,27 @@ use App\Helper\Helper;
                         <p class="text-white/80 text-xs">Kalan Bakiye</p>
                     </div>
                     <p class="text-lg font-bold" id="remaining-balance">0,00 ₺</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Çalışma Bilgileri -->
+    <section class="px-4 mt-6">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Çalışma Bilgileri</h2>
+            <span class="text-xs text-slate-400 font-medium" id="calisma-donem-label"></span>
+        </div>
+
+        <div class="card p-4 relative overflow-hidden">
+            <div class="absolute -right-3 -bottom-3 opacity-[0.04]">
+                <span class="material-symbols-outlined text-8xl text-primary">date_range</span>
+            </div>
+
+            <div id="calisma-stats-container" class="relative z-10">
+                <!-- Loading -->
+                <div class="py-4 flex justify-center">
+                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                 </div>
             </div>
         </div>
@@ -367,6 +391,8 @@ use App\Helper\Helper;
             loadEtkinlikSlider();
             // Load work stats
             loadWorkStats();
+            // Load çalışma bilgileri
+            loadCalismaStats();
 
             // --- ANLIK KONUM İSTEĞİ KONTROLÜ ---
             // Uygulama açık olduğu sürece her 2 dakikada bir kontrol et
@@ -767,6 +793,37 @@ use App\Helper\Helper;
                         }
                     }
 
+                    let siralamaHtml = '';
+                    if (stat.siralama) {
+                        siralamaHtml = `
+                            <div class="col-span-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+                                <h4 class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">Aylık Performans Sıralaması</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-lg p-2">
+                                        <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm">
+                                            #${stat.siralama.ekip_sira}
+                                        </div>
+                                        <div>
+                                            <p class="text-[10px] text-slate-400">Kendi Ekibinde</p>
+                                            <p class="text-xs font-medium text-slate-800 dark:text-slate-200 line-clamp-1" title="${stat.ekip_adi || 'Ekip Bulunamadı'}">${stat.ekip_adi || 'Ekip Bulunamadı'}</p>
+                                            <p class="text-[9px] text-slate-400 pt-0.5">${stat.siralama.ekip_kisi} Kişi Arasında</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-lg p-2">
+                                        <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm">
+                                            #${stat.siralama.departman_sira}
+                                        </div>
+                                        <div>
+                                            <p class="text-[10px] text-slate-400">Departmanda</p>
+                                            <p class="text-xs font-medium text-slate-800 dark:text-slate-200 line-clamp-1" title="${stat.departman || 'Departman Bulunamadı'}">${stat.departman || 'Departman Bulunamadı'}</p>
+                                            <p class="text-[9px] text-slate-400 pt-0.5">${stat.siralama.departman_kisi} Kişi Arasında</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+
                     container.innerHTML = `
                         <div class="col-span-2 card p-4 flex flex-col gap-2 relative overflow-hidden group">
                             <div class="absolute -right-2 -bottom-2 opacity-[0.05] group-hover:opacity-[0.1] transition-opacity">
@@ -794,6 +851,7 @@ use App\Helper\Helper;
                                     ${monthBreakdown}
                                 </div>
                             </div>
+                            ${siralamaHtml}
                         </div>
                     `;
                 } else {
@@ -805,6 +863,108 @@ use App\Helper\Helper;
             }
         }
 
+        async function loadCalismaStats() {
+            var container = document.getElementById('calisma-stats-container');
+            var donemLabel = document.getElementById('calisma-donem-label');
+            var aylar = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+            var now = new Date();
+            var year = now.getFullYear();
+            var month = now.getMonth();
+            var daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            // Saat 17:00'den sonraysa bugünü de dahil et
+            var includeToday = now.getHours() >= 17;
+            var totalDays = includeToday ? now.getDate() : Math.max(0, now.getDate() - 1);
+            var limitDay = totalDays;
+
+            donemLabel.textContent = aylar[month] + ' ' + year;
+
+            try {
+                var response = await API.request('getIzinler');
+                var unpaidLeaveDays = 0;
+                var paidLeaveDays = 0;
+
+                if (response.success && response.data && response.data.length > 0 && totalDays > 0) {
+                    var monthStart = new Date(year, month, 1);
+                    var monthEnd = new Date(year, month, Math.max(1, limitDay));
+                    monthStart.setHours(0,0,0,0);
+                    monthEnd.setHours(0,0,0,0);
+
+                    response.data.forEach(function(izin) {
+                        var status = (izin.durum || '').toLowerCase();
+                        if (status !== 'onaylandi' && status !== 'onaylandı') return;
+
+                        var start = parseCalismaDate(izin.baslangic);
+                        var end = parseCalismaDate(izin.bitis);
+                        if (!start || !end) return;
+
+                        start.setHours(0,0,0,0);
+                        end.setHours(0,0,0,0);
+
+                        if (start > monthEnd || end < monthStart) return;
+
+                        var overlapStart = start < monthStart ? monthStart : start;
+                        var overlapEnd = end > monthEnd ? monthEnd : end;
+
+                        var diffTime = Math.abs(overlapEnd - overlapStart);
+                        var overlapDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+                        var typeName = (izin.izin_tipi_text || '').toLowerCase();
+                        if (typeName.includes('ücretsiz') || typeName.includes('ucretsiz')) {
+                            unpaidLeaveDays += overlapDays;
+                        } else {
+                            paidLeaveDays += overlapDays;
+                        }
+                    });
+                }
+
+                var actualWorked = Math.max(0, totalDays - (paidLeaveDays + unpaidLeaveDays));
+
+                container.innerHTML = `
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="flex flex-col items-center justify-center bg-blue-50/60 dark:bg-blue-900/15 rounded-xl py-3 px-2 border border-blue-100 dark:border-blue-800/30">
+                            <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-1.5">
+                                <span class="material-symbols-outlined text-blue-600 text-base">work</span>
+                            </div>
+                            <span class="text-xl font-black text-blue-700 dark:text-blue-300 leading-none">${actualWorked}</span>
+                            <span class="text-[9px] text-blue-600/80 dark:text-blue-400/80 font-bold uppercase tracking-wider mt-1">Çalışılan</span>
+                        </div>
+                        <div class="flex flex-col items-center justify-center bg-amber-50/60 dark:bg-amber-900/15 rounded-xl py-3 px-2 border border-amber-100 dark:border-amber-800/30">
+                            <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-1.5">
+                                <span class="material-symbols-outlined text-amber-600 text-base">money_off</span>
+                            </div>
+                            <span class="text-xl font-black text-amber-700 dark:text-amber-300 leading-none">${unpaidLeaveDays}</span>
+                            <span class="text-[9px] text-amber-600/80 dark:text-amber-400/80 font-bold uppercase tracking-wider mt-1">Ücretsiz İzin</span>
+                        </div>
+                        <div class="flex flex-col items-center justify-center bg-green-50/60 dark:bg-green-900/15 rounded-xl py-3 px-2 border border-green-100 dark:border-green-800/30">
+                            <div class="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-1.5">
+                                <span class="material-symbols-outlined text-green-600 text-base">beach_access</span>
+                            </div>
+                            <span class="text-xl font-black text-green-700 dark:text-green-300 leading-none">${paidLeaveDays}</span>
+                            <span class="text-[9px] text-green-600/80 dark:text-green-400/80 font-bold uppercase tracking-wider mt-1">Ücretli İzin</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-center mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-700/40">
+                        <span class="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                            ${includeToday ? 'Bugün dahil' : 'Düne kadar'} · Toplam ${totalDays} / ${daysInMonth} gün
+                        </span>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Çalışma stats load error:', error);
+                container.innerHTML = '<div class="text-center py-3 text-slate-400 text-sm">Veriler yüklenemedi</div>';
+            }
+        }
+
+        function parseCalismaDate(str) {
+            if (!str) return null;
+            var parts = str.split('.');
+            if (parts.length === 3) {
+                return new Date(parts[2], parseInt(parts[1]) - 1, parts[0]);
+            }
+            return new Date(str);
+        }
+
         async function loadDashboardData() {
             try {
                 var response = await API.request('getDashboardData');
@@ -812,6 +972,12 @@ use App\Helper\Helper;
                     document.getElementById('total-earning').textContent = Format.currency(response.data.total_earning || 0);
                     document.getElementById('received-payment').textContent = Format.currency(response.data.received_payment || 0);
                     document.getElementById('remaining-balance').textContent = Format.currency(response.data.remaining_balance || 0);
+                    
+                    if (response.data.son_donem_adi) {
+                        var donemEl = document.getElementById('hakedis-donem');
+                        donemEl.textContent = response.data.son_donem_adi;
+                        donemEl.classList.remove('hidden');
+                    }
                 }
             } catch (error) {
                 console.error('Dashboard data load error:', error);

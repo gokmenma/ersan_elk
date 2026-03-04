@@ -131,10 +131,124 @@ class EndeksOkumaModel extends Model
         if (isset($request['columns']) && is_array($request['columns'])) {
             foreach ($request['columns'] as $colIdx => $col) {
                 if (!empty($col['search']['value']) && isset($colSearchMap[$colIdx])) {
-                    $searchVal = "%" . $col['search']['value'] . "%";
-                    $paramKey = "col_search_" . $colIdx;
-                    $searchWhere .= " AND {$colSearchMap[$colIdx]} LIKE :$paramKey";
-                    $params[$paramKey] = $searchVal;
+                    $field = $colSearchMap[$colIdx];
+                    $searchValue = $col['search']['value'];
+                    $paramName = "col_search_" . $colIdx;
+
+                    if (strpos($searchValue, ':') !== false) {
+                        list($mode, $val) = explode(':', $searchValue, 2);
+                        $vals = explode('|', $val);
+                        $val = $vals[0];
+                        $val2 = isset($vals[1]) ? $vals[1] : null;
+
+                        if ($val !== '' || $val2 !== null || in_array($mode, ['null', 'not_null', 'multi'])) {
+                            // Tarih sütunu dönüşümü
+                            if ($colIdx == 0) {
+                                if ($val && strpos($val, '.') !== false) $val = \App\Helper\Date::Ymd($val, 'Y-m-d');
+                                if ($val2 && strpos($val2, '.') !== false) $val2 = \App\Helper\Date::Ymd($val2, 'Y-m-d');
+                                // Eğer formatlıysa, orijinal alanı kullan (örn t.tarih)
+                                if (strpos($field, 'DATE_FORMAT') !== false) {
+                                    if (preg_match('/DATE_FORMAT\(([^,]+),/', $field, $m)) {
+                                        $field = trim($m[1]);
+                                    }
+                                }
+                            }
+
+                            switch ($mode) {
+                                case 'multi':
+                                    if (!empty($vals)) {
+                                        $orConditions = [];
+                                        foreach ($vals as $vIdx => $v) {
+                                            $vParam = $paramName . "_" . $vIdx;
+                                            if ($v === '(Boş)') {
+                                                $orConditions[] = "($field IS NULL OR $field = '')";
+                                            } else {
+                                                if ($colIdx == 0 && strpos($v, '.') !== false) {
+                                                    $v = \App\Helper\Date::Ymd($v, 'Y-m-d');
+                                                    $orConditions[] = "$field = :$vParam";
+                                                    $params[$vParam] = $v;
+                                                } else {
+                                                    $orConditions[] = "$field LIKE :$vParam";
+                                                    $params[$vParam] = "%$v%";
+                                                }
+                                            }
+                                        }
+                                        if (!empty($orConditions)) {
+                                            $searchWhere .= " AND (" . implode(" OR ", $orConditions) . ")";
+                                        }
+                                    }
+                                    break;
+                                case 'contains':
+                                    $searchWhere .= " AND $field LIKE :$paramName";
+                                    $params[$paramName] = "%$val%";
+                                    break;
+                                case 'not_contains':
+                                    $searchWhere .= " AND $field NOT LIKE :$paramName";
+                                    $params[$paramName] = "%$val%";
+                                    break;
+                                case 'starts_with':
+                                    $searchWhere .= " AND $field LIKE :$paramName";
+                                    $params[$paramName] = "$val%";
+                                    break;
+                                case 'ends_with':
+                                    $searchWhere .= " AND $field LIKE :$paramName";
+                                    $params[$paramName] = "%$val";
+                                    break;
+                                case 'equals':
+                                    $searchWhere .= " AND $field = :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'not_equals':
+                                    $searchWhere .= " AND $field != :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'gt': case 'greater_than':
+                                    $searchWhere .= " AND $field > :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'lt': case 'less_than':
+                                    $searchWhere .= " AND $field < :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'gte': case 'greater_equal':
+                                    $searchWhere .= " AND $field >= :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'lte': case 'less_equal':
+                                    $searchWhere .= " AND $field <= :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'before':
+                                    $searchWhere .= " AND $field < :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'after':
+                                    $searchWhere .= " AND $field > :$paramName";
+                                    $params[$paramName] = $val;
+                                    break;
+                                case 'between':
+                                    if ($val && $val2) {
+                                        $p1 = $paramName . "_1";
+                                        $p2 = $paramName . "_2";
+                                        $searchWhere .= " AND $field BETWEEN :$p1 AND :$p2";
+                                        $params[$p1] = $val;
+                                        $params[$p2] = $val2;
+                                    }
+                                    break;
+                                case 'null':
+                                    $searchWhere .= " AND ($field IS NULL OR $field = '')";
+                                    break;
+                                case 'not_null':
+                                    $searchWhere .= " AND $field IS NOT NULL AND $field != ''";
+                                    break;
+                            }
+                        }
+                    } else {
+                        // Normal arama fallback
+                        $searchVal = "%" . $searchValue . "%";
+                        $searchWhere .= " AND $field LIKE :$paramName";
+                        $params[$paramName] = $searchVal;
+                    }
                 }
             }
         }

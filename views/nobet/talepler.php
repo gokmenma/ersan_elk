@@ -435,7 +435,7 @@ $title = 'Talepler & Mazeretler';
                         html += `<tr>
                             <td><div class="d-flex align-items-center"><div class="avatar-sm me-2"><span class="avatar-title bg-danger-subtle text-danger rounded-circle">${(m.personel_adi ? m.personel_adi[0] : '?').toUpperCase()}</span></div><strong>${m.personel_adi || '-'}</strong></div></td>
                             <td><span class="badge bg-warning-subtle text-warning">${formatDateShort(m.nobet_tarihi)}</span></td>
-                            <td>${m.baslangic_saati || '18:00'} - ${m.bitis_saati || '08:00'}</td>
+                            <td>${m.baslangic_saati || '18:00'} - ${m.bitis_saati || '23:00'}</td>
                             <td>${m.mazeret_aciklama || '<span class="text-muted">Açıklama yok</span>'}</td>
                             <td>${formatDateShort(m.mazeret_tarihi)}</td>
                             <td class="text-center text-nowrap">${islemButtons}</td>
