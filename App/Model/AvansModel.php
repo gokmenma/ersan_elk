@@ -200,31 +200,91 @@ class AvansModel extends Model
 
         $kayitYapan = $_SESSION['id'] ?? $_SESSION['user_id'] ?? 0;
 
-        // Eğer dönem ID verilmediyse talep tarihini kapsayan dönemi bul
-        if (!$donem_id) {
-            $talepTarihi = !empty($avans->talep_tarihi)
-                ? date('Y-m-d', strtotime($avans->talep_tarihi))
-                : date('Y-m-d');
+        $talepTarihi = !empty($avans->talep_tarihi)
+            ? date('Y-m-d', strtotime($avans->talep_tarihi))
+            : date('Y-m-d');
 
-            $donemSql = $this->db->prepare("
-                SELECT id FROM bordro_donemi 
-                WHERE baslangic_tarihi <= ? AND bitis_tarihi >= ?
-                ORDER BY id DESC
-                LIMIT 1
-            ");
-            $donemSql->execute([$talepTarihi, $talepTarihi]);
-            $donem = $donemSql->fetch(PDO::FETCH_OBJ);
-            $donem_id = $donem ? (int) $donem->id : 0;
+        $talepGunu = (int) date('d', strtotime($talepTarihi));
+        $hedefBaslangicAy = $talepGunu <= 14
+            ? date('Y-m', strtotime($talepTarihi . ' -1 month'))
+            : date('Y-m', strtotime($talepTarihi));
+
+        $odemeSekli = strtolower(trim((string) ($avans->odeme_sekli ?? 'tek')));
+        if ($odemeSekli === '3') {
+            $taksitSayisi = 3;
+        } elseif ($odemeSekli === '2' || $odemeSekli === 'taksit') {
+            $taksitSayisi = 2;
+        } else {
+            $taksitSayisi = 1;
         }
 
-        // Dönem bulunamazsa 0 olarak kaydet
-        $donem_id = (int) ($donem_id ?: 0);
+        $toplamTutar = floatval($avans->tutar);
+        $parcaTutar = $taksitSayisi > 1 ? round($toplamTutar / $taksitSayisi, 2) : round($toplamTutar, 2);
+        $kullaniciAciklama = trim((string) ($avans->aciklama ?? ''));
+        $kullaniciAciklama = $kullaniciAciklama !== '' ? $kullaniciAciklama : 'Avans Talebi';
+        $tarihText = date('d.m.Y', strtotime($talepTarihi));
 
-        $sql = $this->db->prepare("
+        $insertSql = $this->db->prepare("
             INSERT INTO personel_kesintileri (personel_id, donem_id, tur, aciklama, tutar, kayit_yapan, olusturma_tarihi, durum)
             VALUES (?, ?, 'avans', ?, ?, ?, NOW(), 'onaylandi')
         ");
-        $aciklama = 'Avans - ' . date('d.m.Y', strtotime($avans->talep_tarihi));
-        return $sql->execute([$avans->personel_id, $donem_id, $aciklama, $avans->tutar, $kayitYapan]);
+
+        $findSql = $this->db->prepare("
+            SELECT id
+            FROM personel_kesintileri
+            WHERE personel_id = ? AND donem_id = ? AND tur = 'avans' AND aciklama LIKE ?
+            ORDER BY id DESC
+            LIMIT 1
+        ");
+
+        $restoreSql = $this->db->prepare("
+            UPDATE personel_kesintileri
+            SET silinme_tarihi = NULL, tutar = ?, durum = 'onaylandi'
+            WHERE id = ?
+        ");
+
+        $donemBulSql = $this->db->prepare("
+            SELECT id
+            FROM bordro_donemi
+            WHERE baslangic_tarihi <= ? AND bitis_tarihi >= ?
+            ORDER BY id DESC
+            LIMIT 1
+        ");
+
+        for ($i = 0; $i < $taksitSayisi; $i++) {
+            $taksitNo = $i + 1;
+            $tutar = ($taksitNo === $taksitSayisi)
+                ? round($toplamTutar - ($parcaTutar * ($taksitSayisi - 1)), 2)
+                : $parcaTutar;
+
+            $hedefDonemId = 0;
+            if ($donem_id && $taksitSayisi === 1) {
+                $hedefDonemId = (int) $donem_id;
+            } else {
+                $taksitAy = date('Y-m', strtotime($hedefBaslangicAy . '-01 +' . $i . ' month'));
+                $referansTarih = $taksitAy . '-15';
+                $donemBulSql->execute([$referansTarih, $referansTarih]);
+                $donem = $donemBulSql->fetch(PDO::FETCH_OBJ);
+                $hedefDonemId = $donem ? (int) $donem->id : 0;
+            }
+
+            if ($hedefDonemId <= 0) {
+                continue;
+            }
+
+            $aciklamaPattern = "[Avans] #{$avans->id}/{$taksitNo}-{$taksitSayisi} - %";
+            $findSql->execute([$avans->personel_id, $hedefDonemId, $aciklamaPattern]);
+            $mevcut = $findSql->fetch(PDO::FETCH_OBJ);
+
+            if ($mevcut && !empty($mevcut->id)) {
+                $restoreSql->execute([$tutar, $mevcut->id]);
+                continue;
+            }
+
+            $aciklama = "[Avans] #{$avans->id}/{$taksitNo}-{$taksitSayisi} - {$tarihText} - {$kullaniciAciklama}";
+            $insertSql->execute([$avans->personel_id, $hedefDonemId, $aciklama, $tutar, $kayitYapan]);
+        }
+
+        return true;
     }
 }

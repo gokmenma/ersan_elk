@@ -978,61 +978,98 @@ class BordroPersonelModel extends Model
      */
     public function olusturAvansKesintileri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
     {
+<<<<<<< HEAD
         // Dönem içindeki onaylanmış avansları getir
         // NOT: talep_tarihi datetime formatında olduğu için DATE() fonksiyonu ile karşılaştırıyoruz
         // Aksi halde 2026-01-31 14:30:00 gibi bir değer, 2026-01-31 bitiş tarihinden büyük sayılır
+=======
+        // Onaylanmış tüm avansları alıp hedef döneme kod tarafında eşliyoruz.
+        // Bu sayede hem "ayın 14'ü" kuralı hem de taksitli avanslar doğru dönemlere dağıtılır.
+>>>>>>> 1262d72011f19189b127b5e32ff74f886720a75d
         $sql = $this->db->prepare("
-            SELECT id, tutar, talep_tarihi, aciklama
+            SELECT id, tutar, talep_tarihi, aciklama, odeme_sekli
             FROM personel_avanslari
+<<<<<<< HEAD
             WHERE personel_id = ? 
             AND durum = 'onaylandi'
             AND silinme_tarihi IS NULL
             AND DATE(talep_tarihi) BETWEEN ? AND ?
+=======
+            WHERE personel_id = ?
+              AND durum = 'onaylandi'
+              AND silinme_tarihi IS NULL
+            ORDER BY talep_tarihi ASC, id ASC
+>>>>>>> 1262d72011f19189b127b5e32ff74f886720a75d
         ");
-        $sql->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
+        $sql->execute([$personel_id]);
         $avanslar = $sql->fetchAll(PDO::FETCH_OBJ);
 
         $toplamAvans = 0;
+        $donemAy = date('Y-m', strtotime($baslangic_tarihi));
 
         foreach ($avanslar as $avans) {
-            $tutar = floatval($avans->tutar);
             $tarih = date('d.m.Y', strtotime($avans->talep_tarihi));
-            $aciklamaPattern = "[Avans] $tarih - %";
+            $talepTarihi = date('Y-m-d', strtotime($avans->talep_tarihi));
+            $talepGunu = (int) date('d', strtotime($talepTarihi));
 
+            // 14 veya öncesi talep -> bir önceki ay döneminden başlat
+            $hedefBaslangicAy = $talepGunu <= 14
+                ? date('Y-m', strtotime($talepTarihi . ' -1 month'))
+                : date('Y-m', strtotime($talepTarihi));
 
-            // Bu avans için zaten kesinti var mı kontrol et
-            // Maaş hesaplanırken soft-delete yapılan (ve daha önce onaylanmış olabilecek)
-            // kayıtları bulup geri getiriyoruz ki onay durumu (durum=onaylandi) kaybolmasın.
-            $mevcutKontrol = $this->db->prepare("
+            $odemeSekli = strtolower(trim((string) ($avans->odeme_sekli ?? 'tek')));
+            if ($odemeSekli === '3') {
+                $taksitSayisi = 3;
+            } elseif ($odemeSekli === '2' || $odemeSekli === 'taksit') {
+                $taksitSayisi = 2;
+            } else {
+                $taksitSayisi = 1;
+            }
+
+            $toplamTutar = floatval($avans->tutar);
+            $parcaTutar = $taksitSayisi > 1 ? round($toplamTutar / $taksitSayisi, 2) : round($toplamTutar, 2);
+
+            for ($i = 0; $i < $taksitSayisi; $i++) {
+                $taksitAy = date('Y-m', strtotime($hedefBaslangicAy . '-01 +' . $i . ' month'));
+                if ($taksitAy !== $donemAy) {
+                    continue;
+                }
+
+                $taksitNo = $i + 1;
+                $tutar = ($taksitNo === $taksitSayisi)
+                    ? round($toplamTutar - ($parcaTutar * ($taksitSayisi - 1)), 2)
+                    : $parcaTutar;
+
+                $aciklamaPattern = "[Avans] #{$avans->id}/{$taksitNo}-{$taksitSayisi} - %";
+
+                // Bu taksit için dönemde kayıt var mı kontrol et,
+                // varsa (soft-delete edilmiş de olabilir) geri getir.
+                $mevcutKontrol = $this->db->prepare("
             SELECT id, durum FROM personel_kesintileri
             WHERE personel_id = ? AND donem_id = ? AND tur = 'avans' 
             AND aciklama LIKE ?
             ORDER BY id DESC LIMIT 1
         ");
-            $mevcutKontrol->execute([$personel_id, $donem_id, $aciklamaPattern]);
-            $mevcut = $mevcutKontrol->fetch();
+                $mevcutKontrol->execute([$personel_id, $donem_id, $aciklamaPattern]);
+                $mevcut = $mevcutKontrol->fetch();
 
-            if ($mevcut) {
-                // Mevcut kesinti var (muhtemelen az önce soft-delete edildi), geri getir
-                $restoreSql = $this->db->prepare("
+                if ($mevcut) {
+                    $restoreSql = $this->db->prepare("
                 UPDATE personel_kesintileri 
-                SET silinme_tarihi = NULL, tutar = ? 
+                SET silinme_tarihi = NULL, tutar = ?, durum = 'onaylandi', updated_at = NOW()
                 WHERE id = ?
             ");
-                $restoreSql->execute([$tutar, $mevcut['id']]);
-                $toplamAvans += $tutar;
-                continue;
-            }
+                    $restoreSql->execute([$tutar, $mevcut['id']]);
+                    $toplamAvans += $tutar;
+                    continue;
+                }
 
-            // Mevcut kesinti hiç yok, yeni oluştur
-            $aciklama = "[Avans] $tarih - " . ($avans->aciklama ?? 'Avans Talebi');
-            // Avans zaten onaylı olduğu için kesintiyi de otomatik 'onaylandi' olarak oluşturabiliriz
-            // veya mevcut yapıdaki gibi 'beklemede' bırakabiliriz. Kullanıcı "avans onaylı olduğu halde" 
-            // dediği için bunu onaylandı olarak kaydetmek de mantıklı olabilir.
-            // Şimdilik sadece geri getirme işlemi yapıldığı için eski onayları koruyacağız.
-            // Yeni oluşturulacak ise "onaylandi" olarak oluşturulması daha mantıklı (çünkü avans onaylı).
-            $this->addKesinti($personel_id, $donem_id, $aciklama, $tutar, 'avans', 'onaylandi');
-            $toplamAvans += $tutar;
+                $kullaniciAciklama = trim((string) ($avans->aciklama ?? ''));
+                $kullaniciAciklama = $kullaniciAciklama !== '' ? $kullaniciAciklama : 'Avans Talebi';
+                $aciklama = "[Avans] #{$avans->id}/{$taksitNo}-{$taksitSayisi} - {$tarih} - {$kullaniciAciklama}";
+                $this->addKesinti($personel_id, $donem_id, $aciklama, $tutar, 'avans', 'onaylandi');
+                $toplamAvans += $tutar;
+            }
         }
 
         return $toplamAvans;
@@ -1687,7 +1724,7 @@ class BordroPersonelModel extends Model
             AND (
                 ana_kesinti_id IS NOT NULL
                 OR tur = 'icra'
-                OR (tur = 'avans' AND aciklama LIKE '[Avans]%')
+                OR (tur = 'avans' AND (aciklama LIKE '[Avans]%' OR aciklama LIKE 'Avans - %'))
                 OR aciklama LIKE '[BES]%'
             )
         ")->execute([$kayit->personel_id, $kayit->donem_id]);

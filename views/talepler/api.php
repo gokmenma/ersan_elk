@@ -9,6 +9,7 @@ use App\Model\TalepModel;
 use App\Model\AvansModel;
 use App\Model\PersonelIzinleriModel;
 use App\Model\PersonelModel;
+use App\Model\BildirimModel;
 use App\Service\PushNotificationService;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -19,6 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $talepModel = new TalepModel();
     $avansModel = new AvansModel();
     $izinModel = new PersonelIzinleriModel();
+    $bildirimModel = new BildirimModel();
+    $currentUserId = intval($_SESSION['user_id'] ?? 0);
 
     try {
         switch ($action) {
@@ -168,6 +171,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 if ($avansModel->updateDurum($id, 'onaylandi', $aciklama)) {
+                    if ($currentUserId > 0) {
+                        $bildirimModel->markRequestNotificationAsRead($currentUserId, 'avans', $id);
+                    }
+
                     // Eğer hesaba işlenecekse
                     if ($hesaba_isle) {
                         $avansModel->avansHesabaIsle($id);
@@ -212,6 +219,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 if ($avansModel->updateDurum($id, 'reddedildi', $aciklama)) {
+                    if ($currentUserId > 0) {
+                        $bildirimModel->markRequestNotificationAsRead($currentUserId, 'avans', $id);
+                    }
+
                     // Push Bildirim Gönder
                     try {
                         $avans = $avansModel->find($id);
@@ -246,6 +257,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 if ($izinModel->updateDurum($id, 'Onaylandı', $aciklama)) {
+                    if ($currentUserId > 0) {
+                        $bildirimModel->markRequestNotificationAsRead($currentUserId, 'izin', $id);
+                    }
+
                     // Push Bildirim Gönder
                     try {
                         $izin = $izinModel->find($id);
@@ -284,6 +299,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 if ($izinModel->updateDurum($id, 'Reddedildi', $aciklama)) {
+                    if ($currentUserId > 0) {
+                        $bildirimModel->markRequestNotificationAsRead($currentUserId, 'izin', $id);
+                    }
+
                     // Push Bildirim Gönder
                     try {
                         // find yerine getIzinDetay kullanarak daha detaylı bilgi alalım
@@ -319,6 +338,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 if ($talepModel->updateDurum($id, 'cozuldu', $aciklama)) {
+                    if ($currentUserId > 0) {
+                        $bildirimModel->markRequestNotificationAsRead($currentUserId, 'talep', $id);
+                    }
+
                     // Push Bildirim Gönder
                     try {
                         $talep = $talepModel->find($id);
@@ -352,6 +375,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 if ($talepModel->updateDurum($id, 'islemde', null)) {
+                    if ($currentUserId > 0) {
+                        $bildirimModel->markRequestNotificationAsRead($currentUserId, 'talep', $id);
+                    }
+
                     // Push Bildirim Gönder
                     try {
                         $talep = $talepModel->getTalepDetay($id);
