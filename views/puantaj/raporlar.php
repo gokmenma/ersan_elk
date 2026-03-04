@@ -302,7 +302,6 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                     id="btnFullScreen">
                     <i class="mdi mdi-fullscreen fs-5 me-1"></i> Tam Ekran
                 </button>
-                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
                 <div class="vr mx-1 vr-online-sorgula <?= in_array($activeTab, ['okuma', 'kesme', 'sokme_takma', 'muhurleme']) ? '' : 'd-none' ?>"
                     style="height: 25px; align-self: center;"></div>
                 <button type="button"

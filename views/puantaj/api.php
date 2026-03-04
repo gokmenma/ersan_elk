@@ -1144,15 +1144,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $apiData = [];
 
         // Ekip ve personel lookup
-        $stmtAllEkip = $SayacDegisimModel->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
+        $stmtAllEkip = $SayacDegisimModel->db->prepare("SELECT id, tur_adi, grup_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
         $stmtAllEkip->execute();
         $ekipKodlariByNo = [];
         $ekipKodlariByName = [];
         while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
             $name = trim($ek['tur_adi']);
             $ekipKodlariByName[mb_strtolower($name, 'UTF-8')] = $ek['id'];
-            if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $name, $m)) {
-                $ekipKodlariByNo[$m[1]] = $ek['id'];
+            $groupName = trim((string) ($ek['grup_adi'] ?? ''));
+            if ($groupName !== '') {
+                $ekipKodlariByName[mb_strtolower($groupName, 'UTF-8')] = $ek['id'];
+            }
+            $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim($groupName . ' ' . $name));
+            if ($teamNo > 0) {
+                $ekipKodlariByNo[$teamNo] = $ek['id'];
             }
         }
 
@@ -1239,8 +1244,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $personelId = $personelByName[$ekipKoduStrLower]['id'];
                 $defId = $personelByName[$ekipKoduStrLower]['ekip_no'];
             } else {
-                if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $ekipKoduStrClean, $m)) {
-                    $defId = $ekipKodlariByNo[$m[1]] ?? 0;
+                $teamNo = \App\Helper\EkipHelper::extractTeamNo($ekipKoduStrClean);
+                if ($teamNo > 0) {
+                    $defId = $ekipKodlariByNo[$teamNo] ?? 0;
                 }
                 if (!$defId && isset($ekipKodlariByName[$ekipKoduStrLower])) {
                     $defId = $ekipKodlariByName[$ekipKoduStrLower];
@@ -1755,16 +1761,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // $Zimmet dosyanın başında global olarak tanımlanmış (line 22)
 
         // 1. Ekip ve Personel lookup verilerini yükle
-        $stmtAllEkip = $Puantaj->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
+        $stmtAllEkip = $Puantaj->db->prepare("SELECT id, tur_adi, grup_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
         $stmtAllEkip->execute();
         $ekipKodlariByNo = [];
         $ekipKodlariByName = [];
         while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
             $name = trim($ek['tur_adi']);
             $ekipKodlariByName[mb_strtolower($name, 'UTF-8')] = $ek['id'];
-            //Regex'i daha esnek yapalım (encoding sorunları için EK.P şeklinde)
-            if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $name, $m)) {
-                $ekipKodlariByNo[$m[1]] = $ek['id'];
+            $groupName = trim((string) ($ek['grup_adi'] ?? ''));
+            if ($groupName !== '') {
+                $ekipKodlariByName[mb_strtolower($groupName, 'UTF-8')] = $ek['id'];
+            }
+            $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim($groupName . ' ' . $name));
+            if ($teamNo > 0) {
+                $ekipKodlariByNo[$teamNo] = $ek['id'];
             }
         }
 
@@ -1849,8 +1859,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $defId = $personelByName[$ekipKoduStrLower]['ekip_no'];
             } else {
                 // 2. Ekip numarasıyla eşleştir (EKİP-XX formatı)
-                if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $ekipKoduStrClean, $m)) {
-                    $ekipNo = $m[1];
+                $ekipNo = \App\Helper\EkipHelper::extractTeamNo($ekipKoduStrClean);
+                if ($ekipNo > 0) {
                     $defId = $ekipKodlariByNo[$ekipNo] ?? 0;
                 }
 
@@ -2126,12 +2136,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
         }
 
-        $stmtAllEkip = $EndeksOkuma->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
+        $stmtAllEkip = $EndeksOkuma->db->prepare("SELECT id, tur_adi, grup_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
         $stmtAllEkip->execute();
         $ekipKodlari = [];
         while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
-            if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $ek['tur_adi'], $m)) {
-                $ekipKodlari[$m[1]] = $ek['id'];
+            $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim(((string) ($ek['grup_adi'] ?? '')) . ' ' . ((string) ($ek['tur_adi'] ?? ''))));
+            if ($teamNo > 0) {
+                $ekipKodlari[$teamNo] = $ek['id'];
             }
         }
 
@@ -2173,8 +2184,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $personelId = $personelByName[$okuyucuAdi]['id'];
                 $ekipKoduId = $personelByName[$okuyucuAdi]['ekip_no'];
             } else {
-                if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $veri['OKUYUCUADI'], $m)) {
-                    $ekipNo = $m[1];
+                $ekipNo = \App\Helper\EkipHelper::extractTeamNo($veri['OKUYUCUADI'] ?? '');
+                if ($ekipNo > 0) {
                     $ekipKoduId = $ekipKodlari[$ekipNo] ?? 0;
 
                     if ($ekipKoduId) {

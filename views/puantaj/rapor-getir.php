@@ -249,8 +249,8 @@ if (true) { // Always use unified logic for all standard tabs
                 $team = !empty($matchingTeams) ? reset($matchingTeams) : null;
                 $tId = $team ? $team->id : 0;
 
-                if ($team && preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
-                    $teamNo = (int) $m[1];
+                $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim(($team->grup_adi ?? '') . ' ' . ($team->tur_adi ?? '')));
+                if ($team && $teamNo > 0) {
                     if (!\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'kacakkontrol', $Settings)) {
                         continue;
                     }
@@ -286,8 +286,8 @@ if (true) { // Always use unified logic for all standard tabs
                     // Eğer ilgili verisi yoksa, en azından bu tabın belirlenen ekip aralığında mı diye bak (Eğer aralıktaysa boş da olsa gelsin diye)
                     if (!$hasRelevantData) {
                         $team = $teamById[$tId] ?? null;
-                        if ($team && preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
-                            $teamNo = (int) $m[1];
+                        $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim(($team->grup_adi ?? '') . ' ' . ($team->tur_adi ?? '')));
+                        if ($team && $teamNo > 0) {
                             if (!\App\Helper\EkipHelper::isTeamInTabRange($teamNo, $activeTab, $Settings)) {
                                 continue;
                             }
@@ -309,10 +309,10 @@ if (true) { // Always use unified logic for all standard tabs
 
         // Ekip kodu aralık kontrolü (Dinamik) - Birincil koşul olarak kontrol et
         $team = $teamById[$assign->ekip_kodu_id] ?? null;
-        if (!$team || !preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
+        $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim(($team->grup_adi ?? '') . ' ' . ($team->tur_adi ?? '')));
+        if (!$team || $teamNo <= 0) {
             continue; // Ekip bulunamadı veya ekip adı formatı uymuyor, atla
         }
-        $teamNo = (int) $m[1];
 
         $isValid = false;
         $personelDepts = !empty($assign->departman) ? array_map('trim', explode(',', $assign->departman)) : [];
@@ -331,7 +331,7 @@ if (true) { // Always use unified logic for all standard tabs
                 $isValid = true;
             }
         } elseif ($activeTab === 'muhurleme') {
-            if (\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'muhurleme', $Settings) && in_array('Mühürleme', $personelDepts)) {
+            if (\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'muhurleme', $Settings)) {
                 $isValid = true;
             }
         } elseif ($activeTab === 'kacakkontrol') {

@@ -166,19 +166,20 @@ if ($filter === 'muayene') {
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link <?php echo $activeTab === 'rapor' ? 'active' : ''; ?>"
-                                    id="rapor-tab" data-bs-toggle="tab" data-bs-target="#raporContent" type="button"
-                                    role="tab">
-                                    <i class="bx bx-bar-chart-alt-2 me-1"></i> Raporlar
-                                </button>
-                            </li>
-                            <li class="nav-item" role="presentation">
                                 <button class="nav-link <?php echo $activeTab === 'servis' ? 'active' : ''; ?>"
                                     id="servis-tab" data-bs-toggle="tab" data-bs-target="#servisContent" type="button"
                                     role="tab">
                                     <i class="bx bx-wrench me-1"></i> Servis Kayıtları
                                 </button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link <?php echo $activeTab === 'rapor' ? 'active' : ''; ?>"
+                                    id="rapor-tab" data-bs-toggle="tab" data-bs-target="#raporContent" type="button"
+                                    role="tab">
+                                    <i class="bx bx-bar-chart-alt-2 me-1"></i> Raporlar
+                                </button>
+                            </li>
+
                         </ul>
 
 
@@ -866,10 +867,9 @@ if ($filter === 'muayene') {
                                         $aylar = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
                                         for ($m = 1; $m <= 12; $m++):
                                             ?>
-                                            <option value="<?php echo $m; ?>" <?php echo $m == date('n') ? 'selected' : ''; ?>>
-                                                <?php echo $aylar[$m - 1]; ?>
-                                            </option>
-                                        <?php endfor; ?>
+                                            <option value="<?php echo $m; ?>" <?php echo $m == date('n') ? 'selected' : ''; ?>
+                                                <?php echo $aylar[$m - 1]; ?> </option>
+                                            <?php endfor; ?>
                                     </select>
                                 </div>
                                 <div class="col-md-4">
@@ -969,6 +969,14 @@ if ($filter === 'muayene') {
                             <div class="card border shadow-none mb-4">
                                 <div class="card-body p-3">
                                     <div class="row g-3">
+
+                                        <div class="col-md-3">
+                                            <?php echo App\Helper\Form::FormFloatInput('text', 'servis-filtre-baslangic', date('01.m.Y'), '', 'Başlangıç Tarihi', 'calendar', 'form-control flatpickr'); ?>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <?php echo App\Helper\Form::FormFloatInput('text', 'servis-filtre-bitis', date('t.m.Y'), '', 'Bitiş Tarihi', 'calendar', 'form-control flatpickr'); ?>
+                                        </div>
+
                                         <div class="col-md-3">
                                             <?php
                                             $aracOptions = ['' => 'Tüm Araçlar'];
@@ -978,13 +986,7 @@ if ($filter === 'muayene') {
                                             echo App\Helper\Form::FormSelect2('servis-filtre-arac', $aracOptions, '', 'Plaka', 'truck', 'key', '', 'form-select select2');
                                             ?>
                                         </div>
-                                        <div class="col-md-3">
-                                            <?php echo App\Helper\Form::FormFloatInput('text', 'servis-filtre-baslangic', date('01.m.Y'), '', 'Başlangıç Tarihi', 'calendar', 'form-control flatpickr'); ?>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <?php echo App\Helper\Form::FormFloatInput('text', 'servis-filtre-bitis', date('t.m.Y'), '', 'Bitiş Tarihi', 'calendar', 'form-control flatpickr'); ?>
-                                        </div>
-                                        <div class="col-md-3 d-flex align-items-end">
+                                        <div class="col-md-3 d-flex align-items-center">
                                             <button type="button" class="btn btn-primary w-100" id="btnServisFiltrele">
                                                 <i class="bx bx-filter-alt me-1"></i> Filtrele
                                             </button>

@@ -451,8 +451,8 @@ foreach ($summary as $pId => $teams) {
         $team = !empty($matchingTeams) ? reset($matchingTeams) : null;
         $tId = $team ? $team->id : 0;
 
-        if ($team && preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
-            $teamNo = (int) $m[1];
+        $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim(($team->grup_adi ?? '') . ' ' . ($team->tur_adi ?? '')));
+        if ($team && $teamNo > 0) {
             if (!\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'kacakkontrol', $Settings)) {
                 continue;
             }
@@ -487,8 +487,8 @@ foreach ($summary as $pId => $teams) {
             // Eğer verisi yoksa, aralıkta mı bak
             if (!$hasRelevantData) {
                 $team = $teamById[$tId] ?? null;
-                if ($team && preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
-                    $teamNo = (int) $m[1];
+                $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim(($team->grup_adi ?? '') . ' ' . ($team->tur_adi ?? '')));
+                if ($team && $teamNo > 0) {
                     if (!\App\Helper\EkipHelper::isTeamInTabRange($teamNo, $activeTab, $Settings)) {
                         continue;
                     }
@@ -509,10 +509,10 @@ foreach ($activeAssignments as $assign) {
 
     // Ekip kodu kontrolü
     $team = $teamById[$assign->ekip_kodu_id] ?? null;
-    if (!$team || !preg_match('/EK[İI]P-?\s?(\d+)/ui', $team->tur_adi, $m)) {
+    $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim(($team->grup_adi ?? '') . ' ' . ($team->tur_adi ?? '')));
+    if (!$team || $teamNo <= 0) {
         continue;
     }
-    $teamNo = (int) $m[1];
 
     $isValid = false;
     $personelDepts = !empty($assign->departman) ? array_map('trim', explode(',', $assign->departman)) : [];

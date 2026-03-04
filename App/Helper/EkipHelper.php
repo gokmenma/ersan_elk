@@ -6,6 +6,32 @@ use App\Model\SettingsModel;
 class EkipHelper
 {
     /**
+     * Ekip adı/kodu metninden ekip numarasını çıkarır.
+     * Örnekler: "EKİP-61", "Ekip 61", "61"
+     */
+    public static function extractTeamNo($teamValue): int
+    {
+        if (is_numeric($teamValue)) {
+            return (int) $teamValue;
+        }
+
+        $teamText = trim((string) $teamValue);
+        if ($teamText === '') {
+            return 0;
+        }
+
+        if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $teamText, $m)) {
+            return (int) $m[1];
+        }
+
+        if (preg_match('/(\d{1,4})/', $teamText, $m)) {
+            return (int) $m[1];
+        }
+
+        return 0;
+    }
+
+    /**
      * Verilen ekip numarasının, belirli bir tab/rapor türü için tanımlanan aralıkta olup olmadığını kontrol eder.
      * 
      * @param int|string $teamNo Ekip numarası
@@ -15,15 +41,17 @@ class EkipHelper
      */
     public static function isTeamInTabRange($teamNo, string $tab, ?SettingsModel $SettingsModel = null): bool
     {
+        $teamNo = self::extractTeamNo($teamNo);
+
         if (empty($teamNo))
             return false;
-        $teamNo = (int) $teamNo;
 
         if (!$SettingsModel) {
             $SettingsModel = new SettingsModel();
         }
 
-        $allSettings = $SettingsModel->getAllSettingsAsKeyValue();
+        $firmaId = $_SESSION['firma_id'] ?? null;
+        $allSettings = $SettingsModel->getAllSettingsAsKeyValue($firmaId);
 
         $rangeKey = match ($tab) {
             'okuma' => 'ekip_aralik_okuma',
@@ -97,7 +125,9 @@ class EkipHelper
         $teamNo = (int) $teamNo;
         if (!$SettingsModel)
             $SettingsModel = new SettingsModel();
-        $allSettings = $SettingsModel->getAllSettingsAsKeyValue();
+        
+        $firmaId = $_SESSION['firma_id'] ?? null;
+        $allSettings = $SettingsModel->getAllSettingsAsKeyValue($firmaId);
 
         $key = ($subType === 'merkez') ? 'ekip_aralik_kesme_merkez' : 'ekip_aralik_kesme_ilce';
         $default = ($subType === 'merkez') ? '1-30' : '31-40';

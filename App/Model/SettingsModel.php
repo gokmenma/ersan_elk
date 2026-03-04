@@ -41,7 +41,7 @@ class SettingsModel extends Model
 
         if ($firma_id !== null) {
             // Firma bazlı ayarları al ve global olanlarla birleştir (firma ayarları globali ezer)
-            $stmt = $this->db->prepare("SELECT set_name, set_value FROM {$this->table} WHERE firma_id = :firma_id");
+            $stmt = $this->db->prepare("SELECT set_name, set_value FROM {$this->table} WHERE firma_id = :firma_id AND user_id IS NULL");
             $stmt->execute(['firma_id' => $firma_id]);
             $firmaSettings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
 
