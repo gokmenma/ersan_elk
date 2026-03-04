@@ -204,7 +204,7 @@ $firma_option = $FirmaModel->optionByUserPermission();
                 </button>
                 <div class="dropdown-menu dropdown-menu-end">
                     <!-- item-->
-                    <a class="dropdown-item" href="apps-contacts-profile.php"><i
+                    <a class="dropdown-item" href="index.php?p=profil/index"><i
                             class="mdi mdi-face-profile font-size-16 align-middle me-1"></i><?php echo $_SESSION["user"]->adi_soyadi; ?></a>
                     <a class="dropdown-item" href="auth-lock-screen.php"><i
                             class="mdi mdi-lock font-size-16 align-middle me-1"></i> Kilitle</a>

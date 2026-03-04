@@ -33,8 +33,6 @@ require __DIR__ . '/vendor/autoload.php';
 setlocale(LC_CTYPE, 'tr_TR.UTF-8');
 
 use App\Model\MenuModel;
-use App\Model\PermissionsModel;
-use App\Service\Gate;
 
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
@@ -85,17 +83,10 @@ if ($currentUserId <= 0 || !isset($_SESSION['firma_id'])) {
             ];
 
             if (!in_array($page, $publicPages, true)) {
-                $permissionModel = new PermissionsModel();
-                $requiredPermission = $permissionModel->getAuthNameByMenuLink($page);
-
-                if (!empty($requiredPermission)) {
-                    Gate::authorizeOrDie($requiredPermission, null, true);
-                } else {
-                    $hasMenuAccess = $Menus->userCanAccessMenuLink($currentUserId, $page);
-                    if (!$hasMenuAccess) {
-                        echo "<script> window.location.href = '/unauthorize.php'; </script>";
-                        exit;
-                    }
+                $hasMenuAccess = $Menus->userCanAccessMenuLink($currentUserId, $page);
+                if (!$hasMenuAccess) {
+                    echo "<script> window.location.href = '/unauthorize.php'; </script>";
+                    exit;
                 }
             }
 
