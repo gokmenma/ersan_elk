@@ -501,6 +501,35 @@ if ($action == "zimmet-listesi") {
     try {
         $result = $Zimmet->getDatatableList($_POST);
 
+        // Aparat zimmetleri için hareket toplamlarını tek sorguda çek (N+1 önleme)
+        $hareketOzetMap = [];
+        $zimmetIds = array_map(fn($row) => (int) ($row->id ?? 0), $result['data'] ?? []);
+        $zimmetIds = array_values(array_filter($zimmetIds));
+        if (!empty($zimmetIds)) {
+            $placeholders = implode(',', array_fill(0, count($zimmetIds), '?'));
+            $sqlHareketOzet = $Demirbas->db->prepare(" 
+                SELECT 
+                    zimmet_id,
+                    COALESCE(SUM(CASE WHEN hareket_tipi = 'iade' AND (aciklama IS NULL OR aciklama NOT LIKE '[DEPO_IADE]%') THEN miktar ELSE 0 END), 0) as toplam_saha_iade,
+                    COALESCE(SUM(CASE WHEN hareket_tipi = 'iade' AND aciklama LIKE '[DEPO_IADE]%' THEN miktar ELSE 0 END), 0) as toplam_depo_iade,
+                    COALESCE(SUM(CASE WHEN hareket_tipi = 'sarf' THEN miktar ELSE 0 END), 0) as toplam_sarf,
+                    COALESCE(SUM(CASE WHEN hareket_tipi = 'kayip' THEN miktar ELSE 0 END), 0) as toplam_kayip
+                FROM demirbas_hareketler
+                WHERE silinme_tarihi IS NULL AND zimmet_id IN ($placeholders)
+                GROUP BY zimmet_id
+            ");
+            $sqlHareketOzet->execute($zimmetIds);
+            $hareketRows = $sqlHareketOzet->fetchAll(PDO::FETCH_OBJ);
+            foreach ($hareketRows as $hr) {
+                $hareketOzetMap[(int) $hr->zimmet_id] = [
+                    'saha_iade' => (int) ($hr->toplam_saha_iade ?? 0),
+                    'depo_iade' => (int) ($hr->toplam_depo_iade ?? 0),
+                    'sarf' => (int) ($hr->toplam_sarf ?? 0),
+                    'kayip' => (int) ($hr->toplam_kayip ?? 0)
+                ];
+            }
+        }
+
         $data = [];
         foreach ($result['data'] as $z) {
             $enc_id = Security::encrypt($z->id);
@@ -509,29 +538,52 @@ if ($action == "zimmet-listesi") {
             // Aparat kategorisi kontrolü
             $katAdiLower = mb_strtolower($z->kategori_adi ?? '', 'UTF-8');
             $isAparat = str_contains($katAdiLower, 'aparat');
+            $effectiveDurum = $z->durum;
+
+            // Aparatlar için etkin durumu hareket bakiyesine göre hesapla
+            if ($isAparat && !in_array($z->durum, ['kayip', 'arizali'], true)) {
+                $hz = $hareketOzetMap[(int) $z->id] ?? ['saha_iade' => 0, 'depo_iade' => 0, 'sarf' => 0, 'kayip' => 0];
+                $aparatKalan = (int) ($z->teslim_miktar ?? 0)
+                    + (int) ($hz['saha_iade'] ?? 0)
+                    - (int) ($hz['depo_iade'] ?? 0)
+                    - ((int) ($hz['sarf'] ?? 0) + (int) ($hz['kayip'] ?? 0));
+                $effectiveDurum = $aparatKalan > 0 ? 'teslim' : 'iade';
+            }
 
             // Durum badge - Aparat kategorisi için "İade Edildi" yerine "Tüketildi"
             if ($isAparat) {
                 $durumBadges = [
-                    'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
-                    'iade' => '<span class="badge bg-danger">Tüketildi</span>',
-                    'kayip' => '<span class="badge bg-danger">Kayıp</span>',
-                    'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
+                    'teslim' => '<span class="badge bg-warning zimmet-detay" style="cursor:pointer;" data-id="' . $enc_id . '">Zimmetli</span>',
+                    'iade' => '<span class="badge bg-danger zimmet-detay" style="cursor:pointer;" data-id="' . $enc_id . '">Tüketildi</span>',
+                    'kayip' => '<span class="badge bg-danger zimmet-detay" style="cursor:pointer;" data-id="' . $enc_id . '">Kayıp</span>',
+                    'arizali' => '<span class="badge bg-secondary zimmet-detay" style="cursor:pointer;" data-id="' . $enc_id . '">Arızalı</span>'
                 ];
             } else {
                 $durumBadges = [
-                    'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
-                    'iade' => '<span class="badge bg-success">İade Edildi</span>',
-                    'kayip' => '<span class="badge bg-danger">Kayıp</span>',
-                    'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
+                    'teslim' => '<span class="badge bg-warning zimmet-detay" style="cursor:pointer;" data-id="' . $enc_id . '">Zimmetli</span>',
+                    'iade' => '<span class="badge bg-success zimmet-detay" style="cursor:pointer;" data-id="' . $enc_id . '">İade Edildi</span>',
+                    'kayip' => '<span class="badge bg-danger zimmet-detay" style="cursor:pointer;" data-id="' . $enc_id . '">Kayıp</span>',
+                    'arizali' => '<span class="badge bg-secondary zimmet-detay" style="cursor:pointer;" data-id="' . $enc_id . '">Arızalı</span>'
                 ];
             }
-            $durumBadge = $durumBadges[$z->durum] ?? '<span class="badge bg-info">Bilinmiyor</span>';
+            $durumBadge = $durumBadges[$effectiveDurum] ?? '<span class="badge bg-info">Bilinmiyor</span>';
 
-            $iadeButton = $z->durum === 'teslim' ?
-                '<a href="#" data-id="' . $enc_id . '" data-demirbas="' . htmlspecialchars($z->demirbas_adi) . '" data-personel="' . htmlspecialchars($z->personel_adi) . '" data-miktar="' . $z->teslim_miktar . '" class="dropdown-item zimmet-iade">
-                    <span class="mdi mdi-undo font-size-18 text-success me-1"></span> ' . ($isAparat ? 'Tüketildi İşaretle' : 'İade Al') . '
-                </a>' : '';
+            $iadeButton = '';
+            if ($effectiveDurum === 'teslim') {
+                if ($isAparat) {
+                    $iadeButton = '
+                        <a href="#" data-id="' . $enc_id . '" data-demirbas="' . htmlspecialchars($z->demirbas_adi) . '" data-personel="' . htmlspecialchars($z->personel_adi) . '" data-miktar="' . $z->teslim_miktar . '" data-is-aparat="1" data-islem-turu="tuketim" class="dropdown-item zimmet-iade">
+                            <span class="mdi mdi-minus-circle font-size-18 text-info me-1"></span> Tüketildi İşaretle
+                        </a>
+                        <a href="#" data-id="' . $enc_id . '" data-demirbas="' . htmlspecialchars($z->demirbas_adi) . '" data-personel="' . htmlspecialchars($z->personel_adi) . '" data-miktar="' . $z->teslim_miktar . '" data-is-aparat="1" data-islem-turu="depo_iade" class="dropdown-item zimmet-iade">
+                            <span class="mdi mdi-warehouse font-size-18 text-success me-1"></span> Depoya İade Al
+                        </a>';
+                } else {
+                    $iadeButton = '<a href="#" data-id="' . $enc_id . '" data-demirbas="' . htmlspecialchars($z->demirbas_adi) . '" data-personel="' . htmlspecialchars($z->personel_adi) . '" data-miktar="' . $z->teslim_miktar . '" data-is-aparat="0" data-islem-turu="iade" class="dropdown-item zimmet-iade">
+                        <span class="mdi mdi-undo font-size-18 text-success me-1"></span> İade Al
+                    </a>';
+                }
+            }
 
 
             $actions = '<div class="dropdown">
@@ -543,14 +595,14 @@ if ($action == "zimmet-listesi") {
                                 <a href="#" data-id="' . $enc_id . '" class="dropdown-item zimmet-detay">
                                     <span class="mdi mdi-eye font-size-18 text-info me-1"></span> Detay
                                 </a>
-                                ' . ($z->durum !== 'iade' ? '
+                                ' . ($effectiveDurum !== 'iade' ? '
                                 <a href="#" class="dropdown-item zimmet-sil" data-id="' . $enc_id . '">
                                     <span class="mdi mdi-delete font-size-18 text-danger me-1"></span> Sil
                                 </a>' : '') . '
                             </div>
                         </div>';
 
-            $disabledCheckbox = ($z->durum === 'iade') ? 'disabled' : '';
+            $disabledCheckbox = ($effectiveDurum === 'iade') ? 'disabled' : '';
             $data[] = [
                 "checkbox" => '
                     <div class="custom-checkbox-container">
@@ -833,13 +885,142 @@ if ($action == "zimmet-iade") {
         $iade_miktar = intval($_POST["iade_miktar"] ?? 1);
         $aciklama = $_POST["iade_aciklama"] ?? null;
 
-        $result = $Zimmet->iadeYap($zimmet_id, $iade_tarihi, $iade_miktar, $aciklama);
+        $zimmetKaydi = $Zimmet->find($zimmet_id);
+        if (!$zimmetKaydi) {
+            jsonResponse("error", "Zimmet kaydı bulunamadı.");
+        }
+
+        if ($iade_miktar <= 0) {
+            jsonResponse("error", "İşlem miktarı en az 1 olmalıdır.");
+        }
+
+        $sqlKat = $Demirbas->db->prepare("SELECT COALESCE(k.tur_adi, '') as kategori_adi
+                                          FROM demirbas d
+                                          LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
+                                          WHERE d.id = ? LIMIT 1");
+        $sqlKat->execute([$zimmetKaydi->demirbas_id]);
+        $kategoriAdi = (string) ($sqlKat->fetchColumn() ?? '');
+        $isAparat = str_contains(mb_strtolower($kategoriAdi, 'UTF-8'), 'aparat');
+
+        if ($isAparat) {
+            // Aparat etkin bakiyesi: teslim + sahadan iade - depoya iade - sarf - kayıp
+            $sqlOzet = $Demirbas->db->prepare(" 
+                SELECT
+                    COALESCE(SUM(CASE WHEN hareket_tipi = 'iade' AND (aciklama IS NULL OR aciklama NOT LIKE '[DEPO_IADE]%') THEN miktar ELSE 0 END), 0) as saha_iade,
+                    COALESCE(SUM(CASE WHEN hareket_tipi = 'iade' AND aciklama LIKE '[DEPO_IADE]%' THEN miktar ELSE 0 END), 0) as depo_iade,
+                    COALESCE(SUM(CASE WHEN hareket_tipi = 'sarf' THEN miktar ELSE 0 END), 0) as sarf,
+                    COALESCE(SUM(CASE WHEN hareket_tipi = 'kayip' THEN miktar ELSE 0 END), 0) as kayip
+                FROM demirbas_hareketler
+                WHERE zimmet_id = ? AND silinme_tarihi IS NULL
+            ");
+            $sqlOzet->execute([$zimmet_id]);
+            $ozet = $sqlOzet->fetch(PDO::FETCH_OBJ) ?: (object) ['saha_iade' => 0, 'depo_iade' => 0, 'sarf' => 0, 'kayip' => 0];
+
+            $kalanAparat = (int) ($zimmetKaydi->teslim_miktar ?? 0)
+                + (int) ($ozet->saha_iade ?? 0)
+                - (int) ($ozet->depo_iade ?? 0)
+                - (int) ($ozet->sarf ?? 0)
+                - (int) ($ozet->kayip ?? 0);
+
+            if ($kalanAparat <= 0) {
+                jsonResponse("error", "Bu kayıtta tüketim için aktif aparat bakiyesi bulunmuyor.");
+            }
+            if ($iade_miktar > $kalanAparat) {
+                jsonResponse("error", "İşlem miktarı personelin mevcut aparat bakiyesinden fazla olamaz. Mevcut: $kalanAparat");
+            }
+        } else {
+            if ($zimmetKaydi->durum !== 'teslim') {
+                jsonResponse("error", "Sadece aktif zimmet kayıtlarında işlem yapılabilir.");
+            }
+            $kalanZimmet = (int) ($zimmetKaydi->teslim_miktar ?? 0) - (int) ($zimmetKaydi->iade_miktar ?? 0);
+            if ($iade_miktar > $kalanZimmet) {
+                jsonResponse("error", "İşlem miktarı zimmette kalan miktardan fazla olamaz. Kalan: $kalanZimmet");
+            }
+        }
+
+        if ($isAparat) {
+            $result = $Zimmet->tuketimYap($zimmet_id, $iade_tarihi, $iade_miktar, $aciklama);
+        } else {
+            $result = $Zimmet->iadeYap($zimmet_id, $iade_tarihi, $iade_miktar, $aciklama);
+        }
 
         if ($result) {
+            if ($isAparat) {
+                jsonResponse("success", "Tüketim işlemi başarıyla tamamlandı. Personel zimmeti güncellendi.");
+            }
             jsonResponse("success", "İade işlemi başarıyla tamamlandı. Stok güncellendi.");
         } else {
-            jsonResponse("error", "İade işlemi başarıısız.");
+            jsonResponse("error", "İşlem başarısız.");
         }
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+}
+
+// Aparat Depoya İade (personelden depoya geri alma)
+if ($action == "zimmet-depoya-iade") {
+    $zimmet_id = Security::decrypt($_POST["zimmet_id"] ?? '');
+
+    try {
+        $iade_tarihi = $_POST["iade_tarihi"] ?? date('d.m.Y');
+        $iade_miktar = intval($_POST["iade_miktar"] ?? 1);
+        $aciklama = trim($_POST["iade_aciklama"] ?? '');
+
+        $zimmetKaydi = $Zimmet->find($zimmet_id);
+        if (!$zimmetKaydi) {
+            jsonResponse("error", "Zimmet kaydı bulunamadı.");
+        }
+
+        $sqlKat = $Demirbas->db->prepare("SELECT COALESCE(k.tur_adi, '') as kategori_adi
+                                          FROM demirbas d
+                                          LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
+                                          WHERE d.id = ? LIMIT 1");
+        $sqlKat->execute([$zimmetKaydi->demirbas_id]);
+        $kategoriAdi = (string) ($sqlKat->fetchColumn() ?? '');
+        $isAparat = str_contains(mb_strtolower($kategoriAdi, 'UTF-8'), 'aparat');
+        if (!$isAparat) {
+            jsonResponse("error", "Depoya iade alma işlemi sadece aparat kategorisinde kullanılabilir.");
+        }
+
+        if ($iade_miktar <= 0) {
+            jsonResponse("error", "İade miktarı en az 1 olmalıdır.");
+        }
+
+        // Aparat etkin bakiyesini hesapla: teslim + sahadan iade - depoya iade - sarf - kayıp
+        $sqlOzet = $Demirbas->db->prepare(" 
+            SELECT
+                COALESCE(SUM(CASE WHEN hareket_tipi = 'iade' AND (aciklama IS NULL OR aciklama NOT LIKE '[DEPO_IADE]%') THEN miktar ELSE 0 END), 0) as saha_iade,
+                COALESCE(SUM(CASE WHEN hareket_tipi = 'iade' AND aciklama LIKE '[DEPO_IADE]%' THEN miktar ELSE 0 END), 0) as depo_iade,
+                COALESCE(SUM(CASE WHEN hareket_tipi = 'sarf' THEN miktar ELSE 0 END), 0) as sarf,
+                COALESCE(SUM(CASE WHEN hareket_tipi = 'kayip' THEN miktar ELSE 0 END), 0) as kayip
+            FROM demirbas_hareketler
+            WHERE zimmet_id = ? AND silinme_tarihi IS NULL
+        ");
+        $sqlOzet->execute([$zimmet_id]);
+        $ozet = $sqlOzet->fetch(PDO::FETCH_OBJ) ?: (object) ['saha_iade' => 0, 'depo_iade' => 0, 'sarf' => 0, 'kayip' => 0];
+
+        $kalanAparat = (int) ($zimmetKaydi->teslim_miktar ?? 0)
+            + (int) ($ozet->saha_iade ?? 0)
+            - (int) ($ozet->depo_iade ?? 0)
+            - (int) ($ozet->sarf ?? 0)
+            - (int) ($ozet->kayip ?? 0);
+
+        if ($kalanAparat <= 0) {
+            jsonResponse("error", "Sadece aktif zimmet kayıtlarında depoya iade yapılabilir.");
+        }
+
+        if ($iade_miktar > $kalanAparat) {
+            jsonResponse("error", "İade miktarı personelin mevcut aparat bakiyesinden fazla olamaz. Mevcut: $kalanAparat");
+        }
+
+        $prefixAciklama = '[DEPO_IADE] ' . ($aciklama !== '' ? $aciklama : 'Aparat depoya iade alındı');
+        $result = $Zimmet->iadeYap($zimmet_id, $iade_tarihi, $iade_miktar, $prefixAciklama);
+
+        if ($result) {
+            jsonResponse("success", "Depoya iade alma işlemi tamamlandı. Personel zimmeti azaldı, depo stoğu arttı.");
+        }
+
+        jsonResponse("error", "Depoya iade alma işlemi başarısız.");
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());
     }
@@ -1260,7 +1441,22 @@ if ($action == "zimmet-detay") {
             $hareketler = $Hareket->getZimmetHareketleri($id);
 
             // Hareket verilerini formatla
+            $toplamIade = 0;
+            $toplamDepoIade = 0;
+            $toplamSarf = 0;
             foreach ($hareketler as $h) {
+                if ($h->hareket_tipi === 'iade') {
+                    $isDepoIade = strpos((string) ($h->aciklama ?? ''), '[DEPO_IADE]') === 0;
+                    if ($isDepoIade) {
+                        $toplamDepoIade += (int) ($h->miktar ?? 0);
+                    } else {
+                        $toplamIade += (int) ($h->miktar ?? 0);
+                    }
+                }
+                if ($h->hareket_tipi === 'sarf' || $h->hareket_tipi === 'kayip') {
+                    $toplamSarf += (int) ($h->miktar ?? 0);
+                }
+
                 $h->id = Security::encrypt($h->id);
                 $h->tarih_format = date('d.m.Y', strtotime($h->tarih));
                 $h->hareket_badge = DemirbasHareketModel::getHareketTipiBadge($h->hareket_tipi, $h->aciklama);
@@ -1295,22 +1491,26 @@ if ($action == "zimmet-detay") {
             $isDetayAparat = str_contains(mb_strtolower($detayKatAdi, 'UTF-8'), 'aparat');
 
             if ($isDetayAparat) {
-                $durumBadges = [
-                    'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
-                    'iade' => '<span class="badge bg-danger">Tüketildi</span>',
-                    'kayip' => '<span class="badge bg-danger">Kayıp</span>',
-                    'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
-                ];
+                $encZimmetId = Security::encrypt($zimmet->id);
+                $aparatKalan = (int) ($zimmet->teslim_miktar ?? 0) + $toplamIade - $toplamDepoIade - $toplamSarf;
+                if ($aparatKalan > 0) {
+                    $zimmet->durum = 'teslim';
+                    $zimmet->durum_badge = '<span class="badge bg-warning zimmet-detay-ac" style="cursor:pointer;" data-id="' . $encZimmetId . '">Zimmetli</span>';
+                } else {
+                    $zimmet->durum = 'iade';
+                    $zimmet->durum_badge = '<span class="badge bg-danger zimmet-detay-ac" style="cursor:pointer;" data-id="' . $encZimmetId . '">Tüketildi</span>';
+                }
             } else {
                 $durumBadges = [
-                    'teslim' => '<span class="badge bg-warning">Zimmetli</span>',
-                    'iade' => '<span class="badge bg-success">İade Edildi</span>',
-                    'kayip' => '<span class="badge bg-danger">Kayıp</span>',
-                    'arizali' => '<span class="badge bg-secondary">Arızalı</span>'
+                    'teslim' => '<span class="badge bg-warning zimmet-detay-ac" style="cursor:pointer;" data-id="'.Security::encrypt($zimmet->id).'">Zimmetli</span>',
+                    'iade' => '<span class="badge bg-success zimmet-detay-ac" style="cursor:pointer;" data-id="'.Security::encrypt($zimmet->id).'">İade Edildi</span>',
+                    'kayip' => '<span class="badge bg-danger zimmet-detay-ac" style="cursor:pointer;" data-id="'.Security::encrypt($zimmet->id).'">Kayıp</span>',
+                    'arizali' => '<span class="badge bg-secondary zimmet-detay-ac" style="cursor:pointer;" data-id="'.Security::encrypt($zimmet->id).'">Arızalı</span>'
                 ];
+                $zimmet->durum_badge = $durumBadges[$zimmet->durum] ?? '<span class="badge bg-info">Bilinmiyor</span>';
             }
             $zimmet->teslim_tarihi_format = date('d.m.Y', strtotime($zimmet->teslim_tarihi));
-            $zimmet->durum_badge = $durumBadges[$zimmet->durum] ?? '<span class="badge bg-info">Bilinmiyor</span>';
+            $zimmet->is_aparat = $isDetayAparat ? 1 : 0;
 
             // Demirbaş bilgilerini al
             $demirbas = $Demirbas->find($zimmet->demirbas_id);
@@ -1884,6 +2084,72 @@ if ($action == "zimmet-stats-chart") {
         jsonResponse("success", "Başarılı", [
             "katData" => $katData,
             "durumData" => $durumDataFormatted
+        ]);
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+}
+
+// Aparat personel özetleri (toplam verilen / tüketilen / iade alınan / kalan)
+if ($action == "aparat-personel-ozet") {
+    try {
+        $personel_id = intval($_POST["personel_id"] ?? 0);
+
+        $where = " WHERE d.firma_id = ? AND h.silinme_tarihi IS NULL AND LOWER(COALESCE(k.tur_adi, '')) LIKE '%aparat%' ";
+        $params = [$_SESSION['firma_id']];
+
+        if ($personel_id > 0) {
+            $where .= " AND h.personel_id = ? ";
+            $params[] = $personel_id;
+        }
+
+        $sql = $Demirbas->db->prepare(" 
+            SELECT 
+                h.personel_id,
+                p.adi_soyadi as personel_adi,
+                COUNT(*) as islem_sayisi,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0) as toplam_verilen,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0) as toplam_tuketilen,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0) as toplam_iade,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as toplam_depo_iade,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'kayip' THEN h.miktar ELSE 0 END), 0) as toplam_kayip,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0) +
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0) -
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) -
+                COALESCE(SUM(CASE WHEN h.hareket_tipi IN ('sarf', 'kayip') THEN h.miktar ELSE 0 END), 0) as kalan_miktar
+            FROM demirbas_hareketler h
+            INNER JOIN demirbas d ON h.demirbas_id = d.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
+            LEFT JOIN personel p ON h.personel_id = p.id
+            $where
+            GROUP BY h.personel_id, p.adi_soyadi
+            HAVING toplam_verilen > 0 OR toplam_tuketilen > 0 OR toplam_iade > 0 OR kalan_miktar != 0
+            ORDER BY p.adi_soyadi ASC
+        ");
+        $sql->execute($params);
+        $rows = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        $totals = [
+            'islem_sayisi' => 0,
+            'toplam_verilen' => 0,
+            'toplam_tuketilen' => 0,
+            'toplam_iade' => 0,
+            'toplam_depo_iade' => 0,
+            'kalan_miktar' => 0
+        ];
+
+        foreach ($rows as $r) {
+            $totals['islem_sayisi'] += (int) ($r->islem_sayisi ?? 0);
+            $totals['toplam_verilen'] += (int) ($r->toplam_verilen ?? 0);
+            $totals['toplam_tuketilen'] += (int) ($r->toplam_tuketilen ?? 0);
+            $totals['toplam_iade'] += (int) ($r->toplam_iade ?? 0);
+            $totals['toplam_depo_iade'] += (int) ($r->toplam_depo_iade ?? 0);
+            $totals['kalan_miktar'] += (int) ($r->kalan_miktar ?? 0);
+        }
+
+        jsonResponse("success", "Başarılı", [
+            'rows' => $rows,
+            'totals' => $totals
         ]);
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());

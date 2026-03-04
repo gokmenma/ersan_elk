@@ -44,7 +44,8 @@ class DemirbasZimmetModel extends Model
             SELECT 
                 " . $this->getZimmetCols() . ",
                 " . $this->getProcessedAmountSubquery() . " as iade_miktar,
-                " . $this->getProcessedDateSubquery() . " as iade_tarihi
+                " . $this->getProcessedDateSubquery() . " as iade_tarihi,
+                (z.teslim_miktar - " . $this->getProcessedAmountSubquery() . ") as kalan_miktar
             FROM {$this->table} z
             WHERE z.id = ?
         ");
@@ -366,7 +367,7 @@ class DemirbasZimmetModel extends Model
                             <i class="bx bx-dots-vertical-rounded font-size-24 text-dark"></i>
                         </a>
                         <div class="dropdown-menu">
-                            ' . ($data->durum === 'teslim' ? '<a href="#" data-id="' . $enc_id . '" class="dropdown-item zimmet-iade">
+                            ' . ($data->durum === 'teslim' ? '<a href="#" data-id="' . $enc_id . '" data-is-aparat="' . ($isAparat ? '1' : '0') . '" class="dropdown-item zimmet-iade">
                                 <span class="mdi mdi-undo font-size-18"></span> ' . $iadeLabel . '
                             </a>' : '') . '
                             <a href="#" data-id="' . $enc_id . '" class="dropdown-item zimmet-detay">

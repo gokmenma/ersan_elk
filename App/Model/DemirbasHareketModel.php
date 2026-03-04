@@ -252,6 +252,10 @@ class DemirbasHareketModel extends Model
      */
     public static function getHareketTipiBadge($tip, $aciklama = '')
     {
+        if ($tip === 'iade' && strpos((string) $aciklama, '[DEPO_IADE]') === 0) {
+            return '<span class="badge bg-danger">Depoya İade</span>';
+        }
+
         if ($tip === 'sarf' && (strpos($aciklama, 'Zimmetten Düşüldü') !== false || strpos($aciklama, 'Zimmetten Düsüldü') !== false)) {
             return '<span class="badge bg-danger">Zimmetten Düşüldü</span>';
         }

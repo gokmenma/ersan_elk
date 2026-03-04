@@ -1733,12 +1733,55 @@ $(document).on("click", ".zimmet-iade", function (e) {
   let demirbas = $(this).data("demirbas");
   let personel = $(this).data("personel");
   let miktar = $(this).data("miktar");
+  let isAparat = parseInt($(this).data("is-aparat") || 0, 10) === 1;
+  let islemTuru = ($(this).data("islem-turu") || (isAparat ? "tuketim" : "iade")).toString();
 
   $("#iade_zimmet_id").val(id);
+  $("#iade_is_aparat").val(isAparat ? "1" : "0");
+  $("#iade_islem_turu").val(islemTuru);
   $("#iade_demirbas_adi").text(demirbas);
   $("#iade_personel_adi").text(personel);
   $("#iade_teslim_miktar").text(miktar);
   $("#iade_miktar").val(miktar).attr("max", miktar);
+
+  if (isAparat && islemTuru === "tuketim") {
+    $("#iadeModalTitle").html(
+      '<i data-feather="minus-circle" class="me-2"></i>Aparat Tüketim İşlemi',
+    );
+    $("#iadeModalInfoText").text(
+      "Seçilen zimmet kaydı için tüketim bilgilerini doldurun. Miktar personel zimmetinden düşülür, depoya dönmez.",
+    );
+    $("#iadeMiktarLabel").text("Tüketim Miktarı *");
+    $("#iadeTarihLabel").text("Tüketim Tarihi *");
+    $("#iadeAciklamaLabel").text("Tüketim ile ilgili notlar...");
+    $("#iadeKaydetText").text("Tüketim Olarak İşle");
+  } else if (isAparat && islemTuru === "depo_iade") {
+    $("#iadeModalTitle").html(
+      '<i data-feather="corner-down-left" class="me-2"></i>Aparatı Depoya İade Al',
+    );
+    $("#iadeModalInfoText").text(
+      "Personeldeki aparatı depoya iade alır. Miktar personel zimmetinden düşer ve depo stoğu artar.",
+    );
+    $("#iadeMiktarLabel").text("Depoya İade Miktarı *");
+    $("#iadeTarihLabel").text("Depoya İade Tarihi *");
+    $("#iadeAciklamaLabel").text("Depoya iade ile ilgili notlar...");
+    $("#iadeKaydetText").text("Depoya İade Al");
+  } else {
+    $("#iadeModalTitle").html(
+      '<i data-feather="corner-down-left" class="me-2"></i>Demirbaş İade Al',
+    );
+    $("#iadeModalInfoText").text(
+      "Seçilen zimmet kaydı için iade bilgilerini doldurun. Kısmi iade yapılabilir.",
+    );
+    $("#iadeMiktarLabel").text("İade Miktarı *");
+    $("#iadeTarihLabel").text("İade Tarihi *");
+    $("#iadeAciklamaLabel").text("İade ile ilgili notlar...");
+    $("#iadeKaydetText").text("İade Al");
+  }
+
+  if (typeof feather !== "undefined") {
+    setTimeout(() => feather.replace(), 10);
+  }
 
   $("#iadeModal").modal("show");
 });
@@ -1749,6 +1792,8 @@ $(document).on("click", "#iadeKaydet", function () {
 
   let iadeMiktar = parseInt($("#iade_miktar").val());
   let teslimMiktar = parseInt($("#iade_teslim_miktar").text());
+  let isAparat = parseInt($("#iade_is_aparat").val() || "0", 10) === 1;
+  let islemTuru = ($("#iade_islem_turu").val() || (isAparat ? "tuketim" : "iade")).toString();
 
   if (iadeMiktar > teslimMiktar) {
     Swal.fire({
@@ -1761,7 +1806,10 @@ $(document).on("click", "#iadeKaydet", function () {
   }
 
   var formData = new FormData(form[0]);
-  formData.append("action", "zimmet-iade");
+  formData.append(
+    "action",
+    islemTuru === "depo_iade" ? "zimmet-depoya-iade" : "zimmet-iade",
+  );
   formData.append("zimmet_id", $("#iade_zimmet_id").val());
 
   fetch(zimmetUrl, {
@@ -1776,7 +1824,13 @@ $(document).on("click", "#iadeKaydet", function () {
         Swal.fire({
           icon: "success",
           title: "Başarılı!",
-          text: data.message,
+          text:
+            data.message ||
+            (islemTuru === "depo_iade"
+              ? "Depoya iade alma işlemi tamamlandı."
+              : isAparat
+                ? "Tüketim işlemi tamamlandı."
+                : "İade işlemi tamamlandı."),
           confirmButtonText: "Tamam",
         }).then(() => {
           location.reload();
@@ -1868,7 +1922,7 @@ $("#zimmetModal").on("hidden.bs.modal", function () {
 });
 
 // Zimmet Detay
-$(document).on("click", ".zimmet-detay", function (e) {
+$(document).on("click", ".zimmet-detay, .zimmet-detay-ac", function (e) {
   e.preventDefault();
   let id = $(this).data("id");
 
@@ -1900,12 +1954,40 @@ $(document).on("click", ".zimmet-detay", function (e) {
         $("#detay_personel_adi").text(d.personel_detay.adi_soyadi || "-");
 
         // Özet Hesabı (Zimmet Detayı)
-        let toplamZimmet = parseInt(d.teslim_miktar || 0);
-        let tuketilen = parseInt(d.iade_miktar || 0); // Bu iade_miktar tüketilen (sarf) kısımdır
-        let kalan = toplamZimmet - tuketilen;
+        let initialZimmet = parseInt(d.teslim_miktar || 0);
+        let totalIade = 0;
+        let totalDepoIade = 0;
+        let totalSarf = 0;
+        const isAparat = parseInt(d.is_aparat || 0, 10) === 1;
 
-        $("#ozet_toplam").text(toplamZimmet);
-        $("#ozet_tuketilen").text(tuketilen);
+        if (hareketler && hareketler.length > 0) {
+          let skipFirst = true;
+          hareketler.forEach((h) => {
+            if (skipFirst && (h.hareket_tipi === "zimmet" || h.hareket_tipi === "Zimmet")) {
+              skipFirst = false;
+              return;
+            }
+            if (h.hareket_tipi === "iade") {
+              const aciklama = (h.aciklama || "").toString();
+              if (aciklama.indexOf("[DEPO_IADE]") === 0) {
+                totalDepoIade += parseInt(h.miktar || 0);
+              } else {
+                totalIade += parseInt(h.miktar || 0);
+              }
+            }
+            if (h.hareket_tipi === "sarf") totalSarf += parseInt(h.miktar || 0);
+          });
+        }
+
+        let kalan = isAparat
+          ? initialZimmet + totalIade - totalDepoIade - totalSarf
+          : initialZimmet - totalIade - totalSarf;
+        if (kalan < 0) kalan = 0;
+
+        $("#ozet_toplam").text(initialZimmet);
+        $("#ozet_iadeler").text(totalIade);
+        $("#ozet_depo_iade").text(totalDepoIade);
+        $("#ozet_tuketilen").text(totalSarf);
         $("#ozet_kalan").text(kalan);
 
         // 1. HAREKET DETAYLARI TABLOSUNU DOLDUR
@@ -1930,6 +2012,14 @@ $(document).on("click", ".zimmet-detay", function (e) {
             let checkbox = "";
             let trClass = "";
             let trStyle = "";
+            let hareketFilterTip = (h.hareket_tipi || "").toLowerCase();
+            if (hareketFilterTip === "iade") {
+              const aciklama = (h.aciklama || "").toString();
+              if (aciklama.indexOf("[DEPO_IADE]") === 0) {
+                hareketFilterTip = "depo_iade";
+              }
+            }
+
             if (h.hareket_tipi === "iade" || h.hareket_tipi === "sarf") {
               checkbox = `<div class="form-check d-flex justify-content-center m-0"><input class="form-check-input hareket-check" type="checkbox" value="${h.id}"></div>`;
               trClass = "hareket-row";
@@ -1937,7 +2027,7 @@ $(document).on("click", ".zimmet-detay", function (e) {
             }
 
             let row = `
-              <tr class="${trClass}" style="${trStyle}">
+              <tr class="${trClass}" style="${trStyle}" data-hareket-tip="${hareketFilterTip}">
                 <td class="text-center" width="40">${checkbox}</td>
                 <td>${h.hareket_badge}</td>
                 <td class="text-center fw-bold">${h.miktar}</td>
@@ -1963,6 +2053,7 @@ $(document).on("click", ".zimmet-detay", function (e) {
         $("#btnTopluHareketSil").addClass("d-none");
         $("#seciliHareketSayisi").text("0");
         $("#checkAllZimmetHareket").prop("checked", false);
+        applyZimmetDetayKartFiltre("all");
 
         // 2. GEÇMİŞ TABLOSUNU DOLDUR
         
@@ -1981,6 +2072,33 @@ $(document).on("click", ".zimmet-detay", function (e) {
       Swal.close();
       Swal.fire("Hata!", "Bir hata oluştu.", "error");
     });
+});
+
+function applyZimmetDetayKartFiltre(filterType = "all") {
+  const rows = $("#zimmetHareketBody tr");
+
+  rows.each(function () {
+    const rowTip = ($(this).data("hareket-tip") || "").toString();
+
+    if (!rowTip || filterType === "all") {
+      $(this).show();
+      return;
+    }
+
+    if (rowTip === filterType) {
+      $(this).show();
+    } else {
+      $(this).hide();
+    }
+  });
+
+  $(".ozet-filter-card").removeClass("ozet-filter-active");
+  $(`.ozet-filter-card[data-filter="${filterType}"]`).first().addClass("ozet-filter-active");
+}
+
+$(document).on("click", ".ozet-filter-card", function () {
+  const filterType = ($(this).data("filter") || "all").toString();
+  applyZimmetDetayKartFiltre(filterType);
 });
 
 // Zimmet Hareket Sil (İadeyi Geri Al) - BU ARTIK KULLANILMIYOR FAKAT ESKİ YERLERDE VARSA DİYE DURABİLİR
@@ -3055,6 +3173,78 @@ $("#collapseZimmetStats").on("shown.bs.collapse", function () {
     initZimmetCharts();
   }
   loadZimmetCharts();
+});
+
+function renderAparatPersonelOzet(res) {
+  const body = $("#aparatPersonelOzetBody");
+  body.empty();
+
+  const rows = res.rows || [];
+  const totals = res.totals || {};
+
+  $("#aparat_ozet_islem").text(parseInt(totals.islem_sayisi || 0));
+  $("#aparat_ozet_verilen").text(parseInt(totals.toplam_verilen || 0));
+  $("#aparat_ozet_tuketilen").text(parseInt(totals.toplam_tuketilen || 0));
+  $("#aparat_ozet_iade").text(parseInt(totals.toplam_iade || 0));
+  $("#aparat_ozet_depo_iade").text(parseInt(totals.toplam_depo_iade || 0));
+  $("#aparat_ozet_kalan").text(parseInt(totals.kalan_miktar || 0));
+
+  if (!rows.length) {
+    body.append(
+      '<tr><td colspan="7" class="text-center text-muted py-3">Seçime uygun aparat hareket özeti bulunamadı.</td></tr>',
+    );
+    return;
+  }
+
+  rows.forEach((r) => {
+    body.append(`
+      <tr>
+        <td>${r.personel_adi || "-"}</td>
+        <td class="text-center fw-semibold">${parseInt(r.islem_sayisi || 0)}</td>
+        <td class="text-center fw-semibold text-primary">${parseInt(r.toplam_verilen || 0)}</td>
+        <td class="text-center fw-semibold text-danger">${parseInt(r.toplam_tuketilen || 0)}</td>
+        <td class="text-center fw-semibold text-info">${parseInt(r.toplam_iade || 0)}</td>
+        <td class="text-center fw-semibold text-danger">${parseInt(r.toplam_depo_iade || 0)}</td>
+        <td class="text-center fw-semibold text-success">${parseInt(r.kalan_miktar || 0)}</td>
+      </tr>
+    `);
+  });
+}
+
+$(document).on("click", "#btnAparatPersonelOzet", function () {
+  const personelId = $("#zimmet_personel_filtre").val() || "all";
+
+  Swal.fire({
+    title: "Özet yükleniyor...",
+    didOpen: () => {
+      Swal.showLoading();
+    },
+    allowOutsideClick: false,
+    showConfirmButton: false,
+  });
+
+  $.ajax({
+    url: zimmetUrl,
+    type: "POST",
+    dataType: "json",
+    data: {
+      action: "aparat-personel-ozet",
+      personel_id: personelId,
+    },
+    success: function (res) {
+      Swal.close();
+      if (res.status === "success") {
+        renderAparatPersonelOzet(res);
+        $("#aparatPersonelOzetModal").modal("show");
+      } else {
+        Swal.fire("Hata", res.message || "Özet alınamadı.", "error");
+      }
+    },
+    error: function () {
+      Swal.close();
+      Swal.fire("Hata", "Sunucu ile iletişim kurulamadı.", "error");
+    },
+  });
 });
 
 // Zimmet Tablosu Toplu Seçim ve Silme

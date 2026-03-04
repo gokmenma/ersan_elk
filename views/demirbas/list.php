@@ -916,6 +916,11 @@ if (!empty($aparatKatIds)) {
                                             echo Form::FormSelect2('zimmet_personel_filtre', $personelOptions, 'all', 'Personel Filtresi', 'users', 'key', '', 'form-control form-control-sm select2', false, 'width:100%', 'data-placeholder="Personel Filtresi"');
                                             ?>
                                         </div>
+                                        <div class="col-auto pe-2">
+                                            <button type="button" class="btn btn-sm btn-soft-primary" id="btnAparatPersonelOzet">
+                                                <i class="bx bx-bar-chart-alt-2 me-1"></i> Aparat Özet
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1092,6 +1097,9 @@ if (!empty($aparatKatIds)) {
 
 <!-- Zimmet Detay Modal -->
 <?php include_once "modal/zimmet-detay-modal.php" ?>
+
+<!-- Aparat Personel Özet Modal -->
+<?php include_once "modal/aparat-personel-ozet-modal.php" ?>
 
 <!-- Servis Modal -->
 <?php include_once "modal/servis-modal.php" ?>
