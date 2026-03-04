@@ -328,7 +328,7 @@ if (Gate::allows("ana_sayfa")) {
 
     if (!empty($slider_notifications)) {
         ob_start(); ?>
-        <div class="col-12 col-lg-6 widget-item" id="widget-ana-slider" style="margin-bottom: 1.5rem; position: relative;">
+        <div class="col-md-6 col-xl-4 widget-item" id="widget-ana-slider" style="margin-bottom: 1.5rem; position: relative;">
             <!-- Drag Handle (Separated from Carousel to avoid event blocking) -->
             <div class="drag-handle shadow-sm"
                 style="position: absolute; top: 12px; left: 20px; z-index: 1000; cursor: move; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 2px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1);">
@@ -391,8 +391,8 @@ if (Gate::allows("ana_sayfa")) {
         <?php $widgets['widget-ana-slider'] = ob_get_clean();
     }
     ?>
-
-    <?php ob_start(); ?>
+    <?php if (\App\Service\Gate::allows("personel_listesi")) {
+        ob_start(); ?>
     <div class="col-md-6 col-xl-4 widget-item" id="widget-personel-ozet">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
             style="border-radius: 12px; background: #fff;">
@@ -481,8 +481,10 @@ if (Gate::allows("ana_sayfa")) {
         </div>
     </div>
     <?php $widgets['widget-personel-ozet'] = ob_get_clean();
+    }
 
-    ob_start(); ?>
+    if (\App\Service\Gate::allows("arac_takip_yonetim")) {
+        ob_start(); ?>
     <div class="col-md-6 col-xl-4 widget-item" id="widget-arac-ozet">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
             style="border-radius: 12px; background: #fff;">
@@ -556,8 +558,10 @@ if (Gate::allows("ana_sayfa")) {
         </div>
     </div>
     <?php $widgets['widget-arac-ozet'] = ob_get_clean();
+    }
 
-    ob_start(); ?>
+    if (\App\Service\Gate::allows("talepler")) {
+        ob_start(); ?>
     <div class="col-md-2 widget-item" id="widget-bekleyen-talepler">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
             style="--card-color: #f6c23e; border-bottom: 3px solid var(--card-color) !important; --delay: 0.6s">
@@ -585,6 +589,7 @@ if (Gate::allows("ana_sayfa")) {
         </div>
     </div>
     <?php $widgets['widget-bekleyen-talepler'] = ob_get_clean();
+    }
 
     ob_start(); ?>
     <div class="col-md-2 widget-item" id="widget-gec-kalanlar">
@@ -866,7 +871,7 @@ if (Gate::allows("ana_sayfa")) {
                 <div class="mt-2 text-center py-1 rounded"
                     style="background: rgba(28, 200, 138, 0.05); font-size: 10px; color: #1cc88a; border-top: 1px dashed rgba(28, 200, 138, 0.2);">
                     <i class="bx bx-time-five"></i> Son Güncelleme: <span
-                        class="fw-bold"><?php echo $last_update_sayac ? date('d.m.Y H:i', strtotime($last_update_sayac)) : '-'; ?></span>
+                        class="fw-bold"><?php echo $last_update_isler ? date('d.m.Y H:i', strtotime($last_update_isler)) : '-'; ?></span>
                 </div>
             </div>
         </div>
