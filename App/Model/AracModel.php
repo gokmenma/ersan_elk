@@ -168,7 +168,8 @@ class AracModel extends Model
                  WHERE a2.firma_id = :firma_id1 
                  AND a2.silinme_tarihi IS NULL 
                  AND a2.aktif_mi = 1
-                 AND az.id IS NULL) as bosta_arac
+                 AND az.id IS NULL
+                 AND NOT EXISTS (SELECT 1 FROM arac_servis_kayitlari s WHERE s.arac_id = a2.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL)) as bosta_arac
             FROM {$this->table}
             WHERE firma_id = :firma_id2
             AND silinme_tarihi IS NULL
@@ -215,6 +216,7 @@ class AracModel extends Model
             AND a.silinme_tarihi IS NULL
             AND a.aktif_mi = 1
             AND az.id IS NULL
+            AND NOT EXISTS (SELECT 1 FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL)
             ORDER BY a.plaka ASC
         ");
         $sql->execute(['firma_id' => $_SESSION['firma_id']]);
@@ -241,11 +243,23 @@ class AracModel extends Model
     /**
      * Plaka kontrolü
      */
-    public function plakaKontrol($plaka, $excludeId = null)
+    public function plakaKontrol($plaka, $excludeId = null, $includeDeleted = false)
     {
-        $plakaBosluksuz = str_replace(' ', '', $plaka);
-        $sql = "SELECT id FROM {$this->table} WHERE REPLACE(plaka, ' ', '') = :plaka AND firma_id = :firma_id AND silinme_tarihi IS NULL";
-        $params = ['plaka' => $plakaBosluksuz, 'firma_id' => $_SESSION['firma_id']];
+        // Plakayı tamamen temizle: boşluklar, tireler, noktalar gitsin
+        $plakaTemiz = strtoupper(preg_replace('/[^A-Z0-9]/', '', $plaka));
+
+        $sql = "SELECT id FROM {$this->table} 
+                WHERE UPPER(REPLACE(REPLACE(REPLACE(plaka, ' ', ''), '-', ''), '.', '')) = :plaka 
+                AND firma_id = :firma_id";
+
+        if (!$includeDeleted) {
+            $sql .= " AND silinme_tarihi IS NULL";
+        }
+
+        $params = [
+            'plaka' => $plakaTemiz,
+            'firma_id' => $_SESSION['firma_id']
+        ];
 
         if ($excludeId) {
             $sql .= " AND id != :exclude_id";

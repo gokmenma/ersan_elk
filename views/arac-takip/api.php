@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     throw new Exception("Plaka zorunludur.");
                 }
 
-                $mevcutArac = $Arac->plakaKontrol($plaka, $arac_id);
+                $mevcutArac = $Arac->plakaKontrol($plaka, $arac_id, true);
                 if ($mevcutArac) {
                     throw new Exception("Bu plaka ($plaka) zaten kayıtlı baska bir araca ait.");
                 }
@@ -862,8 +862,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     if (empty($plaka))
                         continue;
 
-                    // Araç bul veya ekle
-                    $mevcutArac = $Arac->plakaKontrol($plaka);
+                    // Araç bul veya ekle (Silinenler dahil kontrol et)
+                    $mevcutArac = $Arac->plakaKontrol($plaka, null, true);
                     if (!$mevcutArac) {
                         try {
                             $encryptedId = $Arac->saveWithAttr([
@@ -878,6 +878,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         }
                     } else {
                         $aracId = $mevcutArac->id;
+                        // Eğer araç silinmişse geri getir
+                        $pdo = $Arac->getDb();
+                        $stmtRestore = $pdo->prepare("UPDATE araclar SET silinme_tarihi = NULL, aktif_mi = 1 WHERE id = ?");
+                        $stmtRestore->execute([$aracId]);
                     }
 
                     try {
@@ -1097,13 +1101,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         continue;
 
                     try {
-                        // Mevcut aracı kontrol et
-                        $mevcutArac = $Arac->plakaKontrol($plaka);
+                        // Mevcut aracı kontrol et (silinenler dahil)
+                        $mevcutArac = $Arac->plakaKontrol($plaka, null, true);
 
                         $newData = [
                             'firma_id' => $_SESSION['firma_id'],
                             'plaka' => $plaka,
-                            'aktif_mi' => 1
+                            'aktif_mi' => 1,
+                            'silinme_tarihi' => null // Geri getir veya sıfırla
                         ];
 
                         if ($mevcutArac) {

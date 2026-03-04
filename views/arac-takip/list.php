@@ -353,6 +353,15 @@ if ($filter === 'muayene') {
                                 </div>
                             </div>
 
+                            <?php
+                            // Zİmmetli ve Servisteki kesişim sayısını bul
+                            $zimmetliServistekiSayi = 0;
+                            foreach ($Arac->getServistekiAraclar() as $servistekiArac) {
+                                if (!empty($servistekiArac->zimmetli_personel_id)) {
+                                    $zimmetliServistekiSayi++;
+                                }
+                            }
+                            ?>
                             <!-- İstatistik Badge'leri -->
                             <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
                                 <span
@@ -383,6 +392,8 @@ if ($filter === 'muayene') {
                                     onclick="location.href='index.php?p=arac-takip/list&filter=serviste'">
                                     <i class="bx bx-wrench me-1"></i> Servisteki:
                                     <?php echo $Arac->getServistekiAracSayisi(); ?>
+                                    <?php if ($zimmetliServistekiSayi > 0)
+                                        echo "<small>({$zimmetliServistekiSayi}'i Zimmetli)</small>"; ?>
                                 </span>
                             </div>
 
