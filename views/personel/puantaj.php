@@ -54,12 +54,12 @@ use App\Service\Gate;
 
         .table-puantaj {
             border-collapse: separate !important;
-            border-spacing: 2px !important;
+            border-spacing: 4px !important;
         }
 
         .table-puantaj th:not(.sticky-col) {
-            width: 32px;
-            height: 32px;
+            width: 35px;
+            height: 35px;
             padding: 0 !important;
             border: 1px solid #ced4da !important;
             border-radius: 4px;
@@ -70,8 +70,8 @@ use App\Service\Gate;
         }
 
         .table-puantaj .day-cell {
-            width: 32px;
-            height: 32px;
+            width: 35px;
+            height: 35px;
             cursor: cell;
             user-select: none;
             position: relative;
@@ -168,9 +168,9 @@ use App\Service\Gate;
 
         .table-puantaj .personel-info {
             text-align: left;
-            width: 200px !important;
-            min-width: 200px !important;
-            max-width: 200px !important;
+            width: 220px !important;
+            min-width: 220px !important;
+            max-width: 220px !important;
             font-size: 11px;
             white-space: nowrap;
             overflow: hidden;
@@ -182,7 +182,7 @@ use App\Service\Gate;
         }
 
         .table-puantaj .personel-info .d-flex {
-            width: 190px;
+            width: 210px;
         }
 
         .text-truncate-name {
@@ -283,50 +283,39 @@ use App\Service\Gate;
             background-color: #ffffff !important;
             z-index: 20;
             border: 1px solid #ced4da !important;
-            width: 200px !important;
-            min-width: 200px !important;
-            max-width: 200px !important;
+            width: 220px !important;
+            min-width: 220px !important;
+            max-width: 220px !important;
         }
 
         .sticky-col-right-1 {
             position: sticky;
-            right: 42px;
+            right: 80px;
             background-color: #f8f9fa !important;
-            z-index: 35;
+            z-index: 20;
             border: 1px solid #ced4da !important;
-            width: 40px !important;
-            min-width: 40px !important;
-            max-width: 40px !important;
+            width: 80px !important;
+            min-width: 80px !important;
+            max-width: 80px !important;
             text-align: center;
             vertical-align: middle;
             font-size: 11px;
-            font-weight: 700;
-            padding: 0 !important;
-        }
-
-        .table-puantaj thead th.sticky-col-right-1,
-        .table-puantaj thead th.sticky-col-right-2 {
-            height: 90px !important;
-            padding: 5px 0 !important;
-            writing-mode: vertical-rl;
-            transform: rotate(180deg);
-            white-space: nowrap;
+            font-weight: 600;
         }
 
         .sticky-col-right-2 {
             position: sticky;
             right: 0;
             background-color: #f8f9fa !important;
-            z-index: 35;
+            z-index: 20;
             border: 1px solid #ced4da !important;
-            width: 40px !important;
-            min-width: 40px !important;
-            max-width: 40px !important;
+            width: 80px !important;
+            min-width: 80px !important;
+            max-width: 80px !important;
             text-align: center;
             vertical-align: middle;
             font-size: 11px;
-            font-weight: 700;
-            padding: 0 !important;
+            font-weight: 600;
         }
 
         /* Nöbet'ten gelen Pill-Tab Stili */
@@ -486,8 +475,7 @@ use App\Service\Gate;
         body.puantaj-fullscreen .card-izin-turleri {
             top: 70px !important;
         }
-
-        footer {
+        footer{
             display: none;
         }
 
@@ -534,10 +522,6 @@ use App\Service\Gate;
             box-shadow: 0 1px 0 0 #fff;
         }
 
-        .table-puantaj thead th.sticky-col {
-            height: 40px !important;
-        }
-
         /* Footer sticky - wrapper içinde, ekranın altında sabit kalır */
         .table-puantaj tfoot {
             position: sticky;
@@ -563,39 +547,41 @@ use App\Service\Gate;
         }
 
         /* Footer sol ve sağ kolonlar */
-        .table-puantaj tfoot td.sticky-col,
-        .table-puantaj tfoot td.sticky-col-right-1,
+        .table-puantaj tfoot td.sticky-col {
+            z-index: 60;
+            background-color: #f8f9fa !important;
+            border-bottom-left-radius: 8px;
+        }
+
+        .table-puantaj tfoot td.sticky-col-right-1 {
+            z-index: 60;
+            background-color: #f8f9fa !important;
+        }
+
         .table-puantaj tfoot td.sticky-col-right-2 {
-            z-index: 100 !important;
-            background-color: #f0f2f5 !important;
-            opacity: 1 !important;
-            box-shadow: none !important;
+            z-index: 60;
+            background-color: #f8f9fa !important;
+            border-bottom-right-radius: 8px;
         }
 
         [data-bs-theme="dark"] .table-puantaj tfoot td.sticky-col,
         [data-bs-theme="dark"] .table-puantaj tfoot td.sticky-col-right-1,
         [data-bs-theme="dark"] .table-puantaj tfoot td.sticky-col-right-2 {
-            background-color: #32394e !important;
-            opacity: 1 !important;
-            box-shadow: none !important;
+            background-color: #282f36 !important;
         }
 
         /* Header'daki sol ve sağ kolonun z-index'i en yüksek olmalı */
         .table-puantaj thead th.sticky-col,
         .table-puantaj thead th.sticky-col-right-1,
         .table-puantaj thead th.sticky-col-right-2 {
-            z-index: 100 !important;
-            background-color: #f0f2f5 !important;
-            opacity: 1 !important;
-            box-shadow: none !important;
+            z-index: 60;
+            background-color: #f8f9fa !important;
         }
 
         [data-bs-theme="dark"] .table-puantaj thead th.sticky-col,
         [data-bs-theme="dark"] .table-puantaj thead th.sticky-col-right-1,
         [data-bs-theme="dark"] .table-puantaj thead th.sticky-col-right-2 {
-            background-color: #32394e !important;
-            opacity: 1 !important;
-            box-shadow: none !important;
+            background-color: #282f36 !important;
         }
 
         /* Puantaj Preloader */
@@ -890,4 +876,6 @@ use App\Service\Gate;
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="views/personel/js/puantaj_izin.js"></script>

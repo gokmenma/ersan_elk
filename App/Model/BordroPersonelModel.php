@@ -978,40 +978,16 @@ class BordroPersonelModel extends Model
      */
     public function olusturAvansKesintileri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
     {
-        // Onaylanmış avansları hedef döneme göre getir.
-        // İş kuralı:
-        // - Talep günü 14 veya daha küçükse avans bir önceki ay döneminden kesilir.
-        // - Aksi halde talep edilen ayın döneminden kesilir.
-        // - Halihazırda başka bir aktif döneme bağlanmış avans tekrar eşleştirilmez.
+        // Dönem içindeki onaylanmış avansları getir
+        // NOT: talep_tarihi datetime formatında olduğu için DATE() fonksiyonu ile karşılaştırıyoruz
+        // Aksi halde 2026-01-31 14:30:00 gibi bir değer, 2026-01-31 bitiş tarihinden büyük sayılır
         $sql = $this->db->prepare("
             SELECT id, tutar, talep_tarihi, aciklama
             FROM personel_avanslari
-            WHERE personel_id = ?
-              AND durum = 'onaylandi'
-              AND silinme_tarihi IS NULL
-              AND (
-                    CASE
-                        WHEN DAY(DATE(talep_tarihi)) <= 14
-                            THEN DATE_FORMAT(DATE_SUB(DATE(talep_tarihi), INTERVAL 1 MONTH), '%Y-%m-01')
-                        ELSE DATE_FORMAT(DATE(talep_tarihi), '%Y-%m-01')
-                    END
-                  ) = ?
-              AND (
-                    CASE
-                        WHEN DAY(DATE(talep_tarihi)) <= 14
-                            THEN LAST_DAY(DATE_SUB(DATE(talep_tarihi), INTERVAL 1 MONTH))
-                        ELSE LAST_DAY(DATE(talep_tarihi))
-                    END
-                  ) = ?
-              AND NOT EXISTS (
-                    SELECT 1
-                    FROM personel_kesintileri pk
-                    WHERE pk.personel_id = personel_avanslari.personel_id
-                      AND pk.tur = 'avans'
-                      AND pk.silinme_tarihi IS NULL
-                      AND pk.tutar = personel_avanslari.tutar
-                      AND pk.aciklama LIKE CONCAT('[Avans] ', DATE_FORMAT(personel_avanslari.talep_tarihi, '%d.%m.%Y'), ' - %')
-                )
+            WHERE personel_id = ? 
+            AND durum = 'onaylandi'
+            AND silinme_tarihi IS NULL
+            AND DATE(talep_tarihi) BETWEEN ? AND ?
         ");
         $sql->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
         $avanslar = $sql->fetchAll(PDO::FETCH_OBJ);
