@@ -59,7 +59,7 @@ use App\Service\Gate;
 
         .table-puantaj th:not(.sticky-col):not(.sticky-col-right-1):not(.sticky-col-right-2) {
             width: 38px;
-            height: 46px;
+            height: 50px;
             padding: 4px 2px !important;
             border: none !important;
             border-radius: 6px;
@@ -512,15 +512,12 @@ use App\Service\Gate;
             max-height: calc(100vh - 395px);
             overflow: auto;
             background: #fff;
-            scroll-snap-type: y proximity;
-            scroll-padding-top: 75px;
+            /* Scroll snap removed for fluid scrolling without exact row jumps */
         }
 
-
-
-        /* Satır satır kaydırma */
+        /* Satır satır kaydırma kaldırıldı */
         .table-puantaj tbody tr {
-            scroll-snap-align: start;
+            
         }
 
         /* Thead sticky - wrapper içinde sabit kalır */

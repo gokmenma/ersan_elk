@@ -27,7 +27,7 @@ class Security
         $token = $_SESSION['user']->session_token ?? null;
         return hash_equals($_SESSION['csrf_token'], $token);
 
-   
+
     }
 
     public static function generatePassword($password)
@@ -40,48 +40,52 @@ class Security
         return password_verify($password, $hash);
     }
 
-    //encrypt//encrypt
-//encrypt
-public static function encrypt($data)
-{
-    if (empty($data)) {
-        return ''; // veya uygun bir hata mesajı döndürebilirsiniz
+    public static function encrypt($data)
+    {
+        if ($data === null || $data === '') {
+            return '';
+        }
+
+        $method = "AES-256-CBC";
+        $key = hash('sha256', 'mysecretkey', true); // Gerçek projelerde bu anahtar .env dosyasında olmalıdır
+        $iv = openssl_random_pseudo_bytes(16);
+
+        $encrypted = openssl_encrypt((string) $data, $method, $key, OPENSSL_RAW_DATA, $iv);
+
+        if ($encrypted === false) {
+            return '';
+        }
+
+        // IV + Encrypted birleştir ve base64 yap
+        $base64 = base64_encode($iv . $encrypted);
+
+        // URL'de sorun çıkarmaması için rawurlencode
+        return rawurlencode($base64);
     }
 
-    $method = "AES-256-GCM";
-    $key = hash('sha256', 'mysecretkey', true);
-    $iv = openssl_random_pseudo_bytes(12); // GCM için 12 byte IV kullanılır
-    $tag = null;
-    $encrypted_data = openssl_encrypt($data, $method, $key, OPENSSL_RAW_DATA, $iv, $tag);
-    //içinde + varsa onu değiştir
-    $result = str_replace('+', '-', $encrypted_data);
-    $result = str_replace('/', '_', $encrypted_data);
-    $result = str_replace('=', '*', $encrypted_data);
-    $result = base64_encode($iv . $tag . $encrypted_data);
-    return rawurlencode($result); // URL kodlaması ekle
-}
+    public static function decrypt($data)
+    {
+        // 0, null ve boş değer kontrolü
+        if ($data === '0' || $data === 0 || empty($data)) {
+            return 0;
+        }
 
-public static function decrypt($data)
-{
+        $method = "AES-256-CBC";
+        $key = hash('sha256', 'mysecretkey', true);
 
-      // 0 kontrolü ekle
-      if ($data === '0' || $data === 0 || $data === null) {
-        return 0;
+        // Önce URL decode, sonra base64 decode
+        $decoded = base64_decode(rawurldecode($data));
+
+        // En az 16 byte IV olmalı
+        if (strlen($decoded) <= 16) {
+            return 0;
+        }
+
+        $iv = substr($decoded, 0, 16);
+        $encrypted = substr($decoded, 16);
+
+        $decrypted = openssl_decrypt($encrypted, $method, $key, OPENSSL_RAW_DATA, $iv);
+
+        return ($decrypted !== false) ? $decrypted : 0;
     }
-
-    // Boş değer kontrolü
-    if (empty($data)) {
-        return 0;
-    }
-
-
-    $method = "AES-256-GCM";
-    $key = hash('sha256', 'mysecretkey', true);
-    $data = rawurldecode($data); // URL kodlamasını çöz
-    $data = base64_decode($data); // base64 kodlamasını çöz
-    $iv = substr($data, 0, 12); // GCM için 12 byte IV kullanılır
-    $tag = substr($data, 12, 16); // 16 byte authentication tag
-    $encrypted_data = substr($data, 28); // IV (12 byte) + Tag (16 byte) sonrası şifreli veri
-    return openssl_decrypt($encrypted_data, $method, $key, OPENSSL_RAW_DATA, $iv, $tag);
-}
 }
