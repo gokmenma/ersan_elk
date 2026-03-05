@@ -257,43 +257,100 @@ $title = 'Talepler & Mazeretler';
 </div>
 </div>
 
+<!-- Segmented Control CSS -->
+<style>
+    .segmented-control {
+        display: flex;
+        width: 100%;
+        background-color: #f1f5f9;
+        border-radius: 0.5rem;
+        padding: 0.25rem;
+        position: relative;
+        border: 1px solid #e2e8f0;
+    }
+    .segmented-control input[type="radio"] { display: none; }
+    .segmented-control label {
+        flex: 1;
+        text-align: center;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        border-radius: 0.375rem;
+        font-weight: 500;
+        font-size: 0.875rem;
+        color: #64748b;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        user-select: none;
+        margin-bottom: 0;
+        line-height: 1.2;
+    }
+    .segmented-control input[type="radio"]:checked+label {
+        background-color: #ffffff;
+        color: #2563eb;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        font-weight: 600;
+    }
+    .segmented-control label:hover:not(:active) { color: #1e293b; }
+</style>
+
 <!-- Nöbet Devir Modal -->
 <div class="modal fade" id="devirModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="bx bx-user-plus me-2"></i>Nöbeti Devret</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-header bg-light border-bottom">
+                <div class="modal-title-section d-flex align-items-center">
+                    <div class="avatar-xs me-2 rounded bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                        <i data-feather="layers" class="text-primary" style="width:18px;height:18px;"></i>
+                    </div>
+                    <div>
+                        <h6 class="modal-title text-dark mb-0 fw-bold">Nöbeti Devret</h6>
+                        <p class="text-muted small mb-0" style="font-size: 0.7rem;">Lütfen formu eksiksiz doldurun.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="devir-form">
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <input type="hidden" name="nobet_id" id="devir-nobet-id">
                     <div class="mb-3">
-                        <label class="form-label">Mevcut Personel</label>
-                        <input type="text" class="form-control" id="devir-mevcut-personel" disabled>
+                        <?php echo Form::FormFloatInput('text', 'devir-mevcut-personel', '', null, 'Mevcut Personel', 'user', 'form-control', false, null, 'on', true, '', true); ?>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Yeni Personel</label>
-                        <select class="form-select" name="yeni_personel_id" id="devir-yeni-personel" required>
-                            <option value="">Personel Seçin</option>
-                            <?php foreach ($personeller as $p): ?>
-                                <option value="<?= \App\Helper\Security::encrypt($p->id) ?>">
-                                    <?= htmlspecialchars($p->adi_soyadi) ?> -
-                                    <?= $p->departman ?? '' ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <label class="form-label d-block fw-bold text-muted small text-uppercase mb-2">Personel Seçimi</label>
+                        <div class="segmented-control mb-3">
+                            <input type="radio" name="devir_personel_turu" id="devirPersonelTuruKesmeAcma" value="kesme_acma" checked>
+                            <label for="devirPersonelTuruKesmeAcma">
+                                <i data-feather="scissors" style="width:16px;height:16px;"></i> Kesme Açma
+                            </label>
+                            <input type="radio" name="devir_personel_turu" id="devirPersonelTuruTum" value="all">
+                            <label for="devirPersonelTuruTum">
+                                <i data-feather="users" style="width:16px;height:16px;"></i> Tüm Personeller
+                            </label>
+                        </div>
+                        <?php
+                        $kesmeAcmaPersoneller = array_filter($personeller, function ($p) {
+                            return stripos($p->departman ?? '', 'Kesme') !== false || stripos($p->departman ?? '', 'Açma') !== false;
+                        });
+                        $personelOptions = [];
+                        foreach ($kesmeAcmaPersoneller as $p) {
+                            $personelOptions[\App\Helper\Security::encrypt($p->id)] = $p->adi_soyadi . ' - ' . ($p->departman ?? '');
+                        }
+                        echo Form::FormSelect2('yeni_personel_id', $personelOptions, null, 'Personel Seçin', 'users', 'key', '', 'form-select select2', true, 'width:100%', '', 'devir-yeni-personel');
+                        ?>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Açıklama</label>
-                        <textarea class="form-control" name="aciklama" rows="2"
-                            placeholder="Devir sebebi..."></textarea>
+                        <?php echo Form::FormFloatTextarea('aciklama', '', 'Devir sebebi...', 'Açıklama', 'file-text'); ?>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bx bx-transfer me-1"></i>Devret
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                        İptal
+                    </button>
+                    <button type="submit" class="btn btn-dark">
+                        <i data-feather="shuffle" style="width:14px;height:14px;" class="me-1"></i> Devret
                     </button>
                 </div>
             </form>
@@ -429,7 +486,8 @@ $title = 'Talepler & Mazeretler';
                     let html = '';
                     data.data.forEach(m => {
                         const islemButtons = !showHistory ? `
-                            <button class="btn btn-sm btn-primary" onclick="openDevirModal('${m.id}', '${m.personel_adi}')" title="Başka Personele Devret"><i class="bx bx-user-plus"></i> Devret</button>
+                            <button class="btn btn-sm btn-primary me-1" onclick="openDevirModal('${m.id}', '${m.personel_adi}')" title="Başka Personele Devret"><i class="bx bx-user-plus"></i> Devret</button>
+                            <button class="btn btn-sm btn-warning me-1" onclick="reddetMazeret('${m.id}')" title="Mazereti Reddet"><i class="bx bx-x-circle"></i> Reddet</button>
                             <button class="btn btn-sm btn-outline-danger" onclick="mazeretIptalEt('${m.id}')" title="Nöbeti İptal Et"><i class="bx bx-x"></i></button>
                         ` : `<span class="badge bg-success">İşlem Yapıldı</span>`;
                         html += `<tr>
@@ -644,6 +702,70 @@ $title = 'Talepler & Mazeretler';
             });
         };
 
+        // Mazeret Reddetme
+        window.reddetMazeret = function (id) {
+            Swal.fire({
+                title: 'Mazereti Reddet',
+                input: 'textarea',
+                inputLabel: 'Red Sebebi',
+                inputPlaceholder: 'Mazeretin neden reddedildiğini açıklayın...',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Reddet',
+                cancelButtonText: 'İptal'
+            }).then(r => {
+                if (r.isConfirmed) {
+                    fetch('views/nobet/api.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ action: 'reddet-mazeret', nobet_id: id, red_nedeni: r.value || '' })
+                    }).then(r => r.json()).then(data => {
+                        if (data.success || data.status === 'success') {
+                            showToast('success', data.message || 'Mazeret reddedildi');
+                            window.loadTaleplerVeMazeretler();
+                        } else {
+                            showToast('error', data.message || 'Bir hata oluştu');
+                        }
+                    });
+                }
+            });
+        };
+
+        // Personel Filtre değişimi (Segmented Control)
+        document.querySelectorAll('input[name="devir_personel_turu"]').forEach(radio => {
+            radio.addEventListener('change', function () {
+                const type = this.value;
+                const select = document.getElementById('devir-yeni-personel');
+                
+                fetch('views/nobet/api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ action: 'get-personel-list', type: type })
+                }).then(r => r.json()).then(data => {
+                    if (data.success && data.data) {
+                        // Select2 varsa destroy
+                        if ($(select).data('select2')) {
+                            $(select).select2('destroy');
+                        }
+                        select.innerHTML = '<option value="">Personel Seçin</option>';
+                        data.data.forEach(p => {
+                            const opt = document.createElement('option');
+                            opt.value = p.id;
+                            opt.textContent = p.adi_soyadi + ' - ' + (p.departman || '');
+                            select.appendChild(opt);
+                        });
+                        // Re-init select2
+                        $(select).select2({
+                            dropdownParent: $('#devirModal'),
+                            placeholder: 'Personel Seçin',
+                            allowClear: true
+                        });
+                    }
+                });
+            });
+        });
+
         document.getElementById('devir-form').addEventListener('submit', function (e) {
             e.preventDefault();
             const fd = new FormData(this);
@@ -657,6 +779,20 @@ $title = 'Talepler & Mazeretler';
                 console.error('Devir hatası:', e);
                 showToast('error', 'İşlem sırasında bir hata oluştu');
             });
+        });
+
+        // Modal açıldığında feather ikonları render et
+        document.getElementById('devirModal').addEventListener('shown.bs.modal', function () {
+            if (typeof feather !== 'undefined') feather.replace();
+            // Select2 init
+            const select = document.getElementById('devir-yeni-personel');
+            if (select && !$(select).data('select2')) {
+                $(select).select2({
+                    dropdownParent: $('#devirModal'),
+                    placeholder: 'Personel Seçin',
+                    allowClear: true
+                });
+            }
         });
 
         function showToast(type, message) {

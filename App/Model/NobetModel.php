@@ -944,6 +944,21 @@ class NobetModel extends Model
     }
 
     /**
+     * Mazeret bildirimini reddeder
+     * Nöbet durumunu 'mazeret_bildirildi' -> 'aktif' olarak geri döndürür
+     */
+    public function reddetMazeret($nobet_id, $red_nedeni = '')
+    {
+        $sql = "UPDATE {$this->table} SET 
+                durum = 'aktif', 
+                mazeret_aciklama = NULL,
+                aciklama = CONCAT(IFNULL(aciklama,''), ' [Mazeret Reddedildi: ', :red_nedeni, ']')
+                WHERE id = :id AND durum = 'mazeret_bildirildi'";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([':id' => $nobet_id, ':red_nedeni' => $red_nedeni]);
+    }
+
+    /**
      * Talep istatistiklerini getirir (Yönetici Dashboard için)
      */
     public function getTalepIstatistikleri($ay = null, $yil = null)

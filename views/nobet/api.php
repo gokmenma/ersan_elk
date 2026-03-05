@@ -547,8 +547,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // =====================================================
             case 'get-personel-list':
                 $departman = $_POST['departman'] ?? null;
+                $type = $_POST['type'] ?? 'all';
 
                 $personeller = $Personel->all(true, 'nobet');
+
+                // Kesme/Açma filtresi
+                if ($type === 'kesme_acma') {
+                    $personeller = array_filter($personeller, function ($p) {
+                        return stripos($p->departman ?? '', 'Kesme') !== false || stripos($p->departman ?? '', 'Açma') !== false;
+                    });
+                }
 
                 // Departmana göre filtrele
                 // Departman Renk Haritası Oluştur
@@ -763,6 +771,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 if ($result) {
                     echo json_encode(['success' => true, 'message' => 'Talep reddedildi.']);
+                } else {
+                    throw new Exception("İşlem başarısız.");
+                }
+                break;
+
+            case 'reddet-mazeret':
+                $nobet_id = Security::decrypt($_POST['nobet_id']);
+                $red_nedeni = $_POST['red_nedeni'] ?? '';
+
+                $nobet = $Nobet->find($nobet_id);
+                if (!$nobet || $nobet->durum !== 'mazeret_bildirildi') {
+                    throw new Exception("Mazeret bulunamadı veya zaten işlem görmüş.");
+                }
+
+                $result = $Nobet->reddetMazeret($nobet_id, $red_nedeni);
+
+                if ($result) {
+                    $SystemLog->logAction($userId, 'Mazeret Reddi', "{$nobet->adi_soyadi}'nin {$nobet->nobet_tarihi} tarihli mazeret bildirimi reddedildi. Sebep: {$red_nedeni}");
+                    echo json_encode(['success' => true, 'message' => 'Mazeret reddedildi. Nöbet tekrar aktif duruma alındı.']);
                 } else {
                     throw new Exception("İşlem başarısız.");
                 }
