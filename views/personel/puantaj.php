@@ -54,12 +54,12 @@ use App\Service\Gate;
 
         .table-puantaj {
             border-collapse: separate !important;
-            border-spacing: 4px !important;
+            border-spacing: 2px !important;
         }
 
         .table-puantaj th:not(.sticky-col) {
-            width: 35px;
-            height: 35px;
+            width: 30px;
+            height: 30px;
             padding: 0 !important;
             border: 1px solid #ced4da !important;
             border-radius: 4px;
@@ -70,8 +70,8 @@ use App\Service\Gate;
         }
 
         .table-puantaj .day-cell {
-            width: 35px;
-            height: 35px;
+            width: 30px;
+            height: 30px;
             cursor: cell;
             user-select: none;
             position: relative;
@@ -115,14 +115,14 @@ use App\Service\Gate;
         }
 
         .izin-box {
-            width: 35px;
-            height: 35px;
+            width: 30px;
+            height: 30px;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 4px;
             font-weight: 700;
-            font-size: 12px;
+            font-size: 11px;
             cursor: grab;
             transition: all 0.2s;
             user-select: none;
@@ -138,7 +138,7 @@ use App\Service\Gate;
             flex-direction: column;
             align-items: center;
             gap: 0;
-            width: 40px;
+            width: 35px;
         }
 
         .izin-item-container span {
@@ -168,26 +168,26 @@ use App\Service\Gate;
 
         .table-puantaj .personel-info {
             text-align: left;
-            width: 220px !important;
-            min-width: 220px !important;
-            max-width: 220px !important;
+            width: 180px !important;
+            min-width: 180px !important;
+            max-width: 180px !important;
             font-size: 11px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            padding: 10px 15px !important;
+            padding: 8px 12px !important;
             vertical-align: middle;
             border: 1px dashed #ced4da !important;
             border-radius: 4px;
         }
 
         .table-puantaj .personel-info .d-flex {
-            width: 210px;
+            width: 170px;
         }
 
         .text-truncate-name {
             display: inline-block;
-            max-width: 170px;
+            max-width: 150px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -283,20 +283,20 @@ use App\Service\Gate;
             background-color: #ffffff !important;
             z-index: 20;
             border: 1px solid #ced4da !important;
-            width: 220px !important;
-            min-width: 220px !important;
-            max-width: 220px !important;
+            width: 180px !important;
+            min-width: 180px !important;
+            max-width: 180px !important;
         }
 
         .sticky-col-right-1 {
             position: sticky;
-            right: 80px;
+            right: 72px;
             background-color: #f8f9fa !important;
             z-index: 20;
             border: 1px solid #ced4da !important;
-            width: 80px !important;
-            min-width: 80px !important;
-            max-width: 80px !important;
+            width: 70px !important;
+            min-width: 70px !important;
+            max-width: 70px !important;
             text-align: center;
             vertical-align: middle;
             font-size: 11px;
@@ -309,9 +309,9 @@ use App\Service\Gate;
             background-color: #f8f9fa !important;
             z-index: 20;
             border: 1px solid #ced4da !important;
-            width: 80px !important;
-            min-width: 80px !important;
-            max-width: 80px !important;
+            width: 70px !important;
+            min-width: 70px !important;
+            max-width: 70px !important;
             text-align: center;
             vertical-align: middle;
             font-size: 11px;
@@ -619,7 +619,121 @@ use App\Service\Gate;
             background: #2a3042;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
         }
-    </style>
+        .custom-context-menu {
+        display: none;
+        position: fixed;
+        z-index: 10000;
+        background: white;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        border-radius: 10px;
+        padding: 6px 0;
+        min-width: 200px;
+        animation: menuFadeIn 0.2s ease-out;
+    }
+
+    @keyframes menuFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-5px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .custom-context-menu .menu-item {
+        padding: 10px 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #374151;
+        transition: all 0.2s;
+    }
+
+    .custom-context-menu .menu-item:hover {
+        background: #f9fafb;
+        color: #4f46e5;
+    }
+
+    .custom-context-menu .menu-item i,
+    .custom-context-menu .menu-item .menu-item-code {
+        font-size: 11px;
+        width: 28px;
+        height: 28px;
+        line-height: 26px;
+        text-align: center;
+        border-radius: 6px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .custom-context-menu .menu-divider {
+        height: 1px;
+        background: #f1f5f9;
+        margin: 6px 0;
+    }
+
+    .custom-context-menu .menu-header {
+        padding: 6px 16px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .custom-context-menu .menu-item.active {
+        background: #f1f5f9;
+        color: #4f46e5;
+        font-weight: 700;
+    }
+
+    .custom-context-menu .menu-item.active::after {
+        content: '\eb7a';
+        font-family: 'boxicons' !important;
+        margin-left: auto;
+        font-size: 18px;
+    }
+
+    .custom-context-menu .menu-item.text-danger:hover {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+    /* Dark Mode Styles */
+    [data-bs-theme="dark"] .custom-context-menu {
+        background: #2a3042;
+        border-color: #32394e;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+    }
+
+    [data-bs-theme="dark"] .custom-context-menu .menu-item {
+        color: #a6b0cf;
+    }
+
+    [data-bs-theme="dark"] .custom-context-menu .menu-item:hover {
+        background: #32394e;
+        color: #fff;
+    }
+
+    [data-bs-theme="dark"] .custom-context-menu .menu-divider {
+        background: #32394e;
+    }
+
+    [data-bs-theme="dark"] .custom-context-menu .menu-header {
+        color: #74788d;
+    }
+
+    [data-bs-theme="dark"] .custom-context-menu .menu-item.active {
+        background: #32394e;
+        color: #fff;
+    }
+</style>
 
     <div id="puantaj-full-container">
         <div class="row">
@@ -872,6 +986,20 @@ use App\Service\Gate;
                 </button>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Custom Context Menu -->
+<div id="custom-context-menu" class="custom-context-menu shadow-lg">
+    <div class="menu-header" id="menu-header-text">İŞLEMLER</div>
+    <div class="menu-divider"></div>
+    <div id="context-menu-items">
+        <!-- Dinamik olarak dolacak -->
+    </div>
+    <div class="menu-divider"></div>
+    <div class="menu-item text-danger" id="menu-item-delete">
+        <i class="bx bx-trash"></i>
+        <span>Sil</span>
     </div>
 </div>
 

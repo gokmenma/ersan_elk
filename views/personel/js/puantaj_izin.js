@@ -6,6 +6,8 @@ $(document).ready(function () {
   let personnelMap = {}; // { nameOrTc: personObj }
   let ucretsizIzinIds = new Set();
   let excelReplacedPersonnel = new Set(); // Excel'den yüklenen personellerin ID'leri
+  let ucretliDefinitions = [];
+  let ucretsizDefinitions = [];
 
   // Initial Load from LocalStorage or default
   const savedAy = localStorage.getItem("puantaj_ay");
@@ -188,8 +190,14 @@ $(document).ready(function () {
             },
           });
         };
-        if (res.data.ucretli) render(res.data.ucretli, "ucretli-list", false);
-        if (res.data.ucretsiz) render(res.data.ucretsiz, "ucretsiz-list", true);
+        if (res.data.ucretli) {
+          ucretliDefinitions = res.data.ucretli;
+          render(res.data.ucretli, "ucretli-list", false);
+        }
+        if (res.data.ucretsiz) {
+          ucretsizDefinitions = res.data.ucretsiz;
+          render(res.data.ucretsiz, "ucretsiz-list", true);
+        }
 
         // İzin türleri yüklendikten sonra sticky yüksekliği güncelle
         setTimeout(updateStickyHeights, 100);
@@ -634,6 +642,184 @@ $(document).ready(function () {
         },
       });
     });
+
+    // Right-click Context Menu Logic
+    $(".day-cell").on("contextmenu", function (e) {
+      e.preventDefault();
+      if ($(this).hasClass("disabled")) return;
+
+      const cell = $(this);
+      const x = e.clientX;
+      const y = e.clientY;
+
+      const contextMenu = $("#custom-context-menu");
+      const menuItemsContainer = $("#context-menu-items");
+      menuItemsContainer.empty();
+
+      // Determine active list (Paid/Unpaid)
+      const isUcretliActive = $("#ucretli-tab").hasClass("active") || $("#ucretli-list").is(":visible");
+      
+      const definitions = isUcretliActive
+        ? ucretliDefinitions
+        : ucretsizDefinitions;
+
+      const pId = cell.data("personel-id");
+      const date = cell.data("date");
+      const key = `${pId}-${date}`;
+
+      // Check current cell state
+      const unsaved = unsavedChanges[key];
+      const hasContent = cell.find(".cell-content").length > 0;
+      const currentTypeId = unsaved
+        ? (unsaved.type_id || unsaved.typeId)?.toString()
+        : cell.find(".cell-content").data("id")?.toString();
+
+      // Header text
+      const personnelName = cell.closest("tr").find(".text-truncate-name").text();
+      $("#menu-header-text").text(personnelName + " - " + date);
+
+      // Add leave types to menu
+      definitions.forEach((item) => {
+        const shortCode = getShortCode(item);
+        const isActive = currentTypeId === item.id.toString();
+        const activeClass = isActive ? "active" : "";
+
+        const style = getStyleFromTailwind(item.renk);
+        const itemHtml = `
+          <div class="menu-item ${activeClass}" data-id="${item.id}" data-shortcode="${shortCode}" data-name="${item.tur_adi}" data-color="${item.renk}">
+            <div class="menu-item-code" style="background-color: ${style.bg} !important; color: ${style.color} !important; border: 1px solid ${style.color}33;">
+              ${shortCode}
+            </div>
+            <span>${item.tur_adi}</span>
+          </div>
+        `;
+        menuItemsContainer.append(itemHtml);
+      });
+
+      // Position and show menu
+      contextMenu.css({
+        display: "block",
+        left: x + "px",
+        top: y + "px",
+      });
+
+      // Handle window boundaries
+      const menuWidth = contextMenu.outerWidth();
+      const menuHeight = contextMenu.outerHeight();
+      const windowWidth = $(window).width();
+      const windowHeight = $(window).height();
+
+      if (x + menuWidth > windowWidth)
+        contextMenu.css("left", windowWidth - menuWidth - 10 + "px");
+      if (y + menuHeight > windowHeight)
+        contextMenu.css("top", windowHeight - menuHeight - 10 + "px");
+
+      // Store cell reference
+      contextMenu.data("target-cell", cell);
+
+      // Disable delete button if no entry
+      if (!hasContent) {
+        $("#menu-item-delete").addClass("d-none");
+      } else {
+        $("#menu-item-delete").removeClass("d-none");
+      }
+    });
+
+    // Menu Item Clicks
+    $(document)
+      .off("click", "#context-menu-items .menu-item")
+      .on("click", "#context-menu-items .menu-item", function () {
+        const contextMenu = $("#custom-context-menu");
+        const cell = contextMenu.data("target-cell");
+        const item = $(this).data();
+
+        // Apply selected leave
+        applyLeaveToCell(cell[0], {
+          id: item.id,
+          name: item.name,
+          color: item.color,
+          shortCode: item.shortcode,
+        });
+
+        contextMenu.hide();
+      });
+
+    $("#menu-item-delete")
+      .off("click")
+      .on("click", function () {
+        const contextMenu = $("#custom-context-menu");
+        const cell = contextMenu.data("target-cell");
+        const pId = cell.data("personel-id");
+        const date = cell.data("date");
+        const key = `${pId}-${date}`;
+
+        const content = cell.find(".cell-content");
+        if (content.data("is-default") === true) {
+          contextMenu.hide();
+          return;
+        }
+
+        const isUnsaved = cell.hasClass("unsaved");
+
+        if (isUnsaved) {
+          removeUnsaved(key, { target: cell.find(".btn-delete-cell")[0], stopPropagation: () => {} });
+        } else {
+          const delBtn = cell.find(".btn-delete-cell")[0];
+          if (delBtn) {
+            delBtn.click();
+          }
+        }
+
+        contextMenu.hide();
+      });
+
+    // Close menu on click outside
+    $(document).on("click mousedown", function (e) {
+      if (!$(e.target).closest("#custom-context-menu").length) {
+        $("#custom-context-menu").hide();
+      }
+    });
+  }
+
+  function applyLeaveToCell(cell, type) {
+    const pId = cell.dataset.personelId;
+    const date = cell.dataset.date;
+    const key = `${pId}-${date}`;
+
+    // Add to unsaved changes
+    unsavedChanges[key] = {
+      personel_id: pId,
+      date: date,
+      type_id: type.id,
+      name: type.name,
+      color: type.color,
+      shortCode: type.shortCode,
+    };
+
+    // Render locally
+    const style = getStyleFromTailwind(type.color);
+    $(cell)
+      .attr(
+        "style",
+        `background-color: ${style.bg} !important; color: ${style.color} !important; border: 1px solid ${style.color}33 !important;`,
+      )
+      .addClass("has-entry unsaved");
+
+    $(cell).html(`
+      <div class="cell-content draggable-izin" 
+           data-bs-toggle="tooltip" 
+           title="${type.name}" 
+           data-id="${type.id}" 
+           data-shortcode="${type.shortCode}"
+           data-name="${type.name}"
+           data-color="${type.color}"
+           style="font-weight: 700;">
+          ${type.shortCode}
+          <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
+      </div>`);
+
+    initTooltips();
+    updateRowTotals(pId);
   }
 
   function updateRowTotals(pId) {
@@ -1532,6 +1718,22 @@ $(document).ready(function () {
 
         // Tarihi oluştur
         const dateStr = `${yil}-${ay}-${dayNum.toString().padStart(2, "0")}`;
+        const currentDate = new Date(yil, ay - 1, dayNum);
+
+        // İşe giriş kontrolü - Giriş tarihinden önceki günleri engelle
+        if (
+          person.ise_giris_tarihi &&
+          person.ise_giris_tarihi !== "0000-00-00" &&
+          person.ise_giris_tarihi !== null
+        ) {
+          const girisParts = person.ise_giris_tarihi.split("-");
+          const girisDate = new Date(
+            parseInt(girisParts[0]),
+            parseInt(girisParts[1]) - 1,
+            parseInt(girisParts[2]),
+          );
+          if (currentDate < girisDate) return;
+        }
 
         // İşten çıkış kontrolü - Çıkış tarihinden sonraki günleri engelle
         if (
@@ -1545,7 +1747,6 @@ $(document).ready(function () {
             parseInt(cikisParts[1]) - 1,
             parseInt(cikisParts[2]),
           );
-          const currentDate = new Date(yil, ay - 1, dayNum);
           if (currentDate > cikisDate) return;
         }
 
