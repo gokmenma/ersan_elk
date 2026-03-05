@@ -1144,14 +1144,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $apiData = [];
 
         // Ekip ve personel lookup
-        $stmtAllEkip = $SayacDegisimModel->db->prepare("SELECT id, tur_adi, grup_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
+        $stmtAllEkip = $SayacDegisimModel->db->prepare("SELECT id, tur_adi, grup FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
         $stmtAllEkip->execute();
         $ekipKodlariByNo = [];
         $ekipKodlariByName = [];
         while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
             $name = trim($ek['tur_adi']);
             $ekipKodlariByName[mb_strtolower($name, 'UTF-8')] = $ek['id'];
-            $groupName = trim((string) ($ek['grup_adi'] ?? ''));
+            $groupName = trim((string) ($ek['grup'] ?? ''));
             if ($groupName !== '') {
                 $ekipKodlariByName[mb_strtolower($groupName, 'UTF-8')] = $ek['id'];
             }
@@ -1761,14 +1761,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // $Zimmet dosyanın başında global olarak tanımlanmış (line 22)
 
         // 1. Ekip ve Personel lookup verilerini yükle
-        $stmtAllEkip = $Puantaj->db->prepare("SELECT id, tur_adi, grup_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
+        $stmtAllEkip = $Puantaj->db->prepare("SELECT id, tur_adi, grup FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
         $stmtAllEkip->execute();
         $ekipKodlariByNo = [];
         $ekipKodlariByName = [];
         while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
             $name = trim($ek['tur_adi']);
             $ekipKodlariByName[mb_strtolower($name, 'UTF-8')] = $ek['id'];
-            $groupName = trim((string) ($ek['grup_adi'] ?? ''));
+            $groupName = trim((string) ($ek['grup'] ?? ''));
             if ($groupName !== '') {
                 $ekipKodlariByName[mb_strtolower($groupName, 'UTF-8')] = $ek['id'];
             }
@@ -2136,11 +2136,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
         }
 
-        $stmtAllEkip = $EndeksOkuma->db->prepare("SELECT id, tur_adi, grup_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
+        $stmtAllEkip = $EndeksOkuma->db->prepare("SELECT id, tur_adi, grup FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
         $stmtAllEkip->execute();
         $ekipKodlari = [];
         while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
-            $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim(((string) ($ek['grup_adi'] ?? '')) . ' ' . ((string) ($ek['tur_adi'] ?? ''))));
+            $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim(((string) ($ek['grup'] ?? '')) . ' ' . ((string) ($ek['tur_adi'] ?? ''))));
             if ($teamNo > 0) {
                 $ekipKodlari[$teamNo] = $ek['id'];
             }
