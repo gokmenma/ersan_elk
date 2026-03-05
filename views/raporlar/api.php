@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($orderColumnIdx == 0) $orderColumn = 'p.adi_soyadi';
                     else $orderColumn = $columnsMap[$orderColumnIdx] ?? 'pi.baslangic_tarihi';
 
-                    $whereClause = "pi.silinme_tarihi IS NULL AND p.firma_id = ? AND (pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?)";
+                    $whereClause = "pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND (pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?)";
                     $params = [$firmaId, $end_date, $start_date];
 
                     if (!empty($searchValue)) {
@@ -135,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
 
                     // Toplam Kayıt Sayısı (Filtresiz)
-                    $stmtTotal = $db->prepare("SELECT COUNT(*) FROM personel_izinleri pi JOIN personel p ON pi.personel_id = p.id WHERE pi.silinme_tarihi IS NULL AND p.firma_id = ? AND (pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?)");
+                    $stmtTotal = $db->prepare("SELECT COUNT(*) FROM personel_izinleri pi JOIN personel p ON pi.personel_id = p.id WHERE pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND (pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?)");
                     $stmtTotal->execute([$firmaId, $end_date, $start_date]);
                     $recordsTotal = $stmtTotal->fetchColumn();
 
@@ -208,7 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                CONVERT(pk.aciklama USING utf8mb4) as aciklama
                         FROM personel_kesintileri pk
                         JOIN personel p ON pk.personel_id = p.id
-                        WHERE pk.silinme_tarihi IS NULL AND p.firma_id = :firmaId AND pk.olusturma_tarihi BETWEEN :startDate AND :endDate
+                        WHERE pk.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = :firmaId AND pk.olusturma_tarihi BETWEEN :startDate AND :endDate
                         UNION ALL
                         SELECT pe.id, 
                                CONVERT(p.adi_soyadi USING utf8mb4) as adi_soyadi, 
@@ -222,7 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                CONVERT(pe.aciklama USING utf8mb4) as aciklama
                         FROM personel_ek_odemeler pe
                         JOIN personel p ON pe.personel_id = p.id
-                        WHERE pe.silinme_tarihi IS NULL AND p.firma_id = :firmaId AND pe.created_at BETWEEN :startDate AND :endDate
+                        WHERE pe.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = :firmaId AND pe.created_at BETWEEN :startDate AND :endDate
                     ";
 
                     $whereClause = "1=1";
@@ -307,7 +307,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($orderColumnIdx == 0) $orderColumn = 'p.adi_soyadi';
                     else $orderColumn = $columnsMap[$orderColumnIdx] ?? 'pt.olusturma_tarihi';
 
-                    $whereClause = "pt.silinme_tarihi IS NULL AND p.firma_id = ? AND pt.olusturma_tarihi BETWEEN ? AND ?";
+                    $whereClause = "pt.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND pt.olusturma_tarihi BETWEEN ? AND ?";
                     $params = [$firmaId, $start_date_full, $end_date_full];
 
                     if (!empty($searchValue)) {
@@ -326,7 +326,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
 
                     // Toplam Kayıt (Filtresiz)
-                    $stmtTotal = $db->prepare("SELECT COUNT(*) FROM personel_talepleri pt JOIN personel p ON pt.personel_id = p.id WHERE pt.silinme_tarihi IS NULL AND p.firma_id = ? AND pt.olusturma_tarihi BETWEEN ? AND ?");
+                    $stmtTotal = $db->prepare("SELECT COUNT(*) FROM personel_talepleri pt JOIN personel p ON pt.personel_id = p.id WHERE pt.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND pt.olusturma_tarihi BETWEEN ? AND ?");
                     $stmtTotal->execute([$firmaId, $start_date_full, $end_date_full]);
                     $recordsTotal = $stmtTotal->fetchColumn();
 
@@ -385,7 +385,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($orderColumnIdx == 0) $orderColumn = 'p.adi_soyadi';
                     else $orderColumn = $columnsMap[$orderColumnIdx] ?? 'pi.created_at';
 
-                    $whereClause = "pi.silinme_tarihi IS NULL AND p.firma_id = ? AND pi.created_at BETWEEN ? AND ?";
+                    $whereClause = "pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND pi.created_at BETWEEN ? AND ?";
                     $params = [$firmaId, $start_date_full, $end_date_full];
 
                     if (!empty($searchValue)) {
@@ -404,7 +404,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
 
                     // Toplam Kayıt (Filtresiz)
-                    $stmtTotal = $db->prepare("SELECT COUNT(*) FROM personel_icralari pi JOIN personel p ON pi.personel_id = p.id WHERE pi.silinme_tarihi IS NULL AND p.firma_id = ? AND pi.created_at BETWEEN ? AND ?");
+                    $stmtTotal = $db->prepare("SELECT COUNT(*) FROM personel_icralari pi JOIN personel p ON pi.personel_id = p.id WHERE pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND pi.created_at BETWEEN ? AND ?");
                     $stmtTotal->execute([$firmaId, $start_date_full, $end_date_full]);
                     $recordsTotal = $stmtTotal->fetchColumn();
 
