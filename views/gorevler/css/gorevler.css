@@ -1,0 +1,1204 @@
+/* =====================================================
+   GÖREVLER MODÜLÜ - Google Tasks Tarzı Stiller
+   ===================================================== */
+
+/* ── CSS VARIABLES ── */
+:root {
+  --gt-primary: var(--bs-primary, #1a73e8);
+  --gt-primary-rgb: var(--bs-primary-rgb, 26, 115, 232);
+  --fc-primary: #1a73e8;
+}
+
+/* ── LAYOUT ── */
+.gorevler-wrapper {
+  display: flex;
+  height: calc(100vh - 130px);
+  background: var(--gt-bg, #f8f9fa);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* ── SOL SIDEBAR ── */
+.gorevler-sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: var(--gt-sidebar-bg, #ffffff);
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.gorevler-sidebar-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.gorevler-sidebar-header .btn-olustur {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: #fff;
+  color: var(--gt-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.gorevler-sidebar-header .btn-olustur:hover {
+  background: rgba(var(--gt-primary-rgb), 0.06);
+  box-shadow: 0 2px 6px rgba(var(--gt-primary-rgb), 0.2);
+}
+
+/* Sidebar liste renk noktasi */
+.liste-nav-renk {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.gorevler-sidebar-nav {
+  padding: 8px 0;
+  flex: 1;
+}
+
+.gorevler-sidebar-nav .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  color: var(--gt-text, #202124);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border-radius: 0 24px 24px 0;
+  margin-right: 12px;
+  user-select: none;
+}
+
+.gorevler-sidebar-nav .nav-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.gorevler-sidebar-nav .nav-item.active {
+  background: rgba(var(--gt-primary-rgb), 0.1);
+  color: var(--gt-primary);
+  font-weight: 600;
+}
+
+.gorevler-sidebar-nav .nav-item i {
+  font-size: 20px;
+  width: 24px;
+  text-align: center;
+}
+
+.gorevler-sidebar-nav .nav-item .badge {
+  margin-left: auto;
+  background: rgba(0, 0, 0, 0.06);
+  color: #5f6368;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.gorevler-sidebar-nav .nav-item.active .badge {
+  background: rgba(var(--gt-primary-rgb), 0.15);
+  color: var(--gt-primary);
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.06);
+  margin: 8px 0;
+}
+
+.sidebar-section-title {
+  padding: 12px 20px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #5f6368;
+  letter-spacing: 0.5px;
+}
+
+.gorevler-sidebar-footer {
+  padding: 12px 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.btn-yeni-liste {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 0;
+  border: none;
+  background: transparent;
+  color: #5f6368;
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.btn-yeni-liste:hover {
+  color: var(--gt-primary);
+}
+
+.btn-yeni-liste i {
+  font-size: 20px;
+}
+
+/* ── ANA İÇERİK ── */
+.gorevler-content {
+  flex: 1;
+  display: flex;
+  overflow-x: auto;
+  padding: 16px;
+  gap: 16px;
+  scroll-behavior: smooth;
+}
+
+/* ── LİSTE KOLONU ── */
+.gorev-liste-kolon {
+  min-width: 320px;
+  max-width: 360px;
+  flex-shrink: 0;
+  background: var(--gt-card-bg, #ffffff);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.gorev-liste-header {
+  padding: 16px 16px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  cursor: grab;
+}
+
+.gorev-liste-header:active {
+  cursor: grabbing;
+}
+
+.gorev-liste-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gt-text, #202124);
+  margin: 0;
+}
+
+.gorev-liste-header .liste-menu-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #5f6368;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.gorev-liste-header .liste-menu-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* Kolon sürükle-bırak durumları */
+.kolon-sortable-ghost {
+  opacity: 0.3;
+}
+
+.kolon-sortable-chosen {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+  transform: rotate(1deg);
+}
+
+.kolon-sortable-drag {
+  opacity: 0.9;
+}
+
+/* ── GÖREV EKLE BUTONU ── */
+.gorev-ekle-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  color: var(--fc-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+
+.gorev-ekle-btn:hover {
+  background: rgba(var(--gt-primary-rgb), 0.04);
+}
+
+.gorev-ekle-btn i {
+  font-size: 18px;
+}
+
+/* ── GÖREV EKLEME FORMU ── */
+.gorev-ekleme-form {
+  display: none;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.gorev-ekleme-form.active {
+  display: block;
+}
+
+.gorev-ekleme-form.edit-mode {
+  border-bottom: none;
+  padding: 10px 16px; /* Match gorev-item padding */
+}
+
+.gorev-ekleme-form .gorev-baslik-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.gorev-ekleme-form .gorev-checkbox-placeholder {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #dadce0;
+  border-radius: 50%;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.gorev-ekleme-form .gorev-baslik-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: var(--gt-text, #202124);
+  background: transparent;
+  resize: none;
+  font-family: inherit;
+}
+
+.gorev-ekleme-form .gorev-baslik-input::placeholder {
+  color: #80868b;
+}
+
+.gorev-ekleme-form .gorev-aciklama-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  font-size: 12px;
+  color: #5f6368;
+  background: transparent;
+  resize: none;
+  font-family: inherit;
+  padding-left: 30px;
+  margin-bottom: 8px;
+}
+
+.gorev-ekleme-form .gorev-aciklama-input::placeholder {
+  color: #b0b3b8;
+}
+
+.gorev-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 30px;
+}
+
+.gorev-form-actions .form-action-btn {
+  padding: 4px 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #fff;
+  color: #5f6368;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gorev-form-actions .form-action-btn:hover {
+  background: #f1f3f4;
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+.gorev-form-actions .form-action-btn.has-value {
+  background: rgba(var(--gt-primary-rgb), 0.1);
+  color: var(--gt-primary);
+  border-color: var(--gt-primary);
+}
+
+.gorev-form-actions .form-action-btn i {
+  font-size: 14px;
+}
+
+/* ── GÖREV LİSTESİ ── */
+.gorev-liste-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+/* ── GÖREV KARTI ── */
+.gorev-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+  position: relative;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.gorev-item:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.gorev-item.editing {
+  display: block;
+  padding: 0;
+  background: #fff;
+}
+
+.gorev-item.editing:hover {
+  background: #fff;
+}
+
+.gorev-item .gorev-checkbox {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #dadce0;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.gorev-item .gorev-checkbox:hover {
+  border-color: var(--gt-primary);
+  background: rgba(var(--gt-primary-rgb), 0.08);
+}
+
+.gorev-item .gorev-checkbox::after {
+  content: "";
+  display: none;
+}
+
+.gorev-item .gorev-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.gorev-item .gorev-baslik {
+  font-size: 14px;
+  color: var(--gt-text, #202124);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.gorev-item .gorev-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.gorev-item .gorev-tarih-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.gorev-tarih-badge.gecmis {
+  background: #fce8e6;
+  color: #c5221f;
+}
+
+.gorev-tarih-badge.bugun {
+  background: rgba(var(--gt-primary-rgb), 0.1);
+  color: var(--gt-primary);
+}
+
+.gorev-tarih-badge.gelecek {
+  background: #f1f3f4;
+  color: #5f6368;
+}
+
+.gorev-item .gorev-yineleme-icon {
+  color: #5f6368;
+  font-size: 14px;
+}
+
+.gorev-item .gorev-actions {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.gorev-item:hover .gorev-actions {
+  display: flex;
+}
+
+.gorev-item .gorev-action-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #5f6368;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.15s;
+}
+
+.gorev-item .gorev-action-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* Sortable ghost/drag */
+.gorev-item.sortable-ghost {
+  opacity: 0.4;
+  background: rgba(var(--gt-primary-rgb), 0.08);
+}
+
+.gorev-item.sortable-chosen {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  background: #fff;
+  z-index: 10;
+}
+
+.gorev-item.sortable-drag {
+  opacity: 0.9;
+}
+
+/* ── TAMAMLANDILAR ── */
+.tamamlandi-section {
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.tamamlandi-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #5f6368;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.tamamlandi-toggle:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.tamamlandi-toggle i {
+  font-size: 18px;
+  transition: transform 0.2s ease;
+}
+
+.tamamlandi-toggle.collapsed i {
+  transform: rotate(-90deg);
+}
+
+.tamamlandi-list {
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.tamamlandi-list.collapsed {
+  max-height: 0 !important;
+}
+
+.tamamlandi-list .gorev-item .gorev-checkbox {
+  background: var(--gt-primary);
+  border-color: var(--gt-primary);
+}
+
+.tamamlandi-list .gorev-item .gorev-checkbox::after {
+  content: "✓";
+  display: block;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tamamlandi-list .gorev-item .gorev-baslik {
+  text-decoration: line-through;
+  color: #80868b;
+}
+
+.tamamlandi-list .gorev-item .gorev-tarih-badge {
+  opacity: 0.6;
+}
+
+/* ── TARİH PICKER MODAL ── */
+.tarih-picker-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1060;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+}
+
+.tarih-picker-modal.show {
+  display: flex;
+}
+
+.tarih-picker-content {
+  background: var(--gt-card-bg, #fff);
+  border-radius: 16px;
+  width: 320px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  animation: gtSlideUp 0.2s ease;
+}
+
+@keyframes gtSlideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.tarih-picker-content .flatpickr-inline {
+  width: 100%;
+}
+
+.tarih-picker-content .flatpickr-calendar {
+  box-shadow: none !important;
+  border: none !important;
+  width: 100% !important;
+}
+
+.tarih-picker-bottom {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.tarih-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  color: #5f6368;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+
+.tarih-picker-option:hover {
+  color: #1a73e8;
+}
+
+.tarih-picker-option i {
+  font-size: 20px;
+  width: 24px;
+}
+
+.tarih-picker-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.tarih-picker-footer .btn-iptal {
+  padding: 8px 20px;
+  border-radius: 20px;
+  border: none;
+  background: transparent;
+  color: var(--gt-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.tarih-picker-footer .btn-iptal:hover {
+  background: rgba(var(--gt-primary-rgb), 0.08);
+}
+
+.tarih-picker-footer .btn-bitti {
+  padding: 8px 24px;
+  border-radius: 20px;
+  border: none;
+  background: var(--gt-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.tarih-picker-footer .btn-bitti:hover {
+  filter: brightness(0.85);
+}
+
+/* ── YİNELEME MODAL ── */
+.yineleme-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1070;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+}
+
+.yineleme-modal.show {
+  display: flex;
+}
+
+.yineleme-content {
+  background: var(--gt-card-bg, #f1f3f4);
+  border-radius: 16px;
+  width: 320px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  padding: 24px;
+  animation: gtSlideUp 0.2s ease;
+}
+
+.yineleme-content h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gt-text, #202124);
+  margin: 0 0 16px;
+}
+
+.yineleme-content label {
+  font-size: 13px;
+  color: #5f6368;
+  font-weight: 500;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.yineleme-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.yineleme-row input[type="number"] {
+  width: 60px;
+  padding: 8px 12px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: center;
+  outline: none;
+  background: #fff;
+}
+
+.yineleme-row input[type="number"]:focus {
+  border-color: var(--gt-primary);
+}
+
+.yineleme-row select {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+  cursor: pointer;
+}
+
+.yineleme-row select:focus {
+  border-color: var(--gt-primary);
+}
+
+.yineleme-content .saat-ayarla-btn {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  background: #fff;
+  color: #80868b;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.yineleme-content .saat-ayarla-btn:hover {
+  border-color: var(--gt-primary);
+  color: var(--gt-primary);
+}
+
+.yineleme-section {
+  margin-bottom: 16px;
+}
+
+.yineleme-section input[type="date"],
+.yineleme-section input[type="number"] {
+  padding: 6px 10px;
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  background: #fff;
+}
+
+.yineleme-section input[type="date"]:focus,
+.yineleme-section input[type="number"]:focus {
+  border-color: var(--gt-primary);
+}
+
+.yineleme-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.yineleme-radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--gt-text, #202124);
+  cursor: pointer;
+  font-weight: 400;
+}
+
+.yineleme-radio-group input[type="radio"] {
+  accent-color: var(--gt-primary);
+  width: 18px;
+  height: 18px;
+}
+
+.yineleme-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* ── LİSTE DÜZENLEME İNLINE ── */
+.liste-baslik-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gt-text, #202124);
+  width: 100%;
+  padding: 2px 0;
+}
+
+.liste-baslik-input:focus {
+  border-bottom: 2px solid #1a73e8;
+}
+
+/* ── DROPDOWN MENU ── */
+.gorev-dropdown {
+  position: absolute;
+  right: 8px;
+  top: 100%;
+  background: var(--gt-card-bg, #fff);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  min-width: 160px;
+  z-index: 100;
+  overflow: hidden;
+  display: none;
+}
+
+.gorev-dropdown.show {
+  display: block;
+}
+
+.gorev-dropdown .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--gt-text, #202124);
+  cursor: pointer;
+  transition: background 0.15s;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+
+.gorev-dropdown .dropdown-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.gorev-dropdown .dropdown-item.danger {
+  color: #c5221f;
+}
+
+.gorev-dropdown .dropdown-item i {
+  font-size: 16px;
+  width: 20px;
+}
+
+/* ── SAAT INPUT ── */
+.saat-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.saat-input-wrapper input[type="time"] {
+  padding: 6px 10px;
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  background: #fff;
+  flex: 1;
+}
+
+.saat-input-wrapper input[type="time"]:focus {
+  border-color: #1a73e8;
+}
+
+/* ── YENİ LİSTE MODAL ── */
+.yeni-liste-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1060;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+}
+
+.yeni-liste-modal.show {
+  display: flex;
+}
+
+.yeni-liste-content {
+  background: var(--gt-card-bg, #fff);
+  border-radius: 16px;
+  width: 380px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  padding: 24px;
+  animation: gtSlideUp 0.2s ease;
+}
+
+.yeni-liste-content h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--gt-text, #202124);
+  margin: 0 0 20px;
+}
+
+.yeni-liste-content .form-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #5f6368;
+  margin-bottom: 6px;
+}
+
+.yeni-liste-content .form-control-gt {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  background: var(--gt-card-bg, #fff);
+  color: var(--gt-text, #202124);
+  transition: border-color 0.15s;
+}
+
+.yeni-liste-content .form-control-gt:focus {
+  border-color: var(--gt-primary);
+  box-shadow: 0 0 0 2px rgba(var(--gt-primary-rgb), 0.15);
+}
+
+/* Renk seçici grid */
+.renk-secici {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.renk-secici-item {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.renk-secici-item:hover {
+  transform: scale(1.15);
+}
+
+.renk-secici-item.active {
+  border-color: var(--gt-text, #202124);
+  box-shadow: 0 0 0 2px rgba(var(--gt-primary-rgb), 0.3);
+}
+
+.renk-secici-item.active::after {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.yeni-liste-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* ── SCROLLBAR ── */
+.gorev-liste-body::-webkit-scrollbar,
+.gorevler-content::-webkit-scrollbar,
+.gorevler-sidebar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.gorev-liste-body::-webkit-scrollbar-track,
+.gorevler-content::-webkit-scrollbar-track,
+.gorevler-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.gorev-liste-body::-webkit-scrollbar-thumb,
+.gorevler-content::-webkit-scrollbar-thumb,
+.gorevler-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+
+.gorev-liste-body::-webkit-scrollbar-thumb:hover,
+.gorevler-content::-webkit-scrollbar-thumb:hover,
+.gorevler-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+/* ── BOŞ DURUM ── */
+.gorevler-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #80868b;
+  text-align: center;
+  padding: 40px;
+}
+
+.gorevler-empty i {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.4;
+}
+
+.gorevler-empty h4 {
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: #5f6368;
+}
+
+.gorevler-empty p {
+  font-size: 14px;
+  max-width: 280px;
+}
+
+/* ── DARK MODE ── */
+[data-bs-theme="dark"] {
+  --gt-bg: #1e1e2e;
+  --gt-sidebar-bg: #181825;
+  --gt-card-bg: #1e1e2e;
+  --gt-text: #cdd6f4;
+}
+
+[data-bs-theme="dark"] .gorevler-wrapper {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-bs-theme="dark"] .gorevler-sidebar {
+  border-right-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-bs-theme="dark"] .gorevler-sidebar-header .btn-olustur {
+  background: #313244;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #89b4fa;
+}
+
+[data-bs-theme="dark"] .gorevler-sidebar-nav .nav-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+[data-bs-theme="dark"] .gorevler-sidebar-nav .nav-item.active {
+  background: rgba(137, 180, 250, 0.12);
+  color: #89b4fa;
+}
+
+[data-bs-theme="dark"] .gorev-liste-kolon {
+  border-color: rgba(255, 255, 255, 0.06);
+  background: #181825;
+}
+
+[data-bs-theme="dark"] .gorev-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+[data-bs-theme="dark"] .gorev-item .gorev-checkbox {
+  border-color: #585b70;
+}
+
+[data-bs-theme="dark"] .gorev-item .gorev-checkbox:hover {
+  border-color: #89b4fa;
+  background: rgba(137, 180, 250, 0.1);
+}
+
+[data-bs-theme="dark"] .gorev-tarih-badge.gecmis {
+  background: rgba(243, 139, 168, 0.15);
+  color: #f38ba8;
+}
+
+[data-bs-theme="dark"] .gorev-tarih-badge.bugun {
+  background: rgba(137, 180, 250, 0.15);
+  color: #89b4fa;
+}
+
+[data-bs-theme="dark"] .gorev-tarih-badge.gelecek {
+  background: rgba(255, 255, 255, 0.06);
+  color: #a6adc8;
+}
+
+[data-bs-theme="dark"] .tamamlandi-list .gorev-item .gorev-checkbox {
+  background: #89b4fa;
+  border-color: #89b4fa;
+}
+
+[data-bs-theme="dark"] .gorev-dropdown {
+  background: #313244;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+[data-bs-theme="dark"] .gorev-dropdown .dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-bs-theme="dark"] .gorev-ekleme-form .gorev-baslik-input,
+[data-bs-theme="dark"] .liste-baslik-input {
+  color: #cdd6f4;
+}
+
+[data-bs-theme="dark"] .yineleme-content {
+  background: #313244;
+}
+
+[data-bs-theme="dark"] .yineleme-row input,
+[data-bs-theme="dark"] .yineleme-row select,
+[data-bs-theme="dark"] .yineleme-section input {
+  background: #1e1e2e;
+  border-color: #585b70;
+  color: #cdd6f4;
+}
+
+[data-bs-theme="dark"] .tarih-picker-content {
+  background: #313244;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .gorevler-wrapper {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .gorevler-sidebar {
+    width: 100%;
+    min-width: unset;
+    max-height: 200px;
+    border-right: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .gorevler-content {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .gorev-liste-kolon {
+    min-width: 280px;
+  }
+}

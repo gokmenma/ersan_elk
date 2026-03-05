@@ -1,0 +1,207 @@
+<?php
+require_once dirname(__DIR__, 1) . '/../Autoloader.php';
+
+use App\Service\Gate;
+
+$maintitle = 'Ana Sayfa';
+$title = 'Görevler';
+?>
+
+<link rel="stylesheet" href="views/gorevler/css/gorevler.css?v=<?php echo time(); ?>">
+
+<div class="container-fluid">
+    <?php include 'layouts/breadcrumb.php'; ?>
+
+    <div class="gorevler-wrapper">
+        <!-- ═══ SOL SIDEBAR ═══ -->
+        <div class="gorevler-sidebar">
+            <div class="gorevler-sidebar-header">
+                <button class="btn-olustur" id="btnYeniListe">
+                    <i class="bx bx-plus"></i>
+                    Oluştur
+                </button>
+            </div>
+
+            <div class="gorevler-sidebar-nav" id="sidebarNav">
+                <div class="nav-item nav-tum-gorevler active">
+                    <i class="bx bx-check-circle"></i>
+                    <span>Tüm görevler</span>
+                    <span class="badge"></span>
+                </div>
+                <div class="nav-item nav-yildizli">
+                    <i class="bx bx-star"></i>
+                    <span>Yıldızlı</span>
+                </div>
+
+                <div class="sidebar-divider"></div>
+                <div class="sidebar-section-title">Listeler</div>
+                <div class="liste-items">
+                    <!-- JS ile doldurulacak -->
+                </div>
+            </div>
+
+            <div class="gorevler-sidebar-footer">
+                <button class="btn-yeni-liste" id="btnYeniListe2">
+                    <i class="bx bx-plus"></i>
+                    Yeni liste oluştur
+                </button>
+            </div>
+        </div>
+
+        <!-- ═══ SAĞ İÇERİK ═══ -->
+        <div class="gorevler-content" id="gorevlerContent">
+            <!-- JS ile doldurulacak -->
+            <div class="gorevler-empty">
+                <i class="bx bx-task"></i>
+                <h4>Yükleniyor...</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ TARİH PICKER MODAL ═══ -->
+<div class="tarih-picker-modal" id="tarihPickerModal">
+    <div class="tarih-picker-content">
+        <div id="tarihPickerCalendar"></div>
+
+        <div class="tarih-picker-bottom">
+            <div class="tarih-picker-option">
+                <i class="bx bx-time-five"></i>
+                <div class="saat-input-wrapper" style="flex:1">
+                    <input type="time" id="tarihSaatInput" placeholder="Saati ayarla">
+                </div>
+            </div>
+            <button class="tarih-picker-option" id="tarihPickerTekrarla">
+                <i class="bx bx-repeat"></i>
+                <span>Tekrarla</span>
+            </button>
+        </div>
+
+        <div class="tarih-picker-footer">
+            <button class="btn-iptal" id="tarihPickerIptal">İptal</button>
+            <button class="btn-bitti" id="tarihPickerBitti">Bitti</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ YİNELEME MODAL ═══ -->
+<div class="yineleme-modal" id="yinelemeModal">
+    <div class="yineleme-content">
+        <h4>Yinelenme sıklığı</h4>
+
+        <div class="yineleme-row">
+            <input type="number" id="yinelemeSikligi" value="1" min="1" max="99">
+            <select id="yinelemeBirimi">
+                <option value="gun">gün</option>
+                <option value="hafta">hafta</option>
+                <option value="ay">ay</option>
+                <option value="yil">yıl</option>
+            </select>
+        </div>
+
+        <div class="yineleme-section">
+            <label>Başlangıç</label>
+            <input type="date" id="yinelemeBaslangic" style="width:100%">
+        </div>
+
+        <div class="yineleme-section">
+            <label>Bitiş</label>
+            <div class="yineleme-radio-group">
+                <label>
+                    <input type="radio" name="yinelemeBitisTipi" value="asla" checked>
+                    Asla
+                </label>
+                <label>
+                    <input type="radio" name="yinelemeBitisTipi" value="tarih">
+                    <span>Şu tarihte:</span>
+                    <input type="date" id="yinelemeBitisTarihi" style="width:120px; margin-left: 4px;">
+                </label>
+                <label>
+                    <input type="radio" name="yinelemeBitisTipi" value="adet">
+                    <span>Yinele:</span>
+                    <input type="number" id="yinelemeBitisAdet" value="30" min="1" max="999"
+                        style="width:60px; margin-left: 4px;">
+                    <span>kez</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="yineleme-footer">
+            <button class="btn-iptal btn btn-light" id="yinelemeIptal">İptal</button>
+            <button class="btn-bitti btn btn-primary" id="yinelemeBitti">Bitti</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ YENİ LİSTE MODAL ═══ -->
+<div class="yeni-liste-modal" id="yeniListeModal">
+    <div class="yeni-liste-content">
+        <h4>Yeni Liste Oluştur</h4>
+
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">Liste Adı</label>
+            <input type="text" class="form-control-gt" id="yeniListeBaslik" placeholder="Liste adı girin">
+            <input type="hidden" id="yeniListeRenk">
+        </div>
+
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">Renk</label>
+            <div class="renk-secici">
+                <div class="renk-secici-item" data-renk="#4285f4" style="background:#4285f4" title="Mavi"></div>
+                <div class="renk-secici-item" data-renk="#ea4335" style="background:#ea4335" title="Kırmızı"></div>
+                <div class="renk-secici-item" data-renk="#fbbc04" style="background:#fbbc04" title="Sarı"></div>
+                <div class="renk-secici-item" data-renk="#34a853" style="background:#34a853" title="Yeşil"></div>
+                <div class="renk-secici-item" data-renk="#ff6d01" style="background:#ff6d01" title="Turuncu"></div>
+                <div class="renk-secici-item" data-renk="#46bdc6" style="background:#46bdc6" title="Turkuaz"></div>
+                <div class="renk-secici-item" data-renk="#7baaf7" style="background:#7baaf7" title="Açık Mavi"></div>
+                <div class="renk-secici-item" data-renk="#a142f4" style="background:#a142f4" title="Mor"></div>
+                <div class="renk-secici-item" data-renk="#f538a0" style="background:#f538a0" title="Pembe"></div>
+                <div class="renk-secici-item" data-renk="#185abc" style="background:#185abc" title="Koyu Mavi"></div>
+                <div class="renk-secici-item" data-renk="#137333" style="background:#137333" title="Koyu Yeşil"></div>
+                <div class="renk-secici-item" data-renk="#5f6368" style="background:#5f6368" title="Gri"></div>
+            </div>
+        </div>
+
+        <div class="yeni-liste-footer">
+            <button class="btn-iptal btn btn-light" id="yeniListeIptal">İptal</button>
+            <button class="btn-bitti btn btn-primary" id="yeniListeOlustur">Oluştur</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ LİSTE YENİDEN ADLANDIR MODAL ═══ -->
+<div class="yeni-liste-modal" id="listeRenameModal">
+    <div class="yeni-liste-content">
+        <h4>Listeyi Yeniden Adlandır</h4>
+
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">Liste Adı</label>
+            <input type="text" class="form-control-gt" id="listeRenameBaslik" placeholder="Yeni liste adı girin">
+            <input type="hidden" id="listeRenameId">
+            <input type="hidden" id="listeRenameRenk">
+        </div>
+
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">Renk</label>
+            <div class="renk-secici clr-rename">
+                <div class="renk-secici-item" data-renk="#4285f4" style="background:#4285f4" title="Mavi"></div>
+                <div class="renk-secici-item" data-renk="#ea4335" style="background:#ea4335" title="Kırmızı"></div>
+                <div class="renk-secici-item" data-renk="#fbbc04" style="background:#fbbc04" title="Sarı"></div>
+                <div class="renk-secici-item" data-renk="#34a853" style="background:#34a853" title="Yeşil"></div>
+                <div class="renk-secici-item" data-renk="#ff6d01" style="background:#ff6d01" title="Turuncu"></div>
+                <div class="renk-secici-item" data-renk="#46bdc6" style="background:#46bdc6" title="Turkuaz"></div>
+                <div class="renk-secici-item" data-renk="#7baaf7" style="background:#7baaf7" title="Açık Mavi"></div>
+                <div class="renk-secici-item" data-renk="#a142f4" style="background:#a142f4" title="Mor"></div>
+                <div class="renk-secici-item" data-renk="#f538a0" style="background:#f538a0" title="Pembe"></div>
+                <div class="renk-secici-item" data-renk="#185abc" style="background:#185abc" title="Koyu Mavi"></div>
+                <div class="renk-secici-item" data-renk="#137333" style="background:#137333" title="Koyu Yeşil"></div>
+                <div class="renk-secici-item" data-renk="#5f6368" style="background:#5f6368" title="Gri"></div>
+            </div>
+        </div>
+
+        <div class="yeni-liste-footer">
+            <button class="btn-iptal btn btn-light" id="listeRenameIptal">İptal</button>
+            <button class="btn-bitti btn btn-primary" id="listeRenameKaydet">Kaydet</button>
+        </div>
+    </div>
+</div>

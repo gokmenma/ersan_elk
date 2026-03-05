@@ -16,6 +16,7 @@ use App\Model\PuantajModel;
 use App\Model\EndeksOkumaModel;
 use App\Model\NobetModel;
 use App\Model\PersonelHareketleriModel;
+use App\Model\GorevModel;
 
 $personelModel = new PersonelModel();
 $avansModel = new AvansModel();
@@ -26,12 +27,14 @@ $puantajModel = new PuantajModel();
 $endeksOkumaModel = new EndeksOkumaModel();
 $nobetModel = new NobetModel();
 $hareketModel = new PersonelHareketleriModel();
+$gorevModel = new GorevModel();
 
 if (Gate::allows("ana_sayfa")) {
 
     $bugun = date('Y-m-d');
     $nobetciler = $nobetModel->getNobetlerByTarih($bugun);
     $gec_kalan_sayisi = $hareketModel->getGecKalanlarCount($_SESSION['firma_id'] ?? null);
+    $yaklasan_gorevler = $gorevModel->getYaklasanGorevler($_SESSION['firma_id'] ?? 0, 5);
 
     // Dashboard Ayarlarını Çerezden Oku
     $extraStats = $personelModel->getAdvancedDashboardStats();
@@ -324,7 +327,7 @@ if (Gate::allows("ana_sayfa")) {
     // Widget İçeriklerini Tanımla
     $widgets = [];
 
-    
+
 
     if (!empty($slider_notifications)) {
         ob_start(); ?>
@@ -393,202 +396,202 @@ if (Gate::allows("ana_sayfa")) {
     ?>
     <?php if (\App\Service\Gate::allows("personel_listesi")) {
         ob_start(); ?>
-    <div class="col-md-6 col-xl-4 widget-item" id="widget-personel-ozet">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
-            style="border-radius: 12px; background: #fff;">
-            <div class="card-body p-4 d-flex flex-column">
-                <div class="d-flex justify-content-between align-items-start mb-4">
-                    <div>
-                        <h6 class="fw-bold text-dark mb-1 d-flex align-items-center"
-                            style="font-size: 1.1rem; letter-spacing: -0.01em;">
-                            <i class='bx bx-grid-vertical drag-handle me-1 text-muted'></i> Personel Durumu
-                        </h6>
-                        <p class="text-muted mb-0 ms-4" style="font-size: 0.8rem;">Toplam Personel</p>
-                        <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $istatistik->toplam_personel ?? 0; ?> <span
-                                style="font-size: 0.9rem; font-weight: normal; color: #6c757d;">adet</span></h4>
+        <div class="col-md-6 col-xl-4 widget-item" id="widget-personel-ozet">
+            <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+                style="border-radius: 12px; background: #fff;">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start mb-4">
+                        <div>
+                            <h6 class="fw-bold text-dark mb-1 d-flex align-items-center"
+                                style="font-size: 1.1rem; letter-spacing: -0.01em;">
+                                <i class='bx bx-grid-vertical drag-handle me-1 text-muted'></i> Personel Durumu
+                            </h6>
+                            <p class="text-muted mb-0 ms-4" style="font-size: 0.8rem;">Toplam Personel</p>
+                            <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $istatistik->toplam_personel ?? 0; ?> <span
+                                    style="font-size: 0.9rem; font-weight: normal; color: #6c757d;">adet</span></h4>
+                        </div>
+                        <a href="index.php?p=personel/list" class="text-primary fw-semibold small text-decoration-none"
+                            style="font-size: 0.8rem;">Personel Listesine Git</a>
                     </div>
-                    <a href="index.php?p=personel/list" class="text-primary fw-semibold small text-decoration-none"
-                        style="font-size: 0.8rem;">Personel Listesine Git</a>
-                </div>
 
-                <?php
-                $toplam_p = ($istatistik->toplam_personel ?? 0) ?: 1;
-                $aktif_p = $istatistik->aktif_personel ?? 0;
-                $saha_p = $extraStats->sahadaki_personel ?? 0;
-                $izinli_p = $extraStats->izinli_personel ?? 0;
-                $diger_p = max(0, $aktif_p - $saha_p - $izinli_p);
-                $pasif_p = $istatistik->pasif_personel ?? 0;
+                    <?php
+                    $toplam_p = ($istatistik->toplam_personel ?? 0) ?: 1;
+                    $aktif_p = $istatistik->aktif_personel ?? 0;
+                    $saha_p = $extraStats->sahadaki_personel ?? 0;
+                    $izinli_p = $extraStats->izinli_personel ?? 0;
+                    $diger_p = max(0, $aktif_p - $saha_p - $izinli_p);
+                    $pasif_p = $istatistik->pasif_personel ?? 0;
 
-                $s_rate = ($saha_p / $toplam_p) * 100;
-                $d_rate = ($diger_p / $toplam_p) * 100;
-                $i_rate = ($izinli_p / $toplam_p) * 100;
-                $p_rate = ($pasif_p / $toplam_p) * 100;
-                ?>
-                <div class="progress mb-4" style="height: 20px; border-radius: 4px;">
-                    <div class="progress-bar" role="progressbar"
-                        style="width: <?php echo $s_rate; ?>%; background-color: #0d6efd;"
-                        title="Saha: <?php echo $saha_p; ?>"></div>
-                    <div class="progress-bar" role="progressbar"
-                        style="width: <?php echo $d_rate; ?>%; background-color: #0dcaf0;"
-                        title="İçeride/Diğer: <?php echo $diger_p; ?>"></div>
-                    <div class="progress-bar" role="progressbar"
-                        style="width: <?php echo $i_rate; ?>%; background-color: #ffc107;"
-                        title="İzinli: <?php echo $izinli_p; ?>"></div>
-                    <div class="progress-bar" role="progressbar"
-                        style="width: <?php echo $p_rate; ?>%; background-color: #adb5bd;"
-                        title="Pasif: <?php echo $pasif_p; ?>"></div>
-                </div>
+                    $s_rate = ($saha_p / $toplam_p) * 100;
+                    $d_rate = ($diger_p / $toplam_p) * 100;
+                    $i_rate = ($izinli_p / $toplam_p) * 100;
+                    $p_rate = ($pasif_p / $toplam_p) * 100;
+                    ?>
+                    <div class="progress mb-4" style="height: 20px; border-radius: 4px;">
+                        <div class="progress-bar" role="progressbar"
+                            style="width: <?php echo $s_rate; ?>%; background-color: #0d6efd;"
+                            title="Saha: <?php echo $saha_p; ?>"></div>
+                        <div class="progress-bar" role="progressbar"
+                            style="width: <?php echo $d_rate; ?>%; background-color: #0dcaf0;"
+                            title="İçeride/Diğer: <?php echo $diger_p; ?>"></div>
+                        <div class="progress-bar" role="progressbar"
+                            style="width: <?php echo $i_rate; ?>%; background-color: #ffc107;"
+                            title="İzinli: <?php echo $izinli_p; ?>"></div>
+                        <div class="progress-bar" role="progressbar"
+                            style="width: <?php echo $p_rate; ?>%; background-color: #adb5bd;"
+                            title="Pasif: <?php echo $pasif_p; ?>"></div>
+                    </div>
 
-                <div class="row mt-auto">
-                    <div class="col-6 mb-3">
-                        <div class="d-flex align-items-center">
-                            <div style="width: 3px; height: 32px; background-color: #0d6efd; margin-right: 12px;"></div>
-                            <div>
-                                <p class="text-muted small mb-0 font-size-11">Saha Görevlisi</p>
-                                <h6 class="mb-0 fw-bold text-dark"><?php echo $saha_p; ?> Adet</h6>
+                    <div class="row mt-auto">
+                        <div class="col-6 mb-3">
+                            <div class="d-flex align-items-center">
+                                <div style="width: 3px; height: 32px; background-color: #0d6efd; margin-right: 12px;"></div>
+                                <div>
+                                    <p class="text-muted small mb-0 font-size-11">Saha Görevlisi</p>
+                                    <h6 class="mb-0 fw-bold text-dark"><?php echo $saha_p; ?> Adet</h6>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-6 mb-3">
-                        <div class="d-flex align-items-center">
-                            <div style="width: 3px; height: 32px; background-color: #0dcaf0; margin-right: 12px;"></div>
-                            <div>
-                                <p class="text-muted small mb-0 font-size-11">İçeride / Diğer</p>
-                                <h6 class="mb-0 fw-bold text-dark"><?php echo $diger_p; ?> Adet</h6>
+                        <div class="col-6 mb-3">
+                            <div class="d-flex align-items-center">
+                                <div style="width: 3px; height: 32px; background-color: #0dcaf0; margin-right: 12px;"></div>
+                                <div>
+                                    <p class="text-muted small mb-0 font-size-11">İçeride / Diğer</p>
+                                    <h6 class="mb-0 fw-bold text-dark"><?php echo $diger_p; ?> Adet</h6>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="d-flex align-items-center">
-                            <div style="width: 3px; height: 32px; background-color: #ffc107; margin-right: 12px;"></div>
-                            <div>
-                                <p class="text-muted small mb-0 font-size-11">İzinli</p>
-                                <h6 class="mb-0 fw-bold text-dark"><?php echo $izinli_p; ?> Adet</h6>
+                        <div class="col-6">
+                            <div class="d-flex align-items-center">
+                                <div style="width: 3px; height: 32px; background-color: #ffc107; margin-right: 12px;"></div>
+                                <div>
+                                    <p class="text-muted small mb-0 font-size-11">İzinli</p>
+                                    <h6 class="mb-0 fw-bold text-dark"><?php echo $izinli_p; ?> Adet</h6>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="d-flex align-items-center">
-                            <div style="width: 3px; height: 32px; background-color: #adb5bd; margin-right: 12px;"></div>
-                            <div>
-                                <p class="text-muted small mb-0 font-size-11">Pasif</p>
-                                <h6 class="mb-0 fw-bold text-dark"><?php echo $pasif_p; ?> Adet</h6>
+                        <div class="col-6">
+                            <div class="d-flex align-items-center">
+                                <div style="width: 3px; height: 32px; background-color: #adb5bd; margin-right: 12px;"></div>
+                                <div>
+                                    <p class="text-muted small mb-0 font-size-11">Pasif</p>
+                                    <h6 class="mb-0 fw-bold text-dark"><?php echo $pasif_p; ?> Adet</h6>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    <?php $widgets['widget-personel-ozet'] = ob_get_clean();
+        <?php $widgets['widget-personel-ozet'] = ob_get_clean();
     }
 
     if (\App\Service\Gate::allows("arac_takip_yonetim")) {
         ob_start(); ?>
-    <div class="col-md-6 col-xl-4 widget-item" id="widget-arac-ozet">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
-            style="border-radius: 12px; background: #fff;">
-            <div class="card-body p-4 d-flex flex-column">
-                <div class="d-flex justify-content-between align-items-start mb-4">
-                    <div>
-                        <h6 class="fw-bold text-dark mb-1 d-flex align-items-center"
-                            style="font-size: 1.1rem; letter-spacing: -0.01em;">
-                            <i class='bx bx-grid-vertical drag-handle me-1 text-muted'></i> Araç Durumu
-                        </h6>
-                        <?php
-                        $sahadaki_arac = $extraStats->sahadaki_arac ?? 0;
-                        $servisteki_arac = $extraStats->servisteki_arac ?? 0;
-                        $bosta_arac = $aracStats->bosta_arac ?? 0;
-                        $toplam_arac = $aracStats->toplam_arac ?? ($sahadaki_arac + $servisteki_arac + $bosta_arac);
-                        $toplam_a_div = $toplam_arac ?: 1;
-                        $saha_a_yuzde = ($sahadaki_arac / $toplam_a_div) * 100;
-                        $servis_a_yuzde = ($servisteki_arac / $toplam_a_div) * 100;
-                        $bosta_a_yuzde = ($bosta_arac / $toplam_a_div) * 100;
-                        ?>
-                        <p class="text-muted mb-0 ms-4" style="font-size: 0.8rem;">Toplam Araç</p>
-                        <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $toplam_arac; ?> <span
-                                style="font-size: 0.9rem; font-weight: normal; color: #6c757d;">adet</span></h4>
+        <div class="col-md-6 col-xl-4 widget-item" id="widget-arac-ozet">
+            <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+                style="border-radius: 12px; background: #fff;">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start mb-4">
+                        <div>
+                            <h6 class="fw-bold text-dark mb-1 d-flex align-items-center"
+                                style="font-size: 1.1rem; letter-spacing: -0.01em;">
+                                <i class='bx bx-grid-vertical drag-handle me-1 text-muted'></i> Araç Durumu
+                            </h6>
+                            <?php
+                            $sahadaki_arac = $extraStats->sahadaki_arac ?? 0;
+                            $servisteki_arac = $extraStats->servisteki_arac ?? 0;
+                            $bosta_arac = $aracStats->bosta_arac ?? 0;
+                            $toplam_arac = $aracStats->toplam_arac ?? ($sahadaki_arac + $servisteki_arac + $bosta_arac);
+                            $toplam_a_div = $toplam_arac ?: 1;
+                            $saha_a_yuzde = ($sahadaki_arac / $toplam_a_div) * 100;
+                            $servis_a_yuzde = ($servisteki_arac / $toplam_a_div) * 100;
+                            $bosta_a_yuzde = ($bosta_arac / $toplam_a_div) * 100;
+                            ?>
+                            <p class="text-muted mb-0 ms-4" style="font-size: 0.8rem;">Toplam Araç</p>
+                            <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $toplam_arac; ?> <span
+                                    style="font-size: 0.9rem; font-weight: normal; color: #6c757d;">adet</span></h4>
+                        </div>
+                        <a href="index.php?p=arac-takip/list" class="text-primary fw-semibold small text-decoration-none"
+                            style="font-size: 0.8rem;">Araç Listesine Git</a>
                     </div>
-                    <a href="index.php?p=arac-takip/list" class="text-primary fw-semibold small text-decoration-none"
-                        style="font-size: 0.8rem;">Araç Listesine Git</a>
-                </div>
 
-                <div class="progress mb-4" style="height: 20px; border-radius: 4px;">
-                    <div class="progress-bar" role="progressbar"
-                        style="width: <?php echo $saha_a_yuzde; ?>%; background-color: #198754;"
-                        title="Sahada: <?php echo $sahadaki_arac; ?>"></div>
-                    <div class="progress-bar" role="progressbar"
-                        style="width: <?php echo $servis_a_yuzde; ?>%; background-color: #dc3545;"
-                        title="Serviste: <?php echo $servisteki_arac; ?>"></div>
-                    <div class="progress-bar" role="progressbar"
-                        style="width: <?php echo $bosta_a_yuzde; ?>%; background-color: #ffc107;"
-                        title="Boşta: <?php echo $bosta_arac; ?>"></div>
-                </div>
+                    <div class="progress mb-4" style="height: 20px; border-radius: 4px;">
+                        <div class="progress-bar" role="progressbar"
+                            style="width: <?php echo $saha_a_yuzde; ?>%; background-color: #198754;"
+                            title="Sahada: <?php echo $sahadaki_arac; ?>"></div>
+                        <div class="progress-bar" role="progressbar"
+                            style="width: <?php echo $servis_a_yuzde; ?>%; background-color: #dc3545;"
+                            title="Serviste: <?php echo $servisteki_arac; ?>"></div>
+                        <div class="progress-bar" role="progressbar"
+                            style="width: <?php echo $bosta_a_yuzde; ?>%; background-color: #ffc107;"
+                            title="Boşta: <?php echo $bosta_arac; ?>"></div>
+                    </div>
 
-                <div class="row mt-auto">
-                    <div class="col-4 mb-3">
-                        <div class="d-flex align-items-center">
-                            <div style="width: 3px; height: 32px; background-color: #198754; margin-right: 12px;"></div>
-                            <div>
-                                <p class="text-muted small mb-0 font-size-11">Saha Aracı</p>
-                                <h6 class="mb-0 fw-bold text-dark"><?php echo $sahadaki_arac; ?> Adet</h6>
+                    <div class="row mt-auto">
+                        <div class="col-4 mb-3">
+                            <div class="d-flex align-items-center">
+                                <div style="width: 3px; height: 32px; background-color: #198754; margin-right: 12px;"></div>
+                                <div>
+                                    <p class="text-muted small mb-0 font-size-11">Saha Aracı</p>
+                                    <h6 class="mb-0 fw-bold text-dark"><?php echo $sahadaki_arac; ?> Adet</h6>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-4 mb-3">
-                        <div class="d-flex align-items-center">
-                            <div style="width: 3px; height: 32px; background-color: #dc3545; margin-right: 12px;"></div>
-                            <div>
-                                <p class="text-muted small mb-0 font-size-11">Servis / Pasif</p>
-                                <h6 class="mb-0 fw-bold text-dark"><?php echo $servisteki_arac; ?> Adet</h6>
+                        <div class="col-4 mb-3">
+                            <div class="d-flex align-items-center">
+                                <div style="width: 3px; height: 32px; background-color: #dc3545; margin-right: 12px;"></div>
+                                <div>
+                                    <p class="text-muted small mb-0 font-size-11">Servis / Pasif</p>
+                                    <h6 class="mb-0 fw-bold text-dark"><?php echo $servisteki_arac; ?> Adet</h6>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-4 mb-3">
-                        <div class="d-flex align-items-center">
-                            <div style="width: 3px; height: 32px; background-color: #ffc107; margin-right: 12px;"></div>
-                            <div>
-                                <p class="text-muted small mb-0 font-size-11">Boşta</p>
-                                <h6 class="mb-0 fw-bold text-dark"><?php echo $bosta_arac; ?> Adet</h6>
+                        <div class="col-4 mb-3">
+                            <div class="d-flex align-items-center">
+                                <div style="width: 3px; height: 32px; background-color: #ffc107; margin-right: 12px;"></div>
+                                <div>
+                                    <p class="text-muted small mb-0 font-size-11">Boşta</p>
+                                    <h6 class="mb-0 fw-bold text-dark"><?php echo $bosta_arac; ?> Adet</h6>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    <?php $widgets['widget-arac-ozet'] = ob_get_clean();
+        <?php $widgets['widget-arac-ozet'] = ob_get_clean();
     }
 
     if (\App\Service\Gate::allows("talepler")) {
         ob_start(); ?>
-    <div class="col-md-2 widget-item" id="widget-bekleyen-talepler">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
-            style="--card-color: #f6c23e; border-bottom: 3px solid var(--card-color) !important; --delay: 0.6s">
-            <div class="card-body p-3 pb-2">
-                <div class="icon-label-container">
-                    <div class="icon-box" style="background: rgba(246, 194, 62, 0.1);">
-                        <i class="bx bx-time-five fs-4" style="color: #f6c23e;"></i>
+        <div class="col-md-2 widget-item" id="widget-bekleyen-talepler">
+            <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+                style="--card-color: #f6c23e; border-bottom: 3px solid var(--card-color) !important; --delay: 0.6s">
+                <div class="card-body p-3 pb-2">
+                    <div class="icon-label-container">
+                        <div class="icon-box" style="background: rgba(246, 194, 62, 0.1);">
+                            <i class="bx bx-time-five fs-4" style="color: #f6c23e;"></i>
+                        </div>
+                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">TALEP</span>
                     </div>
-                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">TALEP</span>
-                </div>
-                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">BEKLEYEN TALEPLER</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading">
-                    <?php echo $personel_talep_sayisi ?? 0; ?>
-                    <span class="trend-badge <?php echo $personel_talep_sayisi > 0 ? 'down' : 'up'; ?> ms-1">
-                        <?php echo $personel_talep_sayisi > 0 ? 'Dikkat' : 'Stabil'; ?>
-                    </span>
-                </h4>
-                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Onay bekleyen işlemler</div>
-                <div class="card-footer-actions mt-2 d-flex justify-content-end">
-                    <a href="index.php?p=talepler/list" class="btn btn-xs btn-soft-warning rounded-pill">
-                        <i class="bx bx-right-arrow-alt"></i> Git
-                    </a>
+                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">BEKLEYEN TALEPLER</p>
+                    <h4 class="mb-0 fw-bold bordro-text-heading">
+                        <?php echo $personel_talep_sayisi ?? 0; ?>
+                        <span class="trend-badge <?php echo $personel_talep_sayisi > 0 ? 'down' : 'up'; ?> ms-1">
+                            <?php echo $personel_talep_sayisi > 0 ? 'Dikkat' : 'Stabil'; ?>
+                        </span>
+                    </h4>
+                    <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Onay bekleyen işlemler</div>
+                    <div class="card-footer-actions mt-2 d-flex justify-content-end">
+                        <a href="index.php?p=talepler/list" class="btn btn-xs btn-soft-warning rounded-pill">
+                            <i class="bx bx-right-arrow-alt"></i> Git
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    <?php $widgets['widget-bekleyen-talepler'] = ob_get_clean();
+        <?php $widgets['widget-bekleyen-talepler'] = ob_get_clean();
     }
 
     ob_start(); ?>
@@ -976,6 +979,120 @@ if (Gate::allows("ana_sayfa")) {
     </div>
     <?php $widgets['widget-endeks-karsilastirma'] = ob_get_clean();
 
+    ob_start(); ?>
+    <div class="<?php echo getWidgetWidth('widget-yaklasan-gorevler', 'col-md-6'); ?> widget-item"
+        id="widget-yaklasan-gorevler">
+        <div class="card summary-card"
+            style="background: linear-gradient(145deg, rgba(255,255,255,0.98), rgba(248,250,252,0.99)); border: 1px solid rgba(226,232,240,0.8); border-radius: 12px; box-shadow: 0 4px 15px -3px rgba(0,0,0,0.05), 0 2px 5px -2px rgba(0,0,0,0.02);">
+            <div class="card-header align-items-center d-flex flex-wrap gap-2"
+                style="border-bottom: 1px solid rgba(226,232,240,0.6); padding-bottom: 12px;">
+                <h5 class="card-title mb-0 d-flex align-items-center gap-2" style="font-family: 'Outfit', sans-serif;">
+                    <i class='bx bx-grid-vertical drag-handle' style="cursor: move;"></i>
+                    <i class='bx bx-task' style="color: #6366f1;"></i>
+                    Yaklaşan Görevler
+                </h5>
+                <div class="d-flex align-items-center gap-2 ms-auto">
+                    <a href="index.php?p=gorevler/list"
+                        class="btn btn-sm btn-soft-primary rounded-pill fw-semibold border-0"
+                        style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">
+                        Tümü <i class="bx bx-right-arrow-alt ms-1"></i>
+                    </a>
+                    <?php echo getWidthControl(); ?>
+                </div>
+            </div>
+            <div class="card-body"
+                style="padding: 1rem; min-height: <?php echo getWidgetHeight('widget-yaklasan-gorevler', 'auto'); ?>;">
+                <?php if (empty($yaklasan_gorevler)): ?>
+                    <div class="text-center py-4">
+                        <i class="bx bx-check-circle" style="font-size: 48px; opacity: 0.2; color: #10b981;"></i>
+                        <p class="text-muted mt-2 mb-0" style="font-weight: 500;">Yaklaşan görev bulunmuyor.</p>
+                    </div>
+                <?php else: ?>
+                    <div class="yaklasan-gorev-list">
+                        <?php foreach ($yaklasan_gorevler as $gorev): ?>
+                            <?php
+                            $renk = $gorev->liste_renk ?: '#6366f1';
+                            $tarihVar = !empty($gorev->tarih);
+                            $isGecikti = false;
+                            $isBugun = false;
+
+                            if ($tarihVar) {
+                                $isGecikti = (strtotime($gorev->tarih . ' ' . ($gorev->saat ?? '23:59:59')) < time());
+                                $isBugun = ($gorev->tarih == date('Y-m-d'));
+                            }
+
+                            if ($isGecikti) {
+                                $durum_badge = '<span class="badge bg-soft-danger text-danger d-flex align-items-center gap-1 opacity-75" style="border-radius:6px; font-size:0.65rem; font-weight:700;"><div style="width:4px;height:4px;border-radius:50%;background-color:currentColor;"></div>GECİKTİ</span>';
+                            } elseif ($isBugun) {
+                                $durum_badge = '<span class="badge bg-soft-warning text-warning d-flex align-items-center gap-1 opacity-75" style="border-radius:6px; font-size:0.65rem; font-weight:700;"><div style="width:4px;height:4px;border-radius:50%;background-color:currentColor;"></div>BUGÜN</span>';
+                            } elseif ($tarihVar) {
+                                $durum_badge = '<span class="badge bg-soft-primary text-primary d-flex align-items-center gap-1 opacity-75" style="border-radius:6px; font-size:0.65rem; font-weight:700;"><div style="width:4px;height:4px;border-radius:50%;background-color:currentColor;"></div>YAKLAŞAN</span>';
+                            } else {
+                                $durum_badge = '<span class="badge bg-soft-secondary text-secondary d-flex align-items-center gap-1 opacity-75" style="border-radius:6px; font-size:0.65rem; font-weight:700;"><div style="width:4px;height:4px;border-radius:50%;background-color:currentColor;"></div>BELİRSİZ</span>';
+                            }
+                            ?>
+                            <div class="card mb-2 border-0 shadow-none position-relative overflow-hidden"
+                                style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important; border: 1px solid rgba(226,232,240,0.6) !important;">
+                                <!-- Sol Kenar Çizgisi, sağ kenara al dediğimizde sağa olur ama ref solda -->
+                                <div class="position-absolute start-0 top-0 bottom-0"
+                                    style="width: 4px; background: <?php echo $renk; ?>; border-top-left-radius: 8px; border-bottom-left-radius: 8px;">
+                                </div>
+
+                                <div class="card-body p-3 ps-4">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="bx bx-list-ul text-muted" style="font-size: 0.8rem;"></i>
+                                            <span class="text-uppercase fw-bold text-muted"
+                                                style="font-size: 0.65rem; letter-spacing: 0.05em; color: <?php echo $renk; ?> !important;"><?php echo htmlspecialchars($gorev->liste_adi); ?></span>
+                                        </div>
+                                        <?php echo $durum_badge; ?>
+                                    </div>
+
+                                    <h6 class="mb-2 fw-semibold text-dark" style="font-size: 0.95rem; line-height: 1.4;">
+                                        <a href="index.php?p=gorevler/list&task_id=<?php echo $gorev->id; ?>"
+                                            class="text-dark text-decoration-none hover-primary">
+                                            <?php echo htmlspecialchars($gorev->baslik); ?>
+                                        </a>
+                                    </h6>
+
+                                    <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top"
+                                        style="border-color: rgba(226,232,240,0.4) !important;">
+                                        <?php
+                                        $gorevPersonel = isset($personel_map[$gorev->olusturan_id]) ? $personel_map[$gorev->olusturan_id] : null;
+                                        ?>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <?php if ($gorevPersonel): ?>
+                                                <img src="<?php echo !empty($gorevPersonel->resim_yolu) ? $gorevPersonel->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
+                                                    class="rounded-circle" style="width: 20px; height: 20px;" alt="">
+                                                <span class="text-muted"
+                                                    style="font-size: 0.75rem; font-weight:500;"><?php echo htmlspecialchars(explode(' ', $gorevPersonel->adi_soyadi)[0]); ?></span>
+                                            <?php else: ?>
+                                                <i class="bx bx-user-circle text-muted fs-5"></i>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="text-muted d-flex align-items-center gap-1"
+                                            style="font-size: 0.75rem; font-weight: 500;">
+                                            <i class="bx bx-calendar-alt opacity-75"></i>
+                                            <?php
+                                            if ($tarihVar) {
+                                                echo date('d M', strtotime($gorev->tarih));
+                                                if ($gorev->saat)
+                                                    echo ', ' . date('H:i', strtotime($gorev->saat));
+                                            } else {
+                                                echo 'Tarih Belirtilmedi';
+                                            }
+                                            ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    <?php $widgets['widget-yaklasan-gorevler'] = ob_get_clean();
 
     if (\App\Service\Gate::allows("gorev_bildirim_log_kayitlari")) {
         // Giriş kayıtları sorgusu
@@ -1282,145 +1399,145 @@ if (Gate::allows("ana_sayfa")) {
 
     if (\App\Service\Gate::allows("talepler")) {
         ob_start(); ?>
-    <div class="<?php echo getWidgetWidth('widget-talepler', 'col-md-6'); ?> widget-item" id="widget-talepler">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Arıza/İzin/Avans Talepleri</h5>
-                <?php echo getWidthControl(); ?>
-            </div>
-            <div class="card-body"
-                style="height: <?php echo getWidgetHeight('widget-talepler', 'auto'); ?>; overflow-y: auto;">
-                <div class="table-responsive">
-                    <table class="table table-centered table-nowrap mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Personel</th>
-                                <th>Talep Tipi</th>
-                                <th>Detay</th>
-                                <th>Tarih</th>
-                                <th>İşlem</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (empty($recent_requests)): ?>
+        <div class="<?php echo getWidgetWidth('widget-talepler', 'col-md-6'); ?> widget-item" id="widget-talepler">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Arıza/İzin/Avans Talepleri</h5>
+                    <?php echo getWidthControl(); ?>
+                </div>
+                <div class="card-body"
+                    style="height: <?php echo getWidgetHeight('widget-talepler', 'auto'); ?>; overflow-y: auto;">
+                    <div class="table-responsive">
+                        <table class="table table-centered table-nowrap mb-0">
+                            <thead class="table-light">
                                 <tr>
-                                    <td colspan="5" class="text-center">Bekleyen talep bulunmamaktadır.</td>
+                                    <th>Personel</th>
+                                    <th>Talep Tipi</th>
+                                    <th>Detay</th>
+                                    <th>Tarih</th>
+                                    <th>İşlem</th>
                                 </tr>
-                            <?php else: ?>
-                                <?php foreach ($recent_requests as $req):
-                                    $personel = $personel_map[$req->personel_id] ?? null;
-                                    $badgeClass = 'badge-warning';
-                                    if ($req->tip == 'Avans')
-                                        $badgeClass = 'badge-success';
-                                    if ($req->tip == 'İzin')
-                                        $badgeClass = 'badge-primary';
-                                    if ($req->tip == 'Talep')
-                                        $badgeClass = 'badge-info';
-                                    ?>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($recent_requests)): ?>
                                     <tr>
-                                        <td>
-                                            <?php if ($personel): ?>
-                                                <div class="d-flex align-items-center">
-                                                    <div class="flex-shrink-0 me-3">
-                                                        <img src="<?php echo !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
-                                                            alt="" class="avatar-xs rounded-circle">
-                                                    </div>
-                                                    <div class="flex-grow-1">
-                                                        <h5 class="font-size-14 mb-1"><?php echo $personel->adi_soyadi; ?></h5>
-                                                        <p class="text-muted mb-0 font-size-12">
-                                                            <?php echo $personel->departman; ?>
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            <?php else: ?>
-                                                Personel #<?php echo $req->personel_id; ?>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td><span
-                                                class="badge <?php echo $badgeClass; ?> font-size-12"><?php echo $req->tip; ?></span>
-                                        </td>
-                                        <td>
-                                            <?php
-                                            if ($req->tip == 'Avans')
-                                                echo number_format($req->detay, 2) . ' ₺';
-                                            elseif ($req->tip == 'İzin')
-                                                echo htmlspecialchars($req->detay);
-                                            else
-                                                echo $req->detay;
-                                            ?>
-                                        </td>
-                                        <td><?php echo date('d.m.Y', strtotime($req->tarih)); ?></td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <button type="button" class="btn btn-info btn-sm btn-home-detay"
-                                                    data-id="<?php echo $req->id; ?>" data-tip="<?php echo $req->tip; ?>"
-                                                    data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
-                                                    data-detay="<?php echo htmlspecialchars($req->tip == 'Avans' ? number_format($req->detay, 2) . ' ₺' : $req->detay); ?>"
-                                                    data-tarih="<?php echo date('d.m.Y', strtotime($req->tarih)); ?>" title="Detay">
-                                                    <i class='bx bx-show'></i>
-                                                </button>
-
-                                                <?php if ($req->tip == 'Avans'): ?>
-                                                    <button type="button" class="btn btn-success btn-sm btn-avans-onayla"
-                                                        data-id="<?php echo $req->id; ?>"
-                                                        data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
-                                                        data-tutar="<?php echo $req->detay; ?>" title="Onayla">
-                                                        <i class="bx bx-check"></i>
-                                                    </button>
-                                                    <button type="button" class="btn btn-danger btn-sm btn-avans-reddet"
-                                                        data-id="<?php echo $req->id; ?>"
-                                                        data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
-                                                        title="Reddet">
-                                                        <i class="bx bx-x"></i>
-                                                    </button>
-                                                <?php elseif ($req->tip == 'İzin'): ?>
-                                                    <button type="button" class="btn btn-success btn-sm btn-izin-onayla"
-                                                        data-id="<?php echo $req->id; ?>"
-                                                        data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
-                                                        data-tur="<?php echo htmlspecialchars($req->detay); ?>"
-                                                        data-gun="<?php echo $req->toplam_gun ?? 0; ?>" title="Onayla">
-                                                        <i class="bx bx-check"></i>
-                                                    </button>
-                                                    <button type="button" class="btn btn-danger btn-sm btn-izin-reddet"
-                                                        data-id="<?php echo $req->id; ?>"
-                                                        data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
-                                                        title="Reddet">
-                                                        <i class="bx bx-x"></i>
-                                                    </button>
-                                                <?php elseif ($req->tip == 'Talep'): ?>
-                                                    <button type="button" class="btn btn-success btn-sm btn-talep-cozuldu"
-                                                        data-id="<?php echo $req->id; ?>"
-                                                        data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
-                                                        data-baslik="<?php echo htmlspecialchars($req->detay); ?>" title="Çözüldü">
-                                                        <i class="bx bx-check"></i>
-                                                    </button>
-                                                <?php endif; ?>
-
-                                                <?php
-                                                $tabParam = 'avans';
-                                                if ($req->tip == 'Avans')
-                                                    $tabParam = 'avans';
-                                                elseif ($req->tip == 'İzin')
-                                                    $tabParam = 'izin';
-                                                else
-                                                    $tabParam = 'talep';
-                                                ?>
-                                                <a href="index.php?p=talepler/list&tab=<?php echo $tabParam; ?>"
-                                                    class="btn btn-primary btn-sm" title="Talepler Sayfasına Git">
-                                                    <i class='bx bx-right-arrow-alt'></i>
-                                                </a>
-                                            </div>
-                                        </td>
+                                        <td colspan="5" class="text-center">Bekleyen talep bulunmamaktadır.</td>
                                     </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+                                <?php else: ?>
+                                    <?php foreach ($recent_requests as $req):
+                                        $personel = $personel_map[$req->personel_id] ?? null;
+                                        $badgeClass = 'badge-warning';
+                                        if ($req->tip == 'Avans')
+                                            $badgeClass = 'badge-success';
+                                        if ($req->tip == 'İzin')
+                                            $badgeClass = 'badge-primary';
+                                        if ($req->tip == 'Talep')
+                                            $badgeClass = 'badge-info';
+                                        ?>
+                                        <tr>
+                                            <td>
+                                                <?php if ($personel): ?>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="flex-shrink-0 me-3">
+                                                            <img src="<?php echo !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
+                                                                alt="" class="avatar-xs rounded-circle">
+                                                        </div>
+                                                        <div class="flex-grow-1">
+                                                            <h5 class="font-size-14 mb-1"><?php echo $personel->adi_soyadi; ?></h5>
+                                                            <p class="text-muted mb-0 font-size-12">
+                                                                <?php echo $personel->departman; ?>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                <?php else: ?>
+                                                    Personel #<?php echo $req->personel_id; ?>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><span
+                                                    class="badge <?php echo $badgeClass; ?> font-size-12"><?php echo $req->tip; ?></span>
+                                            </td>
+                                            <td>
+                                                <?php
+                                                if ($req->tip == 'Avans')
+                                                    echo number_format($req->detay, 2) . ' ₺';
+                                                elseif ($req->tip == 'İzin')
+                                                    echo htmlspecialchars($req->detay);
+                                                else
+                                                    echo $req->detay;
+                                                ?>
+                                            </td>
+                                            <td><?php echo date('d.m.Y', strtotime($req->tarih)); ?></td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <button type="button" class="btn btn-info btn-sm btn-home-detay"
+                                                        data-id="<?php echo $req->id; ?>" data-tip="<?php echo $req->tip; ?>"
+                                                        data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                        data-detay="<?php echo htmlspecialchars($req->tip == 'Avans' ? number_format($req->detay, 2) . ' ₺' : $req->detay); ?>"
+                                                        data-tarih="<?php echo date('d.m.Y', strtotime($req->tarih)); ?>" title="Detay">
+                                                        <i class='bx bx-show'></i>
+                                                    </button>
+
+                                                    <?php if ($req->tip == 'Avans'): ?>
+                                                        <button type="button" class="btn btn-success btn-sm btn-avans-onayla"
+                                                            data-id="<?php echo $req->id; ?>"
+                                                            data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                            data-tutar="<?php echo $req->detay; ?>" title="Onayla">
+                                                            <i class="bx bx-check"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-danger btn-sm btn-avans-reddet"
+                                                            data-id="<?php echo $req->id; ?>"
+                                                            data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                            title="Reddet">
+                                                            <i class="bx bx-x"></i>
+                                                        </button>
+                                                    <?php elseif ($req->tip == 'İzin'): ?>
+                                                        <button type="button" class="btn btn-success btn-sm btn-izin-onayla"
+                                                            data-id="<?php echo $req->id; ?>"
+                                                            data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                            data-tur="<?php echo htmlspecialchars($req->detay); ?>"
+                                                            data-gun="<?php echo $req->toplam_gun ?? 0; ?>" title="Onayla">
+                                                            <i class="bx bx-check"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-danger btn-sm btn-izin-reddet"
+                                                            data-id="<?php echo $req->id; ?>"
+                                                            data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                            title="Reddet">
+                                                            <i class="bx bx-x"></i>
+                                                        </button>
+                                                    <?php elseif ($req->tip == 'Talep'): ?>
+                                                        <button type="button" class="btn btn-success btn-sm btn-talep-cozuldu"
+                                                            data-id="<?php echo $req->id; ?>"
+                                                            data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                            data-baslik="<?php echo htmlspecialchars($req->detay); ?>" title="Çözüldü">
+                                                            <i class="bx bx-check"></i>
+                                                        </button>
+                                                    <?php endif; ?>
+
+                                                    <?php
+                                                    $tabParam = 'avans';
+                                                    if ($req->tip == 'Avans')
+                                                        $tabParam = 'avans';
+                                                    elseif ($req->tip == 'İzin')
+                                                        $tabParam = 'izin';
+                                                    else
+                                                        $tabParam = 'talep';
+                                                    ?>
+                                                    <a href="index.php?p=talepler/list&tab=<?php echo $tabParam; ?>"
+                                                        class="btn btn-primary btn-sm" title="Talepler Sayfasına Git">
+                                                        <i class='bx bx-right-arrow-alt'></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    <?php $widgets['widget-talepler'] = ob_get_clean();
+        <?php $widgets['widget-talepler'] = ob_get_clean();
     }
 
     ob_start(); ?>
@@ -1699,10 +1816,26 @@ if (Gate::allows("ana_sayfa")) {
                     <div class="skeleton-line w-70"></div>
                 </div>
 
-                <div class="skeleton-card skeleton-card-sm"><div class="skeleton-line w-60"></div><div class="skeleton-line w-90"></div><div class="skeleton-line w-50"></div></div>
-                <div class="skeleton-card skeleton-card-sm"><div class="skeleton-line w-50"></div><div class="skeleton-line w-85"></div><div class="skeleton-line w-60"></div></div>
-                <div class="skeleton-card skeleton-card-sm"><div class="skeleton-line w-55"></div><div class="skeleton-line w-95"></div><div class="skeleton-line w-40"></div></div>
-                <div class="skeleton-card skeleton-card-sm"><div class="skeleton-line w-45"></div><div class="skeleton-line w-80"></div><div class="skeleton-line w-65"></div></div>
+                <div class="skeleton-card skeleton-card-sm">
+                    <div class="skeleton-line w-60"></div>
+                    <div class="skeleton-line w-90"></div>
+                    <div class="skeleton-line w-50"></div>
+                </div>
+                <div class="skeleton-card skeleton-card-sm">
+                    <div class="skeleton-line w-50"></div>
+                    <div class="skeleton-line w-85"></div>
+                    <div class="skeleton-line w-60"></div>
+                </div>
+                <div class="skeleton-card skeleton-card-sm">
+                    <div class="skeleton-line w-55"></div>
+                    <div class="skeleton-line w-95"></div>
+                    <div class="skeleton-line w-40"></div>
+                </div>
+                <div class="skeleton-card skeleton-card-sm">
+                    <div class="skeleton-line w-45"></div>
+                    <div class="skeleton-line w-80"></div>
+                    <div class="skeleton-line w-65"></div>
+                </div>
 
                 <div class="skeleton-card skeleton-card-full">
                     <div class="skeleton-line w-40"></div>
@@ -1715,180 +1848,181 @@ if (Gate::allows("ana_sayfa")) {
 
         <div id="dashboard-page-content" style="display: none;">
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <?php
+                    $maintitle = 'Ana Sayfa';
+                    $title = '';
+                    ?>
+                </div>
+                <div class="d-flex gap-2">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false" style="font-weight: 500;">
+                            <i class="bx bx-show me-1"></i> Kart Görünürlüğü
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0"
+                            style="min-width: 280px; z-index: 1060;">
+                            <li>
+                                <h6 class="dropdown-header fw-bold">Gösterilecek Kartları Seçin</h6>
+                            </li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-ana-slider" checked>
+                                    <strong>Haberler ve Duyurular</strong>
+                                </label>
+                            </li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-personel-ozet" checked>
+                                    Personel Durumu
+                                </label>
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-arac-ozet" checked>
+                                    Araç Durumu
+                                </label>
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-bekleyen-talepler" checked>
+                                    Bekleyen Talepler
+                                </label>
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-gec-kalanlar" checked>
+                                    Geç Kalanlar
+                                </label>
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-nobetciler" checked>
+                                    Bugünkü Nöbetçiler
+                                </label>
+                            </li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-bildirimler" checked>
+                                    Görev ve Bildirimler
+                                </label>
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-talepler" checked>
+                                    Arıza/İzin/Avans Talepleri
+                                </label>
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-izindekiler" checked>
+                                    İzinde Olan Personeller
+                                </label>
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-is-turu-istatistikleri" checked>
+                                    İş Türü İstatistikleri
+                                </label>
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-is-emri-sonucu-istatistikleri" checked>
+                                    İş Emri Sonuç İstatistikleri
+                                </label>
+                            </li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-gunluk-kesme-acma" checked>
+                                    Günlük Kesme Açma
+                                </label>
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-gunluk-endeks-okuma" checked>
+                                    Günlük Endeks Okuma
+                                </label>
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-gunluk-sayac-degisimi" checked>
+                                    Günlük Sayaç Değişimi
+                                </label>
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-gunluk-muhurleme" checked>
+                                    Günlük Mühürleme
+                                </label>
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-kacak-sayisi" checked>
+                                    Kaçak Kontrol
+                                </label>
+                            </li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li>
+                                <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                    <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                        data-widget="widget-endeks-karsilastirma" checked>
+                                    <strong>Endeks Karşılaştırma</strong>
+                                </label>
+                            </li>
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-reset-dashboard"
+                        style="font-weight: 500;">
+                        <i class="bx bx-reset me-1"></i> Varsayılan Yerleşime Dön
+                    </button>
+                </div>
+            </div>
+
+            <div class="row" id="dashboard-widgets">
                 <?php
-                $maintitle = 'Ana Sayfa';
-                $title = '';
+                foreach ($render_order as $widget_id) {
+                    if (isset($widgets[$widget_id])) {
+                        echo $widgets[$widget_id];
+                        unset($widgets[$widget_id]);
+                    }
+                }
+                // Eksik kalan widget varsa ekle
+                foreach ($widgets as $widget_html) {
+                    echo $widget_html;
+                }
                 ?>
             </div>
-            <div class="d-flex gap-2">
-                <div class="dropdown">
-                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown"
-                        aria-expanded="false" style="font-weight: 500;">
-                        <i class="bx bx-show me-1"></i> Kart Görünürlüğü
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" style="min-width: 280px; z-index: 1060;">
-                        <li>
-                            <h6 class="dropdown-header fw-bold">Gösterilecek Kartları Seçin</h6>
-                        </li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-ana-slider" checked>
-                                <strong>Haberler ve Duyurular</strong>
-                            </label>
-                        </li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-personel-ozet" checked>
-                                Personel Durumu
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-arac-ozet" checked>
-                                Araç Durumu
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-bekleyen-talepler" checked>
-                                Bekleyen Talepler
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-gec-kalanlar" checked>
-                                Geç Kalanlar
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-nobetciler" checked>
-                                Bugünkü Nöbetçiler
-                            </label>
-                        </li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-bildirimler" checked>
-                                Görev ve Bildirimler
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-talepler" checked>
-                                Arıza/İzin/Avans Talepleri
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-izindekiler" checked>
-                                İzinde Olan Personeller
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-is-turu-istatistikleri" checked>
-                                İş Türü İstatistikleri
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-is-emri-sonucu-istatistikleri" checked>
-                                İş Emri Sonuç İstatistikleri
-                            </label>
-                        </li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-gunluk-kesme-acma" checked>
-                                Günlük Kesme Açma
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-gunluk-endeks-okuma" checked>
-                                Günlük Endeks Okuma
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-gunluk-sayac-degisimi" checked>
-                                Günlük Sayaç Değişimi
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-gunluk-muhurleme" checked>
-                                Günlük Mühürleme
-                            </label>
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-kacak-sayisi" checked>
-                                Kaçak Kontrol
-                            </label>
-                        </li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li>
-                            <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                    data-widget="widget-endeks-karsilastirma" checked>
-                                <strong>Endeks Karşılaştırma</strong>
-                            </label>
-                        </li>
-                    </ul>
-                </div>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-reset-dashboard"
-                    style="font-weight: 500;">
-                    <i class="bx bx-reset me-1"></i> Varsayılan Yerleşime Dön
-                </button>
-            </div>
-        </div>
-
-        <div class="row" id="dashboard-widgets">
-            <?php
-            foreach ($render_order as $widget_id) {
-                if (isset($widgets[$widget_id])) {
-                    echo $widgets[$widget_id];
-                    unset($widgets[$widget_id]);
-                }
-            }
-            // Eksik kalan widget varsa ekle
-            foreach ($widgets as $widget_html) {
-                echo $widget_html;
-            }
-            ?>
-        </div>
 
         </div>
     </div>
@@ -2973,25 +3107,66 @@ if (Gate::allows("ana_sayfa")) {
             background: rgba(148, 163, 184, 0.35);
         }
 
-        .w-100 { width: 100%; }
-        .w-95 { width: 95%; }
-        .w-92 { width: 92%; }
-        .w-90 { width: 90%; }
-        .w-85 { width: 85%; }
-        .w-70 { width: 70%; }
-        .w-60 { width: 60%; }
-        .w-50 { width: 50%; }
-        .w-40 { width: 40%; }
-        .w-35 { width: 35%; }
+        .w-100 {
+            width: 100%;
+        }
+
+        .w-95 {
+            width: 95%;
+        }
+
+        .w-92 {
+            width: 92%;
+        }
+
+        .w-90 {
+            width: 90%;
+        }
+
+        .w-85 {
+            width: 85%;
+        }
+
+        .w-70 {
+            width: 70%;
+        }
+
+        .w-60 {
+            width: 60%;
+        }
+
+        .w-50 {
+            width: 50%;
+        }
+
+        .w-40 {
+            width: 40%;
+        }
+
+        .w-35 {
+            width: 35%;
+        }
 
         @keyframes skeleton-shimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
         }
 
         @keyframes skeleton-pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.75; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.75;
+            }
         }
 
         [data-bs-theme="dark"] .skeleton-line {

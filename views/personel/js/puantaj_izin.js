@@ -149,7 +149,7 @@ $(document).ready(function () {
             const style = getStyleFromTailwind(item.renk);
             const shortCode = getShortCode(item);
             html += `
-                            <div class="izin-item-container draggable-izin" 
+                            <div class="izin-item-container draggable-izin" draggable="true"
                                  data-id="${item.id}" 
                                  data-name="${item.tur_adi}"
                                  data-color="${item.renk}"
@@ -174,21 +174,6 @@ $(document).ready(function () {
           });
           $(`#${containerId}`).html(html);
           initTooltips();
-
-          // Sortable for Drag and Drop
-          new Sortable(document.getElementById(containerId), {
-            group: {
-              name: "izinSharing",
-              pull: "clone",
-              put: false,
-            },
-            sort: false,
-            animation: 150,
-            ghostClass: "sortable-ghost",
-            onStart: function () {
-              $(".tooltip").remove();
-            },
-          });
         };
         if (res.data.ucretli) {
           ucretliDefinitions = res.data.ucretli;
@@ -217,11 +202,19 @@ $(document).ready(function () {
 
     // Header
     let headerHtml = '<th class="sticky-col">Personel</th>';
+    const dayNames = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
     for (let d = 1; d <= daysCount; d++) {
       const date = new Date(yil, ay - 1, d);
       const isSunday = date.getDay() === 0;
+      const dayName = dayNames[date.getDay()];
       const sundayClass = isSunday ? "is-sunday" : "";
-      headerHtml += `<th class="${sundayClass}">${d}</th>`;
+
+      headerHtml += `<th class="${sundayClass}">
+         <div class="day-header-pill">
+             <div class="day-name">${dayName}</div>
+             <div class="day-number">${d}</div>
+         </div>
+      </th>`;
     }
     headerHtml += '<th class="sticky-col-right-1">Toplam Ç.G.</th>';
     headerHtml += '<th class="sticky-col-right-2">Fiili Ç.G.</th>';
@@ -309,7 +302,7 @@ $(document).ready(function () {
                     }
 
                     if (isDisabledDay) {
-                        disabledDaysCount++;
+                      disabledDaysCount++;
                     }
 
                     const key = `${p.id}-${dateStr}`;
@@ -336,17 +329,17 @@ $(document).ready(function () {
                       allCount++;
                       if (ucretsizIzinIds.has(typeId)) unpaidCount++;
 
-                      cellStyle = `background-color: ${unsavedStyle.bg} !important; color: ${unsavedStyle.color} !important; border: 1px solid ${unsavedStyle.color}33 !important;`;
+                      cellStyle = ``;
                       hasEntryClass = "has-entry unsaved";
                       cellContent = `
-                                <div class="cell-content draggable-izin" 
+                                <div class="cell-content draggable-izin" draggable="true"
                                      data-bs-toggle="tooltip" 
                                      title="${unsaved.name}" 
                                      data-id="${unsaved.type_id || unsaved.typeId}" 
                                      data-shortcode="${unsaved.shortCode}"
                                      data-name="${unsaved.name}"
                                      data-color="${unsaved.color}"
-                                     style="font-weight: 700;">
+                                     style="background-color: ${unsavedStyle.bg} !important; color: ${unsavedStyle.color} !important; border: 1px solid ${unsavedStyle.color}33 !important; font-weight: 700;">
                                     ${unsaved.shortCode}
                                     <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
                                 </div>`;
@@ -354,30 +347,30 @@ $(document).ready(function () {
                       const entry = entries[0];
                       const styleObj = getStyleFromTailwind(entry.color);
                       const typeId = entry.tip_id?.toString();
-                      if (entry.type !== 'default') {
-                          allCount++;
+                      if (entry.type !== "default") {
+                        allCount++;
                       }
                       if (ucretsizIzinIds.has(typeId)) unpaidCount++;
 
-                      cellStyle = `background-color: ${styleObj.bg} !important; color: ${styleObj.color} !important; border: 1px solid ${styleObj.color}33 !important;`;
+                      cellStyle = ``;
                       hasEntryClass = "has-entry";
                       const shortCode = getShortCode(entry);
 
                       let deleteBtn = "";
-                      if (entry.type !== 'default') {
-                          deleteBtn = `<span class="btn-delete-cell" onclick="deleteEntry(${entry.id}, event)">×</span>`;
+                      if (entry.type !== "default") {
+                        deleteBtn = `<span class="btn-delete-cell" onclick="deleteEntry(${entry.id}, event)">×</span>`;
                       }
 
                       cellContent = `
-                                <div class="cell-content draggable-izin" 
+                                <div class="cell-content draggable-izin" draggable="true"
                                      data-bs-toggle="tooltip" 
                                      title="${entry.name}" 
                                      data-id="${entry.tip_id}" 
                                      data-shortcode="${shortCode}"
                                      data-name="${entry.name}"
                                      data-color="${entry.color}"
-                                     data-is-default="${entry.type === 'default'}"
-                                     style="font-weight: 700;">
+                                     data-is-default="${entry.type === "default"}"
+                                     style="background-color: ${styleObj.bg} !important; color: ${styleObj.color} !important; border: 1px solid ${styleObj.color}33 !important; font-weight: 700;">
                                     ${shortCode}
                                     ${deleteBtn}
                                 </div>`;
@@ -392,8 +385,14 @@ $(document).ready(function () {
                   }
 
                   const calisilmasiGerekenGun = daysCount - disabledDaysCount;
-                  const toplamCalisma = calisilmasiGerekenGun > 0 ? calisilmasiGerekenGun - unpaidCount : 0;
-                  const fiiliCalisma = calisilmasiGerekenGun > 0 ? calisilmasiGerekenGun - allCount : 0;
+                  const toplamCalisma =
+                    calisilmasiGerekenGun > 0
+                      ? calisilmasiGerekenGun - unpaidCount
+                      : 0;
+                  const fiiliCalisma =
+                    calisilmasiGerekenGun > 0
+                      ? calisilmasiGerekenGun - allCount
+                      : 0;
                   bodyHtml += `<td class="sticky-col-right-1 toplam-calisma-gunu">${toplamCalisma}</td>`;
                   bodyHtml += `<td class="sticky-col-right-2 fiili-calisma-gunu">${fiiliCalisma}</td>`;
                   bodyHtml += "</tr>";
@@ -529,119 +528,89 @@ $(document).ready(function () {
       .on("click", function (e) {
         if (!selectedType || $(this).hasClass("disabled")) return;
 
-        const cell = this;
-        const pId = cell.dataset.personelId;
-        const date = cell.dataset.date;
-        const key = `${pId}-${date}`;
+        applyLeaveToCell(this, selectedType);
+      });
 
-        // Add to unsaved changes
-        unsavedChanges[key] = {
-          personel_id: pId,
-          date: date,
-          type_id: selectedType.id,
-          name: selectedType.name,
-          color: selectedType.color,
-          shortCode: selectedType.shortCode,
+    // Native Drag and Drop Implementation
+    let draggedType = null;
+    let draggedSourceKey = null;
+
+    $(document)
+      .off("dragstart", ".draggable-izin")
+      .on("dragstart", ".draggable-izin", function (e) {
+        const $el = $(this);
+        draggedType = {
+          id: $el.data("id"),
+          shortCode: $el.data("shortcode"),
+          name: $el.data("name"),
+          color: $el.data("color"),
         };
 
-        // Render locally
-        const style = getStyleFromTailwind(selectedType.color);
-        $(cell)
-          .attr(
-            "style",
-            `background-color: ${style.bg} !important; color: ${style.color} !important; border: 1px solid ${style.color}33 !important;`,
-          )
-          .addClass("has-entry unsaved");
+        const $cell = $el.closest(".day-cell");
+        if ($cell.length) {
+          draggedSourceKey = `${$cell.data("personel-id")}-${$cell.data("date")}`;
+        } else {
+          draggedSourceKey = null;
+        }
 
-        $(cell).html(`
-          <div class="cell-content draggable-izin" 
-               data-bs-toggle="tooltip" 
-               title="${selectedType.name}" 
-               data-id="${selectedType.id}" 
-               data-shortcode="${selectedType.shortCode}"
-               data-name="${selectedType.name}"
-               data-color="${selectedType.color}"
-               style="font-weight: 700;">
-              ${selectedType.shortCode}
-              <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
-          </div>`);
+        e.originalEvent.dataTransfer.effectAllowed = "copyMove";
+        // Hide tooltip
+        $(".tooltip").remove();
 
-        initTooltips();
-        updateRowTotals(pId);
+        // Let the ghost image look normal
+        setTimeout(() => {
+          $el.css("opacity", "0.5");
+        }, 0);
       });
 
-    // Drop Logic for cells
-    $(".day-cell").each(function () {
-      const cell = this;
-      new Sortable(cell, {
-        group: {
-          name: "izinSharing",
-          pull: "clone", // Changed from true to 'clone' for copying
-          put: true,
-        },
-        sort: false,
-        ghostClass: "sortable-ghost",
-        dragClass: "sortable-drag",
-        fallbackOnBody: true,
-        onStart: function () {
-          $(".tooltip").remove();
-        },
-        onAdd: function (evt) {
-          if ($(cell).hasClass("disabled")) {
-            evt.item.remove();
-            return;
-          }
-          // Target cell logic: When an item is dropped
-          const typeId = evt.item.dataset.id;
-          const typeName = evt.item.dataset.name;
-          const typeColor = evt.item.dataset.color;
-          const typeShortCode = evt.item.dataset.shortcode;
-
-          if (!typeId) {
-            evt.item.remove();
-            return;
-          }
-
-          const pId = cell.dataset.personelId;
-          const date = cell.dataset.date;
-          const key = `${pId}-${date}`;
-
-          // Add to unsaved changes
-          unsavedChanges[key] = {
-            personel_id: pId,
-            date: date,
-            type_id: typeId,
-            name: typeName,
-            color: typeColor,
-            shortCode: typeShortCode,
-          };
-
-          // Render locally
-          const style = getStyleFromTailwind(typeColor);
-          $(cell)
-            .attr(
-              "style",
-              `background-color: ${style.bg} !important; color: ${style.color} !important; border: 1px solid ${style.color}33 !important;`,
-            )
-            .addClass("has-entry unsaved");
-          $(cell).html(`
-                        <div class="cell-content draggable-izin" 
-                             data-bs-toggle="tooltip" 
-                             title="${typeName}" 
-                             data-id="${typeId}" 
-                             data-shortcode="${typeShortCode}"
-                             data-name="${typeName}"
-                             data-color="${typeColor}"
-                             style="font-weight: 700;">
-                            ${typeShortCode}
-                            <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
-                        </div>`);
-          initTooltips();
-          updateRowTotals(pId);
-          evt.item.remove();
-        },
+    $(document)
+      .off("dragend", ".draggable-izin")
+      .on("dragend", ".draggable-izin", function (e) {
+        $(this).css("opacity", "1");
+        draggedType = null;
+        draggedSourceKey = null;
+        $(".day-cell").removeClass("drag-over");
       });
-    });
+
+    $(document)
+      .off("dragover", ".day-cell")
+      .on("dragover", ".day-cell", function (e) {
+        e.preventDefault();
+        if (!draggedType) return;
+        if (!$(this).hasClass("disabled")) {
+          e.originalEvent.dataTransfer.dropEffect = "copy";
+          $(this).addClass("drag-over");
+        }
+      });
+
+    $(document)
+      .off("dragenter", ".day-cell")
+      .on("dragenter", ".day-cell", function (e) {
+        e.preventDefault();
+        if (!draggedType || $(this).hasClass("disabled")) return;
+        $(this).addClass("drag-over");
+      });
+
+    $(document)
+      .off("dragleave", ".day-cell")
+      .on("dragleave", ".day-cell", function (e) {
+        $(this).removeClass("drag-over");
+      });
+
+    $(document)
+      .off("drop", ".day-cell")
+      .on("drop", ".day-cell", function (e) {
+        e.preventDefault();
+        $(this).removeClass("drag-over");
+        if (!draggedType || $(this).hasClass("disabled")) return;
+
+        const pId = $(this).data("personel-id");
+        const date = $(this).data("date");
+        const targetKey = `${pId}-${date}`;
+
+        if (draggedSourceKey === targetKey) return;
+        applyLeaveToCell(this, draggedType);
+      });
 
     // Right-click Context Menu Logic
     $(".day-cell").on("contextmenu", function (e) {
@@ -657,8 +626,10 @@ $(document).ready(function () {
       menuItemsContainer.empty();
 
       // Determine active list (Paid/Unpaid)
-      const isUcretliActive = $("#ucretli-tab").hasClass("active") || $("#ucretli-list").is(":visible");
-      
+      const isUcretliActive =
+        $("#ucretli-tab").hasClass("active") ||
+        $("#ucretli-list").is(":visible");
+
       const definitions = isUcretliActive
         ? ucretliDefinitions
         : ucretsizDefinitions;
@@ -675,7 +646,10 @@ $(document).ready(function () {
         : cell.find(".cell-content").data("id")?.toString();
 
       // Header text
-      const personnelName = cell.closest("tr").find(".text-truncate-name").text();
+      const personnelName = cell
+        .closest("tr")
+        .find(".text-truncate-name")
+        .text();
       $("#menu-header-text").text(personnelName + " - " + date);
 
       // Add leave types to menu
@@ -762,7 +736,10 @@ $(document).ready(function () {
         const isUnsaved = cell.hasClass("unsaved");
 
         if (isUnsaved) {
-          removeUnsaved(key, { target: cell.find(".btn-delete-cell")[0], stopPropagation: () => {} });
+          removeUnsaved(key, {
+            target: cell.find(".btn-delete-cell")[0],
+            stopPropagation: () => {},
+          });
         } else {
           const delBtn = cell.find(".btn-delete-cell")[0];
           if (delBtn) {
@@ -798,22 +775,17 @@ $(document).ready(function () {
 
     // Render locally
     const style = getStyleFromTailwind(type.color);
-    $(cell)
-      .attr(
-        "style",
-        `background-color: ${style.bg} !important; color: ${style.color} !important; border: 1px solid ${style.color}33 !important;`,
-      )
-      .addClass("has-entry unsaved");
+    $(cell).attr("style", "").addClass("has-entry unsaved");
 
     $(cell).html(`
-      <div class="cell-content draggable-izin" 
+      <div class="cell-content draggable-izin" draggable="true"
            data-bs-toggle="tooltip" 
            title="${type.name}" 
            data-id="${type.id}" 
            data-shortcode="${type.shortCode}"
            data-name="${type.name}"
            data-color="${type.color}"
-           style="font-weight: 700;">
+           style="background-color: ${style.bg} !important; color: ${style.color} !important; border: 1px solid ${style.color}33 !important; font-weight: 700;">
           ${type.shortCode}
           <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
       </div>`);
@@ -822,6 +794,7 @@ $(document).ready(function () {
     updateRowTotals(pId);
   }
 
+  let calculateTotalsTimer = null;
   function updateRowTotals(pId) {
     const $row = $(`td[data-personel-id="${pId}"]`).first().closest("tr");
     if (!$row.length) return;
@@ -837,13 +810,13 @@ $(document).ready(function () {
     $row.find(".day-cell").each(function () {
       const $cell = $(this);
       if ($cell.hasClass("disabled")) {
-          disabledCount++;
+        disabledCount++;
       }
       const $content = $cell.find(".cell-content");
       if ($content.length) {
         const isDefault = $content.attr("data-is-default") === "true";
         if (!isDefault) {
-             allCount++;
+          allCount++;
         }
         const typeId = $content.data("id")?.toString();
         if (typeId && ucretsizIzinIds.has(typeId)) {
@@ -853,11 +826,18 @@ $(document).ready(function () {
     });
 
     const activeDays = daysCount - disabledCount;
-    $row.find(".toplam-calisma-gunu").text(activeDays > 0 ? activeDays - unpaidCount : 0);
-    $row.find(".fiili-calisma-gunu").text(activeDays > 0 ? activeDays - allCount : 0);
+    $row
+      .find(".toplam-calisma-gunu")
+      .text(activeDays > 0 ? activeDays - unpaidCount : 0);
+    $row
+      .find(".fiili-calisma-gunu")
+      .text(activeDays > 0 ? activeDays - allCount : 0);
 
     // Satır toplamı değiştiyse genel toplamı da güncelle
-    calculateTotals();
+    if (calculateTotalsTimer) clearTimeout(calculateTotalsTimer);
+    calculateTotalsTimer = setTimeout(() => {
+      calculateTotals();
+    }, 150);
   }
 
   window.removeUnsaved = function (key, e) {

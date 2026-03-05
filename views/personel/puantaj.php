@@ -54,41 +54,63 @@ use App\Service\Gate;
 
         .table-puantaj {
             border-collapse: separate !important;
-            border-spacing: 2px !important;
+            border-spacing: 8px !important;
         }
 
-        .table-puantaj th:not(.sticky-col) {
-            width: 30px;
-            height: 30px;
-            padding: 0 !important;
-            border: 1px solid #ced4da !important;
-            border-radius: 4px;
+        .table-puantaj th:not(.sticky-col):not(.sticky-col-right-1):not(.sticky-col-right-2) {
+            width: 38px;
+            height: 46px;
+            padding: 4px 2px !important;
+            border: none !important;
+            border-radius: 6px;
             vertical-align: middle;
-            background-color: #f8f9fa;
+            background-color: #5a67d8;
+            color: #ffffff;
             display: table-cell;
             text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .table-puantaj .day-cell {
-            width: 30px;
-            height: 30px;
+            width: 40px;
+            height: 40px;
             cursor: cell;
             user-select: none;
             position: relative;
             padding: 0 !important;
-            border: 0.5px dashed #ced4da !important;
-            border-radius: 4px;
+            border: none !important;
+            border-radius: 6px;
+            background-color: #edf2f7;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
         }
 
         .table-puantaj .is-sunday {
-            background-color: #f9f4f4 !important;
-            color: #f46a6a !important;
+            background-color: #fee2e2 !important;
+            color: #ef4444 !important;
         }
 
         .table-puantaj th.is-sunday {
-            background-color: #f9f4f4 !important;
-            color: #f46a6a !important;
-            border-color: #ced4da !important;
+            background-color: #ef4444 !important;
+            border: none !important;
+        }
+
+        .day-header-pill {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.2;
+        }
+
+        .day-header-pill .day-name {
+            font-size: 10px;
+            font-weight: 500;
+            opacity: 0.9;
+        }
+
+        .day-header-pill .day-number {
+            font-size: 15px;
+            font-weight: 700;
         }
 
         .table-puantaj .day-cell.has-entry {
@@ -115,12 +137,12 @@ use App\Service\Gate;
         }
 
         .izin-box {
-            width: 30px;
-            height: 30px;
+            width: 36px;
+            height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 4px;
+            border-radius: 6px;
             font-weight: 700;
             font-size: 11px;
             cursor: grab;
@@ -138,7 +160,7 @@ use App\Service\Gate;
             flex-direction: column;
             align-items: center;
             gap: 0;
-            width: 35px;
+            width: 36px;
         }
 
         .izin-item-container span {
@@ -200,6 +222,8 @@ use App\Service\Gate;
             width: 100%;
             height: 100%;
             position: relative;
+            border-radius: 6px;
+            cursor: grab;
         }
 
         .btn-delete-cell {
@@ -475,7 +499,8 @@ use App\Service\Gate;
         body.puantaj-fullscreen .card-izin-turleri {
             top: 70px !important;
         }
-        footer{
+
+        footer {
             display: none;
         }
 
@@ -488,8 +513,11 @@ use App\Service\Gate;
             overflow: auto;
             background: #fff;
             scroll-snap-type: y mandatory;
-            scroll-padding-top: 49px;
+            scroll-padding-top: 85px;
+            /* Account for Header + 8px spacing + buffer */
         }
+
+
 
         /* Satır satır kaydırma */
         .table-puantaj tbody tr {
@@ -501,11 +529,24 @@ use App\Service\Gate;
             position: sticky;
             top: 0;
             z-index: 50;
+            background: #fff;
+        }
+
+        .table-puantaj thead::before {
+            content: "";
+            position: absolute;
+            background: #fff;
+            top: 0;
+            bottom: 0px;
+            left: 0;
+            right: 0;
+            z-index: -1;
+            /* Shadow removed for testing */
         }
 
         /* Thead satırına arka plan ver - border-spacing boşluğunu kapat */
         .table-puantaj thead tr {
-            background-color: #f7f7f7;
+            background-color: transparent;
         }
 
         [data-bs-theme="dark"] .table-puantaj thead tr {
@@ -513,12 +554,17 @@ use App\Service\Gate;
         }
 
         .table-puantaj thead th {
-            background-color: #f8f9fa !important;
             vertical-align: middle;
             text-align: center;
+        }
+
+        .table-puantaj thead th.sticky-col,
+        .table-puantaj thead th.sticky-col-right-1,
+        .table-puantaj thead th.sticky-col-right-2 {
+            background-color: #f8f9fa !important;
             border: 1px solid #ced4da !important;
-            height: 40px;
-            /* 1px boşluk için beyaz alt çizgi */
+            height: 50px;
+            /* Match other th */
             box-shadow: 0 1px 0 0 #fff;
         }
 
@@ -619,121 +665,123 @@ use App\Service\Gate;
             background: #2a3042;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
         }
+
         .custom-context-menu {
-        display: none;
-        position: fixed;
-        z-index: 10000;
-        background: white;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        border-radius: 10px;
-        padding: 6px 0;
-        min-width: 200px;
-        animation: menuFadeIn 0.2s ease-out;
-    }
-
-    @keyframes menuFadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(-5px) scale(0.95);
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            background: white;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            padding: 6px 0;
+            min-width: 200px;
+            animation: menuFadeIn 0.2s ease-out;
         }
-        to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
+
+        @keyframes menuFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-5px) scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
-    }
 
-    .custom-context-menu .menu-item {
-        padding: 10px 16px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 13px;
-        font-weight: 500;
-        color: #374151;
-        transition: all 0.2s;
-    }
+        .custom-context-menu .menu-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+            transition: all 0.2s;
+        }
 
-    .custom-context-menu .menu-item:hover {
-        background: #f9fafb;
-        color: #4f46e5;
-    }
+        .custom-context-menu .menu-item:hover {
+            background: #f9fafb;
+            color: #4f46e5;
+        }
 
-    .custom-context-menu .menu-item i,
-    .custom-context-menu .menu-item .menu-item-code {
-        font-size: 11px;
-        width: 28px;
-        height: 28px;
-        line-height: 26px;
-        text-align: center;
-        border-radius: 6px;
-        font-weight: 700;
-        flex-shrink: 0;
-    }
+        .custom-context-menu .menu-item i,
+        .custom-context-menu .menu-item .menu-item-code {
+            font-size: 11px;
+            width: 28px;
+            height: 28px;
+            line-height: 26px;
+            text-align: center;
+            border-radius: 6px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
 
-    .custom-context-menu .menu-divider {
-        height: 1px;
-        background: #f1f5f9;
-        margin: 6px 0;
-    }
+        .custom-context-menu .menu-divider {
+            height: 1px;
+            background: #f1f5f9;
+            margin: 6px 0;
+        }
 
-    .custom-context-menu .menu-header {
-        padding: 6px 16px;
-        font-size: 11px;
-        font-weight: 700;
-        color: #94a3b8;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
+        .custom-context-menu .menu-header {
+            padding: 6px 16px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
 
-    .custom-context-menu .menu-item.active {
-        background: #f1f5f9;
-        color: #4f46e5;
-        font-weight: 700;
-    }
+        .custom-context-menu .menu-item.active {
+            background: #f1f5f9;
+            color: #4f46e5;
+            font-weight: 700;
+        }
 
-    .custom-context-menu .menu-item.active::after {
-        content: '\eb7a';
-        font-family: 'boxicons' !important;
-        margin-left: auto;
-        font-size: 18px;
-    }
+        .custom-context-menu .menu-item.active::after {
+            content: '\eb7a';
+            font-family: 'boxicons' !important;
+            margin-left: auto;
+            font-size: 18px;
+        }
 
-    .custom-context-menu .menu-item.text-danger:hover {
-        background: #fef2f2;
-        color: #dc2626;
-    }
+        .custom-context-menu .menu-item.text-danger:hover {
+            background: #fef2f2;
+            color: #dc2626;
+        }
 
-    /* Dark Mode Styles */
-    [data-bs-theme="dark"] .custom-context-menu {
-        background: #2a3042;
-        border-color: #32394e;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-    }
+        /* Dark Mode Styles */
+        [data-bs-theme="dark"] .custom-context-menu {
+            background: #2a3042;
+            border-color: #32394e;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+        }
 
-    [data-bs-theme="dark"] .custom-context-menu .menu-item {
-        color: #a6b0cf;
-    }
+        [data-bs-theme="dark"] .custom-context-menu .menu-item {
+            color: #a6b0cf;
+        }
 
-    [data-bs-theme="dark"] .custom-context-menu .menu-item:hover {
-        background: #32394e;
-        color: #fff;
-    }
+        [data-bs-theme="dark"] .custom-context-menu .menu-item:hover {
+            background: #32394e;
+            color: #fff;
+        }
 
-    [data-bs-theme="dark"] .custom-context-menu .menu-divider {
-        background: #32394e;
-    }
+        [data-bs-theme="dark"] .custom-context-menu .menu-divider {
+            background: #32394e;
+        }
 
-    [data-bs-theme="dark"] .custom-context-menu .menu-header {
-        color: #74788d;
-    }
+        [data-bs-theme="dark"] .custom-context-menu .menu-header {
+            color: #74788d;
+        }
 
-    [data-bs-theme="dark"] .custom-context-menu .menu-item.active {
-        background: #32394e;
-        color: #fff;
-    }
-</style>
+        [data-bs-theme="dark"] .custom-context-menu .menu-item.active {
+            background: #32394e;
+            color: #fff;
+        }
+    </style>
 
     <div id="puantaj-full-container">
         <div class="row">
