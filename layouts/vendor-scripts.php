@@ -173,7 +173,8 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "hakedisler/sozlesme-detay" ||
     $page == "hakedisler/hakedis-detay" ||
     $page == "bordro/parametreler" ||
-    $page == "duyuru/list"
+    $page == "duyuru/list" ||
+    $page == "raporlar/list"
 
 ) { ?>
 

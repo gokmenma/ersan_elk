@@ -1,7 +1,31 @@
 let table;
+let datatables = {}; // Çoklu tablo desteği için
+
 $(document).ready(function () {
-  table = $(".datatable").DataTable(getDatatableOptions());
+  // Manuel başlatılacakları (.datatable-deferred) hariç tut
+  $(".datatable").not(".datatable-deferred").each(function() {
+      if (!$.fn.DataTable.isDataTable(this)) {
+          $(this).DataTable(getDatatableOptions());
+      }
+  });
 });
+
+/**
+ * Mevcut bir tabloyu yok edip yeni ayarlarla başlatır.
+ * Merkezi dosyadan başlatma kuralına uymak içindir.
+ */
+function destroyAndInitDataTable(selector, options = {}) {
+    if ($.fn.DataTable.isDataTable(selector)) {
+        $(selector).DataTable().destroy();
+        // Sadece tbody içeriğini temizle, thead kalmalı
+        $(selector).find('tbody').empty(); 
+    }
+    
+    let defaultOptions = getDatatableOptions();
+    let mergedOptions = $.extend(true, {}, defaultOptions, options);
+    
+    return $(selector).DataTable(mergedOptions);
+}
 
 function getDatatableOptions() {
   let focusedColIdx = null;
@@ -17,7 +41,8 @@ function getDatatableOptions() {
     //     ? $("#page-topbar").outerHeight()
     //     : 70,
     // },
-    pageLength: 10,
+    pageLength: 25,
+    orderCellsTop: true,
     dom: 't<"row"<"col-sm-12 col-md-6 d-flex align-items-center justify-content-start"i<"ms-3 text-nowrap"l>><"col-sm-12 col-md-6 d-flex justify-content-end"p>>',
     language: {
       url: "assets/js/tr.json",
