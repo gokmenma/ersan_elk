@@ -276,6 +276,9 @@ class GorevModel extends Model
      */
     public function getBildirimBekleyenGorevler()
     {
+        $Settings = new \App\Model\SettingsModel();
+        $offset = (int) ($Settings->getSettings('gorev_bildirim_dakika') ?? 0);
+
         $sql = "SELECT g.*, gl.baslik as liste_adi, gl.olusturan_id as liste_olusturan_id
                 FROM gorevler g
                 JOIN gorev_listeleri gl ON g.liste_id = gl.id
@@ -284,11 +287,11 @@ class GorevModel extends Model
                   AND g.bildirim_gonderildi = 0
                   AND (
                     g.saat IS NULL
-                    OR g.saat <= CURTIME()
+                    OR g.saat <= ADDTIME(CURTIME(), SEC_TO_TIME(:offset * 60))
                   )
                 ORDER BY g.saat ASC, g.id ASC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute();
+        $stmt->execute([':offset' => $offset]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 

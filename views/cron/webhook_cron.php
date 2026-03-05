@@ -63,15 +63,29 @@ try {
 
     $gorevModel = new GorevModel();
     $bildirimModel = new BildirimModel();
+    $Settings = new \App\Model\SettingsModel();
 
-    // Bildirim bekleyen (Saati gelmiş) görevleri al
+    // Bildirim bekleyen (Saati gelmiş/yaklaşmış) görevleri al
     $bekleyenGorevler = $gorevModel->getBildirimBekleyenGorevler();
+
+    // Özel bildirim alacak kullanıcıları ayardan al
+    $recipientsSetting = $Settings->getSettings('gorev_bildirim_kullanicilar');
+    $targetUserIds = [];
+    if (!empty($recipientsSetting)) {
+        $encryptedIds = explode(',', $recipientsSetting);
+        foreach ($encryptedIds as $encId) {
+            $decId = \App\Helper\Security::decrypt(trim($encId));
+            if ($decId) {
+                $targetUserIds[] = (int) $decId;
+            }
+        }
+    }
 
     if (empty($bekleyenGorevler)) {
         webhookLog("Bildirim bekleyen görev yok.");
         echo json_encode(['success' => true, 'message' => 'Bekleyen görev yok.']);
     } else {
-        webhookLog(count($bekleyenGorevler) . " görev için bildirim gönderilecek.");
+        webhookLog(count($bekleyenGorevler) . " görev için bildirim süreci başladı.");
 
         $pushService = new PushNotificationService();
         $basarili = 0;
@@ -87,25 +101,28 @@ try {
                 $body = $gorev->baslik . $saatStr . $listeStr;
                 $link = 'index.php?p=gorevler/list';
 
-                $userId = $gorev->olusturan_id ?? $gorev->liste_olusturan_id;
+                // Eğer ayarlardan kullanıcı seçilmişse onlara, seçilmemişse görev/liste sahibine gönder
+                $usersToNotify = !empty($targetUserIds) ? $targetUserIds : [$gorev->olusturan_id ?? $gorev->liste_olusturan_id];
+                $usersToNotify = array_unique(array_filter($usersToNotify));
 
-                if ($userId) {
-                    // In-app bildirim oluştur
-                    $bildirimModel->createNotification($userId, $title, $body, $link, 'task', 'warning');
+                if (!empty($usersToNotify)) {
+                    foreach ($usersToNotify as $userId) {
+                        // In-app bildirim oluştur
+                        $bildirimModel->createNotification($userId, $title, $body, $link, 'task', 'warning');
 
-                    // Push bildirim gönder (başarısız olursa email fallback servisi otomatik çalışır)
-                    $payload = [
-                        'title' => $title,
-                        'body' => $body,
-                        'url' => $link,
-                        'icon' => '/assets/images/logo-sm.png',
-                        'badge' => '/assets/images/logo-sm.png'
-                    ];
-                    $pushService->sendToPersonel($userId, $payload);
-
-                    webhookLog("  ✓ Görev #{$gorev->id} → Personel #{$userId} bildirim gönderildi.");
+                        // Push bildirim gönder
+                        $payload = [
+                            'title' => $title,
+                            'body' => $body,
+                            'url' => $link,
+                            'icon' => '/assets/images/logo-sm.png',
+                            'badge' => '/assets/images/logo-sm.png'
+                        ];
+                        $pushService->sendToPersonel($userId, $payload);
+                        webhookLog("  ✓ Görev #{$gorev->id} → Personel #{$userId} bildirim gönderildi.");
+                    }
                 } else {
-                    webhookLog("  ⚠ Görev #{$gorev->id} → Kullanıcı ID bulunamadı, atlanıyor.");
+                    webhookLog("  ⚠ Görev #{$gorev->id} → Alıcı bulunamadı, atlanıyor.");
                 }
 
                 // Gönderildi işareti koy
@@ -124,11 +141,11 @@ try {
             }
         }
 
-        webhookLog("Sonuç: $basarili başarılı, $basarisiz başarısız.");
+        webhookLog("Sonuç: $basarili görev işlendi, $basarisiz hata.");
         echo json_encode([
             'success' => true,
             'message' => 'Bildirimler işlendi.',
-            'stats' => ['success' => $basarili, 'failed' => $basarisiz]
+            'stats' => ['processed' => $basarili, 'failed' => $basarisiz]
         ]);
     }
 

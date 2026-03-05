@@ -41,9 +41,9 @@ $title = 'Görevler';
             </div>
 
             <div class="gorevler-sidebar-footer">
-                <button class="btn-yeni-liste" id="btnYeniListe2">
-                    <i class="bx bx-plus"></i>
-                    Yeni liste oluştur
+                <button class="btn-yeni-liste" id="btnGorevAyarlar">
+                    <i class="bx bx-cog"></i>
+                    Ayarlar
                 </button>
             </div>
         </div>
@@ -55,6 +55,40 @@ $title = 'Görevler';
                 <i class="bx bx-task"></i>
                 <h4>Yükleniyor...</h4>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ GÖREV AYARLAR MODAL ═══ -->
+<div class="yeni-liste-modal" id="gorevAyarlarModal">
+    <div class="yeni-liste-content">
+        <h4>Görev Ayarları</h4>
+
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">Bildirim Süresi (Dakika)</label>
+            <div class="input-group">
+                <input type="number" class="form-control-gt" id="set_gorev_bildirim_dakika" min="0"
+                    placeholder="Örn: 15">
+                <span class="input-group-text"
+                    style="background: transparent; border: 1px solid #dadce0; border-left: none; border-radius: 0 4px 4px 0; color: #5f6368; font-size: 13px;">dakika
+                    önce</span>
+            </div>
+            <small class="text-muted" style="font-size: 11px;">Görev saatinden kaç dakika önce bildirim
+                gönderilsin?</small>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">Bildirim Alacak Kullanıcılar</label>
+            <select id="set_gorev_bildirim_kullanicilar" class="form-control-gt select2-kullanici" multiple="multiple"
+                style="width: 100%;">
+                <!-- JS ile doldurulacak -->
+            </select>
+            <small class="text-muted" style="font-size: 11px;">Bildirim ve mail gönderilecek personelleri seçin.</small>
+        </div>
+
+        <div class="yeni-liste-footer">
+            <button class="btn-iptal btn btn-light" id="gorevAyarlarIptal">İptal</button>
+            <button class="btn-bitti btn btn-primary" id="gorevAyarlarKaydet">Kaydet</button>
         </div>
     </div>
 </div>

@@ -258,7 +258,12 @@
         cls = "gelecek";
       }
 
-      tarihBadge = `<span class="gorev-tarih-badge ${cls}"><i class="bx bx-calendar"></i> ${label}</span>`;
+      let displayLabel = label;
+      if (g.saat) {
+        displayLabel += ", " + g.saat.substring(0, 5);
+      }
+
+      tarihBadge = `<span class="gorev-tarih-badge ${cls}"><i class="bx bx-calendar"></i> ${displayLabel}</span>`;
     }
 
     const yinelemeIcon = g.yineleme_sikligi
@@ -1000,13 +1005,22 @@
       form = $(`.gorev-ekleme-form[data-liste-id="${currentTarihListeId}"]`);
     }
 
+    const saat = $("#tarihSaatInput").val();
+
     if (selectedDate) {
       const formatted = formatDate(selectedDate);
-      const label = formatDateDisplay(formatted);
+      let label = formatDateDisplay(formatted);
+
+      if (saat) {
+        label += ", " + saat;
+      }
 
       if (isEdit) {
         form.find(".edit-tarih-val").val(formatted);
-        form.find(".edit-tarih-label").text(label);
+        form
+          .find(".edit-btn-takvim")
+          .addClass("has-value")
+          .html(`<i class="bx bx-calendar"></i> ${label}`);
       } else {
         form.data("selected-tarih", formatted);
         form
@@ -1016,7 +1030,6 @@
       }
     }
 
-    const saat = $("#tarihSaatInput").val();
     if (isEdit) {
       form.find(".edit-saat-val").val(saat || "");
     } else if (saat) {
@@ -1372,5 +1385,83 @@
     // İlk açılışta ve her 1 dakikada bir yaklaşan görevleri kontrol et
     checkUpcomingAlarms();
     setInterval(checkUpcomingAlarms, 60000);
+
+    // Ayarlar Butonu
+    $(document).on("click", "#btnGorevAyarlar", function () {
+      openSettingsModal();
+    });
+
+    $("#gorevAyarlarIptal").on("click", function () {
+      $("#gorevAyarlarModal").removeClass("show");
+    });
+
+    $("#gorevAyarlarKaydet").on("click", function () {
+      saveGorevSettings();
+    });
   });
+
+  function openSettingsModal() {
+    const modal = $("#gorevAyarlarModal");
+    const select = $("#set_gorev_bildirim_kullanicilar");
+
+    // Her açılışta güncel veriyi (ve taze şifreli ID'leri) çek
+    $.post(API_URL, { action: "get-settings" }, function (res) {
+      if (res.success) {
+        // Dakika ayarı
+        $("#set_gorev_bildirim_dakika").val(res.data.gorev_bildirim_dakika);
+
+        // Kullanıcı listesini temizle ve yeniden oluştur (Şifreli ID'ler her seferinde değiştiği için tazelenmeli)
+        select.empty();
+        const selectedValues = [];
+
+        res.data.users.forEach((u) => {
+          const option = new Option(u.text, u.id, u.selected, u.selected);
+          select.append(option);
+          if (u.selected) {
+            selectedValues.push(u.id);
+          }
+        });
+
+        // Select2 tazele
+        if ($.fn.select2) {
+          if (select.hasClass("select2-hidden-accessible")) {
+            select.select2("destroy");
+          }
+          select.select2({
+            dropdownParent: modal.find(".yeni-liste-content"),
+            placeholder: "Kullanıcı seçin",
+            width: "100%",
+          });
+        }
+
+        select.val(selectedValues).trigger("change");
+        modal.addClass("show");
+      }
+    });
+  }
+
+  function saveGorevSettings() {
+    // ... (logic stays the same but now sends IDs that the server will decrypt)
+    const dakika = $("#set_gorev_bildirim_dakika").val();
+    const kullanicilar = $("#set_gorev_bildirim_kullanicilar").val() || [];
+
+    $.post(
+      API_URL,
+      {
+        action: "save-settings",
+        gorev_bildirim_dakika: dakika,
+        gorev_bildirim_kullanicilar: Array.isArray(kullanicilar)
+          ? kullanicilar.join(",")
+          : kullanicilar,
+      },
+      function (res) {
+        if (res.success) {
+          showToast(res.message, "success");
+          $("#gorevAyarlarModal").removeClass("show");
+        } else {
+          showToast(res.message, "error");
+        }
+      },
+    );
+  }
 })();

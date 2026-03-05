@@ -298,6 +298,60 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo json_encode(['success' => $result]);
                 break;
 
+            // =====================================================
+            // AYAR İŞLEMLERİ
+            // =====================================================
+            case 'get-settings':
+                $Settings = new \App\Model\SettingsModel();
+                $User = new \App\Model\UserModel();
+
+                // Kayıtlı seçili kullanıcıların gerçek ID'lerini al
+                $recipientsSetting = $Settings->getSettings('gorev_bildirim_kullanicilar') ?? '';
+                $selectedRealIds = !empty($recipientsSetting) ? explode(',', $recipientsSetting) : [];
+
+                $users = $User->getUsers();
+                $userList = [];
+                foreach ($users as $u) {
+                    $userList[] = [
+                        'id' => Security::encrypt($u->id),
+                        'text' => $u->adi_soyadi,
+                        'selected' => in_array($u->id, $selectedRealIds)
+                    ];
+                }
+
+                $data = [
+                    'gorev_bildirim_dakika' => $Settings->getSettings('gorev_bildirim_dakika') ?? '15',
+                    'users' => $userList
+                ];
+                echo json_encode(['success' => true, 'data' => $data]);
+                break;
+
+            case 'save-settings':
+                $Settings = new \App\Model\SettingsModel();
+                $dakika = $_POST['gorev_bildirim_dakika'] ?? '15';
+                $kullanicilar = $_POST['gorev_bildirim_kullanicilar'] ?? '';
+
+                $realIds = [];
+                if (!empty($kullanicilar)) {
+                    $encryptedIds = explode(',', $kullanicilar);
+                    foreach ($encryptedIds as $encId) {
+                        $decId = Security::decrypt(trim($encId));
+                        if ($decId) {
+                            $realIds[] = $decId;
+                        }
+                    }
+                }
+
+                $res1 = $Settings->upsertSetting('gorev_bildirim_dakika', $dakika);
+                $res2 = $Settings->upsertSetting('gorev_bildirim_kullanicilar', implode(',', $realIds));
+
+                if ($res1 && $res2) {
+                    echo json_encode(['success' => true, 'message' => 'Ayarlar kaydedildi.']);
+                } else {
+                    throw new Exception("Ayarlar kaydedilemedi.");
+                }
+                break;
+
             default:
                 throw new Exception("Geçersiz işlem.");
         }

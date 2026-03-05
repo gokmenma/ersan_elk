@@ -512,9 +512,8 @@ use App\Service\Gate;
             max-height: calc(100vh - 395px);
             overflow: auto;
             background: #fff;
-            scroll-snap-type: y mandatory;
-            scroll-padding-top: 85px;
-            /* Account for Header + 8px spacing + buffer */
+            scroll-snap-type: y proximity;
+            scroll-padding-top: 75px;
         }
 
 
@@ -532,17 +531,7 @@ use App\Service\Gate;
             background: #fff;
         }
 
-        .table-puantaj thead::before {
-            content: "";
-            position: absolute;
-            background: #fff;
-            top: 0;
-            bottom: 0px;
-            left: 0;
-            right: 0;
-            z-index: -1;
-            /* Shadow removed for testing */
-        }
+
 
         /* Thead satırına arka plan ver - border-spacing boşluğunu kapat */
         .table-puantaj thead tr {
