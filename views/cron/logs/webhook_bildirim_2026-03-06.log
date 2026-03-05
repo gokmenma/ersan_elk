@@ -1,0 +1,106 @@
+[2026-03-06 00:00:15] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 00:00:15] [WEBHOOK] 1 görev için bildirim süreci başladı.
+[2026-03-06 00:00:15] [WEBHOOK]   ✓ Görev #1 → Personel #1 bildirim gönderildi.
+[2026-03-06 00:00:15] [WEBHOOK] Sonuç: 1 görev işlendi, 0 hata.
+[2026-03-06 00:00:15] [WEBHOOK] Rapor maili başarıyla gönderildi: beyzade83@gmail.com
+[2026-03-06 00:00:15] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 3449.65ms
+
+[2026-03-06 00:04:04] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 00:04:04] [WEBHOOK] Bildirim bekleyen görev yok.
+[2026-03-06 00:04:04] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 48.66ms
+
+[2026-03-06 00:04:12] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 00:04:12] [WEBHOOK] Bildirim bekleyen görev yok.
+[2026-03-06 00:04:12] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 40.23ms
+
+[2026-03-06 00:04:31] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 00:04:31] [WEBHOOK] 1 görev için bildirim süreci başladı.
+[2026-03-06 00:04:31] [WEBHOOK]   ✓ Görev #2 → Personel #1 bildirim gönderildi.
+[2026-03-06 00:04:31] [WEBHOOK] Sonuç: 1 görev işlendi, 0 hata.
+[2026-03-06 00:04:31] [WEBHOOK] Rapor maili başarıyla gönderildi: beyzade83@gmail.com
+[2026-03-06 00:04:31] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 449.65ms
+
+[2026-03-06 00:08:20] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 00:08:20] [WEBHOOK] 1 görev için bildirim süreci başladı.
+[2026-03-06 00:08:20] [WEBHOOK]   ✓ Görev #2 → Personel #1 bildirim gönderildi.
+[2026-03-06 00:08:20] [WEBHOOK] Sonuç: 1 görev işlendi, 0 hata.
+[2026-03-06 00:08:20] [WEBHOOK] Rapor maili başarıyla gönderildi: beyzade83@gmail.com
+[2026-03-06 00:08:20] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 530.35ms
+
+[2026-03-06 00:10:44] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 00:10:44] [WEBHOOK] 1 görev için bildirim süreci başladı.
+[2026-03-06 00:10:44] [WEBHOOK]   ✓ Görev #2 → Personel #1 bildirim gönderildi.
+[2026-03-06 00:10:44] [WEBHOOK] Sonuç: 1 görev işlendi, 0 hata.
+[2026-03-06 00:10:44] [WEBHOOK] Rapor maili başarıyla gönderildi: beyzade83@hotmail.com
+[2026-03-06 00:10:44] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 553.8ms
+
+[2026-03-06 00:12:20] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 00:12:20] [WEBHOOK] Bildirim bekleyen görev yok.
+[2026-03-06 00:12:20] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 35.67ms
+
+[2026-03-06 00:13:02] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 00:13:02] [WEBHOOK] Bildirim bekleyen görev yok.
+[2026-03-06 00:13:02] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 57.96ms
+
+[2026-03-06 00:14:37] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 00:14:37] [WEBHOOK] Sistem Zamanı: 00:14:37 | Tarih: 06-03-2026
+[2026-03-06 00:14:37] [WEBHOOK] Bildirim Offset: 5 dakika
+[2026-03-06 00:14:37] [WEBHOOK] Bildirim bekleyen görev yok.
+[2026-03-06 00:14:37] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 35.78ms
+
+[2026-03-06 00:16:11] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 00:16:11] [WEBHOOK] Sistem Zamanı: 00:16:11 | Tarih: 06-03-2026
+[2026-03-06 00:16:11] [WEBHOOK] Bildirim Offset: 5 dakika
+[2026-03-06 00:16:11] [WEBHOOK] 1 görev için bildirim süreci başladı.
+[2026-03-06 00:16:11] [WEBHOOK] İşlenen Görev ID: #2 | Başlık: Cron kontrol görevi
+[2026-03-06 00:16:11] [WEBHOOK]   - Personel #1 için bildirim+mail tetikleniyor...
+[2026-03-06 00:16:11] [WEBHOOK]   ✓ Görev #2 → Personel #1 başarıyla işlendi.
+[2026-03-06 00:16:11] [WEBHOOK] Sonuç: 1 görev işlendi, 0 hata.
+[2026-03-06 00:16:11] [WEBHOOK] Rapor maili başarıyla gönderildi: beyzade83@hotmail.com
+[2026-03-06 00:16:11] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 530.21ms
+
+[2026-03-06 00:17:12] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 00:17:12] [WEBHOOK] Sistem Zamanı: 00:17:12 | Tarih: 06-03-2026
+[2026-03-06 00:17:12] [WEBHOOK] Bildirim Offset: 5 dakika
+[2026-03-06 00:17:12] [WEBHOOK] Bildirim bekleyen görev yok.
+[2026-03-06 00:17:12] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 55.79ms
+
+[2026-03-06 00:19:06] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 00:19:06] [WEBHOOK] Sistem Zamanı: 00:19:06 | Tarih: 06-03-2026
+[2026-03-06 00:19:06] [WEBHOOK] Bildirim Offset: 5 dakika
+[2026-03-06 00:19:06] [WEBHOOK] 1 görev için bildirim süreci başladı.
+[2026-03-06 00:19:06] [WEBHOOK] İşlenen Görev ID: #2 | Başlık: Cron kontrol görevi
+[2026-03-06 00:19:06] [WEBHOOK]   - Personel #1 için bildirim+mail tetikleniyor...
+[2026-03-06 00:19:06] [WEBHOOK]   ✓ Görev #2 → Personel #1 başarıyla işlendi.
+[2026-03-06 00:19:06] [WEBHOOK] Sonuç: 1 görev işlendi, 0 hata.
+[2026-03-06 00:19:06] [WEBHOOK] Rapor maili başarıyla gönderildi: beyzade83@hotmail.com
+[2026-03-06 00:19:06] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 450.91ms
+
+[2026-03-06 00:25:06] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 00:25:06] [WEBHOOK] Sistem Zamanı: 00:25:06 | Tarih: 06-03-2026
+[2026-03-06 00:25:06] [WEBHOOK] Bildirim Offset: 5 dakika
+[2026-03-06 00:25:06] [WEBHOOK] Bildirim bekleyen görev yok.
+[2026-03-06 00:25:06] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 36.47ms
+
+[2026-03-06 00:28:45] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 00:28:45] [WEBHOOK] Sistem Zamanı: 00:28:45 | Tarih: 06-03-2026
+[2026-03-06 00:28:45] [WEBHOOK] Bildirim Offset: 5 dakika
+[2026-03-06 00:28:45] [WEBHOOK] 1 görev için bildirim süreci başladı.
+[2026-03-06 00:28:45] [WEBHOOK] İşlenen Görev ID: #6 | Başlık: TEST GÖREVİ (22:28:43)
+[2026-03-06 00:28:45] [WEBHOOK]   - Personel #1 için bildirim+mail tetikleniyor...
+[2026-03-06 00:28:45] [WEBHOOK]   ✓ Görev #6 → Personel #1 başarıyla işlendi.
+[2026-03-06 00:28:45] [WEBHOOK] Sonuç: 1 görev işlendi, 0 hata.
+[2026-03-06 00:28:45] [WEBHOOK] Rapor maili başarıyla gönderildi: beyzade83@hotmail.com
+[2026-03-06 00:28:45] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 856.82ms
+
+[2026-03-06 00:30:10] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 00:30:10] [WEBHOOK] Sistem Zamanı: 00:30:10 | Tarih: 06-03-2026
+[2026-03-06 00:30:10] [WEBHOOK] Bildirim Offset: 5 dakika
+[2026-03-06 00:30:10] [WEBHOOK] 1 görev için bildirim süreci başladı.
+[2026-03-06 00:30:10] [WEBHOOK] İşlenen Görev ID: #2 | Başlık: Cron kontrol görevi
+[2026-03-06 00:30:10] [WEBHOOK]   - Personel #1 için bildirim+mail tetikleniyor...
+[2026-03-06 00:30:10] [WEBHOOK]   ✓ Görev #2 → Personel #1 başarıyla işlendi.
+[2026-03-06 00:30:10] [WEBHOOK] Sonuç: 1 görev işlendi, 0 hata.
+[2026-03-06 00:30:10] [WEBHOOK] Rapor maili başarıyla gönderildi: beyzade83@hotmail.com
+[2026-03-06 00:30:10] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 746.83ms
+

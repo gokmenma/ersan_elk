@@ -177,15 +177,26 @@ class GorevModel extends Model
             'yineleme_bitis_adet'
         ];
 
+        $tarihSaatDegisti = false;
+
         foreach ($allowedFields as $field) {
             if (array_key_exists($field, $data)) {
                 $sets[] = "$field = :$field";
                 $params[":$field"] = $data[$field];
+
+                if ($field === 'tarih' || $field === 'saat') {
+                    $tarihSaatDegisti = true;
+                }
             }
         }
 
         if (empty($sets))
             return false;
+
+        // Tarih veya saat değiştiyse, bildirimi tekrar gönderebilmek için bayrağı sıfırla
+        if ($tarihSaatDegisti) {
+            $sets[] = "bildirim_gonderildi = 0";
+        }
 
         $sql = "UPDATE gorevler SET " . implode(', ', $sets) . " WHERE id = :id";
         $stmt = $this->db->prepare($sql);

@@ -65,6 +65,10 @@ try {
     $bildirimModel = new BildirimModel();
     $Settings = new \App\Model\SettingsModel();
 
+    $offset = (int) ($Settings->getSettings('gorev_bildirim_dakika') ?? 0);
+    webhookLog("Sistem Zamanı: " . date('H:i:s') . " | Tarih: " . date('d-m-Y'));
+    webhookLog("Bildirim Offset: $offset dakika");
+
     // Bildirim bekleyen (Saati gelmiş/yaklaşmış) görevleri al
     $bekleyenGorevler = $gorevModel->getBildirimBekleyenGorevler();
 
@@ -93,6 +97,8 @@ try {
 
         foreach ($bekleyenGorevler as $gorev) {
             try {
+                webhookLog("İşlenen Görev ID: #{$gorev->id} | Başlık: {$gorev->baslik}");
+
                 // Bildirim mesajını hazırla
                 $saatStr = $gorev->saat ? ' (Saat: ' . substr($gorev->saat, 0, 5) . ')' : '';
                 $listeStr = $gorev->liste_adi ? ' [' . $gorev->liste_adi . ']' : '';
@@ -107,10 +113,12 @@ try {
 
                 if (!empty($usersToNotify)) {
                     foreach ($usersToNotify as $userId) {
+                        webhookLog("  - Personel #{$userId} için bildirim+mail tetikleniyor...");
+
                         // In-app bildirim oluştur
                         $bildirimModel->createNotification($userId, $title, $body, $link, 'task', 'warning');
 
-                        // Push bildirim gönder
+                        // Push ve Mail gönder
                         $payload = [
                             'title' => $title,
                             'body' => $body,
@@ -119,7 +127,7 @@ try {
                             'badge' => '/assets/images/logo-sm.png'
                         ];
                         $pushService->sendToPersonel($userId, $payload);
-                        webhookLog("  ✓ Görev #{$gorev->id} → Personel #{$userId} bildirim gönderildi.");
+                        webhookLog("  ✓ Görev #{$gorev->id} → Personel #{$userId} başarıyla işlendi.");
                     }
                 } else {
                     webhookLog("  ⚠ Görev #{$gorev->id} → Alıcı bulunamadı, atlanıyor.");
@@ -142,6 +150,30 @@ try {
         }
 
         webhookLog("Sonuç: $basarili görev işlendi, $basarisiz hata.");
+
+        // =====================================================
+        // 3. RAPORLAMA (KULLANICI TALEBİ)
+        // =====================================================
+        $reportEmail = "beyzade83@hotmail.com";
+        $reportSubject = "Ersan Elk - Görev Bildirim Raporu (" . date('H:i') . ")";
+        $reportContent = "<h3>Görev Bildirim Raporu</h3>";
+        $reportContent .= "<p><b>Tarih:</b> " . date('d.m.Y H:i:s') . "</p>";
+        $reportContent .= "<p><b>İşlenen Görev Sayısı:</b> $basarili</p>";
+        $reportContent .= "<p><b>Hata Sayısı:</b> $basarisiz</p>";
+
+        if ($basarili > 0 || $basarisiz > 0) {
+            try {
+                \App\Service\MailGonderService::gonder(
+                    [$reportEmail],
+                    $reportSubject,
+                    $reportContent
+                );
+                webhookLog("Rapor maili başarıyla gönderildi: $reportEmail");
+            } catch (Exception $e) {
+                webhookLog("Rapor maili GÖNDERİLEMEDİ: " . $e->getMessage());
+            }
+        }
+
         echo json_encode([
             'success' => true,
             'message' => 'Bildirimler işlendi.',
@@ -151,6 +183,18 @@ try {
 
 } catch (Exception $e) {
     webhookLog("HATA: " . $e->getMessage());
+
+    // Kritik hataları da raporla
+    try {
+        \App\Service\MailGonderService::gonder(
+            ["beyzade83@hotmail.com"],
+            "Ersan Elk - KRİTİK CRON HATASI",
+            "<h3>Kritik Webhook Hatası</h3><p>Mesaj: " . $e->getMessage() . "</p><p>Zaman: " . date('d.m.Y H:i:s') . "</p>"
+        );
+    } catch (Exception $mailErr) {
+        webhookLog("Kritik hata raporlanamadı: " . $mailErr->getMessage());
+    }
+
     echo json_encode(['success' => false, 'message' => 'Sunucu Hatası: ' . $e->getMessage()]);
 }
 

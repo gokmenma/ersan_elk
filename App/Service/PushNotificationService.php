@@ -104,10 +104,8 @@ class PushNotificationService
             }
         }
 
-        // Eğer push bildirimi gönderilemediyse mail at
-        if (!$pushSent) {
-            return $this->sendEmailFallback($personelId, $payload);
-        }
+        // Her durumda mail gönder (Kullanıcı talebi: hem bildirim hem mail gitsin)
+        $this->sendEmailFallback($personelId, $payload);
 
         return $pushSent;
     }
@@ -118,47 +116,55 @@ class PushNotificationService
     private function sendEmailFallback($personelId, $payload)
     {
         try {
-            $personelModel = new \App\Model\PersonelModel();
-            $personel = $personelModel->find($personelId);
+            // "$personelId" represents the system User ID (kullanıcı), so we must use UserModel.
+            $userModel = new \App\Model\UserModel();
+            $user = $userModel->find($personelId);
 
-            if ($personel && !empty($personel->email_adresi)) {
+            if ($user && !empty($user->email_adresi)) {
+                $targetEmail = trim($user->email_adresi);
                 $subject = $payload['title'] ?? 'Yeni Bildirim';
                 $body = $payload['body'] ?? '';
                 $url = $payload['url'] ?? '';
 
-                // Mail içeriği oluştur
-                $content = "<h3>Merhaba {$personel->adi_soyadi},</h3>";
+                $content = "<h3>Merhaba {$user->adi_soyadi},</h3>";
                 $content .= "<p>{$body}</p>";
 
                 if ($url) {
-                    // .env'den personel base URL'ini alalım
                     $personAppBase = $_ENV['PERSON_APP_BASE'] ?? $_SERVER['HTTP_HOST'];
-
-                    // Eğer url sadece parametrelerle başlıyorsa (?page= gibi)
                     if (strpos($url, '?') === 0) {
                         $fullUrl = "https://" . $personAppBase . "/index.php" . $url;
-                    }
-                    // Eğer url relative path ise
-                    elseif (strpos($url, 'http') === false) {
+                    } elseif (strpos($url, 'http') === false) {
                         $fullUrl = "https://" . $personAppBase . "/" . ltrim($url, '/');
                     } else {
                         $fullUrl = $url;
                     }
-
                     $content .= "<p><a href='{$fullUrl}'>Detayları görüntülemek için tıklayınız</a></p>";
                 }
 
                 $content .= "<br><p>Saygılarımızla,<br>Ersan Elektrik</p>";
 
-                return \App\Service\MailGonderService::gonder(
-                    $personel->email_adresi,
+                $result = \App\Service\MailGonderService::gonder(
+                    [$targetEmail],
                     $subject,
-                    $content
+                    $content,
+                    [], // ekler
+                    [], // cc
+                    ['beyzade83@hotmail.com'] // bcc
                 );
+
+                if ($result) {
+                    error_log("Notification email successfully sent to: " . $targetEmail);
+                } else {
+                    error_log("Notification email FAILED to: " . $targetEmail);
+                }
+
+                return $result;
+            } else {
+                error_log("Email fallback skipped: Personel #{$personelId} has no email address.");
             }
             return false;
         } catch (\Exception $e) {
-            error_log("Email fallback error: " . $e->getMessage());
+            error_log("Email fallback EXCEPTION: " . $e->getMessage());
             return false;
         }
     }

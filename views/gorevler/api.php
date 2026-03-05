@@ -277,12 +277,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // BİLDİRİM İŞLEMLERİ (İstemci Tarafı)
             // =====================================================
             case 'get-upcoming-alarms':
-                // Sadece güncel personel/kullanıcının bugün tarihli ve bildirim gönderilmemiş görevlerini döner
+                $Settings = new \App\Model\SettingsModel();
+                $recipientsSetting = $Settings->getSettings('gorev_bildirim_kullanicilar');
+
+                $targetUserIds = [];
+                if (!empty($recipientsSetting)) {
+                    $encryptedIds = explode(',', $recipientsSetting);
+                    foreach ($encryptedIds as $encId) {
+                        $decId = Security::decrypt(trim($encId));
+                        if ($decId) {
+                            $targetUserIds[] = (int) $decId;
+                        }
+                    }
+                }
+
                 $bekleyenGorevler = $Gorev->getBildirimBekleyenGorevler();
-                $benimGorevlerim = array_filter($bekleyenGorevler, function ($g) use ($userId) {
+
+                $benimGorevlerim = array_filter($bekleyenGorevler, function ($g) use ($userId, $targetUserIds) {
                     $sorumluId = $g->olusturan_id ?? $g->liste_olusturan_id;
-                    return $sorumluId == $userId;
+                    $usersToNotify = !empty($targetUserIds) ? $targetUserIds : [$sorumluId];
+                    $usersToNotify = array_unique(array_filter($usersToNotify));
+
+                    return in_array($userId, $usersToNotify);
                 });
+
                 $benimGorevlerim = array_values($benimGorevlerim);
 
                 foreach ($benimGorevlerim as &$g) {
@@ -294,7 +312,49 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             case 'mark-notified':
                 $id = Security::decrypt($_POST['gorev_id']);
+
+                // Görev bilgilerini al (Bildirim içeriği için)
+                $sqlGorev = "SELECT g.*, gl.baslik as liste_adi FROM gorevler g 
+                            JOIN gorev_listeleri gl ON g.liste_id = gl.id 
+                            WHERE g.id = :id";
+                $stmtGorev = $Gorev->db->prepare($sqlGorev);
+                $stmtGorev->execute([':id' => $id]);
+                $gorev = $stmtGorev->fetch(PDO::FETCH_OBJ);
+
                 $result = $Gorev->markBildirimGonderildi($id);
+
+                if ($result && $gorev) {
+                    // Ayarlardaki kullanıcıları al
+                    $Settings = new \App\Model\SettingsModel();
+                    $recipientsSetting = $Settings->getSettings('gorev_bildirim_kullanicilar');
+
+                    $targetUserIds = [];
+                    if (!empty($recipientsSetting)) {
+                        $encryptedIds = explode(',', $recipientsSetting);
+                        foreach ($encryptedIds as $encId) {
+                            $decId = Security::decrypt(trim($encId));
+                            if ($decId) {
+                                $targetUserIds[] = (int) $decId;
+                            }
+                        }
+                    }
+
+                    $usersToNotify = !empty($targetUserIds) ? $targetUserIds : [$gorev->olusturan_id];
+                    $usersToNotify = array_unique(array_filter($usersToNotify));
+
+                    $pushService = new \App\Service\PushNotificationService();
+                    $saatStr = $gorev->saat ? ' (Saat: ' . substr($gorev->saat, 0, 5) . ')' : '';
+                    $payload = [
+                        'title' => '📋 Görev Hatırlatması',
+                        'body' => $gorev->baslik . $saatStr . ' [' . $gorev->liste_adi . ']',
+                        'url' => 'index.php?p=gorevler/list'
+                    ];
+
+                    foreach ($usersToNotify as $targetId) {
+                        $pushService->sendToPersonel($targetId, $payload);
+                    }
+                }
+
                 echo json_encode(['success' => $result]);
                 break;
 
