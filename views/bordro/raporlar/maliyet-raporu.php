@@ -192,7 +192,7 @@ foreach ($donemler as $donem) {
 
                         <!-- Maliyet Listesi Tablosu -->
                         <div class="table-responsive mt-2">
-                            <table id="maliyetListesiTable" class="table table-hover table-bordered nowrap w-100 align-middle">
+                            <table id="maliyetListesiTable" class="table table-hover table-bordered nowrap w-100 align-middle datatable">
                                 <thead class="table-light text-muted">
                                     <tr>
                                         <th style="width: 50px;" class="text-center">#</th>
@@ -300,37 +300,7 @@ foreach ($donemler as $donem) {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // DataTable başlat
-    if (document.getElementById('maliyetListesiTable')) {
-        $('#maliyetListesiTable').DataTable({
-            language: {
-                url: 'assets/libs/datatables/Turkish.json'
-            },
-            pageLength: 50,
-            order: [[1, 'asc']], // Ad Soyad'a göre sırala
-            dom: '<"row align-items-center mb-3"<"col-md-6"B><"col-md-6"f>>rt<"row align-items-center mt-3"<"col-md-6"i><"col-md-6"p>>',
-            buttons: [
-                {
-                    extend: 'excelHtml5',
-                    text: '<i class="bx bx-spreadsheet me-1"></i> Excel',
-                    className: 'btn btn-sm btn-success',
-                    title: 'Maliyet Raporu - <?= $selectedDonem ? htmlspecialchars($selectedDonem->donem_adi) : '' ?>',
-                    footer: true,
-                    exportOptions: {
-                        columns: ':visible'
-                    }
-                },
-                {
-                    extend: 'print',
-                    text: '<i class="bx bx-printer me-1"></i> Yazdır',
-                    className: 'btn btn-sm btn-secondary',
-                    title: 'Bordro İşveren Maliyet Raporu - <?= $selectedDonem ? htmlspecialchars($selectedDonem->donem_adi) : '' ?>',
-                    footer: true
-                }
-            ],
-            responsive: true
-        });
-    }
+    // DataTable başlatılması vendor-scripts içerisinden datatables.init.js aracılığı ile ".datatable" sınıfı referans alınarak otomatik yapılmaktadır.
     
     // Yıl değişince
     const yilSelect = document.querySelector('[name="yilSelectMaliyet"]');

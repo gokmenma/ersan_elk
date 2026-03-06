@@ -96,8 +96,10 @@ class SayacDegisimModel extends Model
                         if ($val !== '' || $val2 !== null || in_array($mode, ['null', 'not_null', 'multi'])) {
                             // Tarih sütunu dönüşümü
                             if ($colIdx == 0) {
-                                if ($val && strpos($val, '.') !== false) $val = \App\Helper\Date::Ymd($val, 'Y-m-d');
-                                if ($val2 && strpos($val2, '.') !== false) $val2 = \App\Helper\Date::Ymd($val2, 'Y-m-d');
+                                if ($val && strpos($val, '.') !== false)
+                                    $val = \App\Helper\Date::Ymd($val, 'Y-m-d');
+                                if ($val2 && strpos($val2, '.') !== false)
+                                    $val2 = \App\Helper\Date::Ymd($val2, 'Y-m-d');
                                 // Eğer formatlıysa, orijinal alanı kullan (örn t.tarih)
                                 if (strpos($field, 'DATE_FORMAT') !== false) {
                                     if (preg_match('/DATE_FORMAT\(([^,]+),/', $field, $m)) {
@@ -154,19 +156,23 @@ class SayacDegisimModel extends Model
                                     $searchWhere .= " AND $field != :$paramName";
                                     $params[$paramName] = $val;
                                     break;
-                                case 'gt': case 'greater_than':
+                                case 'gt':
+                                case 'greater_than':
                                     $searchWhere .= " AND $field > :$paramName";
                                     $params[$paramName] = $val;
                                     break;
-                                case 'lt': case 'less_than':
+                                case 'lt':
+                                case 'less_than':
                                     $searchWhere .= " AND $field < :$paramName";
                                     $params[$paramName] = $val;
                                     break;
-                                case 'gte': case 'greater_equal':
+                                case 'gte':
+                                case 'greater_equal':
                                     $searchWhere .= " AND $field >= :$paramName";
                                     $params[$paramName] = $val;
                                     break;
-                                case 'lte': case 'less_equal':
+                                case 'lte':
+                                case 'less_equal':
                                     $searchWhere .= " AND $field <= :$paramName";
                                     $params[$paramName] = $val;
                                     break;
@@ -286,6 +292,45 @@ class SayacDegisimModel extends Model
             $summary[$row->personel_id][$row->ekip_kodu_id][$row->tarih] = $row->toplam;
         }
         return $summary;
+    }
+
+    /**
+     * Günlük sayaç değişim sayısını çeker
+     */
+    public function getDailyStats()
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $bugun = date('Y-m-d');
+
+        $sql = "SELECT COUNT(*) as sayac_degisimi
+                FROM {$this->table}
+                WHERE firma_id = ? 
+                AND tarih = ? 
+                AND silinme_tarihi IS NULL";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId, $bugun]);
+        return $stmt->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Aylık sayaç değişim sayısını çeker
+     */
+    public function getMonthlyStats()
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $buAy = date('Y-m-01');
+        $sonGun = date('Y-m-t');
+
+        $sql = "SELECT COUNT(*) as sayac_degisimi
+                FROM {$this->table}
+                WHERE firma_id = ? 
+                AND tarih >= ? AND tarih <= ?
+                AND silinme_tarihi IS NULL";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId, $buAy, $sonGun]);
+        return $stmt->fetch(PDO::FETCH_OBJ);
     }
 
     /**

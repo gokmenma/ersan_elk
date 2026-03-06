@@ -164,3 +164,9 @@
 [2026-03-06 08:18:40] [WEBHOOK] Bildirim bekleyen görev yok.
 [2026-03-06 08:18:40] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 38.89ms
 
+[2026-03-06 14:46:38] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 14:46:38] [WEBHOOK] Sistem Zamanı: 14:46:38 | Tarih: 06-03-2026
+[2026-03-06 14:46:38] [WEBHOOK] Bildirim Offset: 5 dakika
+[2026-03-06 14:46:38] [WEBHOOK] Bildirim bekleyen görev yok.
+[2026-03-06 14:46:38] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 234.5ms
+

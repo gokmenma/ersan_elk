@@ -242,7 +242,7 @@ foreach ($donemler as $donem) {
 
                         <!-- SGK Bildirge Tablosu -->
                         <div class="table-responsive mt-3">
-                            <table id="sgkBildirgeTable" class="table table-hover table-bordered nowrap w-100 align-middle">
+                            <table id="sgkBildirgeTable" class="table table-hover table-bordered nowrap w-100 align-middle datatable">
                                 <thead class="table-light text-muted">
                                     <tr>
                                         <th style="width: 50px;" class="text-center">#</th>
@@ -348,45 +348,7 @@ foreach ($donemler as $donem) {
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // DataTable başlat
-        if (document.getElementById('sgkBildirgeTable')) {
-            $('#sgkBildirgeTable').DataTable({
-                language: {
-                    url: 'assets/libs/datatables/Turkish.json'
-                },
-                pageLength: 50,
-                order: [[2, 'asc']], // Ad Soyad'a göre sırala
-                dom: '<"row align-items-center mb-3"<"col-md-6"B><"col-md-6"f>>rt<"row align-items-center mt-3"<"col-md-6"i><"col-md-6"p>>',
-                buttons: [
-                    {
-                        extend: 'excelHtml5',
-                        text: '<i class="bx bx-spreadsheet me-1"></i> Excel İndir',
-                        className: 'btn btn-sm btn-success',
-                        title: 'SGK Bildirge Raporu - <?= $selectedDonem ? htmlspecialchars($selectedDonem->donem_adi) : '' ?>',
-                        footer: true,
-                        exportOptions: {
-                            columns: ':visible'
-                        }
-                    },
-                    {
-                        extend: 'print',
-                        text: '<i class="bx bx-printer me-1"></i> Yazdır',
-                        className: 'btn btn-sm btn-secondary',
-                        title: 'SGK Bildirge Raporu - <?= $selectedDonem ? htmlspecialchars($selectedDonem->donem_adi) : '' ?>',
-                        footer: true,
-                        orientation: 'landscape',
-                        customize: function (win) {
-                            $(win.document.body).css('font-size', '10pt');
-                            $(win.document.body).find('table')
-                                .addClass('compact')
-                                .css('font-size', 'inherit');
-                        }
-                    }
-                ],
-                scrollX: true,
-                responsive: false
-            });
-        }
+        // DataTable başlatılması vendor-scripts içerisinden datatables.init.js aracılığı ile ".datatable" sınıfı referans alınarak otomatik yapılmaktadır.
 
         // Yıl değişince
         const yilSelect = document.querySelector('[name="yilSelectSgk"]');

@@ -45,6 +45,12 @@ if (Gate::allows("ana_sayfa")) {
     $kacakDailyTotal = $puantajModel->getKacakDailyStats();
     $kacakMonthlyTotal = $puantajModel->getKacakMonthlyStats();
     $extraStatsMonthly = $personelModel->getMonthlyAdvancedDashboardStats();
+
+    // Sayaç Değişim İstatistikleri
+    $sayacDegisimModel = new \App\Model\SayacDegisimModel();
+    $sayacDegisimDailyStats = $sayacDegisimModel->getDailyStats();
+    $sayacDegisimMonthlyStats = $sayacDegisimModel->getMonthlyStats();
+
     $saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['dashboard_settings'], true) : [];
 
     $last_update_endeks = $last_update_isler = $last_update_sayac = null;
@@ -842,8 +848,8 @@ if (Gate::allows("ana_sayfa")) {
                         <i class="bx bx-refresh fs-4" style="color: #1cc88a;"></i>
                     </div>
                     <div class="d-flex align-items-center gap-1">
-                        <a href="javascript:void(0);" class="btn-api-sync text-muted" data-action="online-puantaj-sorgula"
-                            data-active-tab="sokme_takma" data-bs-toggle="tooltip" title="Online sorgula(API)">
+                        <a href="javascript:void(0);" class="btn-api-sync text-muted"
+                            data-action="online-sayac-degisim-sorgula" data-bs-toggle="tooltip" title="Online sorgula(API)">
                             <i class="bx bx-refresh fs-5"></i>
                         </a>
                         <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
@@ -852,11 +858,11 @@ if (Gate::allows("ana_sayfa")) {
                 <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
                     SAYAÇ DEĞİŞİMİ</p>
                 <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
-                    data-daily="<?php echo $dailyWorkStats->sayac_degisimi ?? 0; ?>"
-                    data-monthly="<?php echo $monthlyWorkStats->sayac_degisimi ?? 0; ?>"
+                    data-daily="<?php echo $sayacDegisimDailyStats->sayac_degisimi ?? 0; ?>"
+                    data-monthly="<?php echo $sayacDegisimMonthlyStats->sayac_degisimi ?? 0; ?>"
                     data-label-daily="GÜNLÜK SAYAÇ DEĞİŞİMİ" data-label-monthly="AYLIK SAYAÇ DEĞİŞİMİ"
                     data-sub-daily="Bugün yapılan sayaç değişimi" data-sub-monthly="Bu ay yapılan sayaç değişimi">
-                    <?php echo $dailyWorkStats->sayac_degisimi ?? 0; ?>
+                    <?php echo $sayacDegisimDailyStats->sayac_degisimi ?? 0; ?>
                 </h4>
                 <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün yapılan sayaç
                     değişimi</div>
@@ -874,7 +880,7 @@ if (Gate::allows("ana_sayfa")) {
                 <div class="mt-2 text-center py-1 rounded"
                     style="background: rgba(28, 200, 138, 0.05); font-size: 10px; color: #1cc88a; border-top: 1px dashed rgba(28, 200, 138, 0.2);">
                     <i class="bx bx-time-five"></i> Son Güncelleme: <span
-                        class="fw-bold"><?php echo $last_update_isler ? date('d.m.Y H:i', strtotime($last_update_isler)) : '-'; ?></span>
+                        class="fw-bold"><?php echo $last_update_sayac ? date('d.m.Y H:i', strtotime($last_update_sayac)) : '-'; ?></span>
                 </div>
             </div>
         </div>
@@ -981,124 +987,133 @@ if (Gate::allows("ana_sayfa")) {
 
     if (\App\Service\Gate::allows("gorevler")) {
         ob_start(); ?>
-    <div class="<?php echo getWidgetWidth('widget-yaklasan-gorevler', 'col-md-6'); ?> widget-item"
-        id="widget-yaklasan-gorevler">
-        <div class="card summary-card border-0 shadow-sm"
-            style="border-radius: 16px; background: #fff;">
-            <div class="card-header bg-transparent align-items-center d-flex justify-content-between px-4 py-3"
-                style="border-bottom: 1px solid #f1f5f9;">
-                <div class="d-flex align-items-center gap-2">
-                    <i class='bx bx-grid-vertical drag-handle text-muted cursor-move'></i>
-                    <h5 class="card-title mb-0 d-flex align-items-center gap-2" style="font-family: 'Inter', sans-serif; font-size: 1.1rem; font-weight: 600; color: #1e293b;">
-                        Yaklaşan Görevler
-                    </h5>
-                    <span class="badge rounded-pill bg-light text-muted fw-bold ms-1" style="font-size: 0.8rem;"><?php echo count($yaklasan_gorevler); ?></span>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <button type="button" class="btn btn-sm btn-light rounded-circle p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; border: none; background: #f8fafc;" title="Yenile" onclick="window.location.reload();">
-                        <i class="bx bx-refresh fs-5 text-muted"></i>
-                    </button>
-                    <a href="index.php?p=gorevler/list"
-                        class="btn btn-sm btn-soft-primary rounded-pill fw-semibold border-0"
-                        style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">
-                        Tümü <i class="bx bx-right-arrow-alt ms-1"></i>
-                    </a>
-                    <?php echo getWidthControl(); ?>
-                </div>
-            </div>
-            <div class="card-body p-4"
-                style="min-height: <?php echo getWidgetHeight('widget-yaklasan-gorevler', 'auto'); ?>; background: #f8fafc; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
-                <?php if (empty($yaklasan_gorevler)): ?>
-                    <div class="text-center py-5 d-flex flex-column align-items-center justify-content-center">
-                        <div class="bg-white rounded-circle d-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 64px; height: 64px;">
-                            <i class="bx bx-check" style="font-size: 32px; color: #10b981;"></i>
-                        </div>
-                        <h6 class="text-slate-800 fw-semibold mb-1" style="color: #1e293b;">Görev Yok</h6>
-                        <p class="text-slate-500 mb-0" style="font-size: 0.875rem; color: #64748b;">Yaklaşan herhangi bir göreviniz bulunmuyor.</p>
+        <div class="<?php echo getWidgetWidth('widget-yaklasan-gorevler', 'col-md-6'); ?> widget-item"
+            id="widget-yaklasan-gorevler">
+            <div class="card summary-card border-0 shadow-sm" style="border-radius: 16px; background: #fff;">
+                <div class="card-header bg-transparent align-items-center d-flex justify-content-between px-4 py-3"
+                    style="border-bottom: 1px solid #f1f5f9;">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class='bx bx-grid-vertical drag-handle text-muted cursor-move'></i>
+                        <h5 class="card-title mb-0 d-flex align-items-center gap-2"
+                            style="font-family: 'Inter', sans-serif; font-size: 1.1rem; font-weight: 600; color: #1e293b;">
+                            Yaklaşan Görevler
+                        </h5>
+                        <span class="badge rounded-pill bg-light text-muted fw-bold ms-1"
+                            style="font-size: 0.8rem;"><?php echo count($yaklasan_gorevler); ?></span>
                     </div>
-                <?php else: ?>
-                    <div class="yaklasan-gorev-list d-flex flex-column gap-2" style="margin-bottom:0">
-                        <?php foreach ($yaklasan_gorevler as $gorev): ?>
-                            <?php
-                            $renk = $gorev->liste_renk ?: '#4f46e5';
-                            list($r, $g, $b) = sscanf($renk, "#%02x%02x%02x") ?: [79, 70, 229];
-                            $rgba_bg = "rgba($r, $g, $b, 0.1)";
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button"
+                            class="btn btn-sm btn-light rounded-circle p-1 d-flex align-items-center justify-content-center"
+                            style="width: 32px; height: 32px; border: none; background: #f8fafc;" title="Yenile"
+                            onclick="window.location.reload();">
+                            <i class="bx bx-refresh fs-5 text-muted"></i>
+                        </button>
+                        <a href="index.php?p=gorevler/list"
+                            class="btn btn-sm btn-soft-primary rounded-pill fw-semibold border-0"
+                            style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">
+                            Tümü <i class="bx bx-right-arrow-alt ms-1"></i>
+                        </a>
+                        <?php echo getWidthControl(); ?>
+                    </div>
+                </div>
+                <div class="card-body p-4"
+                    style="min-height: <?php echo getWidgetHeight('widget-yaklasan-gorevler', 'auto'); ?>; background: #f8fafc; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                    <?php if (empty($yaklasan_gorevler)): ?>
+                        <div class="text-center py-5 d-flex flex-column align-items-center justify-content-center">
+                            <div class="bg-white rounded-circle d-flex align-items-center justify-content-center mb-3 shadow-sm"
+                                style="width: 64px; height: 64px;">
+                                <i class="bx bx-check" style="font-size: 32px; color: #10b981;"></i>
+                            </div>
+                            <h6 class="text-slate-800 fw-semibold mb-1" style="color: #1e293b;">Görev Yok</h6>
+                            <p class="text-slate-500 mb-0" style="font-size: 0.875rem; color: #64748b;">Yaklaşan herhangi bir
+                                göreviniz bulunmuyor.</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="yaklasan-gorev-list d-flex flex-column gap-2" style="margin-bottom:0">
+                            <?php foreach ($yaklasan_gorevler as $gorev): ?>
+                                <?php
+                                $renk = $gorev->liste_renk ?: '#4f46e5';
+                                list($r, $g, $b) = sscanf($renk, "#%02x%02x%02x") ?: [79, 70, 229];
+                                $rgba_bg = "rgba($r, $g, $b, 0.1)";
 
-                            $tarihVar = !empty($gorev->tarih);
-                            $isGecikti = false;
-                            $isBugun = false;
+                                $tarihVar = !empty($gorev->tarih);
+                                $isGecikti = false;
+                                $isBugun = false;
 
-                            if ($tarihVar) {
-                                $isGecikti = (strtotime($gorev->tarih . ' ' . ($gorev->saat ?? '23:59:59')) < time());
-                                $isBugun = ($gorev->tarih == date('Y-m-d'));
-                            }
+                                if ($tarihVar) {
+                                    $isGecikti = (strtotime($gorev->tarih . ' ' . ($gorev->saat ?? '23:59:59')) < time());
+                                    $isBugun = ($gorev->tarih == date('Y-m-d'));
+                                }
 
-                            if ($isGecikti) {
-                                $durum_ikon = '<i class="bx bxs-error-circle text-danger" style="font-size: 0.85rem;"></i>';
-                            } elseif ($isBugun) {
-                                $durum_ikon = '<i class="bx bxs-circle text-warning" style="font-size: 8px;"></i>';
-                            } elseif ($tarihVar) {
-                                $durum_ikon = '<i class="bx bxs-circle text-success" style="font-size: 8px;"></i>';
-                            } else {
-                                $durum_ikon = '<i class="bx bxs-circle text-muted" style="font-size: 8px;"></i>';
-                            }
-                            ?>
-                            <div class="card border-0 task-item-hover shadow-none mb-0"
-                                style="border-radius: 12px; background: #fff; border: 1px solid #f1f5f9 !important; transition: all 0.2s; cursor: pointer;"
-                                onclick="window.location.href='index.php?p=gorevler/list&task_id=<?php echo $gorev->id; ?>'">
-                                
-                                <div class="card-body p-2 d-flex align-items-center gap-2">
-                                    <!-- Colored Icon Box (Compact) -->
-                                    <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" 
-                                        style="width: 32px; height: 32px; background-color: <?php echo $rgba_bg; ?>; color: <?php echo $renk; ?>;">
-                                        <i class="bx bx-task font-size-14"></i>
-                                    </div>
-                                    
-                                    <!-- Content Area -->
-                                    <div class="flex-grow-1 overflow-hidden">
-                                        <div class="d-flex justify-content-between align-items-center gap-2">
-                                            <h6 class="mb-0 fw-bold text-dark text-truncate" style="font-family: 'Inter', sans-serif; font-size: 0.85rem; color: #1e293b !important;">
-                                                <?php echo htmlspecialchars($gorev->baslik); ?>
-                                            </h6>
-                                            <div class="flex-shrink-0 d-flex align-items-center gap-1">
-                                                <span class="text-muted" style="font-size: 0.7rem;">
-                                                    <?php echo $tarihVar ? date('d M', strtotime($gorev->tarih)) : 'Tarih Yok'; ?>
+                                if ($isGecikti) {
+                                    $durum_ikon = '<i class="bx bxs-error-circle text-danger" style="font-size: 0.85rem;"></i>';
+                                } elseif ($isBugun) {
+                                    $durum_ikon = '<i class="bx bxs-circle text-warning" style="font-size: 8px;"></i>';
+                                } elseif ($tarihVar) {
+                                    $durum_ikon = '<i class="bx bxs-circle text-success" style="font-size: 8px;"></i>';
+                                } else {
+                                    $durum_ikon = '<i class="bx bxs-circle text-muted" style="font-size: 8px;"></i>';
+                                }
+                                ?>
+                                <div class="card border-0 task-item-hover shadow-none mb-0"
+                                    style="border-radius: 12px; background: #fff; border: 1px solid #f1f5f9 !important; transition: all 0.2s; cursor: pointer;"
+                                    onclick="window.location.href='index.php?p=gorevler/list&task_id=<?php echo $gorev->id; ?>'">
+
+                                    <div class="card-body p-2 d-flex align-items-center gap-2">
+                                        <!-- Colored Icon Box (Compact) -->
+                                        <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
+                                            style="width: 32px; height: 32px; background-color: <?php echo $rgba_bg; ?>; color: <?php echo $renk; ?>;">
+                                            <i class="bx bx-task font-size-14"></i>
+                                        </div>
+
+                                        <!-- Content Area -->
+                                        <div class="flex-grow-1 overflow-hidden">
+                                            <div class="d-flex justify-content-between align-items-center gap-2">
+                                                <h6 class="mb-0 fw-bold text-dark text-truncate"
+                                                    style="font-family: 'Inter', sans-serif; font-size: 0.85rem; color: #1e293b !important;">
+                                                    <?php echo htmlspecialchars($gorev->baslik); ?>
+                                                </h6>
+                                                <div class="flex-shrink-0 d-flex align-items-center gap-1">
+                                                    <span class="text-muted" style="font-size: 0.7rem;">
+                                                        <?php echo $tarihVar ? date('d M', strtotime($gorev->tarih)) : 'Tarih Yok'; ?>
+                                                    </span>
+                                                    <?php echo $durum_ikon; ?>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-2 mt-0">
+                                                <span class="fw-medium text-muted text-truncate"
+                                                    style="font-size: 0.7rem; opacity: 0.8;">
+                                                    <i class="bx bx-folder-open me-1" style="color: <?php echo $renk; ?>;"></i>
+                                                    <?php echo htmlspecialchars($gorev->liste_adi); ?>
                                                 </span>
-                                                <?php echo $durum_ikon; ?>
+                                                <?php $gorevPersonel = isset($personel_map[$gorev->olusturan_id]) ? $personel_map[$gorev->olusturan_id] : null; ?>
+                                                <?php if ($gorevPersonel): ?>
+                                                    <span class="text-muted" style="font-size: 0.7rem;">•
+                                                        <?php echo explode(' ', trim($gorevPersonel->adi_soyadi))[0]; ?></span>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
-                                        <div class="d-flex align-items-center gap-2 mt-0">
-                                            <span class="fw-medium text-muted text-truncate" style="font-size: 0.7rem; opacity: 0.8;">
-                                                <i class="bx bx-folder-open me-1" style="color: <?php echo $renk; ?>;"></i>
-                                                <?php echo htmlspecialchars($gorev->liste_adi); ?>
-                                            </span>
-                                            <?php $gorevPersonel = isset($personel_map[$gorev->olusturan_id]) ? $personel_map[$gorev->olusturan_id] : null; ?>
-                                            <?php if ($gorevPersonel): ?>
-                                            <span class="text-muted" style="font-size: 0.7rem;">• <?php echo explode(' ', trim($gorevPersonel->adi_soyadi))[0]; ?></span>
-                                            <?php endif; ?>
+
+                                        <!-- Minimal Detail Arrow -->
+                                        <div class="flex-shrink-0 ps-1">
+                                            <i class="bx bx-chevron-right text-muted opacity-50"></i>
                                         </div>
                                     </div>
-                                    
-                                    <!-- Minimal Detail Arrow -->
-                                    <div class="flex-shrink-0 ps-1">
-                                        <i class="bx bx-chevron-right text-muted opacity-50"></i>
-                                    </div>
                                 </div>
-                            </div>
-                        <?php endforeach; ?>
-                        
-                        <style>
-                            .task-item-hover:hover {
-                                background: #f8fafc !important;
-                                border-color: #e2e8f0 !important;
-                                transform: translateX(2px);
-                            }
-                        </style>
-                    </div>
-                <?php endif; ?>
+                            <?php endforeach; ?>
+
+                            <style>
+                                .task-item-hover:hover {
+                                    background: #f8fafc !important;
+                                    border-color: #e2e8f0 !important;
+                                    transform: translateX(2px);
+                                }
+                            </style>
+                        </div>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
-    </div>
         <?php $widgets['widget-yaklasan-gorevler'] = ob_get_clean();
     }
 

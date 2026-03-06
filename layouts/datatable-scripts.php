@@ -13,6 +13,7 @@
 <script src="assets/libs/datatables.net-buttons-bs4/js/buttons.bootstrap4.min.js"></script>
 <script src="assets/libs/jszip/jszip.min.js"></script>
 <script src="assets/libs/datatables.net-buttons/js/buttons.html5.min.js"></script>
+<script src="assets/libs/datatables.net-buttons/js/buttons.print.min.js"></script>
 
 <!-- Advanced Column Filters -->
 <link rel="stylesheet"

@@ -256,12 +256,12 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
 
             $normDate = $tarih;
 
-            // islem_id olarak ISEMRI_NO benzersiz sayilabilir ancak ayni gunde islem yapiliyorsa diye kombinliyoruz
+            $takilanSayacNo = trim($veri['TAKILAN_SAYACNO'] ?? '');
+            $aboneNo = trim($veri['ABONE_NO'] ?? '');
             $isemriNo = trim($veri['ISEMRI_NO'] ?? '');
-            if (empty($isemriNo))
-                continue;
 
-            $islemId = md5($normDate . '|' . $ekipKoduStr . '|' . $isemriNo);
+            // islem_id generation must match views/puantaj/api.php
+            $islemId = md5($isemriNo . '|' . $aboneNo . '|' . $takilanSayacNo . '|' . $ekipKoduStr);
 
             $personelId = 0;
             $defId = 0;
@@ -300,7 +300,6 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
 
             $zimmetDusuldu = 0;
             // Zimmet işlemi
-            $takilanSayacNo = trim($veri['TAKILAN_SAYACNO'] ?? '');
             if ($personelId > 0 && !empty($takilanSayacNo)) {
                 $stmtCheck = $db->prepare("SELECT id FROM demirbas_hareketler WHERE islem_id = ? AND hareket_tipi = 'sarf' LIMIT 1");
                 $stmtCheck->execute([$islemId]);
@@ -328,7 +327,6 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
 
                             // Takılan sayacı Tüketim yap
                             $isemriSonucu = trim($veri['ISEMRI_SONUCU'] ?? '');
-                            $aboneNo = trim($veri['ABONE_NO'] ?? '');
                             $ZimmetModel->tuketimYap($zimmetId, ($kayitTarihi ?: $normDate), 1, "Sayaç değişimi otomatik tüketimi.\nİş Emri No: {$isemriNo}\nAbone No: {$aboneNo}", $islemId, $isemriSonucu, 'otomatik');
 
                             // Sökülen sayacı Hurda olarak ekle ve zimmetle
@@ -375,7 +373,7 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
                 $personelId,
                 $defId,
                 $isemriNo,
-                trim($veri['ABONE_NO'] ?? ''),
+                $aboneNo,
                 trim($veri['ISEMRI_SEBEP'] ?? ''),
                 $ekipKoduStr,
                 trim($veri['MEMUR'] ?? ''),
@@ -393,17 +391,28 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
 
         $db->beginTransaction();
 
-        // Mevcutlari sil
-        $deleteStmt = $db->prepare("UPDATE sayac_degisim SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih = ? AND silinme_tarihi IS NULL");
-        $deleteStmt->execute([$firmaId, $tarih]);
-        $silinenKayit = $deleteStmt->rowCount();
-
         // Toplu Kayıt
         if (!empty($insertBatch)) {
             $chunks = array_chunk($insertBatch, 500);
             foreach ($chunks as $chunk) {
                 $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'));
-                $sql = "INSERT INTO sayac_degisim (islem_id, firma_id, personel_id, ekip_kodu_id, isemri_no, abone_no, isemri_sebep, ekip, memur, sonuclandiran_kullanici, bolge, isemri_sonucu, sonuc_aciklama, takilan_sayacno, kayit_tarihi, tarih, zimmet_dusuldu) VALUES $placeholders";
+                $sql = "INSERT INTO sayac_degisim (islem_id, firma_id, personel_id, ekip_kodu_id, isemri_no, abone_no, isemri_sebep, ekip, memur, sonuclandiran_kullanici, bolge, isemri_sonucu, sonuc_aciklama, takilan_sayacno, kayit_tarihi, tarih, zimmet_dusuldu) 
+                        VALUES $placeholders
+                        ON DUPLICATE KEY UPDATE 
+                            silinme_tarihi = NULL,
+                            personel_id = VALUES(personel_id),
+                            ekip_kodu_id = VALUES(ekip_kodu_id),
+                            isemri_sebep = VALUES(isemri_sebep),
+                            ekip = VALUES(ekip),
+                            memur = VALUES(memur),
+                            sonuclandiran_kullanici = VALUES(sonuclandiran_kullanici),
+                            bolge = VALUES(bolge),
+                            isemri_sonucu = VALUES(isemri_sonucu),
+                            sonuc_aciklama = VALUES(sonuc_aciklama),
+                            takilan_sayacno = VALUES(takilan_sayacno),
+                            kayit_tarihi = VALUES(kayit_tarihi),
+                            tarih = VALUES(tarih),
+                            zimmet_dusuldu = VALUES(zimmet_dusuldu)";
                 $stmt = $db->prepare($sql);
                 $flatParams = [];
                 foreach ($chunk as $row) {

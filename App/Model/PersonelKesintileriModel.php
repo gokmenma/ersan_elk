@@ -195,4 +195,34 @@ class PersonelKesintileriModel extends Model
         $sql->execute([$ana_kesinti_id]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
+
+    /**
+     * Raporlama için döneme ait kesintileri getirir
+     */
+    public function getDonemKesintileriRaporu($donem_id, $tur = null)
+    {
+        $params = [$donem_id];
+        $turCondition = "";
+        
+        if (!empty($tur)) {
+            $turCondition = " AND pk.tur = ? ";
+            $params[] = $tur;
+        }
+
+        $sql = $this->db->prepare("
+            SELECT pk.*, p.adi_soyadi, p.tc_kimlik_no, p.departman,
+                   pi.dosya_no, pi.icra_dairesi, bp.etiket as parametre_adi
+            FROM {$this->table} pk
+            INNER JOIN personel p ON pk.personel_id = p.id
+            LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
+            LEFT JOIN bordro_parametreleri bp ON pk.parametre_id = bp.id
+            WHERE pk.donem_id = ? 
+              AND pk.silinme_tarihi IS NULL
+              $turCondition
+            ORDER BY p.adi_soyadi ASC, pk.tutar DESC
+        ");
+        
+        $sql->execute($params);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
 }

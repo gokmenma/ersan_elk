@@ -65,7 +65,7 @@ class PersonelEkOdemelerModel extends Model
             FROM {$this->table} peo
             LEFT JOIN bordro_parametreleri bp ON peo.parametre_id = bp.id
             LEFT JOIN bordro_donemi bd ON peo.donem_id = bd.id
-            LEFT JOIN personeller p ON peo.kayit_yapan = p.id
+            LEFT JOIN personel p ON peo.kayit_yapan = p.id
             WHERE {$where}
             ORDER BY peo.tekrar_tipi DESC, peo.baslangic_donemi DESC, peo.donem_id DESC, peo.created_at DESC
         ");

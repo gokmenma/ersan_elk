@@ -202,11 +202,11 @@ foreach ($donemler as $donem) {
                         <?php endif; ?>
 
                         <!-- Banka Listesi Tablosu -->
-                        <div class="table-responsive">
-                            <table id="bankaListesiTable" class="table table-hover table-bordered nowrap w-100">
-                                <thead class="table-light">
+                        <div class="table-responsive mt-3">
+                            <table id="bankaListesiTable" class="table table-hover table-bordered nowrap w-100 align-middle datatable">
+                                <thead class="table-light text-muted">
                                     <tr>
-                                        <th style="width: 50px;">#</th>
+                                        <th style="width: 50px;" class="text-center">#</th>
                                         <th>Ad Soyad</th>
                                         <th>TC Kimlik No</th>
                                         <th>IBAN</th>
@@ -311,25 +311,7 @@ foreach ($donemler as $donem) {
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // DataTable başlat
-        if (document.getElementById('bankaListesiTable')) {
-            $('#bankaListesiTable').DataTable({
-                language: {
-                    url: 'assets/libs/datatables/Turkish.json'
-                },
-                pageLength: 25,
-                order: [[1, 'asc']],
-                dom: 'Bfrtip',
-                buttons: [
-                    {
-                        extend: 'print',
-                        text: '<i class="bx bx-printer me-1"></i> Yazdır',
-                        className: 'btn btn-sm btn-outline-secondary',
-                        title: 'Banka Listesi - <?= $selectedDonem ? htmlspecialchars($selectedDonem->donem_adi) : '' ?>'
-                    }
-                ]
-            });
-        }
+        // DataTable başlatılması vendor-scripts içerisinden datatables.init.js aracılığı ile ".datatable" sınıfı referans alınarak otomatik yapılmaktadır.
 
         // Yıl değişince
         const yilSelect = document.querySelector('[name="yilSelectBanka"]');

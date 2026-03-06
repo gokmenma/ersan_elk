@@ -122,6 +122,16 @@ $raporlar = [
         'url' => 'index?p=bordro/raporlar/maliyet-raporu&donem=',
         'download_url' => null,
         'download_type' => null
+    ],
+    [
+        'id' => 'kesinti-raporu',
+        'baslik' => 'Kesinti Raporu',
+        'aciklama' => 'Personel kesintilerinin (İcra, Avans vb.) filtrelemeli detaylı listesi.',
+        'icon' => 'bx-cut',
+        'renk' => 'dark',
+        'url' => 'index?p=bordro/raporlar/kesinti-raporu&donem=',
+        'download_url' => null,
+        'download_type' => null
     ]
 ];
 ?>

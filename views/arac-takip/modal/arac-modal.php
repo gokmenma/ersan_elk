@@ -45,19 +45,19 @@
                         <!-- Tab Navigation -->
                         <ul class="nav nav-tabs nav-tabs-custom nav-justified bg-light bg-opacity-50 border-bottom" id="aracModalTabs" role="tablist">
                             <li class="nav-item">
-                                <a class="nav-link active py-3" data-bs-toggle="tab" href="#tab-genel" role="tab">
+                                <a class="nav-link active py-3" data-bs-toggle="tab" data-no-url-update="true" href="#tab-genel" role="tab">
                                     <i class="bx bx-info-circle fs-5 d-block mb-1"></i>
                                     <span>Genel Bilgiler</span>
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link py-3" data-bs-toggle="tab" href="#tab-teknik" role="tab">
+                                <a class="nav-link py-3" data-bs-toggle="tab" data-no-url-update="true" href="#tab-teknik" role="tab">
                                     <i class="bx bx-cog fs-5 d-block mb-1"></i>
                                     <span>Teknik & KM</span>
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link py-3" data-bs-toggle="tab" href="#tab-tarih" role="tab">
+                                <a class="nav-link py-3" data-bs-toggle="tab" data-no-url-update="true" href="#tab-tarih" role="tab">
                                     <i class="bx bx-calendar fs-5 d-block mb-1"></i>
                                     <span>Evraklar & Notlar</span>
                                 </a>
