@@ -270,11 +270,16 @@
       ? '<i class="bx bx-repeat gorev-yineleme-icon" title="Yinelenen görev"></i>'
       : "";
 
+    const aciklamaHtml = g.aciklama
+      ? `<div class="gorev-aciklama-text">${escHtml(g.aciklama)}</div>`
+      : "";
+
     return `
             <div class="gorev-item" data-gorev-id="${g.id}" data-liste-id="${g.liste_id}">
                 <div class="gorev-checkbox" data-gorev-id="${g.id}" data-tamamlandi="${tamamlandi ? 1 : 0}" title="${tamamlandi ? "Geri al" : "Tamamla"}"></div>
                 <div class="gorev-info">
                     <div class="gorev-baslik">${escHtml(g.baslik)}</div>
+                    ${aciklamaHtml}
                     <div class="gorev-meta">
                         ${tarihBadge}
                         ${yinelemeIcon}

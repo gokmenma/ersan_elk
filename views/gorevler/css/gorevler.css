@@ -435,6 +435,14 @@
   word-break: break-word;
 }
 
+.gorev-item .gorev-aciklama-text {
+  font-size: 12px;
+  color: #5f6368;
+  margin-top: 2px;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
 .gorev-item .gorev-meta {
   display: flex;
   align-items: center;
