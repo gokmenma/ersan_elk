@@ -135,9 +135,9 @@
                 <div class="gorev-ekleme-form" data-liste-id="${liste.id}">
                     <div class="gorev-baslik-container">
                         <div class="gorev-checkbox-placeholder"></div>
-                        <input type="text" class="gorev-baslik-input" placeholder="Başlık" data-liste-id="${liste.id}">
+                        <textarea class="gorev-baslik-input auto-resize" placeholder="Başlık" data-liste-id="${liste.id}" rows="1"></textarea>
                     </div>
-                    <textarea class="gorev-aciklama-input" placeholder="Ayrıntılar" rows="1" data-liste-id="${liste.id}"></textarea>
+                    <textarea class="gorev-aciklama-input auto-resize" placeholder="Ayrıntılar" rows="1" data-liste-id="${liste.id}"></textarea>
                     <div class="gorev-form-actions">
                         <button class="form-action-btn btn-tarih-sec" data-liste-id="${liste.id}">
                             Bugün
@@ -722,9 +722,9 @@
             <input type="hidden" class="edit-gorev-id" value="${g.id}">
             <div class="gorev-baslik-container">
                 <div class="gorev-checkbox-placeholder"></div>
-                <input type="text" class="gorev-baslik-input edit-gorev-baslik" value="${escHtml(g.baslik)}" placeholder="Başlık">
+                <textarea class="gorev-baslik-input edit-gorev-baslik auto-resize" rows="1" placeholder="Başlık">${escHtml(g.baslik)}</textarea>
             </div>
-            <textarea class="gorev-aciklama-input edit-gorev-aciklama" rows="1" placeholder="Ayrıntılar">${escHtml(g.aciklama || "")}</textarea>
+            <textarea class="gorev-aciklama-input edit-gorev-aciklama auto-resize" rows="1" placeholder="Ayrıntılar">${escHtml(g.aciklama || "")}</textarea>
             
             <div class="gorev-form-actions">
                 <button type="button" class="form-action-btn edit-btn-tarih-bugun ${g.tarih ? "" : ""}" data-gorev-id="${g.id}">Bugün</button>
@@ -750,7 +750,11 @@
 
       $item.find(".gorev-info, .gorev-checkbox, .gorev-actions").hide();
       $item.append(editFormHtml);
-      $item.find(".edit-gorev-baslik").focus();
+      const $titleInput = $item.find(".edit-gorev-baslik");
+      $titleInput.focus();
+
+      // Boyutu içeriğe göre ilkle
+      $item.find(".auto-resize").trigger("input");
     });
 
     function closeInlineEdit($item) {
@@ -1159,7 +1163,8 @@
         chosenClass: "sortable-chosen",
         dragClass: "sortable-drag",
         handle: ".gorev-item",
-        filter: ".tamamlandi-section, .gorev-actions, .gorev-checkbox",
+        filter:
+          ".tamamlandi-section, .gorev-actions, .gorev-checkbox, .inline-edit-form, input, textarea",
         preventOnFilter: false,
         onEnd: function (evt) {
           saveGorevSira();
@@ -1372,6 +1377,27 @@
       function (res) {},
     );
   }
+
+  // =====================================================
+  // AUTO RESIZE TEXTAREA
+  // =====================================================
+  $(document).on("input", ".auto-resize", function () {
+    this.style.height = "auto";
+    this.style.height = this.scrollHeight + "px";
+  });
+
+  // Yeni bir textarea eklendiğinde (render) boyutunu ilkle
+  function initAutoResize() {
+    $(".auto-resize").each(function () {
+      this.style.height = "auto";
+      this.style.height = this.scrollHeight + "px";
+    });
+  }
+
+  $(document).on("focus", ".auto-resize", function () {
+    this.style.height = "auto";
+    this.style.height = this.scrollHeight + "px";
+  });
 
   $(document).ready(function () {
     if (

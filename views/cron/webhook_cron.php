@@ -96,12 +96,15 @@ try {
         $basarisiz = 0;
 
         foreach ($bekleyenGorevler as $gorev) {
+            if (!$gorev || !isset($gorev->id))
+                continue;
+
             try {
                 webhookLog("İşlenen Görev ID: #{$gorev->id} | Tip: {$gorev->bildirim_tipi} | Başlık: {$gorev->baslik}");
 
                 // Bildirim mesajını hazırla
-                $saatStr = $gorev->saat ? ' (Saat: ' . substr($gorev->saat, 0, 5) . ')' : '';
-                $listeStr = $gorev->liste_adi ? ' [' . $gorev->liste_adi . ']' : '';
+                $saatStr = !empty($gorev->saat) ? ' (Saat: ' . substr($gorev->saat, 0, 5) . ')' : '';
+                $listeStr = !empty($gorev->liste_adi) ? ' [' . $gorev->liste_adi . ']' : '';
 
                 if ($gorev->bildirim_tipi === 'on') {
                     $title = "⏳ Göreve $offset Dakika Var";
