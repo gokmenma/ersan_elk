@@ -5,8 +5,16 @@ use App\Model\TanimlamalarModel;
 use App\Helper\Helper;
 use App\Helper\Form;
 use App\Helper\Security;
+use App\Service\Gate;
+use App\Helper\Alert;
 
 $id = Security::decrypt($_GET['id'] ?? 0);
+
+/**Yetki kontrolü */
+if (Gate::allows('personel_duzenle')) {
+
+
+
 $PersonelModel = new PersonelModel();
 $personel = $id > 0 ? $PersonelModel->findByEkipNo($id) : null;
 $TanimlamalarModel = new TanimlamalarModel();
@@ -715,3 +723,10 @@ if ($id > 0) {
         maas_durumu: "<?= $personel->maas_durumu ?? '' ?>"
     };
 </script>
+
+
+    
+<?php }else{
+    Alert::danger('Bu sayfayı görüntüleme yetkiniz bulunmamaktadır.Lütfen yöneticiye başvurun.');
+    
+} ?>
