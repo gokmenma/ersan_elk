@@ -806,23 +806,28 @@
       openYinelemeModal(editId);
     });
 
-    // Enter/Escape handlers for Edit Form
-    $(document).on("keydown", ".edit-gorev-baslik, .edit-gorev-aciklama", function (e) {
-      // Enter (Shift+Enter ile yeni satır, sadece Enter ile kaydet)
+    // Enter/Escape handlers — Document seviyesinde dinle
+    // (Tarih butonları veya takvim odaklandığında bile çalışması için)
+    $(document).on("keydown", function (e) {
+      const $editingItem = $(".gorev-item.editing");
+      if (!$editingItem.length) return;
+
+      // Flatpickr veya modal açıksa müdahale etme
+      if ($(".flatpickr-calendar.open").length || $(".tarih-picker-modal.show").length || $(".yineleme-modal.show").length) return;
+
+      // Enter — kaydet
       if (e.which === 13 && !e.shiftKey) {
         e.preventDefault();
-        const $form = $(this).closest(".inline-edit-form");
+        const $form = $editingItem.find(".inline-edit-form");
         if ($form.length) {
-            saveInlineEdit($form);
+          saveInlineEdit($form);
         }
       }
-      // Escape
+
+      // Escape — iptal
       if (e.which === 27) {
         e.preventDefault();
-        const $item = $(this).closest(".gorev-item");
-        if ($item.length) {
-            closeInlineEdit($item);
-        }
+        closeInlineEdit($editingItem);
       }
     });
 
