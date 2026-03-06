@@ -391,8 +391,8 @@
       }
     });
 
-    // Görev ekleme - Enter ile
-    $(document).on("keydown", ".gorev-baslik-input", function (e) {
+    // Görev ekleme - Enter ile (sadece yeni görev formu, düzenleme formu hariç)
+    $(document).on("keydown", ".gorev-baslik-input:not(.edit-gorev-baslik)", function (e) {
       if (e.key === "Enter") {
         e.preventDefault();
         const listeId = $(this).data("liste-id");
@@ -689,8 +689,13 @@
         return;
 
       const $item = $(this);
+      
+      // Eğer bir butonun veya inputun içine tıkladıysa iptal et
+      if ($(e.target).closest("button, input, textarea").length) return;
+
       if ($item.hasClass("editing")) return;
 
+      // Diğerlerini kapat
       $(".gorev-item.editing").each(function () {
         closeInlineEdit($(this));
       });
@@ -745,15 +750,11 @@
             <input type="hidden" class="edit-tarih-val" value="${g.tarih || ""}">
             <input type="hidden" class="edit-saat-val" value="${g.saat || ""}">
             <input type="hidden" class="edit-yineleme-val" value='${JSON.stringify(yinelemeData)}'>
-
-            <div class="d-flex justify-content-end gap-2 mt-3 pe-2 pb-2">
-                <button type="button" class="btn btn-sm btn-edit-iptal" style="border:none; background:#f1f3f4; color:#5f6368; font-weight: 500;">İptal</button>
-                <button type="button" class="btn btn-sm btn-primary btn-edit-kaydet" style="background:#202124; border:none; padding: 4px 16px; border-radius: 4px; font-weight: 500;">Kaydet</button>
-            </div>
         </div>
       `;
 
-      $item.find(".gorev-info, .gorev-checkbox, .gorev-actions").hide();
+      // CSS halledecek (display: none), JS ile müdahale etmiyoruz
+      // $item.find(".gorev-info, .gorev-checkbox, .gorev-actions").hide();
       $item.append(editFormHtml);
       const $titleInput = $item.find(".edit-gorev-baslik");
       $titleInput.focus();
@@ -762,11 +763,7 @@
       $item.find(".auto-resize").trigger("input");
     });
 
-    function closeInlineEdit($item) {
-      $item.removeClass("editing");
-      $item.find(".inline-edit-form").remove();
-      $item.find(".gorev-info, .gorev-checkbox, .gorev-actions").show();
-    }
+    // closeInlineEdit artık modül seviyesinde tanımlı (aşağıda)
 
     $(document).on("click", ".btn-edit-iptal", function (e) {
       e.stopPropagation();
@@ -809,10 +806,27 @@
       openYinelemeModal(editId);
     });
 
-    $(document).on("click", ".btn-edit-kaydet", function (e) {
-      e.stopPropagation();
-      const $form = $(this).closest(".inline-edit-form");
+    // Enter/Escape handlers for Edit Form
+    $(document).on("keydown", ".edit-gorev-baslik, .edit-gorev-aciklama", function (e) {
+      // Enter (Shift+Enter ile yeni satır, sadece Enter ile kaydet)
+      if (e.which === 13 && !e.shiftKey) {
+        e.preventDefault();
+        const $form = $(this).closest(".inline-edit-form");
+        if ($form.length) {
+            saveInlineEdit($form);
+        }
+      }
+      // Escape
+      if (e.which === 27) {
+        e.preventDefault();
+        const $item = $(this).closest(".gorev-item");
+        if ($item.length) {
+            closeInlineEdit($item);
+        }
+      }
+    });
 
+    function saveInlineEdit($form) {
       const gorevId = $form.find(".edit-gorev-id").val();
       const baslik = $form.find(".edit-gorev-baslik").val().trim();
       const aciklama = $form.find(".edit-gorev-aciklama").val().trim();
@@ -828,7 +842,9 @@
       } catch (err) {}
 
       if (!baslik) {
-        showToast("Başlık boş olamaz!", "error");
+        // Başlık boşsa iptal et veya uyar? Genelde Google Tasks boş olunca siliyor veya iptal ediyor.
+        // Biz iptal edelim.
+        closeInlineEdit($form.closest(".gorev-item"));
         return;
       }
 
@@ -860,18 +876,7 @@
         },
         "json",
       );
-    });
-
-    // Enter/Escape handlers for Edit Form
-    $(document).on("keydown", ".edit-gorev-baslik", function (e) {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        $(this).closest(".inline-edit-form").find(".btn-edit-kaydet").click();
-      }
-      if (e.key === "Escape") {
-        $(this).closest(".inline-edit-form").find(".btn-edit-iptal").click();
-      }
-    });
+    }
     // Tıklama ile menü kapat
     $(document).on("click", function (e) {
       if (!$(e.target).closest(".liste-menu-btn, .gorev-dropdown").length) {
@@ -883,6 +888,24 @@
         $(".gorev-item-dropdown").remove();
       }
     });
+  }
+
+  // =====================================================
+  // INLINE EDIT KAPAT (Modül seviyesi — her yerden erişilebilir)
+  // =====================================================
+  function closeInlineEdit($item) {
+    if (!$item || !$item.length) return;
+    $item.each(function () {
+      const $el = $(this);
+      if (!$el.hasClass("editing")) return;
+      $el.removeClass("editing");
+      $el.find(".inline-edit-form").remove();
+      // Yönlendirmeler CSS tarafından yönetiliyor, .show() kaldırıldı
+    });
+    // Zorla focusu başka yere at ki aksiyon ikonları takılı kalmasın
+    if (document.activeElement) {
+      document.activeElement.blur();
+    }
   }
 
   // =====================================================
@@ -1413,6 +1436,10 @@
       Notification.requestPermission();
     }
 
+    $("#gorevAyarlarKaydet").on("click", function () {
+      saveGorevSettings();
+    });
+
     // İlk açılışta ve her 1 dakikada bir yaklaşan görevleri kontrol et
     checkUpcomingAlarms();
     setInterval(checkUpcomingAlarms, 60000);
@@ -1426,8 +1453,41 @@
       $("#gorevAyarlarModal").removeClass("show");
     });
 
-    $("#gorevAyarlarKaydet").on("click", function () {
-      saveGorevSettings();
+    // Sidebar Toggle
+    const sidebarState = localStorage.getItem("gorev_sidebar_collapsed");
+    if (sidebarState === "true") {
+      $(".gorevler-sidebar").addClass("collapsed");
+      $("#btnSidebarToggle i")
+        .removeClass("bx-chevron-left")
+        .addClass("bx-chevron-right");
+    }
+
+    $(document).on("click", "#btnSidebarToggle", function () {
+      const $sidebar = $(".gorevler-sidebar");
+      $sidebar.toggleClass("collapsed");
+      const isCollapsed = $sidebar.hasClass("collapsed");
+      localStorage.setItem("gorev_sidebar_collapsed", isCollapsed);
+
+      const $icon = $(this).find("i");
+      if (isCollapsed) {
+        $icon.removeClass("bx-chevron-left").addClass("bx-chevron-right");
+      } else {
+        $icon.removeClass("bx-chevron-right").addClass("bx-chevron-left");
+      }
+    });
+
+    // Boşluğa tıklayınca (düzenleme modundan çıkma)
+    $(document).on("mousedown", function (e) {
+      if ($(".gorev-item.editing").length > 0) {
+        // Formun dışına veya özel bir alana tıklanmadığını kontrol et
+        if (
+          !$(e.target).closest(
+            ".gorev-item.editing, .tarih-picker-modal, .yineleme-modal, .flatpickr-calendar, .toastify, .select2-container",
+          ).length
+        ) {
+          closeInlineEdit($(".gorev-item.editing"));
+        }
+      }
     });
   });
 

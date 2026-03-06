@@ -18,7 +18,10 @@ $title = 'Görevler';
             <div class="gorevler-sidebar-header">
                 <button class="btn-olustur" id="btnYeniListe">
                     <i class="bx bx-plus"></i>
-                    Oluştur
+                    <span>Oluştur</span>
+                </button>
+                <button class="btn-sidebar-toggle" id="btnSidebarToggle" title="Menüyü daralt">
+                    <i class="bx bx-chevron-left"></i>
                 </button>
             </div>
 

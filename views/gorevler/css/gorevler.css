@@ -21,39 +21,160 @@
 
 /* ── SOL SIDEBAR ── */
 .gorevler-sidebar {
-  width: 260px;
-  min-width: 260px;
+  width: 250px;
+  min-width: 250px;
   background: var(--gt-sidebar-bg, #ffffff);
   border-right: 1px solid rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  z-index: 10;
+}
+
+.gorevler-sidebar.collapsed {
+  width: 68px;
+  min-width: 68px;
 }
 
 .gorevler-sidebar-header {
-  padding: 16px 20px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.btn-sidebar-toggle {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #5f6368;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.25s ease;
+  flex-shrink: 0;
+  margin-left: auto; /* Pushes to the right */
+}
+
+.gorevler-sidebar.collapsed .btn-sidebar-toggle {
+  margin-left: initial;
+  margin: 0 auto;
+  transform: rotate(180deg); /* Arrow points right when collapsed */
+}
+
+.btn-sidebar-toggle:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.btn-sidebar-toggle i {
+  font-size: 24px;
+}
+
+.gorevler-sidebar.collapsed .gorevler-sidebar-header {
+  flex-direction: column-reverse;
+  padding: 12px 0;
+  gap: 8px;
+  align-items: center;
+}
+
+.gorevler-sidebar.collapsed .btn-sidebar-toggle {
+  margin: 0;
 }
 
 .gorevler-sidebar-header .btn-olustur {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  justify-content: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 20px;
   border-radius: 24px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   background: #fff;
   color: var(--gt-primary);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.gorevler-sidebar.collapsed .btn-olustur {
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+/* Collapsed: TÜM metinleri tamamen gizle */
+.gorevler-sidebar.collapsed .btn-olustur span,
+.gorevler-sidebar.collapsed .nav-item span,
+.gorevler-sidebar.collapsed .nav-item .badge,
+.gorevler-sidebar.collapsed .sidebar-section-title,
+.gorevler-sidebar.collapsed .sidebar-divider {
+  display: none !important;
+}
+
+/* Collapsed: Footer butonlarındaki metni gizle */
+.gorevler-sidebar.collapsed .gorevler-sidebar-footer .btn-yeni-liste {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
+  overflow: hidden;
+  font-size: 0;
+  gap: 0;
+}
+
+.gorevler-sidebar.collapsed .gorevler-sidebar-footer .btn-yeni-liste i {
+  font-size: 20px;
+  margin: 0;
+}
+
+/* Collapsed: Nav ve footer genel */
+.gorevler-sidebar.collapsed .gorevler-sidebar-nav,
+.gorevler-sidebar.collapsed .gorevler-sidebar-footer {
+  padding: 8px 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gorevler-sidebar.collapsed .nav-item {
+  padding: 12px 0;
+  justify-content: center;
+  margin: 0;
+  border-radius: 0;
+  width: 100%;
+}
+
+.gorevler-sidebar.collapsed .nav-item i {
+  margin: 0;
 }
 
 .gorevler-sidebar-header .btn-olustur:hover {
   background: rgba(var(--gt-primary-rgb), 0.06);
-  box-shadow: 0 2px 6px rgba(var(--gt-primary-rgb), 0.2);
+  box-shadow: 0 2px 8px rgba(var(--gt-primary-rgb), 0.15);
+}
+
+/* Düzenleme modunda butonları gizle */
+.edit-mode .d-flex.justify-content-end.gap-2 {
+  display: none !important;
+}
+
+.edit-mode .gorev-baslik-input {
+  margin-bottom: 8px;
 }
 
 /* Sidebar liste renk noktasi */
@@ -396,6 +517,17 @@
 
 .gorev-item.editing:hover {
   background: #fff;
+}
+
+/* Görev item düzenleme modundayken diğer kısımları gizle */
+.gorev-item.editing .gorev-info,
+.gorev-item.editing .gorev-checkbox,
+.gorev-item.editing .gorev-actions,
+.gorev-item.editing:hover .gorev-actions {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 .gorev-item .gorev-checkbox {
