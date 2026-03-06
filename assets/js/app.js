@@ -11,12 +11,18 @@ function showToast(message, type = "success") {
     info: "linear-gradient(to right, #2ab57d, #4ba6ef)",
   };
 
+  // Ensure message is a string to prevent "Cannot read properties of undefined (reading 'call')" errors
+  // that occur when Toastify tries to parse objects as nodes/text.
+  const safeMessage = typeof message === 'string' ? message : String(message || '');
+
   Toastify({
-    text: message,
+    text: safeMessage,
     duration: 3000,
     gravity: "top",
     position: "center",
-    backgroundColor: bgColors[type] || bgColors.success,
+    style: {
+      background: bgColors[type] || bgColors.success,
+    },
     stopOnFocus: true,
   }).showToast();
 }

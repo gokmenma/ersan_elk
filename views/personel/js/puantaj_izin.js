@@ -986,8 +986,10 @@ $(document).ready(function () {
       if (icon === "warning") bgColor = "#f1b44c"; // Warning
       if (icon === "info") bgColor = "#50a5f1"; // Info
 
+      const safeMsg = typeof message === 'string' ? message : String(message || '');
+
       return Toastify({
-        text: message,
+        text: safeMsg,
         duration: 3000,
         gravity: "top",
         position: "center",

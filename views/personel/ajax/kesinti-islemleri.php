@@ -152,6 +152,8 @@ try {
             break;
 
         case 'save_icra':
+            error_log("[ICRA DEBUG save_icra] POST: " . json_encode($_POST));
+            error_log("[ICRA DEBUG save_icra] icra_baslangic=" . ($_POST['icra_baslangic'] ?? 'MISSING') . " icra_bitis=" . ($_POST['icra_bitis'] ?? 'MISSING'));
             $data = [
                 'personel_id' => $personel_id,
                 'sira' => intval($_POST['icra_sira'] ?? 1),
@@ -171,6 +173,8 @@ try {
             break;
 
         case 'update_icra':
+            error_log("[ICRA DEBUG update_icra] POST: " . json_encode($_POST));
+            error_log("[ICRA DEBUG update_icra] icra_baslangic=" . ($_POST['icra_baslangic'] ?? 'MISSING') . " icra_bitis=" . ($_POST['icra_bitis'] ?? 'MISSING'));
             $id = intval($_POST['id'] ?? 0);
             if (!$id) {
                 echo json_encode(['error' => 'İcra ID gerekli']);

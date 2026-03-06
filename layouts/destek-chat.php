@@ -911,12 +911,14 @@ if (!$_destekModel->isWorkingHours()) {
 
             if (typeof Toastify !== 'undefined') {
                 const labels = { cevrimici: 'Çevrimiçi', mesgul: 'Meşgul', cevrimdisi: 'Çevrimdışı' };
+                const msg = `Durum: ${labels[status] || status}`;
+                const safeMsg = typeof msg === 'string' ? msg : String(msg || '');
                 Toastify({
-                    text: `Durum: ${labels[status] || status}`,
+                    text: safeMsg,
                     duration: 2000,
                     gravity: "top",
                     position: "right",
-                    backgroundColor: statusColors[status] || '#22c55e'
+                    style: { background: statusColors[status] || '#22c55e' }
                 }).showToast();
             }
         },
@@ -1106,12 +1108,13 @@ if (!$_destekModel->isWorkingHours()) {
                 this.applyFilterAndSearch();
 
                 if (typeof Toastify !== 'undefined') {
+                    const safeMsg = typeof 'Konuşma silindi' === 'string' ? 'Konuşma silindi' : String('Konuşma silindi');
                     Toastify({
-                        text: 'Konuşma silindi',
+                        text: safeMsg,
                         duration: 2000,
                         gravity: "top",
                         position: "right",
-                        backgroundColor: "#ef4444"
+                        style: { background: "#ef4444" }
                     }).showToast();
                 }
             } catch (e) {

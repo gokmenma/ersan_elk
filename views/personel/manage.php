@@ -564,8 +564,8 @@ if ($id > 0) {
             });
         }
 
-        if ($(container).find(".flatpickr").length > 0) {
-            $(container).find(".flatpickr").each(function () {
+        if ($(container).find(".flatpickr:not(.flatpickr-input)").length > 0) {
+            $(container).find(".flatpickr:not(.flatpickr-input)").each(function () {
                 if (!this._flatpickr) {
                     $(this).flatpickr({
                         dateFormat: "d.m.Y",
@@ -590,8 +590,8 @@ if ($id > 0) {
             });
         }
 
-        if ($(container).find(".flatpickr-date").length > 0) {
-            $(container).find(".flatpickr-date").each(function () {
+        if ($(container).find(".flatpickr-date:not(.flatpickr-input)").length > 0) {
+            $(container).find(".flatpickr-date:not(.flatpickr-input)").each(function () {
                 if (!this._flatpickr) {
                     $(this).flatpickr({
                         enableTime: true,

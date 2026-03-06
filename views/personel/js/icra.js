@@ -26,13 +26,20 @@ $(document).ready(function () {
     $("#icra_durum").val("devam_ediyor");
     $("#icra_kesinti_tipi").val("tutar");
     $("#icra_kesinti_orani").val("25");
-    $("#icra_baslangic").val("");
-    $("#icra_bitis").val("");
+    if ($("#icra_baslangic")[0] && $("#icra_baslangic")[0]._flatpickr) {
+        $("#icra_baslangic")[0]._flatpickr.clear();
+    } else {
+        $("#icra_baslangic").val("");
+    }
+    
+    if ($("#icra_bitis")[0] && $("#icra_bitis")[0]._flatpickr) {
+        $("#icra_bitis")[0]._flatpickr.clear();
+    } else {
+        $("#icra_bitis").val("");
+    }
+
     $("#modalPersonelIcraEkle").modal("show");
     setTimeout(function() {
-        if (typeof initPlugins === "function") {
-            initPlugins($("#modalPersonelIcraEkle")[0]);
-        }
         syncFeather();
     }, 50);
   });
@@ -101,9 +108,6 @@ $(document).ready(function () {
 
           $("#modalPersonelIcraEkle").modal("show");
           setTimeout(function () {
-            if (typeof initPlugins === "function") {
-              initPlugins($("#modalPersonelIcraEkle")[0]);
-            }
             syncFeather();
           }, 50);
         } else {

@@ -294,13 +294,14 @@ $firma_option = $FirmaModel->optionByUserPermission();
          */
         function showNotificationToast(n) {
             if (typeof Toastify !== 'undefined') {
+                const safeMsg = `<strong>${n.title}</strong><br>${n.message}`;
                 Toastify({
-                    text: `<strong>${n.title}</strong><br>${n.message}`,
+                    text: typeof safeMsg === 'string' ? safeMsg : String(safeMsg || ''),
                     duration: 5000,
                     close: true,
                     gravity: "top",
                     position: "right",
-                    backgroundColor: n.color === 'danger' ? "#f46a6a" : (n.color === 'warning' ? "#f1b44c" : "#34c38f"),
+                    style: { background: n.color === 'danger' ? "#f46a6a" : (n.color === 'warning' ? "#f1b44c" : "#34c38f") },
                     escapeMarkup: false,
                     onClick: function () {
                         window.location.href = n.link;
