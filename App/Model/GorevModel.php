@@ -193,9 +193,11 @@ class GorevModel extends Model
         if (empty($sets))
             return false;
 
-        // Tarih veya saat değiştiyse, bildirimi tekrar gönderebilmek için bayrağı sıfırla
+        // Tarih veya saat değiştiyse, bildirimleri tekrar gönderebilmek için bayrakları sıfırla
         if ($tarihSaatDegisti) {
             $sets[] = "bildirim_gonderildi = 0";
+            $sets[] = "on_bildirim_gonderildi = 0";
+            $sets[] = "tam_vakit_bildirim_gonderildi = 0";
         }
 
         $sql = "UPDATE gorevler SET " . implode(', ', $sets) . " WHERE id = :id";
@@ -283,35 +285,67 @@ class GorevModel extends Model
     // =====================================================
 
     /**
-     * Bugün tarihli, saati gelmiş ve henüz bildirim gönderilmemiş görevleri döner
+     * Bugün tarihli, saati gelmiş veya ön bildirim saati gelmiş görevleri döner
      */
     public function getBildirimBekleyenGorevler()
     {
         $Settings = new \App\Model\SettingsModel();
         $offset = (int) ($Settings->getSettings('gorev_bildirim_dakika') ?? 0);
 
-        $sql = "SELECT g.*, gl.baslik as liste_adi, gl.olusturan_id as liste_olusturan_id
-                FROM gorevler g
-                JOIN gorev_listeleri gl ON g.liste_id = gl.id
-                WHERE g.tarih = CURDATE()
-                  AND g.tamamlandi = 0
-                  AND g.bildirim_gonderildi = 0
-                  AND (
-                    g.saat IS NULL
-                    OR g.saat <= ADDTIME(CURTIME(), SEC_TO_TIME(:offset * 60))
-                  )
-                ORDER BY g.saat ASC, g.id ASC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([':offset' => $offset]);
-        return $stmt->fetchAll(PDO::FETCH_OBJ);
+        // 1. ÖN BİLDİRİM BEKLEYENLER (Offset süresi gelenler)
+        $sqlOn = "SELECT g.*, gl.baslik as liste_adi, gl.olusturan_id as liste_olusturan_id, 'on' as bildirim_tipi
+                  FROM gorevler g
+                  JOIN gorev_listeleri gl ON g.liste_id = gl.id
+                  WHERE g.tarih = CURDATE()
+                    AND g.tamamlandi = 0
+                    AND g.on_bildirim_gonderildi = 0
+                    AND g.saat IS NOT NULL
+                    AND g.saat <= ADDTIME(CURTIME(), SEC_TO_TIME(:offset * 60))
+                    AND g.saat > CURTIME()";
+
+        // 2. TAM VAKİT BİLDİRİM BEKLEYENLER (Saati gelmiş/geçmiş olanlar)
+        $sqlTam = "SELECT g.*, gl.baslik as liste_adi, gl.olusturan_id as liste_olusturan_id, 'tam' as bildirim_tipi
+                   FROM gorevler g
+                   JOIN gorev_listeleri gl ON g.liste_id = gl.id
+                   WHERE g.tarih = CURDATE()
+                     AND g.tamamlandi = 0
+                     AND g.tam_vakit_bildirim_gonderildi = 0
+                     AND (
+                       g.saat IS NULL
+                       OR g.saat <= CURTIME()
+                     )";
+
+        $results = [];
+
+        // Ön bildirimleri çek (Sadece offset 0'dan büyükse)
+        if ($offset > 0) {
+            $stmtOn = $this->db->prepare($sqlOn);
+            $stmtOn->execute([':offset' => $offset]);
+            $results = array_merge($results, $stmtOn->fetchAll(PDO::FETCH_OBJ));
+        }
+
+        // Tam vakit bildirimlerini çek
+        $stmtTam = $this->db->prepare($sqlTam);
+        $stmtTam->execute();
+        $results = array_merge($results, $stmtTam->fetchAll(PDO::FETCH_OBJ));
+
+        return $results;
     }
 
     /**
      * Görevin bildirim gönderildi flag'ini günceller
+     * @param int $gorevId
+     * @param string $tip 'on' veya 'tam' (varsayılan: 'tam')
      */
-    public function markBildirimGonderildi($gorevId)
+    public function markBildirimGonderildi($gorevId, $tip = 'tam')
     {
-        $sql = "UPDATE gorevler SET bildirim_gonderildi = 1 WHERE id = :id";
+        if ($tip === 'on') {
+            $sql = "UPDATE gorevler SET on_bildirim_gonderildi = 1 WHERE id = :id";
+        } else {
+            // Hem tam_vakit'i hem de ana bayrağı kapat
+            $sql = "UPDATE gorevler SET tam_vakit_bildirim_gonderildi = 1, bildirim_gonderildi = 1 WHERE id = :id";
+        }
+
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([':id' => $gorevId]);
     }

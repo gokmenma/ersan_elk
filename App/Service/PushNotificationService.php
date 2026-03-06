@@ -126,9 +126,7 @@ class PushNotificationService
                 $body = $payload['body'] ?? '';
                 $url = $payload['url'] ?? '';
 
-                $content = "<h3>Merhaba {$user->adi_soyadi},</h3>";
-                $content .= "<p>{$body}</p>";
-
+                $fullUrl = null;
                 if ($url) {
                     $personAppBase = $_ENV['PERSON_APP_BASE'] ?? $_SERVER['HTTP_HOST'];
                     if (strpos($url, '?') === 0) {
@@ -138,10 +136,17 @@ class PushNotificationService
                     } else {
                         $fullUrl = $url;
                     }
-                    $content .= "<p><a href='{$fullUrl}'>Detayları görüntülemek için tıklayınız</a></p>";
                 }
 
-                $content .= "<br><p>Saygılarımızla,<br>Ersan Elektrik</p>";
+                $emailContent = "<p>Merhaba <b>{$user->adi_soyadi}</b>,</p>";
+                $emailContent .= "<p>{$body}</p>";
+
+                $content = \App\Helper\EmailTemplateHelper::getTemplate(
+                    $subject,
+                    $emailContent,
+                    $fullUrl ? 'Detayları Görüntüle' : null,
+                    $fullUrl
+                );
 
                 $result = \App\Service\MailGonderService::gonder(
                     [$targetEmail],

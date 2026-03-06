@@ -104,3 +104,63 @@
 [2026-03-06 00:30:10] [WEBHOOK] Rapor maili başarıyla gönderildi: beyzade83@hotmail.com
 [2026-03-06 00:30:10] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 746.83ms
 
+[2026-03-06 08:10:22] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 08:10:22] [WEBHOOK] Sistem Zamanı: 08:10:22 | Tarih: 06-03-2026
+[2026-03-06 08:10:22] [WEBHOOK] Bildirim Offset: 5 dakika
+[2026-03-06 08:10:22] [WEBHOOK] 4 görev için bildirim süreci başladı.
+[2026-03-06 08:10:22] [WEBHOOK] İşlenen Görev ID: #1 | Tip: tam | Başlık: sdsadfaaf
+[2026-03-06 08:10:22] [WEBHOOK]   - Personel #1 için bildirim+mail tetikleniyor...
+[2026-03-06 08:10:22] [WEBHOOK]   ✓ Görev #1 → Personel #1 başarıyla işlendi.
+[2026-03-06 08:10:22] [WEBHOOK] İşlenen Görev ID: #2 | Tip: tam | Başlık: Cron kontrol görevi
+[2026-03-06 08:10:22] [WEBHOOK]   - Personel #1 için bildirim+mail tetikleniyor...
+[2026-03-06 08:10:22] [WEBHOOK]   ✓ Görev #2 → Personel #1 başarıyla işlendi.
+[2026-03-06 08:10:22] [WEBHOOK] İşlenen Görev ID: #6 | Tip: tam | Başlık: TEST GÖREVİ (22:28:43)
+[2026-03-06 08:10:22] [WEBHOOK]   - Personel #1 için bildirim+mail tetikleniyor...
+[2026-03-06 08:10:22] [WEBHOOK]   ✓ Görev #6 → Personel #1 başarıyla işlendi.
+[2026-03-06 08:10:22] [WEBHOOK] İşlenen Görev ID: #7 | Tip: tam | Başlık: MULTI-STAGE TEST
+[2026-03-06 08:10:22] [WEBHOOK]   - Personel #1 için bildirim+mail tetikleniyor...
+[2026-03-06 08:10:22] [WEBHOOK]   ✓ Görev #7 → Personel #1 başarıyla işlendi.
+[2026-03-06 08:10:22] [WEBHOOK] Sonuç: 4 görev işlendi, 0 hata.
+[2026-03-06 08:10:22] [WEBHOOK] Rapor maili başarıyla gönderildi: beyzade83@hotmail.com
+[2026-03-06 08:10:22] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 3028.73ms
+
+[2026-03-06 08:13:23] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 08:13:23] [WEBHOOK] Sistem Zamanı: 08:13:23 | Tarih: 06-03-2026
+[2026-03-06 08:13:23] [WEBHOOK] Bildirim Offset: 5 dakika
+[2026-03-06 08:13:23] [WEBHOOK] Bildirim bekleyen görev yok.
+[2026-03-06 08:13:23] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 47.31ms
+
+[2026-03-06 08:13:59] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 08:13:59] [WEBHOOK] Sistem Zamanı: 08:13:59 | Tarih: 06-03-2026
+[2026-03-06 08:13:59] [WEBHOOK] Bildirim Offset: 5 dakika
+[2026-03-06 08:13:59] [WEBHOOK] 1 görev için bildirim süreci başladı.
+[2026-03-06 08:13:59] [WEBHOOK] İşlenen Görev ID: #8 | Tip: on | Başlık: MULTI-STAGE SYNC TEST
+[2026-03-06 08:13:59] [WEBHOOK]   - Personel #1 için bildirim+mail tetikleniyor...
+[2026-03-06 08:13:59] [WEBHOOK]   ✓ Görev #8 → Personel #1 başarıyla işlendi.
+[2026-03-06 08:13:59] [WEBHOOK] Sonuç: 1 görev işlendi, 0 hata.
+[2026-03-06 08:13:59] [WEBHOOK] Rapor maili başarıyla gönderildi: beyzade83@hotmail.com
+[2026-03-06 08:13:59] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 620.49ms
+
+[2026-03-06 08:14:16] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 08:14:16] [WEBHOOK] Sistem Zamanı: 08:14:16 | Tarih: 06-03-2026
+[2026-03-06 08:14:16] [WEBHOOK] Bildirim Offset: 5 dakika
+[2026-03-06 08:14:16] [WEBHOOK] Bildirim bekleyen görev yok.
+[2026-03-06 08:14:16] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 48.68ms
+
+[2026-03-06 08:14:27] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 08:14:27] [WEBHOOK] Sistem Zamanı: 08:14:27 | Tarih: 06-03-2026
+[2026-03-06 08:14:27] [WEBHOOK] Bildirim Offset: 5 dakika
+[2026-03-06 08:14:27] [WEBHOOK] 1 görev için bildirim süreci başladı.
+[2026-03-06 08:14:27] [WEBHOOK] İşlenen Görev ID: #8 | Tip: tam | Başlık: MULTI-STAGE SYNC TEST
+[2026-03-06 08:14:27] [WEBHOOK]   - Personel #1 için bildirim+mail tetikleniyor...
+[2026-03-06 08:14:27] [WEBHOOK]   ✓ Görev #8 → Personel #1 başarıyla işlendi.
+[2026-03-06 08:14:27] [WEBHOOK] Sonuç: 1 görev işlendi, 0 hata.
+[2026-03-06 08:14:27] [WEBHOOK] Rapor maili başarıyla gönderildi: beyzade83@hotmail.com
+[2026-03-06 08:14:27] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 659.41ms
+
+[2026-03-06 08:18:40] [WEBHOOK] === Webhook Bildirim Tetiklendi ===
+[2026-03-06 08:18:40] [WEBHOOK] Sistem Zamanı: 08:18:40 | Tarih: 06-03-2026
+[2026-03-06 08:18:40] [WEBHOOK] Bildirim Offset: 5 dakika
+[2026-03-06 08:18:40] [WEBHOOK] Bildirim bekleyen görev yok.
+[2026-03-06 08:18:40] [WEBHOOK] Webhook Cron Tamamlandı. Süre: 38.89ms
+

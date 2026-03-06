@@ -168,8 +168,8 @@
 
 /* ── LİSTE KOLONU ── */
 .gorev-liste-kolon {
-  min-width: 320px;
-  max-width: 360px;
+  min-width: 280px;
+  max-width: 280px;
   flex-shrink: 0;
   background: var(--gt-card-bg, #ffffff);
   border-radius: 12px;
@@ -421,6 +421,7 @@
 .gorev-item .gorev-info {
   flex: 1;
   min-width: 0;
+  padding-right: 64px; /* Aksiyon butonları için yer ayır */
 }
 
 .gorev-item .gorev-baslik {
@@ -473,6 +474,12 @@
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: inherit; /* Kartın arka planını kullan */
+  padding: 2px;
+  border-radius: 4px;
 }
 
 .gorev-item:hover .gorev-actions {

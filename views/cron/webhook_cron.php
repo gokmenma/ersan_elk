@@ -97,14 +97,20 @@ try {
 
         foreach ($bekleyenGorevler as $gorev) {
             try {
-                webhookLog("İşlenen Görev ID: #{$gorev->id} | Başlık: {$gorev->baslik}");
+                webhookLog("İşlenen Görev ID: #{$gorev->id} | Tip: {$gorev->bildirim_tipi} | Başlık: {$gorev->baslik}");
 
                 // Bildirim mesajını hazırla
                 $saatStr = $gorev->saat ? ' (Saat: ' . substr($gorev->saat, 0, 5) . ')' : '';
                 $listeStr = $gorev->liste_adi ? ' [' . $gorev->liste_adi . ']' : '';
 
-                $title = '📋 Görev Hatırlatması';
-                $body = $gorev->baslik . $saatStr . $listeStr;
+                if ($gorev->bildirim_tipi === 'on') {
+                    $title = "⏳ Göreve $offset Dakika Var";
+                    $body = "Hatırlatma: " . $gorev->baslik . $saatStr . $listeStr;
+                } else {
+                    $title = '🔔 Görev Zamanı Geldi';
+                    $body = "Zamanı Geldi: " . $gorev->baslik . $saatStr . $listeStr;
+                }
+
                 $link = 'index.php?p=gorevler/list';
 
                 // Eğer ayarlardan kullanıcı seçilmişse onlara, seçilmemişse görev/liste sahibine gönder
@@ -134,7 +140,7 @@ try {
                 }
 
                 // Gönderildi işareti koy
-                $gorevModel->markBildirimGonderildi($gorev->id);
+                $gorevModel->markBildirimGonderildi($gorev->id, $gorev->bildirim_tipi);
                 $basarili++;
 
             } catch (Exception $e) {
@@ -142,7 +148,7 @@ try {
                 $basarisiz++;
 
                 try {
-                    $gorevModel->markBildirimGonderildi($gorev->id);
+                    $gorevModel->markBildirimGonderildi($gorev->id, $gorev->bildirim_tipi ?? 'tam');
                 } catch (Exception $e2) {
                     webhookLog("    Flag güncelleme hatası: " . $e2->getMessage());
                 }
@@ -156,17 +162,25 @@ try {
         // =====================================================
         $reportEmail = "beyzade83@hotmail.com";
         $reportSubject = "Ersan Elk - Görev Bildirim Raporu (" . date('H:i') . ")";
-        $reportContent = "<h3>Görev Bildirim Raporu</h3>";
-        $reportContent .= "<p><b>Tarih:</b> " . date('d.m.Y H:i:s') . "</p>";
-        $reportContent .= "<p><b>İşlenen Görev Sayısı:</b> $basarili</p>";
-        $reportContent .= "<p><b>Hata Sayısı:</b> $basarisiz</p>";
+
+        $reportHtmlContent = "<p><b>Tarih:</b> " . date('d.m.Y H:i:s') . "</p>";
+        $reportHtmlContent .= "<p>İşlem özeti aşağıdadır:</p>";
+        $reportHtmlContent .= "<ul>
+            <li><b>İşlenen Görev Sayısı:</b> <span class='highlight'>$basarili</span></li>
+            <li><b>Hata Sayısı:</b> <span style='color: #ef4444; font-weight: 600;'>$basarisiz</span></li>
+        </ul>";
 
         if ($basarili > 0 || $basarisiz > 0) {
             try {
+                $reportFullHtml = \App\Helper\EmailTemplateHelper::getTemplate(
+                    "Görev Bildirim Raporu",
+                    $reportHtmlContent
+                );
+
                 \App\Service\MailGonderService::gonder(
                     [$reportEmail],
                     $reportSubject,
-                    $reportContent
+                    $reportFullHtml
                 );
                 webhookLog("Rapor maili başarıyla gönderildi: $reportEmail");
             } catch (Exception $e) {
@@ -186,10 +200,19 @@ try {
 
     // Kritik hataları da raporla
     try {
+        $errorContent = "<p>Sistemde kritik bir hata meydana geldi:</p>";
+        $errorContent .= "<div style='background: #fee2e2; border-left: 4px solid #ef4444; padding: 15px; color: #991b1b; font-family: monospace;'>{$e->getMessage()}</div>";
+        $errorContent .= "<p>Zaman: " . date('d.m.Y H:i:s') . "</p>";
+
+        $errorFullHtml = \App\Helper\EmailTemplateHelper::getTemplate(
+            "Kritik Sistem Hatası",
+            $errorContent
+        );
+
         \App\Service\MailGonderService::gonder(
             ["beyzade83@hotmail.com"],
             "Ersan Elk - KRİTİK CRON HATASI",
-            "<h3>Kritik Webhook Hatası</h3><p>Mesaj: " . $e->getMessage() . "</p><p>Zaman: " . date('d.m.Y H:i:s') . "</p>"
+            $errorFullHtml
         );
     } catch (Exception $mailErr) {
         webhookLog("Kritik hata raporlanamadı: " . $mailErr->getMessage());
