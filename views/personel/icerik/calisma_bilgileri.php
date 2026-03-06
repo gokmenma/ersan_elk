@@ -33,6 +33,19 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                         <?php echo Form::FormFloatInput("text", "isten_cikis_tarihi", Date::dmY($personel->isten_cikis_tarihi ?? null), "İşten Çıkış", "İşten Çıkış Tarihi", "calendar", "form-control flatpickr"); ?>
                     </div>
 
+                    <div class="col-md-2 mb-2" id="isten_ayrilis_belge_container" style="display:none;">
+                        <div class="d-flex align-items-center gap-1">
+                            <div class="flex-grow-1">
+                                <?php echo Form::FormFileInput("isten_ayrilis_belge_yolu", "İşten Ayrılış Belgesi", "file", "form-control"); ?>
+                            </div>
+                            <?php if (!empty($personel->isten_ayrilis_belge_yolu)): ?>
+                                <a href="<?= htmlspecialchars($personel->isten_ayrilis_belge_yolu) ?>" target="_blank" class="btn btn-outline-primary p-0" title="Mevcut Belgeyi Görüntüle" style="height: 58px; width: 58px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <i class="bx bx-download fs-4"></i>
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
                     <div class="col-md-2 mb-2">
                         <?php echo Form::FormSelect2("personel_sinifi", ['Beyaz Yaka' => 'Beyaz Yaka', 'Mavi Yaka' => 'Mavi Yaka'], $personel->personel_sinifi ?? '', "Sınıf", "users"); ?>
                     </div>
@@ -110,6 +123,53 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                                 $(sgkSelect).on('select2:select', toggleGorunum);
                                 $(sgkSelect).on('select2:unselect', toggleGorunum);
                             }
+                        }
+
+                        // İşten çıkış tarihi kontrolü
+                        var txtIstenCikis = document.getElementById('isten_cikis_tarihi');
+                        var containerBelge = document.getElementById('isten_ayrilis_belge_container');
+                        var inputFile = document.getElementById('isten_ayrilis_belge_yolu');
+                        var hasExistingFile = <?= !empty($personel->isten_ayrilis_belge_yolu) ? 'true' : 'false' ?>;
+
+                        function checkIstenCikis() {
+                            if (!txtIstenCikis) return;
+                            
+                            if (txtIstenCikis.value.trim() !== '') {
+                                // Tarih dolu
+                                containerBelge.style.display = '';
+                                if (!hasExistingFile && inputFile) {
+                                    inputFile.setAttribute('required', 'required');
+                                } else if (inputFile) {
+                                    inputFile.removeAttribute('required');
+                                }
+                            } else {
+                                // Tarih boş
+                                containerBelge.style.display = 'none';
+                                if (inputFile) {
+                                    inputFile.removeAttribute('required');
+                                    inputFile.value = ''; // Seçili dosyayı temizle
+                                }
+                            }
+                        }
+
+                        if (txtIstenCikis) {
+                            txtIstenCikis.addEventListener('change', checkIstenCikis);
+                            txtIstenCikis.addEventListener('keyup', checkIstenCikis);
+                            txtIstenCikis.addEventListener('input', checkIstenCikis);
+                            
+                            // Flatpickr initialize edilmişse eventlerine ekle
+                            setTimeout(function() {
+                                if (txtIstenCikis._flatpickr) {
+                                    txtIstenCikis._flatpickr.config.onChange.push(checkIstenCikis);
+                                    txtIstenCikis._flatpickr.config.onClear.push(checkIstenCikis);
+                                }
+                            }, 1000);
+                            
+                            // Duruma göre garantiye almak için periyodik kontrol kullanabiliriz
+                            setInterval(checkIstenCikis, 500);
+                            
+                            // İlk yükleme çalıştır
+                            checkIstenCikis();
                         }
 
                         // Select2'de 'bordro' ve 'personel' seçimlerini zorunlu yap

@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 }
 
                 $mevcutArac = $Arac->plakaKontrol($plaka, $arac_id, true);
-                if ($mevcutArac) {
+                if ($mevcutArac && $arac_id == 0) {
                     throw new Exception("Bu plaka ($plaka) zaten kayıtlı baska bir araca ait.");
                 }
 

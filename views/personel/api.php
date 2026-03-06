@@ -102,6 +102,58 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 file_put_contents($debugLog, $logContent, FILE_APPEND);
             }
 
+            // İşten Ayrılış Belgesi Yükleme İşlemi
+            if (isset($_FILES['isten_ayrilis_belge_yolu'])) {
+                if ($_FILES['isten_ayrilis_belge_yolu']['error'] == 0) {
+                    $baseDir = dirname(__DIR__, 2);
+                    $uploadDir = $baseDir . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'belgeler' . DIRECTORY_SEPARATOR . 'personel_ayrilis' . DIRECTORY_SEPARATOR;
+
+                    if (!file_exists($uploadDir)) {
+                        if (!mkdir($uploadDir, 0777, true)) {
+                            throw new Exception("Klasör oluşturulamadı: " . $uploadDir);
+                        }
+                    }
+
+                    $fileExtension = pathinfo($_FILES['isten_ayrilis_belge_yolu']['name'], PATHINFO_EXTENSION);
+                    $fileName = uniqid('ayrilis_') . '.' . $fileExtension;
+                    $uploadPath = $uploadDir . $fileName;
+
+                    if (move_uploaded_file($_FILES['isten_ayrilis_belge_yolu']['tmp_name'], $uploadPath)) {
+                        $data['isten_ayrilis_belge_yolu'] = 'assets/belgeler/personel_ayrilis/' . $fileName;
+                        
+                        // Eski belge varsa sil
+                        if ($personel_id > 0) {
+                            $oldPersonelInfo = $Personel->find($personel_id);
+                            if ($oldPersonelInfo && !empty($oldPersonelInfo->isten_ayrilis_belge_yolu)) {
+                                $oldFilePath = $baseDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $oldPersonelInfo->isten_ayrilis_belge_yolu);
+                                if (file_exists($oldFilePath)) {
+                                    @unlink($oldFilePath);
+                                }
+                            }
+                        }
+                    } else {
+                        $error = error_get_last();
+                        throw new Exception("Ayrılış belgesi yüklenemedi. Hedef: " . $uploadPath . " Hata: " . ($error['message'] ?? 'Bilinmeyen hata'));
+                    }
+                } elseif ($_FILES['isten_ayrilis_belge_yolu']['error'] != 4) {
+                    throw new Exception("Ayrılış belgesi yükleme hatası. Hata Kodu: " . $_FILES['isten_ayrilis_belge_yolu']['error']);
+                }
+            }
+
+            // İşten çıkış tarihi silinmişse veya boşsa eski belgeyi sil
+            $isten_cikis = trim($data['isten_cikis_tarihi'] ?? '');
+            if (($isten_cikis === '' || $isten_cikis === '0000-00-00') && $personel_id > 0) {
+                $oldPersonelInfo = $Personel->find($personel_id);
+                if ($oldPersonelInfo && !empty($oldPersonelInfo->isten_ayrilis_belge_yolu)) {
+                    $baseDir = dirname(__DIR__, 2);
+                    $oldFilePath = $baseDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $oldPersonelInfo->isten_ayrilis_belge_yolu);
+                    if (file_exists($oldFilePath)) {
+                        @unlink($oldFilePath);
+                    }
+                }
+                $data['isten_ayrilis_belge_yolu'] = null; // Veritabanından temizlemek null gönderelim
+            }
+
             // Action alanını veritabanına kaydetmemek için çıkar
             unset($data['action']);
             unset($data['personel_id']);
