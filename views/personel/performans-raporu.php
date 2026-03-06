@@ -200,7 +200,7 @@ use App\Service\Gate;
                         </button>
                     </div>
                     <div class="table-responsive">
-                        <table id="performansTable" class="table table-hover table-bordered w-100 align-middle datatable">
+                        <table id="performansTable" class="table table-hover table-bordered w-100 align-middle">
                             <thead class="table-light">
                                 <tr>
                                     <th style="width: 50px;" class="text-center">#</th>
@@ -599,13 +599,13 @@ $(document).ready(function() {
                 }
             },
             tooltip: {
-                x: {
-                    formatter: function(val, { series, seriesIndex, dataPointIndex, w }) {
-                        return fullNames[dataPointIndex];
-                    }
-                },
-                y: { formatter: val => formatNumber(val) + ' ' + info.unit.toLowerCase() },
-                theme: 'light'
+                custom: function({ series, seriesIndex, dataPointIndex, w }) {
+                    const val = series[seriesIndex][dataPointIndex];
+                    return '<div class="p-2 shadow-sm" style="background: #fff; border: 1px solid #e2e8f0; border-radius: 6px;">' +
+                        '<div class="fw-bold text-dark mb-1">' + fullNames[dataPointIndex] + '</div>' +
+                        '<div class="text-muted small">' + info.unit + ': <span class="fw-bold text-primary">' + formatNumber(val) + '</span></div>' +
+                        '</div>';
+                }
             },
             grid: { borderColor: '#f1f5f9', xaxis: { lines: { show: true } }, yaxis: { lines: { show: false } } }
         });
@@ -661,35 +661,27 @@ $(document).ready(function() {
 
         $('#performansTableBody').html(html);
 
-        // DataTable destory and init using centralized method if available
-        if (typeof destroyAndInitDataTable === 'function') {
-            dataTable = destroyAndInitDataTable('#performansTable', {
-                paging: true,
-                pageLength: 25,
-                ordering: true,
-                order: [[3, 'desc']],
-                searching: true,
-                info: true,
-                columnDefs: [
-                    { orderable: false, targets: [0, 4] }
-                ]
-            });
-        } else {
-            dataTable = $('#performansTable').DataTable({
-                paging: true,
-                pageLength: 25,
-                ordering: true,
-                order: [[3, 'desc']],
-                searching: true,
-                info: true,
-                language: {
-                    url: 'assets/js/tr.json'
-                },
-                columnDefs: [
-                    { orderable: false, targets: [0, 4] }
-                ]
-            });
+        // DataTable manual init
+        if ($.fn.DataTable.isDataTable('#performansTable')) {
+            $('#performansTable').DataTable().destroy();
         }
+
+        $('#performansTableBody').html(html);
+
+        let options = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
+        $.extend(true, options, {
+            paging: true,
+            pageLength: 25,
+            ordering: true,
+            order: [[3, 'desc']],
+            searching: true,
+            info: true,
+            columnDefs: [
+                { orderable: false, targets: [0, 4] }
+            ]
+        });
+
+        dataTable = $('#performansTable').DataTable(options);
     }
 
     function updateDonemBilgisi(res) {
