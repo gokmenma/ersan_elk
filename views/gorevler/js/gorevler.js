@@ -263,7 +263,7 @@
         displayLabel += ", " + g.saat.substring(0, 5);
       }
 
-      tarihBadge = `<span class="gorev-tarih-badge ${cls}"><i class="bx bx-calendar"></i> ${displayLabel}</span>`;
+      tarihBadge = `<span class="gorev-tarih-badge ${cls}"><i class="bx bx-calendar"></i> ${displayLabel} <span class="btn-clear-date" data-gorev-id="${g.id}" title="Temizle"><i class="bx bx-x"></i></span></span>`;
     }
 
     const yinelemeIcon = g.yineleme_sikligi
@@ -737,6 +737,7 @@
       const yinelemeData = {
         sikligi: g.yineleme_sikligi,
         birimi: g.yineleme_birimi,
+        gunleri: g.yineleme_gunleri,
         baslangic: g.yineleme_baslangic,
         bitis_tipi: g.yineleme_bitis_tipi,
         bitis_tarihi: g.yineleme_bitis_tarihi,
@@ -883,6 +884,7 @@
         saat: saat || null,
         yineleme_sikligi: yineleme.sikligi || null,
         yineleme_birimi: yineleme.birimi || null,
+        yineleme_gunleri: yineleme.gunleri || null,
         yineleme_baslangic: yineleme.baslangic || null,
         yineleme_bitis_tipi: yineleme.bitis_tipi || null,
         yineleme_bitis_tarihi: yineleme.bitis_tarihi || null,
@@ -970,6 +972,7 @@
       saat: saat,
       yineleme_sikligi: yinelemeData.sikligi || null,
       yineleme_birimi: yinelemeData.birimi || null,
+      yineleme_gunleri: yinelemeData.gunleri || null,
       yineleme_baslangic: yinelemeData.baslangic || null,
       yineleme_bitis_tipi: yinelemeData.bitis_tipi || null,
       yineleme_bitis_tarihi: yinelemeData.bitis_tarihi || null,
@@ -1078,13 +1081,13 @@
         form
           .find(".edit-btn-takvim")
           .addClass("has-value")
-          .html(`<i class="bx bx-calendar"></i> ${label}`);
+          .html(`<i class="bx bx-calendar"></i> ${label} <span class="btn-clear-date" title="Temizle"><i class="bx bx-x"></i></span>`);
       } else {
         form.data("selected-tarih", formatted);
         form
           .find(".btn-takvim-ac")
           .addClass("has-value")
-          .html(`<i class="bx bx-calendar"></i> ${label}`);
+          .html(`<i class="bx bx-calendar"></i> ${label} <span class="btn-clear-date" title="Temizle"><i class="bx bx-x"></i></span>`);
       }
     }
 
@@ -1128,7 +1131,21 @@
     }
 
     $("#yinelemeSikligi").val(yineleme.sikligi || 1);
-    $("#yinelemeBirimi").val(yineleme.birimi || "gun");
+    const birim = yineleme.birimi || "gun";
+    $("#yinelemeBirimi").val(birim);
+    
+    // Hafta Günlerini sıfırla ve doldur
+    $(".gun-daire").removeClass("active");
+    if (birim === "hafta") {
+      $("#yinelemeHaftaGunleri").show();
+      const gunler = yineleme.gunleri ? String(yineleme.gunleri).split(",") : [];
+      gunler.forEach((g) => {
+        $(`.gun-daire[data-gun="${g}"]`).addClass("active");
+      });
+    } else {
+      $("#yinelemeHaftaGunleri").hide();
+    }
+
     $("#yinelemeBaslangic").val(yineleme.baslangic || formatDate(new Date()));
     $(
       'input[name="yinelemeBitisTipi"][value="' +
@@ -1147,9 +1164,20 @@
     if (!currentYinelemeListeId) return;
 
     const bitisTipi = $('input[name="yinelemeBitisTipi"]:checked').val();
+    const birim = $("#yinelemeBirimi").val();
+    
+    // Seçili günleri topla
+    const gunler = [];
+    if (birim === "hafta") {
+      $(".gun-daire.active").each(function () {
+        gunler.push($(this).data("gun"));
+      });
+    }
+
     const yinelemeData = {
       sikligi: $("#yinelemeSikligi").val(),
-      birimi: $("#yinelemeBirimi").val(),
+      birimi: birim,
+      gunleri: gunler.join(","),
       baslangic: $("#yinelemeBaslangic").val(),
       bitis_tipi: bitisTipi,
       bitis_tarihi:
@@ -1640,4 +1668,52 @@
       "json"
     );
   }
+
+  // Tarih Temizle
+  $(document).on("click", ".btn-clear-date", function (e) {
+    e.stopPropagation();
+    const gorevId = $(this).data("gorev-id");
+    const isEdit = $(this).closest(".inline-edit-form").length > 0;
+    const form = isEdit
+      ? $(this).closest(".inline-edit-form")
+      : $(this).closest(".gorev-ekleme-form");
+
+    if (gorevId && !isEdit) {
+      // Statik görevdeki badge'den temizleme
+      $.post(
+        API_URL,
+        { action: "update-gorev", gorev_id: gorevId, tarih: null, saat: null },
+        function (res) {
+          if (res.success) {
+            loadAll();
+          }
+        },
+        "json"
+      );
+      return;
+    }
+
+    if (isEdit) {
+      form.find(".edit-tarih-val").val("");
+      form.find(".edit-saat-val").val("");
+      form.find(".edit-btn-takvim").removeClass("has-value").html('<i class="bx bx-calendar"></i>');
+    } else {
+      form.removeData("selected-tarih");
+      form.removeData("selected-saat");
+      form.find(".btn-takvim-ac").removeClass("has-value").html('<i class="bx bx-calendar"></i>');
+    }
+  });
+
+  // Hafta Günleri Seçimi
+  $(document).on("click", ".gun-daire", function () {
+    $(this).toggleClass("active");
+  });
+
+  $("#yinelemeBirimi").on("change", function () {
+    if ($(this).val() === "hafta") {
+      $("#yinelemeHaftaGunleri").show();
+    } else {
+      $("#yinelemeHaftaGunleri").hide();
+    }
+  });
 })();

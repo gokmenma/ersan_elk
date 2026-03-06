@@ -1549,11 +1549,7 @@ $(document).on("change", "#demirbas_id_zimmet", function () {
   let selectedData = $(this).select2("data")[0];
   let kalan = 0;
   if (selectedData) {
-    if (selectedData.kalan_miktar !== undefined) {
-      kalan = selectedData.kalan_miktar;
-    } else {
-      kalan = $(this).find(":selected").data("kalan") || 0;
-    }
+    kalan = selectedData.kalan_miktar !== undefined ? selectedData.kalan_miktar : ($(this).find(":selected").data("kalan") || 0);
   }
 
   $("#kalanMiktarText").text(kalan);
@@ -1666,9 +1662,11 @@ $(document).on("click", "#zimmetKaydet", function () {
   if (!form.valid()) return;
 
   // Miktar kontrolü
-  let kalan = parseInt(
-    $("#demirbas_id_zimmet").find(":selected").data("kalan") || 0,
-  );
+  let selectedData = $("#demirbas_id_zimmet").select2("data")[0];
+  let kalan = 0;
+  if (selectedData) {
+    kalan = selectedData.kalan_miktar !== undefined ? selectedData.kalan_miktar : ($("#demirbas_id_zimmet").find(":selected").data("kalan") || 0);
+  }
   let teslimMiktar = parseInt($("#teslim_miktar").val());
 
   if (teslimMiktar > kalan) {

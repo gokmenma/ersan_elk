@@ -19,22 +19,54 @@ class PersonelKesintileriModel extends Model
      * Personelin tüm kesintilerini getirir (listeleme için)
      * Sürekli kesintiler için ana_kesinti_id NULL olanları gösterir
      */
-    public function getPersonelKesintileri($personel_id)
+    public function getPersonelKesintileri($personel_id, $filters = [])
     {
+        $where = "pk.personel_id = ? AND pk.silinme_tarihi IS NULL AND pk.ana_kesinti_id IS NULL";
+        $params = [$personel_id];
+        $mode = $filters['filter_kesinti_mode'] ?? 'donem';
+
+        if ($mode === 'tarih') {
+            if (!empty($filters['filter_kesinti_baslangic'])) {
+                $baslangic = $filters['filter_kesinti_baslangic'];
+                if (preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $baslangic)) {
+                    $baslangic = \DateTime::createFromFormat('d.m.Y', $baslangic)->format('Y-m-d');
+                }
+                $where .= " AND pk.tarih >= ?";
+                $params[] = $baslangic;
+            }
+            if (!empty($filters['filter_kesinti_bitis'])) {
+                $bitis = $filters['filter_kesinti_bitis'];
+                if (preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $bitis)) {
+                    $bitis = \DateTime::createFromFormat('d.m.Y', $bitis)->format('Y-m-d');
+                }
+                $where .= " AND pk.tarih <= ?";
+                $params[] = $bitis;
+            }
+        } elseif ($mode === 'donem') {
+            if (!empty($filters['filter_kesinti_donem'])) {
+                $where .= " AND (pk.tekrar_tipi = 'surekli' OR pk.donem_id = ?)";
+                $params[] = $filters['filter_kesinti_donem'];
+            }
+        } elseif ($mode === 'ay_yil') {
+            if (!empty($filters['filter_kesinti_ay_yil'])) {
+                $where .= " AND DATE_FORMAT(pk.tarih, '%Y-%m') = ?";
+                $params[] = $filters['filter_kesinti_ay_yil'];
+            }
+        }
+
         $sql = $this->db->prepare("
-            SELECT pk.*, pi.dosya_no, pi.icra_dairesi, bp.etiket as parametre_adi, bp.kod as parametre_kodu,
+            SELECT pk.*, pi.dosya_no, pi.icra_dairesi, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bd.donem_adi,
                                      COALESCE(pk.durum, 'beklemede') as durum,
                                      ky.adi_soyadi as kayit_yapan_ad_soyad
             FROM {$this->table} pk
             LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
             LEFT JOIN bordro_parametreleri bp ON pk.parametre_id = bp.id
-                        LEFT JOIN personel ky ON pk.kayit_yapan = ky.id
-            WHERE pk.personel_id = ? 
-              AND pk.silinme_tarihi IS NULL 
-              AND pk.ana_kesinti_id IS NULL
+            LEFT JOIN bordro_donemi bd ON pk.donem_id = bd.id
+            LEFT JOIN personel ky ON pk.kayit_yapan = ky.id
+            WHERE {$where}
             ORDER BY pk.tekrar_tipi DESC, pk.baslangic_donemi DESC, pk.donem_id DESC, pk.olusturma_tarihi DESC
         ");
-        $sql->execute([$personel_id]);
+        $sql->execute($params);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 

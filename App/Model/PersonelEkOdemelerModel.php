@@ -234,4 +234,32 @@ class PersonelEkOdemelerModel extends Model
         $sql->execute([$ana_odeme_id]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
+    /**
+     * Raporlama için döneme ait ek ödemeleri getirir
+     */
+    public function getDonemEkOdemelerRaporu($donem_id, $tur = null)
+    {
+        $params = [$donem_id];
+        $turCondition = "";
+        
+        if (!empty($tur)) {
+            $turCondition = " AND peo.tur = ? ";
+            $params[] = $tur;
+        }
+
+        $sql = $this->db->prepare("
+            SELECT peo.*, p.adi_soyadi, p.tc_kimlik_no, p.departman,
+                   bp.etiket as parametre_adi
+            FROM {$this->table} peo
+            INNER JOIN personel p ON peo.personel_id = p.id
+            LEFT JOIN bordro_parametreleri bp ON peo.parametre_id = bp.id
+            WHERE peo.donem_id = ? 
+              AND peo.silinme_tarihi IS NULL
+              $turCondition
+            ORDER BY p.adi_soyadi ASC, peo.tutar DESC
+        ");
+        
+        $sql->execute($params);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
 }

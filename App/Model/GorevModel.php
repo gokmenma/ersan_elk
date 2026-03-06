@@ -133,10 +133,10 @@ class GorevModel extends Model
         $nextSira = $stmt->fetch(PDO::FETCH_OBJ)->next_sira;
 
         $sql = "INSERT INTO gorevler (liste_id, firma_id, baslik, aciklama, tarih, saat, sira, 
-                yineleme_sikligi, yineleme_birimi, yineleme_baslangic, 
+                yineleme_sikligi, yineleme_birimi, yineleme_gunleri, yineleme_baslangic, 
                 yineleme_bitis_tipi, yineleme_bitis_tarihi, yineleme_bitis_adet, olusturan_id, gorev_kullanicilari) 
                 VALUES (:liste_id, :firma_id, :baslik, :aciklama, :tarih, :saat, :sira,
-                :yineleme_sikligi, :yineleme_birimi, :yineleme_baslangic,
+                :yineleme_sikligi, :yineleme_birimi, :yineleme_gunleri, :yineleme_baslangic,
                 :yineleme_bitis_tipi, :yineleme_bitis_tarihi, :yineleme_bitis_adet, :olusturan_id, :gorev_kullanicilari)";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
@@ -149,6 +149,7 @@ class GorevModel extends Model
             ':sira' => $nextSira,
             ':yineleme_sikligi' => $data['yineleme_sikligi'] ?? null,
             ':yineleme_birimi' => $data['yineleme_birimi'] ?? null,
+            ':yineleme_gunleri' => $data['yineleme_gunleri'] ?? null,
             ':yineleme_baslangic' => $data['yineleme_baslangic'] ?? null,
             ':yineleme_bitis_tipi' => $data['yineleme_bitis_tipi'] ?? null,
             ':yineleme_bitis_tarihi' => $data['yineleme_bitis_tarihi'] ?? null,
@@ -172,6 +173,7 @@ class GorevModel extends Model
             'yildizli',
             'yineleme_sikligi',
             'yineleme_birimi',
+            'yineleme_gunleri',
             'yineleme_baslangic',
             'yineleme_bitis_tipi',
             'yineleme_bitis_tarihi',
@@ -301,9 +303,8 @@ class GorevModel extends Model
                   WHERE g.tarih = CURDATE()
                     AND g.tamamlandi = 0
                     AND g.on_bildirim_gonderildi = 0
-                    AND g.saat IS NOT NULL
-                    AND g.saat <= ADDTIME(CURTIME(), SEC_TO_TIME(:offset * 60))
-                    AND g.saat > CURTIME()";
+                    AND COALESCE(g.saat, '09:00:00') <= ADDTIME(CURTIME(), SEC_TO_TIME(:offset * 60))
+                    AND COALESCE(g.saat, '09:00:00') > CURTIME()";
 
         // 2. TAM VAKİT BİLDİRİM BEKLEYENLER (Saati gelmiş/geçmiş olanlar)
         $sqlTam = "SELECT g.*, gl.baslik as liste_adi, gl.olusturan_id as liste_olusturan_id, 'tam' as bildirim_tipi
@@ -312,10 +313,7 @@ class GorevModel extends Model
                    WHERE g.tarih = CURDATE()
                      AND g.tamamlandi = 0
                      AND g.tam_vakit_bildirim_gonderildi = 0
-                     AND (
-                       g.saat IS NULL
-                       OR g.saat <= CURTIME()
-                     )";
+                     AND COALESCE(g.saat, '09:00:00') <= CURTIME()";
 
         $results = [];
 

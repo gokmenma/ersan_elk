@@ -146,7 +146,7 @@ foreach ($kesintiler as $k) {
                             <div class="col-md-6 filter-group filter-donem <?= $filter_mode !== 'donem' ? 'd-none' : '' ?>">
                                 <?= Form::FormSelect2(
                                     name: "filter_kesinti_donem",
-                                    options: ['' => 'Tüm Dönemler'] + ($acik_donemler ?? []),
+                                    options: ['' => 'Tüm Dönemler'] + ($tum_donemler ?? []),
                                     selectedValue: $_GET['filter_kesinti_donem'] ?? '',
                                     label: "Dönem Filtresi",
                                     icon: "calendar",

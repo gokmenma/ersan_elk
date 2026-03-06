@@ -158,6 +158,17 @@ $title = 'Görevler';
             </select>
         </div>
 
+        <!-- Haftanın Günleri (Sadece Hafta seçiliyken görünür) -->
+        <div class="yineleme-haftanin-gunleri" id="yinelemeHaftaGunleri" style="display: none; margin-bottom: 15px; margin-top: 5px;">
+            <div class="gun-daire" data-gun="1">P</div>
+            <div class="gun-daire" data-gun="2">S</div>
+            <div class="gun-daire" data-gun="3">Ç</div>
+            <div class="gun-daire" data-gun="4">P</div>
+            <div class="gun-daire" data-gun="5">C</div>
+            <div class="gun-daire" data-gun="6">C</div>
+            <div class="gun-daire" data-gun="0">P</div>
+        </div>
+
         <div class="yineleme-section">
             <label>Başlangıç</label>
             <input type="date" id="yinelemeBaslangic" style="width:100%">

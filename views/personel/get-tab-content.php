@@ -60,9 +60,11 @@ switch ($tab) {
 
         // Dönemleri de getir (modal için)
         $BordroDonemModel = new \App\Model\BordroDonemModel();
-        $donemler_raw = $BordroDonemModel->getAllDonems(date('Y'));
+        $donemler_raw = $BordroDonemModel->getAllDonemsForFilter();
         $acik_donemler = [];
+        $tum_donemler = [];
         foreach ($donemler_raw as $d) {
+            $tum_donemler[$d->id] = $d->donem_adi;
             if (isset($d->kapali_mi) && $d->kapali_mi == 0) {
                 $acik_donemler[$d->id] = $d->donem_adi;
             }
@@ -95,15 +97,19 @@ switch ($tab) {
 
         // Açık dönemleri getir
         $BordroDonemModel = new BordroDonemModel();
-        $donemler_raw = $BordroDonemModel->getAllDonems(date('Y'));
+        $donemler_raw = $BordroDonemModel->getAllDonemsForFilter();
         $acik_donemler = [];
+        $tum_donemler = [];
 
         foreach ($donemler_raw as $d) {
+            $formatter = new IntlDateFormatter('tr_TR', IntlDateFormatter::LONG, IntlDateFormatter::NONE, null, null, 'MMMM yyyy');
+            $ay_adi = $formatter->format(strtotime($d->baslangic_tarihi));
+            $donem_isim = $d->donem_adi ?? $ay_adi;
+            
+            $tum_donemler[$d->id] = $donem_isim;
+
             if (isset($d->kapali_mi) && $d->kapali_mi == 0) {
-                $key = date('Y-m', strtotime($d->baslangic_tarihi));
-                $formatter = new IntlDateFormatter('tr_TR', IntlDateFormatter::LONG, IntlDateFormatter::NONE, null, null, 'MMMM yyyy');
-                $ay_adi = $formatter->format(strtotime($d->baslangic_tarihi));
-                $acik_donemler[$d->id] = $d->donem_adi ?? $ay_adi;
+                $acik_donemler[$d->id] = $donem_isim;
             }
         }
 
@@ -135,15 +141,20 @@ switch ($tab) {
 
         // Açık dönemleri getir
         $BordroDonemModel = new BordroDonemModel();
-        $donemler_raw = $BordroDonemModel->getAllDonems(date('Y'));
+        $donemler_raw = $BordroDonemModel->getAllDonemsForFilter();
         $acik_donemler = [];
+        $tum_donemler = [];
 
         foreach ($donemler_raw as $d) {
+            // Türkçe ay ismini al
+            $formatter = new IntlDateFormatter('tr_TR', IntlDateFormatter::LONG, IntlDateFormatter::NONE, null, null, 'MMMM yyyy');
+            $ay_adi = $formatter->format(strtotime($d->baslangic_tarihi));
+            $donem_isim = $d->donem_adi ?? $ay_adi;
+            
+            $tum_donemler[$d->id] = $donem_isim;
+
             if (isset($d->kapali_mi) && $d->kapali_mi == 0) {
-                // Türkçe ay ismini al
-                $formatter = new IntlDateFormatter('tr_TR', IntlDateFormatter::LONG, IntlDateFormatter::NONE, null, null, 'MMMM yyyy');
-                $ay_adi = $formatter->format(strtotime($d->baslangic_tarihi));
-                $acik_donemler[$d->id] = $d->donem_adi ?? $ay_adi;
+                $acik_donemler[$d->id] = $donem_isim;
             }
         }
 

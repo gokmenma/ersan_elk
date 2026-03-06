@@ -47,6 +47,22 @@ class BordroDonemModel extends Model
     }
 
     /**
+     * Filtreleme için tüm dönemleri getirir
+     */
+    public function getAllDonemsForFilter()
+    {
+        $sql = $this->db->prepare("
+            SELECT * FROM {$this->table} 
+            WHERE silinme_tarihi IS NULL 
+            AND firma_id = ? 
+            ORDER BY baslangic_tarihi DESC
+        ");
+        $sql->execute([$_SESSION["firma_id"]]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+
+    /**
      * Dönemlerin yıllana göre yılları getirir
      */
     public function getYearsByDonem()

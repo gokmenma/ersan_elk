@@ -161,14 +161,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $data = [
-                    'liste_id' => $liste_id,
-                    'firma_id' => $firmaId,
-                    'baslik' => $baslik,
+                    'liste_id' => $listeId,
+                    'firma_id' => $firmaId, // Kept original $firmaId
+                    'baslik' => $baslik, // Kept original $baslik
                     'aciklama' => $_POST['aciklama'] ?? null,
                     'tarih' => !empty($_POST['tarih']) ? $_POST['tarih'] : null,
                     'saat' => !empty($_POST['saat']) ? $_POST['saat'] : null,
                     'yineleme_sikligi' => !empty($_POST['yineleme_sikligi']) ? $_POST['yineleme_sikligi'] : null,
                     'yineleme_birimi' => !empty($_POST['yineleme_birimi']) ? $_POST['yineleme_birimi'] : null,
+                    'yineleme_gunleri' => !empty($_POST['yineleme_gunleri']) ? $_POST['yineleme_gunleri'] : null, // Added this line
                     'yineleme_baslangic' => !empty($_POST['yineleme_baslangic']) ? $_POST['yineleme_baslangic'] : null,
                     'yineleme_bitis_tipi' => !empty($_POST['yineleme_bitis_tipi']) ? $_POST['yineleme_bitis_tipi'] : null,
                     'yineleme_bitis_tarihi' => !empty($_POST['yineleme_bitis_tarihi']) ? $_POST['yineleme_bitis_tarihi'] : null,
@@ -215,6 +216,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $data['yineleme_bitis_tarihi'] = !empty($_POST['yineleme_bitis_tarihi']) ? $_POST['yineleme_bitis_tarihi'] : null;
                 if (array_key_exists('yineleme_bitis_adet', $_POST))
                     $data['yineleme_bitis_adet'] = !empty($_POST['yineleme_bitis_adet']) ? $_POST['yineleme_bitis_adet'] : null;
+                if (array_key_exists('yineleme_gunleri', $_POST))
+                    $data['yineleme_gunleri'] = !empty($_POST['yineleme_gunleri']) ? $_POST['yineleme_gunleri'] : null;
                 if (array_key_exists('gorev_kullanicilari', $_POST)) {
                     $kullanicilar = $_POST['gorev_kullanicilari'] ?? '';
                     $realIds = [];

@@ -103,7 +103,7 @@ try {
                 webhookLog("İşlenen Görev ID: #{$gorev->id} | Tip: {$gorev->bildirim_tipi} | Başlık: {$gorev->baslik}");
 
                 // Bildirim mesajını hazırla
-                $saatStr = !empty($gorev->saat) ? ' (Saat: ' . substr($gorev->saat, 0, 5) . ')' : '';
+                $saatStr = ' (Saat: ' . substr($gorev->saat ?? '09:00:00', 0, 5) . ')';
                 $listeStr = !empty($gorev->liste_adi) ? ' [' . $gorev->liste_adi . ']' : '';
 
                 if ($gorev->bildirim_tipi === 'on') {

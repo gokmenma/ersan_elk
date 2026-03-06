@@ -132,6 +132,16 @@ $raporlar = [
         'url' => 'index?p=bordro/raporlar/kesinti-raporu&donem=',
         'download_url' => null,
         'download_type' => null
+    ],
+    [
+        'id' => 'ek-odemeler-raporu',
+        'baslik' => 'Ek Ödemeler Raporu',
+        'aciklama' => 'Personel ek ödemelerinin (Prim, Mesai, İkramiye vb.) detaylı listesi.',
+        'icon' => 'bx-plus-circle',
+        'renk' => 'primary',
+        'url' => 'index?p=bordro/raporlar/ek-odemeler-raporu&donem=',
+        'download_url' => null,
+        'download_type' => null
     ]
 ];
 ?>
@@ -335,38 +345,29 @@ $raporlar = [
 </style>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
+    $(document).ready(function () {
         // Yıl değişince dönemleri güncelle
-        const yilSelect = document.querySelector('[name="yilSelectRapor"]');
-        const donemSelect = document.querySelector('[name="donemSelectRapor"]');
-
-        if (yilSelect) {
-            yilSelect.addEventListener('change', function () {
-                const yil = this.value;
-                window.location.href = 'index?p=bordro/raporlar&yil=' + yil;
-            });
-        }
+        $('[name="yilSelectRapor"]').on('change', function () {
+            const yil = $(this).val();
+            window.location.href = 'index?p=bordro/raporlar&yil=' + yil;
+        });
 
         // Dönem değişince sayfayı yenile
-        if (donemSelect) {
-            donemSelect.addEventListener('change', function () {
-                const donemId = this.value;
-                const yil = yilSelect ? yilSelect.value : '<?= $selectedYil ?>';
-                window.location.href = 'index?p=bordro/raporlar&yil=' + yil + '&donem=' + donemId;
-            });
-        }
+        $('[name="donemSelectRapor"]').on('change', function () {
+            const donemId = $(this).val();
+            const yil = $('[name="yilSelectRapor"]').val() || '<?= $selectedYil ?>';
+            window.location.href = 'index?p=bordro/raporlar&yil=' + yil + '&donem=' + donemId;
+        });
 
         // Kart tıklama
-        document.querySelectorAll('.rapor-card').forEach(function (card) {
-            card.addEventListener('click', function (e) {
-                // Eğer buton tıklanmadıysa
-                if (!e.target.closest('a')) {
-                    const url = this.dataset.url;
-                    if (url) {
-                        window.location.href = url;
-                    }
+        $('.rapor-card').on('click', function (e) {
+            // Eğer buton tıklanmadıysa
+            if (!$(e.target).closest('a').length) {
+                const url = $(this).data('url');
+                if (url) {
+                    window.location.href = url;
                 }
-            });
+            }
         });
     });
 </script>

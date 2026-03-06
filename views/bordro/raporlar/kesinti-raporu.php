@@ -132,10 +132,11 @@ $tur_option = [
                                         // Tür Rozeti Ayarı
                                         $badgeBg = 'bg-secondary';
                                         $turAdi = 'Diğer';
-                                        if ($k->tur === 'icra') {
+                                        $normalizedTur = mb_strtolower(trim($k->tur), 'UTF-8');
+                                        if ($normalizedTur === 'icra' || $normalizedTur === 'i̇cra') { // account for dotted i
                                             $badgeBg = 'bg-danger';
                                             $turAdi = 'İcra';
-                                        } elseif ($k->tur === 'avans') {
+                                        } else if ($normalizedTur === 'avans') {
                                             $badgeBg = 'bg-warning text-dark';
                                             $turAdi = 'Avans';
                                         }
