@@ -173,7 +173,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'yineleme_bitis_tipi' => !empty($_POST['yineleme_bitis_tipi']) ? $_POST['yineleme_bitis_tipi'] : null,
                     'yineleme_bitis_tarihi' => !empty($_POST['yineleme_bitis_tarihi']) ? $_POST['yineleme_bitis_tarihi'] : null,
                     'yineleme_bitis_adet' => !empty($_POST['yineleme_bitis_adet']) ? $_POST['yineleme_bitis_adet'] : null,
-                    'olusturan_id' => $userId
+                    'olusturan_id' => $userId,
+                    'gorev_kullanicilari' => !empty($_POST['gorev_kullanicilari']) ? $_POST['gorev_kullanicilari'] : null
                 ];
 
                 $id = $Gorev->addGorev($data);
@@ -214,6 +215,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $data['yineleme_bitis_tarihi'] = !empty($_POST['yineleme_bitis_tarihi']) ? $_POST['yineleme_bitis_tarihi'] : null;
                 if (array_key_exists('yineleme_bitis_adet', $_POST))
                     $data['yineleme_bitis_adet'] = !empty($_POST['yineleme_bitis_adet']) ? $_POST['yineleme_bitis_adet'] : null;
+                if (array_key_exists('gorev_kullanicilari', $_POST)) {
+                    $kullanicilar = $_POST['gorev_kullanicilari'] ?? '';
+                    $realIds = [];
+                    if (!empty($kullanicilar)) {
+                        $encryptedIds = explode(',', $kullanicilar);
+                        foreach ($encryptedIds as $encId) {
+                            $decId = Security::decrypt(trim($encId));
+                            if ($decId) {
+                                $realIds[] = $decId;
+                            }
+                        }
+                    }
+                    $data['gorev_kullanicilari'] = !empty($realIds) ? implode(',', $realIds) : null;
+                }
 
                 $result = $Gorev->updateGorev($id, $data);
                 if ($result) {
@@ -295,7 +310,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $benimGorevlerim = array_filter($bekleyenGorevler, function ($g) use ($userId, $targetUserIds) {
                     $sorumluId = $g->olusturan_id ?? $g->liste_olusturan_id;
-                    $usersToNotify = !empty($targetUserIds) ? $targetUserIds : [$sorumluId];
+                    
+                    if (!empty($g->gorev_kullanicilari)) {
+                        $taskUserIds = explode(',', $g->gorev_kullanicilari);
+                        $usersToNotify = array_map('intval', $taskUserIds);
+                    } else {
+                        $usersToNotify = !empty($targetUserIds) ? $targetUserIds : [$sorumluId];
+                    }
+                    
                     $usersToNotify = array_unique(array_filter($usersToNotify));
 
                     return in_array($userId, $usersToNotify);
@@ -339,19 +361,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                     }
 
-                    $usersToNotify = !empty($targetUserIds) ? $targetUserIds : [$gorev->olusturan_id];
+                    if (!empty($gorev->gorev_kullanicilari)) {
+                        $taskUserIds = explode(',', $gorev->gorev_kullanicilari);
+                        $usersToNotify = array_map('intval', $taskUserIds);
+                    } else {
+                        $usersToNotify = !empty($targetUserIds) ? $targetUserIds : [$gorev->olusturan_id];
+                    }
+                    
                     $usersToNotify = array_unique(array_filter($usersToNotify));
 
                     $pushService = new \App\Service\PushNotificationService();
+                    $mailService = new \App\Service\MailGonderService();
                     $saatStr = $gorev->saat ? ' (Saat: ' . substr($gorev->saat, 0, 5) . ')' : '';
                     $payload = [
                         'title' => '📋 Görev Hatırlatması',
                         'body' => $gorev->baslik . $saatStr . ' [' . $gorev->liste_adi . ']',
                         'url' => 'index.php?p=gorevler/list'
                     ];
+                    
+                    // Görev hatırlatması için mail verisi
+                    $mailData = [
+                        'konu' => 'Görev Hatırlatması: ' . $gorev->baslik,
+                        'icerik' => "<b>{$gorev->liste_adi}</b> adlı listedeki görevinizin zamanı geldi/yaklaşıyor.<br><br><b>Görev:</b> {$gorev->baslik}{$saatStr}"
+                    ];
 
                     foreach ($usersToNotify as $targetId) {
                         $pushService->sendToPersonel($targetId, $payload);
+                        $mailService->kullaniciyaMailGonder($targetId, $mailData);
                     }
                 }
 
@@ -410,6 +446,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 } else {
                     throw new Exception("Ayarlar kaydedilemedi.");
                 }
+                break;
+                
+            case 'get-settings-for-task':
+                $gorevId = Security::decrypt($_POST['gorev_id']);
+                $gorev = $Gorev->findGorev($gorevId);
+
+                $selectedRealIds = [];
+                if ($gorev && !empty($gorev->gorev_kullanicilari)) {
+                    $selectedRealIds = explode(',', $gorev->gorev_kullanicilari);
+                }
+
+                $User = new \App\Model\UserModel();
+                $users = $User->getUsers();
+                $userList = [];
+                foreach ($users as $u) {
+                    $userList[] = [
+                        'id' => Security::encrypt($u->id),
+                        'text' => $u->adi_soyadi,
+                        'selected' => in_array($u->id, $selectedRealIds)
+                    ];
+                }
+
+                echo json_encode(['success' => true, 'data' => ['users' => $userList]]);
                 break;
 
             default:

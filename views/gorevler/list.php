@@ -96,6 +96,28 @@ $title = 'Görevler';
     </div>
 </div>
 
+<!-- ═══ GÖREV KULLANICI SEÇ MODAL ═══ -->
+<div class="yeni-liste-modal" id="gorevKullaniciSecModal">
+    <div class="yeni-liste-content">
+        <h4>Talebe Özel Bildirim Alacak Kullanıcılar</h4>
+
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">Kullanıcılar</label>
+            <select id="set_gorev_ozel_kullanicilar" class="form-control-gt select2-kullanici-ozel" multiple="multiple"
+                style="width: 100%;">
+                <!-- JS ile doldurulacak -->
+            </select>
+            <small class="text-muted" style="font-size: 11px;">Eğer seçim yapılmazsa ayarlardaki genel bildirim kullanıcılarına gönderilir.</small>
+            <input type="hidden" id="gorevKullaniciSecGorevId">
+        </div>
+
+        <div class="yeni-liste-footer">
+            <button class="btn-iptal btn btn-light" id="gorevKullaniciSecIptal">İptal</button>
+            <button class="btn-bitti btn btn-primary" id="gorevKullaniciSecKaydet">Kaydet</button>
+        </div>
+    </div>
+</div>
+
 <!-- ═══ TARİH PICKER MODAL ═══ -->
 <div class="tarih-picker-modal" id="tarihPickerModal">
     <div class="tarih-picker-content">

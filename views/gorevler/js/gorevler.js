@@ -506,6 +506,9 @@
 
       const dropdown = $(`
                 <div class="gorev-dropdown gorev-item-dropdown show" style="top: 0; right: 40px;">
+                    <button class="dropdown-item btn-gorev-kullanici-sec" data-gorev-id="${gorevId}">
+                        <i class="bx bx-user-plus"></i> Kullanıcılar
+                    </button>
                     <button class="dropdown-item btn-gorev-sil" data-gorev-id="${gorevId}">
                         <i class="bx bx-trash"></i> Sil
                     </button>
@@ -545,6 +548,24 @@
           );
         }
       });
+    });
+
+    // Görev Kullanıcı Seç (Modal Aç)
+    $(document).on("click", ".btn-gorev-kullanici-sec", function (e) {
+      e.stopPropagation();
+      const gorevId = $(this).data("gorev-id");
+      $(".gorev-dropdown").removeClass("show");
+      openGorevKullaniciSecModal(gorevId);
+    });
+
+    // Görev Kullanıcı Seç İptal
+    $(document).on("click", "#gorevKullaniciSecIptal", function () {
+      $("#gorevKullaniciSecModal").removeClass("show");
+    });
+
+    // Görev Kullanıcı Seç Kaydet
+    $(document).on("click", "#gorevKullaniciSecKaydet", function () {
+      saveGorevKullaniciSec();
     });
 
     // Yıldız toggle
@@ -1558,6 +1579,65 @@
           showToast(res.message, "error");
         }
       },
+    );
+  }
+
+  function openGorevKullaniciSecModal(gorevId) {
+    const modal = $("#gorevKullaniciSecModal");
+    const select = $("#set_gorev_ozel_kullanicilar");
+    $("#gorevKullaniciSecGorevId").val(gorevId);
+
+    $.post(API_URL, { action: "get-settings-for-task", gorev_id: gorevId }, function (res) {
+      if (res.success) {
+        select.empty();
+        const selectedValues = [];
+
+        res.data.users.forEach((u) => {
+           const option = new Option(u.text, u.id, u.selected, u.selected);
+           select.append(option);
+           if (u.selected) {
+             selectedValues.push(u.id);
+           }
+        });
+        
+        if ($.fn.select2) {
+            if (select.hasClass("select2-hidden-accessible")) {
+                select.select2("destroy");
+            }
+            select.select2({
+                dropdownParent: modal.find(".yeni-liste-content"),
+                placeholder: "Kullanıcı seçin",
+                width: "100%",
+            });
+        }
+        
+        select.val(selectedValues).trigger("change");
+        modal.addClass("show");
+      }
+    });
+  }
+
+  function saveGorevKullaniciSec() {
+    const gorevId = $("#gorevKullaniciSecGorevId").val();
+    const kullanicilar = $("#set_gorev_ozel_kullanicilar").val() || [];
+
+    $.post(
+      API_URL,
+      {
+        action: "update-gorev",
+        gorev_id: gorevId,
+        gorev_kullanicilari: Array.isArray(kullanicilar) ? kullanicilar.join(",") : kullanicilar
+      },
+      function (res) {
+        if (res.success) {
+          showToast("Görev kullanıcıları güncellendi", "success");
+          $("#gorevKullaniciSecModal").removeClass("show");
+          loadAll();
+        } else {
+          showToast(res.message, "error");
+        }
+      },
+      "json"
     );
   }
 })();

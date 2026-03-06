@@ -134,10 +134,10 @@ class GorevModel extends Model
 
         $sql = "INSERT INTO gorevler (liste_id, firma_id, baslik, aciklama, tarih, saat, sira, 
                 yineleme_sikligi, yineleme_birimi, yineleme_baslangic, 
-                yineleme_bitis_tipi, yineleme_bitis_tarihi, yineleme_bitis_adet, olusturan_id) 
+                yineleme_bitis_tipi, yineleme_bitis_tarihi, yineleme_bitis_adet, olusturan_id, gorev_kullanicilari) 
                 VALUES (:liste_id, :firma_id, :baslik, :aciklama, :tarih, :saat, :sira,
                 :yineleme_sikligi, :yineleme_birimi, :yineleme_baslangic,
-                :yineleme_bitis_tipi, :yineleme_bitis_tarihi, :yineleme_bitis_adet, :olusturan_id)";
+                :yineleme_bitis_tipi, :yineleme_bitis_tarihi, :yineleme_bitis_adet, :olusturan_id, :gorev_kullanicilari)";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             ':liste_id' => $data['liste_id'],
@@ -153,7 +153,8 @@ class GorevModel extends Model
             ':yineleme_bitis_tipi' => $data['yineleme_bitis_tipi'] ?? null,
             ':yineleme_bitis_tarihi' => $data['yineleme_bitis_tarihi'] ?? null,
             ':yineleme_bitis_adet' => $data['yineleme_bitis_adet'] ?? null,
-            ':olusturan_id' => $data['olusturan_id']
+            ':olusturan_id' => $data['olusturan_id'],
+            ':gorev_kullanicilari' => $data['gorev_kullanicilari'] ?? null
         ]);
         return $this->db->lastInsertId();
     }
@@ -174,7 +175,8 @@ class GorevModel extends Model
             'yineleme_baslangic',
             'yineleme_bitis_tipi',
             'yineleme_bitis_tarihi',
-            'yineleme_bitis_adet'
+            'yineleme_bitis_adet',
+            'gorev_kullanicilari'
         ];
 
         $tarihSaatDegisti = false;
