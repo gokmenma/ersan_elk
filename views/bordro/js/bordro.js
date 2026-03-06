@@ -703,6 +703,56 @@ $(document).ready(function () {
     });
   }
 
+  // Personel Görsün Switch'i
+  $("#switchPersonelGorsun").on("change", function () {
+    const isChecked = $(this).prop("checked");
+    const donemId = $("#donemSelect").val();
+
+    if (!donemId) return;
+
+    $.ajax({
+      url: "views/bordro/api.php",
+      type: "POST",
+      data: {
+        action: "donem-personel-gorsun-guncelle",
+        donem_id: donemId,
+        personel_gorsun: isChecked ? 1 : 0,
+      },
+      dataType: "json",
+      beforeSend: function () {
+        Swal.fire({
+          title: "Güncelleniyor...",
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          },
+        });
+      },
+      success: function (response) {
+        Swal.close();
+        if (response.status === "success") {
+          showToast(response.message, "success");
+          // Label metnini ve rengini de güncelleyebilirsiniz (opsiyonel ama şık olur)
+          const label = $("label[for='switchPersonelGorsun']");
+          if (isChecked) {
+            label.removeClass("text-danger").addClass("text-success");
+          } else {
+            label.removeClass("text-success").addClass("text-danger");
+          }
+        } else {
+          showToast(response.message, "error");
+          // Hata durumunda switch'i geri al
+          $("#switchPersonelGorsun").prop("checked", !isChecked);
+        }
+      },
+      error: function () {
+        Swal.close();
+        showToast("Bir hata oluştu.", "error");
+        $("#switchPersonelGorsun").prop("checked", !isChecked);
+      },
+    });
+  });
+
   // Gelir Ekle Form
   $("#formGelirEkle").on("submit", function (e) {
     e.preventDefault();

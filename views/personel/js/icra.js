@@ -26,16 +26,15 @@ $(document).ready(function () {
     $("#icra_durum").val("devam_ediyor");
     $("#icra_kesinti_tipi").val("tutar");
     $("#icra_kesinti_orani").val("25");
+    $("#icra_baslangic").val("");
+    $("#icra_bitis").val("");
     $("#modalPersonelIcraEkle").modal("show");
-    setTimeout(syncFeather, 50);
-    /**select2 */
-    $("#icra_durum, #icra_kesinti_tipi").select2({
-      dropdownParent: $("#modalPersonelIcraEkle"),
-      width: "100%",
-    });
-
-    // Modal açıldığında varsayılanları tetikle
-    $("#icra_kesinti_tipi").trigger("change");
+    setTimeout(function() {
+        if (typeof initPlugins === "function") {
+            initPlugins($("#modalPersonelIcraEkle")[0]);
+        }
+        syncFeather();
+    }, 50);
   });
 
   // Kesinti tipi değiştiğinde alanları göster/gizle (Sadece bir kez bağla)
@@ -84,14 +83,27 @@ $(document).ready(function () {
           $("#icra_aylik_kesinti").val(response.aylik_kesinti_tutari);
           $("#icra_kesinti_orani").val(response.kesinti_orani || "25");
           $("#icra_durum").val(response.durum).trigger("change");
+          
+          // Flatpickr değerlerini set et (altInput kullanıldığı için setDate gereklidir)
+          if ($("#icra_baslangic")[0] && $("#icra_baslangic")[0]._flatpickr) {
+              $("#icra_baslangic")[0]._flatpickr.setDate(response.baslangic_tarihi || "", true);
+          } else {
+              $("#icra_baslangic").val(response.baslangic_tarihi);
+          }
+          
+          if ($("#icra_bitis")[0] && $("#icra_bitis")[0]._flatpickr) {
+              $("#icra_bitis")[0]._flatpickr.setDate(response.bitis_tarihi || "", true);
+          } else {
+              $("#icra_bitis").val(response.bitis_tarihi);
+          }
+
           $("#icra_aciklama").val(response.aciklama);
 
           $("#modalPersonelIcraEkle").modal("show");
           setTimeout(function () {
-            $("#icra_durum, #icra_kesinti_tipi").select2({
-              dropdownParent: $("#modalPersonelIcraEkle"),
-              width: "100%",
-            });
+            if (typeof initPlugins === "function") {
+              initPlugins($("#modalPersonelIcraEkle")[0]);
+            }
             syncFeather();
           }, 50);
         } else {

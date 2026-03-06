@@ -1622,6 +1622,209 @@ const AracTakip = {
       }
     }
   },
+
+  aylikRaporYukle: function () {
+    const baslangic = $("#rapor-filtre-baslangic").val();
+    const bitis = $("#rapor-filtre-bitis").val();
+    const aracId = $("#rapor-filtre-arac").val();
+    const btn = $("#btnRaporYukle");
+    const container = $("#raporIcerik");
+
+    const originalText = btn.html();
+    btn
+      .html('<i class="bx bx-loader-alt bx-spin me-1"></i> Yükleniyor...')
+      .prop("disabled", true);
+    container.html(
+      '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-3">Rapor hazırlanıyor...</p></div>',
+    );
+
+    $.post(
+      this.apiUrl,
+      {
+        action: "aylik-rapor",
+        baslangic: baslangic,
+        bitis: bitis,
+        arac_id: aracId,
+      },
+      function (response) {
+        if (response.status === "success") {
+          const yakitOzet = response.data.yakit_ozet || [];
+          const kmOzet = response.data.km_ozet || [];
+
+          if (yakitOzet.length === 0 && kmOzet.length === 0) {
+            container.html(
+              '<div class="alert alert-info">Seçilen kriterlere uygun veri bulunamadı.</div>',
+            );
+            return;
+          }
+
+          // Merge arrays based on arac_id
+          const map = {};
+
+          yakitOzet.forEach((y) => {
+            map[y.arac_id] = { ...y };
+          });
+
+          kmOzet.forEach((k) => {
+            if (!map[k.arac_id]) {
+              map[k.arac_id] = {
+                arac_id: k.arac_id,
+                plaka: k.plaka,
+                marka: k.marka,
+                model: k.model,
+                toplam_litre: 0,
+                toplam_tutar: 0,
+              };
+            }
+            map[k.arac_id].toplam_km = k.toplam_km;
+          });
+
+          const merged = Object.values(map);
+
+          let maxKm = 0;
+          let maxKmPlaka = "-";
+          let maxLitre = 0;
+          let maxLitrePlaka = "-";
+          let maxTutar = 0;
+          let maxTutarPlaka = "-";
+
+          merged.forEach((m) => {
+            const km = parseFloat(m.toplam_km) || 0;
+            const litre = parseFloat(m.toplam_litre) || 0;
+            const tutar = parseFloat(m.toplam_tutar) || 0;
+
+            if (km > maxKm) {
+              maxKm = km;
+              maxKmPlaka = m.plaka;
+            }
+            if (litre > maxLitre) {
+              maxLitre = litre;
+              maxLitrePlaka = m.plaka;
+            }
+            if (tutar > maxTutar) {
+              maxTutar = tutar;
+              maxTutarPlaka = m.plaka;
+            }
+          });
+
+          let html = `
+          <div class="row g-3 mb-4">
+              <div class="col-xl col-md-4">
+                  <div class="card border-0 shadow-sm h-100 bordro-summary-card" style="--card-color: #0ea5e9; border-bottom: 3px solid var(--card-color) !important;">
+                      <div class="card-body p-3">
+                          <div class="icon-label-container">
+                              <div class="icon-box" style="background: rgba(14, 165, 233, 0.1);">
+                                  <i class="bx bx-tachometer fs-4" style="color: #0ea5e9;"></i>
+                              </div>
+                              <span class="text-muted small fw-bold" style="font-size: 0.65rem;">EN ÇOK YAPAN</span>
+                          </div>
+                          <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">EN ÇOK KM YAPAN ARAÇ</p>
+                          <h4 class="mb-1 fw-bold bordro-text-heading">${maxKmPlaka}</h4>
+                          <span class="text-primary fw-bold" style="font-size: 0.85rem;">${AracTakip.formatNumber(maxKm)} km</span>
+                      </div>
+                  </div>
+              </div>
+              <div class="col-xl col-md-4">
+                  <div class="card border-0 shadow-sm h-100 bordro-summary-card" style="--card-color: #2a9d8f; border-bottom: 3px solid var(--card-color) !important;">
+                      <div class="card-body p-3">
+                          <div class="icon-label-container">
+                              <div class="icon-box" style="background: rgba(42, 157, 143, 0.1);">
+                                  <i class="bx bx-gas-pump fs-4" style="color: #2a9d8f;"></i>
+                              </div>
+                              <span class="text-muted small fw-bold" style="font-size: 0.65rem;">LİTRE BAZINDA</span>
+                          </div>
+                          <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">EN ÇOK YAKIT TÜKETEN</p>
+                          <h4 class="mb-1 fw-bold bordro-text-heading">${maxLitrePlaka}</h4>
+                          <span class="text-success fw-bold" style="font-size: 0.85rem;">${AracTakip.formatNumber(maxLitre)} L</span>
+                      </div>
+                  </div>
+              </div>
+              <div class="col-xl col-md-4">
+                  <div class="card border-0 shadow-sm h-100 bordro-summary-card" style="--card-color: #E76F51; border-bottom: 3px solid var(--card-color) !important;">
+                      <div class="card-body p-3">
+                          <div class="icon-label-container">
+                              <div class="icon-box" style="background: rgba(231, 111, 81, 0.1);">
+                                  <i class="bx bx-money fs-4" style="color: #E76F51;"></i>
+                              </div>
+                              <span class="text-muted small fw-bold" style="font-size: 0.65rem;">TUTAR BAZINDA</span>
+                          </div>
+                          <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">EN YÜKSEK MALİYET</p>
+                          <h4 class="mb-1 fw-bold bordro-text-heading">${maxTutarPlaka}</h4>
+                          <span class="text-danger fw-bold" style="font-size: 0.85rem;">${AracTakip.formatMoney(maxTutar)} ₺</span>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          
+          <div class="table-responsive">
+              <table class="table table-hover table-bordered nowrap w-100 report-dataTable">
+                  <thead class="table-light">
+                      <tr>
+                          <th class="text-center" style="width:5%">Sıra</th>
+                          <th>Plaka</th>
+                          <th>Araç Bilgisi</th>
+                          <th class="text-end">Yapılan KM</th>
+                          <th class="text-end">Tüketim (Litre)</th>
+                          <th class="text-end">Maliyet</th>
+                          <th class="text-end">Ort. Tüketim (L/100km)</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+        `;
+
+          merged.forEach((item, index) => {
+            const km = parseFloat(item.toplam_km) || 0;
+            const litre = parseFloat(item.toplam_litre) || 0;
+            const tutar = parseFloat(item.toplam_tutar) || 0;
+            const ort = km > 0 ? (litre / km) * 100 : 0;
+
+            html += `
+                <tr>
+                    <td class="text-center">${index + 1}</td>
+                    <td class="fw-bold">${item.plaka}</td>
+                    <td><span class="small text-muted">${item.marka || ""} ${item.model || ""}</span></td>
+                    <td class="text-end text-primary fw-bold">${AracTakip.formatNumber(km)} km</td>
+                    <td class="text-end text-success fw-bold">${AracTakip.formatNumber(litre)} L</td>
+                    <td class="text-end text-danger fw-bold">${AracTakip.formatMoney(tutar)}</td>
+                    <td class="text-end">${AracTakip.formatNumber(ort.toFixed(2))} L</td>
+                </tr>
+            `;
+          });
+
+          html += `
+                  </tbody>
+              </table>
+          </div>
+        `;
+
+          container.html(html);
+
+          if (typeof destroyAndInitDataTable === "function") {
+            destroyAndInitDataTable(".report-dataTable", {
+              pageLength: 25,
+              order: []
+            });
+          } else if ($.fn.DataTable) {
+            $(".report-dataTable").DataTable();
+          }
+        } else {
+          container.html(
+            '<div class="alert alert-danger">' +
+              (response.message || "Hata oluştu.") +
+              "</div>",
+          );
+        }
+      },
+    )
+      .fail(function () {
+        container.html(
+          '<div class="alert alert-danger">Sunucu hatası oluştu.</div>',
+        );
+      })
+      .always(function () {
+        btn.html(originalText).prop("disabled", false);
+      });
+  },
 };
 
 // =============================================

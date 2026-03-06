@@ -371,35 +371,34 @@ class BordroPersonelModel extends Model
      */
     public function getPersonelFinansalOzet($personel_id)
     {
-        // 1. Toplam Hakediş: Kapatılmış dönemlerdeki (Net Maaşlar + O dönemde mahsup edilen avanslar)
-        // 2. Alınan Ödeme: Personelin bugüne kadar aldığı tüm onaylanmış avanslar
+        // 1. Toplam Hakediş: Personel görsün veya kapalı olan dönemlerdeki (Net Maaşlar + O dönemde mahsup edilen avanslar)
+        // 2. Alınan Ödeme: Bugüne kadar onaylanmış avanslar + Kapatılmış dönemlerdeki (yani bankaya yatan) maaş ödemeleri
         // 3. Kalan Bakiye: Toplam Hakediş - Alınan Ödeme
 
-        // Kapatılmış dönemlerdeki banka ödemesi toplamı (Burası personelin bankadan alacağı net tutardır)
-        // Eğer banka_odemesi 0 veya NULL ise net_maas kullanılır
+        // Hakediş: Personel görsün veya kapalı olan dönemlerdeki banka ödemesi toplamı
         $sqlNet = $this->db->prepare("
             SELECT SUM(IF(bp.banka_odemesi > 0, bp.banka_odemesi, bp.net_maas)) as toplam_net
             FROM {$this->table} bp
             INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
-            WHERE bp.personel_id = ? AND bp.silinme_tarihi IS NULL AND bd.kapali_mi = 1
+            WHERE bp.personel_id = ? AND bp.silinme_tarihi IS NULL AND (bd.personel_gorsun = 1 OR bd.kapali_mi = 1)
         ");
         $sqlNet->execute([$personel_id]);
         $toplam_net = $sqlNet->fetch(PDO::FETCH_OBJ)->toplam_net ?? 0;
 
-        // Kapatılmış dönemlerde maaştan düşülen (mahsup edilen) avanslar
+        // Personel görsün veya kapalı olanlarda mahsup edilen avanslar
         $sqlAvansKesinti = $this->db->prepare("
             SELECT SUM(pk.tutar) as toplam_kesinti_avans
             FROM personel_kesintileri pk
             INNER JOIN bordro_donemi bd ON pk.donem_id = bd.id
-            WHERE pk.personel_id = ? AND pk.tur = 'avans' AND bd.kapali_mi = 1 AND pk.silinme_tarihi IS NULL
+            WHERE pk.personel_id = ? AND pk.tur = 'avans' AND (bd.personel_gorsun = 1 OR bd.kapali_mi = 1) AND pk.silinme_tarihi IS NULL
         ");
         $sqlAvansKesinti->execute([$personel_id]);
         $toplam_avans_kesinti = $sqlAvansKesinti->fetch(PDO::FETCH_OBJ)->toplam_kesinti_avans ?? 0;
 
-        // Toplam Hakediş = Kapatılmış dönemlerin gerçek net kazancı (Kesintiler öncesi net)
+        // Toplam Hakediş
         $toplam_hakedis = $toplam_net + $toplam_avans_kesinti;
 
-        // Onaylanmış tüm avanslar (Personelin cebine giren toplam para)
+        // Onaylanmış tüm avanslar
         $sqlAvans = $this->db->prepare("
             SELECT SUM(tutar) as toplam_avans 
             FROM personel_avanslari 
@@ -408,13 +407,26 @@ class BordroPersonelModel extends Model
         $sqlAvans->execute([$personel_id]);
         $alinan_odeme = $sqlAvans->fetch(PDO::FETCH_OBJ)->toplam_avans ?? 0;
 
-        // Son kapatılmış dönemin adını bul
+        // Kapatılmış dönemlerdeki banka ödemesi toplamı (Gerçekte ödenen maaşlar)
+        $sqlOdenenMaas = $this->db->prepare("
+            SELECT SUM(IF(bp.banka_odemesi > 0, bp.banka_odemesi, bp.net_maas)) as toplam_odenen
+            FROM {$this->table} bp
+            INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
+            WHERE bp.personel_id = ? AND bp.silinme_tarihi IS NULL AND bd.kapali_mi = 1
+        ");
+        $sqlOdenenMaas->execute([$personel_id]);
+        $toplam_odenen_maas = $sqlOdenenMaas->fetch(PDO::FETCH_OBJ)->toplam_odenen ?? 0;
+
+        // Toplam Alınan Ödeme
+        $alinan_odeme += $toplam_odenen_maas;
+
+        // Son personel görsün 1 olan dönemin adını bul (ID'ye göre son eklenen)
         $sqlSonDonem = $this->db->prepare("
             SELECT bd.donem_adi, bd.baslangic_tarihi 
             FROM {$this->table} bp
             INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
-            WHERE bp.personel_id = ? AND bp.silinme_tarihi IS NULL AND bd.kapali_mi = 1
-            ORDER BY bd.baslangic_tarihi DESC LIMIT 1
+            WHERE bp.personel_id = ? AND bp.silinme_tarihi IS NULL AND bd.personel_gorsun = 1
+            ORDER BY bd.id DESC LIMIT 1
         ");
         $sqlSonDonem->execute([$personel_id]);
         $son_donem = $sqlSonDonem->fetch(PDO::FETCH_OBJ);

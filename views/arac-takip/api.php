@@ -729,14 +729,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
             // RAPORLAR
             // =============================================
             case 'aylik-rapor':
-                $yil = intval($_POST['yil'] ?? date('Y'));
-                $ay = intval($_POST['ay'] ?? date('m'));
                 $arac_id = isset($_POST['arac_id']) && $_POST['arac_id'] !== '' ? intval($_POST['arac_id']) : null;
+                
+                $baslangic = null;
+                if (!empty($_POST['baslangic'])) {
+                    $d = DateTime::createFromFormat('d.m.Y', $_POST['baslangic']);
+                    if ($d) $baslangic = $d->format('Y-m-d');
+                }
+                $bitis = null;
+                if (!empty($_POST['bitis'])) {
+                    $d = DateTime::createFromFormat('d.m.Y', $_POST['bitis']);
+                    if ($d) $bitis = $d->format('Y-m-d');
+                }
+                
+                if (!$baslangic) $baslangic = date('Y-m-01');
+                if (!$bitis) $bitis = date('Y-m-t');
 
-                $yakitOzet = $Yakit->getAylikOzet($yil, $ay, $arac_id);
-                $kmOzet = $Km->getAylikOzet($yil, $ay, $arac_id);
-                $genelYakitStats = $Yakit->getStats($yil, $ay);
-                $genelKmStats = $Km->getStats($yil, $ay);
+                $yakitOzet = $Yakit->getRangeOzet($baslangic, $bitis, $arac_id);
+                $kmOzet = $Km->getRangeOzet($baslangic, $bitis, $arac_id);
+                $genelYakitStats = $Yakit->getStats(null, null, $baslangic, $bitis, $arac_id);
+                $genelKmStats = $Km->getStats(null, null, $baslangic, $bitis, $arac_id);
 
                 echo json_encode([
                     'status' => 'success',

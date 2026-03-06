@@ -572,7 +572,7 @@ if (Gate::allows("ana_sayfa")) {
     if (\App\Service\Gate::allows("talepler")) {
         ob_start(); ?>
         <div class="col-md-2 widget-item" id="widget-bekleyen-talepler">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card"
                 style="--card-color: #f6c23e; border-bottom: 3px solid var(--card-color) !important; --delay: 0.6s">
                 <div class="card-body p-3 pb-2">
                     <div class="icon-label-container">
@@ -603,7 +603,7 @@ if (Gate::allows("ana_sayfa")) {
     ob_start(); ?>
     <div class="col-md-2 widget-item" id="widget-gec-kalanlar">
         <a href="index.php?p=personel-takip/list&tab=tabGecKalanlar" class="text-decoration-none">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+            <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card"
                 style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important; --delay: 0.65s">
                 <div class="card-body p-3 pb-2">
                     <div class="icon-label-container">
@@ -625,7 +625,7 @@ if (Gate::allows("ana_sayfa")) {
 
     ob_start(); ?>
     <div class="col-md-2 widget-item" id="widget-nobetciler">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card"
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card"
             style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important; --delay: 0.75s">
             <div class="card-body p-3">
                 <div class="icon-label-container">
@@ -692,7 +692,7 @@ if (Gate::allows("ana_sayfa")) {
 
     ob_start(); ?>
     <div class="col-md-2 widget-item" id="widget-gunluk-muhurleme">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative"
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
             style="--card-color: #858796; border-bottom: 3px solid var(--card-color) !important; --delay: 0.7s">
             <div class="card-body p-3 pb-2">
                 <div class="icon-label-container d-flex justify-content-between align-items-start">
@@ -743,7 +743,7 @@ if (Gate::allows("ana_sayfa")) {
 
     ob_start(); ?>
     <div class="col-md-2 widget-item" id="widget-gunluk-kesme-acma">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative"
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
             style="--card-color: #e74a3b; border-bottom: 3px solid var(--card-color) !important; --delay: 0.9s">
             <div class="card-body p-3 pb-2">
                 <div class="icon-label-container d-flex justify-content-between align-items-start">
@@ -792,7 +792,7 @@ if (Gate::allows("ana_sayfa")) {
 
     ob_start(); ?>
     <div class="col-md-2 widget-item" id="widget-gunluk-endeks-okuma">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative"
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
             style="--card-color: #36b9cc; border-bottom: 3px solid var(--card-color) !important; --delay: 1.0s">
             <div class="card-body p-3 pb-2">
                 <div class="icon-label-container d-flex justify-content-between align-items-start">
@@ -840,7 +840,7 @@ if (Gate::allows("ana_sayfa")) {
 
     ob_start(); ?>
     <div class="col-md-2 widget-item" id="widget-gunluk-sayac-degisimi">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative"
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
             style="--card-color: #1cc88a; border-bottom: 3px solid var(--card-color) !important; --delay: 1.1s">
             <div class="card-body p-3 pb-2">
                 <div class="icon-label-container d-flex justify-content-between align-items-start">
@@ -889,7 +889,7 @@ if (Gate::allows("ana_sayfa")) {
 
     ob_start(); ?>
     <div class="col-md-2 widget-item" id="widget-kacak-sayisi">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative"
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
             style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important; --delay: 1.15s">
             <div class="card-body p-3 pb-2">
                 <div class="icon-label-container d-flex justify-content-between align-items-start">
@@ -4332,35 +4332,111 @@ if (Gate::allows("ana_sayfa")) {
                     return new Intl.NumberFormat('tr-TR').format(n || 0);
                 }
 
+                // Satır arka plan rengini trend yüzdesine göre belirle
+                function getRowBgByTrend(pct) {
+                    if (pct <= -20) return 'rgba(239, 68, 68, 0.08)';   // Kırmızı — ciddi düşüş
+                    if (pct <= -10) return 'rgba(245, 158, 11, 0.07)';  // Turuncu — orta düşüş
+                    if (pct < 0)   return 'rgba(251, 191, 36, 0.05)';   // Hafif sarı — az düşüş
+                    if (pct > 10)  return 'rgba(16, 185, 129, 0.06)';   // Yeşil — iyi artış
+                    return 'transparent';
+                }
+
+                // Sol kenar çizgi rengini trend yüzdesine göre belirle
+                function getLeftBorderByTrend(pct) {
+                    if (pct <= -20) return '3px solid #ef4444';
+                    if (pct <= -10) return '3px solid #f59e0b';
+                    if (pct < 0)   return '3px solid #fbbf24';
+                    if (pct > 10)  return '3px solid #10b981';
+                    return '3px solid transparent';
+                }
+
+                // Trend badge HTML'i (pill formatında)
+                function getTrendBadge(trend) {
+                    if (!trend.icon) return '<span class="text-muted" style="font-size: 12px;">-</span>';
+                    const pct = trend.pct;
+                    let bgColor, textColor, borderColor;
+                    if (pct <= -20) {
+                        bgColor = 'rgba(239, 68, 68, 0.12)'; textColor = '#dc2626'; borderColor = 'rgba(239, 68, 68, 0.3)';
+                    } else if (pct <= -10) {
+                        bgColor = 'rgba(245, 158, 11, 0.12)'; textColor = '#d97706'; borderColor = 'rgba(245, 158, 11, 0.3)';
+                    } else if (pct < 0) {
+                        bgColor = 'rgba(251, 191, 36, 0.1)'; textColor = '#b45309'; borderColor = 'rgba(251, 191, 36, 0.3)';
+                    } else if (pct > 0) {
+                        bgColor = 'rgba(16, 185, 129, 0.1)'; textColor = '#059669'; borderColor = 'rgba(16, 185, 129, 0.3)';
+                    } else {
+                        bgColor = 'rgba(148, 163, 184, 0.1)'; textColor = '#64748b'; borderColor = 'rgba(148, 163, 184, 0.3)';
+                    }
+                    return `<span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; background: ${bgColor}; color: ${textColor}; border: 1px solid ${borderColor}; white-space: nowrap;"><i class="bx ${trend.icon}" style="font-size: 14px;"></i>${trend.text}</span>`;
+                }
+
+                // Performans seviye dot'u
+                function getPerfDot(pct) {
+                    if (pct <= -20) return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-right:6px;box-shadow:0 0 4px rgba(239,68,68,0.4);animation:pulse-dot 2s infinite;" title="Kritik Düşüş"></span>';
+                    if (pct <= -10) return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:6px;" title="Düşüş"></span>';
+                    if (pct < 0)   return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fbbf24;margin-right:6px;" title="Hafif Düşüş"></span>';
+                    if (pct > 10)  return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;margin-right:6px;" title="İyi Performans"></span>';
+                    if (pct > 0)   return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#6ee7b7;margin-right:6px;" title="Hafif Artış"></span>';
+                    return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#cbd5e1;margin-right:6px;" title="Değişim Yok"></span>';
+                }
+
+                // Mini bar HTML'i
+                function getMiniBar(value, maxValue, color) {
+                    const pctWidth = maxValue > 0 ? Math.max(2, (value / maxValue) * 100) : 0;
+                    return `<div style="width: 60px; height: 4px; background: #e2e8f0; border-radius: 2px; margin-top: 4px; overflow: hidden;">
+                        <div style="height: 100%; width: ${pctWidth}%; background: ${color}; border-radius: 2px; transition: width 0.6s ease;"></div>
+                    </div>`;
+                }
+
+                // Özet kartları oluştur
+                function buildSummaryCards(items, type) {
+                    if (items.length === 0) return '';
+                    // En düşük ve en yüksek 2'şer bölge/personel
+                    const sorted = [...items].sort((a, b) => a.trendPct - b.trendPct);
+                    const worst = sorted.filter(x => x.trendPct < 0).slice(0, 3);
+                    const best = sorted.filter(x => x.trendPct > 0).slice(-3).reverse();
+
+                    let html = '<div class="d-flex flex-wrap gap-2 px-3 py-3" style="border-bottom: 1px solid #f1f5f9; background: linear-gradient(135deg, #fafbff 0%, #f8fafc 100%);">';
+                    
+                    // En düşük performans kartları
+                    if (worst.length > 0) {
+                        html += '<div class="d-flex align-items-center gap-2 flex-wrap flex-grow-1">';
+                        html += '<div class="d-flex align-items-center gap-1 me-2" style="white-space: nowrap;"><i class="bx bx-down-arrow-circle" style="color: #ef4444; font-size: 16px;"></i><span style="font-size: 11px; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 0.05em;">Düşük Performans</span></div>';
+                        worst.forEach(w => {
+                            html += `<div style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 8px; background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); font-size: 12px; animation: fadeIn 0.4s;">`;
+                            html += `<span style="font-weight: 600; color: #334155;">${w.name}</span>`;
+                            html += `<span style="font-weight: 800; color: #dc2626; font-size: 13px;">${w.trendText}</span>`;
+                            html += `</div>`;
+                        });
+                        html += '</div>';
+                    }
+
+                    // En yüksek performans kartları
+                    if (best.length > 0) {
+                        html += '<div class="d-flex align-items-center gap-2 flex-wrap ms-auto">';
+                        html += '<div class="d-flex align-items-center gap-1 me-2" style="white-space: nowrap;"><i class="bx bx-up-arrow-circle" style="color: #10b981; font-size: 16px;"></i><span style="font-size: 11px; font-weight: 700; color: #065f46; text-transform: uppercase; letter-spacing: 0.05em;">Yüksek Performans</span></div>';
+                        best.forEach(b => {
+                            html += `<div style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 8px; background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.15); font-size: 12px; animation: fadeIn 0.4s;">`;
+                            html += `<span style="font-weight: 600; color: #334155;">${b.name}</span>`;
+                            html += `<span style="font-weight: 800; color: #059669; font-size: 13px;">${b.trendText}</span>`;
+                            html += `</div>`;
+                        });
+                        html += '</div>';
+                    }
+
+                    html += '</div>';
+                    return html;
+                }
+
                 function renderBolgeView(bolgeData, periods) {
                     const periodLabels = periods.map(p => p.label);
-                    let html = '';
-
-                    html += '<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">';
-                    html += '<table class="table table-hover table-nowrap align-middle mb-0" style="font-size: 13px;">';
-
-                    // Header
-                    html += '<thead style="background: #f8fafc; position: sticky; top: 0; z-index: 5;">';
-                    html += '<tr>';
-                    html += '<th style="padding: 10px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700; min-width: 160px;">Bölge</th>';
-                    periodLabels.forEach((label, idx) => {
-                        const isCurrent = periods[idx].is_current;
-                        const bgColor = isCurrent ? 'rgba(99,102,241,0.08)' : 'transparent';
-                        html += `<th class="text-center" style="padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: ${isCurrent ? '#6366f1' : '#64748b'}; font-weight: 700; background: ${bgColor}; min-width: 120px;">${label}</th>`;
-                    });
-                    html += '<th class="text-center" style="padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700; min-width: 100px;">Değişim</th>';
-                    html += '<th style="width: 40px;"></th>';
-                    html += '</tr>';
-                    html += '</thead>';
-
-                    html += '<tbody>';
-                    const bolgeKeys = Object.keys(bolgeData).sort();
-
-                    // Firma toplamları
+                    
+                    // Önce tüm bölgelerin trend verilerini topla ve sırala
+                    let bolgeEntries = [];
                     let firmaToplam = {};
+                    let maxLastVal = 0;
                     periodLabels.forEach(label => { firmaToplam[label] = 0; });
 
-                    bolgeKeys.forEach((bolge, bIdx) => {
+                    Object.keys(bolgeData).forEach(bolge => {
                         const bData = bolgeData[bolge];
                         const periodValues = [];
                         periodLabels.forEach(label => {
@@ -4372,40 +4448,91 @@ if (Gate::allows("ana_sayfa")) {
                         const lastVal = periodValues[periodValues.length - 1];
                         const prevVal = periodValues.length > 1 ? periodValues[periodValues.length - 2] : 0;
                         const trend = getTrendInfo(lastVal, prevVal);
-                        const hasPersonel = bData.personeller && Object.keys(bData.personeller).length > 0;
+                        if (lastVal > maxLastVal) maxLastVal = lastVal;
 
-                        html += `<tr class="bolge-row cursor-pointer" data-bolge="${bIdx}" style="border-bottom: 1px solid #f1f5f9; transition: all 0.2s;" ${hasPersonel ? `onclick="toggleBolgeDetail(${bIdx})"` : ''}>`;
-                        html += `<td style="padding: 10px 16px;">`;
+                        bolgeEntries.push({
+                            bolge: bolge,
+                            bData: bData,
+                            periodValues: periodValues,
+                            lastVal: lastVal,
+                            trend: trend,
+                            trendPct: trend.pct,
+                            trendText: trend.text,
+                            name: bolge
+                        });
+                    });
+
+                    // Performansa göre sırala (en düşük değişim üstte)
+                    bolgeEntries.sort((a, b) => a.trendPct - b.trendPct);
+
+                    let html = '';
+
+                    // Pulse animasyonu için CSS
+                    html += '<style>@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.5;transform:scale(1.3);}}</style>';
+
+                    // Özet kartlar
+                    html += buildSummaryCards(bolgeEntries, 'bolge');
+
+                    // Tablo
+                    html += '<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">';
+                    html += '<table class="table table-nowrap align-middle mb-0" style="font-size: 13px;">';
+
+                    // Header — koyu tema
+                    html += '<thead style="position: sticky; top: 0; z-index: 5;">';
+                    html += '<tr style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%);">';
+                    html += '<th style="padding: 12px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; font-weight: 700; min-width: 180px; border-bottom: none;">BÖLGE</th>';
+                    periodLabels.forEach((label, idx) => {
+                        const isCurrent = periods[idx].is_current;
+                        html += `<th class="text-center" style="padding: 12px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: ${isCurrent ? '#a5b4fc' : '#94a3b8'}; font-weight: 700; min-width: 130px; border-bottom: none; ${isCurrent ? 'background: rgba(99,102,241,0.15);' : ''}">${label}</th>`;
+                    });
+                    html += '<th class="text-center" style="padding: 12px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; font-weight: 700; min-width: 120px; border-bottom: none;">DEĞİŞİM</th>';
+                    html += '<th style="width: 40px; border-bottom: none;"></th>';
+                    html += '</tr>';
+                    html += '</thead>';
+
+                    html += '<tbody>';
+
+                    bolgeEntries.forEach((entry, bIdx) => {
+                        const { bolge, bData, periodValues, trend } = entry;
+                        const hasPersonel = bData.personeller && Object.keys(bData.personeller).length > 0;
+                        const rowBg = getRowBgByTrend(trend.pct);
+                        const leftBorder = getLeftBorderByTrend(trend.pct);
+                        const pSayisi = bData.periods[periodLabels[periodLabels.length - 1]]?.personel_sayisi || 0;
+
+                        html += `<tr class="bolge-row cursor-pointer" data-bolge="${bIdx}" style="border-bottom: 1px solid #f1f5f9; transition: all 0.25s; background: ${rowBg}; border-left: ${leftBorder};" ${hasPersonel ? `onclick="toggleBolgeDetail(${bIdx})"` : ''} onmouseover="this.style.filter='brightness(0.97)'" onmouseout="this.style.filter='none'">`;
+
+                        // Bölge adı + performans dot
+                        html += `<td style="padding: 12px 16px;">`;
                         html += `<div class="d-flex align-items-center gap-2">`;
                         if (hasPersonel) {
-                            html += `<i class="bx bx-chevron-right bolge-chevron-${bIdx} text-muted" style="font-size: 14px; transition: transform 0.2s;"></i>`;
+                            html += `<i class="bx bx-chevron-right bolge-chevron-${bIdx} text-muted" style="font-size: 16px; transition: transform 0.2s;"></i>`;
                         } else {
-                            html += `<span style="width: 14px;"></span>`;
+                            html += `<span style="width: 16px;"></span>`;
                         }
+                        html += getPerfDot(trend.pct);
                         html += `<div>`;
-                        html += `<span class="fw-semibold" style="color: #334155;">${bolge}</span>`;
-                        const pSayisi = bData.periods[periodLabels[periodLabels.length - 1]]?.personel_sayisi || 0;
+                        html += `<span class="fw-bold" style="color: #1e293b; font-size: 13px;">${bolge}</span>`;
                         if (pSayisi > 0) {
                             html += `<br><span class="text-muted" style="font-size: 10px;">${pSayisi} personel</span>`;
                         }
                         html += `</div></div></td>`;
 
+                        // Dönem değerleri + mini bar
                         periodValues.forEach((val, pIdx) => {
                             const isCurrent = periods[pIdx].is_current;
-                            const bgColor = isCurrent ? 'rgba(99,102,241,0.04)' : 'transparent';
-                            html += `<td class="text-center" style="padding: 10px 12px; background: ${bgColor};">`;
-                            html += `<span class="fw-bold" style="color: #1e293b; font-size: 14px;">${formatNumber(val)}</span>`;
+                            const cellBg = isCurrent ? 'rgba(99,102,241,0.04)' : 'transparent';
+                            const barColor = isCurrent ? '#6366f1' : '#94a3b8';
+                            html += `<td class="text-center" style="padding: 10px 12px; background: ${cellBg};">`;
+                            html += `<span class="fw-bold" style="color: #1e293b; font-size: 15px;">${formatNumber(val)}</span>`;
+                            html += `<div class="d-flex justify-content-center">${getMiniBar(val, maxLastVal, barColor)}</div>`;
                             html += `</td>`;
                         });
 
-                        // Trend
+                        // Trend badge
                         html += `<td class="text-center" style="padding: 10px 12px;">`;
-                        if (trend.icon) {
-                            html += `<span class="${trend.class} fw-bold" style="font-size: 13px;"><i class="bx ${trend.icon} me-1"></i>${trend.text}</span>`;
-                        } else {
-                            html += `<span class="text-muted">-</span>`;
-                        }
+                        html += getTrendBadge(trend);
                         html += `</td>`;
+
                         html += `<td style="padding: 10px 8px;">`;
                         if (hasPersonel) html += `<i class="bx bx-expand-vertical text-muted" style="font-size: 12px; opacity: 0.5;"></i>`;
                         html += `</td>`;
@@ -4414,20 +4541,28 @@ if (Gate::allows("ana_sayfa")) {
                         // Personel detay satırları (gizli)
                         if (hasPersonel) {
                             const personeller = bData.personeller;
-                            Object.keys(personeller).forEach(pKey => {
+                            // Personelleri de trend'e göre sırala
+                            const pEntries = Object.keys(personeller).map(pKey => {
                                 const p = personeller[pKey];
                                 const pPeriods = [];
                                 periodLabels.forEach(l => pPeriods.push(p.periods[l]?.toplam || 0));
                                 const pLastVal = pPeriods[pPeriods.length - 1];
                                 const pPrevVal = pPeriods.length > 1 ? pPeriods[pPeriods.length - 2] : 0;
                                 const pTrend = getTrendInfo(pLastVal, pPrevVal);
+                                return { p, pPeriods, pTrend };
+                            });
+                            pEntries.sort((a, b) => a.pTrend.pct - b.pTrend.pct);
 
-                                html += `<tr class="bolge-detail-${bIdx}" style="display: none; background: #fafbfc; border-bottom: 1px solid #f1f5f9; animation: fadeInDown 0.2s;">`;
-                                html += `<td style="padding: 8px 16px 8px 48px;">`;
+                            pEntries.forEach(({ p, pPeriods, pTrend }) => {
+                                const detailRowBg = getRowBgByTrend(pTrend.pct);
+                                html += `<tr class="bolge-detail-${bIdx}" style="display: none; background: ${detailRowBg || '#fafbfc'}; border-bottom: 1px solid #f1f5f9; border-left: 3px solid #e2e8f0; animation: fadeInDown 0.2s;">`;
+                                html += `<td style="padding: 8px 16px 8px 56px;">`;
+                                html += `<div class="d-flex align-items-center">`;
+                                html += getPerfDot(pTrend.pct);
                                 html += `<div>`;
-                                html += `<span style="color: #475569; font-size: 12px;">${p.personel_adi}</span>`;
+                                html += `<span style="color: #475569; font-size: 12px; font-weight: 600;">${p.personel_adi}</span>`;
                                 html += `<br><span class="text-muted" style="font-size: 10px;">${p.ekip_adi}</span>`;
-                                html += `</div></td>`;
+                                html += `</div></div></td>`;
 
                                 pPeriods.forEach((val, ppIdx) => {
                                     const isCurrent = periods[ppIdx].is_current;
@@ -4437,12 +4572,8 @@ if (Gate::allows("ana_sayfa")) {
                                     html += `</td>`;
                                 });
 
-                                html += `<td class="text-center" style="padding: 8px 12px; font-size: 11px;">`;
-                                if (pTrend.icon) {
-                                    html += `<span class="${pTrend.class}"><i class="bx ${pTrend.icon} me-1"></i>${pTrend.text}</span>`;
-                                } else {
-                                    html += `<span class="text-muted">-</span>`;
-                                }
+                                html += `<td class="text-center" style="padding: 8px 12px;">`;
+                                html += getTrendBadge(pTrend);
                                 html += `</td>`;
                                 html += `<td></td>`;
                                 html += `</tr>`;
@@ -4451,101 +4582,136 @@ if (Gate::allows("ana_sayfa")) {
                     });
 
                     // Firma toplam footer
-                    html += '<tr style="background: linear-gradient(135deg, #f0f1ff 0%, #e8eaff 100%); border-top: 2px solid #c7d2fe; font-weight: 700;">';
-                    html += '<td style="padding: 12px 16px; color: #4338ca; font-size: 13px;"><i class="bx bx-buildings me-2"></i>GENEL TOPLAM</td>';
+                    html += '<tr style="background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); border-top: 2px solid #a5b4fc; font-weight: 700;">';
+                    html += '<td style="padding: 14px 16px; color: #3730a3; font-size: 13px; border-left: 3px solid #6366f1;"><i class="bx bx-buildings me-2"></i>GENEL TOPLAM</td>';
                     periodLabels.forEach((label, idx) => {
                         const isCurrent = periods[idx].is_current;
                         const bgColor = isCurrent ? 'rgba(99,102,241,0.12)' : 'transparent';
-                        html += `<td class="text-center" style="padding: 12px 12px; color: #312e81; font-size: 15px; background: ${bgColor};">${formatNumber(firmaToplam[label])}</td>`;
+                        html += `<td class="text-center" style="padding: 14px 12px; color: #312e81; font-size: 16px; font-weight: 800; background: ${bgColor};">${formatNumber(firmaToplam[label])}</td>`;
                     });
                     const fLastVal = firmaToplam[periodLabels[periodLabels.length - 1]];
                     const fPrevVal = periodLabels.length > 1 ? firmaToplam[periodLabels[periodLabels.length - 2]] : 0;
                     const fTrend = getTrendInfo(fLastVal, fPrevVal);
-                    html += `<td class="text-center" style="padding: 12px 12px;">`;
-                    if (fTrend.icon) {
-                        html += `<span class="${fTrend.class} fw-bold" style="font-size: 14px;"><i class="bx ${fTrend.icon} me-1"></i>${fTrend.text}</span>`;
-                    }
+                    html += `<td class="text-center" style="padding: 14px 12px;">`;
+                    html += getTrendBadge(fTrend);
                     html += `</td><td></td></tr>`;
 
                     html += '</tbody></table></div>';
 
-                    // Küçük açıklama 
-                    html += '<div class="px-3 py-2 d-flex align-items-center gap-3" style="border-top: 1px solid #f1f5f9; background: #fafbfc;">';
+                    // Alt açıklama
+                    html += '<div class="px-3 py-2 d-flex align-items-center gap-3" style="border-top: 1px solid #e2e8f0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">';
                     html += '<span style="font-size: 10px; color: #94a3b8;"><i class="bx bx-info-circle me-1"></i>Her ayın 1\'i ile ' + endeksCompData.gun + '\'ı arası abone okuma sayıları karşılaştırılmaktadır.</span>';
-                    html += '<a href="index.php?p=puantaj/raporlar&tab=karsilastirma" class="ms-auto btn btn-sm btn-outline-primary" style="font-size: 11px; border-radius: 6px;"><i class="bx bx-right-arrow-alt me-1"></i>Detaylı Rapor</a>';
-                    html += '</div>';
+                    html += '<div class="ms-auto d-flex align-items-center gap-3">';
+                    html += '<div class="d-flex align-items-center gap-2" style="font-size: 10px; color: #64748b;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;"></span>≤-20%</div>';
+                    html += '<div class="d-flex align-items-center gap-2" style="font-size: 10px; color: #64748b;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;"></span>-10~20%</div>';
+                    html += '<div class="d-flex align-items-center gap-2" style="font-size: 10px; color: #64748b;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;"></span>>+10%</div>';
+                    html += '<a href="index.php?p=puantaj/raporlar&tab=karsilastirma" class="btn btn-sm btn-primary" style="font-size: 11px; border-radius: 6px; padding: 4px 14px; font-weight: 600;"><i class="bx bx-right-arrow-alt me-1"></i>Detaylı Rapor</a>';
+                    html += '</div></div>';
 
                     $('#endeksCompBolge').html(html);
                 }
 
                 function renderPersonelView(personelData, periods) {
                     const periodLabels = periods.map(p => p.label);
-                    let html = '';
 
-                    html += '<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">';
-                    html += '<table class="table table-hover table-nowrap align-middle mb-0" style="font-size: 13px;">';
+                    // Personel trend verilerini topla
+                    let personelEntries = [];
+                    let maxPersonelVal = 0;
 
-                    html += '<thead style="background: #f8fafc; position: sticky; top: 0; z-index: 5;">';
-                    html += '<tr>';
-                    html += '<th style="padding: 10px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700; min-width: 180px;">Personel</th>';
-                    html += '<th style="padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700; min-width: 100px;">Bölge</th>';
-                    periodLabels.forEach((label, idx) => {
-                        const isCurrent = periods[idx].is_current;
-                        const bgColor = isCurrent ? 'rgba(99,102,241,0.08)' : 'transparent';
-                        html += `<th class="text-center" style="padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: ${isCurrent ? '#6366f1' : '#64748b'}; font-weight: 700; background: ${bgColor}; min-width: 110px;">${label}</th>`;
-                    });
-                    html += '<th class="text-center" style="padding: 10px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700; min-width: 90px;">Değişim</th>';
-                    html += '</tr>';
-                    html += '</thead>';
-
-                    html += '<tbody>';
-
-                    // Personel listesini sırala (toplam azalan)
-                    const sortedKeys = Object.keys(personelData).sort((a, b) => {
-                        const lastLabel = periodLabels[periodLabels.length - 1];
-                        const aVal = personelData[a].periods[lastLabel]?.toplam || 0;
-                        const bVal = personelData[b].periods[lastLabel]?.toplam || 0;
-                        return bVal - aVal;
-                    });
-
-                    sortedKeys.forEach(pKey => {
+                    Object.keys(personelData).forEach(pKey => {
                         const p = personelData[pKey];
                         const pPeriods = [];
                         periodLabels.forEach(l => pPeriods.push(p.periods[l]?.toplam || 0));
                         const pLastVal = pPeriods[pPeriods.length - 1];
                         const pPrevVal = pPeriods.length > 1 ? pPeriods[pPeriods.length - 2] : 0;
                         const pTrend = getTrendInfo(pLastVal, pPrevVal);
+                        if (pLastVal > maxPersonelVal) maxPersonelVal = pLastVal;
 
-                        html += `<tr style="border-bottom: 1px solid #f1f5f9;">`;
-                        html += `<td style="padding: 10px 16px;">`;
-                        html += `<span class="fw-semibold" style="color: #334155; font-size: 12px;">${p.personel_adi}</span>`;
+                        personelEntries.push({
+                            p: p,
+                            pPeriods: pPeriods,
+                            pLastVal: pLastVal,
+                            trend: pTrend,
+                            trendPct: pTrend.pct,
+                            trendText: pTrend.text,
+                            name: p.personel_adi
+                        });
+                    });
+
+                    // En düşük performanslılar üstte
+                    personelEntries.sort((a, b) => a.trendPct - b.trendPct);
+
+                    let html = '';
+
+                    // Özet kartlar
+                    html += buildSummaryCards(personelEntries, 'personel');
+
+                    // Tablo
+                    html += '<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">';
+                    html += '<table class="table table-nowrap align-middle mb-0" style="font-size: 13px;">';
+
+                    // Header — koyu tema
+                    html += '<thead style="position: sticky; top: 0; z-index: 5;">';
+                    html += '<tr style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%);">';
+                    html += '<th style="padding: 12px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; font-weight: 700; min-width: 180px; border-bottom: none;">PERSONEL</th>';
+                    html += '<th style="padding: 12px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; font-weight: 700; min-width: 100px; border-bottom: none;">BÖLGE</th>';
+                    periodLabels.forEach((label, idx) => {
+                        const isCurrent = periods[idx].is_current;
+                        html += `<th class="text-center" style="padding: 12px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: ${isCurrent ? '#a5b4fc' : '#94a3b8'}; font-weight: 700; min-width: 130px; border-bottom: none; ${isCurrent ? 'background: rgba(99,102,241,0.15);' : ''}">${label}</th>`;
+                    });
+                    html += '<th class="text-center" style="padding: 12px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; font-weight: 700; min-width: 120px; border-bottom: none;">DEĞİŞİM</th>';
+                    html += '</tr>';
+                    html += '</thead>';
+
+                    html += '<tbody>';
+
+                    personelEntries.forEach(entry => {
+                        const { p, pPeriods, trend } = entry;
+                        const rowBg = getRowBgByTrend(trend.pct);
+                        const leftBorder = getLeftBorderByTrend(trend.pct);
+
+                        html += `<tr style="border-bottom: 1px solid #f1f5f9; transition: all 0.25s; background: ${rowBg}; border-left: ${leftBorder};" onmouseover="this.style.filter='brightness(0.97)'" onmouseout="this.style.filter='none'">`;
+
+                        // Personel adı + perf dot
+                        html += `<td style="padding: 12px 16px;">`;
+                        html += `<div class="d-flex align-items-center">`;
+                        html += getPerfDot(trend.pct);
+                        html += `<div>`;
+                        html += `<span class="fw-bold" style="color: #1e293b; font-size: 12px;">${p.personel_adi}</span>`;
                         html += `<br><span class="text-muted" style="font-size: 10px;">${p.ekip_adi}</span>`;
-                        html += `</td>`;
-                        html += `<td style="padding: 10px 12px;"><span class="badge bg-light text-dark" style="font-size: 10px; font-weight: 500;">${p.bolge}</span></td>`;
+                        html += `</div></div></td>`;
 
+                        // Bölge
+                        html += `<td style="padding: 12px 12px;"><span class="badge" style="font-size: 10px; font-weight: 600; background: rgba(99,102,241,0.08); color: #4338ca; border: 1px solid rgba(99,102,241,0.15); padding: 4px 8px; border-radius: 6px;">${p.bolge}</span></td>`;
+
+                        // Dönem değerleri + mini bar
                         pPeriods.forEach((val, ppIdx) => {
                             const isCurrent = periods[ppIdx].is_current;
                             const bgColor = isCurrent ? 'rgba(99,102,241,0.04)' : 'transparent';
+                            const barColor = isCurrent ? '#6366f1' : '#94a3b8';
                             html += `<td class="text-center" style="padding: 10px 12px; background: ${bgColor};">`;
-                            html += `<span class="fw-bold" style="color: #1e293b; font-size: 13px;">${formatNumber(val)}</span>`;
+                            html += `<span class="fw-bold" style="color: #1e293b; font-size: 14px;">${formatNumber(val)}</span>`;
+                            html += `<div class="d-flex justify-content-center">${getMiniBar(val, maxPersonelVal, barColor)}</div>`;
                             html += `</td>`;
                         });
 
+                        // Trend badge
                         html += `<td class="text-center" style="padding: 10px 12px;">`;
-                        if (pTrend.icon) {
-                            html += `<span class="${pTrend.class} fw-bold" style="font-size: 12px;"><i class="bx ${pTrend.icon} me-1"></i>${pTrend.text}</span>`;
-                        } else {
-                            html += `<span class="text-muted">-</span>`;
-                        }
+                        html += getTrendBadge(trend);
                         html += `</td>`;
                         html += `</tr>`;
                     });
 
                     html += '</tbody></table></div>';
 
-                    html += '<div class="px-3 py-2" style="border-top: 1px solid #f1f5f9; background: #fafbfc;">';
-                    html += '<span style="font-size: 10px; color: #94a3b8;"><i class="bx bx-info-circle me-1"></i>Personeller mevcut ay okuma sayısına göre sıralanmıştır.</span>';
-                    html += '</div>';
+                    // Alt açıklama
+                    html += '<div class="px-3 py-2 d-flex align-items-center" style="border-top: 1px solid #e2e8f0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">';
+                    html += '<span style="font-size: 10px; color: #94a3b8;"><i class="bx bx-info-circle me-1"></i>Personeller performans değişimine göre sıralanmıştır (en düşük performans üstte).</span>';
+                    html += '<div class="ms-auto d-flex align-items-center gap-3">';
+                    html += '<div class="d-flex align-items-center gap-2" style="font-size: 10px; color: #64748b;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;"></span>≤-20%</div>';
+                    html += '<div class="d-flex align-items-center gap-2" style="font-size: 10px; color: #64748b;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;"></span>-10~20%</div>';
+                    html += '<div class="d-flex align-items-center gap-2" style="font-size: 10px; color: #64748b;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;"></span>>+10%</div>';
+                    html += '</div></div>';
 
                     $('#endeksCompPersonel').html(html);
                 }

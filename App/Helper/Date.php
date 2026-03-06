@@ -39,7 +39,19 @@ class Date
     {
         if (empty($date))
             return null;
-        return date('Y-m-d', strtotime($date));
+        
+        $date = trim($date);
+        
+        // d.m.Y formatını garantiye alalım (PHP dots (.) görünce DMY sanır ama bazen locale göre değişebilir)
+        if (strpos($date, '.') !== false) {
+            $dt = \DateTime::createFromFormat('d.m.Y', $date);
+            if ($dt) {
+                return $dt->format('Y-m-d');
+            }
+        }
+        
+        $time = strtotime($date);
+        return $time ? date('Y-m-d', $time) : null;
     }
 
     public static function engtodt($date)

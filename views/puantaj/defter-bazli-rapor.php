@@ -626,6 +626,192 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         background-color: #2a3042 !important;
     }
 
+    /* ======= COLUMN FILTER POPUP ======= */
+    .sub-header {
+        position: relative;
+    }
+
+    .col-filter-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        border: none;
+        background: var(--bs-primary, #556ee6);
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 11px;
+        color: #fff !important;
+        margin-right: 6px;
+        padding: 0;
+        vertical-align: middle;
+        transition: all 0.2s ease;
+        line-height: 1;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .col-filter-btn:hover {
+        background: #32394e;
+        transform: scale(1.1);
+        box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+    }
+
+    .col-filter-btn.col-filter-active {
+        background: #34c38f; /* Green for active */
+        box-shadow: 0 0 0 2px rgba(52, 195, 143, 0.3);
+    }
+
+    .col-filter-popup {
+        position: fixed;
+        z-index: 9999;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15), 0 4px 10px rgba(0,0,0,0.08);
+        padding: 12px;
+        min-width: 200px;
+        display: none;
+    }
+
+    .col-filter-popup.show {
+        display: block;
+        animation: filterPopupIn 0.15s ease-out;
+    }
+
+    @keyframes filterPopupIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .col-filter-popup .filter-popup-title {
+        font-size: 11px;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .col-filter-popup .filter-popup-title i {
+        font-size: 14px;
+        color: var(--bs-primary);
+    }
+
+    .col-filter-popup select {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 12px;
+        margin-bottom: 6px;
+        background: #f8fafc;
+        color: #334155;
+        cursor: pointer;
+        transition: border-color 0.2s;
+    }
+
+    .col-filter-popup select:focus {
+        border-color: var(--bs-primary);
+        outline: none;
+    }
+
+    .col-filter-popup input[type="number"] {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 12px;
+        margin-bottom: 8px;
+        transition: border-color 0.2s;
+        color: #334155;
+    }
+
+    .col-filter-popup input[type="number"]:focus {
+        border-color: var(--bs-primary);
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.1);
+    }
+
+    .col-filter-popup .filter-popup-actions {
+        display: flex;
+        gap: 6px;
+    }
+
+    .col-filter-popup .btn-filter-apply {
+        flex: 1;
+        padding: 5px 10px;
+        border: none;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        background: var(--bs-primary, #556ee6);
+        color: #fff;
+        transition: all 0.2s;
+    }
+
+    .col-filter-popup .btn-filter-apply:hover {
+        filter: brightness(1.1);
+    }
+
+    .col-filter-popup .btn-filter-clear {
+        padding: 5px 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 500;
+        cursor: pointer;
+        background: #f8fafc;
+        color: #64748b;
+        transition: all 0.2s;
+    }
+
+    .col-filter-popup .btn-filter-clear:hover {
+        background: #fee2e2;
+        color: #ef4444;
+        border-color: #fecaca;
+    }
+
+    [data-bs-theme="dark"] .col-filter-popup {
+        background: #2a3042;
+        border-color: #32394e;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+
+    [data-bs-theme="dark"] .col-filter-popup select,
+    [data-bs-theme="dark"] .col-filter-popup input[type="number"] {
+        background: #32394e;
+        border-color: #3b4565;
+        color: #eff2f7;
+    }
+
+    [data-bs-theme="dark"] .col-filter-popup .btn-filter-clear {
+        background: #32394e;
+        border-color: #3b4565;
+        color: #a6b0cf;
+    }
+
+    /* Active filter indicator badge on sub-header */
+    .filter-active-dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        background: #34c38f;
+        border-radius: 50%;
+        margin-left: 2px;
+        vertical-align: middle;
+        animation: filterDotPulse 1.5s infinite;
+    }
+
+    @keyframes filterDotPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+
     /* Fixed columns */
     #comparisonTable .fix-col-1 {
         position: sticky;
@@ -1016,6 +1202,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
             // Arama filtrelerini de sıfırla
             _searchFilters = { ilce_tipi: '', bolge: '', defter: '' };
+            _numericFilters = {};
             if (_tableData && _tableData.length > 0) {
                 renderTable(_tableData, _tableDonemler, true);
             }
@@ -1101,6 +1288,10 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             oran: true
         };
 
+        // ======= NUMERIC FILTER STATE =======
+        // Key: '{donem}_{field}', Value: { operator: '>' | '<' | '>=' | '<=' | '=', value: number }
+        let _numericFilters = {};
+
         // ======= TABLO OLUŞTURMA =======
         let _searchFilters = { ilce_tipi: '', bolge: '', defter: '' };
         let _searchTimeout;
@@ -1125,7 +1316,37 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 const ilceMatch = !_searchFilters.ilce_tipi || (item.ilce_tipi || '').toLowerCase().includes(_searchFilters.ilce_tipi.toLowerCase());
                 const bolgeMatch = !_searchFilters.bolge || (item.bolge || '').toLowerCase().includes(_searchFilters.bolge.toLowerCase());
                 const defterMatch = !_searchFilters.defter || (item.defter || '').toString().toLowerCase().includes(_searchFilters.defter.toLowerCase());
-                return ilceMatch && bolgeMatch && defterMatch;
+                if (!(ilceMatch && bolgeMatch && defterMatch)) return false;
+
+                // Sayısal kolon filtrelerini uygula
+                for (const filterKey in _numericFilters) {
+                    const f = _numericFilters[filterKey];
+                    if (!f || !f.operator || f.value === '' || f.value === null || f.value === undefined) continue;
+
+                    const parts = filterKey.split('_');
+                    const field = parts.pop(); // abone, okunan, gidilen, oran
+                    const donemKey = parts.join('_');
+                    const donemData = item.donemler[donemKey] || { abone: 0, okunan: 0, gidilen: 0 };
+
+                    let cellVal;
+                    if (field === 'oran') {
+                        cellVal = donemData.abone > 0 ? (donemData.okunan / donemData.abone) * 100 : 0;
+                    } else {
+                        cellVal = parseFloat(donemData[field]) || 0;
+                    }
+
+                    const filterVal = parseFloat(f.value);
+                    if (isNaN(filterVal)) continue;
+
+                    switch (f.operator) {
+                        case '>':  if (!(cellVal > filterVal)) return false; break;
+                        case '<':  if (!(cellVal < filterVal)) return false; break;
+                        case '>=': if (!(cellVal >= filterVal)) return false; break;
+                        case '<=': if (!(cellVal <= filterVal)) return false; break;
+                        case '=':  if (!(Math.abs(cellVal - filterVal) < 0.01)) return false; break;
+                    }
+                }
+                return true;
             });
 
             // Sıralamayı uygula
@@ -1207,16 +1428,24 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             html += `<th class="fix-col-2"><input type="text" class="form-control column-search" id="search_bolge" data-col="bolge" value="${_searchFilters.bolge || ''}" placeholder="BÖLGE"></th>`;
             html += `<th class="fix-col-3"><input type="text" class="form-control column-search" id="search_defter" data-col="defter" value="${_searchFilters.defter || ''}" placeholder="DEFTER"></th>`;
 
+            // Filter button helper
+            function filterBtn(colKey) {
+                const isActive = _numericFilters[colKey] && _numericFilters[colKey].operator && _numericFilters[colKey].value !== '' && _numericFilters[colKey].value !== null;
+                const activeClass = isActive ? 'col-filter-active' : '';
+                const dot = isActive ? '<span class="filter-active-dot"></span>' : '';
+                return `<button type="button" class="col-filter-btn ${activeClass}" data-filter-col="${colKey}" title="Filtrele"><i class="bx bx-filter-alt"></i></button>${dot}`;
+            }
+
             donemler.forEach(function (donem, idx) {
                 const isLast = idx === donemler.length - 1;
                 if (_visibleColumns.abone)
-                    html += `<th class="sub-header sub-header-abone sortable-header" data-sort-col="${donem}_abone">ABONE${sortIcon(donem + '_abone')}</th>`;
+                    html += `<th class="sub-header sub-header-abone sortable-header" data-sort-col="${donem}_abone">${filterBtn(donem + '_abone')} ABONE${sortIcon(donem + '_abone')}</th>`;
                 if (_visibleColumns.okunan)
-                    html += `<th class="sub-header sub-header-okunan sortable-header" data-sort-col="${donem}_okunan">OKUNAN${sortIcon(donem + '_okunan')}</th>`;
+                    html += `<th class="sub-header sub-header-okunan sortable-header" data-sort-col="${donem}_okunan">${filterBtn(donem + '_okunan')} OKUNAN${sortIcon(donem + '_okunan')}</th>`;
                 if (_visibleColumns.gidilen)
-                    html += `<th class="sub-header sub-header-gidilen sortable-header" data-sort-col="${donem}_gidilen">GİDİLEN${sortIcon(donem + '_gidilen')}</th>`;
+                    html += `<th class="sub-header sub-header-gidilen sortable-header" data-sort-col="${donem}_gidilen">${filterBtn(donem + '_gidilen')} GİDİLEN${sortIcon(donem + '_gidilen')}</th>`;
                 if (_visibleColumns.oran)
-                    html += `<th class="sub-header sub-header-oran sortable-header ${isLast ? 'period-end' : ''}" data-sort-col="${donem}_oran">ORAN %${sortIcon(donem + '_oran')}</th>`;
+                    html += `<th class="sub-header sub-header-oran sortable-header ${isLast ? 'period-end' : ''}" data-sort-col="${donem}_oran">${filterBtn(donem + '_oran')} ORAN %${sortIcon(donem + '_oran')}</th>`;
             });
             html += '</tr>';
 
@@ -1301,7 +1530,9 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             $('#reportTableWrapper').html(html);
 
             // Bind sort click handlers
-            $('#comparisonTable').on('click', '.sortable-header', function () {
+            $('#comparisonTable').on('click', '.sortable-header', function (e) {
+                // Filtre butonuna tıklandıysa sıralamayı tetikleme
+                if ($(e.target).closest('.col-filter-btn').length) return;
                 const col = $(this).data('sort-col');
                 if (_sortColumn === col) {
                     _sortDirection = _sortDirection === 'asc' ? 'desc' : 'asc';
@@ -1311,6 +1542,67 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 }
                 renderTable(_tableData, _tableDonemler, true);
             });
+
+            // Bind filter button click handlers directly to prevent sort bubbling
+            $('#comparisonTable .col-filter-btn').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                
+                // Trigger the existing handler via document delegation
+                // Or just call the show logic if it was a function.
+                // Since it's document delegated, we just let it bubble to document?
+                // Wait, if I use stopPropagation, it won't reach document!
+                // So I MUST open the popup here.
+                
+                openFilterPopup(this);
+            });
+        }
+
+        // ======= FILTER POPUP OPENER =======
+        function openFilterPopup(btn) {
+            const colKey = $(btn).data('filter-col');
+            const popup = $('#colFilterPopup');
+
+            // Aynı butona tekrar tıklanırsa kapat
+            if (_activeFilterCol === colKey && popup.hasClass('show')) {
+                popup.removeClass('show');
+                _activeFilterCol = null;
+                return;
+            }
+
+            _activeFilterCol = colKey;
+
+            // Sütun adını parse et
+            const parts = colKey.split('_');
+            const field = parts.pop();
+            const donem = parts.join('_');
+            const fieldNames = { abone: 'Abone', okunan: 'Okunan', gidilen: 'Gidilen', oran: 'Oran %' };
+            const formatted = donem.substring(0, 4) + '/' + donem.substring(4);
+            $('#colFilterPopupTitle').text(formatted + ' – ' + (fieldNames[field] || field));
+
+            // Mevcut filtreyi doldur
+            const existing = _numericFilters[colKey];
+            if (existing) {
+                $('#colFilterOperator').val(existing.operator || '');
+                $('#colFilterValue').val(existing.value !== null && existing.value !== undefined ? existing.value : '');
+            } else {
+                $('#colFilterOperator').val('');
+                $('#colFilterValue').val('');
+            }
+
+            // Pozisyon hesapla
+            const btnRect = btn.getBoundingClientRect();
+            let top = btnRect.bottom + 6;
+            let left = btnRect.left - 80;
+
+            // Ekran sınırları
+            if (left + 220 > window.innerWidth) left = window.innerWidth - 230;
+            if (left < 10) left = 10;
+            if (top + 200 > window.innerHeight) top = btnRect.top - 200;
+
+            popup.css({ top: top + 'px', left: left + 'px' }).addClass('show');
+            setTimeout(() => $('#colFilterOperator').focus(), 50);
         }
 
         // ======= ARAMA EVENT HANDLER =======
@@ -1339,6 +1631,80 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
         $(document).on('click', '.column-search', function (e) {
             e.stopPropagation(); // Sıralama işlemini tetiklemesin
+        });
+
+        // ======= KOLON FİLTRE POPUP =======
+        // Popup HTML – sayfaya bir kez ekle
+        $('body').append(`
+            <div class="col-filter-popup" id="colFilterPopup">
+                <div class="filter-popup-title"><i class="bx bx-filter-alt"></i> <span id="colFilterPopupTitle">Filtre</span></div>
+                <select id="colFilterOperator">
+                    <option value="">Operatör Seçin</option>
+                    <option value=">">Büyüktür ( > )</option>
+                    <option value="<">Küçüktür ( < )</option>
+                    <option value=">=">Büyük Eşit ( ≥ )</option>
+                    <option value="<=">Küçük Eşit ( ≤ )</option>
+                    <option value="=">Eşit ( = )</option>
+                </select>
+                <input type="number" id="colFilterValue" placeholder="Değer girin..." step="any">
+                <div class="filter-popup-actions">
+                    <button type="button" class="btn-filter-clear" id="colFilterClear"><i class="bx bx-trash-alt me-1"></i>Temizle</button>
+                    <button type="button" class="btn-filter-apply" id="colFilterApply"><i class="bx bx-check me-1"></i>Uygula</button>
+                </div>
+            </div>
+        `);
+
+        let _activeFilterCol = null;
+
+        // Filtre butonuna tıklama (delegated handler kept for safety, but primary is now direct in renderTable)
+        $(document).on('click', '.col-filter-btn', function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+            openFilterPopup(this);
+        });
+
+        // Uygula
+        $(document).on('click', '#colFilterApply', function () {
+            if (!_activeFilterCol) return;
+            const op = $('#colFilterOperator').val();
+            const val = $('#colFilterValue').val();
+
+            if (op && val !== '') {
+                _numericFilters[_activeFilterCol] = { operator: op, value: val };
+            } else {
+                delete _numericFilters[_activeFilterCol];
+            }
+
+            $('#colFilterPopup').removeClass('show');
+            _activeFilterCol = null;
+            renderTable(_tableData, _tableDonemler, true);
+        });
+
+        // Temizle
+        $(document).on('click', '#colFilterClear', function () {
+            if (_activeFilterCol) {
+                delete _numericFilters[_activeFilterCol];
+            }
+            $('#colFilterOperator').val('');
+            $('#colFilterValue').val('');
+            $('#colFilterPopup').removeClass('show');
+            _activeFilterCol = null;
+            renderTable(_tableData, _tableDonemler, true);
+        });
+
+        // Popup dışına tıklanınca kapat
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('#colFilterPopup, .col-filter-btn').length) {
+                $('#colFilterPopup').removeClass('show');
+                _activeFilterCol = null;
+            }
+        });
+
+        // Enter tuşu ile filtreyi uygula (popup içinde)
+        $(document).on('keypress', '#colFilterValue, #colFilterOperator', function (e) {
+            if (e.which === 13) {
+                $('#colFilterApply').trigger('click');
+            }
         });
 
         // ======= EXCEL İNDİR =======

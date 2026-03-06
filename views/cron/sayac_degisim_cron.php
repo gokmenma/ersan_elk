@@ -412,7 +412,8 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
                             takilan_sayacno = VALUES(takilan_sayacno),
                             kayit_tarihi = VALUES(kayit_tarihi),
                             tarih = VALUES(tarih),
-                            zimmet_dusuldu = VALUES(zimmet_dusuldu)";
+                            zimmet_dusuldu = VALUES(zimmet_dusuldu),
+                            guncelleme_tarihi = CURRENT_TIMESTAMP";
                 $stmt = $db->prepare($sql);
                 $flatParams = [];
                 foreach ($chunk as $row) {

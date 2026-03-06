@@ -20,3 +20,5 @@ Stack trace:
   thrown in C:\xampp\htdocs\ersan_elk\views\personel-pwa\api.php on line 1919
 [04-Mar-2026 08:55:58 Europe/Istanbul] PHP Parse error:  syntax error, unexpected token "<<" in C:\xampp\htdocs\ersan_elk\App\Model\BordroPersonelModel.php on line 981
 [05-Mar-2026 15:34:09 Europe/Istanbul] Nöbet mazeret bildirim hatası: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'email' in 'field list'
+[06-Mar-2026 23:06:58 Europe/Istanbul] PHP Warning:  Undefined property: stdClass::$alacakli in C:\xampp\htdocs\ersan_elk\views\personel-pwa\api.php on line 113
+[06-Mar-2026 23:06:58 Europe/Istanbul] PHP Warning:  Undefined property: stdClass::$kesinti_turu in C:\xampp\htdocs\ersan_elk\views\personel-pwa\api.php on line 119

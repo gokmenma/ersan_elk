@@ -222,6 +222,16 @@ if (!empty($dbGelirler)) {
                                         <?= $donemKapali ? 'KAPALI' : 'AÇIK' ?>
                                     </label>
                                 </div>
+                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                                <div class="form-check form-switch px-4">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="switchPersonelGorsun"
+                                        <?= ($selectedDonem->personel_gorsun == 1) ? 'checked' : '' ?>>
+                                    <label
+                                        class="form-check-label small <?= ($selectedDonem->personel_gorsun == 1) ? 'text-success' : 'text-danger' ?> fw-bold"
+                                        for="switchPersonelGorsun" style="font-size: 11px;">
+                                        PERSONEL GÖRSÜN
+                                    </label>
+                                </div>
                             <?php endif; ?>
                         </div>
 
@@ -231,11 +241,11 @@ if (!empty($dbGelirler)) {
                                 <i class="mdi mdi-plus-circle fs-5"></i>
                             </button>
                             <?php if ($selectedDonem && !$donemKapali): ?>
-                                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                                <!-- <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
                                 <button type="button" class="btn btn-link btn-sm text-primary text-decoration-none px-2"
                                     id="btnHeaderEditDonem" title="Düzenle">
                                     <i class="mdi mdi-pencil fs-5"></i>
-                                </button>
+                                </button> -->
                             <?php endif; ?>
                             <?php if (!$donemKapali) { ?>
                                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>

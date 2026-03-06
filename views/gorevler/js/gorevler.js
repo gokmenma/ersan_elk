@@ -8,6 +8,7 @@
   const API_URL = "views/gorevler/api.php";
   let allData = []; // [{liste, gorevler, tamamlananlar}]
   let activeListeId = null; // sidebar seçili liste (null = tüm görevler)
+  let filterYildizli = false; // yıldızlı filtresi aktif mi
 
   // =====================================================
   // SAYFA YÜKLEME
@@ -69,16 +70,29 @@
     const container = $("#gorevlerContent");
     container.empty();
 
-    const dataToShow = activeListeId
+    let dataToShow = activeListeId
       ? allData.filter((d) => d.liste.id === activeListeId)
       : allData;
+
+    // Yıldızlı filtresi aktifse, sadece yıldızlı görevleri göster
+    if (filterYildizli) {
+      dataToShow = dataToShow.map(function (item) {
+        return {
+          liste: item.liste,
+          gorevler: (item.gorevler || []).filter(function (g) { return g.yildizli == 1; }),
+          tamamlananlar: (item.tamamlananlar || []).filter(function (g) { return g.yildizli == 1; }),
+        };
+      }).filter(function (item) {
+        return item.gorevler.length > 0 || item.tamamlananlar.length > 0;
+      });
+    }
 
     if (dataToShow.length === 0) {
       container.html(`
                 <div class="gorevler-empty">
-                    <i class="bx bx-task"></i>
-                    <h4>Henüz liste yok</h4>
-                    <p>Sol panelden yeni bir liste oluşturarak başlayın</p>
+                    <i class="bx ${filterYildizli ? 'bx-star' : 'bx-task'}"></i>
+                    <h4>${filterYildizli ? 'Yıldızlı görev yok' : 'Henüz liste yok'}</h4>
+                    <p>${filterYildizli ? 'Yıldızladığınız görevler burada görünecek' : 'Sol panelden yeni bir liste oluşturarak başlayın'}</p>
                 </div>
             `);
       return;
@@ -151,6 +165,10 @@
                         <button class="form-action-btn btn-yineleme-ac" data-liste-id="${liste.id}" title="Tekrarla">
                             <i class="bx bx-repeat"></i>
                         </button>
+                    </div>
+                    <div class="gorev-form-submit-actions">
+                        <button class="btn-gorev-iptal" data-liste-id="${liste.id}">İptal</button>
+                        <button class="btn-gorev-kaydet" data-liste-id="${liste.id}">Kaydet</button>
                     </div>
                 </div>
 
@@ -304,6 +322,17 @@
     // Sidebar navigasyon
     $(document).on("click", ".nav-tum-gorevler", function () {
       activeListeId = null;
+      filterYildizli = false;
+      $(".nav-item").removeClass("active");
+      $(this).addClass("active");
+      renderContent();
+      initSortable();
+    });
+
+    // Yıldızlı görevler filtresi
+    $(document).on("click", ".nav-yildizli", function () {
+      activeListeId = null;
+      filterYildizli = true;
       $(".nav-item").removeClass("active");
       $(this).addClass("active");
       renderContent();
@@ -312,6 +341,7 @@
 
     $(document).on("click", ".liste-nav-item", function () {
       activeListeId = $(this).data("liste-id");
+      filterYildizli = false;
       $(".nav-item").removeClass("active");
       $(this).addClass("active");
       renderContent();
@@ -404,6 +434,18 @@
           "active",
         );
       }
+    });
+
+    // Form İptal butonu
+    $(document).on("click", ".btn-gorev-iptal", function () {
+      const listeId = $(this).data("liste-id");
+      $(`.gorev-ekleme-form[data-liste-id="${listeId}"]`).removeClass("active");
+    });
+
+    // Form Kaydet butonu
+    $(document).on("click", ".btn-gorev-kaydet", function () {
+      const listeId = $(this).data("liste-id");
+      submitGorev(listeId);
     });
 
     // Tarih kısayolları

@@ -22,6 +22,7 @@ use App\Model\PushSubscriptionModel;
 use App\Model\BildirimModel;
 use App\Model\UserModel;
 use App\Model\PersonelHareketleriModel;
+use App\Model\PersonelIcralariModel;
 
 // Oturum kontrolü (logout hariç)
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
@@ -98,6 +99,61 @@ try {
             session_destroy();
             setcookie('remember_token', '', time() - 3600, "/");
             response(true, null, 'Oturum kapatıldı');
+            break;
+
+        // ===== İcra İşlemleri =====
+        case 'getIcralar':
+            $PersonelIcralariModel = new PersonelIcralariModel();
+            $icralar = $PersonelIcralariModel->getPersonelIcralariWithKesintiler($personel_id);
+            
+            $data = array_map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'dosya_no' => $item->dosya_no ?? null,
+                    'alacakli' => $item->alacakli ?? null,
+                    'icra_dairesi' => $item->icra_dairesi ?? null,
+                    'toplam_borc' => $item->toplam_borc ?? 0,
+                    'kalan_tutar' => $item->kalan_tutar ?? ($item->toplam_borc ?? 0),
+                    'toplam_kesilen' => $item->toplam_kesilen ?? 0,
+                    'kesinti_orani' => $item->kesinti_orani ?? 0,
+                    'kesinti_turu' => $item->kesinti_turu ?? null, // oran veya tutar
+                    'aylik_kesinti_tutari' => $item->aylik_kesinti_tutari ?? 0,
+                    'durum' => $item->durum ?? null,
+                    'sira' => $item->sira ?? 0,
+                    'created_at' => isset($item->created_at) ? date('d.m.Y', strtotime($item->created_at)) : '-'
+                ];
+            }, $icralar);
+
+            response(true, $data);
+            break;
+
+        case 'getIcraKesintileri':
+            $icra_id = $_POST['icra_id'] ?? 0;
+            if (!$icra_id) {
+                response(false, null, 'İcra ID eksik.');
+            }
+
+            $PersonelIcralariModel = new PersonelIcralariModel();
+            
+            // Güvenlik: Bu icra dosyası bu personele mi ait kontrol et
+            $personelZimmet = $PersonelIcralariModel->find($icra_id);
+            if (!$personelZimmet || $personelZimmet->personel_id != $personel_id) {
+                response(false, null, 'İcra dosyası bulunamadı veya yetkiniz yok.');
+            }
+
+            $kesintiler = $PersonelIcralariModel->getIcraKesintileri($icra_id);
+
+            $data = array_map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'donem_adi' => $item->donem_adi ?? null,
+                    'tutar' => $item->tutar ?? 0,
+                    'aciklama' => $item->aciklama ?? '',
+                    'tarih' => isset($item->olusturma_tarihi) ? date('d.m.Y', strtotime($item->olusturma_tarihi)) : '-'
+                ];
+            }, $kesintiler);
+
+            response(true, $data);
             break;
 
         // ===== Dashboard =====
@@ -438,9 +494,9 @@ try {
             $BordroModel = new BordroPersonelModel();
             $bordrolar = $BordroModel->getPersonelBordrolari($personel_id);
 
-            // Sadece kapatılmış dönemleri filtrele
+            // Sadece personel görsün olan dönemleri filtrele
             $bordrolar = array_filter($bordrolar, function ($item) {
-                return isset($item->kapali_mi) && $item->kapali_mi == 1;
+                return isset($item->personel_gorsun) && $item->personel_gorsun == 1;
             });
 
             $data = array_map(function ($item) {
@@ -473,7 +529,7 @@ try {
 
             // Bordro ve dönem bilgisini birlikte çek
             $sql = $BordroModel->getDb()->prepare("
-                SELECT bp.*, bd.kapali_mi 
+                SELECT bp.*, bd.personel_gorsun 
                 FROM bordro_personel bp
                 INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
                 WHERE bp.id = ? AND bp.silinme_tarihi IS NULL
@@ -481,7 +537,7 @@ try {
             $sql->execute([$id]);
             $bordro = $sql->fetch(PDO::FETCH_OBJ);
 
-            if ($bordro && $bordro->personel_id == $personel_id && ($bordro->kapali_mi ?? 0) == 1) {
+            if ($bordro && $bordro->personel_id == $personel_id && ($bordro->personel_gorsun ?? 0) == 1) {
                 response(true, [
                     'id' => $bordro->id,
                     'donem' => 'Dönem ' . $bordro->donem_id,

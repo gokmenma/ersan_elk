@@ -114,6 +114,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 break;
 
+            // Dönem Personel Görsün Güncelle
+            case 'donem-personel-gorsun-guncelle':
+                $donem_id = intval($_POST['donem_id'] ?? 0);
+                $personel_gorsun = intval($_POST['personel_gorsun'] ?? 0);
+
+                if ($donem_id <= 0) {
+                    throw new Exception('Geçersiz dönem bilgisi.');
+                }
+
+                $donem = $BordroDonem->getDonemById($donem_id);
+                if (!$donem) {
+                    throw new Exception('Dönem bulunamadı.');
+                }
+
+                $sql = $BordroDonem->getDb()->prepare("UPDATE bordro_donemi SET personel_gorsun = ? WHERE id = ?");
+                if ($sql->execute([$personel_gorsun, $donem_id])) {
+                    $durumStr = $personel_gorsun == 1 ? 'Görünür' : 'Gizli';
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => "Dönem personel için $durumStr yapıldı."
+                    ]);
+                    $SystemLog->logAction($userId, 'Maaş Dönem Görünürlük Güncelleme', "Dönem görünürlüğü güncellendi: $donem->donem_adi - Durum: $durumStr", SystemLogModel::LEVEL_IMPORTANT);
+                } else {
+                    throw new Exception('Güncelleme işlemi başarısız.');
+                }
+                break;
+
             // Personel Kesinti Listesi Getir
             case 'get-personel-kesinti-listesi':
                 $personel_id = intval($_POST['personel_id'] ?? 0);

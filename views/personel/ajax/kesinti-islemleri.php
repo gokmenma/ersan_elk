@@ -11,6 +11,7 @@ if (!isset($_SESSION['id'])) {
 use App\Model\PersonelKesintileriModel;
 use App\Model\PersonelIcralariModel;
 use App\Model\BordroDonemModel;
+use App\Helper\Date;
 
 $action = $_REQUEST['action'] ?? '';
 $personel_id = $_REQUEST['personel_id'] ?? 0;
@@ -160,7 +161,8 @@ try {
                 'aylik_kesinti_tutari' => $_POST['icra_aylik_kesinti'] ?? 0,
                 'kesinti_tipi' => $_POST['icra_kesinti_tipi'] ?? 'tutar',
                 'kesinti_orani' => $_POST['icra_kesinti_orani'] ?? 0,
-                'baslangic_tarihi' => $_POST['icra_baslangic'] ?? null,
+                'baslangic_tarihi' => !empty($_POST['icra_baslangic']) ? Date::dttoeng($_POST['icra_baslangic']) : null,
+                'bitis_tarihi' => !empty($_POST['icra_bitis']) ? Date::dttoeng($_POST['icra_bitis']) : null,
                 'durum' => $_POST['icra_durum'] ?? 'bekliyor',
                 'aciklama' => $_POST['icra_aciklama'] ?? ''
             ];
@@ -183,7 +185,8 @@ try {
                 'aylik_kesinti_tutari' => $_POST['icra_aylik_kesinti'] ?? 0,
                 'kesinti_tipi' => $_POST['icra_kesinti_tipi'] ?? 'tutar',
                 'kesinti_orani' => $_POST['icra_kesinti_orani'] ?? 0,
-                'baslangic_tarihi' => $_POST['icra_baslangic'] ?? null,
+                'baslangic_tarihi' => !empty($_POST['icra_baslangic']) ? Date::dttoeng($_POST['icra_baslangic']) : null,
+                'bitis_tarihi' => !empty($_POST['icra_bitis']) ? Date::dttoeng($_POST['icra_bitis']) : null,
                 'durum' => $_POST['icra_durum'] ?? 'bekliyor',
                 'aciklama' => $_POST['icra_aciklama'] ?? ''
             ];
@@ -198,6 +201,11 @@ try {
                 break;
             }
             $icra = $icraModel->find($id);
+            if ($icra) {
+                // Tarihleri d.m.Y formatına çevirelim ki inputlarda düzgün görünsün
+                $icra->baslangic_tarihi = Date::dmY($icra->baslangic_tarihi);
+                $icra->bitis_tarihi = Date::dmY($icra->bitis_tarihi);
+            }
             echo json_encode($icra);
             break;
 

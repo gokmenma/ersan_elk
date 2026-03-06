@@ -53,63 +53,63 @@ function getDatatableOptions() {
     },
     buttons: ["excel"],
 
-    preDrawCallback: function (settings) {
-      let activeEl = document.activeElement;
-      if (
-        activeEl &&
-        activeEl.tagName === "INPUT" &&
-        $(activeEl).closest("thead, .dtfh-floatingparent").length
-      ) {
-        focusedColIdx = $(activeEl).closest("th").index();
-        try {
-          focusedCursorPos = activeEl.selectionStart;
-        } catch (e) {
-          focusedCursorPos = null;
-        }
-      } else {
-        focusedColIdx = null;
-      }
-    },
+    // preDrawCallback: function (settings) {
+    //   let activeEl = document.activeElement;
+    //   if (
+    //     activeEl &&
+    //     activeEl.tagName === "INPUT" &&
+    //     $(activeEl).closest("thead, .dtfh-floatingparent").length
+    //   ) {
+    //     focusedColIdx = $(activeEl).closest("th").index();
+    //     try {
+    //       focusedCursorPos = activeEl.selectionStart;
+    //     } catch (e) {
+    //       focusedCursorPos = null;
+    //     }
+    //   } else {
+    //     focusedColIdx = null;
+    //   }
+    // },
 
-    drawCallback: function (settings) {
-      if (focusedColIdx !== null) {
-        let api = this.api();
-        setTimeout(() => {
-          let $wrapper = $(settings.nTableWrapper);
-          // 1. Dtfh plugins (FixedHeader) yüzen başlığını kontrol et
-          let $th = $(".dtfh-floatingparent th").eq(focusedColIdx);
+    // drawCallback: function (settings) {
+    //   if (focusedColIdx !== null) {
+    //     let api = this.api();
+    //     setTimeout(() => {
+    //       let $wrapper = $(settings.nTableWrapper);
+    //       // 1. Dtfh plugins (FixedHeader) yüzen başlığını kontrol et
+    //       let $th = $(".dtfh-floatingparent th").eq(focusedColIdx);
 
-          if (!$th.length) {
-            // 2. Normal tablonun arama satırlarını kontrol et
-            let filterRows = $(api.table().header()).find(
-              "tr.search-input-row, tr.dt-filter-row",
-            );
-            if (filterRows.length) {
-              $th = filterRows.last().find("th").eq(focusedColIdx);
-            } else {
-              $th = $(api.table().header())
-                .find("tr")
-                .last()
-                .find("th")
-                .eq(focusedColIdx);
-            }
-          }
+    //       if (!$th.length) {
+    //         // 2. Normal tablonun arama satırlarını kontrol et
+    //         let filterRows = $(api.table().header()).find(
+    //           "tr.search-input-row, tr.dt-filter-row",
+    //         );
+    //         if (filterRows.length) {
+    //           $th = filterRows.last().find("th").eq(focusedColIdx);
+    //         } else {
+    //           $th = $(api.table().header())
+    //             .find("tr")
+    //             .last()
+    //             .find("th")
+    //             .eq(focusedColIdx);
+    //         }
+    //       }
 
-          let $input = $th.find('input[type="text"]');
-          if ($input.length) {
-            $input[0].focus();
-            if (
-              focusedCursorPos !== null &&
-              typeof $input[0].setSelectionRange === "function"
-            ) {
-              try {
-                $input[0].setSelectionRange(focusedCursorPos, focusedCursorPos);
-              } catch (e) {}
-            }
-          }
-        }, 10);
-      }
-    },
+    //       let $input = $th.find('input[type="text"]');
+    //       if ($input.length) {
+    //         $input[0].focus();
+    //         if (
+    //           focusedCursorPos !== null &&
+    //           typeof $input[0].setSelectionRange === "function"
+    //         ) {
+    //           try {
+    //             $input[0].setSelectionRange(focusedCursorPos, focusedCursorPos);
+    //           } catch (e) {}
+    //         }
+    //       }
+    //     }, 10);
+    //   }
+    // },
 
     ...getTableSpecificOptions(),
 

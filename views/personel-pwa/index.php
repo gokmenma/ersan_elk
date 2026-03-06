@@ -14,6 +14,7 @@ require_once dirname(dirname(__DIR__)) . '/Autoloader.php';
 use App\Helper\Helper;
 use App\Model\PersonelModel;
 use App\Model\PersonelGirisLogModel;
+use App\Model\PersonelIcralariModel;
 
 // Oturum kontrolü öncesi beni hatırla kontrolü
 if (!isset($_SESSION['personel_id']) && isset($_COOKIE['remember_token'])) {
@@ -111,9 +112,14 @@ if ($isEndeksOkuma && $isSef) {
     }
 }
 
+// Personelin icrası var mı kontrol et
+$PersonelIcralariModel = new PersonelIcralariModel();
+$devamEdenIcralar = $PersonelIcralariModel->getDevamEdenIcralar($personel_id);
+$hasIcra = count($devamEdenIcralar) > 0;
+
 // Sayfa yönlendirmesi
 $page = $_GET['page'] ?? 'ana-sayfa';
-$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'etkinlikler', 'zimmetler'];
+$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'etkinlikler', 'zimmetler', 'icralar'];
 
 if ($isEndeksOkuma && $isEkipSefi) {
     $allowed_pages[] = 'ekip-takibi';
@@ -402,6 +408,16 @@ if (!in_array($page, $allowed_pages)) {
                     <span class="font-medium text-slate-900 dark:text-white text-sm">İzinler</span>
                     <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
                 </a>
+                <?php if ($hasIcra): ?>
+                    <a href="?page=icralar"
+                        class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'icralar' ? 'bg-primary/10' : ''; ?>">
+                        <div class="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-rose-600 text-lg">gavel</span>
+                        </div>
+                        <span class="font-medium text-slate-900 dark:text-white text-sm">İcralarım</span>
+                        <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
+                    </a>
+                <?php endif; ?>
                 <?php if (!$isZimmetInBottomNav): ?>
                     <a href="?page=zimmetler"
                         class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'zimmetler' ? 'bg-primary/10' : ''; ?>">

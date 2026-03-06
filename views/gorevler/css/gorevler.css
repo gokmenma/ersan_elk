@@ -455,6 +455,43 @@
   align-items: center;
   gap: 4px;
   padding-left: 30px;
+  flex-wrap: wrap;
+}
+
+.gorev-form-submit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 0 4px;
+  padding-left: 30px;
+}
+
+.gorev-form-submit-actions button {
+  padding: 5px 16px;
+  border-radius: 18px;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.gorev-form-submit-actions .btn-gorev-iptal {
+  background: transparent;
+  color: #5f6368;
+}
+
+.gorev-form-submit-actions .btn-gorev-iptal:hover {
+  background: rgba(0,0,0,0.04);
+}
+
+.gorev-form-submit-actions .btn-gorev-kaydet {
+  background: var(--gt-primary);
+  color: #fff;
+}
+
+.gorev-form-submit-actions .btn-gorev-kaydet:hover {
+  opacity: 0.9;
 }
 
 .gorev-form-actions .form-action-btn {

@@ -851,39 +851,21 @@ if ($filter === 'muayene') {
                             <!-- Filtre -->
                             <div class="row mb-4">
                                 <div class="col-md-3">
-                                    <label class="form-label">Yıl</label>
-                                    <select class="form-select" id="raporYil">
-                                        <?php for ($y = date('Y'); $y >= date('Y') - 5; $y--): ?>
-                                            <option value="<?php echo $y; ?>">
-                                                <?php echo $y; ?>
-                                            </option>
-                                        <?php endfor; ?>
-                                    </select>
+                                    <?php echo App\Helper\Form::FormFloatInput('text', 'rapor-filtre-baslangic', date('01.m.Y'), '', 'Başlangıç Tarihi', 'calendar', 'form-control flatpickr'); ?>
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label">Ay</label>
-                                    <select class="form-select" id="raporAy">
-                                        <?php
-                                        $aylar = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-                                        for ($m = 1; $m <= 12; $m++):
-                                            ?>
-                                            <option value="<?php echo $m; ?>" <?php echo $m == date('n') ? 'selected' : ''; ?>
-                                                <?php echo $aylar[$m - 1]; ?> </option>
-                                            <?php endfor; ?>
-                                    </select>
+                                    <?php echo App\Helper\Form::FormFloatInput('text', 'rapor-filtre-bitis', date('t.m.Y'), '', 'Bitiş Tarihi', 'calendar', 'form-control flatpickr'); ?>
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label">Araç (Opsiyonel)</label>
-                                    <select class="form-select" id="raporArac">
-                                        <option value="">Tüm Araçlar</option>
-                                        <?php foreach ($araclar as $arac): ?>
-                                            <option value="<?php echo $arac->id; ?>">
-                                                <?php echo $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? ''); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                    <?php
+                                    $aracOptionsRapor = ['' => 'Tüm Araçlar'];
+                                    foreach ($araclar as $arac) {
+                                        $aracOptionsRapor[$arac->id] = $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? '');
+                                    }
+                                    echo App\Helper\Form::FormSelect2('rapor-filtre-arac', $aracOptionsRapor, '', 'Araç (Opsiyonel)', 'truck', 'key', '', 'form-select select2');
+                                    ?>
                                 </div>
-                                <div class="col-md-2 d-flex align-items-end">
+                                <div class="col-md-2 d-flex align-items-center">
                                     <button type="button" class="btn btn-primary w-100" id="btnRaporYukle">
                                         <i class="bx bx-search me-1"></i> Rapor Getir
                                     </button>

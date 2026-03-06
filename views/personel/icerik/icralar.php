@@ -243,6 +243,7 @@ if (!empty($icralar)) {
                                 <th class="text-muted small fw-bold text-uppercase text-primary">Kesilen</th>
                                 <th class="text-muted small fw-bold text-uppercase text-danger">Kalan</th>
                                 <th class="text-muted small fw-bold text-uppercase">Başlangıç</th>
+                                <th class="text-muted small fw-bold text-uppercase">Bitiş</th>
                                 <th class="text-center text-muted small fw-bold text-uppercase">Durum</th>
                                 <th class="text-center text-muted small fw-bold text-uppercase" style="width: 80px;">
                                     İşlem</th>
@@ -261,7 +262,7 @@ if (!empty($icralar)) {
                                         </div>
                                     </td>
                                     <td class="fw-bold text-dark"><?= number_format($i->toplam_borc, 2, ',', '.') ?> <small
-                                            class="text-muted">TL</small></td>
+                                             class="text-muted">TL</small></td>
                                     <td>
                                         <div class="badge bg-light text-dark fw-medium">
                                             <?php if (($i->kesinti_tipi ?? 'tutar') === 'tutar'): ?>
@@ -288,6 +289,10 @@ if (!empty($icralar)) {
                                     <td class="text-muted small">
                                         <i data-feather="calendar" class="me-1" style="width: 12px; height: 12px;"></i>
                                         <?= ($i->baslangic_tarihi && $i->baslangic_tarihi != '0000-00-00') ? date('d.m.Y', strtotime($i->baslangic_tarihi)) : '-' ?>
+                                    </td>
+                                    <td class="text-muted small">
+                                        <i data-feather="calendar" class="me-1" style="width: 12px; height: 12px;"></i>
+                                        <?= ($i->bitis_tarihi && $i->bitis_tarihi != '0000-00-00') ? date('d.m.Y', strtotime($i->bitis_tarihi)) : '-' ?>
                                     </td>
                                     <td class="text-center">
                                         <?php
@@ -436,6 +441,12 @@ if (!empty($icralar)) {
                         </div>
                         <div class="col-md-6 mb-3" id="div_icra_kesinti_orani" style="display:none;">
                             <?= Form::FormFloatInput("number", "icra_kesinti_orani", "25", "Kesinti Oranı (%)", "Kesinti Oranı (%)", "percent", "form-control shadow-none", false, null, "off", false, 'step="0.01" min="0" max="100"') ?>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <?= Form::FormFloatInput("text", "icra_baslangic", "", "Başlangıç Tarihi", "Başlangıç Tarihi", "calendar", "form-control flatpickr", false, null, "off", false) ?>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <?= Form::FormFloatInput("text", "icra_bitis", "", "Bitiş Tarihi", "Bitiş Tarihi", "calendar", "form-control flatpickr", false, null, "off", false) ?>
                         </div>
                         <div class="col-md-12 mb-3">
                             <?= Form::FormFloatTextarea("icra_aciklama", "", "Açıklama", "Dosya Açıklaması", "edit-3", "form-control shadow-none", false, "80px", 2) ?>
@@ -605,7 +616,9 @@ if (!empty($icralar)) {
                                 <th class="text-end" style="width: 11%;">Aylık Kesinti</th>
                                 <th class="text-end" style="width: 11%;">Top. Kesilen</th>
                                 <th class="text-end" style="width: 11%;">Kalan Borç</th>
-                                <th class="text-center" style="width: 11%;">Durum</th>
+                                <th class="text-center" style="width: 9%;">Başlangıç</th>
+                                <th class="text-center" style="width: 9%;">Bitiş</th>
+                                <th class="text-center" style="width: 9%;">Durum</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -629,6 +642,12 @@ if (!empty($icralar)) {
                                         </td>
                                         <td class="text-end text-danger fw-bold">
                                             <?= number_format($i->kalan_tutar, 2, ',', '.') ?> TL
+                                        </td>
+                                        <td class="text-center small">
+                                            <?= ($i->baslangic_tarihi && $i->baslangic_tarihi != '0000-00-00') ? date('d.m.Y', strtotime($i->baslangic_tarihi)) : '-' ?>
+                                        </td>
+                                        <td class="text-center small">
+                                            <?= ($i->bitis_tarihi && $i->bitis_tarihi != '0000-00-00') ? date('d.m.Y', strtotime($i->bitis_tarihi)) : '-' ?>
                                         </td>
                                         <td class="text-center">
                                             <?php
