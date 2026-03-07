@@ -395,7 +395,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     <div class="card border-0 shadow-sm">
                         <div class="card-body p-0">
                             <div class="table-responsive" id="reportTableWrapper"
-                                style="max-height: calc(100vh - 400px); overflow: auto;">
+                                style="max-height: calc(100vh - 550px); overflow: auto;">
                                 <!-- AJAX ile doldurulacak -->
                             </div>
                         </div>
@@ -578,7 +578,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     <div class="card border-0 shadow-sm">
                         <div class="card-body p-0">
                             <div class="table-responsive" id="okumaGunTableWrapper"
-                                style="max-height: calc(100vh - 450px); overflow: auto;">
+                                style="max-height: calc(100vh - 550px); overflow: auto;">
                             </div>
                         </div>
                     </div>
@@ -1002,7 +1002,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         position: sticky;
         left: 0;
         z-index: 10;
-        background-color: var(--bs-card-bg, #fff) !important;
+        background-color: var(--bs-card-bg, #fff);
         min-width: 100px;
         max-width: 100px;
     }
@@ -1011,7 +1011,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         position: sticky;
         left: 100px;
         z-index: 10;
-        background-color: var(--bs-card-bg, #fff) !important;
+        background-color: var(--bs-card-bg, #fff);
         min-width: 140px;
         max-width: 140px;
     }
@@ -1020,7 +1020,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         position: sticky;
         left: 240px;
         z-index: 10;
-        background-color: var(--bs-card-bg, #fff) !important;
+        background-color: var(--bs-card-bg, #fff);
         min-width: 80px;
         max-width: 80px;
     }
@@ -1029,7 +1029,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         position: sticky;
         left: 320px;
         z-index: 10;
-        background-color: var(--bs-card-bg, #fff) !important;
+        background-color: var(--bs-card-bg, #fff);
         min-width: 130px;
         max-width: 130px;
     }
@@ -1038,7 +1038,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         position: sticky;
         left: 450px;
         z-index: 10;
-        background-color: var(--bs-card-bg, #fff) !important;
+        background-color: var(--bs-card-bg, #fff);
         min-width: 80px;
         max-width: 80px;
     }
@@ -1150,40 +1150,47 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         border-right: 2px solid var(--bs-primary, #556ee6) !important;
     }
 
-    /* Sticky Footer */
+    /* ======= STICKY FOOTER (TOTALS) ======= */
     #comparisonTable tfoot {
         position: sticky;
-        bottom: 0;
+        bottom: -1px;
         z-index: 25;
     }
 
-    #comparisonTable tfoot th {
-        background: #f8f9fa !important;
-        font-weight: 800 !important;
-        border-top: 2px solid var(--bs-primary, #dee2e6) !important;
-        color: var(--bs-primary, #2a3042) !important;
+    #comparisonTable tfoot th,
+    #comparisonTable tfoot td {
+        background-color: #f8f9fa !important;
+        font-weight: 800;
+        border-top: 2px solid var(--bs-primary, #556ee6) !important;
+        color: var(--bs-primary, #2a3042);
         z-index: 24;
     }
 
+    /* Fixed columns in footer also need stickiness */
     #comparisonTable tfoot .fix-col-1,
     #comparisonTable tfoot .fix-col-2,
     #comparisonTable tfoot .fix-col-3,
     #comparisonTable tfoot .fix-col-4,
     #comparisonTable tfoot .fix-col-5 {
-        z-index: 35;
-        background: #f8f9fa !important;
-        color: var(--bs-primary, #2a3042) !important;
+        z-index: 35 !important;
+        background-color: #f0f2f5 !important;
+        position: sticky;
+        bottom: -1px;
     }
 
     [data-bs-theme="dark"] #comparisonTable tfoot th,
+    [data-bs-theme="dark"] #comparisonTable tfoot td {
+        background-color: #32394e !important;
+        color: #eff2f7;
+        border-top-color: var(--bs-primary) !important;
+    }
+
     [data-bs-theme="dark"] #comparisonTable tfoot .fix-col-1,
     [data-bs-theme="dark"] #comparisonTable tfoot .fix-col-2,
     [data-bs-theme="dark"] #comparisonTable tfoot .fix-col-3,
     [data-bs-theme="dark"] #comparisonTable tfoot .fix-col-4,
     [data-bs-theme="dark"] #comparisonTable tfoot .fix-col-5 {
-        background: #32394e !important;
-        color: var(--bs-primary, #eff2f7) !important;
-        border-top: 2px solid var(--bs-primary) !important;
+        background-color: #3b4258 !important;
     }
 
     /* Rapor Getir Button Style (Maaş Hesaplama Style) */
@@ -1787,6 +1794,18 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 return '<span class="sort-icon">⇅</span>';
             }
 
+            // Bölgelere göre grupla
+            const regionMap = {};
+            const regionOrder = [];
+            sortedData.forEach(function (row) {
+                const region = row.bolge || 'TANIMSIZ';
+                if (!regionMap[region]) {
+                    regionMap[region] = [];
+                    regionOrder.push(region);
+                }
+                regionMap[region].push(row);
+            });
+
             let html = '<table class="table table-bordered table-sm mb-0" id="comparisonTable">';
 
             // ======= THEAD =======
@@ -1850,42 +1869,62 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 colTotals[d] = { abone: 0, okunan: 0, gidilen: 0 };
             });
 
-            sortedData.forEach(function (row) {
-                html += '<tr>';
-                html += `<td class="fix-col-1 text-start fw-medium">${row.ilce_tipi}</td>`;
-                html += `<td class="fix-col-2 text-start fw-medium">${row.bolge}</td>`;
-                html += `<td class="fix-col-3 text-start fw-medium">${row.defter}</td>`;
-                html += `<td class="fix-col-4 text-start">${row.mahalle || ''}</td>`;
-                html += `<td class="fix-col-5">${row.abone_sayisi ? row.abone_sayisi.toLocaleString('tr-TR') : ''}</td>`;
+            // Calculate active columns for colspan
+            let visibleCountPerPeriod = 0;
+            if (_visibleColumns.abone) visibleCountPerPeriod++;
+            if (_visibleColumns.okunan) visibleCountPerPeriod++;
+            if (_visibleColumns.gidilen) visibleCountPerPeriod++;
+            if (_visibleColumns.oran) visibleCountPerPeriod++;
+            const totalHeaderCols = 5 + (donemler.length * visibleCountPerPeriod);
 
-                donemler.forEach(function (donem, idx) {
-                    const isLast = idx === donemler.length - 1;
-                    const donemData = row.donemler[donem] || { abone: 0, okunan: 0, gidilen: 0 };
+            let rowNum = 0;
+            regionOrder.forEach(function (region, regionIdx) {
+                const regionColor = _regionColors[regionIdx % _regionColors.length];
+                const rows = regionMap[region];
 
-                    // Add to totals
-                    colTotals[donem].abone += parseInt(donemData.abone) || 0;
-                    colTotals[donem].okunan += parseInt(donemData.okunan) || 0;
-                    colTotals[donem].gidilen += parseInt(donemData.gidilen) || 0;
+                // Bölge başlık satırı
+                html += `<tr><td colspan="${totalHeaderCols}" class="ogr-region-header text-start" style="background: ${regionColor.header}; color: ${regionColor.text};">`;
+                html += `<i class="bx bx-map me-1"></i>${region} <span class="badge bg-white text-dark ms-2" style="font-size:10px;">${rows.length} defter</span>`;
+                html += '</td></tr>';
 
-                    const oran = donemData.abone > 0
-                        ? ((donemData.okunan / donemData.abone) * 100).toFixed(1)
-                        : 0;
+                rows.forEach(function (row) {
+                    rowNum++;
+                    html += `<tr style="background-color: ${regionColor.bg};">`;
+                    html += `<td class="fix-col-1 text-start fw-medium" style="background-color: ${regionColor.bg};">${row.ilce_tipi}</td>`;
+                    html += `<td class="fix-col-2 text-start fw-medium" style="background-color: ${regionColor.bg};">${row.bolge}</td>`;
+                    html += `<td class="fix-col-3 text-start fw-medium" style="background-color: ${regionColor.bg};">${row.defter}</td>`;
+                    html += `<td class="fix-col-4 text-start" style="background-color: ${regionColor.bg};">${row.mahalle || ''}</td>`;
+                    html += `<td class="fix-col-5" style="background-color: ${regionColor.bg};">${row.abone_sayisi ? row.abone_sayisi.toLocaleString('tr-TR') : ''}</td>`;
 
-                    let oranClass = 'oran-low';
-                    if (oran >= 70) oranClass = 'oran-high';
-                    else if (oran >= 50) oranClass = 'oran-medium';
+                    donemler.forEach(function (donem, idx) {
+                        const isLast = idx === donemler.length - 1;
+                        const donemData = row.donemler[donem] || { abone: 0, okunan: 0, gidilen: 0 };
 
-                    if (_visibleColumns.abone)
-                        html += `<td>${donemData.abone > 0 ? donemData.abone.toLocaleString('tr-TR') : ''}</td>`;
-                    if (_visibleColumns.okunan)
-                        html += `<td>${donemData.okunan > 0 ? donemData.okunan.toLocaleString('tr-TR') : ''}</td>`;
-                    if (_visibleColumns.gidilen)
-                        html += `<td class="gidilen-cell">${donemData.gidilen > 0 ? donemData.gidilen.toLocaleString('tr-TR') : ''}</td>`;
-                    if (_visibleColumns.oran)
-                        html += `<td class="${oranClass} ${isLast ? 'period-end' : ''}">${donemData.abone > 0 ? oran + '%' : ''}</td>`;
+                        // Add to totals
+                        colTotals[donem].abone += parseInt(donemData.abone) || 0;
+                        colTotals[donem].okunan += parseInt(donemData.okunan) || 0;
+                        colTotals[donem].gidilen += parseInt(donemData.gidilen) || 0;
+
+                        const oran = donemData.abone > 0
+                            ? ((donemData.okunan / donemData.abone) * 100).toFixed(1)
+                            : 0;
+
+                        let oranClass = 'oran-low';
+                        if (oran >= 70) oranClass = 'oran-high';
+                        else if (oran >= 50) oranClass = 'oran-medium';
+
+                        if (_visibleColumns.abone)
+                            html += `<td>${donemData.abone > 0 ? donemData.abone.toLocaleString('tr-TR') : ''}</td>`;
+                        if (_visibleColumns.okunan)
+                            html += `<td>${donemData.okunan > 0 ? donemData.okunan.toLocaleString('tr-TR') : ''}</td>`;
+                        if (_visibleColumns.gidilen)
+                            html += `<td class="gidilen-cell">${donemData.gidilen > 0 ? donemData.gidilen.toLocaleString('tr-TR') : ''}</td>`;
+                        if (_visibleColumns.oran)
+                            html += `<td class="${oranClass} ${isLast ? 'period-end' : ''}">${donemData.abone > 0 ? oran + '%' : ''}</td>`;
+                    });
+
+                    html += '</tr>';
                 });
-
-                html += '</tr>';
             });
             html += '</tbody>';
 

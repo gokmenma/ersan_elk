@@ -2364,7 +2364,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $placeholders = implode(',', array_fill(0, count($donemler), '?'));
         $groupSql = "SELECT bolge, defter, DATE_FORMAT(tarih, '%Y%m') as donem,
                             SUM(okunan_abone_sayisi) as toplam_okunan,
-                            COUNT(*) as kayit_sayisi
+                            COUNT(*) as kayit_sayisi,
+                            MAX(tarih) as son_okuma
                      FROM endeks_okuma
                      WHERE firma_id = ?
                        AND silinme_tarihi IS NULL
@@ -2390,52 +2391,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $stmt->execute($queryParams);
         $rawData = $stmt->fetchAll(PDO::FETCH_OBJ);
 
+        // 2. tanimlamalar tablosundan defter_kodu bilgilerini al
+        $defterTanimStmt = $EndeksOkuma->db->prepare(
+            "SELECT tur_adi, defter_bolge, defter_mahalle, defter_abone_sayisi, 
+                    baslangic_tarihi, bitis_tarihi
+             FROM tanimlamalar
+             WHERE firma_id = ? AND grup = 'defter_kodu' AND silinme_tarihi IS NULL
+             ORDER BY baslangic_tarihi DESC"
+        );
+        $defterTanimStmt->execute([$firmaId]);
+        $defterTanimRaw = $defterTanimStmt->fetchAll(PDO::FETCH_OBJ);
+
+        $defterTanimListMap = [];
+        foreach ($defterTanimRaw as $dt) {
+            $code = trim($dt->tur_adi);
+            $region = trim($dt->defter_bolge ?: '');
+            $key = $region . '|' . $code;
+            
+            if (!isset($defterTanimListMap[$key])) {
+                $defterTanimListMap[$key] = [];
+            }
+            $defterTanimListMap[$key][] = [
+                'mahalle' => $dt->defter_mahalle ?: '',
+                'abone_sayisi' => (int) ($dt->defter_abone_sayisi ?: 0),
+                'baslangic' => $dt->baslangic_tarihi ?: '1900-01-01',
+                'bitis' => $dt->bitis_tarihi ?: '2099-12-31'
+            ];
+        }
+
         // Verileri organize et: key = bolge|defter
         $organized = [];
         $allBolgeSet = [];
         foreach ($rawData as $row) {
-            $key = $row->bolge . '|' . ($row->defter ?: '-');
+            $bolgeName = trim($row->bolge);
+            $defter = trim($row->defter ?: '-');
+            $key = $bolgeName . '|' . $defter;
+            
             if (!isset($organized[$key])) {
                 $organized[$key] = [
-                    'bolge' => $row->bolge,
-                    'defter' => $row->defter ?: '-',
+                    'bolge' => $bolgeName,
+                    'defter' => $defter,
+                    'mahalle' => '', 
+                    'abone_sayisi' => 0,
                     'donemler' => []
                 ];
             }
+
+            // Bu dönem için aktif olan tanımı bul (Son okuma tarihine göre)
+            $activeTanim = null;
+            if (isset($defterTanimListMap[$key])) {
+                foreach ($defterTanimListMap[$key] as $t) {
+                    if ($row->son_okuma >= $t['baslangic'] && $row->son_okuma <= $t['bitis']) {
+                        $activeTanim = $t;
+                        break;
+                    }
+                }
+                if (!$activeTanim) $activeTanim = $defterTanimListMap[$key][0];
+            }
+
+            $currentAbone = $activeTanim ? $activeTanim['abone_sayisi'] : 0;
+            if ($activeTanim && empty($organized[$key]['mahalle'])) {
+                $organized[$key]['mahalle'] = $activeTanim['mahalle'];
+                $organized[$key]['abone_sayisi'] = $activeTanim['abone_sayisi']; // Genel olarak en sonuncuyu veya ilk eşleşeni gösterir
+            }
+
             $organized[$key]['donemler'][$row->donem] = [
+                'abone' => $currentAbone,
                 'okunan' => (int) $row->toplam_okunan,
-                'kayit' => (int) $row->kayit_sayisi
+                'gidilen' => (int) $row->kayit_sayisi
             ];
             $allBolgeSet[$row->bolge] = true;
         }
 
-        // tanimlamalar tablosundan defter_kodu bilgilerini al (mahalle, abone_sayisi)
-        $defterTanimStmt2 = $EndeksOkuma->db->prepare(
-            "SELECT tur_adi, defter_mahalle, defter_abone_sayisi
-             FROM tanimlamalar
-             WHERE firma_id = ? AND grup = 'defter_kodu' AND silinme_tarihi IS NULL"
-        );
-        $defterTanimStmt2->execute([$firmaId]);
-        $defterTanimRaw2 = $defterTanimStmt2->fetchAll(PDO::FETCH_OBJ);
-        $defterTanimMap2 = [];
-        foreach ($defterTanimRaw2 as $dt) {
-            $defterTanimMap2[trim($dt->tur_adi)] = [
-                'mahalle' => $dt->defter_mahalle ?: '',
-                'abone_sayisi' => (int) ($dt->defter_abone_sayisi ?: 0)
-            ];
-        }
-
-        // İlçe tipi ataması (endeks_okuma'da bu alan yok, rastgele atayalım)
+        // İlçe tipi ataması (hash bazlı)
         $ilceTipleri = ['Uzak İlçeler', 'Merkez', 'Yakın İlçeler'];
-        $bolgeIlceTipiMap = [];
-        $i = 0;
-        foreach ($allBolgeSet as $bolgeName => $_) {
-            // Bölge adına göre tutarlı bir ilçe tipi ata (hash bazlı)
-            $hash = crc32($bolgeName);
-            $bolgeIlceTipiMap[$bolgeName] = $ilceTipleri[abs($hash) % count($ilceTipleri)];
-            $i++;
-        }
-
+        
         // Sonuç verisini oluştur
         $resultData = [];
         $toplamKayit = 0;
@@ -2443,7 +2473,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $sonDonem = !empty($donemler) ? end($donemler) : '';
 
         foreach ($organized as $key => $item) {
-            $assignedIlceTipi = $bolgeIlceTipiMap[$item['bolge']] ?? 'Uzak İlçeler';
+            $bolgeName = $item['bolge'];
+            $hash = crc32($bolgeName);
+            $assignedIlceTipi = $ilceTipleri[abs($hash) % count($ilceTipleri)];
 
             // İlçe tipi filtresi
             if (!empty($ilceTipi) && $assignedIlceTipi !== $ilceTipi) {
@@ -2452,35 +2484,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
             $rowData = [
                 'ilce_tipi' => $assignedIlceTipi,
-                'bolge' => $item['bolge'],
+                'bolge' => $bolgeName,
                 'defter' => $item['defter'],
-                'mahalle' => isset($defterTanimMap2[trim($item['defter'])]) ? $defterTanimMap2[trim($item['defter'])]['mahalle'] : '',
-                'abone_sayisi' => isset($defterTanimMap2[trim($item['defter'])]) ? $defterTanimMap2[trim($item['defter'])]['abone_sayisi'] : 0,
+                'mahalle' => $item['mahalle'],
+                'abone_sayisi' => $item['abone_sayisi'],
                 'donemler' => []
             ];
 
             foreach ($donemler as $donem) {
                 $donemInfo = $item['donemler'][$donem] ?? null;
-
                 if ($donemInfo) {
-                    $okunan = $donemInfo['okunan'];
-                    // Abone sayısı: okunan sayısının 1.2 - 2.0 katı arası rastgele
-                    $seed = crc32($key . $donem . 'abone');
-                    srand($seed);
-                    $multiplier = 1 + (rand(20, 100) / 100); // 1.2x - 2.0x
-                    $abone = (int) round($okunan * $multiplier);
-
-                    // Gidilen: abone ile okunan arasında
-                    $seed2 = crc32($key . $donem . 'gidilen');
-                    srand($seed2);
-                    $gidilenMultiplier = 0.8 + (rand(0, 40) / 100); // 0.8x - 1.2x of okunan
-                    $gidilen = (int) round($okunan * $gidilenMultiplier);
-
-                    $rowData['donemler'][$donem] = [
-                        'abone' => $abone,
-                        'okunan' => $okunan,
-                        'gidilen' => $gidilen
-                    ];
+                    $rowData['donemler'][$donem] = $donemInfo;
                 } else {
                     $rowData['donemler'][$donem] = [
                         'abone' => 0,
@@ -2499,14 +2513,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             }
         }
 
-        // Sıralama: İlçe Tipi > Bölge > Defter
+        // Sıralama: Bölge > İlçe Tipi > Mahalle > Defter
         usort($resultData, function ($a, $b) {
-            $cmp = strcmp((string) ($a['ilce_tipi'] ?? ''), (string) ($b['ilce_tipi'] ?? ''));
-            if ($cmp !== 0)
-                return $cmp;
             $cmp = strcmp((string) ($a['bolge'] ?? ''), (string) ($b['bolge'] ?? ''));
-            if ($cmp !== 0)
-                return $cmp;
+            if ($cmp !== 0) return $cmp;
+            $cmp = strcmp((string) ($a['ilce_tipi'] ?? ''), (string) ($b['ilce_tipi'] ?? ''));
+            if ($cmp !== 0) return $cmp;
+            $cmp = strcmp((string) ($a['mahalle'] ?? ''), (string) ($b['mahalle'] ?? ''));
+            if ($cmp !== 0) return $cmp;
             return strcmp((string) ($a['defter'] ?? ''), (string) ($b['defter'] ?? ''));
         });
 
@@ -2744,11 +2758,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             $resultData[] = $rowData;
         }
 
-        // 5. İlçe Tipi > Bölge > Defter sıralaması
+        // 5. Bölge > İlçe Tipi > Defter sıralaması
         usort($resultData, function ($a, $b) {
-            $cmp = strcmp((string) ($a['ilce_tipi'] ?? ''), (string) ($b['ilce_tipi'] ?? ''));
-            if ($cmp !== 0) return $cmp;
             $cmp = strcmp((string) ($a['bolge'] ?? ''), (string) ($b['bolge'] ?? ''));
+            if ($cmp !== 0) return $cmp;
+            $cmp = strcmp((string) ($a['ilce_tipi'] ?? ''), (string) ($b['ilce_tipi'] ?? ''));
             if ($cmp !== 0) return $cmp;
             $cmp = strcmp((string) ($a['mahalle'] ?? ''), (string) ($b['mahalle'] ?? ''));
             if ($cmp !== 0) return $cmp;
