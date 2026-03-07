@@ -57,7 +57,9 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.2s, transform 0.25s ease;
+  transition:
+    background 0.2s,
+    transform 0.25s ease;
   flex-shrink: 0;
   margin-left: auto; /* Pushes to the right */
 }
@@ -293,15 +295,63 @@
   max-width: 280px;
   flex-shrink: 0;
   background: var(--gt-card-bg, #ffffff);
-  border-radius: 12px;
+  border-radius: 20px;
   display: flex;
   flex-direction: column;
   max-height: 100%;
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.09);
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.gorev-liste-kolon::before {
+  content: "";
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 120px;
+  height: 120px;
+  background: var(--card-color);
+  opacity: 0.03;
+  border-radius: 50%;
+  z-index: 0;
+  transition: all 0.5s ease;
+}
+
+.gorev-liste-kolon::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(to top, var(--card-color) 0%, transparent 100%);
+  opacity: 0.15;
+  filter: blur(15px);
+  z-index: 0;
+  pointer-events: none;
+  transition: all 0.4s ease;
+  transform: translateY(20px);
+}
+
+.gorev-liste-kolon:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
+  border-color: var(--card-color) !important;
+}
+
+.gorev-liste-kolon:hover::before {
+  transform: scale(1.2);
+  opacity: 0.06;
+}
+
+.gorev-liste-kolon:hover::after {
+  opacity: 0.35;
+  height: 80px;
+  transform: translateY(0px);
+  filter: blur(20px);
 }
 
 .gorev-liste-header {
@@ -482,7 +532,7 @@
 }
 
 .gorev-form-submit-actions .btn-gorev-iptal:hover {
-  background: rgba(0,0,0,0.04);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .gorev-form-submit-actions .btn-gorev-kaydet {
@@ -1531,7 +1581,9 @@
   height: 16px;
   border-radius: 50%;
   cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
+  transition:
+    background 0.2s,
+    transform 0.2s;
   color: inherit;
   font-size: 12px;
   line-height: 1;

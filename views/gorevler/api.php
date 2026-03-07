@@ -161,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $data = [
-                    'liste_id' => $listeId,
+                    'liste_id' => $liste_id,
                     'firma_id' => $firmaId, // Kept original $firmaId
                     'baslik' => $baslik, // Kept original $baslik
                     'aciklama' => $_POST['aciklama'] ?? null,
@@ -313,14 +313,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $benimGorevlerim = array_filter($bekleyenGorevler, function ($g) use ($userId, $targetUserIds) {
                     $sorumluId = $g->olusturan_id ?? $g->liste_olusturan_id;
-                    
+
                     if (!empty($g->gorev_kullanicilari)) {
                         $taskUserIds = explode(',', $g->gorev_kullanicilari);
                         $usersToNotify = array_map('intval', $taskUserIds);
                     } else {
                         $usersToNotify = !empty($targetUserIds) ? $targetUserIds : [$sorumluId];
                     }
-                    
+
                     $usersToNotify = array_unique(array_filter($usersToNotify));
 
                     return in_array($userId, $usersToNotify);
@@ -370,7 +370,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     } else {
                         $usersToNotify = !empty($targetUserIds) ? $targetUserIds : [$gorev->olusturan_id];
                     }
-                    
+
                     $usersToNotify = array_unique(array_filter($usersToNotify));
 
                     $pushService = new \App\Service\PushNotificationService();
@@ -381,7 +381,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'body' => $gorev->baslik . $saatStr . ' [' . $gorev->liste_adi . ']',
                         'url' => 'index.php?p=gorevler/list'
                     ];
-                    
+
                     // Görev hatırlatması için mail verisi
                     $mailData = [
                         'konu' => 'Görev Hatırlatması: ' . $gorev->baslik,
@@ -450,7 +450,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception("Ayarlar kaydedilemedi.");
                 }
                 break;
-                
+
             case 'get-settings-for-task':
                 $gorevId = Security::decrypt($_POST['gorev_id']);
                 $gorev = $Gorev->findGorev($gorevId);

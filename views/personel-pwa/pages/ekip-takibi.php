@@ -67,9 +67,27 @@ use App\Helper\Date;
                     <p class="text-[10px] text-slate-400">Aylık Ort.</p>
                 </div>
             </div>
-            
+
             <div class="mt-3 text-center border-t border-slate-100 dark:border-slate-700 pt-2">
-                <p class="text-[10px] text-slate-400 font-medium">Son Güncelleme: <?php echo Helper::getLastUpdateDate('endeks_okuma'); ?></p>
+                <p class="text-[10px] text-slate-400 font-medium">Son Güncelleme:
+                    <?php echo Helper::getLastUpdateDate('endeks_okuma'); ?>
+                </p>
+            </div>
+        </div>
+    </section>
+    <!-- Delayed Readings Alert (Slim) -->
+    <section class="px-4 mt-4 hidden" id="delayed-readings-section" onclick="Modal.open('delayed-readings-modal')">
+        <div
+            class="bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800/20 rounded-xl p-3 flex items-center justify-between cursor-pointer active:scale-95 transition-transform">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-amber-600 dark:text-amber-400">warning</span>
+                <span class="text-xs font-bold text-amber-900 dark:text-amber-100">35+ Gündür Okunmayan
+                    Mahalleler</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span id="delayed-count-badge"
+                    class="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">0</span>
+                <span class="material-symbols-outlined text-amber-400 text-sm">chevron_right</span>
             </div>
         </div>
     </section>
@@ -155,6 +173,29 @@ use App\Helper\Date;
     </div>
 </div>
 
+<!-- Delayed Readings Modal -->
+<div id="delayed-readings-modal" class="modal-overlay">
+    <div class="modal-content p-6 pt-3">
+        <div class="modal-handle"></div>
+
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-amber-500 text-2xl">warning</span>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Geciken Okumalar</h3>
+            </div>
+            <button onclick="Modal.close('delayed-readings-modal')"
+                class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <span class="material-symbols-outlined text-slate-600">close</span>
+            </button>
+        </div>
+
+        <div id="delayed-readings-modal-list"
+            class="flex flex-col gap-3 overflow-y-auto max-h-[70vh] pb-6 disable-scrollbar">
+            <!-- Content will be loaded dynamically -->
+        </div>
+    </div>
+</div>
+
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
@@ -182,6 +223,9 @@ use App\Helper\Date;
         const endDate = document.getElementById('filter-end-date').value;
 
         try {
+            // Load delayed readings first
+            loadDelayedReadings();
+
             const response = await API.request('getEkipTakibiData', {
                 start_date: startDate,
                 end_date: endDate
@@ -210,6 +254,44 @@ use App\Helper\Date;
             console.error('Ekip takibi veri yükleme hatası:', error);
             listContainer.innerHTML = '';
             emptyState.classList.remove('hidden');
+        }
+    }
+
+    async function loadDelayedReadings() {
+        const section = document.getElementById('delayed-readings-section');
+        const badge = document.getElementById('delayed-count-badge');
+        const listContainer = document.getElementById('delayed-readings-modal-list');
+
+        try {
+            const response = await API.request('getDelayedReadings');
+            if (response.success && response.data && response.data.length > 0) {
+                section.classList.remove('hidden');
+                badge.textContent = response.data.length;
+
+                listContainer.innerHTML = response.data.map(item => `
+                    <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold text-slate-900 dark:text-white">Defter: ${item.defter_kodu}</span>
+                            <span class="text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-full font-bold">${item.gun} Gün Gecikti</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-slate-400 text-sm">location_on</span>
+                                <span class="text-sm font-medium text-slate-700 dark:text-slate-300">${item.mahalle}</span>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[10px] text-slate-400 uppercase font-bold">Son Okuma</p>
+                                <p class="text-[11px] text-slate-600 dark:text-slate-400">${item.son_okuma}</p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                section.classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Geciken okuma verisi yükleme hatası:', error);
+            section.classList.add('hidden');
         }
     }
 

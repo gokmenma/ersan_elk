@@ -105,7 +105,7 @@ try {
         case 'getIcralar':
             $PersonelIcralariModel = new PersonelIcralariModel();
             $icralar = $PersonelIcralariModel->getPersonelIcralariWithKesintiler($personel_id);
-            
+
             $data = array_map(function ($item) {
                 return [
                     'id' => $item->id,
@@ -134,7 +134,7 @@ try {
             }
 
             $PersonelIcralariModel = new PersonelIcralariModel();
-            
+
             // Güvenlik: Bu icra dosyası bu personele mi ait kontrol et
             $personelZimmet = $PersonelIcralariModel->find($icra_id);
             if (!$personelZimmet || $personelZimmet->personel_id != $personel_id) {
@@ -270,7 +270,7 @@ try {
                     $aktifEkipBolge = $ekip->ekip_bolge ?? '';
                 }
             }
-            
+
             // Tüm aktif personelleri departman ve bölgesine göre çekelim
             $allActiveQuery = "SELECT p.id, p.departman, 
                 (SELECT t.ekip_bolge FROM personel_ekip_gecmisi peg 
@@ -283,10 +283,10 @@ try {
             $stmt = $PersonelModel->getDb()->prepare($allActiveQuery);
             $stmt->execute([$firmaId]);
             $tumPersoneller = $stmt->fetchAll(PDO::FETCH_OBJ);
-            
+
             $departmanPersonelIds = [];
             $ekipPersonelIds = [];
-            
+
             foreach ($tumPersoneller as $p) {
                 if ($p->departman == $departman) {
                     $departmanPersonelIds[] = $p->id;
@@ -295,9 +295,11 @@ try {
                     $ekipPersonelIds[] = $p->id;
                 }
             }
-            if (!in_array($personel_id, $departmanPersonelIds)) $departmanPersonelIds[] = $personel_id;
-            if ($aktifEkipBolge && !in_array($personel_id, $ekipPersonelIds)) $ekipPersonelIds[] = $personel_id;
-            
+            if (!in_array($personel_id, $departmanPersonelIds))
+                $departmanPersonelIds[] = $personel_id;
+            if ($aktifEkipBolge && !in_array($personel_id, $ekipPersonelIds))
+                $ekipPersonelIds[] = $personel_id;
+
             // Aylık skor tablosu hesabı
             $skorSorgusu = "SELECT personel_id, SUM(toplam) as skor FROM (
                 SELECT t.personel_id, t.sonuclanmis as toplam
@@ -312,28 +314,28 @@ try {
                 WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ?
                 AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'
             ) AS birlesik GROUP BY personel_id";
-            
+
             $stmt = $db->prepare($skorSorgusu);
             $stmt->execute([$firmaId, $startOfMonth, $endOfMonth, $firmaId, $startOfMonth, $endOfMonth]);
             $skorlarArray = $stmt->fetchAll(PDO::FETCH_OBJ);
-            
+
             $skorMap = [];
             foreach ($skorlarArray as $sk) {
-                $skorMap[$sk->personel_id] = (int)$sk->skor;
+                $skorMap[$sk->personel_id] = (int) $sk->skor;
             }
-            
+
             $departmanSiralama = [];
             foreach ($departmanPersonelIds as $id) {
                 $departmanSiralama[$id] = $skorMap[$id] ?? 0;
             }
             arsort($departmanSiralama);
-            
+
             $ekipSiralama = [];
             foreach ($ekipPersonelIds as $id) {
                 $ekipSiralama[$id] = $skorMap[$id] ?? 0;
             }
             arsort($ekipSiralama);
-            
+
             $myDeptRank = array_search($personel_id, array_keys($departmanSiralama)) !== false ? array_search($personel_id, array_keys($departmanSiralama)) + 1 : 0;
             $myEkipRank = array_search($personel_id, array_keys($ekipSiralama)) !== false ? array_search($personel_id, array_keys($ekipSiralama)) + 1 : 0;
             // ------------------------------------
@@ -472,6 +474,84 @@ try {
                 'bolge' => $bolge,
                 'ekipler' => $ekiplerData
             ]);
+            break;
+
+        case 'getDelayedReadings':
+            $PersonelModel = new PersonelModel();
+            $TanimlamalarModel = new \App\Model\TanimlamalarModel();
+
+            // 1. Personelin ekip şefi olduğu aktif ekip kodunu bul
+            $ekipGecmisi = $PersonelModel->getEkipGecmisi($personel_id);
+            $sefEkipKoduId = null;
+            foreach ($ekipGecmisi as $g) {
+                if (($g->ekip_sefi_mi ?? 0) == 1 && (empty($g->bitis_tarihi) || $g->bitis_tarihi >= date('Y-m-d'))) {
+                    $sefEkipKoduId = $g->ekip_kodu_id;
+                    break;
+                }
+            }
+
+            if (!$sefEkipKoduId) {
+                response(false, null, 'Ekip şefi kaydı bulunamadı');
+            }
+
+            // 2. O ekip kodunun bölgesini bul
+            $ekipKodu = $TanimlamalarModel->find($sefEkipKoduId);
+            if (!$ekipKodu) {
+                response(false, null, 'Ekip kodu bulunamadı');
+            }
+            $bolge = trim($ekipKodu->ekip_bolge ?? '');
+
+            if (empty($bolge)) {
+                response(false, null, 'Bölge bilgisi tanımlı değil');
+            }
+
+            $db = (new \App\Model\Model('tanimlamalar'))->getDb();
+            $firmaId = $_SESSION['firma_id'] ?? 0;
+
+            // 3. Bölgedeki defterleri ve son okuma tarihlerini bul
+            $sql = "SELECT 
+                        t.id, 
+                        t.tur_adi as defter_kodu, 
+                        t.defter_mahalle as mahalle,
+                        t.baslangic_tarihi,
+                        (SELECT MAX(eo.tarih) 
+                         FROM endeks_okuma eo 
+                         WHERE eo.defter = t.tur_adi 
+                         AND eo.firma_id = :firma_id 
+                         AND eo.silinme_tarihi IS NULL) as son_okuma_tarihi
+                    FROM tanimlamalar t
+                    WHERE t.grup = 'defter_kodu' 
+                    AND t.defter_bolge = :bolge 
+                    AND t.firma_id = :firma_id 
+                    AND t.silinme_tarihi IS NULL";
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute(['bolge' => $bolge, 'firma_id' => $firmaId]);
+            $defterler = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+            $delayed = [];
+            $bugun = new DateTime();
+
+            foreach ($defterler as $d) {
+                $sonOkuma = $d->son_okuma_tarihi ?: $d->baslangic_tarihi;
+
+                if ($sonOkuma) {
+                    $sonTarih = new DateTime($sonOkuma);
+                    $interval = $bugun->diff($sonTarih);
+                    $gunFarki = $interval->days;
+
+                    if ($gunFarki > 35) {
+                        $delayed[] = [
+                            'defter_kodu' => $d->defter_kodu,
+                            'mahalle' => $d->mahalle,
+                            'gun' => $gunFarki,
+                            'son_okuma' => date('d.m.Y', strtotime($sonOkuma))
+                        ];
+                    }
+                }
+            }
+
+            response(true, $delayed);
             break;
 
         // ===== Bordro İşlemleri =====

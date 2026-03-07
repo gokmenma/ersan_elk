@@ -76,23 +76,29 @@
 
     // Yıldızlı filtresi aktifse, sadece yıldızlı görevleri göster
     if (filterYildizli) {
-      dataToShow = dataToShow.map(function (item) {
-        return {
-          liste: item.liste,
-          gorevler: (item.gorevler || []).filter(function (g) { return g.yildizli == 1; }),
-          tamamlananlar: (item.tamamlananlar || []).filter(function (g) { return g.yildizli == 1; }),
-        };
-      }).filter(function (item) {
-        return item.gorevler.length > 0 || item.tamamlananlar.length > 0;
-      });
+      dataToShow = dataToShow
+        .map(function (item) {
+          return {
+            liste: item.liste,
+            gorevler: (item.gorevler || []).filter(function (g) {
+              return g.yildizli == 1;
+            }),
+            tamamlananlar: (item.tamamlananlar || []).filter(function (g) {
+              return g.yildizli == 1;
+            }),
+          };
+        })
+        .filter(function (item) {
+          return item.gorevler.length > 0 || item.tamamlananlar.length > 0;
+        });
     }
 
     if (dataToShow.length === 0) {
       container.html(`
                 <div class="gorevler-empty">
-                    <i class="bx ${filterYildizli ? 'bx-star' : 'bx-task'}"></i>
-                    <h4>${filterYildizli ? 'Yıldızlı görev yok' : 'Henüz liste yok'}</h4>
-                    <p>${filterYildizli ? 'Yıldızladığınız görevler burada görünecek' : 'Sol panelden yeni bir liste oluşturarak başlayın'}</p>
+                    <i class="bx ${filterYildizli ? "bx-star" : "bx-task"}"></i>
+                    <h4>${filterYildizli ? "Yıldızlı görev yok" : "Henüz liste yok"}</h4>
+                    <p>${filterYildizli ? "Yıldızladığınız görevler burada görünecek" : "Sol panelden yeni bir liste oluşturarak başlayın"}</p>
                 </div>
             `);
       return;
@@ -124,7 +130,7 @@
     const listeRenk = liste.renk || "var(--gt-primary)";
 
     return $(`
-            <div class="gorev-liste-kolon" data-liste-id="${liste.id}" style="border-top: 3px solid ${listeRenk}">
+            <div class="gorev-liste-kolon" data-liste-id="${liste.id}" style="border-top: 3px solid ${listeRenk}; --card-color: ${listeRenk}">
                 <div class="gorev-liste-header">
                     <h3>${escHtml(liste.baslik)}</h3>
                     <div style="position: relative;">
@@ -165,10 +171,6 @@
                         <button class="form-action-btn btn-yineleme-ac" data-liste-id="${liste.id}" title="Tekrarla">
                             <i class="bx bx-repeat"></i>
                         </button>
-                    </div>
-                    <div class="gorev-form-submit-actions">
-                        <button class="btn-gorev-iptal" data-liste-id="${liste.id}">İptal</button>
-                        <button class="btn-gorev-kaydet" data-liste-id="${liste.id}">Kaydet</button>
                     </div>
                 </div>
 
@@ -422,19 +424,23 @@
     });
 
     // Görev ekleme - Enter ile (sadece yeni görev formu, düzenleme formu hariç)
-    $(document).on("keydown", ".gorev-baslik-input:not(.edit-gorev-baslik)", function (e) {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        const listeId = $(this).data("liste-id");
-        submitGorev(listeId);
-      }
-      if (e.key === "Escape") {
-        const listeId = $(this).data("liste-id");
-        $(`.gorev-ekleme-form[data-liste-id="${listeId}"]`).removeClass(
-          "active",
-        );
-      }
-    });
+    $(document).on(
+      "keydown",
+      ".gorev-baslik-input:not(.edit-gorev-baslik), .gorev-aciklama-input:not(.edit-gorev-aciklama)",
+      function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          const listeId = $(this).data("liste-id");
+          submitGorev(listeId);
+        }
+        if (e.key === "Escape") {
+          const listeId = $(this).data("liste-id");
+          $(`.gorev-ekleme-form[data-liste-id="${listeId}"]`).removeClass(
+            "active",
+          );
+        }
+      },
+    );
 
     // Form İptal butonu
     $(document).on("click", ".btn-gorev-iptal", function () {
@@ -752,7 +758,7 @@
         return;
 
       const $item = $(this);
-      
+
       // Eğer bir butonun veya inputun içine tıkladıysa iptal et
       if ($(e.target).closest("button, input, textarea").length) return;
 
@@ -877,7 +883,12 @@
       if (!$editingItem.length) return;
 
       // Flatpickr veya modal açıksa müdahale etme
-      if ($(".flatpickr-calendar.open").length || $(".tarih-picker-modal.show").length || $(".yineleme-modal.show").length) return;
+      if (
+        $(".flatpickr-calendar.open").length ||
+        $(".tarih-picker-modal.show").length ||
+        $(".yineleme-modal.show").length
+      )
+        return;
 
       // Enter — kaydet
       if (e.which === 13 && !e.shiftKey) {
@@ -1123,13 +1134,17 @@
         form
           .find(".edit-btn-takvim")
           .addClass("has-value")
-          .html(`<i class="bx bx-calendar"></i> ${label} <span class="btn-clear-date" title="Temizle"><i class="bx bx-x"></i></span>`);
+          .html(
+            `<i class="bx bx-calendar"></i> ${label} <span class="btn-clear-date" title="Temizle"><i class="bx bx-x"></i></span>`,
+          );
       } else {
         form.data("selected-tarih", formatted);
         form
           .find(".btn-takvim-ac")
           .addClass("has-value")
-          .html(`<i class="bx bx-calendar"></i> ${label} <span class="btn-clear-date" title="Temizle"><i class="bx bx-x"></i></span>`);
+          .html(
+            `<i class="bx bx-calendar"></i> ${label} <span class="btn-clear-date" title="Temizle"><i class="bx bx-x"></i></span>`,
+          );
       }
     }
 
@@ -1175,12 +1190,14 @@
     $("#yinelemeSikligi").val(yineleme.sikligi || 1);
     const birim = yineleme.birimi || "gun";
     $("#yinelemeBirimi").val(birim);
-    
+
     // Hafta Günlerini sıfırla ve doldur
     $(".gun-daire").removeClass("active");
     if (birim === "hafta") {
       $("#yinelemeHaftaGunleri").show();
-      const gunler = yineleme.gunleri ? String(yineleme.gunleri).split(",") : [];
+      const gunler = yineleme.gunleri
+        ? String(yineleme.gunleri).split(",")
+        : [];
       gunler.forEach((g) => {
         $(`.gun-daire[data-gun="${g}"]`).addClass("active");
       });
@@ -1207,7 +1224,7 @@
 
     const bitisTipi = $('input[name="yinelemeBitisTipi"]:checked').val();
     const birim = $("#yinelemeBirimi").val();
-    
+
     // Seçili günleri topla
     const gunler = [];
     if (birim === "hafta") {
@@ -1657,34 +1674,38 @@
     const select = $("#set_gorev_ozel_kullanicilar");
     $("#gorevKullaniciSecGorevId").val(gorevId);
 
-    $.post(API_URL, { action: "get-settings-for-task", gorev_id: gorevId }, function (res) {
-      if (res.success) {
-        select.empty();
-        const selectedValues = [];
+    $.post(
+      API_URL,
+      { action: "get-settings-for-task", gorev_id: gorevId },
+      function (res) {
+        if (res.success) {
+          select.empty();
+          const selectedValues = [];
 
-        res.data.users.forEach((u) => {
-           const option = new Option(u.text, u.id, u.selected, u.selected);
-           select.append(option);
-           if (u.selected) {
-             selectedValues.push(u.id);
-           }
-        });
-        
-        if ($.fn.select2) {
+          res.data.users.forEach((u) => {
+            const option = new Option(u.text, u.id, u.selected, u.selected);
+            select.append(option);
+            if (u.selected) {
+              selectedValues.push(u.id);
+            }
+          });
+
+          if ($.fn.select2) {
             if (select.hasClass("select2-hidden-accessible")) {
-                select.select2("destroy");
+              select.select2("destroy");
             }
             select.select2({
-                dropdownParent: modal.find(".yeni-liste-content"),
-                placeholder: "Kullanıcı seçin",
-                width: "100%",
+              dropdownParent: modal.find(".yeni-liste-content"),
+              placeholder: "Kullanıcı seçin",
+              width: "100%",
             });
+          }
+
+          select.val(selectedValues).trigger("change");
+          modal.addClass("show");
         }
-        
-        select.val(selectedValues).trigger("change");
-        modal.addClass("show");
-      }
-    });
+      },
+    );
   }
 
   function saveGorevKullaniciSec() {
@@ -1696,7 +1717,9 @@
       {
         action: "update-gorev",
         gorev_id: gorevId,
-        gorev_kullanicilari: Array.isArray(kullanicilar) ? kullanicilar.join(",") : kullanicilar
+        gorev_kullanicilari: Array.isArray(kullanicilar)
+          ? kullanicilar.join(",")
+          : kullanicilar,
       },
       function (res) {
         if (res.success) {
@@ -1707,7 +1730,7 @@
           showToast(res.message, "error");
         }
       },
-      "json"
+      "json",
     );
   }
 
@@ -1730,7 +1753,7 @@
             loadAll();
           }
         },
-        "json"
+        "json",
       );
       return;
     }
@@ -1738,11 +1761,17 @@
     if (isEdit) {
       form.find(".edit-tarih-val").val("");
       form.find(".edit-saat-val").val("");
-      form.find(".edit-btn-takvim").removeClass("has-value").html('<i class="bx bx-calendar"></i>');
+      form
+        .find(".edit-btn-takvim")
+        .removeClass("has-value")
+        .html('<i class="bx bx-calendar"></i>');
     } else {
       form.removeData("selected-tarih");
       form.removeData("selected-saat");
-      form.find(".btn-takvim-ac").removeClass("has-value").html('<i class="bx bx-calendar"></i>');
+      form
+        .find(".btn-takvim-ac")
+        .removeClass("has-value")
+        .html('<i class="bx bx-calendar"></i>');
     }
   });
 
