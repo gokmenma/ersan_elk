@@ -36,6 +36,7 @@
           $("#evrak_turu").select2({
             dropdownParent: $("#modalEvrakYukle"),
             width: "100%",
+            tags: true,
           });
         } else {
           console.error("Modal element bulunamadı: modalEvrakYukle");

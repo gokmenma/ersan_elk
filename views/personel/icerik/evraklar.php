@@ -1,6 +1,7 @@
 <?php
 
 use App\Helper\Security;
+use App\Helper\Helper;
 use App\Model\PersonelEvrakModel;
 
 $EvrakModel = new PersonelEvrakModel();
@@ -36,16 +37,7 @@ function formatFileSize($bytes)
     return $bytes . ' B';
 }
 
-// Evrak türlerini tanımla
-$evrakTurleri = [
-    'sozlesme' => 'Sözleşme',
-    'kimlik' => 'Kimlik',
-    'diploma' => 'Diploma',
-    'cv' => 'CV',
-    'saglik_raporu' => 'Sağlık Raporu',
-    'sertifika' => 'Sertifika',
-    'diger' => 'Diğer'
-];
+
 ?>
 
 <div class="row">
@@ -167,7 +159,7 @@ $evrakTurleri = [
                     <div class="mb-3">
                         <?= \App\Helper\Form::FormSelect2(
                             'evrak_turu',
-                            $evrakTurleri,
+                            Helper::EVRAK_TURLERI,
                             '',
                             'Evrak Türü *',
                             'layers',
@@ -263,6 +255,8 @@ $evrakTurleri = [
                 console.error('Modal element bulunamadı: modalEvrakYukle');
             }
         });
+
+
 
         // Evrak Yükle Form Submit - Event Delegation
         $(document).off('submit', '#formEvrakYukle').on('submit', '#formEvrakYukle', function (e) {

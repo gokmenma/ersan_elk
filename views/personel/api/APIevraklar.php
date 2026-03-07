@@ -102,7 +102,7 @@ try {
         
         // Kullanıcı ID'sini al (session'dan)
         session_start();
-        $yukleyen_id = $_SESSION['user']['id'] ?? null;
+        $yukleyen_id = $_SESSION['user_id'] ?? null;
         
         // Veritabanına kaydet
         $evrakData = [

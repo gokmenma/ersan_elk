@@ -12,25 +12,38 @@ class Helper
     ];
 
     const MAAS_HESAPLAMA_TIPI = [
-        'Net' => "Net",
-        'Brüt' => "Brüt",
-        'Prim Usülü' => 'Prim Usülü',
+        'Net'                => "Net",
+        'Brüt'               => "Brüt",
+        'Prim Usülü'         => 'Prim Usülü',
         'Maaş Hesaplanmayan' => 'Maaş Hesaplanmayan'
     ];
 
     const DEPARTMAN = [
-        "BÜRO" => "BÜRO",
-        'Kesme Açma' => 'Kesme-Açma',
-        'Kaçak Kontrol' => 'Kaçak Kontrol',
-        'Endeks Okuma' => 'Endeks Okuma',
+        "BÜRO"              => "BÜRO",
+        'Kesme Açma'        => 'Kesme-Açma',
+        'Kaçak Kontrol'     => 'Kaçak Kontrol',
+        'Endeks Okuma'      => 'Endeks Okuma',
         'Sayaç Sökme Takma' => 'Sayaç Sökme Takma',
-        'Mühürleme' => 'Mühürleme',
-        'Kaçak Su Tespiti' => 'Kaçak Su Tespiti',
+        'Mühürleme'         => 'Mühürleme',
+        'Kaçak Su Tespiti'  => 'Kaçak Su Tespiti',
     ];
 
 
 
-
+    const EVRAK_TURLERI = [
+        'ehliyet'                   => 'Ehliyet',
+        'ikametgah'                 => 'İkametgah',
+        'adli_sicil_kaydi'          => 'Adli Sicil Kaydı',
+        'nufus_kayit_ornegi'        => 'Nüfus Kayıt Örneği',
+        'gizlilik_taahhutnamesi'    => 'Gizlilik Taahhütnamesi',
+        'sozlesme'                  => 'Sözleşme',
+        'kimlik'                    => 'Kimlik',
+        'diploma'                   => 'Diploma',
+        'cv'                        => 'CV',
+        'saglik_raporu'             => 'Sağlık Raporu',
+        'sertifika'                 => 'Sertifika',
+        'diger'                     => 'Diğer'
+    ];
 
 
 
