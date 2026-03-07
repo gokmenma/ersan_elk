@@ -165,17 +165,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'firma_id' => $firmaId, // Kept original $firmaId
                     'baslik' => $baslik, // Kept original $baslik
                     'aciklama' => $_POST['aciklama'] ?? null,
-                    'tarih' => !empty($_POST['tarih']) ? $_POST['tarih'] : null,
-                    'saat' => !empty($_POST['saat']) ? $_POST['saat'] : null,
-                    'yineleme_sikligi' => !empty($_POST['yineleme_sikligi']) ? $_POST['yineleme_sikligi'] : null,
-                    'yineleme_birimi' => !empty($_POST['yineleme_birimi']) ? $_POST['yineleme_birimi'] : null,
-                    'yineleme_gunleri' => !empty($_POST['yineleme_gunleri']) ? $_POST['yineleme_gunleri'] : null, // Added this line
-                    'yineleme_baslangic' => !empty($_POST['yineleme_baslangic']) ? $_POST['yineleme_baslangic'] : null,
-                    'yineleme_bitis_tipi' => !empty($_POST['yineleme_bitis_tipi']) ? $_POST['yineleme_bitis_tipi'] : null,
-                    'yineleme_bitis_tarihi' => !empty($_POST['yineleme_bitis_tarihi']) ? $_POST['yineleme_bitis_tarihi'] : null,
-                    'yineleme_bitis_adet' => !empty($_POST['yineleme_bitis_adet']) ? $_POST['yineleme_bitis_adet'] : null,
+                    'tarih' => (isset($_POST['tarih']) && $_POST['tarih'] !== '') ? $_POST['tarih'] : null,
+                    'saat' => (isset($_POST['saat']) && $_POST['saat'] !== '') ? $_POST['saat'] : null,
+                    'yineleme_sikligi' => (isset($_POST['yineleme_sikligi']) && $_POST['yineleme_sikligi'] !== '') ? $_POST['yineleme_sikligi'] : null,
+                    'yineleme_birimi' => $_POST['yineleme_birimi'] ?? null,
+                    'yineleme_gunleri' => $_POST['yineleme_gunleri'] ?? null,
+                    'yineleme_baslangic' => (isset($_POST['yineleme_baslangic']) && $_POST['yineleme_baslangic'] !== '') ? $_POST['yineleme_baslangic'] : null,
+                    'yineleme_bitis_tipi' => $_POST['yineleme_bitis_tipi'] ?? null,
+                    'yineleme_bitis_tarihi' => (isset($_POST['yineleme_bitis_tarihi']) && $_POST['yineleme_bitis_tarihi'] !== '') ? $_POST['yineleme_bitis_tarihi'] : null,
+                    'yineleme_bitis_adet' => (isset($_POST['yineleme_bitis_adet']) && $_POST['yineleme_bitis_adet'] !== '') ? $_POST['yineleme_bitis_adet'] : null,
                     'olusturan_id' => $userId,
-                    'gorev_kullanicilari' => !empty($_POST['gorev_kullanicilari']) ? $_POST['gorev_kullanicilari'] : null
+                    'gorev_kullanicilari' => (isset($_POST['gorev_kullanicilari']) && $_POST['gorev_kullanicilari'] !== '') ? $_POST['gorev_kullanicilari'] : null
                 ];
 
                 $id = $Gorev->addGorev($data);
@@ -390,7 +390,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     foreach ($usersToNotify as $targetId) {
                         $pushService->sendToPersonel($targetId, $payload);
-                        $mailService->kullaniciyaMailGonder($targetId, $mailData);
+
+                        // Mail gönderimi için kullanıcı e-postasını al
+                        $User = new \App\Model\UserModel();
+                        $targetUser = $User->find($targetId);
+                        if ($targetUser && !empty($targetUser->email)) {
+                            \App\Service\MailGonderService::gonder($targetUser->email, $mailData['konu'], $mailData['icerik']);
+                        }
                     }
                 }
 

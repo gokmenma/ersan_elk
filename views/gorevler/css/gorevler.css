@@ -283,10 +283,69 @@
 .gorevler-content {
   flex: 1;
   display: flex;
+  align-items: flex-start;
   overflow-x: auto;
   padding: 16px;
   gap: 16px;
   scroll-behavior: smooth;
+  user-select: none;
+  position: relative; /* Preloader için */
+}
+
+/* ── PRELOADER ── */
+.gt-preloader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--gt-bg, #f8f9fa);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease;
+}
+
+.gt-preloader.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.gt-loader-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.gt-loader-dots span {
+  width: 12px;
+  height: 12px;
+  background: var(--gt-primary, #1a73e8);
+  border-radius: 50%;
+  animation: gt-bounce 1.4s infinite ease-in-out both;
+}
+
+.gt-loader-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+.gt-loader-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes gt-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+
+.gorevler-content.dragging-active {
+  cursor: grabbing;
+  scroll-behavior: auto; /* Sürüklerken smooth scroll engelleyici olabilir */
 }
 
 /* ── LİSTE KOLONU ── */
@@ -303,7 +362,8 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.09);
   transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
   position: relative;
-  overflow: hidden;
+  overflow: visible; /* Dropdownlar için */
+  padding-bottom: 20px;
 }
 
 .gorev-liste-kolon::before {
@@ -1101,16 +1161,15 @@
 
 /* ── DROPDOWN MENU ── */
 .gorev-dropdown {
-  position: absolute;
-  right: 8px;
-  top: 100%;
+  position: fixed;
   background: var(--gt-card-bg, #fff);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  min-width: 160px;
-  z-index: 100;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  width: 220px;
+  z-index: 9999;
   overflow: hidden;
   display: none;
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .gorev-dropdown.show {

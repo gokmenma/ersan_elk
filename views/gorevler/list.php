@@ -53,6 +53,15 @@ $title = 'Görevler';
 
         <!-- ═══ SAĞ İÇERİK ═══ -->
         <div class="gorevler-content" id="gorevlerContent">
+            <!-- Preloader -->
+            <div class="gt-preloader" id="pagePreloader">
+                <div class="gt-loader-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+
             <!-- JS ile doldurulacak -->
             <div class="gorevler-empty">
                 <i class="bx bx-task"></i>
@@ -107,7 +116,8 @@ $title = 'Görevler';
                 style="width: 100%;">
                 <!-- JS ile doldurulacak -->
             </select>
-            <small class="text-muted" style="font-size: 11px;">Eğer seçim yapılmazsa ayarlardaki genel bildirim kullanıcılarına gönderilir.</small>
+            <small class="text-muted" style="font-size: 11px;">Eğer seçim yapılmazsa ayarlardaki genel bildirim
+                kullanıcılarına gönderilir.</small>
             <input type="hidden" id="gorevKullaniciSecGorevId">
         </div>
 
@@ -159,7 +169,8 @@ $title = 'Görevler';
         </div>
 
         <!-- Haftanın Günleri (Sadece Hafta seçiliyken görünür) -->
-        <div class="yineleme-haftanin-gunleri" id="yinelemeHaftaGunleri" style="display: none; margin-bottom: 15px; margin-top: 5px;">
+        <div class="yineleme-haftanin-gunleri" id="yinelemeHaftaGunleri"
+            style="display: none; margin-bottom: 15px; margin-top: 5px;">
             <div class="gun-daire" data-gun="1">P</div>
             <div class="gun-daire" data-gun="2">S</div>
             <div class="gun-daire" data-gun="3">Ç</div>

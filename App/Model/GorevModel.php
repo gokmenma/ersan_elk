@@ -127,8 +127,8 @@ class GorevModel extends Model
 
     public function addGorev($data)
     {
-        // Mevcut en yüksek sıra numarasını bul
-        $stmt = $this->db->prepare("SELECT COALESCE(MAX(sira), 0) + 1 as next_sira FROM gorevler WHERE liste_id = :liste_id AND tamamlandi = 0");
+        // Yeni görevlerin en üstte olması için MIN(sira) - 1 kullanıyoruz
+        $stmt = $this->db->prepare("SELECT COALESCE(MIN(sira), 0) - 1 as next_sira FROM gorevler WHERE liste_id = :liste_id AND tamamlandi = 0");
         $stmt->execute([':liste_id' => $data['liste_id']]);
         $nextSira = $stmt->fetch(PDO::FETCH_OBJ)->next_sira;
 

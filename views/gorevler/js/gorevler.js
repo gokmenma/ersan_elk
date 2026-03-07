@@ -9,6 +9,7 @@
   let allData = []; // [{liste, gorevler, tamamlananlar}]
   let activeListeId = null; // sidebar seçili liste (null = tüm görevler)
   let filterYildizli = false; // yıldızlı filtresi aktif mi
+  let lastFocusedForm = null; // Hangi formun aktif olduğunu takip et (Enter için)
 
   // =====================================================
   // SAYFA YÜKLEME
@@ -19,6 +20,7 @@
   });
 
   function loadAll() {
+    $("#pagePreloader").removeClass("fade-out"); // Show preloader
     $.post(
       API_URL,
       { action: "get-tum-gorevler" },
@@ -105,9 +107,20 @@
     }
 
     dataToShow.forEach(function (item) {
+      if (item.gorevler) {
+        item.gorevler.sort((a, b) => b.id - a.id);
+      }
+      if (item.tamamlananlar) {
+        item.tamamlananlar.sort((a, b) => b.id - a.id);
+      }
       const kolon = buildListeKolon(item);
       container.append(kolon);
     });
+
+    // Hide preloader after render
+    setTimeout(() => {
+      $("#pagePreloader").addClass("fade-out");
+    }, 300);
   }
 
   function buildListeKolon(item) {
@@ -153,6 +166,10 @@
                 </button>
 
                 <div class="gorev-ekleme-form" data-liste-id="${liste.id}">
+                    <input type="hidden" class="new-gorev-tarih" value="">
+                    <input type="hidden" class="new-gorev-saat" value="">
+                    <input type="hidden" class="new-gorev-yineleme" value="{}">
+                    
                     <div class="gorev-baslik-container">
                         <div class="gorev-checkbox-placeholder"></div>
                         <textarea class="gorev-baslik-input auto-resize" placeholder="Başlık" data-liste-id="${liste.id}" rows="1"></textarea>
@@ -413,34 +430,33 @@
       }
     });
 
+    // Hangi formun aktif olduğunu takip et (Enter için)
+    $(document).on(
+      "focusin",
+      ".gorev-ekleme-form, .inline-edit-form, .gorev-baslik-input, .gorev-aciklama-input, .edit-gorev-baslik, .edit-gorev-aciklama",
+      function () {
+        lastFocusedForm = $(this).closest(
+          ".gorev-ekleme-form, .inline-edit-form",
+        );
+      },
+    );
+
     // Görev ekle butonu toggle
     $(document).on("click", ".gorev-ekle-btn", function () {
       const listeId = $(this).data("liste-id");
       const form = $(`.gorev-ekleme-form[data-liste-id="${listeId}"]`);
+
+      // Diğer aktif "yeni görev" formlarını kapat (kalabalık yapmasın)
+      $(".gorev-ekleme-form.active").not(form).removeClass("active");
+
       form.toggleClass("active");
       if (form.hasClass("active")) {
         form.find(".gorev-baslik-input").focus();
+        lastFocusedForm = form;
       }
     });
 
-    // Görev ekleme - Enter ile (sadece yeni görev formu, düzenleme formu hariç)
-    $(document).on(
-      "keydown",
-      ".gorev-baslik-input:not(.edit-gorev-baslik), .gorev-aciklama-input:not(.edit-gorev-aciklama)",
-      function (e) {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          const listeId = $(this).data("liste-id");
-          submitGorev(listeId);
-        }
-        if (e.key === "Escape") {
-          const listeId = $(this).data("liste-id");
-          $(`.gorev-ekleme-form[data-liste-id="${listeId}"]`).removeClass(
-            "active",
-          );
-        }
-      },
-    );
+    // Bu kısım silindi, global keydown handler (aşağıda) tarafından yönetilecek.
 
     // Form İptal butonu
     $(document).on("click", ".btn-gorev-iptal", function () {
@@ -456,22 +472,29 @@
 
     // Tarih kısayolları
     $(document).on("click", ".btn-tarih-sec", function () {
-      const listeId = $(this).data("liste-id");
       const today = formatDate(new Date());
-      $(this).data("tarih", today).addClass("has-value").text("Bugün");
+      const $form = $(this).closest(".gorev-ekleme-form");
+      $form.find(".new-gorev-tarih").val(today);
+      $form.find(".btn-tarih-sec").addClass("has-value");
+      $form.find(".btn-yarin-sec").removeClass("has-value");
+      $form
+        .find(".btn-takvim-ac")
+        .removeClass("has-value")
+        .html('<i class="bx bx-calendar"></i>');
     });
 
     $(document).on("click", ".btn-yarin-sec", function () {
-      const listeId = $(this).data("liste-id");
       const yarin = new Date();
       yarin.setDate(yarin.getDate() + 1);
       const formatted = formatDate(yarin);
-      const btn = $(
-        `.gorev-form-actions[data-liste-id="${listeId}"] .btn-tarih-sec, .btn-tarih-sec[data-liste-id="${listeId}"]`,
-      ).first();
-
-      // btn-yarin-sec'e tarih verisi ekle
-      $(this).data("tarih", formatted).addClass("has-value");
+      const $form = $(this).closest(".gorev-ekleme-form");
+      $form.find(".new-gorev-tarih").val(formatted);
+      $form.find(".btn-yarin-sec").addClass("has-value");
+      $form.find(".btn-tarih-sec").removeClass("has-value");
+      $form
+        .find(".btn-takvim-ac")
+        .removeClass("has-value")
+        .html('<i class="bx bx-calendar"></i>');
     });
 
     // Takvim aç
@@ -539,63 +562,127 @@
     // Liste menü toggle
     $(document).on("click", ".liste-menu-btn", function (e) {
       e.stopPropagation();
-      const listeId = $(this).data("liste-id");
-      $(`.liste-dropdown[data-liste-id="${listeId}"]`).toggleClass("show");
+      const $btn = $(this);
+      const listeId = $btn.data("liste-id");
+
+      // Diğerlerini kapat
+      $(".liste-dropdown")
+        .not(`[data-liste-id="${listeId}"]`)
+        .removeClass("show");
+      if (!$(".liste-dropdown").is(":visible")) $(".liste-dropdown").remove(); // Temizlik
+
+      const offset = $btn.offset();
+      const $dropdown = $(`.liste-dropdown[data-liste-id="${listeId}"]`);
+
+      if ($dropdown.length) {
+        const dropdownHeight = 110; // Yaklaşık yükseklik
+        const windowHeight = $(window).height();
+        const spaceBelow = windowHeight - offset.top - $btn.outerHeight();
+
+        // Eğer altta yer yoksa yukarı aç
+        let topPos = offset.top + 35;
+        if (spaceBelow < dropdownHeight) {
+          topPos = offset.top - dropdownHeight + 5;
+        }
+
+        $dropdown
+          .css({
+            position: "fixed",
+            top: topPos + "px",
+            left: offset.left - 130 + "px",
+            "z-index": 9999,
+          })
+          .toggleClass("show");
+
+        if ($dropdown.hasClass("show")) {
+          $("body").append($dropdown);
+        }
+      }
     });
 
     // Görev menüsü
     $(document).on("click", ".btn-gorev-menu", function (e) {
       e.stopPropagation();
-      const gorevId = $(this).data("gorev-id");
-      const item = $(this).closest(".gorev-item");
+      const $btn = $(this);
+      const gorevId = $btn.data("gorev-id");
 
-      // Mevcut menüyü kaldır
+      // Mevcut menüleri kaldır
       $(".gorev-item-dropdown").remove();
 
-      const dropdown = $(`
-                <div class="gorev-dropdown gorev-item-dropdown show" style="top: 0; right: 40px;">
-                    <button class="dropdown-item btn-gorev-kullanici-sec" data-gorev-id="${gorevId}">
-                        <i class="bx bx-user-plus"></i> Kullanıcılar
-                    </button>
-                    <button class="dropdown-item btn-gorev-sil" data-gorev-id="${gorevId}">
-                        <i class="bx bx-trash"></i> Sil
-                    </button>
-                </div>
-            `);
+      const offset = $btn.offset();
+      const dropdownHeight = 90; // Yaklaşık yükseklik
+      const windowHeight = $(window).height();
+      const spaceBelow = windowHeight - offset.top - $btn.outerHeight();
 
-      item.css("position", "relative").append(dropdown);
+      // Eğer altta yer yoksa yukarı aç
+      let topPos = offset.top + 35;
+      if (spaceBelow < dropdownHeight) {
+        topPos = offset.top - dropdownHeight + 5;
+      }
+
+      const dropdown = $(`
+        <div class="gorev-dropdown gorev-item-dropdown show" style="top: ${topPos}px; left: ${offset.left - 180}px;">
+            <button class="dropdown-item btn-gorev-kullanici-sec" data-gorev-id="${gorevId}">
+                <i class="bx bx-user-plus"></i> Kullanıcılar
+            </button>
+            <button class="dropdown-item btn-gorev-sil" data-gorev-id="${gorevId}">
+                <i class="bx bx-trash"></i> Sil
+            </button>
+        </div>
+      `);
+
+      $("body").append(dropdown);
     });
 
-    // Görev sil
+    // Görev sil (Doğrudan silme + Geri al)
+    let deleteTimers = {};
     $(document).on("click", ".btn-gorev-sil", function (e) {
       e.stopPropagation();
       const gorevId = $(this).data("gorev-id");
+      const $item = $(`.gorev-item[data-gorev-id="${gorevId}"]`);
 
-      Swal.fire({
-        title: "Görev Silinsin mi?",
-        text: "Bu görev kalıcı olarak silinecektir.",
-        icon: "warning",
-        showCancelButton: true,
-        cancelButtonText: "İptal",
-        confirmButtonText: "Sil",
-        confirmButtonColor: "#c5221f",
-      }).then((result) => {
-        if (result.isConfirmed) {
-          $.post(
-            API_URL,
-            { action: "delete-gorev", gorev_id: gorevId },
-            function (res) {
-              if (res.success) {
-                showToast("Görev silindi", "success");
-                loadAll();
-              } else {
-                showToast(res.message, "error");
-              }
-            },
-            "json",
-          );
-        }
-      });
+      // UI'dan anında gizle
+      $item.fadeOut(300);
+      $(".gorev-item-dropdown").remove();
+
+      // Undo Toast Göster
+      const toast = Toastify({
+        text: `Görev silindi. <a href="#" class="undo-delete" data-id="${gorevId}" style="color:#fff;text-decoration:underline;margin-left:10px;font-weight:700">Geri Al</a>`,
+        duration: 5000,
+        escapeMarkup: false,
+        gravity: "bottom",
+        position: "center",
+        style: {
+          background: "linear-gradient(135deg, #c5221f, #ea4335)",
+          borderRadius: "6px",
+        },
+      }).showToast();
+
+      // 5 saniye sonra gerçekten sil
+      deleteTimers[gorevId] = setTimeout(() => {
+        $.post(
+          API_URL,
+          { action: "delete-gorev", gorev_id: gorevId },
+          function (res) {
+            if (!res.success) showToast(res.message, "error");
+            delete deleteTimers[gorevId];
+          },
+          "json",
+        );
+      }, 5000);
+    });
+
+    // Silmeyi Geri Al
+    $(document).on("click", ".undo-delete", function (e) {
+      e.preventDefault();
+      const id = $(this).data("id");
+      if (deleteTimers[id]) {
+        clearTimeout(deleteTimers[id]);
+        delete deleteTimers[id];
+        $(`.gorev-item[data-gorev-id="${id}"]`).stop().fadeIn(300);
+        $(this).closest(".toastify").remove();
+        showToast("İşlem geri alındı", "success");
+      }
     });
 
     // Görev Kullanıcı Seç (Modal Aç)
@@ -876,33 +963,77 @@
       openYinelemeModal(editId);
     });
 
-    // Enter/Escape handlers — Document seviyesinde dinle
-    // (Tarih butonları veya takvim odaklandığında bile çalışması için)
+    // Global Enter/Escape handler
     $(document).on("keydown", function (e) {
-      const $editingItem = $(".gorev-item.editing");
-      if (!$editingItem.length) return;
-
       // Flatpickr veya modal açıksa müdahale etme
       if (
         $(".flatpickr-calendar.open").length ||
         $(".tarih-picker-modal.show").length ||
-        $(".yineleme-modal.show").length
+        $(".yineleme-modal.show").length ||
+        $(".swal2-container").length ||
+        $(".modal.show").length
       )
         return;
 
-      // Enter — kaydet
-      if (e.which === 13 && !e.shiftKey) {
-        e.preventDefault();
-        const $form = $editingItem.find(".inline-edit-form");
-        if ($form.length) {
-          saveInlineEdit($form);
+      // Escape — iptal
+      if (e.which === 27) {
+        // 1. Önce aktif inline editi kapatmayı dene
+        const $editingItem = $(".gorev-item.editing");
+        if ($editingItem.length) {
+          e.preventDefault();
+          closeInlineEdit($editingItem);
+          return;
+        }
+        // 2. Yeni görev formunu kapatmayı dene
+        const $activeForm = $(".gorev-ekleme-form.active:not(.edit-mode)");
+        if ($activeForm.length) {
+          e.preventDefault();
+          $activeForm.removeClass("active");
+          return;
         }
       }
 
-      // Escape — iptal
-      if (e.which === 27) {
-        e.preventDefault();
-        closeInlineEdit($editingItem);
+      // Enter — kaydet (Shift yoksa)
+      if (e.which === 13 && !e.shiftKey) {
+        // Textarea içindeysen ve Shift yoksa kaydetmek istiyoruz
+
+        // 1. Odaklanmış bir form varsa onu kaydet
+        if (
+          lastFocusedForm &&
+          lastFocusedForm.is(":visible") &&
+          (lastFocusedForm.hasClass("active") ||
+            lastFocusedForm.closest(".gorev-item").hasClass("editing"))
+        ) {
+          if (lastFocusedForm.hasClass("inline-edit-form")) {
+            e.preventDefault();
+            saveInlineEdit(lastFocusedForm);
+            return;
+          } else if (lastFocusedForm.hasClass("gorev-ekleme-form")) {
+            e.preventDefault();
+            const lId = lastFocusedForm.attr("data-liste-id");
+            submitGorev(lId);
+            return;
+          }
+        }
+
+        // 2. Odak yoksa ama tek bir açık form varsa onu kaydet
+        const $editingItem = $(".gorev-item.editing");
+        if ($editingItem.length === 1) {
+          const $form = $editingItem.find(".inline-edit-form");
+          if ($form.length) {
+            e.preventDefault();
+            saveInlineEdit($form);
+            return;
+          }
+        }
+
+        const $activeForms = $(".gorev-ekleme-form.active:not(.edit-mode)");
+        if ($activeForms.length === 1) {
+          e.preventDefault();
+          const listeId = $activeForms.attr("data-liste-id");
+          submitGorev(listeId);
+          return;
+        }
       }
     });
 
@@ -922,8 +1053,6 @@
       } catch (err) {}
 
       if (!baslik) {
-        // Başlık boşsa iptal et veya uyar? Genelde Google Tasks boş olunca siliyor veya iptal ediyor.
-        // Biz iptal edelim.
         closeInlineEdit($form.closest(".gorev-item"));
         return;
       }
@@ -932,16 +1061,16 @@
         action: "update-gorev",
         gorev_id: gorevId,
         baslik: baslik,
-        aciklama: aciklama || null,
-        tarih: tarih || null,
-        saat: saat || null,
-        yineleme_sikligi: yineleme.sikligi || null,
-        yineleme_birimi: yineleme.birimi || null,
-        yineleme_gunleri: yineleme.gunleri || null,
-        yineleme_baslangic: yineleme.baslangic || null,
-        yineleme_bitis_tipi: yineleme.bitis_tipi || null,
-        yineleme_bitis_tarihi: yineleme.bitis_tarihi || null,
-        yineleme_bitis_adet: yineleme.bitis_adet || null,
+        aciklama: aciklama || "",
+        tarih: tarih || "",
+        saat: saat || "",
+        yineleme_sikligi: yineleme.sikligi || "",
+        yineleme_birimi: yineleme.birimi || "",
+        yineleme_gunleri: yineleme.gunleri || "",
+        yineleme_baslangic: yineleme.baslangic || "",
+        yineleme_bitis_tipi: yineleme.bitis_tipi || "",
+        yineleme_bitis_tarihi: yineleme.bitis_tarihi || "",
+        yineleme_bitis_adet: yineleme.bitis_adet || "",
       };
 
       $.post(
@@ -1000,36 +1129,35 @@
     if (!baslik) return;
 
     // Tarih
-    let tarih = form.data("selected-tarih") || null;
-    let saat = form.data("selected-saat") || null;
+    let tarih = form.find(".new-gorev-tarih").val() || "";
+    let saat = form.find(".new-gorev-saat").val() || "";
 
-    // Bugün/Yarın butonları
-    const bugunBtn = form.find(".btn-tarih-sec");
-    const yarinBtn = form.find(".btn-yarin-sec");
-    if (bugunBtn.hasClass("has-value") && !tarih) {
-      tarih = bugunBtn.data("tarih");
-    }
-    if (yarinBtn.hasClass("has-value") && !tarih) {
-      tarih = yarinBtn.data("tarih");
-    }
+    // Debug amaçlı gizli alanların doluluğunu kontrol edelim
+    // console.log("Submitting task:", { baslik, tarih, saat });
 
     // Yineleme
-    let yinelemeData = form.data("yineleme") || {};
+    let yinelemeData = {};
+    try {
+      const yStr = form.find(".new-gorev-yineleme").val();
+      if (yStr && yStr !== "{}") {
+        yinelemeData = JSON.parse(yStr);
+      }
+    } catch (e) {}
 
     const postData = {
       action: "add-gorev",
       liste_id: listeId,
       baslik: baslik,
-      aciklama: aciklama || null,
+      aciklama: aciklama || "",
       tarih: tarih,
       saat: saat,
-      yineleme_sikligi: yinelemeData.sikligi || null,
-      yineleme_birimi: yinelemeData.birimi || null,
-      yineleme_gunleri: yinelemeData.gunleri || null,
-      yineleme_baslangic: yinelemeData.baslangic || null,
-      yineleme_bitis_tipi: yinelemeData.bitis_tipi || null,
-      yineleme_bitis_tarihi: yinelemeData.bitis_tarihi || null,
-      yineleme_bitis_adet: yinelemeData.bitis_adet || null,
+      yineleme_sikligi: yinelemeData.sikligi || "",
+      yineleme_birimi: yinelemeData.birimi || "",
+      yineleme_gunleri: yinelemeData.gunleri || "",
+      yineleme_baslangic: yinelemeData.baslangic || "",
+      yineleme_bitis_tipi: yinelemeData.bitis_tipi || "",
+      yineleme_bitis_tarihi: yinelemeData.bitis_tarihi || "",
+      yineleme_bitis_adet: yinelemeData.bitis_adet || "",
     };
 
     $.post(
@@ -1040,9 +1168,9 @@
           // Formu temizle
           form.find(".gorev-baslik-input").val("");
           form.find(".gorev-aciklama-input").val("");
-          form.removeData("selected-tarih");
-          form.removeData("selected-saat");
-          form.removeData("yineleme");
+          form.find(".new-gorev-tarih").val("");
+          form.find(".new-gorev-saat").val("");
+          form.find(".new-gorev-yineleme").val("{}");
           form.find(".form-action-btn").removeClass("has-value");
           form.find(".btn-tarih-sec").text("Bugün");
           form.find(".btn-yarin-sec").text("Yarın");
@@ -1050,7 +1178,9 @@
 
           // Focus tekrar başlığa
           form.find(".gorev-baslik-input").focus();
+          lastFocusedForm = form;
 
+          showToast("Görev başarıyla eklendi", "success");
           loadAll();
         } else {
           showToast(res.message, "error");
@@ -1081,9 +1211,9 @@
       existingDate = form.find(".edit-tarih-val").val();
       existingSaat = form.find(".edit-saat-val").val() || "";
     } else {
-      form = $(`.gorev-ekleme-form[data-liste-id="${listeId}"]`);
-      existingDate = form.data("selected-tarih");
-      existingSaat = form.data("selected-saat") || "";
+      const form = $(`.gorev-ekleme-form[data-liste-id="${listeId}"]`);
+      existingDate = form.find(".new-gorev-tarih").val();
+      existingSaat = form.find(".new-gorev-saat").val() || "";
     }
 
     if (tarihPickerInstance) {
@@ -1138,7 +1268,8 @@
             `<i class="bx bx-calendar"></i> ${label} <span class="btn-clear-date" title="Temizle"><i class="bx bx-x"></i></span>`,
           );
       } else {
-        form.data("selected-tarih", formatted);
+        form.find(".new-gorev-tarih").val(formatted);
+        form.find(".btn-tarih-sec, .btn-yarin-sec").removeClass("has-value");
         form
           .find(".btn-takvim-ac")
           .addClass("has-value")
@@ -1151,7 +1282,7 @@
     if (isEdit) {
       form.find(".edit-saat-val").val(saat || "");
     } else if (saat) {
-      form.data("selected-saat", saat);
+      form.find(".new-gorev-saat").val(saat);
     }
 
     $("#tarihPickerModal").removeClass("show");
@@ -1184,7 +1315,12 @@
       } catch (e) {}
     } else {
       const form = $(`.gorev-ekleme-form[data-liste-id="${listeId}"]`);
-      yineleme = form.data("yineleme") || {};
+      try {
+        const yStr = form.find(".new-gorev-yineleme").val();
+        if (yStr && yStr !== "{}") {
+          yineleme = JSON.parse(yStr);
+        }
+      } catch (e) {}
     }
 
     $("#yinelemeSikligi").val(yineleme.sikligi || 1);
@@ -1259,7 +1395,7 @@
       const form = $(
         `.gorev-ekleme-form[data-liste-id="${currentYinelemeListeId}"]`,
       );
-      form.data("yineleme", yinelemeData);
+      form.find(".new-gorev-yineleme").val(JSON.stringify(yinelemeData));
       form
         .find(".btn-yineleme-ac")
         .addClass("has-value")
@@ -1358,6 +1494,19 @@
     });
 
     if (siralar.length > 0) {
+      // Sidebar senkronizasyonu için allData'yı da güncellemeliyiz (Optimistik)
+      const dataMap = {};
+      allData.forEach((d) => (dataMap[d.liste.id] = d));
+
+      const newAllData = [];
+      siralar.forEach((s) => {
+        if (dataMap[s.id]) {
+          newAllData.push(dataMap[s.id]);
+        }
+      });
+      allData = newAllData;
+      renderSidebar();
+
       $.post(
         API_URL,
         {
@@ -1422,9 +1571,9 @@
     Toastify({
       text: msg,
       duration: 3000,
-      gravity: "top",
-      position: "right",
-      style: { background: bg },
+      gravity: "bottom",
+      position: "center",
+      style: { background: bg, borderRadius: "6px" },
       stopOnFocus: true,
     }).showToast();
   }
@@ -1766,8 +1915,8 @@
         .removeClass("has-value")
         .html('<i class="bx bx-calendar"></i>');
     } else {
-      form.removeData("selected-tarih");
-      form.removeData("selected-saat");
+      form.find(".new-gorev-tarih").val("");
+      form.find(".new-gorev-saat").val("");
       form
         .find(".btn-takvim-ac")
         .removeClass("has-value")
@@ -1786,5 +1935,41 @@
     } else {
       $("#yinelemeHaftaGunleri").hide();
     }
+  });
+  // Drag-to-Scroll (Tıklayıp sürükleyerek kaydırma)
+  const $content = $(".gorevler-content");
+  let isDown = false;
+  let startX;
+  let scrollLeft;
+
+  // mousedown'ı document seviyesine taşırsak veya delegasyon kullanırsak dinamik içerikte daha iyi çalışır
+  $(document).on("mousedown", ".gorevler-content", function (e) {
+    // Sadece direkt konteynere veya sürüklenemeyen alanlara tıklanırsa çalışsın
+    // Input, buton veya kart içindeysek scroll tetiklenmesin
+    if (
+      $(e.target).closest(
+        ".gorev-item, .gorev-liste-header, button, input, textarea, .gorev-checkbox, .liste-menu-btn",
+      ).length
+    )
+      return;
+
+    isDown = true;
+    $content.addClass("dragging-active");
+    startX = e.pageX - $content.offset().left;
+    scrollLeft = $content.scrollLeft();
+  });
+
+  $(document).on("mouseup mouseleave", function () {
+    if (!isDown) return;
+    isDown = false;
+    $content.removeClass("dragging-active");
+  });
+
+  $(document).on("mousemove", function (e) {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - $content.offset().left;
+    const walk = (x - startX) * 2; // Kaydırma hızı çarpanı
+    $content.scrollLeft(scrollLeft - walk);
   });
 })();

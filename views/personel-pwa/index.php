@@ -41,7 +41,7 @@ if (!isset($_SESSION['personel_id']) && isset($_COOKIE['remember_token'])) {
                     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
                     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
                     $girisLogModel->logLogin($personel->id, $ip, $userAgent);
-                    
+
                     // Log zamanını kaydet
                     $_SESSION['last_pwa_login_log_time'] = time();
                 } catch (\Exception $e) {
@@ -83,7 +83,7 @@ if ((time() - $lastLogTime) > $logInterval) {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '';
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         $girisLogModel->logLogin($personel->id, $ip, $userAgent);
-        
+
         $_SESSION['last_pwa_login_log_time'] = time();
     } catch (\Exception $e) {
         // Log hatası akışı bozmamalı
@@ -96,11 +96,11 @@ if (!isset($_SESSION['firma_id']) && isset($personel->firma_id)) {
 }
 
 // Departman & Görev bazlı kontrol
-$isEndeksOkuma      = (stripos($personel->departman ?? '', 'Endeks Okuma') !== false);
-$isSayacSokmeTakma  = (stripos($personel->departman ?? '', 'Sayaç Sökme Takma') !== false);
-$isBuro             = (stripos($personel->departman ?? '', 'BÜRO') !== false || stripos($personel->departman ?? '', 'Büro') !== false);
-$isSef              = (stripos($personel->gorev ?? '', 'Şef') !== false);
-$isEkipSefi         = false;
+$isEndeksOkuma = (stripos($personel->departman ?? '', 'Endeks Okuma') !== false);
+$isSayacSokmeTakma = (stripos($personel->departman ?? '', 'Sayaç Sökme Takma') !== false);
+$isBuro = (stripos($personel->departman ?? '', 'BÜRO') !== false || stripos($personel->departman ?? '', 'Büro') !== false);
+$isSef = (stripos($personel->gorev ?? '', 'Şef') !== false);
+$isEkipSefi = false;
 
 if ($isEndeksOkuma && $isSef) {
     $ekipGecmisiList = $PersonelModel->getEkipGecmisi($personel_id);
@@ -287,10 +287,11 @@ if (!in_array($page, $allowed_pages)) {
             <span class="material-symbols-outlined <?php echo $page === 'ana-sayfa' ? 'filled' : ''; ?>">home</span>
             <span class="text-[10px] font-semibold">Ana Sayfa</span>
         </a>
-        <a href="?page=puantaj"
-            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'puantaj' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-            <span class="material-symbols-outlined <?php echo $page === 'puantaj' ? 'filled' : ''; ?>">checklist</span>
-            <span class="text-[10px] font-semibold">İş Takibi</span>
+        <a href="?page=izin"
+            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'izin' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+            <span
+                class="material-symbols-outlined <?php echo $page === 'izin' ? 'filled' : ''; ?>">calendar_today</span>
+            <span class="text-[10px] font-semibold">İzinler</span>
         </a>
         <?php if ($isEndeksOkuma && $isEkipSefi): ?>
             <a href="?page=ekip-takibi"

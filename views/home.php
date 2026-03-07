@@ -72,7 +72,7 @@ if (Gate::allows("ana_sayfa")) {
                  WHERE firma_id = :firma_id
                    AND created_at >= CURDATE()
                    AND created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)) AS last_update_isler,
-                (SELECT MAX(created_at)
+                (SELECT MAX(GREATEST(created_at,guncelleme_tarihi))
                  FROM sayac_degisim
                  WHERE firma_id = :firma_id
                    AND created_at >= CURDATE()

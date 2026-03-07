@@ -153,8 +153,9 @@ use App\Helper\Helper;
         </section>
     <?php endif; ?>
 
-   
-      <!-- Performance Summary -->
+
+    <?php if (!$isBuro): ?>
+    <!-- Performance Summary -->
     <section class="px-4 mt-6">
         <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-bold text-slate-900 dark:text-white">Performans Özeti</h2>
@@ -167,6 +168,7 @@ use App\Helper\Helper;
             </div>
         </div>
     </section>
+    <?php endif; ?>
 
 
     <!-- Özet Bilgiler (Combined) -->
@@ -176,83 +178,109 @@ use App\Helper\Helper;
             <span class="text-xs text-slate-400 font-medium" id="combined-donem-label">Mart 2026</span>
         </div>
 
-        <div class="card overflow-hidden border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none bg-white dark:bg-slate-900">
+        <div
+            class="card overflow-hidden border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none bg-white dark:bg-slate-900">
             <?php if (false): ?>
-            <!-- Financial Header (Minimal) -->
-            <div class="p-5 relative border-b border-slate-50 dark:border-slate-800">
-                <div class="relative z-10">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex flex-col">
-                            <div class="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 mb-1">
-                                <span class="material-symbols-outlined text-xs">savings</span>
-                                <span class="text-[10px] font-bold uppercase tracking-[0.1em]">Kalan Bakiye</span>
+                <!-- Financial Header (Minimal) -->
+                <div class="p-5 relative border-b border-slate-50 dark:border-slate-800">
+                    <div class="relative z-10">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex flex-col">
+                                <div class="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 mb-1">
+                                    <span class="material-symbols-outlined text-xs">savings</span>
+                                    <span class="text-[10px] font-bold uppercase tracking-[0.1em]">Kalan Bakiye</span>
+                                </div>
+                                <h3 class="text-2xl font-black tracking-tight text-slate-900 dark:text-white"
+                                    id="combined-remaining-balance">0,00 ₺</h3>
                             </div>
-                            <h3 class="text-2xl font-black tracking-tight text-slate-900 dark:text-white" id="combined-remaining-balance">0,00 ₺</h3>
+                            <div class="flex flex-col items-end">
+                                <span id="combined-hakedis-donem"
+                                    class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2.5 py-1 rounded-full font-bold mb-2"></span>
+                                <div
+                                    class="badge badge-success bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-none text-[10px] font-bold">
+                                    +%5.2</div>
+                            </div>
                         </div>
-                        <div class="flex flex-col items-end">
-                            <span id="combined-hakedis-donem" class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2.5 py-1 rounded-full font-bold mb-2"></span>
-                            <div class="badge badge-success bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-none text-[10px] font-bold">+%5.2</div>
-                        </div>
-                    </div>
 
-                    <div class="grid grid-cols-2 gap-4 pt-4 mt-2 border-t border-slate-50 dark:border-slate-800/50">
-                        <div>
-                            <p class="text-[10px] text-slate-400 dark:text-slate-500 font-medium mb-0.5">Toplam Hakediş</p>
-                            <p class="text-sm font-bold text-slate-700 dark:text-slate-300" id="combined-total-earning">0,00 ₺</p>
-                        </div>
-                        <div class="border-l border-slate-50 dark:border-slate-800 pl-4">
-                            <p class="text-[10px] text-slate-400 dark:text-slate-500 font-medium mb-0.5">Alınan Ödeme</p>
-                            <p class="text-sm font-bold text-slate-700 dark:text-slate-300" id="combined-received-payment">0,00 ₺</p>
+                        <div class="grid grid-cols-2 gap-4 pt-4 mt-2 border-t border-slate-50 dark:border-slate-800/50">
+                            <div>
+                                <p class="text-[10px] text-slate-400 dark:text-slate-500 font-medium mb-0.5">Toplam Hakediş
+                                </p>
+                                <p class="text-sm font-bold text-slate-700 dark:text-slate-300" id="combined-total-earning">
+                                    0,00 ₺</p>
+                            </div>
+                            <div class="border-l border-slate-50 dark:border-slate-800 pl-4">
+                                <p class="text-[10px] text-slate-400 dark:text-slate-500 font-medium mb-0.5">Alınan Ödeme
+                                </p>
+                                <p class="text-sm font-bold text-slate-700 dark:text-slate-300"
+                                    id="combined-received-payment">0,00 ₺</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
             <?php endif; ?>
 
             <!-- Working Stats Grid with Neon Effects -->
             <div class="p-4">
                 <div class="grid grid-cols-3 gap-3">
                     <!-- Çalışılan -->
-                    <div class="flex flex-col items-center p-3 rounded-2xl bg-blue-50/30 dark:bg-blue-900/10 border border-blue-100/40 dark:border-blue-800/20 active:scale-95 transition-all shadow-[0_0_15px_-3px_rgba(59,130,246,0.15)]">
-                        <div class="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-2 shadow-sm">
+                    <div
+                        class="flex flex-col items-center p-3 rounded-2xl bg-blue-50/30 dark:bg-blue-900/10 border border-blue-100/40 dark:border-blue-800/20 active:scale-95 transition-all shadow-[0_0_15px_-3px_rgba(59,130,246,0.15)]">
+                        <div
+                            class="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-2 shadow-sm">
                             <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-lg">work</span>
                         </div>
-                        <span id="combined-actual-worked" class="text-lg font-black text-slate-800 dark:text-white leading-none">0</span>
-                        <span class="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase mt-1.5 tracking-tighter">Çalışılan</span>
+                        <span id="combined-actual-worked"
+                            class="text-lg font-black text-slate-800 dark:text-white leading-none">0</span>
+                        <span
+                            class="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase mt-1.5 tracking-tighter">Çalışılan</span>
                     </div>
 
                     <!-- Ücretsiz İzin -->
-                    <div class="flex flex-col items-center p-3 rounded-2xl bg-amber-50/30 dark:bg-amber-900/10 border border-amber-100/40 dark:border-amber-800/20 active:scale-95 transition-all shadow-[0_0_15px_-3px_rgba(245,158,11,0.15)]">
-                        <div class="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-2 shadow-sm">
-                            <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-lg">money_off</span>
+                    <div
+                        class="flex flex-col items-center p-3 rounded-2xl bg-amber-50/30 dark:bg-amber-900/10 border border-amber-100/40 dark:border-amber-800/20 active:scale-95 transition-all shadow-[0_0_15px_-3px_rgba(245,158,11,0.15)]">
+                        <div
+                            class="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-2 shadow-sm">
+                            <span
+                                class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-lg">money_off</span>
                         </div>
-                        <span id="combined-unpaid-leave" class="text-lg font-black text-slate-800 dark:text-white leading-none">0</span>
-                        <span class="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase mt-1.5 tracking-tighter text-center">Ücretsiz</span>
+                        <span id="combined-unpaid-leave"
+                            class="text-lg font-black text-slate-800 dark:text-white leading-none">0</span>
+                        <span
+                            class="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase mt-1.5 tracking-tighter text-center">Ücretsiz</span>
                     </div>
 
                     <!-- Ücretli İzin -->
-                    <div class="flex flex-col items-center p-3 rounded-2xl bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100/40 dark:border-emerald-800/20 active:scale-95 transition-all shadow-[0_0_15px_-3px_rgba(16,185,129,0.15)]">
-                        <div class="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-2 shadow-sm">
-                            <span class="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-lg">beach_access</span>
+                    <div
+                        class="flex flex-col items-center p-3 rounded-2xl bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100/40 dark:border-emerald-800/20 active:scale-95 transition-all shadow-[0_0_15px_-3px_rgba(16,185,129,0.15)]">
+                        <div
+                            class="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-2 shadow-sm">
+                            <span
+                                class="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-lg">beach_access</span>
                         </div>
-                        <span id="combined-paid-leave" class="text-lg font-black text-slate-800 dark:text-white leading-none">0</span>
-                        <span class="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase mt-1.5 tracking-tighter text-center">Ücretli</span>
+                        <span id="combined-paid-leave"
+                            class="text-lg font-black text-slate-800 dark:text-white leading-none">0</span>
+                        <span
+                            class="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase mt-1.5 tracking-tighter text-center">Ücretli</span>
                     </div>
                 </div>
 
-                <div class="mt-4 pt-3 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between">
+                <div
+                    class="mt-4 pt-3 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between">
                     <div class="flex items-center gap-1.5">
                         <div class="w-1.5 h-1.5 rounded-full bg-primary/60 dark:bg-primary/40 animate-pulse"></div>
-                        <span class="text-[10px] text-slate-400 dark:text-slate-500 font-medium" id="combined-footer-label">Yükleniyor...</span>
+                        <span class="text-[10px] text-slate-400 dark:text-slate-500 font-medium"
+                            id="combined-footer-label">Yükleniyor...</span>
                     </div>
-                    <a href="?page=izin" class="text-[10px] font-bold text-primary flex items-center gap-0.5 active:opacity-60 transition-opacity">
+                    <a href="?page=izin"
+                        class="text-[10px] font-bold text-primary flex items-center gap-0.5 active:opacity-60 transition-opacity">
                         DETAYLAR <span class="material-symbols-outlined text-[14px]">chevron_right</span>
                     </a>
                 </div>
             </div>
         </div>
     </section>
-  
+
 
     <section class="px-4 mt-6 overflow-hidden">
         <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-3">Hızlı İşlemler</h2>
@@ -817,43 +845,76 @@ use App\Helper\Helper;
 
                     let siralamaHtml = '';
                     if (stat.siralama) {
-                        siralamaHtml = `
-                            <div class="col-span-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
-                                <h4 class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">Aylık Performans Sıralaması</h4>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div class="flex items-center gap-3 bg-white dark:bg-slate-800/80 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm active:scale-[0.98] transition-all">
-                                        <div class="relative shrink-0">
-                                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex flex-col items-center justify-center shadow-lg shadow-blue-500/30">
-                                                <span class="text-[10px] text-white/70 font-bold leading-none mb-0.5">SIRA</span>
-                                                <span class="text-lg font-black text-white leading-none">#${stat.siralama.ekip_sira}</span>
+                        const isEndeksDept = (stat.departman || '').toLowerCase().includes('endeks okuma');
+
+                        if (isEndeksDept) {
+                            // Show both rankings for Endeks teams
+                            siralamaHtml = `
+                                <div class="col-span-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+                                    <h4 class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">Aylık Performans Sıralaması</h4>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="flex items-center gap-3 bg-white dark:bg-slate-800/80 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm active:scale-[0.98] transition-all">
+                                            <div class="relative shrink-0">
+                                                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex flex-col items-center justify-center shadow-lg shadow-blue-500/30">
+                                                    <span class="text-[10px] text-white/70 font-bold leading-none mb-0.5">SIRA</span>
+                                                    <span class="text-lg font-black text-white leading-none">#${stat.siralama.ekip_sira}</span>
+                                                </div>
+                                                <!-- Ring effect -->
+                                                <div class="absolute -inset-1 rounded-2xl border border-blue-500/20 animate-pulse"></div>
                                             </div>
-                                            <!-- Ring effect -->
-                                            <div class="absolute -inset-1 rounded-2xl border border-blue-500/20 animate-pulse"></div>
-                                        </div>
-                                        <div class="min-w-0">
-                                            <p class="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tighter mb-0.5">BÖLGE GENELİ</p>
-                                            <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate" title="${stat.ekip_bolge || 'Bölge Bulunamadı'}">${stat.ekip_bolge || 'Bölge Bulunamadı'}</p>
-                                            <p class="text-[9px] text-slate-400 font-medium">${stat.siralama.ekip_kisi} Kişi Arasında</p>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center gap-3 bg-white dark:bg-slate-800/80 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm active:scale-[0.98] transition-all">
-                                        <div class="relative shrink-0">
-                                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex flex-col items-center justify-center shadow-lg shadow-indigo-500/30">
-                                                <span class="text-[10px] text-white/70 font-bold leading-none mb-0.5">SIRA</span>
-                                                <span class="text-lg font-black text-white leading-none">#${stat.siralama.departman_sira}</span>
+                                            <div class="min-w-0">
+                                                <p class="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tighter mb-0.5">BÖLGE GENELİ</p>
+                                                <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate" title="${stat.ekip_bolge || 'Bölge Bulunamadı'}">${stat.ekip_bolge || 'Bölge Bulunamadı'}</p>
+                                                <p class="text-[9px] text-slate-400 font-medium">${stat.siralama.ekip_kisi} Kişi Arasında</p>
                                             </div>
-                                            <!-- Ring effect -->
-                                            <div class="absolute -inset-1 rounded-2xl border border-indigo-500/20 animate-pulse"></div>
                                         </div>
-                                        <div class="min-w-0">
-                                            <p class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter mb-0.5">DEPARTMAN</p>
-                                            <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate" title="${stat.departman || 'Departman Bulunamadı'}">${stat.departman || 'Departman Bulunamadı'}</p>
-                                            <p class="text-[9px] text-slate-400 font-medium">${stat.siralama.departman_kisi} Kişi Arasında</p>
+                                        <div class="flex items-center gap-3 bg-white dark:bg-slate-800/80 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm active:scale-[0.98] transition-all">
+                                            <div class="relative shrink-0">
+                                                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex flex-col items-center justify-center shadow-lg shadow-indigo-500/30">
+                                                    <span class="text-[10px] text-white/70 font-bold leading-none mb-0.5">SIRA</span>
+                                                    <span class="text-lg font-black text-white leading-none">#${stat.siralama.departman_sira}</span>
+                                                </div>
+                                                <!-- Ring effect -->
+                                                <div class="absolute -inset-1 rounded-2xl border border-indigo-500/20 animate-pulse"></div>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <p class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter mb-0.5">DEPARTMAN</p>
+                                                <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate" title="${stat.departman || 'Departman Bulunamadı'}">${stat.departman || 'Departman Bulunamadı'}</p>
+                                                <p class="text-[9px] text-slate-400 font-medium">${stat.siralama.departman_kisi} Kişi Arasında</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        `;
+                            `;
+                        } else {
+                            // Only show Department ranking for other teams
+                            siralamaHtml = `
+                                <div class="col-span-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+                                    <h4 class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">Aylık Performans Sıralaması</h4>
+                                    <div class="flex items-center gap-4 bg-white dark:bg-slate-800/80 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm active:scale-[0.98] transition-all">
+                                        <div class="relative shrink-0">
+                                            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex flex-col items-center justify-center shadow-lg shadow-indigo-500/30">
+                                                <span class="text-[10px] text-white/70 font-bold leading-none mb-1">SIRA</span>
+                                                <span class="text-xl font-black text-white leading-none">#${stat.siralama.departman_sira}</span>
+                                            </div>
+                                            <!-- Ring effect -->
+                                            <div class="absolute -inset-1.5 rounded-2xl border-2 border-indigo-500/10 animate-pulse"></div>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1">DEPARTMAN SIRALAMASI</p>
+                                            <p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 truncate mb-0.5" title="${stat.departman || 'Departman Bulunamadı'}">${stat.departman || 'Departman Bulunamadı'}</p>
+                                            <div class="flex items-center gap-2">
+                                                <span class="flex h-1.5 w-1.5 rounded-full bg-slate-300"></span>
+                                                <p class="text-xs text-slate-400 font-medium">${stat.siralama.departman_kisi} Kişi Arasında</p>
+                                            </div>
+                                        </div>
+                                        <div class="shrink-0 pr-2">
+                                            <span class="material-symbols-outlined text-indigo-200 dark:text-indigo-900/50 text-4xl">workspace_premium</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
                     }
 
                     container.innerHTML = `
@@ -922,10 +983,10 @@ use App\Helper\Helper;
                 if (response.success && response.data && response.data.length > 0 && totalDays > 0) {
                     var monthStart = new Date(year, month, 1);
                     var monthEnd = new Date(year, month, Math.max(1, limitDay));
-                    monthStart.setHours(0,0,0,0);
-                    monthEnd.setHours(0,0,0,0);
+                    monthStart.setHours(0, 0, 0, 0);
+                    monthEnd.setHours(0, 0, 0, 0);
 
-                    response.data.forEach(function(izin) {
+                    response.data.forEach(function (izin) {
                         var status = (izin.durum || '').toLowerCase();
                         if (status !== 'onaylandi' && status !== 'onaylandı') return;
 
@@ -933,8 +994,8 @@ use App\Helper\Helper;
                         var end = parseCalismaDate(izin.bitis);
                         if (!start || !end) return;
 
-                        start.setHours(0,0,0,0);
-                        end.setHours(0,0,0,0);
+                        start.setHours(0, 0, 0, 0);
+                        end.setHours(0, 0, 0, 0);
 
                         if (start > monthEnd || end < monthStart) return;
 
@@ -986,7 +1047,7 @@ use App\Helper\Helper;
                     if (totalEarningEl) totalEarningEl.textContent = Format.currency(response.data.total_earning || 0);
                     if (receivedPaymentEl) receivedPaymentEl.textContent = Format.currency(response.data.received_payment || 0);
                     if (remainingBalanceEl) remainingBalanceEl.textContent = Format.currency(response.data.remaining_balance || 0);
-                    
+
                     if (response.data.son_donem_adi && donemEl) {
                         donemEl.textContent = response.data.son_donem_adi;
                         donemEl.classList.remove('hidden');
