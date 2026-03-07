@@ -50,9 +50,25 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 <div class="container-fluid">
     <?php
     $maintitle = "Puantaj";
-    $title = "Abone Dönem Karşılaştırma";
+    $title = "Defter Bazlı Rapor";
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
+
+    <!-- ======= SEKME NAVİGASYONU ======= -->
+    <ul class="nav nav-tabs nav-tabs-custom mb-3" id="defterRaporTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-abone-donem" data-bs-toggle="tab" data-bs-target="#pane-abone-donem"
+                type="button" role="tab" aria-controls="pane-abone-donem" aria-selected="true">
+                <i class="bx bx-bar-chart-alt-2 me-1"></i>Abone Dönem Karşılaştırma
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-okuma-gun" data-bs-toggle="tab" data-bs-target="#pane-okuma-gun"
+                type="button" role="tab" aria-controls="pane-okuma-gun" aria-selected="false">
+                <i class="bx bx-calendar-event me-1"></i>Okuma Gün Sayıları
+            </button>
+        </li>
+    </ul>
 
     <!-- Flatpickr MonthSelect Plugin Assets -->
     <link rel="stylesheet" href="assets/libs/flatpickr/plugins/monthSelect/style.css">
@@ -248,7 +264,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                                         <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
                                         <button type="button"
                                             class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
-                                            id="btnExcelIndir">
+                                            id="btnExcelIndir" data-filename="rapor.xls">
                                             <i class="mdi mdi-file-excel fs-5 me-1"></i>
                                             <span class="d-none d-xl-inline">Excel</span>
                                         </button>
@@ -276,160 +292,304 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         </div>
     </div>
 
-    <!-- ======= ÖZET KARTLARI (Minimal & Premium) ======= -->
-    <div class="row g-3 mb-4" id="summaryCards" style="display: none;">
-        <!-- Toplam Bölge -->
-        <div class="col-xl col-md-3 col-sm-6">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                style="--card-color: var(--bs-primary, #556ee6); border-bottom: 3px solid var(--card-color) !important;">
-                <div class="card-body p-2 px-3">
-                    <div class="icon-label-container mb-2">
-                        <div class="icon-box"
-                            style="width: 32px; height: 32px; border-radius: 8px; background: rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1);">
-                            <i class="bx bx-map-alt fs-5" style="color: var(--bs-primary, #556ee6);"></i>
+    <!-- ======= TAB 1: Abone Dönem Karşılaştırma ======= -->
+    <div class="tab-content" id="defterRaporTabContent">
+        <div class="tab-pane fade show active" id="pane-abone-donem" role="tabpanel" aria-labelledby="tab-abone-donem">
+
+            <!-- ======= ÖZET KARTLARI (Minimal & Premium) ======= -->
+            <div class="row g-3 mb-4" id="summaryCards" style="display: none;">
+                <!-- Toplam Bölge -->
+                <div class="col-xl col-md-3 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                        style="--card-color: var(--bs-primary, #556ee6); border-bottom: 3px solid var(--card-color) !important;">
+                        <div class="card-body p-2 px-3">
+                            <div class="icon-label-container mb-2">
+                                <div class="icon-box"
+                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1);">
+                                    <i class="bx bx-map-alt fs-5" style="color: var(--bs-primary, #556ee6);"></i>
+                                </div>
+                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">LOKASYON</span>
+                            </div>
+                            <p class="text-muted mb-0 small fw-bold"
+                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">TOPLAM BÖLGE</p>
+                            <h4 class="mb-0 fw-bold bordro-text-heading" id="totalBolge" style="font-size: 1.25rem;">0
+                            </h4>
                         </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.6rem;">LOKASYON</span>
                     </div>
-                    <p class="text-muted mb-0 small fw-bold"
-                        style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">TOPLAM BÖLGE</p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading" id="totalBolge" style="font-size: 1.25rem;">0</h4>
+                </div>
+                <!-- Toplam Kayıt -->
+                <div class="col-xl col-md-3 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                        style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
+                        <div class="card-body p-2 px-3">
+                            <div class="icon-label-container mb-2">
+                                <div class="icon-box"
+                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(52, 195, 143, 0.1);">
+                                    <i class="bx bx-list-ul fs-5 text-success"></i>
+                                </div>
+                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">VERİ</span>
+                            </div>
+                            <p class="text-muted mb-0 small fw-bold"
+                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">TOPLAM KAYİT</p>
+                            <h4 class="mb-0 fw-bold bordro-text-heading" id="totalKayit" style="font-size: 1.25rem;">0
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+                <!-- Toplam Abone -->
+                <div class="col-xl col-md-3 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                        style="--card-color: #f43f5e; border-bottom: 3px solid var(--card-color) !important;">
+                        <div class="card-body p-2 px-3">
+                            <div class="icon-label-container mb-2">
+                                <div class="icon-box"
+                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(244, 63, 94, 0.1);">
+                                    <i class="bx bx-user fs-5 text-danger"></i>
+                                </div>
+                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">ABONE</span>
+                            </div>
+                            <p class="text-muted mb-0 small fw-bold"
+                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">SON DÖNEM ABONE</p>
+                            <h4 class="mb-0 fw-bold bordro-text-heading" id="totalAbone" style="font-size: 1.25rem;">0
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+                <!-- Dönem Sayısı -->
+                <div class="col-xl col-md-3 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                        style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important;">
+                        <div class="card-body p-2 px-3">
+                            <div class="icon-label-container mb-2">
+                                <div class="icon-box"
+                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(241, 180, 76, 0.1);">
+                                    <i class="bx bx-calendar fs-5 text-warning"></i>
+                                </div>
+                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">DÖNEM</span>
+                            </div>
+                            <p class="text-muted mb-0 small fw-bold"
+                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">DÖNEM SAYISI</p>
+                            <h4 class="mb-0 fw-bold bordro-text-heading" id="totalDonem" style="font-size: 1.25rem;">0
+                            </h4>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <!-- Toplam Kayıt -->
-        <div class="col-xl col-md-3 col-sm-6">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
-                <div class="card-body p-2 px-3">
-                    <div class="icon-label-container mb-2">
-                        <div class="icon-box"
-                            style="width: 32px; height: 32px; border-radius: 8px; background: rgba(52, 195, 143, 0.1);">
-                            <i class="bx bx-list-ul fs-5 text-success"></i>
-                        </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.6rem;">VERİ</span>
-                    </div>
-                    <p class="text-muted mb-0 small fw-bold"
-                        style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">TOPLAM KAYİT</p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading" id="totalKayit" style="font-size: 1.25rem;">0</h4>
-                </div>
-            </div>
-        </div>
-        <!-- Toplam Abone -->
-        <div class="col-xl col-md-3 col-sm-6">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                style="--card-color: #f43f5e; border-bottom: 3px solid var(--card-color) !important;">
-                <div class="card-body p-2 px-3">
-                    <div class="icon-label-container mb-2">
-                        <div class="icon-box"
-                            style="width: 32px; height: 32px; border-radius: 8px; background: rgba(244, 63, 94, 0.1);">
-                            <i class="bx bx-user fs-5 text-danger"></i>
-                        </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.6rem;">ABONE</span>
-                    </div>
-                    <p class="text-muted mb-0 small fw-bold"
-                        style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">SON DÖNEM ABONE</p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading" id="totalAbone" style="font-size: 1.25rem;">0</h4>
-                </div>
-            </div>
-        </div>
-        <!-- Dönem Sayısı -->
-        <div class="col-xl col-md-3 col-sm-6">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important;">
-                <div class="card-body p-2 px-3">
-                    <div class="icon-label-container mb-2">
-                        <div class="icon-box"
-                            style="width: 32px; height: 32px; border-radius: 8px; background: rgba(241, 180, 76, 0.1);">
-                            <i class="bx bx-calendar fs-5 text-warning"></i>
-                        </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.6rem;">DÖNEM</span>
-                    </div>
-                    <p class="text-muted mb-0 small fw-bold"
-                        style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">DÖNEM SAYISI</p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading" id="totalDonem" style="font-size: 1.25rem;">0</h4>
-                </div>
-            </div>
-        </div>
-    </div>
 
 
-    <!-- ======= RAPOR TABLOSU ======= -->
-    <div class="row" id="reportSection" style="display: none;">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-0">
-                    <div class="table-responsive" id="reportTableWrapper"
-                        style="max-height: calc(100vh - 400px); overflow: auto;">
-                        <!-- AJAX ile doldurulacak -->
+            <!-- Tab 1 Actions -->
+            <div class="row mb-2" id="reportActions" style="display: none;">
+                <div class="col-12 d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-info btn-tab-fullscreen"
+                        data-target="reportSection">
+                        <i class="mdi mdi-fullscreen me-1"></i>Tam Ekran
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-success btn-tab-excel"
+                        data-table="comparisonTable" data-filename="abone_donem_karsilastirma.xls">
+                        <i class="mdi mdi-file-excel me-1"></i>Excel’e Aktar
+                    </button>
+                </div>
+            </div>
+            <div class="row" id="reportSection" style="display: none;">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body p-0">
+                            <div class="table-responsive" id="reportTableWrapper"
+                                style="max-height: calc(100vh - 400px); overflow: auto;">
+                                <!-- AJAX ile doldurulacak -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Loading Spinner -->
-    <div class="row" id="loadingSection" style="display: none;">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body text-center p-5">
-                    <div class="spinner-border text-primary" role="status"></div>
-                    <p class="mt-2 text-muted">Rapor hazırlanıyor...</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ======= SÜTUN YÖNETİM MODALI ======= -->
-    <div class="modal fade" id="modalManageColumns" tabindex="-1" aria-labelledby="modalManageColumnsLabel"
-        aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
-                <div class="modal-header bg-light border-bottom-0 pb-1" style="border-radius: 12px 12px 0 0;">
-                    <h5 class="modal-title fw-bold fs-6" id="modalManageColumnsLabel">
-                        <i class="bx bx-columns me-2 text-info"></i>Sütun Görünümü
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body pt-2">
-                    <div class="list-group list-group-flush">
-                        <label
-                            class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 border-0 cursor-pointer">
-                            <span class="fw-medium text-dark"><i class="bx bx-user me-2 text-primary"></i>Abone</span>
-                            <div class="form-check form-switch m-0">
-                                <input class="form-check-input col-toggle" type="checkbox" data-col="abone" checked>
-                            </div>
-                        </label>
-                        <label
-                            class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 border-0 cursor-pointer">
-                            <span class="fw-medium text-dark"><i class="bx bx-show me-2 text-success"></i>Okunan</span>
-                            <div class="form-check form-switch m-0">
-                                <input class="form-check-input col-toggle" type="checkbox" data-col="okunan" checked>
-                            </div>
-                        </label>
-                        <label
-                            class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 border-0 cursor-pointer">
-                            <span class="fw-medium text-dark"><i class="bx bx-walk me-2 text-info"></i>Gidilen</span>
-                            <div class="form-check form-switch m-0">
-                                <input class="form-check-input col-toggle" type="checkbox" data-col="gidilen" checked>
-                            </div>
-                        </label>
-                        <label
-                            class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 border-0 cursor-pointer">
-                            <span class="fw-medium text-dark"><i
-                                    class="bx bx-pie-chart-alt-2 me-2 text-warning"></i>Oran %</span>
-                            <div class="form-check form-switch m-0">
-                                <input class="form-check-input col-toggle" type="checkbox" data-col="oran" checked>
-                            </div>
-                        </label>
+            <!-- Loading Spinner -->
+            <div class="row" id="loadingSection" style="display: none;">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body text-center p-5">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2 text-muted">Rapor hazırlanıyor...</p>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-primary btn-sm w-100 py-2 fw-bold" data-bs-dismiss="modal"
-                        style="border-radius: 8px;">Değişiklikleri Uygula</button>
+            </div>
+
+            <!-- ======= SÜTUN YÖNETİM MODALI ======= -->
+            <div class="modal fade" id="modalManageColumns" tabindex="-1" aria-labelledby="modalManageColumnsLabel"
+                aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-sm">
+                    <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+                        <div class="modal-header bg-light border-bottom-0 pb-1" style="border-radius: 12px 12px 0 0;">
+                            <h5 class="modal-title fw-bold fs-6" id="modalManageColumnsLabel">
+                                <i class="bx bx-columns me-2 text-info"></i>Sütun Görünümü
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body pt-2">
+                            <div class="list-group list-group-flush">
+                                <label
+                                    class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 border-0 cursor-pointer">
+                                    <span class="fw-medium text-dark"><i
+                                            class="bx bx-user me-2 text-primary"></i>Abone</span>
+                                    <div class="form-check form-switch m-0">
+                                        <input class="form-check-input col-toggle" type="checkbox" data-col="abone"
+                                            checked>
+                                    </div>
+                                </label>
+                                <label
+                                    class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 border-0 cursor-pointer">
+                                    <span class="fw-medium text-dark"><i
+                                            class="bx bx-show me-2 text-success"></i>Okunan</span>
+                                    <div class="form-check form-switch m-0">
+                                        <input class="form-check-input col-toggle" type="checkbox" data-col="okunan"
+                                            checked>
+                                    </div>
+                                </label>
+                                <label
+                                    class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 border-0 cursor-pointer">
+                                    <span class="fw-medium text-dark"><i
+                                            class="bx bx-walk me-2 text-info"></i>Gidilen</span>
+                                    <div class="form-check form-switch m-0">
+                                        <input class="form-check-input col-toggle" type="checkbox" data-col="gidilen"
+                                            checked>
+                                    </div>
+                                </label>
+                                <label
+                                    class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 border-0 cursor-pointer">
+                                    <span class="fw-medium text-dark"><i
+                                            class="bx bx-pie-chart-alt-2 me-2 text-warning"></i>Oran %</span>
+                                    <div class="form-check form-switch m-0">
+                                        <input class="form-check-input col-toggle" type="checkbox" data-col="oran"
+                                            checked>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-top-0 pt-0">
+                            <button type="button" class="btn btn-primary btn-sm w-100 py-2 fw-bold"
+                                data-bs-dismiss="modal" style="border-radius: 8px;">Değişiklikleri Uygula</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
+
+        </div><!-- /tab-pane abone-donem -->
+
+        <!-- ======= TAB 2: Okuma Gün Sayıları ======= -->
+        <div class="tab-pane fade" id="pane-okuma-gun" role="tabpanel" aria-labelledby="tab-okuma-gun">
+
+            <!-- Özet Kartları -->
+            <div class="row g-3 mb-4" id="okumaGunSummaryCards" style="display: none;">
+                <div class="col-xl col-md-4 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                        style="--card-color: var(--bs-primary, #556ee6); border-bottom: 3px solid var(--card-color) !important;">
+                        <div class="card-body p-2 px-3">
+                            <div class="icon-label-container mb-2">
+                                <div class="icon-box"
+                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1);">
+                                    <i class="bx bx-book-open fs-5" style="color: var(--bs-primary, #556ee6);"></i>
+                                </div>
+                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">DEFTER</span>
+                            </div>
+                            <p class="text-muted mb-0 small fw-bold"
+                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">TOPLAM DEFTER</p>
+                            <h4 class="mb-0 fw-bold bordro-text-heading" id="okumaGunTotalDefter"
+                                style="font-size: 1.25rem;">0</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl col-md-4 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                        style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
+                        <div class="card-body p-2 px-3">
+                            <div class="icon-label-container mb-2">
+                                <div class="icon-box"
+                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(52, 195, 143, 0.1);">
+                                    <i class="bx bx-map-alt fs-5 text-success"></i>
+                                </div>
+                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">BÖLGE</span>
+                            </div>
+                            <p class="text-muted mb-0 small fw-bold"
+                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">TOPLAM BÖLGE</p>
+                            <h4 class="mb-0 fw-bold bordro-text-heading" id="okumaGunTotalBolge"
+                                style="font-size: 1.25rem;">0</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl col-md-4 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                        style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important;">
+                        <div class="card-body p-2 px-3">
+                            <div class="icon-label-container mb-2">
+                                <div class="icon-box"
+                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(241, 180, 76, 0.1);">
+                                    <i class="bx bx-calendar fs-5 text-warning"></i>
+                                </div>
+                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">DÖNEM</span>
+                            </div>
+                            <p class="text-muted mb-0 small fw-bold"
+                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">DÖNEM SAYISI</p>
+                            <h4 class="mb-0 fw-bold bordro-text-heading" id="okumaGunTotalDonem"
+                                style="font-size: 1.25rem;">0</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 35+ Gün Filtresi -->
+            <div class="row mb-3" id="okumaGunFilterRow" style="display: none;">
+                <div class="col-12">
+                    <div class="d-flex align-items-center justify-content-between gap-3 w-100">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="chk35Plus" style="cursor:pointer;">
+                            <label class="form-check-label fw-semibold" for="chk35Plus" style="cursor:pointer;">
+                                <i class="bx bx-error-circle text-danger me-1"></i>Sadece 35 ve üzeri gün farkı olanları
+                                göster
+                            </label>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-info btn-tab-fullscreen"
+                                data-target="okumaGunReportSection">
+                                <i class="mdi mdi-fullscreen me-1"></i>Tam Ekran
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success btn-tab-excel"
+                                data-table="okumaGunTable" data-filename="okuma_gun_sayilari.xls">
+                                <i class="mdi mdi-file-excel me-1"></i>Excel’e Aktar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rapor Tablosu -->
+            <div class="row" id="okumaGunReportSection" style="display: none;">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body p-0">
+                            <div class="table-responsive" id="okumaGunTableWrapper"
+                                style="max-height: calc(100vh - 450px); overflow: auto;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div class="row" id="okumaGunLoadingSection" style="display: none;">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body text-center p-5">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2 text-muted">Okuma Gün Sayıları raporu hazırlanıyor...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /tab-pane okuma-gun -->
+    </div><!-- /tab-content -->
+
 </div>
 
 <style>
@@ -648,17 +808,18 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         vertical-align: middle;
         transition: all 0.2s ease;
         line-height: 1;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .col-filter-btn:hover {
         background: #32394e;
         transform: scale(1.1);
-        box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
     }
 
     .col-filter-btn.col-filter-active {
-        background: #34c38f; /* Green for active */
+        background: #34c38f;
+        /* Green for active */
         box-shadow: 0 0 0 2px rgba(52, 195, 143, 0.3);
     }
 
@@ -668,7 +829,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         background: #fff;
         border: 1px solid #e2e8f0;
         border-radius: 10px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.15), 0 4px 10px rgba(0,0,0,0.08);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 4px 10px rgba(0, 0, 0, 0.08);
         padding: 12px;
         min-width: 200px;
         display: none;
@@ -680,8 +841,15 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     }
 
     @keyframes filterPopupIn {
-        from { opacity: 0; transform: translateY(-4px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(-4px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     .col-filter-popup .filter-popup-title {
@@ -779,7 +947,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     [data-bs-theme="dark"] .col-filter-popup {
         background: #2a3042;
         border-color: #32394e;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
     }
 
     [data-bs-theme="dark"] .col-filter-popup select,
@@ -808,8 +976,15 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     }
 
     @keyframes filterDotPulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.4; }
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.4;
+        }
     }
 
     /* Fixed columns */
@@ -836,13 +1011,33 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         left: 240px;
         z-index: 10;
         background-color: var(--bs-card-bg, #fff) !important;
-        min-width: 100px;
-        max-width: 100px;
+        min-width: 80px;
+        max-width: 80px;
+    }
+
+    #comparisonTable .fix-col-4 {
+        position: sticky;
+        left: 320px;
+        z-index: 10;
+        background-color: var(--bs-card-bg, #fff) !important;
+        min-width: 130px;
+        max-width: 130px;
+    }
+
+    #comparisonTable .fix-col-5 {
+        position: sticky;
+        left: 450px;
+        z-index: 10;
+        background-color: var(--bs-card-bg, #fff) !important;
+        min-width: 80px;
+        max-width: 80px;
     }
 
     #comparisonTable thead .fix-col-1,
     #comparisonTable thead .fix-col-2,
-    #comparisonTable thead .fix-col-3 {
+    #comparisonTable thead .fix-col-3,
+    #comparisonTable thead .fix-col-4,
+    #comparisonTable thead .fix-col-5 {
         z-index: 40 !important;
         /* Higher than regular thead th */
         background: linear-gradient(rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1), rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1)), #ffffff !important;
@@ -852,13 +1047,17 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     /* Fixed columns in Row 2 (Inputs/Subheaders) also need top offset */
     #comparisonTable thead tr:nth-child(2) .fix-col-1,
     #comparisonTable thead tr:nth-child(2) .fix-col-2,
-    #comparisonTable thead tr:nth-child(2) .fix-col-3 {
+    #comparisonTable thead tr:nth-child(2) .fix-col-3,
+    #comparisonTable thead tr:nth-child(2) .fix-col-4,
+    #comparisonTable thead tr:nth-child(2) .fix-col-5 {
         top: 25px !important;
     }
 
     [data-bs-theme="dark"] #comparisonTable thead .fix-col-1,
     [data-bs-theme="dark"] #comparisonTable thead .fix-col-2,
-    [data-bs-theme="dark"] #comparisonTable thead .fix-col-3 {
+    [data-bs-theme="dark"] #comparisonTable thead .fix-col-3,
+    [data-bs-theme="dark"] #comparisonTable thead .fix-col-4,
+    [data-bs-theme="dark"] #comparisonTable thead .fix-col-5 {
         background: #2a3042 !important;
         color: #eff2f7 !important;
         border-color: #32394e !important;
@@ -958,7 +1157,9 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
     #comparisonTable tfoot .fix-col-1,
     #comparisonTable tfoot .fix-col-2,
-    #comparisonTable tfoot .fix-col-3 {
+    #comparisonTable tfoot .fix-col-3,
+    #comparisonTable tfoot .fix-col-4,
+    #comparisonTable tfoot .fix-col-5 {
         z-index: 35;
         background: #f8f9fa !important;
         color: var(--bs-primary, #2a3042) !important;
@@ -967,7 +1168,9 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     [data-bs-theme="dark"] #comparisonTable tfoot th,
     [data-bs-theme="dark"] #comparisonTable tfoot .fix-col-1,
     [data-bs-theme="dark"] #comparisonTable tfoot .fix-col-2,
-    [data-bs-theme="dark"] #comparisonTable tfoot .fix-col-3 {
+    [data-bs-theme="dark"] #comparisonTable tfoot .fix-col-3,
+    [data-bs-theme="dark"] #comparisonTable tfoot .fix-col-4,
+    [data-bs-theme="dark"] #comparisonTable tfoot .fix-col-5 {
         background: #32394e !important;
         color: var(--bs-primary, #eff2f7) !important;
         border-top: 2px solid var(--bs-primary) !important;
@@ -1037,7 +1240,8 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     }
 
     .fullscreen-mode .table-responsive,
-    .fullscreen-mode #reportTableWrapper {
+    .fullscreen-mode #reportTableWrapper,
+    .fullscreen-mode #okumaGunTableWrapper {
         max-height: none !important;
         flex: 1;
         overflow: auto !important;
@@ -1055,12 +1259,167 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
     [data-bs-theme="dark"] .fix-col-1,
     [data-bs-theme="dark"] .fix-col-2,
-    [data-bs-theme="dark"] .fix-col-3 {
+    [data-bs-theme="dark"] .fix-col-3,
+    [data-bs-theme="dark"] .fix-col-4,
+    [data-bs-theme="dark"] .fix-col-5 {
         background-color: var(--bs-card-bg, #282f36) !important;
     }
 
     [data-bs-theme="dark"] #comparisonTable tbody tr:nth-child(even) td {
         background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    /* ======= OKUMA GÜN SAYILARI TABLE ======= */
+    #okumaGunTable {
+        border-collapse: collapse !important;
+        font-size: 12px;
+        width: 100%;
+        table-layout: auto;
+        min-width: 900px;
+        border: 1px solid var(--bs-border-color, #eee) !important;
+    }
+
+    #okumaGunTable th,
+    #okumaGunTable td {
+        vertical-align: middle !important;
+        text-align: center !important;
+        border: 1px solid var(--bs-border-color, #eee) !important;
+        padding: 5px 6px !important;
+        white-space: nowrap;
+    }
+
+    #okumaGunTable thead th {
+        background: linear-gradient(rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1), rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1)), #ffffff !important;
+        color: var(--bs-primary, #556ee6) !important;
+        font-weight: 800;
+        font-size: 11px;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    #okumaGunTable thead tr:nth-child(1) th {
+        top: -1px;
+        z-index: 30;
+    }
+
+    #okumaGunTable thead tr:nth-child(2) th {
+        top: 25px;
+        z-index: 29;
+    }
+
+    #okumaGunTable .fix-col-ilce {
+        position: sticky;
+        left: 0;
+        z-index: 10;
+        min-width: 120px;
+        max-width: 120px;
+    }
+
+    #okumaGunTable .fix-col-mahalle {
+        position: sticky;
+        left: 120px;
+        z-index: 10;
+        min-width: 140px;
+        max-width: 140px;
+    }
+
+    #okumaGunTable .fix-col-defter {
+        position: sticky;
+        left: 260px;
+        z-index: 10;
+        min-width: 80px;
+        max-width: 80px;
+    }
+
+    #okumaGunTable .fix-col-abone {
+        position: sticky;
+        left: 340px;
+        z-index: 10;
+        min-width: 90px;
+        max-width: 90px;
+    }
+
+    #okumaGunTable thead .fix-col-ilce,
+    #okumaGunTable thead .fix-col-mahalle,
+    #okumaGunTable thead .fix-col-defter,
+    #okumaGunTable thead .fix-col-abone {
+        z-index: 40 !important;
+        background: linear-gradient(rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1), rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1)), #ffffff !important;
+        color: var(--bs-primary, #556ee6) !important;
+    }
+
+    /* Region row coloring */
+    .ogr-region-header {
+        font-weight: 700 !important;
+        font-size: 12px !important;
+        letter-spacing: 0.5px;
+    }
+
+    /* Fark cell: 35+ gün kırmızı */
+    .fark-danger {
+        background-color: rgba(244, 63, 94, 0.15) !important;
+        color: #e11d48 !important;
+        font-weight: 700;
+    }
+
+    /* Fark cell: normal */
+    .fark-normal {
+        color: #059669 !important;
+        font-weight: 600;
+    }
+
+    /* Period separator */
+    .ogr-period-end {
+        border-right: 2px solid var(--bs-primary, #556ee6) !important;
+    }
+
+    #okumaGunTable tbody tr:hover td {
+        filter: brightness(0.97);
+    }
+
+    .og-sortable-header {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .og-sortable-header:hover {
+        background-color: rgba(var(--bs-primary-rgb, 85, 110, 230), 0.15) !important;
+    }
+
+    .og-column-search {
+        font-size: 10px !important;
+        padding: 2px 4px !important;
+        height: 22px !important;
+        border-radius: 4px !important;
+    }
+
+    [data-bs-theme="dark"] #okumaGunTable thead th {
+        background: #2a3042 !important;
+        color: #eff2f7 !important;
+        border-color: #32394e !important;
+    }
+
+    [data-bs-theme="dark"] #okumaGunTable th,
+    [data-bs-theme="dark"] #okumaGunTable td {
+        border-color: #32394e !important;
+    }
+
+    [data-bs-theme="dark"] #okumaGunTable .fix-col-ilce,
+    [data-bs-theme="dark"] #okumaGunTable .fix-col-mahalle,
+    [data-bs-theme="dark"] #okumaGunTable .fix-col-defter,
+    [data-bs-theme="dark"] #okumaGunTable .fix-col-abone {
+        background-color: var(--bs-card-bg, #282f36) !important;
+    }
+
+    [data-bs-theme="dark"] #okumaGunTable thead .fix-col-ilce,
+    [data-bs-theme="dark"] #okumaGunTable thead .fix-col-mahalle,
+    [data-bs-theme="dark"] #okumaGunTable thead .fix-col-defter,
+    [data-bs-theme="dark"] #okumaGunTable thead .fix-col-abone {
+        background: #2a3042 !important;
+        color: #eff2f7 !important;
     }
 </style>
 
@@ -1293,7 +1652,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         let _numericFilters = {};
 
         // ======= TABLO OLUŞTURMA =======
-        let _searchFilters = { ilce_tipi: '', bolge: '', defter: '' };
+        let _searchFilters = { ilce_tipi: '', bolge: '', defter: '', mahalle: '', abone_sayisi: '' };
         let _searchTimeout;
 
         function renderTable(data, donemler, keep) {
@@ -1303,7 +1662,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             if (keep !== true) {
                 _sortColumn = null;
                 _sortDirection = 'asc';
-                _searchFilters = { ilce_tipi: '', bolge: '', defter: '' };
+                _searchFilters = { ilce_tipi: '', bolge: '', defter: '', mahalle: '', abone_sayisi: '' };
             }
 
             if (!data || data.length === 0) {
@@ -1316,7 +1675,9 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 const ilceMatch = !_searchFilters.ilce_tipi || (item.ilce_tipi || '').toLowerCase().includes(_searchFilters.ilce_tipi.toLowerCase());
                 const bolgeMatch = !_searchFilters.bolge || (item.bolge || '').toLowerCase().includes(_searchFilters.bolge.toLowerCase());
                 const defterMatch = !_searchFilters.defter || (item.defter || '').toString().toLowerCase().includes(_searchFilters.defter.toLowerCase());
-                if (!(ilceMatch && bolgeMatch && defterMatch)) return false;
+                const mahalleMatch = !_searchFilters.mahalle || (item.mahalle || '').toLowerCase().includes(_searchFilters.mahalle.toLowerCase());
+                const aboneMatch = !_searchFilters.abone_sayisi || (item.abone_sayisi || '').toString().includes(_searchFilters.abone_sayisi);
+                if (!(ilceMatch && bolgeMatch && defterMatch && mahalleMatch && aboneMatch)) return false;
 
                 // Sayısal kolon filtrelerini uygula
                 for (const filterKey in _numericFilters) {
@@ -1339,11 +1700,11 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     if (isNaN(filterVal)) continue;
 
                     switch (f.operator) {
-                        case '>':  if (!(cellVal > filterVal)) return false; break;
-                        case '<':  if (!(cellVal < filterVal)) return false; break;
+                        case '>': if (!(cellVal > filterVal)) return false; break;
+                        case '<': if (!(cellVal < filterVal)) return false; break;
                         case '>=': if (!(cellVal >= filterVal)) return false; break;
                         case '<=': if (!(cellVal <= filterVal)) return false; break;
-                        case '=':  if (!(Math.abs(cellVal - filterVal) < 0.01)) return false; break;
+                        case '=': if (!(Math.abs(cellVal - filterVal) < 0.01)) return false; break;
                     }
                 }
                 return true;
@@ -1369,6 +1730,12 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                         if (!isNaN(numA) && !isNaN(numB)) {
                             valA = numA; valB = numB;
                         }
+                    } else if (_sortColumn === 'mahalle') {
+                        valA = (a.mahalle || '').toLowerCase();
+                        valB = (b.mahalle || '').toLowerCase();
+                    } else if (_sortColumn === 'abone_sayisi') {
+                        valA = parseInt(a.abone_sayisi) || 0;
+                        valB = parseInt(b.abone_sayisi) || 0;
                     } else {
                         // Period column: format is '{donem}_{field}'
                         const parts = _sortColumn.split('_');
@@ -1411,6 +1778,8 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             html += `<th class="fix-col-1 sortable-header" data-sort-col="ilce_tipi">İLÇE TİPİ${sortIcon('ilce_tipi')}</th>`;
             html += `<th class="fix-col-2 sortable-header" data-sort-col="bolge">BÖLGE${sortIcon('bolge')}</th>`;
             html += `<th class="fix-col-3 sortable-header" data-sort-col="defter">DEFTER${sortIcon('defter')}</th>`;
+            html += `<th class="fix-col-4 sortable-header" data-sort-col="mahalle">MAHALLE${sortIcon('mahalle')}</th>`;
+            html += `<th class="fix-col-5 sortable-header" data-sort-col="abone_sayisi">ABONE SAYISI${sortIcon('abone_sayisi')}</th>`;
 
             const visibleCount = Object.values(_visibleColumns).filter(v => v).length;
 
@@ -1427,6 +1796,8 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             html += `<th class="fix-col-1"><input type="text" class="form-control column-search" id="search_ilce_tipi" data-col="ilce_tipi" value="${_searchFilters.ilce_tipi || ''}" placeholder="İLÇE TİPİ"></th>`;
             html += `<th class="fix-col-2"><input type="text" class="form-control column-search" id="search_bolge" data-col="bolge" value="${_searchFilters.bolge || ''}" placeholder="BÖLGE"></th>`;
             html += `<th class="fix-col-3"><input type="text" class="form-control column-search" id="search_defter" data-col="defter" value="${_searchFilters.defter || ''}" placeholder="DEFTER"></th>`;
+            html += `<th class="fix-col-4"><input type="text" class="form-control column-search" id="search_mahalle" data-col="mahalle" value="${_searchFilters.mahalle || ''}" placeholder="MAHALLE"></th>`;
+            html += `<th class="fix-col-5"><input type="text" class="form-control column-search" id="search_abone_sayisi" data-col="abone_sayisi" value="${_searchFilters.abone_sayisi || ''}" placeholder="ABONE"></th>`;
 
             // Filter button helper
             function filterBtn(colKey) {
@@ -1465,6 +1836,8 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 html += `<td class="fix-col-1 text-start fw-medium">${row.ilce_tipi}</td>`;
                 html += `<td class="fix-col-2 text-start fw-medium">${row.bolge}</td>`;
                 html += `<td class="fix-col-3 text-start fw-medium">${row.defter}</td>`;
+                html += `<td class="fix-col-4 text-start">${row.mahalle || ''}</td>`;
+                html += `<td class="fix-col-5">${row.abone_sayisi ? row.abone_sayisi.toLocaleString('tr-TR') : ''}</td>`;
 
                 donemler.forEach(function (donem, idx) {
                     const isLast = idx === donemler.length - 1;
@@ -1500,7 +1873,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             // ======= TFOOT =======
             html += '<tfoot>';
             html += '<tr>';
-            html += '<th class="fix-col-1 text-center" colspan="3">GENEL TOPLAM</th>';
+            html += '<th class="fix-col-1 text-center" colspan="5">GENEL TOPLAM</th>';
 
             donemler.forEach(function (donem, idx) {
                 const totals = colTotals[donem];
@@ -1528,6 +1901,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             html += '</table>';
 
             $('#reportTableWrapper').html(html);
+            $('#reportActions').fadeIn(300);
 
             // Bind sort click handlers
             $('#comparisonTable').on('click', '.sortable-header', function (e) {
@@ -1544,17 +1918,17 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             });
 
             // Bind filter button click handlers directly to prevent sort bubbling
-            $('#comparisonTable .col-filter-btn').on('click', function(e) {
+            $('#comparisonTable .col-filter-btn').on('click', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
                 e.stopImmediatePropagation();
-                
+
                 // Trigger the existing handler via document delegation
                 // Or just call the show logic if it was a function.
                 // Since it's document delegated, we just let it bubble to document?
                 // Wait, if I use stopPropagation, it won't reach document!
                 // So I MUST open the popup here.
-                
+
                 openFilterPopup(this);
             });
         }
@@ -1577,7 +1951,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             const parts = colKey.split('_');
             const field = parts.pop();
             const donem = parts.join('_');
-            const fieldNames = { abone: 'Abone', okunan: 'Okunan', gidilen: 'Gidilen', oran: 'Oran %' };
+            const fieldNames = { abone: 'Abone', okunan: 'Okunan', gidilen: 'Gidilen', oran: 'Oran %', fark: 'Fark', tarih: 'Okuma Tarihi' };
             const formatted = donem.substring(0, 4) + '/' + donem.substring(4);
             $('#colFilterPopupTitle').text(formatted + ' – ' + (fieldNames[field] || field));
 
@@ -1676,8 +2050,13 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             }
 
             $('#colFilterPopup').removeClass('show');
+            const col = _activeFilterCol;
             _activeFilterCol = null;
-            renderTable(_tableData, _tableDonemler, true);
+            if ($('#tab-okuma-gun').hasClass('active')) {
+                renderOkumaGunTable(_okumaGunData, _okumaGunDonemler, true);
+            } else {
+                renderTable(_tableData, _tableDonemler, true);
+            }
         });
 
         // Temizle
@@ -1689,7 +2068,11 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             $('#colFilterValue').val('');
             $('#colFilterPopup').removeClass('show');
             _activeFilterCol = null;
-            renderTable(_tableData, _tableDonemler, true);
+            if ($('#tab-okuma-gun').hasClass('active')) {
+                renderOkumaGunTable(_okumaGunData, _okumaGunDonemler, true);
+            } else {
+                renderTable(_tableData, _tableDonemler, true);
+            }
         });
 
         // Popup dışına tıklanınca kapat
@@ -1707,11 +2090,11 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             }
         });
 
-        // ======= EXCEL İNDİR =======
-        $('#btnExcelIndir').on('click', function () {
-            const table = document.getElementById('comparisonTable');
+        // ======= FONKSİYONLAR: EXCEL VE TAM EKRAN =======
+        function exportTableToExcel(tableId, filename) {
+            const table = document.getElementById(tableId);
             if (!table) {
-                Swal.fire('Uyarı', 'Lütfen önce raporu getirin.', 'warning');
+                Swal.fire('Uyarı', 'Tablo bulunamadı.', 'warning');
                 return;
             }
 
@@ -1720,10 +2103,39 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             const blob = new Blob(['\ufeff', excelHtml], { type: 'application/vnd.ms-excel' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.download = 'abone_donem_karsilastirma.xls';
+            link.download = filename || 'rapor.xls';
             link.href = url;
             link.click();
             setTimeout(() => URL.revokeObjectURL(url), 100);
+        }
+
+        function toggleFullscreen(elemId, btn) {
+            const elem = document.getElementById(elemId);
+            if (!elem) return;
+
+            if (!document.fullscreenElement) {
+                elem.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
+                if (btn) $(btn).html('<i class="mdi mdi-fullscreen-exit me-1"></i>Küçült');
+                $(elem).addClass('fullscreen-mode');
+            } else {
+                document.exitFullscreen();
+                if (btn) $(btn).html('<i class="mdi mdi-fullscreen me-1"></i>Tam Ekran');
+                $(elem).removeClass('fullscreen-mode');
+            }
+        }
+
+        // ======= EXCEL İNDİR =======
+        $('#btnExcelIndir').on('click', function () {
+            const isTab2 = $('#tab-okuma-gun').hasClass('active');
+            const tableId = isTab2 ? 'okumaGunTable' : 'comparisonTable';
+            const filename = $(this).data('filename') || (isTab2 ? 'okuma_gun_sayilari.xls' : 'abone_donem_karsilastirma.xls');
+            exportTableToExcel(tableId, filename);
+        });
+
+        $(document).on('click', '.btn-tab-excel', function () {
+            const tableId = $(this).data('table');
+            const filename = $(this).data('filename');
+            exportTableToExcel(tableId, filename);
         });
 
         // Enter tuşu ile rapor getir
@@ -1735,23 +2147,20 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
         // ======= TAM EKRAN =======
         $(document).on('click', '#btnTamEkran', function () {
-            const elem = document.getElementById('reportSection');
-            if (!elem) return;
-            if (!document.fullscreenElement) {
-                elem.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
-                $(this).html('<i class="mdi mdi-fullscreen-exit me-1"></i>Küçült');
-                $(elem).addClass('fullscreen-mode');
-            } else {
-                document.exitFullscreen();
-                $(this).html('<i class="mdi mdi-fullscreen me-1"></i>Tam Ekran');
-                $(elem).removeClass('fullscreen-mode');
-            }
+            const isTab2 = $('#tab-okuma-gun').hasClass('active');
+            const targetId = isTab2 ? 'okumaGunReportSection' : 'reportSection';
+            toggleFullscreen(targetId, this);
+        });
+
+        $(document).on('click', '.btn-tab-fullscreen', function () {
+            const targetId = $(this).data('target');
+            toggleFullscreen(targetId, this);
         });
 
         document.addEventListener('fullscreenchange', () => {
             if (!document.fullscreenElement) {
-                $('#btnTamEkran').html('<i class="mdi mdi-fullscreen me-1"></i>Tam Ekran');
-                $('#reportSection').removeClass('fullscreen-mode');
+                $('#btnTamEkran, .btn-tab-fullscreen').html('<i class="mdi mdi-fullscreen me-1"></i>Tam Ekran');
+                $('#reportSection, #okumaGunReportSection').removeClass('fullscreen-mode');
             }
         });
 
@@ -1768,5 +2177,364 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
         // Sayfa açıldığında otomatik olarak raporu yükle
         loadReport();
+
+        // ======= TAB 2: OKUMA GÜN SAYILARI =======
+        let _okumaGunData = [];
+        let _okumaGunDonemler = [];
+        let _okumaGunLoaded = false;
+
+        // Sort state for Tab 2
+        let _ogSortColumn = null; // 'ilce', 'mahalle', 'defter', 'abone_sayisi', '{donem}_fark'
+        let _ogSortDirection = 'asc';
+        let _ogSearchFilters = { ilce: '', mahalle: '', defter: '', abone_sayisi: '' };
+        let _ogSearchTimeout;
+
+        // Bölge renk paleti (pastel, birbirinden ayrışan renkler)
+        const _regionColors = [
+            { bg: 'rgba(59, 130, 246, 0.08)', header: 'rgba(59, 130, 246, 0.18)', text: '#1e40af' },
+            { bg: 'rgba(16, 185, 129, 0.08)', header: 'rgba(16, 185, 129, 0.18)', text: '#065f46' },
+            { bg: 'rgba(245, 158, 11, 0.08)', header: 'rgba(245, 158, 11, 0.18)', text: '#92400e' },
+            { bg: 'rgba(239, 68, 68, 0.08)', header: 'rgba(239, 68, 68, 0.18)', text: '#991b1b' },
+            { bg: 'rgba(139, 92, 246, 0.08)', header: 'rgba(139, 92, 246, 0.18)', text: '#5b21b6' },
+            { bg: 'rgba(236, 72, 153, 0.08)', header: 'rgba(236, 72, 153, 0.18)', text: '#9d174d' },
+            { bg: 'rgba(6, 182, 212, 0.08)', header: 'rgba(6, 182, 212, 0.18)', text: '#155e75' },
+            { bg: 'rgba(132, 204, 22, 0.08)', header: 'rgba(132, 204, 22, 0.18)', text: '#3f6212' },
+            { bg: 'rgba(251, 146, 60, 0.08)', header: 'rgba(251, 146, 60, 0.18)', text: '#9a3412' },
+            { bg: 'rgba(168, 85, 247, 0.08)', header: 'rgba(168, 85, 247, 0.18)', text: '#6b21a8' },
+        ];
+
+        // Sekme değiştiğinde Tab 2 verilerini yükle
+        $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+            if (e.target.id === 'tab-okuma-gun') {
+                loadOkumaGunSayilari();
+            }
+        });
+
+        // Rapor Getir butonuna tıklanınca aktif sekmeye göre yükle
+        $(document).on('click', '#btnRaporGetir', function () {
+            if ($('#tab-okuma-gun').hasClass('active')) {
+                _okumaGunLoaded = false;
+                loadOkumaGunSayilari();
+            }
+        });
+
+        // 35+ gün filtresi
+        $('#chk35Plus').on('change', function () {
+            if (_okumaGunData.length > 0) {
+                renderOkumaGunTable(_okumaGunData, _okumaGunDonemler, true);
+            }
+        });
+
+        // Tab 2 Sort click handler
+        $(document).on('click', '#okumaGunTable .og-sortable-header', function (e) {
+            if ($(e.target).hasClass('og-column-search') || $(e.target).closest('.og-column-search').length) return;
+            const col = $(this).data('sort-col');
+            if (!col) return;
+            if (_ogSortColumn === col) {
+                _ogSortDirection = _ogSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                _ogSortColumn = col;
+                _ogSortDirection = 'asc';
+            }
+            renderOkumaGunTable(_okumaGunData, _okumaGunDonemler, true);
+        });
+
+        // Tab 2 Search input handler
+        $(document).on('input', '#okumaGunTable .og-column-search', function () {
+            const col = $(this).data('col');
+            _ogSearchFilters[col] = $(this).val();
+            clearTimeout(_ogSearchTimeout);
+            _ogSearchTimeout = setTimeout(function () {
+                renderOkumaGunTable(_okumaGunData, _okumaGunDonemler, true);
+            }, 300);
+        });
+
+        function loadOkumaGunSayilari() {
+            const baslangicDonem = $('#baslangicDonem').val().trim();
+            const bitisDonem = $('#bitisDonem').val().trim();
+            const donemler = $('#filterDonemler').val();
+            const bolge = $('#filterBolge').val();
+            const defterVal = $('#filterDefter').val();
+
+            if ((!baslangicDonem || !bitisDonem) && (!donemler || donemler.length === 0)) {
+                Swal.fire('Uyarı', 'Lütfen en az bir dönem veya aralık seçiniz.', 'warning');
+                return;
+            }
+
+            // Accordion'u kapat
+            var collapseElement = document.getElementById('collapseFilter');
+            var collapse = bootstrap.Collapse.getInstance(collapseElement);
+            if (collapse) collapse.hide();
+            else if (collapseElement.classList.contains('show')) new bootstrap.Collapse(collapseElement, { toggle: false }).hide();
+
+            $('#okumaGunLoadingSection').show();
+            $('#okumaGunReportSection').hide();
+            $('#okumaGunSummaryCards').hide();
+            $('#okumaGunFilterRow').hide();
+
+            $.ajax({
+                url: 'views/puantaj/api.php',
+                type: 'GET',
+                data: {
+                    action: 'okuma-gun-sayilari',
+                    baslangic_donem: baslangicDonem,
+                    bitis_donem: bitisDonem,
+                    donemler: donemler,
+                    bolge: bolge,
+                    defter: defterVal
+                },
+                dataType: 'json',
+                success: function (response) {
+                    $('#okumaGunLoadingSection').hide();
+
+                    if (response.status === 'success') {
+                        _okumaGunData = response.data;
+                        _okumaGunDonemler = response.donemler;
+                        _okumaGunLoaded = true;
+
+                        // Özet kartlarını güncelle
+                        $('#okumaGunTotalDefter').text((response.summary.toplam_defter || 0).toLocaleString('tr-TR'));
+                        $('#okumaGunTotalBolge').text((response.summary.toplam_bolge || 0).toLocaleString('tr-TR'));
+                        $('#okumaGunTotalDonem').text((response.summary.donem_sayisi || 0).toLocaleString('tr-TR'));
+
+                        // Reset sort/search on new data
+                        _ogSortColumn = null;
+                        _ogSortDirection = 'asc';
+                        _ogSearchFilters = { ilce: '', mahalle: '', defter: '', abone_sayisi: '' };
+
+                        renderOkumaGunTable(response.data, response.donemler);
+                        $('#okumaGunSummaryCards').fadeIn(300);
+                        $('#okumaGunFilterRow').fadeIn(300);
+                        $('#okumaGunReportSection').fadeIn(300);
+                    } else {
+                        Swal.fire('Hata', response.message || 'Rapor oluşturulurken bir hata oluştu.', 'error');
+                    }
+                },
+                error: function () {
+                    $('#okumaGunLoadingSection').hide();
+                    Swal.fire('Hata', 'Sunucuyla iletişim kurulamadı.', 'error');
+                }
+            });
+        }
+
+        function renderOkumaGunTable(data, donemler, keepState) {
+            if (!data || data.length === 0) {
+                $('#okumaGunTableWrapper').html('<div class="text-center p-5 text-muted"><i class="bx bx-search-alt fs-1 d-block mb-2"></i>Seçilen kriterlere uygun veri bulunamadı.</div>');
+                return;
+            }
+
+            if (keepState !== true) {
+                _ogSortColumn = null;
+                _ogSortDirection = 'asc';
+                _ogSearchFilters = { ilce: '', mahalle: '', defter: '', abone_sayisi: '' };
+            }
+
+            const only35Plus = $('#chk35Plus').is(':checked');
+
+            // Apply search filters
+            let filteredData = data.filter(function (row) {
+                const ilceMatch = !_ogSearchFilters.ilce || (row.ilce || '').toLowerCase().includes(_ogSearchFilters.ilce.toLowerCase());
+                const mahalleMatch = !_ogSearchFilters.mahalle || (row.mahalle || '').toLowerCase().includes(_ogSearchFilters.mahalle.toLowerCase());
+                const defterMatch = !_ogSearchFilters.defter || (row.defter || '').toString().toLowerCase().includes(_ogSearchFilters.defter.toLowerCase());
+                const aboneMatch = !_ogSearchFilters.abone_sayisi || (row.abone_sayisi || '').toString().includes(_ogSearchFilters.abone_sayisi);
+                return ilceMatch && mahalleMatch && defterMatch && aboneMatch;
+            });
+
+            // 35+ filtresi
+            if (only35Plus) {
+                filteredData = filteredData.filter(function (row) {
+                    for (const d of donemler) {
+                        const di = row.donemler[d];
+                        if (di && di.fark !== null && di.fark >= 35) return true;
+                    }
+                    return false;
+                });
+            }
+
+            // Sayısal filtreleri uygula (FARK ve TARIH için)
+            for (const filterKey in _numericFilters) {
+                const filter = _numericFilters[filterKey];
+                if (!filter || filter.value === null || filter.value === '') continue;
+
+                const isOkumaGun = filterKey.endsWith('_fark') || filterKey.endsWith('_tarih');
+                if (!isOkumaGun) continue;
+
+                const parts = filterKey.split('_');
+                const field = parts.pop();
+                const filterDonem = parts.join('_');
+
+                filteredData = filteredData.filter(function (row) {
+                    const donemData = row.donemler[filterDonem];
+                    if (!donemData) return false;
+
+                    let rowVal = null;
+                    if (field === 'fark') {
+                        rowVal = donemData.fark;
+                    }
+
+                    if (rowVal === null || rowVal === undefined) return false;
+
+                    const fVal = parseFloat(filter.value);
+                    const rVal = parseFloat(rowVal);
+
+                    if (isNaN(fVal) || isNaN(rVal)) return false;
+
+                    switch (filter.operator) {
+                        case '>': return rVal > fVal;
+                        case '<': return rVal < fVal;
+                        case '>=': return rVal >= fVal;
+                        case '<=': return rVal <= fVal;
+                        case '=': return rVal === fVal;
+                        default: return true;
+                    }
+                });
+            }
+
+            if (filteredData.length === 0) {
+                $('#okumaGunTableWrapper').html('<div class="text-center p-5 text-muted"><i class="bx bx-filter fs-1 d-block mb-2"></i>Filtrelere uygun veri bulunamadı.</div>');
+                return;
+            }
+
+            // Apply sort
+            let sortedData = [...filteredData];
+            if (_ogSortColumn) {
+                sortedData.sort(function (a, b) {
+                    let valA, valB;
+                    if (_ogSortColumn === 'ilce') {
+                        valA = (a.ilce || '').toLowerCase();
+                        valB = (b.ilce || '').toLowerCase();
+                    } else if (_ogSortColumn === 'mahalle') {
+                        valA = (a.mahalle || '').toLowerCase();
+                        valB = (b.mahalle || '').toLowerCase();
+                    } else if (_ogSortColumn === 'defter') {
+                        valA = (a.defter || '').toString();
+                        valB = (b.defter || '').toString();
+                        const nA = parseInt(valA), nB = parseInt(valB);
+                        if (!isNaN(nA) && !isNaN(nB)) { valA = nA; valB = nB; }
+                    } else if (_ogSortColumn === 'abone_sayisi') {
+                        valA = parseInt(a.abone_sayisi) || 0;
+                        valB = parseInt(b.abone_sayisi) || 0;
+                    } else if (_ogSortColumn.endsWith('_fark')) {
+                        const donem = _ogSortColumn.replace('_fark', '');
+                        valA = (a.donemler[donem] && a.donemler[donem].fark !== null) ? a.donemler[donem].fark : -1;
+                        valB = (b.donemler[donem] && b.donemler[donem].fark !== null) ? b.donemler[donem].fark : -1;
+                    } else if (_ogSortColumn.endsWith('_tarih')) {
+                        const donem = _ogSortColumn.replace('_tarih', '');
+                        valA = (a.donemler[donem] && a.donemler[donem].okuma_tarihi_raw) ? a.donemler[donem].okuma_tarihi_raw : '';
+                        valB = (b.donemler[donem] && b.donemler[donem].okuma_tarihi_raw) ? b.donemler[donem].okuma_tarihi_raw : '';
+                    }
+                    if (valA < valB) return _ogSortDirection === 'asc' ? -1 : 1;
+                    if (valA > valB) return _ogSortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            // Sort indicator helper
+            function ogSortIcon(colKey) {
+                if (_ogSortColumn === colKey) {
+                    const icon = _ogSortDirection === 'asc' ? '▲' : '▼';
+                    return `<span class="sort-icon active">${icon}</span>`;
+                }
+                return '<span class="sort-icon">⇅</span>';
+            }
+
+            // Bölgelere göre grupla
+            const regionMap = {};
+            const regionOrder = [];
+            sortedData.forEach(function (row) {
+                const region = row.ilce || 'TANIMSIZ';
+                if (!regionMap[region]) {
+                    regionMap[region] = [];
+                    regionOrder.push(region);
+                }
+                regionMap[region].push(row);
+            });
+
+            let html = '<table class="table table-bordered table-sm mb-0" id="okumaGunTable">';
+
+            // THEAD
+            html += '<thead>';
+
+            // Row 1: Sabit başlıklar + dönem başlıkları (sortable)
+            html += '<tr class="main-headers-row">';
+            html += `<th class="fix-col-ilce og-sortable-header" data-sort-col="ilce">İLÇE${ogSortIcon('ilce')}</th>`;
+            html += `<th class="fix-col-mahalle og-sortable-header" data-sort-col="mahalle">MAHALLE${ogSortIcon('mahalle')}</th>`;
+            html += `<th class="fix-col-defter og-sortable-header" data-sort-col="defter">DEFTER${ogSortIcon('defter')}</th>`;
+            html += `<th class="fix-col-abone og-sortable-header" data-sort-col="abone_sayisi">ABONE SAYISI${ogSortIcon('abone_sayisi')}</th>`;
+
+            donemler.forEach(function (donem, idx) {
+                const isLast = idx === donemler.length - 1;
+                const formatted = donem.substring(0, 4) + '/' + donem.substring(4);
+                html += `<th colspan="2" class="period-header ${isLast ? 'ogr-period-end' : ''}">${formatted}</th>`;
+            });
+            html += '</tr>';
+
+            // Row 2: Search inputs + sub-headers (OKUMA TARİHİ, FARK with sort)
+            html += '<tr class="sub-headers-row search-row">';
+            html += `<th class="fix-col-ilce"><input type="text" class="form-control og-column-search" data-col="ilce" value="${_ogSearchFilters.ilce || ''}" placeholder="İLÇE"></th>`;
+            html += `<th class="fix-col-mahalle"><input type="text" class="form-control og-column-search" data-col="mahalle" value="${_ogSearchFilters.mahalle || ''}" placeholder="MAHALLE"></th>`;
+            html += `<th class="fix-col-defter"><input type="text" class="form-control og-column-search" data-col="defter" value="${_ogSearchFilters.defter || ''}" placeholder="DEFTER"></th>`;
+            html += `<th class="fix-col-abone"><input type="text" class="form-control og-column-search" data-col="abone_sayisi" value="${_ogSearchFilters.abone_sayisi || ''}" placeholder="ABONE"></th>`;
+
+            donemler.forEach(function (donem, idx) {
+                const isLast = idx === donemler.length - 1;
+                html += `<th class="sub-header og-sortable-header" data-sort-col="${donem}_tarih"><input type="text" class="form-control og-column-search text-center mb-1 mx-auto" style="height:22px; width:90%; padding:2px;" data-col="${donem}_tarih" value="${_ogSearchFilters[donem + '_tarih'] || ''}" placeholder="Ara..."><br>OKUMA TARİHİ${ogSortIcon(donem + '_tarih')}</th>`;
+
+                const activeClass = _numericFilters[donem + '_fark'] ? 'active-filter' : '';
+                const dot = _numericFilters[donem + '_fark'] ? '<span class="filter-dot"></span>' : '';
+                html += `<th class="sub-header og-sortable-header ${isLast ? 'ogr-period-end' : ''}" data-sort-col="${donem}_fark">
+                    <button type="button" class="col-filter-btn ${activeClass} mb-1" data-filter-col="${donem}_fark" title="Sayısal Filtrele"><i class="bx bx-filter-alt"></i></button>${dot}<br>FARK${ogSortIcon(donem + '_fark')}</th>`;
+            });
+            html += '</tr>';
+
+            html += '</thead>';
+
+            // TBODY
+            html += '<tbody>';
+
+            let rowNum = 0;
+            regionOrder.forEach(function (region, regionIdx) {
+                const regionColor = _regionColors[regionIdx % _regionColors.length];
+                const rows = regionMap[region];
+
+                // Bölge başlık satırı
+                const totalCols = 4 + (donemler.length * 2);
+                html += `<tr><td colspan="${totalCols}" class="ogr-region-header text-start" style="background: ${regionColor.header}; color: ${regionColor.text};">`;
+                html += `<i class="bx bx-map me-1"></i>${region} <span class="badge bg-white text-dark ms-2" style="font-size:10px;">${rows.length} defter</span>`;
+                html += '</td></tr>';
+
+                rows.forEach(function (row) {
+                    rowNum++;
+                    html += `<tr style="background-color: ${regionColor.bg};">`;
+                    html += `<td class="fix-col-ilce text-start fw-medium" style="background-color: ${regionColor.bg};">${row.ilce || '-'}</td>`;
+                    html += `<td class="fix-col-mahalle text-start" style="background-color: ${regionColor.bg};">${row.mahalle || '-'}</td>`;
+                    html += `<td class="fix-col-defter fw-bold" style="background-color: ${regionColor.bg};">${row.defter}</td>`;
+                    html += `<td class="fix-col-abone" style="background-color: ${regionColor.bg};">${row.abone_sayisi ? row.abone_sayisi.toLocaleString('tr-TR') : '-'}</td>`;
+
+                    donemler.forEach(function (donem, idx) {
+                        const isLast = idx === donemler.length - 1;
+                        const di = row.donemler[donem] || { okuma_tarihi: '', fark: null };
+
+                        html += `<td>${di.okuma_tarihi || ''}</td>`;
+
+                        let farkClass = '';
+                        let farkText = '';
+                        if (di.fark !== null && di.fark !== undefined) {
+                            farkText = di.fark;
+                            farkClass = di.fark >= 35 ? 'fark-danger' : 'fark-normal';
+                        }
+                        html += `<td class="${farkClass} ${isLast ? 'ogr-period-end' : ''}">${farkText}</td>`;
+                    });
+
+                    html += '</tr>';
+                });
+            });
+
+            html += '</tbody>';
+            html += '</table>';
+
+            $('#okumaGunTableWrapper').html(html);
+        }
+
     });
 </script>

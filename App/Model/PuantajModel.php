@@ -335,6 +335,8 @@ class PuantajModel extends Model
                                 }
                             }
 
+                            $dateCompareField = ($colIdx == 0) ? "DATE($field)" : $field;
+
                             switch ($mode) {
                                 case 'multi':
                                     if (!empty($vals)) {
@@ -346,7 +348,7 @@ class PuantajModel extends Model
                                             } else {
                                                 if ($colIdx == 0 && strpos($v, '.') !== false) {
                                                     $v = \App\Helper\Date::Ymd($v, 'Y-m-d');
-                                                    $orConditions[] = "$field = :$vParam";
+                                                    $orConditions[] = "$dateCompareField = :$vParam";
                                                     $params[$vParam] = $v;
                                                 } else {
                                                     $orConditions[] = "$field LIKE :$vParam";
@@ -376,11 +378,11 @@ class PuantajModel extends Model
                                     $params[$paramName] = "%$val";
                                     break;
                                 case 'equals':
-                                    $searchWhere .= " AND $field = :$paramName";
+                                    $searchWhere .= " AND $dateCompareField = :$paramName";
                                     $params[$paramName] = $val;
                                     break;
                                 case 'not_equals':
-                                    $searchWhere .= " AND $field != :$paramName";
+                                    $searchWhere .= " AND $dateCompareField != :$paramName";
                                     $params[$paramName] = $val;
                                     break;
                                 case 'gt': case 'greater_than':
@@ -400,18 +402,18 @@ class PuantajModel extends Model
                                     $params[$paramName] = $val;
                                     break;
                                 case 'before':
-                                    $searchWhere .= " AND $field < :$paramName";
+                                    $searchWhere .= " AND $dateCompareField < :$paramName";
                                     $params[$paramName] = $val;
                                     break;
                                 case 'after':
-                                    $searchWhere .= " AND $field > :$paramName";
+                                    $searchWhere .= " AND $dateCompareField > :$paramName";
                                     $params[$paramName] = $val;
                                     break;
                                 case 'between':
                                     if ($val && $val2) {
                                         $p1 = $paramName . "_1";
                                         $p2 = $paramName . "_2";
-                                        $searchWhere .= " AND $field BETWEEN :$p1 AND :$p2";
+                                        $searchWhere .= " AND $dateCompareField BETWEEN :$p1 AND :$p2";
                                         $params[$p1] = $val;
                                         $params[$p2] = $val2;
                                     }

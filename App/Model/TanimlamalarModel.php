@@ -132,6 +132,44 @@ class TanimlamalarModel extends Model
         </tr>';
     }
 
+    // Defter Kodu için tablo satırı
+    public function getDefterKoduTableRow($id)
+    {
+        $data = $this->find($id);
+        $enc_id = Security::encrypt($data->id);
+
+        $baslangic_tarihi = $data->baslangic_tarihi ? date('d.m.Y', strtotime($data->baslangic_tarihi)) : '';
+        $bitis_tarihi = $data->bitis_tarihi ? date('d.m.Y', strtotime($data->bitis_tarihi)) : '';
+
+        return '<tr id="row_' . $data->id . '">
+            <td class="text-center">' . $data->id . '</td>
+            <td class="text-center">' . $data->tur_adi . '</td>
+            <td class="text-center">' . $data->defter_bolge . '</td>
+            <td class="text-center">' . $data->defter_mahalle . '</td>
+            <td class="text-center">' . $data->defter_abone_sayisi . '</td>
+            <td class="text-center">' . $baslangic_tarihi . '</td>
+            <td class="text-center">' . $bitis_tarihi . '</td>
+            <td class="text-center">' . $data->aciklama . '</td>
+            <td class="text-center" style="width:5%">
+                <div class="flex-shrink-0">
+                    <div class="dropdown align-self-start">
+                        <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                             <i class="bx bx-dots-vertical-rounded font-size-24 text-dark"></i>
+                        </a>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item duzenle" href="#" data-id="' . $enc_id . '">
+                                <span class="mdi mdi-account-edit" style="font-size: 18px;"></span> Düzenle
+                            </a>
+                            <a class="dropdown-item sil" href="#" data-id="' . $enc_id . '">
+                                <span class="mdi mdi-delete" style="font-size: 18px;"></span> Sil
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </td>
+        </tr>';
+    }
+
     public function getEkipKodlari()
     {
         $sql = $this->db->prepare("SELECT t.*, 
@@ -558,5 +596,81 @@ class TanimlamalarModel extends Model
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$ekip_kodu_id, $_SESSION['firma_id']]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Server-side DataTables verilerini getirir
+     */
+    public function getServerSideData($grup, $params)
+    {
+        $draw = $params['draw'];
+        $start = $params['start'];
+        $length = $params['length'];
+        $searchValue = $params['search']['value'] ?? '';
+        $orderColumn = $params['order'][0]['column'] ?? 0;
+        $orderDir = $params['order'][0]['dir'] ?? 'asc';
+        $columns = $params['columns'];
+
+        $where = "WHERE grup = :grup AND firma_id = :firma_id AND silinme_tarihi IS NULL";
+        $sqlParams = [
+            'grup' => $grup,
+            'firma_id' => $_SESSION['firma_id']
+        ];
+
+        if (!empty($searchValue)) {
+            $where .= " AND (tur_adi LIKE :search 
+                        OR defter_bolge LIKE :search 
+                        OR defter_mahalle LIKE :search 
+                        OR aciklama LIKE :search)";
+            $sqlParams['search'] = "%$searchValue%";
+        }
+
+        // Sütun bazlı aramalar
+        foreach ($columns as $index => $column) {
+            $searchVal = $column['search']['value'] ?? '';
+            if (!empty($searchVal)) {
+                $colName = $column['data'];
+                // Güvenlik için sütun adını doğrula
+                $allowedSearchColumns = ['id', 'tur_adi', 'defter_bolge', 'defter_mahalle', 'defter_abone_sayisi', 'baslangic_tarihi', 'bitis_tarihi', 'aciklama'];
+                if (in_array($colName, $allowedSearchColumns)) {
+                    $paramName = "col_search_" . $index;
+                    $where .= " AND $colName LIKE :$paramName";
+                    $sqlParams[$paramName] = "%$searchVal%";
+                }
+            }
+        }
+
+        // Toplam kayıt sayısı (filtresiz)
+        $totalSql = "SELECT COUNT(*) FROM {$this->table} WHERE grup = ? AND firma_id = ? AND silinme_tarihi IS NULL";
+        $totalStmt = $this->db->prepare($totalSql);
+        $totalStmt->execute([$grup, $_SESSION['firma_id']]);
+        $totalData = $totalStmt->fetchColumn();
+
+        // Filtrelenmiş kayıt sayısı
+        $filterSql = "SELECT COUNT(*) FROM {$this->table} $where";
+        $filterStmt = $this->db->prepare($filterSql);
+        $filterStmt->execute($sqlParams);
+        $totalFiltered = $filterStmt->fetchColumn();
+
+        // Sıralama
+        $orderColName = $columns[$orderColumn]['data'] ?? 'id';
+        // Güvenlik için sütun adını kontrol et
+        $allowedColumns = ['id', 'tur_adi', 'defter_bolge', 'defter_mahalle', 'defter_abone_sayisi', 'baslangic_tarihi', 'bitis_tarihi', 'aciklama'];
+        if (!in_array($orderColName, $allowedColumns)) {
+            $orderColName = 'id';
+        }
+
+        // Verileri getir
+        $dataSql = "SELECT * FROM {$this->table} $where ORDER BY $orderColName $orderDir LIMIT $start, $length";
+        $dataStmt = $this->db->prepare($dataSql);
+        $dataStmt->execute($sqlParams);
+        $dataRows = $dataStmt->fetchAll(PDO::FETCH_OBJ);
+
+        return [
+            "draw" => intval($draw),
+            "recordsTotal" => intval($totalData),
+            "recordsFiltered" => intval($totalFiltered),
+            "data" => $dataRows
+        ];
     }
 }

@@ -108,6 +108,8 @@ class SayacDegisimModel extends Model
                                 }
                             }
 
+                            $dateCompareField = ($colIdx == 0) ? "DATE($field)" : $field;
+
                             switch ($mode) {
                                 case 'multi':
                                     if (!empty($vals)) {
@@ -119,7 +121,7 @@ class SayacDegisimModel extends Model
                                             } else {
                                                 if ($colIdx == 0 && strpos($v, '.') !== false) {
                                                     $v = \App\Helper\Date::Ymd($v, 'Y-m-d');
-                                                    $orConditions[] = "$field = :$vParam";
+                                                    $orConditions[] = "$dateCompareField = :$vParam";
                                                     $params[$vParam] = $v;
                                                 } else {
                                                     $orConditions[] = "$field LIKE :$vParam";
@@ -149,11 +151,11 @@ class SayacDegisimModel extends Model
                                     $params[$paramName] = "%$val";
                                     break;
                                 case 'equals':
-                                    $searchWhere .= " AND $field = :$paramName";
+                                    $searchWhere .= " AND $dateCompareField = :$paramName";
                                     $params[$paramName] = $val;
                                     break;
                                 case 'not_equals':
-                                    $searchWhere .= " AND $field != :$paramName";
+                                    $searchWhere .= " AND $dateCompareField != :$paramName";
                                     $params[$paramName] = $val;
                                     break;
                                 case 'gt':
@@ -177,18 +179,18 @@ class SayacDegisimModel extends Model
                                     $params[$paramName] = $val;
                                     break;
                                 case 'before':
-                                    $searchWhere .= " AND $field < :$paramName";
+                                    $searchWhere .= " AND $dateCompareField < :$paramName";
                                     $params[$paramName] = $val;
                                     break;
                                 case 'after':
-                                    $searchWhere .= " AND $field > :$paramName";
+                                    $searchWhere .= " AND $dateCompareField > :$paramName";
                                     $params[$paramName] = $val;
                                     break;
                                 case 'between':
                                     if ($val && $val2) {
                                         $p1 = $paramName . "_1";
                                         $p2 = $paramName . "_2";
-                                        $searchWhere .= " AND $field BETWEEN :$p1 AND :$p2";
+                                        $searchWhere .= " AND $dateCompareField BETWEEN :$p1 AND :$p2";
                                         $params[$p1] = $val;
                                         $params[$p2] = $val2;
                                     }
@@ -303,10 +305,17 @@ class SayacDegisimModel extends Model
         $bugun = date('Y-m-d');
 
         $sql = "SELECT COUNT(*) as sayac_degisimi
-                FROM {$this->table}
-                WHERE firma_id = ? 
-                AND tarih = ? 
-                AND silinme_tarihi IS NULL";
+                FROM {$this->table} t
+                WHERE t.firma_id = ? 
+                AND t.tarih = ? 
+                AND t.silinme_tarihi IS NULL
+                AND TRIM(t.isemri_sonucu) IN (
+                    SELECT TRIM(is_emri_sonucu) 
+                    FROM tanimlamalar 
+                    WHERE grup = 'is_turu' 
+                    AND is_turu_ucret > 0 
+                    AND silinme_tarihi IS NULL
+                )";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $bugun]);
@@ -323,10 +332,17 @@ class SayacDegisimModel extends Model
         $sonGun = date('Y-m-t');
 
         $sql = "SELECT COUNT(*) as sayac_degisimi
-                FROM {$this->table}
-                WHERE firma_id = ? 
-                AND tarih >= ? AND tarih <= ?
-                AND silinme_tarihi IS NULL";
+                FROM {$this->table} t
+                WHERE t.firma_id = ? 
+                AND t.tarih >= ? AND t.tarih <= ?
+                AND t.silinme_tarihi IS NULL
+                AND TRIM(t.isemri_sonucu) IN (
+                    SELECT TRIM(is_emri_sonucu) 
+                    FROM tanimlamalar 
+                    WHERE grup = 'is_turu' 
+                    AND is_turu_ucret > 0 
+                    AND silinme_tarihi IS NULL
+                )";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $buAy, $sonGun]);

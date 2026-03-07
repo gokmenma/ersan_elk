@@ -94,6 +94,10 @@ if (count($isTurleri) == 0) {
 // Dosyayı indir
 $filename = 'is_turleri_sablon_' . date('Y-m-d_H-i-s') . '.xlsx';
 
+if (ob_get_length()) {
+    ob_end_clean();
+}
+
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment;filename="' . $filename . '"');
 header('Cache-Control: max-age=0');

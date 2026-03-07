@@ -730,3 +730,295 @@ if (isset($_POST["action"]) && $_POST["action"] == "demirbas-kategorisi-sil") {
     echo json_encode(["status" => $status, "message" => $message, "deleted_id" => $id]);
     exit;
 }
+
+// Defter Kodu Kaydet
+if (isset($_POST["action"]) && $_POST["action"] == "defter-kodu-kaydet") {
+    $id = Security::decrypt($_POST["id"]);
+    $plainId = 0;
+    $son_kayit = null;
+    try {
+        $data = [
+            "id" => $id,
+            "type" => 1,
+            "grup" => "defter_kodu",
+            "tur_adi" => $_POST["tur_adi"],
+            "defter_bolge" => $_POST["defter_bolge"],
+            "defter_mahalle" => $_POST["defter_mahalle"] ?? "",
+            "defter_abone_sayisi" => $_POST["defter_abone_sayisi"] ?? null,
+            "baslangic_tarihi" => !empty($_POST["baslangic_tarihi"]) ? date("Y-m-d", strtotime($_POST["baslangic_tarihi"])) : null,
+            "bitis_tarihi" => !empty($_POST["bitis_tarihi"]) ? date("Y-m-d", strtotime($_POST["bitis_tarihi"])) : null,
+            "aciklama" => $_POST["aciklama"] ?? ""
+        ];
+
+        if ($id == 0) {
+            $data["kayit_yapan"] = $_SESSION["id"] ?? 0;
+            $data["firma_id"] = $_SESSION["firma_id"];
+            $plainId = $Tanimlamalar->saveWithAttr($data);
+        } else {
+            $Tanimlamalar->saveWithAttr($data);
+            $plainId = $id;
+        }
+
+        $status = "success";
+        $message = "İşlem başarılı bir şekilde gerçekleştirildi.";
+
+        // Return HTML structure for Datatable row replacement integration
+        $son_kayit = $Tanimlamalar->getDefterKoduTableRow($plainId);
+
+    } catch (PDOException $ex) {
+        $status = "error";
+        $message = $ex->getMessage();
+    }
+
+    echo json_encode([
+        "status" => $status,
+        "message" => $message,
+        "id" => $plainId,
+        "son_kayit" => $son_kayit,
+        "is_update" => ($id != 0)
+    ]);
+    exit;
+}
+
+// Defter Kodu Getir
+if (isset($_POST["action"]) && $_POST["action"] == "defter-kodu-getir") {
+    $id = Security::decrypt($_POST["id"]);
+    try {
+        $data = $Tanimlamalar->find($id);
+        if ($data) {
+            $data->encrypted_id = $_POST["id"];
+            // Formate dates for output
+            if ($data->baslangic_tarihi) {
+                $data->baslangic_tarihi = date("d.m.Y", strtotime($data->baslangic_tarihi));
+            }
+            if ($data->bitis_tarihi) {
+                $data->bitis_tarihi = date("d.m.Y", strtotime($data->bitis_tarihi));
+            }
+        }
+        $status = "success";
+    } catch (PDOException $ex) {
+        $status = "error";
+        $data = null;
+    }
+    echo json_encode(["status" => $status, "data" => $data]);
+    exit;
+}
+
+// Defter Kodu Sil
+if (isset($_POST["action"]) && $_POST["action"] == "defter-kodu-sil") {
+    $id = Security::decrypt($_POST["id"]);
+    try {
+        $Tanimlamalar->softDelete($id);
+        $status = "success";
+        $message = "Kayıt silindi.";
+    } catch (PDOException $ex) {
+        $status = "error";
+        $message = $ex->getMessage();
+    }
+    echo json_encode(["status" => $status, "message" => $message, "deleted_id" => $id]);
+    exit;
+}
+
+// Defter Kodu Excel Yükle
+if (isset($_POST["action"]) && $_POST["action"] == "defter-kodu-excel-yukle") {
+    try {
+        // Dosya kontrolü
+        if (!isset($_FILES['excel_file']) || $_FILES['excel_file']['error'] !== UPLOAD_ERR_OK) {
+            throw new \Exception("Dosya yüklenirken bir hata oluştu.");
+        }
+
+        $file = $_FILES['excel_file'];
+        $allowedExtensions = ['xlsx', 'xls'];
+        $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+        if (!in_array($fileExtension, $allowedExtensions)) {
+            throw new \Exception("Sadece Excel dosyaları (.xlsx, .xls) yüklenebilir.");
+        }
+
+        // PhpSpreadsheet ile dosyayı oku
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file['tmp_name']);
+        $worksheet = $spreadsheet->getActiveSheet();
+        $highestRow = $worksheet->getHighestRow();
+
+        // Başlık satırını kontrol et
+        $headers = [];
+        foreach ($worksheet->getRowIterator(1, 1) as $row) {
+            foreach ($row->getCellIterator() as $cell) {
+                $headers[] = trim($cell->getValue() ?? '');
+            }
+        }
+
+        // Beklenen başlıklar
+        $expectedHeaders = ['DEFTER', 'BÖLGESİ', 'DEFTER MAHALLE', 'ABONE SAYISI', 'Başlangıç Tarihi', 'Bitiş Tarihi', 'AÇIKLAMA'];
+        $headerMap = [];
+
+        foreach ($expectedHeaders as $expected) {
+            foreach ($headers as $index => $header) {
+                if (mb_strtolower($header) === mb_strtolower($expected)) {
+                    $headerMap[$expected] = $index;
+                    break;
+                }
+            }
+            if (!isset($headerMap[$expected]) && $expected === 'DEFTER') {
+                throw new \Exception("Excel dosyasında 'DEFTER' sütunu bulunamadı.");
+            }
+        }
+
+        $updateCount = 0;
+        $insertCount = 0;
+        $errorRows = [];
+
+        for ($rowIndex = 2; $rowIndex <= $highestRow; $rowIndex++) {
+            $colDefter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['DEFTER'] ?? 0) + 1);
+            $colBolge = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['BÖLGESİ'] ?? 1) + 1);
+            $colMahalle = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['DEFTER MAHALLE'] ?? 2) + 1);
+            $colAbone = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['ABONE SAYISI'] ?? 3) + 1);
+            $colBaslangic = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['Başlangıç Tarihi'] ?? 4) + 1);
+            $colBitis = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['Bitiş Tarihi'] ?? 5) + 1);
+            $colAciklama = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['AÇIKLAMA'] ?? 6) + 1);
+
+            $defterKodu = trim($worksheet->getCell($colDefter . $rowIndex)->getValue() ?? '');
+            if (empty($defterKodu))
+                continue;
+
+            $bolgesi = trim($worksheet->getCell($colBolge . $rowIndex)->getValue() ?? '');
+            $mahalle = trim($worksheet->getCell($colMahalle . $rowIndex)->getValue() ?? '');
+            $aboneSayisi = trim($worksheet->getCell($colAbone . $rowIndex)->getValue() ?? '');
+
+            // Tarih okuma
+            $baslangicObj = $worksheet->getCell($colBaslangic . $rowIndex);
+            $baslangicVal = $baslangicObj->getValue();
+            if (\PhpOffice\PhpSpreadsheet\Shared\Date::isDateTime($baslangicObj)) {
+                $baslangicTarihi = date('Y-m-d', \PhpOffice\PhpSpreadsheet\Shared\Date::excelToTimestamp($baslangicVal));
+            } else {
+                $baslangicTarihi = !empty($baslangicVal) ? date('Y-m-d', strtotime(str_replace('.', '-', $baslangicVal))) : null;
+            }
+
+            $bitisObj = $worksheet->getCell($colBitis . $rowIndex);
+            $bitisVal = $bitisObj->getValue();
+            if (\PhpOffice\PhpSpreadsheet\Shared\Date::isDateTime($bitisObj)) {
+                $bitisTarihi = date('Y-m-d', \PhpOffice\PhpSpreadsheet\Shared\Date::excelToTimestamp($bitisVal));
+            } else {
+                $bitisTarihi = !empty($bitisVal) ? date('Y-m-d', strtotime(str_replace('.', '-', $bitisVal))) : null;
+            }
+
+            $aciklama = trim($worksheet->getCell($colAciklama . $rowIndex)->getValue() ?? '');
+
+            try {
+                $existingRecord = $Tanimlamalar->findByColumns([
+                    'tur_adi' => $defterKodu,
+                    'defter_mahalle' => $mahalle
+                ], 'grup = "defter_kodu" AND silinme_tarihi IS NULL');
+
+                if ($existingRecord) {
+                    $data = [
+                        "id" => $existingRecord->id,
+                        "type" => 1,
+                        "grup" => "defter_kodu",
+                        "tur_adi" => $defterKodu,
+                        "defter_bolge" => $bolgesi,
+                        "defter_mahalle" => $mahalle,
+                        "defter_abone_sayisi" => $aboneSayisi,
+                        "baslangic_tarihi" => $baslangicTarihi,
+                        "bitis_tarihi" => $bitisTarihi,
+                        "aciklama" => $aciklama,
+                    ];
+                    $Tanimlamalar->saveWithAttr($data);
+                    $updateCount++;
+                } else {
+                    $data = [
+                        "id" => 0,
+                        "type" => 1,
+                        "grup" => "defter_kodu",
+                        "tur_adi" => $defterKodu,
+                        "defter_bolge" => $bolgesi,
+                        "defter_mahalle" => $mahalle,
+                        "defter_abone_sayisi" => $aboneSayisi,
+                        "baslangic_tarihi" => $baslangicTarihi,
+                        "bitis_tarihi" => $bitisTarihi,
+                        "aciklama" => $aciklama,
+                        "kayit_yapan" => $_SESSION["id"] ?? 0,
+                        "firma_id" => $_SESSION["firma_id"] ?? 1
+                    ];
+                    $Tanimlamalar->saveWithAttr($data);
+                    $insertCount++;
+                }
+            } catch (\Exception $e) {
+                $errorRows[] = [
+                    'row' => $rowIndex,
+                    'tur_adi' => $defterKodu,
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+
+        $message = "";
+        if ($insertCount > 0)
+            $message .= "$insertCount yeni kayıt eklendi. ";
+        if ($updateCount > 0)
+            $message .= "$updateCount kayıt güncellendi. ";
+        if (count($errorRows) > 0)
+            $message .= count($errorRows) . " satırda hata oluştu.";
+        if (empty($message))
+            $message = "İşlenecek veri bulunamadı.";
+
+        $status = ($insertCount > 0 || $updateCount > 0) ? "success" : "warning";
+
+        echo json_encode([
+            "status" => $status,
+            "message" => trim($message),
+            "insertCount" => $insertCount,
+            "updateCount" => $updateCount,
+            "errorRows" => $errorRows
+        ]);
+
+    } catch (\Exception $ex) {
+        echo json_encode([
+            "status" => "error",
+            "message" => $ex->getMessage()
+        ]);
+    }
+    exit;
+}
+
+// Defter Kodu Listesi (Server-Side)
+if (isset($_POST["action"]) && $_POST["action"] == "defter-kodu-liste") {
+    $result = $Tanimlamalar->getServerSideData('defter_kodu', $_POST);
+
+    $data = [];
+    foreach ($result['data'] as $row) {
+        $enc_id = Security::encrypt($row->id);
+        $nestedData = [];
+        $nestedData['id'] = $row->id;
+        $nestedData['tur_adi'] = $row->tur_adi;
+        $nestedData['defter_bolge'] = $row->defter_bolge;
+        $nestedData['defter_mahalle'] = $row->defter_mahalle;
+        $nestedData['defter_abone_sayisi'] = $row->defter_abone_sayisi;
+        $nestedData['baslangic_tarihi'] = $row->baslangic_tarihi ? date('d.m.Y', strtotime($row->baslangic_tarihi)) : '';
+        $nestedData['bitis_tarihi'] = $row->bitis_tarihi ? date('d.m.Y', strtotime($row->bitis_tarihi)) : '';
+        $nestedData['aciklama'] = $row->aciklama;
+        $nestedData['islem'] = '
+            <div class="flex-shrink-0">
+                <div class="dropdown align-self-start">
+                    <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        data-bs-boundary="viewport" aria-haspopup="true" aria-expanded="false">
+                        <i class="bx bx-dots-vertical-rounded font-size-24 text-dark"></i>
+                    </a>
+                    <div class="dropdown-menu">
+                        <a href="#" class="dropdown-item duzenle"
+                            data-id="' . $enc_id . '"><span
+                                class="mdi mdi-account-edit font-size-18"></span>
+                            Düzenle</a>
+                        <a href="#" class="dropdown-item sil" data-id="' . $enc_id . '">
+                            <span class="mdi mdi-delete font-size-18"></span>
+                            Sil</a>
+                    </div>
+                </div>
+            </div>';
+        $data[] = $nestedData;
+    }
+
+    $result['data'] = $data;
+    echo json_encode($result);
+    exit;
+}

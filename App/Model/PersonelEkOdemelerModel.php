@@ -60,7 +60,7 @@ class PersonelEkOdemelerModel extends Model
         } elseif ($mode === 'yil') {
             // Yıl Filtresi
             if (!empty($filters['filter_ek_yil'])) {
-                $where .= " AND YEAR(peo.tarih) = ?";
+                $where .= " AND YEAR(COALESCE(peo.tarih, peo.created_at)) = ?";
                 $params[] = $filters['filter_ek_yil'];
             }
         }
@@ -148,10 +148,10 @@ class PersonelEkOdemelerModel extends Model
                 tutar = ?, 
                 updated_at = NOW() 
                 WHERE id = ?";
-            
+
             $updateStmt = $this->db->prepare($updateSql);
             $updateStmt->execute([$tutar, $mevcut->id]);
-            
+
             return true;
         }
 
@@ -247,7 +247,7 @@ class PersonelEkOdemelerModel extends Model
     {
         $params = [$donem_id];
         $turCondition = "";
-        
+
         if (!empty($tur)) {
             $turCondition = " AND peo.tur = ? ";
             $params[] = $tur;
@@ -264,7 +264,7 @@ class PersonelEkOdemelerModel extends Model
               $turCondition
             ORDER BY p.adi_soyadi ASC, peo.tutar DESC
         ");
-        
+
         $sql->execute($params);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }

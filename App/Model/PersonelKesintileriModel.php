@@ -54,7 +54,7 @@ class PersonelKesintileriModel extends Model
             }
         } elseif ($mode === 'yil') {
             if (!empty($filters['filter_kesinti_yil'])) {
-                $where .= " AND YEAR(pk.tarih) = ?";
+                $where .= " AND YEAR(COALESCE(pk.tarih, pk.olusturma_tarihi)) = ?";
                 $params[] = $filters['filter_kesinti_yil'];
             }
         }
@@ -240,7 +240,7 @@ class PersonelKesintileriModel extends Model
     {
         $params = [$donem_id];
         $turCondition = "";
-        
+
         if (!empty($tur)) {
             $turCondition = " AND pk.tur = ? ";
             $params[] = $tur;
@@ -258,7 +258,7 @@ class PersonelKesintileriModel extends Model
               $turCondition
             ORDER BY p.adi_soyadi ASC, pk.tutar DESC
         ");
-        
+
         $sql->execute($params);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }

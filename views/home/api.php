@@ -7,6 +7,7 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\PuantajModel;
 use App\Model\EndeksOkumaModel;
+use App\Service\SayacDegisimService;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -95,6 +96,79 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo json_encode([
                     'status' => 'success',
                     'data' => $data
+                ], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'get-dashboard-operational-stats':
+                $endeksModel = new EndeksOkumaModel();
+                $sayacService = new SayacDegisimService();
+
+                $dailyWorkStats = $puantajModel->getDailyStats();
+                $monthlyWorkStats = $puantajModel->getMonthlyStats();
+                $dailyReadingTotal = $endeksModel->getDailyStats();
+                $monthlyReadingTotal = $endeksModel->getMonthlyStats();
+                $sayacDailyStats = $sayacService->getDailyStats();
+                $sayacMonthlyStats = $sayacService->getMonthlyStats();
+                $kacakDailyTotal = $puantajModel->getKacakDailyStats();
+                $kacakMonthlyTotal = $puantajModel->getKacakMonthlyStats();
+
+                $lastUpdateEndeks = null;
+                $lastUpdateIsler = null;
+                $lastUpdateSayac = null;
+
+                try {
+                    $db = $puantajModel->getDb();
+                    $firmaId = $_SESSION['firma_id'] ?? 0;
+
+                    $stmtUpdates = $db->prepare("SELECT
+                            (SELECT MAX(created_at)
+                             FROM endeks_okuma
+                             WHERE firma_id = :firma_id
+                               AND created_at >= CURDATE()
+                               AND created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)) AS last_update_endeks,
+                            (SELECT MAX(created_at)
+                             FROM yapilan_isler
+                             WHERE firma_id = :firma_id
+                               AND created_at >= CURDATE()
+                               AND created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)) AS last_update_isler,
+                            (SELECT MAX(created_at)
+                             FROM sayac_degisim
+                             WHERE firma_id = :firma_id
+                               AND created_at >= CURDATE()
+                               AND created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)) AS last_update_sayac");
+                    $stmtUpdates->execute([':firma_id' => $firmaId]);
+                    $updates = $stmtUpdates->fetch(\PDO::FETCH_ASSOC) ?: [];
+
+                    $lastUpdateEndeks = $updates['last_update_endeks'] ?? null;
+                    $lastUpdateIsler = $updates['last_update_isler'] ?? null;
+                    $lastUpdateSayac = $updates['last_update_sayac'] ?? null;
+                } catch (\Exception $e) {
+                    // Ignore timestamp query failures; numeric stats are still returned.
+                }
+
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => [
+                        'daily' => [
+                            'muhurleme' => intval($dailyWorkStats->muhurleme ?? 0),
+                            'kesme_acma' => intval($dailyWorkStats->kesme_acma ?? 0),
+                            'endeks_okuma' => intval($dailyReadingTotal ?? 0),
+                            'sayac_degisimi' => intval($sayacDailyStats->sayac_degisimi ?? 0),
+                            'kacak' => intval($kacakDailyTotal->toplam ?? 0),
+                        ],
+                        'monthly' => [
+                            'muhurleme' => intval($monthlyWorkStats->muhurleme ?? 0),
+                            'kesme_acma' => intval($monthlyWorkStats->kesme_acma ?? 0),
+                            'endeks_okuma' => intval($monthlyReadingTotal ?? 0),
+                            'sayac_degisimi' => intval($sayacMonthlyStats->sayac_degisimi ?? 0),
+                            'kacak' => intval($kacakMonthlyTotal->toplam ?? 0),
+                        ],
+                        'last_update' => [
+                            'isler' => $lastUpdateIsler,
+                            'endeks' => $lastUpdateEndeks,
+                            'sayac' => $lastUpdateSayac,
+                        ],
+                    ]
                 ], JSON_UNESCAPED_UNICODE);
                 break;
 

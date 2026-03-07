@@ -18,8 +18,26 @@ if (!$firma_id) {
 }
 
 try {
+    $normalizeDepartman = static function ($departman) {
+        $key = mb_strtolower(trim((string) $departman), 'UTF-8');
+
+        $map = [
+            'kesme' => 'kesme_acma',
+            'kesme_acma' => 'kesme_acma',
+            'endeks' => 'endeks_okuma',
+            'endeks_okuma' => 'endeks_okuma',
+            'sayac' => 'sayac_degisim',
+            'sayac_degisim' => 'sayac_degisim',
+            'sayac_sokme_takma' => 'sayac_degisim',
+            'sokme_takma' => 'sayac_degisim',
+            'sayaç_sökme_takma' => 'sayac_degisim',
+        ];
+
+        return $map[$key] ?? 'kesme_acma';
+    };
+
     if ($action === 'get-performans') {
-        $departman = $_GET['departman'] ?? 'kesme_acma';
+        $departman = $normalizeDepartman($_GET['departman'] ?? 'kesme_acma');
         $period = $_GET['period'] ?? 'aylik';
         $tarih = $_GET['tarih'] ?? date('Y-m-d');
         $baslangicTarih = trim($_GET['baslangic_tarih'] ?? '');
@@ -216,7 +234,7 @@ try {
 
     } elseif ($action === 'get-karsilastirma') {
         // İki dönem karşılaştırma
-        $departman = $_GET['departman'] ?? 'kesme_acma';
+        $departman = $normalizeDepartman($_GET['departman'] ?? 'kesme_acma');
         $period1_start = $_GET['period1_start'] ?? '';
         $period1_end = $_GET['period1_end'] ?? '';
         $period2_start = $_GET['period2_start'] ?? '';

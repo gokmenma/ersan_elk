@@ -544,8 +544,6 @@ $(document).ready(function() {
                 dateVal = startDate;
             } else {
                 dateVal = ymdFromDateObj(dates[0]);
-                startDate = dateVal;
-                endDate = dateVal;
             }
         }
 

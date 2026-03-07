@@ -2409,6 +2409,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             $allBolgeSet[$row->bolge] = true;
         }
 
+        // tanimlamalar tablosundan defter_kodu bilgilerini al (mahalle, abone_sayisi)
+        $defterTanimStmt2 = $EndeksOkuma->db->prepare(
+            "SELECT tur_adi, defter_mahalle, defter_abone_sayisi
+             FROM tanimlamalar
+             WHERE firma_id = ? AND grup = 'defter_kodu' AND silinme_tarihi IS NULL"
+        );
+        $defterTanimStmt2->execute([$firmaId]);
+        $defterTanimRaw2 = $defterTanimStmt2->fetchAll(PDO::FETCH_OBJ);
+        $defterTanimMap2 = [];
+        foreach ($defterTanimRaw2 as $dt) {
+            $defterTanimMap2[trim($dt->tur_adi)] = [
+                'mahalle' => $dt->defter_mahalle ?: '',
+                'abone_sayisi' => (int) ($dt->defter_abone_sayisi ?: 0)
+            ];
+        }
+
         // İlçe tipi ataması (endeks_okuma'da bu alan yok, rastgele atayalım)
         $ilceTipleri = ['Uzak İlçeler', 'Merkez', 'Yakın İlçeler'];
         $bolgeIlceTipiMap = [];
@@ -2438,6 +2454,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                 'ilce_tipi' => $assignedIlceTipi,
                 'bolge' => $item['bolge'],
                 'defter' => $item['defter'],
+                'mahalle' => isset($defterTanimMap2[trim($item['defter'])]) ? $defterTanimMap2[trim($item['defter'])]['mahalle'] : '',
+                'abone_sayisi' => isset($defterTanimMap2[trim($item['defter'])]) ? $defterTanimMap2[trim($item['defter'])]['abone_sayisi'] : 0,
                 'donemler' => []
             ];
 
@@ -2509,6 +2527,206 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                 'toplam_kayit' => $toplamKayit,
                 'toplam_abone' => $toplamAboneSonDonem,
                 'son_donem' => $sonDonemFormatted,
+                'donem_sayisi' => count($donemler)
+            ]
+        ];
+
+    } catch (\Exception $e) {
+        $response['message'] = $e->getMessage();
+    }
+
+    echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// ======= OKUMA GÜN SAYILARI RAPORU =======
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'okuma-gun-sayilari') {
+    header('Content-Type: application/json; charset=utf-8');
+    $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
+
+    try {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+
+        // Dönemleri belirle (defter-bazli-rapor ile aynı mantık)
+        $donemler = [];
+        $baslangicDonem = $_GET['baslangic_donem'] ?? '';
+        $bitisDonem = $_GET['bitis_donem'] ?? '';
+
+        if (!empty($baslangicDonem) && !empty($bitisDonem)) {
+            $currentDonem = $baslangicDonem;
+            while ($currentDonem <= $bitisDonem) {
+                $donemler[] = $currentDonem;
+                $year = (int) substr($currentDonem, 0, 4);
+                $month = (int) substr($currentDonem, 4, 2);
+                $month++;
+                if ($month > 12) {
+                    $month = 1;
+                    $year++;
+                }
+                $currentDonem = $year . str_pad($month, 2, '0', STR_PAD_LEFT);
+                if (count($donemler) > 48)
+                    break;
+            }
+        }
+
+        if (isset($_GET['donemler']) && is_array($_GET['donemler'])) {
+            foreach ($_GET['donemler'] as $d) {
+                if (!empty($d))
+                    $donemler[] = $d;
+            }
+        }
+
+        $donemler = array_unique($donemler);
+        sort($donemler);
+
+        if (empty($donemler)) {
+            $donemler = [date('Ym')];
+        }
+
+        $bolge = $_GET['bolge'] ?? '';
+        $defterFilter = $_GET['defter'] ?? '';
+
+        $EndeksOkuma = new \App\Model\EndeksOkumaModel();
+        $TanimlamalarModel = new \App\Model\TanimlamalarModel();
+
+        // 1. endeks_okuma'dan defter + dönem bazlı okuma tarihlerini çek
+        $placeholders = implode(',', array_fill(0, count($donemler), '?'));
+        $sql = "SELECT defter, DATE_FORMAT(tarih, '%Y%m') as donem,
+                       MAX(tarih) as okuma_tarihi
+                FROM endeks_okuma
+                WHERE firma_id = ?
+                  AND silinme_tarihi IS NULL
+                  AND defter IS NOT NULL AND defter != ''
+                  AND DATE_FORMAT(tarih, '%Y%m') IN ($placeholders)";
+
+        $queryParams = [$firmaId];
+        $queryParams = array_merge($queryParams, $donemler);
+
+        if (!empty($bolge)) {
+            $sql .= " AND bolge = ?";
+            $queryParams[] = $bolge;
+        }
+
+        if (!empty($defterFilter)) {
+            $sql .= " AND defter = ?";
+            $queryParams[] = $defterFilter;
+        }
+
+        $sql .= " GROUP BY defter, DATE_FORMAT(tarih, '%Y%m')
+                   ORDER BY defter, donem";
+
+        $stmt = $EndeksOkuma->db->prepare($sql);
+        $stmt->execute($queryParams);
+        $rawData = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        // 2. tanimlamalar tablosundan defter_kodu bilgilerini al
+        $defterTanimStmt = $EndeksOkuma->db->prepare(
+            "SELECT tur_adi, defter_bolge, defter_mahalle, defter_abone_sayisi
+             FROM tanimlamalar
+             WHERE firma_id = ? AND grup = 'defter_kodu' AND silinme_tarihi IS NULL"
+        );
+        $defterTanimStmt->execute([$firmaId]);
+        $defterTanimRaw = $defterTanimStmt->fetchAll(PDO::FETCH_OBJ);
+
+        // Defter kodu → tanım bilgisi map'i oluştur
+        $defterTanimMap = [];
+        foreach ($defterTanimRaw as $dt) {
+            $defterTanimMap[trim($dt->tur_adi)] = [
+                'ilce' => $dt->defter_bolge ?: '',
+                'mahalle' => $dt->defter_mahalle ?: '',
+                'abone_sayisi' => (int) ($dt->defter_abone_sayisi ?: 0)
+            ];
+        }
+
+        // 3. Verileri defter bazlı organize et
+        $organized = []; // key: defter
+        foreach ($rawData as $row) {
+            $defter = trim($row->defter);
+            if (empty($defter))
+                continue;
+
+            if (!isset($organized[$defter])) {
+                $tanim = $defterTanimMap[$defter] ?? null;
+                $organized[$defter] = [
+                    'defter' => $defter,
+                    'ilce' => $tanim ? $tanim['ilce'] : '',
+                    'mahalle' => $tanim ? $tanim['mahalle'] : '',
+                    'abone_sayisi' => $tanim ? $tanim['abone_sayisi'] : 0,
+                    'donemler' => []
+                ];
+            }
+            $organized[$defter]['donemler'][$row->donem] = [
+                'okuma_tarihi' => $row->okuma_tarihi
+            ];
+        }
+
+        // 4. FARK hesapla (ardışık dönemler arasındaki gün farkı)
+        $resultData = [];
+        foreach ($organized as $defter => $item) {
+            $rowData = [
+                'defter' => $item['defter'],
+                'ilce' => $item['ilce'],
+                'mahalle' => $item['mahalle'],
+                'abone_sayisi' => $item['abone_sayisi'],
+                'donemler' => []
+            ];
+
+            $prevDate = null;
+            foreach ($donemler as $donem) {
+                $donemInfo = $item['donemler'][$donem] ?? null;
+                if ($donemInfo && !empty($donemInfo['okuma_tarihi'])) {
+                    $currentDate = new DateTime($donemInfo['okuma_tarihi']);
+                    $fark = null;
+                    if ($prevDate !== null) {
+                        $interval = $prevDate->diff($currentDate);
+                        $fark = (int) $interval->days;
+                    }
+
+                    $rowData['donemler'][$donem] = [
+                        'okuma_tarihi' => date('d.m.Y', strtotime($donemInfo['okuma_tarihi'])),
+                        'okuma_tarihi_raw' => $donemInfo['okuma_tarihi'],
+                        'fark' => $fark
+                    ];
+                    $prevDate = $currentDate;
+                } else {
+                    $rowData['donemler'][$donem] = [
+                        'okuma_tarihi' => '',
+                        'okuma_tarihi_raw' => '',
+                        'fark' => null
+                    ];
+                    // prevDate değişmez, boş dönem fark hesabını kesmez
+                }
+            }
+
+            $resultData[] = $rowData;
+        }
+
+        // 5. İlçeye göre sırala, sonra mahalle, sonra defter
+        usort($resultData, function ($a, $b) {
+            $cmp = strcmp((string) ($a['ilce'] ?? ''), (string) ($b['ilce'] ?? ''));
+            if ($cmp !== 0)
+                return $cmp;
+            $cmp = strcmp((string) ($a['mahalle'] ?? ''), (string) ($b['mahalle'] ?? ''));
+            if ($cmp !== 0)
+                return $cmp;
+            return strcmp((string) ($a['defter'] ?? ''), (string) ($b['defter'] ?? ''));
+        });
+
+        // Bölge listesini çıkar (ilçe bazında)
+        $bolgeSet = [];
+        foreach ($resultData as $row) {
+            if (!empty($row['ilce'])) {
+                $bolgeSet[$row['ilce']] = true;
+            }
+        }
+
+        $response = [
+            'status' => 'success',
+            'data' => $resultData,
+            'donemler' => $donemler,
+            'summary' => [
+                'toplam_defter' => count($resultData),
+                'toplam_bolge' => count($bolgeSet),
                 'donem_sayisi' => count($donemler)
             ]
         ];

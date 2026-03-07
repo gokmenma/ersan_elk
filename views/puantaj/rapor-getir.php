@@ -6,6 +6,7 @@ use App\Model\EndeksOkumaModel;
 use App\Model\PuantajModel;
 use App\Model\PersonelModel;
 use App\Model\FirmaModel;
+use App\Service\SayacDegisimService;
 
 if (!isset($Tanimlamalar))
     $Tanimlamalar = new TanimlamalarModel();
@@ -115,7 +116,7 @@ if ($activeTab === 'okuma') {
 } elseif ($activeTab === 'kacakkontrol') {
     $summary = $Puantaj->getKacakSummaryByRange($startDateStr, $endDateStr);
 } elseif ($activeTab === 'sokme_takma') {
-    $SayacDegisim = new \App\Model\SayacDegisimModel();
+    $SayacDegisim = new SayacDegisimService();
     $summary = $SayacDegisim->getSummaryDetailedByRange($startDateStr, $endDateStr);
     $workTypes = $SayacDegisim->getDistinctWorkTypes();
 } else {
@@ -545,12 +546,12 @@ $currentTabName = $tabNames[$activeTab] ?? 'Rapor';
             </button>
         <?php endif; ?>
         <?php if (\App\Service\Gate::allows('is_takip_ayarlar')): ?>
-        <button type="button"
-            class="btn btn-outline-secondary btn-sm btn-tab-settings d-flex align-items-center justify-content-center"
-            style="width: 32px; height: 32px; padding: 0;" data-tab="<?= $activeTab ?>"
-            data-tab-name="<?= $currentTabName ?>" title="<?= $currentTabName ?> Ayarları">
-            <i class="bx bx-cog fs-4"></i>
-        </button>
+            <button type="button"
+                class="btn btn-outline-secondary btn-sm btn-tab-settings d-flex align-items-center justify-content-center"
+                style="width: 32px; height: 32px; padding: 0;" data-tab="<?= $activeTab ?>"
+                data-tab-name="<?= $currentTabName ?>" title="<?= $currentTabName ?> Ayarları">
+                <i class="bx bx-cog fs-4"></i>
+            </button>
         <?php endif; ?>
     </div>
 </div>

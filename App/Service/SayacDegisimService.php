@@ -28,6 +28,17 @@ class SayacDegisimService
      * @return array API yanıtı
      * @throws Exception
      */
+
+    /**
+     * API'den sayaç değişim verilerini getirir.
+     * 
+     * @param string $startDate Başlangıç Tarihi (dd/mm/yyyy)
+     * @param string $endDate Bitiş Tarihi (dd/mm/yyyy)
+     * @param int $limit Kayıt sayısı limit
+     * @param int $offset Kayıt başlangıç noktası
+     * @return array API yanıtı
+     * @throws Exception
+     */
     public function getData($startDate, $endDate, $limit = 500, $offset = 0)
     {
         $apiKey = trim($this->apiKey);
@@ -97,5 +108,41 @@ class SayacDegisimService
         }
 
         return $decodedResponse;
+    }
+
+    /**
+     * Günlük sayaç değişim özet istatistiklerini getirir.
+     */
+    public function getDailyStats()
+    {
+        $Model = new \App\Model\SayacDegisimModel();
+        return $Model->getDailyStats();
+    }
+
+    /**
+     * Aylık sayaç değişim özet istatistiklerini getirir.
+     */
+    public function getMonthlyStats()
+    {
+        $Model = new \App\Model\SayacDegisimModel();
+        return $Model->getMonthlyStats();
+    }
+
+    /**
+     * Tarih aralığındaki sayaç değişim sayısını çeker (detaylı, isemri_sonucu'na göre gruplu)
+     */
+    public function getSummaryDetailedByRange($startDate, $endDate)
+    {
+        $Model = new \App\Model\SayacDegisimModel();
+        return $Model->getSummaryDetailedByRange($startDate, $endDate);
+    }
+
+    /**
+     * Veritabanında kayıtlı benzersiz iş emri sonuçlarını getirir (Rapor kolon başlıkları için)
+     */
+    public function getDistinctWorkTypes()
+    {
+        $Model = new \App\Model\SayacDegisimModel();
+        return $Model->getDistinctWorkTypes();
     }
 }
