@@ -135,7 +135,16 @@
                   if (typeof window.reloadActiveTab === "function") {
                     window.reloadActiveTab();
                   } else {
-                    $('a[href="#evraklar"]').trigger("click");
+                    // Fallback: Aktif tabı manuel invalidate et ve click tetikle
+                    var activePane = document.querySelector(
+                      ".tab-pane.active#evraklar",
+                    );
+                    if (activePane) {
+                      activePane.setAttribute("data-loaded", "false");
+                      $('a[href="#evraklar"]').trigger("click");
+                    } else {
+                      $('a[href="#evraklar"]').trigger("click");
+                    }
                   }
                 },
               );
