@@ -28,6 +28,22 @@ $zimmetliSayi = $Arac->getZimmetliAracSayisi();
 $yakitStats = $Yakit->getStats(date('Y'), date('m'));
 $kmStats = $Km->getStats(date('Y'), date('m'));
 
+$turkishMonths = [
+    1 => 'Ocak',
+    2 => 'Şubat',
+    3 => 'Mart',
+    4 => 'Nisan',
+    5 => 'Mayıs',
+    6 => 'Haziran',
+    7 => 'Temmuz',
+    8 => 'Ağustos',
+    9 => 'Eylül',
+    10 => 'Ekim',
+    11 => 'Kasım',
+    12 => 'Aralık',
+];
+$currentMonthLabel = $turkishMonths[(int) date('n')] . ' ' . date('Y');
+
 $activeTab = $_GET['tab'] ?? 'arac';
 $filter = $_GET['filter'] ?? null;
 
@@ -648,15 +664,28 @@ if ($filter === 'muayene') {
                             <div class="card border shadow-none mb-4">
                                 <div class="card-body p-3">
                                     <div class="row g-3">
-                                        <div class="col-md-3">
+                                        <div class="col-xl-2 col-md-4">
+                                            <div class="date-filter-mode-container w-100">
+                                                <input type="radio" name="yakitDateMode" id="yakitDateModeRange"
+                                                    value="range" class="date-filter-mode-input" checked>
+                                                <label for="yakitDateModeRange" class="date-filter-mode-label">Tarih Aralığı</label>
 
+                                                <input type="radio" name="yakitDateMode" id="yakitDateModePeriod"
+                                                    value="period" class="date-filter-mode-input">
+                                                <label for="yakitDateModePeriod" class="date-filter-mode-label">Dönem</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-xl-2 col-md-4 yakit-range-field">
                                             <?php echo App\Helper\Form::FormFloatInput('text', 'yakit-filtre-baslangic', date('01.m.Y'), '', 'Başlangıç Tarihi', 'calendar', 'form-control flatpickr'); ?>
                                         </div>
-                                        <div class="col-md-3">
-
+                                        <div class="col-xl-2 col-md-4 yakit-range-field">
                                             <?php echo App\Helper\Form::FormFloatInput('text', 'yakit-filtre-bitis', date('t.m.Y'), '', 'Bitiş Tarihi', 'calendar', 'form-control flatpickr'); ?>
                                         </div>
-                                        <div class="col-md-3">
+                                        <div class="col-xl-2 col-md-4 yakit-period-field d-none">
+                                            <?php echo App\Helper\Form::FormFloatInput('text', 'yakit-filtre-donem', $currentMonthLabel, '', 'Dönem (Ay.Yıl)', 'calendar', 'form-control month-picker'); ?>
+                                        </div>
+                                        <div class="col-xl-2 col-md-4">
 
                                             <?php
                                             $aracOptions = ['' => 'Tüm Araçlar'];
@@ -667,13 +696,8 @@ if ($filter === 'muayene') {
                                             ?>
 
 
-
-
-
-
-
                                         </div>
-                                        <div class="col-md-3 d-flex align-items-center gap-2">
+                                        <div class="col-xl-2 col-md-12 d-flex align-items-center gap-2">
                                             <button type="button" class="btn btn-primary w-100" id="btnYakitFiltrele">
                                                 <i class="bx bx-filter-alt me-1"></i> Filtrele
                                             </button>
@@ -785,16 +809,27 @@ if ($filter === 'muayene') {
                             <div class="card border shadow-none mb-4">
                                 <div class="card-body p-3">
                                     <div class="row g-3">
-                                        <div class="col-md-3">
+                                        <div class="col-xl-2 col-md-4">
+                                            <div class="date-filter-mode-container w-100">
+                                                <input type="radio" name="kmDateMode" id="kmDateModeRange"
+                                                    value="range" class="date-filter-mode-input" checked>
+                                                <label for="kmDateModeRange" class="date-filter-mode-label">Tarih Aralığı</label>
 
+                                                <input type="radio" name="kmDateMode" id="kmDateModePeriod"
+                                                    value="period" class="date-filter-mode-input">
+                                                <label for="kmDateModePeriod" class="date-filter-mode-label">Dönem</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-xl-2 col-md-4 km-range-field">
                                             <?php echo App\Helper\Form::FormFloatInput('text', 'km-filtre-baslangic', date('01.m.Y'), '', 'Başlangıç Tarihi', 'calendar', 'form-control flatpickr'); ?>
                                         </div>
-                                        <div class="col-md-3">
-
+                                        <div class="col-xl-2 col-md-4 km-range-field">
                                             <?php echo App\Helper\Form::FormFloatInput('text', 'km-filtre-bitis', date('t.m.Y'), '', 'Bitiş Tarihi', 'calendar', 'form-control flatpickr'); ?>
                                         </div>
-                                        <div class="col-md-3">
-
+                                        <div class="col-xl-2 col-md-4 km-period-field d-none">
+                                            <?php echo App\Helper\Form::FormFloatInput('text', 'km-filtre-donem', $currentMonthLabel, '', 'Dönem (Ay.Yıl)', 'calendar', 'form-control month-picker'); ?>
+                                        </div>
+                                        <div class="col-xl-2 col-md-4">
                                             <?php
                                             echo App\Helper\Form::FormSelect2('km-filtre-arac', $aracOptions, '', 'Plaka', 'truck', 'key', '', 'form-select select2');
                                             ?>
@@ -806,7 +841,7 @@ if ($filter === 'muayene') {
 
 
                                         </div>
-                                        <div class="col-md-3 d-flex align-items-center gap-2">
+                                        <div class="col-xl-2 col-md-12 d-flex align-items-center gap-2">
                                             <button type="button" class="btn btn-primary w-100" id="btnKmFiltrele">
                                                 <i class="bx bx-filter-alt me-1"></i> Filtrele
                                             </button>
@@ -952,14 +987,30 @@ if ($filter === 'muayene') {
                                 <div class="card-body p-3">
                                     <div class="row g-3">
 
-                                        <div class="col-md-3">
+                                        <div class="col-xl-2 col-md-4">
+                                            <div class="date-filter-mode-container w-100">
+                                                <input type="radio" name="servisDateMode" id="servisDateModeRange"
+                                                    value="range" class="date-filter-mode-input" checked>
+                                                <label for="servisDateModeRange" class="date-filter-mode-label">Tarih Aralığı</label>
+
+                                                <input type="radio" name="servisDateMode" id="servisDateModePeriod"
+                                                    value="period" class="date-filter-mode-input">
+                                                <label for="servisDateModePeriod" class="date-filter-mode-label">Dönem</label>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-xl-2 col-md-4 servis-range-field">
                                             <?php echo App\Helper\Form::FormFloatInput('text', 'servis-filtre-baslangic', date('01.m.Y'), '', 'Başlangıç Tarihi', 'calendar', 'form-control flatpickr'); ?>
                                         </div>
-                                        <div class="col-md-3">
+                                        <div class="col-xl-2 col-md-4 servis-range-field">
                                             <?php echo App\Helper\Form::FormFloatInput('text', 'servis-filtre-bitis', date('t.m.Y'), '', 'Bitiş Tarihi', 'calendar', 'form-control flatpickr'); ?>
                                         </div>
 
-                                        <div class="col-md-3">
+                                        <div class="col-xl-2 col-md-4 servis-period-field d-none">
+                                            <?php echo App\Helper\Form::FormFloatInput('text', 'servis-filtre-donem', $currentMonthLabel, '', 'Dönem (Ay.Yıl)', 'calendar', 'form-control month-picker'); ?>
+                                        </div>
+
+                                        <div class="col-xl-2 col-md-4">
                                             <?php
                                             $aracOptions = ['' => 'Tüm Araçlar'];
                                             foreach ($araclar as $arac) {
@@ -968,7 +1019,7 @@ if ($filter === 'muayene') {
                                             echo App\Helper\Form::FormSelect2('servis-filtre-arac', $aracOptions, '', 'Plaka', 'truck', 'key', '', 'form-select select2');
                                             ?>
                                         </div>
-                                        <div class="col-md-3 d-flex align-items-center">
+                                        <div class="col-xl-2 col-md-12 d-flex align-items-center">
                                             <button type="button" class="btn btn-primary w-100" id="btnServisFiltrele">
                                                 <i class="bx bx-filter-alt me-1"></i> Filtrele
                                             </button>
@@ -1036,6 +1087,37 @@ if ($filter === 'muayene') {
 
     .nav-pills .nav-link {
         color: #495057;
+    }
+
+    .date-filter-mode-container {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        background: #f8f9fc;
+        border: 1px solid #dfe3eb;
+        border-radius: 12px;
+        padding: 4px;
+        gap: 4px;
+    }
+
+    .date-filter-mode-input {
+        display: none;
+    }
+
+    .date-filter-mode-label {
+        text-align: center;
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 7px 6px;
+        color: #5a6270;
+        border-radius: 9px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .date-filter-mode-input:checked + .date-filter-mode-label {
+        background: #556ee6;
+        color: #fff;
+        box-shadow: 0 2px 6px rgba(85, 110, 230, 0.25);
     }
 
     .card.bg-gradient {

@@ -313,7 +313,7 @@
     let hakedisData = null;
 
     // Calendar State
-    let currentView = 'list';
+    let currentView = 'calendar';
     let currentDate = new Date();
     const aylar = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
     const gunler = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
@@ -323,6 +323,7 @@
         loadIzinStats();
         loadIzinler();
         updatePeriodLabel();
+        setView('calendar');
 
         // İzin form submit
         document.getElementById('izin-form').addEventListener('submit', async function (e) {

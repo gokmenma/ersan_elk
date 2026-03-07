@@ -14,6 +14,9 @@ $filter_baslangic = $_GET['filter_kesinti_baslangic'] ?? '';
 $filter_bitis = $_GET['filter_kesinti_bitis'] ?? '';
 $filter_donem = $_GET['filter_kesinti_donem'] ?? '';
 $filter_ay_yil = $_GET['filter_kesinti_ay_yil'] ?? date('Y-m');
+$filter_yil = $_GET['filter_kesinti_yil'] ?? date('Y');
+$years = [];
+for ($i = 2025; $i <= date('Y'); $i++) { $years[$i] = $i; }
 
 // İstatistikler ve Gruplama
 $toplamKesinti = 0;
@@ -131,6 +134,9 @@ foreach ($kesintiler as $k) {
 
                                     <input type="radio" class="segmented-control-input" name="filter_mode" id="modeAyYil" value="ay_yil" <?= $filter_mode === 'ay_yil' ? 'checked' : '' ?>>
                                     <label class="segmented-control-label py-2" for="modeAyYil">Ay-Yıl</label>
+
+                                    <input type="radio" class="segmented-control-input" name="filter_mode" id="modeYil" value="yil" <?= $filter_mode === 'yil' ? 'checked' : '' ?>>
+                                    <label class="segmented-control-label py-2" for="modeYil">Yıl</label>
                                 </div>
                             </div>
 
@@ -161,15 +167,21 @@ foreach ($kesintiler as $k) {
                                 <?= Form::FormFloatInput("text", "filter_kesinti_ay_yil", $filter_ay_yil, "Ay / Yıl Seçin", "", "calendar", "form-control month-picker", false, null, "off", false, 'id="filter_kesinti_ay_yil"') ?>
                             </div>
 
-                            <div class="col-md-3">
-                                <button type="submit"
-                                    class="btn btn-dark d-flex align-items-center w-100 justify-content-center"
-                                    style="height: 48px;">
-                                    <i data-feather="search" class="me-1"
-                                        style="width: 18px; height: 18px;"></i>
-                                    Uygula
-                                </button>
+                            <!-- Yıl Inputu -->
+                            <div class="col-md-6 filter-group filter-yil <?= $filter_mode !== 'yil' ? 'd-none' : '' ?>">
+                                <?= Form::FormSelect2(
+                                    name: "filter_kesinti_yil",
+                                    options: $years,
+                                    selectedValue: $filter_yil,
+                                    label: "Yıl Filtresi",
+                                    icon: "calendar",
+                                    valueField: '',
+                                    textField: '',
+                                    required: false,
+                                ) ?>
                             </div>
+
+
                         </div>
                     </form>
                 </div>
@@ -186,14 +198,24 @@ foreach ($kesintiler as $k) {
                                     dateFormat: "Y-m",
                                     altFormat: "F Y",
                                     altInput: true,
-                                    // MonthSelectPlugin support if available
-                                    plugins: typeof monthSelectPlugin !== 'undefined' ? [
+                                    plugins: [
                                         new monthSelectPlugin({
                                             shorthand: true,
                                             dateFormat: "Y-m",
                                             altFormat: "F Y"
                                         })
-                                    ] : []
+                                    ],
+                                    onChange: function() {
+                                        $('#formKesintiFilter').submit();
+                                    }
+                                });
+
+                                flatpickr(".flatpickr", {
+                                    locale: "tr",
+                                    dateFormat: "d.m.Y",
+                                    onChange: function() {
+                                        $('#formKesintiFilter').submit();
+                                    }
                                 });
                             }
                         }, 200);
@@ -203,6 +225,12 @@ foreach ($kesintiler as $k) {
                             const mode = $(this).val();
                             $('.filter-group').addClass('d-none');
                             $('.filter-' + mode).removeClass('d-none');
+                            $('#formKesintiFilter').submit();
+                        });
+
+                        // select2 ve diğer input değişimlerini dinle
+                        $(document).on('change', '#formKesintiFilter select, #formKesintiFilter input:not(.segmented-control-input)', function() {
+                            $('#formKesintiFilter').submit();
                         });
 
                         // AJAX tabanlı filtreleme
@@ -213,6 +241,7 @@ foreach ($kesintiler as $k) {
                             var filter_bitis = $('#filter_kesinti_bitis').val();
                             var filter_donem = $('[name="filter_kesinti_donem"]').val() || '';
                             var filter_ay_yil = $('#filter_kesinti_ay_yil').val();
+                            var filter_yil = $('[name="filter_kesinti_yil"]').val() || '';
 
                             var targetPane = document.getElementById('kesintiler');
                             if (targetPane) {
@@ -221,7 +250,8 @@ foreach ($kesintiler as $k) {
                                           '&filter_kesinti_baslangic=' + filter_baslangic + 
                                           '&filter_kesinti_bitis=' + filter_bitis + 
                                           '&filter_kesinti_donem=' + filter_donem + 
-                                          '&filter_kesinti_ay_yil=' + filter_ay_yil;
+                                          '&filter_kesinti_ay_yil=' + filter_ay_yil +
+                                          '&filter_kesinti_yil=' + filter_yil;
                                           
                                 targetPane.setAttribute('data-url', url);
                                 targetPane.setAttribute('data-loaded', 'false');

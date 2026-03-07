@@ -57,6 +57,12 @@ class PersonelEkOdemelerModel extends Model
                 $where .= " AND DATE_FORMAT(peo.tarih, '%Y-%m') = ?";
                 $params[] = $filters['filter_ek_ay_yil'];
             }
+        } elseif ($mode === 'yil') {
+            // Yıl Filtresi
+            if (!empty($filters['filter_ek_yil'])) {
+                $where .= " AND YEAR(peo.tarih) = ?";
+                $params[] = $filters['filter_ek_yil'];
+            }
         }
 
         $sql = $this->db->prepare("

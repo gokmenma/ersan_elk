@@ -175,7 +175,6 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "bordro/parametreler" ||
     $page == "duyuru/list" ||
     $page == "raporlar/list" || strpos($page, "bordro/raporlar/") === 0 ||
-    $page == "personel/performans-raporu" ||
     $page == "personel/performans-raporu"
 
 ) { ?>
@@ -213,9 +212,13 @@ if ($page == "hakedisler/hakedis-detay") {
 <!-- Flatpickr -->
 <script src="assets/libs/flatpickr/flatpickr.min.js"></script>
 <script src="assets/libs/flatpickr/l10n/tr.js"></script>
-<?php if ($page == 'personel/performans-raporu') { ?>
+<?php if ($page == 'personel/performans-raporu' || $page == 'arac-takip/list' || $page == 'personel/manage') { ?>
 <link rel="stylesheet" href="assets/libs/flatpickr/plugins/monthSelect/style.css">
 <script src="assets/libs/flatpickr/plugins/monthSelect/index.js"></script>
+<?php } ?>
+
+<?php if ($page == 'personel/performans-raporu') { ?>
+<script src="assets/libs/flatpickr/plugins/weekSelect/weekSelect.js"></script>
 <?php } ?>
 
 <script src="assets/js/jquery.inputmask.js"></script>

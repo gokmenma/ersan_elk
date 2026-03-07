@@ -14,6 +14,9 @@ $filter_baslangic = $_GET['filter_ek_baslangic'] ?? '';
 $filter_bitis = $_GET['filter_ek_bitis'] ?? '';
 $filter_donem = $_GET['filter_ek_donem'] ?? '';
 $filter_ay_yil = $_GET['filter_ek_ay_yil'] ?? date('Y-m');
+$filter_yil = $_GET['filter_ek_yil'] ?? date('Y');
+$years = [];
+for ($i = 2025; $i <= date('Y'); $i++) { $years[$i] = $i; }
 
 // İstatistikler ve Gruplama
 $toplamEkOdeme = 0;
@@ -123,6 +126,9 @@ foreach ($ek_odemeler as $k) {
 
                                     <input type="radio" class="segmented-control-input" name="filter_mode" id="modeEkAyYil" value="ay_yil" <?= $filter_mode === 'ay_yil' ? 'checked' : '' ?>>
                                     <label class="segmented-control-label py-2" for="modeEkAyYil">Ay-Yıl</label>
+
+                                    <input type="radio" class="segmented-control-input" name="filter_mode" id="modeEkYil" value="yil" <?= $filter_mode === 'yil' ? 'checked' : '' ?>>
+                                    <label class="segmented-control-label py-2" for="modeEkYil">Yıl</label>
                                 </div>
                             </div>
 
@@ -153,14 +159,21 @@ foreach ($ek_odemeler as $k) {
                                 <?= Form::FormFloatInput("text", "filter_ek_ay_yil", $filter_ay_yil, "Ay / Yıl Seçin", "", "calendar", "form-control month-picker", false, null, "off", false, 'id="filter_ek_ay_yil"') ?>
                             </div>
 
-                            <div class="col-md-3 filter-button-col">
-                                <button type="submit"
-                                    class="btn btn-dark d-flex align-items-center w-100 justify-content-center"
-                                    style="height: 48px;">
-                                    <i data-feather="search" class="me-1" style="width: 18px; height: 18px;"></i>
-                                    Uygula
-                                </button>
+                            <!-- Yıl Inputu -->
+                            <div class="col-md-6 filter-group filter-yil <?= $filter_mode !== 'yil' ? 'd-none' : '' ?>">
+                                <?= Form::FormSelect2(
+                                    name: "filter_ek_yil",
+                                    options: $years,
+                                    selectedValue: $filter_yil,
+                                    label: "Yıl Filtresi",
+                                    icon: "calendar",
+                                    valueField: '',
+                                    textField: '',
+                                    required: false,
+                                ) ?>
                             </div>
+
+
                         </div>
                     </form>
                 </div>
@@ -177,14 +190,24 @@ foreach ($ek_odemeler as $k) {
                             dateFormat: "Y-m",
                             altFormat: "F Y",
                             altInput: true,
-                            // MonthSelectPlugin support if available
-                            plugins: typeof monthSelectPlugin !== 'undefined' ? [
+                            plugins: [
                                 new monthSelectPlugin({
                                     shorthand: true,
                                     dateFormat: "Y-m",
                                     altFormat: "F Y"
                                 })
-                            ] : []
+                            ],
+                            onChange: function() {
+                                $('#formEkOdemeFilter').submit();
+                            }
+                        });
+
+                        flatpickr(".flatpickr", {
+                            locale: "tr",
+                            dateFormat: "d.m.Y",
+                            onChange: function() {
+                                $('#formEkOdemeFilter').submit();
+                            }
                         });
                     }
                 }, 200);
@@ -194,6 +217,12 @@ foreach ($ek_odemeler as $k) {
                     const mode = $(this).val();
                     $('.filter-group').addClass('d-none');
                     $('.filter-' + mode).removeClass('d-none');
+                    $('#formEkOdemeFilter').submit();
+                });
+
+                // select2 ve diğer input değişimlerini dinle
+                $(document).on('change', '#formEkOdemeFilter select, #formEkOdemeFilter input:not(.segmented-control-input)', function() {
+                    $('#formEkOdemeFilter').submit();
                 });
 
                 // AJAX tabanlı filtreleme
@@ -204,6 +233,7 @@ foreach ($ek_odemeler as $k) {
                     var filter_bitis = $('#filter_ek_bitis').val();
                     var filter_donem = $('[name="filter_ek_donem"]').val() || '';
                     var filter_ay_yil = $('#filter_ek_ay_yil').val();
+                    var filter_yil = $('[name="filter_ek_yil"]').val() || '';
 
                     var targetPane = document.getElementById('ek_odemeler');
                     if (targetPane) {
@@ -212,7 +242,8 @@ foreach ($ek_odemeler as $k) {
                                   '&filter_ek_baslangic=' + filter_baslangic + 
                                   '&filter_ek_bitis=' + filter_bitis + 
                                   '&filter_ek_donem=' + filter_donem + 
-                                  '&filter_ek_ay_yil=' + filter_ay_yil;
+                                  '&filter_ek_ay_yil=' + filter_ay_yil +
+                                  '&filter_ek_yil=' + filter_yil;
 
                         targetPane.setAttribute('data-url', url);
                         targetPane.setAttribute('data-loaded', 'false');

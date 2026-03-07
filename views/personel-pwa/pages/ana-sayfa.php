@@ -177,6 +177,7 @@ use App\Helper\Helper;
         </div>
 
         <div class="card overflow-hidden border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none bg-white dark:bg-slate-900">
+            <?php if (false): ?>
             <!-- Financial Header (Minimal) -->
             <div class="p-5 relative border-b border-slate-50 dark:border-slate-800">
                 <div class="relative z-10">
@@ -206,6 +207,7 @@ use App\Helper\Helper;
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
 
             <!-- Working Stats Grid with Neon Effects -->
             <div class="p-4">
@@ -243,7 +245,7 @@ use App\Helper\Helper;
                         <div class="w-1.5 h-1.5 rounded-full bg-primary/60 dark:bg-primary/40 animate-pulse"></div>
                         <span class="text-[10px] text-slate-400 dark:text-slate-500 font-medium" id="combined-footer-label">Yükleniyor...</span>
                     </div>
-                    <a href="?page=bordro" class="text-[10px] font-bold text-primary flex items-center gap-0.5 active:opacity-60 transition-opacity">
+                    <a href="?page=izin" class="text-[10px] font-bold text-primary flex items-center gap-0.5 active:opacity-60 transition-opacity">
                         DETAYLAR <span class="material-symbols-outlined text-[14px]">chevron_right</span>
                     </a>
                 </div>
@@ -255,7 +257,7 @@ use App\Helper\Helper;
     <section class="px-4 mt-6 overflow-hidden">
         <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-3">Hızlı İşlemler</h2>
         <div class="flex overflow-x-auto hide-scrollbar gap-3 pb-6 snap-x snap-mandatory">
-            <a href="?page=izin"
+            <!-- <a href="?page=izin"
                 class="quick-action group border-2 neon-indigo bg-gradient-to-br from-indigo-500 to-indigo-700 p-4 transition-all active:scale-95 w-[140px] flex-shrink-0 snap-start">
                 <div
                     class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2.5 shadow-inner">
@@ -285,7 +287,7 @@ use App\Helper\Helper;
                     class="absolute -right-3 -bottom-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
                     <span class="material-symbols-outlined text-5xl text-white">assignment</span>
                 </div>
-            </a>
+            </a> -->
 
             <a href="?page=bordro"
                 class="quick-action group border-2 neon-orange bg-gradient-to-br from-orange-500 to-orange-700 p-4 transition-all active:scale-95 w-[140px] flex-shrink-0 snap-start">

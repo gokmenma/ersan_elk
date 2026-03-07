@@ -22,24 +22,52 @@ try {
         $departman = $_GET['departman'] ?? 'kesme_acma';
         $period = $_GET['period'] ?? 'aylik';
         $tarih = $_GET['tarih'] ?? date('Y-m-d');
+        $baslangicTarih = trim($_GET['baslangic_tarih'] ?? '');
+        $bitisTarih = trim($_GET['bitis_tarih'] ?? '');
 
-        // Tarih aralığını hesapla
-        switch ($period) {
-            case 'gunluk':
-                $startDate = $tarih;
-                $endDate = $tarih;
-                break;
-            case 'aylik':
-                $startDate = date('Y-m-01', strtotime($tarih));
-                $endDate = date('Y-m-t', strtotime($tarih));
-                break;
-            case 'yillik':
-                $startDate = date('Y-01-01', strtotime($tarih));
-                $endDate = date('Y-12-31', strtotime($tarih));
-                break;
-            default:
-                $startDate = date('Y-m-01');
-                $endDate = date('Y-m-t');
+        $isValidDate = static function ($date) {
+            return (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $date);
+        };
+
+        if (!$isValidDate($tarih)) {
+            $tarih = date('Y-m-d');
+        }
+
+        // Tarih aralığını hesapla (manuel aralık varsa öncelikli)
+        $effectivePeriod = $period;
+        if ($isValidDate($baslangicTarih) && $isValidDate($bitisTarih)) {
+            $startDate = $baslangicTarih;
+            $endDate = $bitisTarih;
+            $effectivePeriod = 'aralik';
+        } else {
+            switch ($period) {
+                case 'gunluk':
+                    $startDate = $tarih;
+                    $endDate = $tarih;
+                    break;
+                case 'haftalik':
+                    $startDate = date('Y-m-d', strtotime('monday this week', strtotime($tarih)));
+                    $endDate = date('Y-m-d', strtotime('sunday this week', strtotime($tarih)));
+                    break;
+                case 'aylik':
+                    $startDate = date('Y-m-01', strtotime($tarih));
+                    $endDate = date('Y-m-t', strtotime($tarih));
+                    break;
+                case 'yillik':
+                    $startDate = date('Y-01-01', strtotime($tarih));
+                    $endDate = date('Y-12-31', strtotime($tarih));
+                    break;
+                default:
+                    $startDate = date('Y-m-01');
+                    $endDate = date('Y-m-t');
+                    $effectivePeriod = 'aylik';
+            }
+        }
+
+        if ($startDate > $endDate) {
+            $tmp = $startDate;
+            $startDate = $endDate;
+            $endDate = $tmp;
         }
 
         $db = (new \App\Model\Model('personel'))->getDb();
@@ -181,6 +209,7 @@ try {
             'personeller' => $personeller,
             'gunluk_trend' => $gunlukTrend,
             'period' => $period,
+            'effective_period' => $effectivePeriod,
             'start_date' => $startDate,
             'end_date' => $endDate,
         ], JSON_UNESCAPED_UNICODE);

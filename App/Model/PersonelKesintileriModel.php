@@ -52,6 +52,11 @@ class PersonelKesintileriModel extends Model
                 $where .= " AND DATE_FORMAT(pk.tarih, '%Y-%m') = ?";
                 $params[] = $filters['filter_kesinti_ay_yil'];
             }
+        } elseif ($mode === 'yil') {
+            if (!empty($filters['filter_kesinti_yil'])) {
+                $where .= " AND YEAR(pk.tarih) = ?";
+                $params[] = $filters['filter_kesinti_yil'];
+            }
         }
 
         $sql = $this->db->prepare("

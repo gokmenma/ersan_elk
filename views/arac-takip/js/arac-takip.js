@@ -1873,6 +1873,236 @@ $(document).ready(function () {
     }
   }
 
+  const TURKISH_MONTH_NAMES = [
+    "Ocak",
+    "Şubat",
+    "Mart",
+    "Nisan",
+    "Mayıs",
+    "Haziran",
+    "Temmuz",
+    "Ağustos",
+    "Eylül",
+    "Ekim",
+    "Kasım",
+    "Aralık",
+  ];
+
+  function formatPeriodLabel(month, year) {
+    return `${TURKISH_MONTH_NAMES[month - 1]} ${year}`;
+  }
+
+  function parsePeriodValue(periodRaw) {
+    const normalizedValue = (periodRaw || "").trim();
+    if (!normalizedValue) return null;
+
+    const dotMatch = normalizedValue.match(/^(0?[1-9]|1[0-2])[.\/-](\d{4})$/);
+    if (dotMatch) {
+      return {
+        month: parseInt(dotMatch[1], 10),
+        year: parseInt(dotMatch[2], 10),
+      };
+    }
+
+    const isoMatch = normalizedValue.match(/^(\d{4})-(0?[1-9]|1[0-2])$/);
+    if (isoMatch) {
+      return {
+        month: parseInt(isoMatch[2], 10),
+        year: parseInt(isoMatch[1], 10),
+      };
+    }
+
+    const textMatch = normalizedValue.match(/^([A-Za-zCĞIİOÖSŞUÜcğıiösşuü]+)\s+(\d{4})$/i);
+    if (textMatch) {
+      const monthName = textMatch[1]
+        .replace(/İ/g, "i")
+        .replace(/I/g, "i")
+        .replace(/ı/g, "i")
+        .replace(/Ğ/g, "g")
+        .replace(/ğ/g, "g")
+        .replace(/Ü/g, "u")
+        .replace(/ü/g, "u")
+        .replace(/Ş/g, "s")
+        .replace(/ş/g, "s")
+        .replace(/Ö/g, "o")
+        .replace(/ö/g, "o")
+        .replace(/Ç/g, "c")
+        .replace(/ç/g, "c")
+        .toLowerCase();
+      const monthIndex = [
+        "ocak",
+        "subat",
+        "mart",
+        "nisan",
+        "mayis",
+        "haziran",
+        "temmuz",
+        "agustos",
+        "eylul",
+        "ekim",
+        "kasim",
+        "aralik",
+      ].indexOf(monthName);
+
+      if (monthIndex !== -1) {
+        return {
+          month: monthIndex + 1,
+          year: parseInt(textMatch[2], 10),
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function getDateRangeForType(type) {
+    const mode = $(`input[name="${type}DateMode"]:checked`).val() || "range";
+
+    if (mode === "period") {
+      const periodRaw = ($(`#${type}-filtre-donem`).val() || "").trim();
+      const parsedPeriod = parsePeriodValue(periodRaw);
+
+      let month;
+      let year;
+
+      if (parsedPeriod) {
+        month = parsedPeriod.month;
+        year = parsedPeriod.year;
+      } else {
+        const now = new Date();
+        month = now.getMonth() + 1;
+        year = now.getFullYear();
+      }
+
+      const paddedMonth = String(month).padStart(2, "0");
+      const lastDay = new Date(year, month, 0).getDate();
+      const baslangic = `01.${paddedMonth}.${year}`;
+      const bitis = `${String(lastDay).padStart(2, "0")}.${paddedMonth}.${year}`;
+
+      $(`#${type}-filtre-baslangic`).val(baslangic);
+      $(`#${type}-filtre-bitis`).val(bitis);
+      if (!periodRaw || !parsedPeriod) {
+        $(`#${type}-filtre-donem`).val(formatPeriodLabel(month, year));
+      }
+
+      return { baslangic, bitis };
+    }
+
+    return {
+      baslangic: $(`#${type}-filtre-baslangic`).val(),
+      bitis: $(`#${type}-filtre-bitis`).val(),
+    };
+  }
+
+  function syncDateModeUI(type) {
+    const mode = $(`input[name="${type}DateMode"]:checked`).val() || "range";
+    const isPeriod = mode === "period";
+    $(`.${type}-range-field`).toggleClass("d-none", isPeriod);
+    $(`.${type}-period-field`).toggleClass("d-none", !isPeriod);
+    if (isPeriod) {
+      getDateRangeForType(type);
+    }
+  }
+
+  function syncAllDateModeUI() {
+    syncDateModeUI("yakit");
+    syncDateModeUI("km");
+    syncDateModeUI("servis");
+  }
+
+  function initMonthPickers() {
+    if (typeof flatpickr === "undefined") return;
+
+    $(".month-picker").each(function () {
+      if (this._flatpickr) return;
+
+      const input = this;
+      const initialPeriod = parsePeriodValue(input.value);
+      const config = {
+        locale: "tr",
+        allowInput: true,
+        dateFormat: "F Y",
+        defaultDate: initialPeriod
+          ? new Date(initialPeriod.year, initialPeriod.month - 1, 1)
+          : new Date(),
+        onChange: function () {
+          const type = (input.id || "").split("-")[0];
+          if (type) {
+            getDateRangeForType(type);
+          }
+        },
+        onClose: function () {
+          const type = (input.id || "").split("-")[0];
+          if (type) {
+            getDateRangeForType(type);
+          }
+        },
+      };
+
+      if (typeof monthSelectPlugin !== "undefined") {
+        config.plugins = [
+          new monthSelectPlugin({
+            shorthand: false,
+            dateFormat: "F Y",
+            altFormat: "F Y",
+            theme: "light",
+          }),
+        ];
+      }
+
+      flatpickr(input, config);
+    });
+  }
+
+  function loadTabList(type) {
+    const dateRange = getDateRangeForType(type);
+
+    if (type === "yakit") {
+      AracTakip.yakitListesiYukle(
+        $("#yakit-filtre-arac").val(),
+        dateRange.baslangic,
+        dateRange.bitis,
+      );
+    } else if (type === "km") {
+      AracTakip.kmListesiYukle(
+        $("#km-filtre-arac").val(),
+        dateRange.baslangic,
+        dateRange.bitis,
+      );
+    } else if (type === "servis") {
+      AracTakip.servisListesiYukle(
+        $("#servis-filtre-arac").val(),
+        dateRange.baslangic,
+        dateRange.bitis,
+      );
+    }
+  }
+
+  initMonthPickers();
+  syncAllDateModeUI();
+  setTimeout(syncAllDateModeUI, 0);
+
+  $(document).on(
+    "change",
+    'input[name="yakitDateMode"], input[name="kmDateMode"], input[name="servisDateMode"]',
+    function () {
+      const match = (this.name || "").match(/^([a-z]+)DateMode$/);
+      if (!match) return;
+      syncDateModeUI(match[1]);
+    },
+  );
+
+  $(document).on(
+    "change",
+    "#yakit-filtre-donem, #km-filtre-donem, #servis-filtre-donem",
+    function () {
+      const type = (this.id || "").split("-")[0];
+      if (type) {
+        getDateRangeForType(type);
+      }
+    },
+  );
+
   // Excele Aktar Butonu
   $(document).on("click", "#btnExceleAktar", function (e) {
     e.preventDefault();
@@ -2033,27 +2263,15 @@ $(document).ready(function () {
   });
   $(document).on("click", "#btnYakitFiltrele", (e) => {
     e.preventDefault();
-    AracTakip.yakitListesiYukle(
-      $("#yakit-filtre-arac").val(),
-      $("#yakit-filtre-baslangic").val(),
-      $("#yakit-filtre-bitis").val(),
-    );
+    loadTabList("yakit");
   });
   $(document).on("click", "#btnKmFiltrele", (e) => {
     e.preventDefault();
-    AracTakip.kmListesiYukle(
-      $("#km-filtre-arac").val(),
-      $("#km-filtre-baslangic").val(),
-      $("#km-filtre-bitis").val(),
-    );
+    loadTabList("km");
   });
   $(document).on("click", "#btnServisFiltrele", (e) => {
     e.preventDefault();
-    AracTakip.servisListesiYukle(
-      $("#servis-filtre-arac").val(),
-      $("#servis-filtre-baslangic").val(),
-      $("#servis-filtre-bitis").val(),
-    );
+    loadTabList("servis");
   });
 
   // KM Inline Düzenleme (Excel-like)
@@ -2349,30 +2567,19 @@ $(document).ready(function () {
     window.history.replaceState({}, "", url);
 
     if (target === "#zimmetContent") AracTakip.zimmetListesiYukle();
-    else if (target === "#yakitContent")
-      AracTakip.yakitListesiYukle(
-        $("#yakit-filtre-arac").val(),
-        $("#yakit-filtre-baslangic").val(),
-        $("#yakit-filtre-bitis").val(),
-      );
-    else if (target === "#kmContent")
-      AracTakip.kmListesiYukle(
-        $("#km-filtre-arac").val(),
-        $("#km-filtre-baslangic").val(),
-        $("#km-filtre-bitis").val(),
-      );
-    else if (target === "#servisContent")
-      AracTakip.servisListesiYukle(
-        $("#servis-filtre-arac").val(),
-        $("#servis-filtre-baslangic").val(),
-        $("#servis-filtre-bitis").val(),
-      );
+    else if (target === "#yakitContent") loadTabList("yakit");
+    else if (target === "#kmContent") loadTabList("km");
+    else if (target === "#servisContent") loadTabList("servis");
     else if (target === "#raporContent") AracTakip.aylikRaporYukle();
     else if (
       target === "#aracContent" &&
       !$.fn.DataTable.isDataTable("#aracTable")
     )
       AracTakip.initDataTable("#aracTable");
+
+    if (tabName === "yakit" || tabName === "km" || tabName === "servis") {
+      syncDateModeUI(tabName);
+    }
 
     // Excel Yükleme Butonu Görünürlüğü
     if (tabName === "yakit") {
@@ -2394,24 +2601,9 @@ $(document).ready(function () {
   if (activeTabBtn.length > 0) {
     const activeTarget = activeTabBtn.attr("data-bs-target");
     if (activeTarget === "#zimmetContent") AracTakip.zimmetListesiYukle();
-    else if (activeTarget === "#yakitContent")
-      AracTakip.yakitListesiYukle(
-        $("#yakit-filtre-arac").val(),
-        $("#yakit-filtre-baslangic").val(),
-        $("#yakit-filtre-bitis").val(),
-      );
-    else if (activeTarget === "#kmContent")
-      AracTakip.kmListesiYukle(
-        $("#km-filtre-arac").val(),
-        $("#km-filtre-baslangic").val(),
-        $("#km-filtre-bitis").val(),
-      );
-    else if (activeTarget === "#servisContent")
-      AracTakip.servisListesiYukle(
-        $("#servis-filtre-arac").val(),
-        $("#servis-filtre-baslangic").val(),
-        $("#servis-filtre-bitis").val(),
-      );
+    else if (activeTarget === "#yakitContent") loadTabList("yakit");
+    else if (activeTarget === "#kmContent") loadTabList("km");
+    else if (activeTarget === "#servisContent") loadTabList("servis");
     else if (activeTarget === "#raporContent") AracTakip.aylikRaporYukle();
     updateAracTakipUI();
   }

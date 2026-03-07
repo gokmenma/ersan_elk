@@ -76,13 +76,13 @@ switch ($tab) {
         include_once __DIR__ . "/icerik/evraklar.php";
         break;
     case 'ek_odemeler':
-        // Filtre değerlerini yakala ve oturuma kaydet
         $filter_params = [
             'filter_ek_mode' => $_GET['filter_mode'] ?? $_GET['filter_ek_mode'] ?? $_SESSION['filter_ek_mode'] ?? 'donem',
             'filter_ek_baslangic' => $_GET['filter_ek_baslangic'] ?? $_SESSION['filter_ek_baslangic'] ?? '',
             'filter_ek_bitis' => $_GET['filter_ek_bitis'] ?? $_SESSION['filter_ek_bitis'] ?? '',
             'filter_ek_donem' => $_GET['filter_ek_donem'] ?? $_SESSION['filter_ek_donem'] ?? '',
-            'filter_ek_ay_yil' => $_GET['filter_ek_ay_yil'] ?? $_SESSION['filter_ek_ay_yil'] ?? date('Y-m')
+            'filter_ek_ay_yil' => $_GET['filter_ek_ay_yil'] ?? $_SESSION['filter_ek_ay_yil'] ?? date('Y-m'),
+            'filter_ek_yil' => $_GET['filter_ek_yil'] ?? $_SESSION['filter_ek_yil'] ?? date('Y')
         ];
 
         // Oturumu güncelle
@@ -120,13 +120,13 @@ switch ($tab) {
         include_once __DIR__ . "/icerik/ek_odemeler.php";
         break;
     case 'kesintiler':
-        // Filtre değerlerini yakala ve oturuma kaydet
         $filter_params = [
             'filter_kesinti_mode' => $_GET['filter_mode'] ?? $_GET['filter_kesinti_mode'] ?? $_SESSION['filter_kesinti_mode'] ?? 'donem',
             'filter_kesinti_baslangic' => $_GET['filter_kesinti_baslangic'] ?? $_SESSION['filter_kesinti_baslangic'] ?? '',
             'filter_kesinti_bitis' => $_GET['filter_kesinti_bitis'] ?? $_SESSION['filter_kesinti_bitis'] ?? '',
             'filter_kesinti_donem' => $_GET['filter_kesinti_donem'] ?? $_SESSION['filter_kesinti_donem'] ?? '',
-            'filter_kesinti_ay_yil' => $_GET['filter_kesinti_ay_yil'] ?? $_SESSION['filter_kesinti_ay_yil'] ?? date('Y-m')
+            'filter_kesinti_ay_yil' => $_GET['filter_kesinti_ay_yil'] ?? $_SESSION['filter_kesinti_ay_yil'] ?? date('Y-m'),
+            'filter_kesinti_yil' => $_GET['filter_kesinti_yil'] ?? $_SESSION['filter_kesinti_yil'] ?? date('Y')
         ];
 
         // Oturumu güncelle

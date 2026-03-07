@@ -29,6 +29,7 @@
             </div>
         </header>
 
+        <?php if (false): ?>
         <!-- Stats Summary -->
         <section class="px-4 py-4 bg-slate-50 dark:bg-background-dark">
             <div class="grid grid-cols-3 gap-3">
@@ -49,6 +50,7 @@
                 </div>
             </div>
         </section>
+        <?php endif; ?>
 
         <!-- Tab Navigation -->
         <div

@@ -7,6 +7,7 @@
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Service\Gate;
+use App\Helper\Form;
 
 ?>
 
@@ -15,6 +16,13 @@ use App\Service\Gate;
     $maintitle = "Personel";
     $subtitle = "Performans";
     $title = "Personel Performans Raporu";
+    $todayDmy = date('d.m.Y');
+    $thisMonthDmy = date('m.Y');
+    $thisYear = date('Y');
+    $yearOptions = [];
+    for ($year = 2025; $year <= (int) $thisYear; $year++) {
+        $yearOptions[(string) $year] = (string) $year;
+    }
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
 
@@ -48,16 +56,19 @@ use App\Service\Gate;
                             <span class="text-muted small fw-bold me-1"><i class="bx bx-calendar me-1"></i>Dönem:</span>
                             <div class="btn-group btn-group-sm" role="group" id="periodGroup">
                                 <button type="button" class="btn btn-outline-primary period-btn" data-period="gunluk">Günlük</button>
+                                <button type="button" class="btn btn-outline-primary period-btn" data-period="haftalik">Haftalık</button>
                                 <button type="button" class="btn btn-primary period-btn active" data-period="aylik">Aylık</button>
                                 <button type="button" class="btn btn-outline-primary period-btn" data-period="yillik">Yıllık</button>
                             </div>
                         </div>
 
                         <!-- Tarih Seçici -->
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="input-group input-group-sm" style="width: 180px;">
-                                <span class="input-group-text"><i class="bx bx-calendar-event"></i></span>
-                                <input type="text" class="form-control" id="tarihSecici" placeholder="Tarih Seçin">
+                        <div class="d-flex flex-wrap align-items-end gap-2">
+                            <div class="filter-field" id="singleDateWrapper">
+                                <?php echo Form::FormFloatInput("text", "tarihSecici", "", "Tarih", "Seçiniz", "calendar", "form-control form-control-sm", false, null, "off"); ?>
+                            </div>
+                            <div class="filter-field" id="yearSelectWrapper" style="display:none;">
+                                <?php echo Form::FormSelect2("yilSecici", $yearOptions, $thisYear, "Yıl", "calendar", "key", "", "form-select form-select-sm select2", false, "width:100%"); ?>
                             </div>
                             <button class="btn btn-sm btn-primary" id="btnFiltrele">
                                 <i class="bx bx-search-alt me-1"></i>Filtrele
@@ -256,6 +267,18 @@ use App\Service\Gate;
         border-radius: 6px !important;
     }
 
+    .filter-field {
+        min-width: 180px;
+    }
+
+    .filter-field .form-floating-custom {
+        margin-bottom: 0;
+    }
+
+    #btnFiltrele {
+        height: 58px;
+    }
+
     .animate-card {
         animation: fadeInUp 0.4s ease forwards;
         opacity: 0;
@@ -325,58 +348,144 @@ $(document).ready(function() {
 
     let currentDept = 'kesme_acma';
     let currentPeriod = 'aylik';
-    let currentDate = '<?= date("Y-m-d") ?>';
+    const todayYmd = '<?= date("Y-m-d") ?>';
+    const thisMonthStart = '<?= date("Y-m-01") ?>';
+    const thisYearStart = '<?= date("Y-01-01") ?>';
+    let currentDate = thisMonthStart;
+    let currentYear = '<?= date("Y") ?>';
+    let currentEffectivePeriod = 'aylik';
     let trendChart = null;
     let barChart = null;
     let dataTable = null;
 
     // Flatpickr
-    let fp = null;
+    let fpSingle = null;
+    let fpStart = null;
+    let fpEnd = null;
 
-    function initFlatpickr(mode) {
-        if (fp) {
-            fp.destroy();
+    function parseTrDateToYmd(value) {
+        if (!value) return '';
+        const m = value.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+        if (!m) return '';
+        return `${m[3]}-${m[2]}-${m[1]}`;
+    }
+
+    function formatYmdToTrDate(value) {
+        if (!value) return '';
+        const p = value.split('-');
+        if (p.length !== 3) return '';
+        return `${p[2]}.${p[1]}.${p[0]}`;
+    }
+
+    function ymdFromDateObj(dateObj) {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    // Unused range pickers removed
+
+    // Flatpickr declaration moved to top
+
+    function initSingleDatePicker(mode) {
+        if (fpSingle) {
+            fpSingle.destroy();
         }
 
         let options = {
             locale: 'tr',
-            defaultDate: currentDate,
+            allowInput: true,
             onChange: function(selectedDates, dateStr) {
-                if (selectedDates.length > 0) {
-                    const d = selectedDates[0];
-                    if (mode === 'yillik') {
-                        currentDate = d.getFullYear() + '-01-01';
-                    } else if (mode === 'aylik') {
-                        currentDate = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-01';
-                    } else {
-                        currentDate = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-                    }
-                }
+                // Her değişimde yükleme yapmıyoruz, Filtrele butonuna basılınca veya period değişince
             }
         };
 
         if (mode === 'aylik') {
+            options.defaultDate = new Date(); // Varsayılan bu ay
             options.plugins = [
                 new monthSelectPlugin({
-                    shorthand: true, // "Oca", "Şub" vb.
-                    dateFormat: "m.Y",
-                    altFormat: "F Y", // "Ocak 2026"
+                    shorthand: false,
+                    dateFormat: "F Y",
+                    altFormat: "F Y",
                     theme: "light"
                 })
             ];
-        } else if (mode === 'yillik') {
-            options.dateFormat = "Y";
-            // Normal datepicker'ı gizle, sadece yıl seçimi gibi davranması için
-            // Ancak flatpickr'da yerleşik salt yıl seçimi plugin'i yok,
-            // bu yüzden günü/ayı kısıtlayarak veya onChange'de sadece yılı alarak çözüyoruz.
+        } else if (mode === 'haftalik') {
+            options.defaultDate = new Date();
+            options.plugins = [
+                new weekSelect({})
+            ];
+            options.onChange = function(selectedDates, dateStr, instance) {
+                if (selectedDates.length > 0) {
+                    const start = selectedDates[0];
+                    const end = new Date(start);
+                    end.setDate(start.getDate() + 6);
+                    instance.input.value = instance.formatDate(start, "d.m.Y") + " - " + instance.formatDate(end, "d.m.Y");
+                }
+            };
+            options.onReady = function(selectedDates, dateStr, instance) {
+                if (selectedDates.length > 0) {
+                    const start = selectedDates[0];
+                    const end = new Date(start);
+                    end.setDate(start.getDate() + 6);
+                    instance.input.value = instance.formatDate(start, "d.m.Y") + " - " + instance.formatDate(end, "d.m.Y");
+                }
+            };
+            options.dateFormat = "d.m.Y";
+        } else if (mode === 'gunluk') {
+            options.mode = "range";
+            options.dateFormat = "d.m.Y";
+            options.defaultDate = [new Date(), new Date()];
         } else {
             options.dateFormat = 'd.m.Y';
+            options.defaultDate = new Date();
         }
 
-        fp = flatpickr('#tarihSecici', options);
+        fpSingle = flatpickr('#tarihSecici', options);
     }
-    
-    initFlatpickr(currentPeriod);
+
+    function syncPeriodDefaults() {
+        if (currentPeriod === 'gunluk') {
+            currentDate = todayYmd;
+        } else if (currentPeriod === 'haftalik') {
+            currentDate = todayYmd;
+        } else if (currentPeriod === 'yillik') {
+            currentDate = currentYear + '-01-01';
+        } else {
+            currentDate = thisMonthStart;
+        }
+    }
+
+    function toggleDateMode() {
+        const isYearly = currentPeriod === 'yillik';
+        $('#singleDateWrapper').toggle(!isYearly);
+        $('#yearSelectWrapper').toggle(isYearly);
+    }
+
+    function updateDateControlsByPeriod() {
+        syncPeriodDefaults();
+        toggleDateMode();
+
+        if (currentPeriod !== 'yillik') {
+            initSingleDatePicker(currentPeriod);
+        }
+    }
+
+    if ($.fn.select2) {
+        $('#yilSecici').select2({
+            width: '100%',
+            minimumResultsForSearch: Infinity
+        });
+    }
+
+    $('#yilSecici').on('change', function() {
+        currentYear = String($(this).val() || new Date().getFullYear());
+        currentDate = currentYear + '-01-01';
+    });
+
+
+    updateDateControlsByPeriod();
 
     // Departman değiştir
     $('#departmanGroup').on('click', '.dept-btn', function() {
@@ -409,14 +518,10 @@ $(document).ready(function() {
         $(this).removeClass('btn-outline-primary').addClass('btn-primary active');
         currentPeriod = $(this).data('period');
 
-        // Flatpickr modunu güncelle
-        updateFlatpickrMode();
+        // Döneme göre varsayılan tarih ve input tipi güncelle
+        updateDateControlsByPeriod();
         loadData();
     });
-
-    function updateFlatpickrMode() {
-        initFlatpickr(currentPeriod);
-    }
 
     // Filtrele butonu
     $('#btnFiltrele').on('click', function() {
@@ -425,6 +530,25 @@ $(document).ready(function() {
 
     // Veri yükle
     function loadData() {
+        let startDate = '';
+        let endDate = '';
+        let dateVal = currentDate;
+
+        if (currentPeriod === 'yillik') {
+            dateVal = $('#yilSecici').val() + '-01-01';
+        } else if (fpSingle && fpSingle.selectedDates.length > 0) {
+            const dates = fpSingle.selectedDates;
+            if (currentPeriod === 'gunluk' && dates.length === 2) {
+                startDate = ymdFromDateObj(dates[0]);
+                endDate = ymdFromDateObj(dates[1]);
+                dateVal = startDate;
+            } else {
+                dateVal = ymdFromDateObj(dates[0]);
+                startDate = dateVal;
+                endDate = dateVal;
+            }
+        }
+
         showLoading();
 
         $.ajax({
@@ -434,12 +558,15 @@ $(document).ready(function() {
                 action: 'get-performans',
                 departman: currentDept,
                 period: currentPeriod,
-                tarih: currentDate
+                tarih: dateVal,
+                baslangic_tarih: startDate,
+                bitis_tarih: endDate
             },
             dataType: 'json',
             success: function(res) {
                 hideLoading();
                 if (res.status === 'success') {
+                    currentEffectivePeriod = res.effective_period || currentPeriod;
                     updateKPIs(res.summary);
                     updateTrendChart(res.gunluk_trend);
                     updateBarChart(res.personeller);
@@ -487,8 +614,8 @@ $(document).ready(function() {
         const categories = trendData.map(d => formatDateLabel(d.tarih));
         const values = trendData.map(d => parseInt(d.toplam));
 
-        const periodLabels = { gunluk: 'Günlük', aylik: 'Aylık', yillik: 'Yıllık' };
-        $('#trendPeriodLabel').text(periodLabels[currentPeriod] || 'Aylık');
+        const periodLabels = { gunluk: 'Günlük', haftalik: 'Haftalık', aylik: 'Aylık', yillik: 'Yıllık', aralik: 'Tarih Aralığı' };
+        $('#trendPeriodLabel').text(periodLabels[currentEffectivePeriod] || 'Aylık');
 
         if (trendChart) trendChart.destroy();
 
@@ -685,12 +812,13 @@ $(document).ready(function() {
     }
 
     function updateDonemBilgisi(res) {
-        const periodLabels = { gunluk: 'Günlük', aylik: 'Aylık', yillik: 'Yıllık' };
+        const periodLabels = { gunluk: 'Günlük', haftalik: 'Haftalık', aylik: 'Aylık', yillik: 'Yıllık', aralik: 'Tarih Aralığı' };
         const info = deptColors[currentDept];
         const start = formatDateFull(res.start_date);
         const end = formatDateFull(res.end_date);
+        const selectedPeriod = res.effective_period || currentPeriod;
         $('#donemText').html(
-            `<strong>${info.label}</strong> departmanı | ${periodLabels[currentPeriod]} rapor | ` +
+            `<strong>${info.label}</strong> departmanı | ${periodLabels[selectedPeriod]} rapor | ` +
             `<span class="fw-bold">${start}</span> — <span class="fw-bold">${end}</span>`
         );
     }
