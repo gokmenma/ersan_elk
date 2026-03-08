@@ -1295,6 +1295,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $oncekiIadeTarihi = $oncekiServis ? $oncekiServis->iade_tarihi : null;
                 $yeniServisCikisi = $isServisCikisi && empty($oncekiIadeTarihi); // İlk kez çıkış yapılıyorsa
 
+                if ($isServisCikisi && !empty($data['ikame_plaka']) && empty($data['ikame_iade_km'])) {
+                    throw new Exception("İkame araç kullanıldıysa, iade KM bilgisi zorunludur.");
+                }
+
                 $Servis->saveWithAttr($data);
 
                 // Araç KM güncelle (eğer çıkış KM girildiyse)
@@ -1366,11 +1370,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         }
                     }
                     
-                    // İkame iade tarihini güncelle
+                    // İkame iade tarihini güncelle ve aracı pasife çek
                     if ($servis_id > 0) {
                         $pdo = $Arac->getDb();
                         $stmt = $pdo->prepare("UPDATE arac_servis_kayitlari SET ikame_iade_tarihi = NOW() WHERE id = ? AND firma_id = ?");
                         $stmt->execute([$servis_id, $_SESSION['firma_id']]);
+
+                        // İkame aracı pasife çek (Artık listede görünmemeli)
+                        $stmtPasif = $pdo->prepare("UPDATE araclar SET aktif_mi = 0 WHERE id = ? AND firma_id = ?");
+                        $stmtPasif->execute([$ikame_arac_id, $_SESSION['firma_id']]);
                     }
                 }
 

@@ -5,3 +5,4 @@ ID: 60 | Muayene:  | Sigorta:  | Kasko:
 ID: 4 | Muayene: 12.01.2027 | Sigorta: 17.02.2027 | Kasko: 17.02.2027
 ID: 4 | Muayene: 18.01.2028 | Sigorta: 17.02.2027 | Kasko: 17.02.2027
 ID: 4 | Muayene: 18.01.2028 | Sigorta: 17.02.2027 | Kasko: 17.02.2027
+ID: 70 | Muayene:  | Sigorta:  | Kasko: 

@@ -1207,7 +1207,24 @@ const AracTakip = {
   // =============================================
   servisKaydet: function () {
     const form = $("#servisForm");
+    const iadeTarihi = $("#servisForm [name='iade_tarihi']").val();
     const ikamePlaka = $("#servisForm [name='ikame_plaka']").val();
+    const ikameIadeKm = $("#servisForm [name='ikame_iade_km']").val();
+
+    if (iadeTarihi && ikamePlaka && !ikameIadeKm) {
+      Swal.fire({
+        icon: "warning",
+        title: "Eksik Bilgi",
+        text: "İkame araç iade KM bilgisini girmelisiniz.",
+      }).then(() => {
+        $("#servis-ikame-tab").tab("show");
+        setTimeout(() => {
+          $("#servisForm [name='ikame_iade_km']").focus();
+        }, 200);
+      });
+      return;
+    }
+
     const confirmed = $("#servisForm").data("ikame-confirmed");
 
     if (!ikamePlaka && !confirmed) {

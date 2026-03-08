@@ -36,6 +36,7 @@ class AracModel extends Model
             LEFT JOIN personel p ON az.personel_id = p.id
             WHERE a.firma_id = :firma_id 
             AND a.silinme_tarihi IS NULL
+            AND a.ikame_mi = 0
             ORDER BY a.plaka ASC
         ");
         $sql->execute(['firma_id' => $_SESSION['firma_id']]);
@@ -63,6 +64,7 @@ class AracModel extends Model
             LEFT JOIN personel p ON az.personel_id = p.id
             WHERE a.firma_id = :firma_id 
             AND a.silinme_tarihi IS NULL
+            AND a.ikame_mi = 0
             ORDER BY a.plaka ASC
         ");
         $sql->execute(['firma_id' => $_SESSION['firma_id']]);
@@ -80,6 +82,7 @@ class AracModel extends Model
             INNER JOIN arac_servis_kayitlari s ON a.id = s.arac_id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL
             WHERE a.firma_id = :firma_id
             AND a.silinme_tarihi IS NULL
+            AND a.ikame_mi = 0
         ");
         $sql->execute(['firma_id' => $_SESSION['firma_id']]);
         $result = $sql->fetch(PDO::FETCH_OBJ);
@@ -161,9 +164,9 @@ class AracModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT 
-                COUNT(*) as toplam_arac,
-                SUM(CASE WHEN aktif_mi = 1 THEN 1 ELSE 0 END) as aktif_arac,
-                SUM(CASE WHEN aktif_mi = 0 THEN 1 ELSE 0 END) as pasif_arac,
+                SUM(CASE WHEN ikame_mi = 0 THEN 1 ELSE 0 END) as toplam_arac,
+                SUM(CASE WHEN aktif_mi = 1 AND ikame_mi = 0 THEN 1 ELSE 0 END) as aktif_arac,
+                SUM(CASE WHEN aktif_mi = 0 AND ikame_mi = 0 THEN 1 ELSE 0 END) as pasif_arac,
                 (SELECT COUNT(*) FROM araclar a2 
                  LEFT JOIN arac_zimmetleri az ON a2.id = az.arac_id AND az.durum = 'aktif'
                  WHERE a2.firma_id = :firma_id1 
@@ -171,11 +174,11 @@ class AracModel extends Model
                  AND a2.aktif_mi = 1
                  AND a2.ikame_mi = 0
                  AND az.id IS NULL
-                 AND NOT EXISTS (SELECT 1 FROM arac_servis_kayitlari s WHERE s.arac_id = a2.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL)) as bosta_arac
+                 AND NOT EXISTS (SELECT 1 FROM arac_servis_kayitlari s WHERE s.arac_id = a2.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL)) as bosta_arac,
+                SUM(CASE WHEN ikame_mi = 1 AND aktif_mi = 1 THEN 1 ELSE 0 END) as ikame_arac
             FROM {$this->table}
             WHERE firma_id = :firma_id2
             AND silinme_tarihi IS NULL
-            AND ikame_mi = 0
         ");
         $sql->execute([
             'firma_id1' => $_SESSION['firma_id'],
@@ -202,6 +205,45 @@ class AracModel extends Model
         ");
         $sql->execute(['firma_id' => $_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * İkame araçları getirir
+     */
+    public function getIkameAraclar()
+    {
+        $sql = $this->db->prepare("
+            SELECT a.*, 
+                   a.ikame_mi,
+                   az.personel_id as zimmetli_personel_id,
+                   p.adi_soyadi as zimmetli_personel_adi,
+                   (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
+            FROM {$this->table} a
+            LEFT JOIN (
+                SELECT az1.* FROM arac_zimmetleri az1
+                INNER JOIN (
+                    SELECT MAX(id) as max_id FROM arac_zimmetleri WHERE durum = 'aktif' GROUP BY arac_id
+                ) az2 ON az1.id = az2.max_id
+            ) az ON a.id = az.arac_id
+            LEFT JOIN personel p ON az.personel_id = p.id
+            WHERE a.firma_id = :firma_id 
+            AND a.silinme_tarihi IS NULL
+            AND a.ikame_mi = 1
+            AND a.aktif_mi = 1
+            ORDER BY a.plaka ASC
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * İkame araç sayısını getirir
+     */
+    public function getIkameAracSayisi()
+    {
+        $sql = $this->db->prepare("SELECT COUNT(*) FROM araclar WHERE firma_id = :firma_id AND silinme_tarihi IS NULL AND ikame_mi = 1 AND aktif_mi = 1");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        return $sql->fetchColumn();
     }
 
     /**

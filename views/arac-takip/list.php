@@ -74,6 +74,9 @@ if ($filter === 'muayene') {
 } elseif ($filter === 'serviste') {
     $araclar = $Arac->getServistekiAraclar();
     $title = "Servisteki Araçlar";
+} elseif ($filter === 'ikame') {
+    $araclar = $Arac->getIkameAraclar();
+    $title = "İkame Araçlar";
 } else {
     $araclar = $Arac->all();
 }
@@ -257,6 +260,12 @@ if ($filter === 'muayene') {
                                                     <?php echo $aracStats->toplam_arac ?? 0; ?>
                                                 </h4>
                                             </div>
+                                            <div class="d-flex justify-content-between align-items-center mt-1 border-top pt-1" onclick="event.stopPropagation(); location.href='index.php?p=arac-takip/list&filter=ikame'" style="cursor: pointer;">
+                                                <span class="text-warning fw-bold small">İkame Araç</span>
+                                                <h5 class="mb-0 fw-bold text-warning">
+                                                    <?php echo $aracStats->ikame_arac ?? 0; ?>
+                                                </h5>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -405,6 +414,12 @@ if ($filter === 'muayene') {
                                     <?php echo $Arac->getServistekiAracSayisi(); ?>
                                     <?php if ($zimmetliServistekiSayi > 0)
                                         echo "<small>({$zimmetliServistekiSayi}'i Zimmetli)</small>"; ?>
+                                </span>
+                                <span
+                                    class="badge bg-warning-subtle text-warning fs-6 badge-filter <?php echo $filter === 'ikame' ? 'active' : ''; ?>"
+                                    onclick="location.href='index.php?p=arac-takip/list&filter=ikame'">
+                                    <i class="bx bx-repost me-1"></i> İkame:
+                                    <?php echo $aracStats->ikame_arac ?? 0; ?>
                                 </span>
                             </div>
 
