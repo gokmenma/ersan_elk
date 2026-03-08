@@ -175,7 +175,7 @@ class AracModel extends Model
                  AND a2.ikame_mi = 0
                  AND az.id IS NULL
                  AND NOT EXISTS (SELECT 1 FROM arac_servis_kayitlari s WHERE s.arac_id = a2.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL)) as bosta_arac,
-                SUM(CASE WHEN ikame_mi = 1 AND aktif_mi = 1 THEN 1 ELSE 0 END) as ikame_arac
+                SUM(CASE WHEN ikame_mi = 1 AND EXISTS (SELECT 1 FROM arac_servis_kayitlari s WHERE s.ikame_arac_id = araclar.id AND s.ikame_iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) THEN 1 ELSE 0 END) as ikame_arac
             FROM {$this->table}
             WHERE firma_id = :firma_id2
             AND silinme_tarihi IS NULL
@@ -229,7 +229,7 @@ class AracModel extends Model
             WHERE a.firma_id = :firma_id 
             AND a.silinme_tarihi IS NULL
             AND a.ikame_mi = 1
-            AND a.aktif_mi = 1
+            AND EXISTS (SELECT 1 FROM arac_servis_kayitlari s WHERE s.ikame_arac_id = a.id AND s.ikame_iade_tarihi IS NULL AND s.silinme_tarihi IS NULL)
             ORDER BY a.plaka ASC
         ");
         $sql->execute(['firma_id' => $_SESSION['firma_id']]);
@@ -241,7 +241,7 @@ class AracModel extends Model
      */
     public function getIkameAracSayisi()
     {
-        $sql = $this->db->prepare("SELECT COUNT(*) FROM araclar WHERE firma_id = :firma_id AND silinme_tarihi IS NULL AND ikame_mi = 1 AND aktif_mi = 1");
+        $sql = $this->db->prepare("SELECT COUNT(*) FROM araclar a WHERE a.firma_id = :firma_id AND a.silinme_tarihi IS NULL AND a.ikame_mi = 1 AND EXISTS (SELECT 1 FROM arac_servis_kayitlari s WHERE s.ikame_arac_id = a.id AND s.ikame_iade_tarihi IS NULL AND s.silinme_tarihi IS NULL)");
         $sql->execute(['firma_id' => $_SESSION['firma_id']]);
         return $sql->fetchColumn();
     }

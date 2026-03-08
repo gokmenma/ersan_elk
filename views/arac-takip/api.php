@@ -1267,8 +1267,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                     if ($mevcutIkameRow) {
                         $ikame_arac_id = $mevcutIkameRow->id;
-                        // Mevcut kaydı güncelle
-                        $updateStmt = $Arac->getDb()->prepare("UPDATE araclar SET ikame_mi = 1, arac_tipi = 'ikame', mulkiyet = 'İkame Araç', marka = :marka, model = :model WHERE id = :id");
+                        // Mevcut kaydı güncelle - aracı tekrar aktif hale getir (aktif_mi = 1)
+                        $updateStmt = $Arac->getDb()->prepare("UPDATE araclar SET ikame_mi = 1, aktif_mi = 1, arac_tipi = 'ikame', mulkiyet = 'İkame Araç', marka = :marka, model = :model WHERE id = :id");
                         $updateStmt->execute([
                             'marka' => $data['ikame_marka'] ?? null,
                             'model' => $data['ikame_model'] ?? null,

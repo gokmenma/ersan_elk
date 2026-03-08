@@ -1413,6 +1413,20 @@ const AracTakip = {
             
             const ikameInfo = s.ikame_plaka ? `<span class="badge ${ikameBadgeClass} ikame-detay-btn" style="cursor:pointer;" data-json="${sJson}" title="${ikameTitle}"><i class="bx bx-transfer me-1"></i>${s.ikame_plaka}</span>` : '<span class="text-muted">-</span>';
 
+            const actionButtons = `
+                <div class="dropdown">
+                    <a href="javascript:void(0);" class="text-muted" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 0.5rem; display: inline-block; line-height: 1;">
+                        <i class="bx bx-dots-vertical-rounded" style="font-size: 1.4rem;"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" style="min-width: 160px; border-radius: 8px;">
+                        ${!s.iade_tarihi ? `<li><a class="dropdown-item servis-duzenle-cikis text-success fw-bold py-2" href="#" data-id="${s.id}"><i class="bx bx-log-out-circle me-1" style="font-size: 1.1rem; vertical-align: middle;"></i> Servis Çıkış Kaydı</a></li><li><hr class="dropdown-divider my-1"></li>` : ''}
+                        <li><a class="dropdown-item servis-duzenle text-warning py-2" href="#" data-id="${s.id}"><i class="bx bx-edit me-1" style="font-size: 1.1rem; vertical-align: middle;"></i> Düzenle</a></li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li><a class="dropdown-item servis-sil text-danger py-2" href="#" data-id="${s.id}"><i class="bx bx-trash me-1" style="font-size: 1.1rem; vertical-align: middle;"></i> Sil</a></li>
+                    </ul>
+                </div>
+            `;
+
             html += `<tr>
                             <td class="text-center">${index + 1}</td>
                             <td><strong>${s.plaka || "-"}</strong><br><small>${s.marka || ""} ${s.model || ""}</small></td>
@@ -1423,17 +1437,7 @@ const AracTakip = {
                             <td class="text-truncate" style="max-width: 200px;" title="${s.servis_nedeni}">${s.servis_nedeni || "-"}</td>
                             <td class="text-center">${ikameInfo}</td>
                             <td class="text-center">
-                                <div class="dropdown">
-                                    <a href="javascript:void(0);" class="text-muted" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 0.5rem; display: inline-block; line-height: 1;">
-                                        <i class="bx bx-dots-vertical-rounded" style="font-size: 1.4rem;"></i>
-                                    </a>
-                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" style="min-width: 160px; border-radius: 8px;">
-                                        ${!s.iade_tarihi ? `<li><a class="dropdown-item servis-duzenle-cikis text-success fw-bold py-2" href="#" data-id="${s.id}"><i class="bx bx-log-out-circle me-1" style="font-size: 1.1rem; vertical-align: middle;"></i> Servis Çıkış Kaydı</a></li><li><hr class="dropdown-divider my-1"></li>` : ''}
-                                        <li><a class="dropdown-item servis-duzenle text-warning py-2" href="#" data-id="${s.id}"><i class="bx bx-edit me-1" style="font-size: 1.1rem; vertical-align: middle;"></i> Düzenle</a></li>
-                                        <li><hr class="dropdown-divider my-1"></li>
-                                        <li><a class="dropdown-item servis-sil text-danger py-2" href="#" data-id="${s.id}"><i class="bx bx-trash me-1" style="font-size: 1.1rem; vertical-align: middle;"></i> Sil</a></li>
-                                    </ul>
-                                </div>
+                                ${actionButtons}
                             </td>
                         </tr>`;
           });
