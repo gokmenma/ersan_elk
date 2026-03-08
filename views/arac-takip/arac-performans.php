@@ -202,10 +202,19 @@ for ($year = 2025; $year <= (int) $thisYear; $year++) {
             <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
                 <div class="card-body p-3">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold text-dark mb-0" style="font-size: 0.95rem;">
-                            <i class="bx bx-bar-chart me-1 text-muted"></i>En Yüksek Yakıt Ortalaması Top 10
-                        </h6>
-                        <span class="badge bg-soft-danger text-danger" id="barChartLabel">L/100 KM</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <h6 class="fw-bold text-dark mb-0" style="font-size: 0.95rem;">
+                                <i class="bx bx-bar-chart me-1 text-muted"></i>
+                                <span id="barChartTitle">En Yüksek Yakıt Ortalaması</span>
+                            </h6>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-danger active" id="btnSortHigh">En Yüksek</button>
+                                <button type="button" class="btn btn-outline-success" id="btnSortLow">En Düşük</button>
+                            </div>
+                            <span class="badge bg-soft-secondary" id="barChartLabel">L/100 KM</span>
+                        </div>
                     </div>
                     <div id="barChart" style="min-height: 340px;"></div>
                 </div>
@@ -358,6 +367,9 @@ $(document).ready(function() {
     let barChart = null;
     let dataTable = null;
     let fpSingle = null;
+    let barChartSort = 'desc'; // 'desc' or 'asc'
+    let lastAraclar = [];
+
 
     const turkishMonths = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 
@@ -433,6 +445,20 @@ $(document).ready(function() {
         loadData();
     });
 
+    $('#btnSortHigh').on('click', function() {
+        barChartSort = 'desc';
+        $(this).addClass('active').siblings().removeClass('active');
+        $('#barChartTitle').text('En Yüksek Yakıt Ortalaması');
+        updateBarChart(lastAraclar);
+    });
+
+    $('#btnSortLow').on('click', function() {
+        barChartSort = 'asc';
+        $(this).addClass('active').siblings().removeClass('active');
+        $('#barChartTitle').text('En Düşük Yakıt Ortalaması');
+        updateBarChart(lastAraclar);
+    });
+
     // =============================================
     // VERİ YÜKLEME
     // =============================================
@@ -492,6 +518,7 @@ $(document).ready(function() {
             success: function(res) {
                 hideLoading();
                 if (res.status === 'success') {
+                    lastAraclar = res.araclar;
                     updateKPIs(res.summary);
                     updateTrendChart(res.yakit_trend, res.km_trend);
                     updateBarChart(res.araclar);
@@ -653,16 +680,21 @@ $(document).ready(function() {
     // BAR CHART
     // =============================================
     function updateBarChart(araclar) {
+        if (!araclar || araclar.length === 0) return;
+
         // L/100 KM'ye göre hesapla ve sırala, top 10
-        const sorted = [...araclar]
-            .map(a => {
-                const avg = a.toplam_km > 0 ? (a.toplam_litre / a.toplam_km) * 100 : 0;
-                return { ...a, avg: avg };
-            })
-            .filter(a => a.avg > 0)
-            .sort((a, b) => b.avg - a.avg)
-            .slice(0, 10)
-            .reverse();
+        let mapped = araclar.map(a => {
+            const avg = a.toplam_km > 0 ? (a.toplam_litre / a.toplam_km) * 100 : 0;
+            return { ...a, avg: avg };
+        }).filter(a => a.avg > 0);
+
+        if (barChartSort === 'desc') {
+            mapped.sort((a, b) => b.avg - a.avg);
+        } else {
+            mapped.sort((a, b) => a.avg - b.avg);
+        }
+
+        const sorted = mapped.slice(0, 10);
 
         const names = sorted.map(a => {
             if (a.surucu) return [a.plaka, a.surucu];
@@ -677,6 +709,9 @@ $(document).ready(function() {
         });
 
         if (barChart) barChart.destroy();
+
+        const chartColor = barChartSort === 'desc' ? '#e74a3b' : '#1cc88a';
+        const gradientColor = barChartSort === 'desc' ? '#f5a5a0' : '#87e0be';
 
         barChart = new ApexCharts(document.querySelector("#barChart"), {
             series: [{ name: 'L/100 KM', data: values }],
@@ -696,19 +731,20 @@ $(document).ready(function() {
                     dataLabels: { position: 'top' }
                 }
             },
-            colors: ['#e74a3b'],
+            colors: [chartColor],
             fill: {
                 type: 'gradient',
                 gradient: {
                     shade: 'light',
                     type: 'horizontal',
                     shadeIntensity: 0.2,
-                    gradientToColors: ['#f5a5a0'],
+                    gradientToColors: [gradientColor],
                     opacityFrom: 1,
                     opacityTo: 0.85,
                     stops: [0, 100]
                 }
             },
+
             dataLabels: {
                 enabled: true,
                 textAnchor: 'start',
