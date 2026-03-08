@@ -203,9 +203,9 @@ for ($year = 2025; $year <= (int) $thisYear; $year++) {
                 <div class="card-body p-3">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h6 class="fw-bold text-dark mb-0" style="font-size: 0.95rem;">
-                            <i class="bx bx-bar-chart me-1 text-muted"></i>En Çok Yakıt Yakan Top 10
+                            <i class="bx bx-bar-chart me-1 text-muted"></i>En Yüksek Yakıt Ortalaması Top 10
                         </h6>
-                        <span class="badge bg-soft-danger text-danger" id="barChartLabel">Litre</span>
+                        <span class="badge bg-soft-danger text-danger" id="barChartLabel">L/100 KM</span>
                     </div>
                     <div id="barChart" style="min-height: 340px;"></div>
                 </div>
@@ -235,9 +235,9 @@ for ($year = 2025; $year <= (int) $thisYear; $year++) {
                                     <th class="text-end">Yakıt (L)</th>
                                     <th class="text-end">Yakıt Maliyeti</th>
                                     <th class="text-end">Toplam KM</th>
+                                    <th class="text-end">L/100 KM</th>
                                     <th class="text-center">Servis Sayısı</th>
                                     <th class="text-end">Servis Maliyeti</th>
-                                    <th class="text-end">L/100 KM</th>
                                     <th class="text-center" style="width:180px;">Yakıt Tüketimi</th>
                                 </tr>
                             </thead>
@@ -653,13 +653,22 @@ $(document).ready(function() {
     // BAR CHART
     // =============================================
     function updateBarChart(araclar) {
-        // Yakıta göre sırala, top 10
-        const sorted = [...araclar].filter(a => a.toplam_litre > 0).sort((a, b) => b.toplam_litre - a.toplam_litre).slice(0, 10).reverse();
+        // L/100 KM'ye göre hesapla ve sırala, top 10
+        const sorted = [...araclar]
+            .map(a => {
+                const avg = a.toplam_km > 0 ? (a.toplam_litre / a.toplam_km) * 100 : 0;
+                return { ...a, avg: avg };
+            })
+            .filter(a => a.avg > 0)
+            .sort((a, b) => b.avg - a.avg)
+            .slice(0, 10)
+            .reverse();
+
         const names = sorted.map(a => {
             if (a.surucu) return [a.plaka, a.surucu];
             return a.plaka;
         });
-        const values = sorted.map(a => parseFloat(a.toplam_litre));
+        const values = sorted.map(a => parseFloat(a.avg.toFixed(2)));
         const fullNames = sorted.map(a => {
             let n = `${a.plaka}`;
             if (a.surucu) n += ` (${a.surucu})`;
@@ -670,7 +679,7 @@ $(document).ready(function() {
         if (barChart) barChart.destroy();
 
         barChart = new ApexCharts(document.querySelector("#barChart"), {
-            series: [{ name: 'Litre', data: values }],
+            series: [{ name: 'L/100 KM', data: values }],
             chart: {
                 type: 'bar',
                 height: 340,
@@ -703,7 +712,7 @@ $(document).ready(function() {
             dataLabels: {
                 enabled: true,
                 textAnchor: 'start',
-                formatter: val => formatNumber(val) + ' L',
+                formatter: val => formatNumber(val) + ' L/100 KM',
                 offsetX: 5,
                 style: { fontSize: '11px', fontWeight: 700, colors: ['#475569'] }
             },
@@ -732,7 +741,7 @@ $(document).ready(function() {
                     const val = series[seriesIndex][dataPointIndex];
                     return '<div class="p-2 shadow-sm" style="background:#fff; border:1px solid #e2e8f0; border-radius:6px;">' +
                         '<div class="fw-bold text-dark mb-1">' + fullNames[dataPointIndex] + '</div>' +
-                        '<div class="text-muted small">Yakıt: <span class="fw-bold text-danger">' + formatNumber(val) + ' L</span></div>' +
+                        '<div class="text-muted small">Ortalama: <span class="fw-bold text-danger">' + formatNumber(val) + ' L/100 KM</span></div>' +
                         '</div>';
                 }
             },
@@ -745,9 +754,17 @@ $(document).ready(function() {
     // TABLO GÜNCELLEME
     // =============================================
     function updateTable(araclar) {
-        // Toplam yakıta göre sırala
-        const sorted = [...araclar].sort((a, b) => b.toplam_litre - a.toplam_litre);
-        const maxLitre = sorted.length > 0 ? Math.max(...sorted.map(a => a.toplam_litre)) : 1;
+        // Calculate L/100km first and add it to the array objects
+        const araclarWithL100 = araclar.map(a => {
+            const l100km = (a.toplam_km > 0) ? (a.toplam_litre / a.toplam_km) * 100 : 0;
+            return { ...a, l100km: l100km };
+        });
+
+        // Sort by L/100 KM descending
+        const sorted = [...araclarWithL100].sort((a, b) => b.l100km - a.l100km);
+        
+        // Find max L/100 KM for the percentage bar, only considering those with > 0 so the bar scale is meaningful
+        const maxL100 = sorted.length > 0 ? Math.max(...sorted.map(a => a.l100km)) : 1;
 
         if (dataTable) {
             dataTable.destroy();
@@ -757,14 +774,12 @@ $(document).ready(function() {
         let html = '';
         sorted.forEach((a, idx) => {
             const rank = idx + 1;
-            const perc = maxLitre > 0 ? Math.round((a.toplam_litre / maxLitre) * 100) : 0;
+            const perc = maxL100 > 0 ? Math.round((a.l100km / maxL100) * 100) : 0;
             const medalClass = rank <= 3 ? 'rank-' + rank : 'rank-other';
             const aracLabel = `${a.marka || ''} ${a.model || ''}`.trim() || '-';
             const surucuLabel = a.surucu ? ` <span class="badge bg-soft-info text-info ms-1" style="font-size:0.7rem;">${escapeHtml(a.surucu)}</span>` : '';
             
-            // L/100 KM Hesapla
-            const l100km = (a.toplam_km > 0) ? (a.toplam_litre / a.toplam_km) * 100 : 0;
-            const l100kmLabel = l100km > 0 ? formatNumber(l100km.toFixed(2)) : '0';
+            const l100kmLabel = a.l100km > 0 ? formatNumber(a.l100km.toFixed(2)) : '0';
 
             html += `<tr>
                 <td class="text-center">
@@ -779,25 +794,25 @@ $(document).ready(function() {
                         <small class="text-muted">${escapeHtml(aracLabel)}</small>
                     </div>
                 </td>
-                <td class="text-end fw-bold" style="color: #e74a3b;">
+                <td class="text-end fw-bold" style="color: #e74a3b;" data-sort="${a.toplam_litre}">
                     ${formatNumber(a.toplam_litre)}
                 </td>
-                <td class="text-end">
+                <td class="text-end" data-sort="${a.yakit_maliyet}">
                     ${formatMoney(a.yakit_maliyet)} ₺
                 </td>
-                <td class="text-end fw-bold" style="color: #556ee6;">
+                <td class="text-end fw-bold" style="color: #556ee6;" data-sort="${a.toplam_km}">
                     ${formatNumber(a.toplam_km)}
                 </td>
-                <td class="text-center">
-                    <span class="badge ${a.servis_sayisi > 0 ? 'bg-warning-subtle text-warning' : 'bg-light text-muted'}">${a.servis_sayisi}</span>
-                </td>
-                <td class="text-end">
-                    ${formatMoney(a.servis_maliyet)} ₺
-                </td>
-                <td class="text-end fw-bold">
+                <td class="text-end fw-bold" data-sort="${a.l100km}">
                     ${l100kmLabel}
                 </td>
-                <td>
+                <td class="text-center" data-sort="${a.servis_sayisi}">
+                    <span class="badge ${a.servis_sayisi > 0 ? 'bg-warning-subtle text-warning' : 'bg-light text-muted'}">${a.servis_sayisi}</span>
+                </td>
+                <td class="text-end" data-sort="${a.servis_maliyet}">
+                    ${formatMoney(a.servis_maliyet)} ₺
+                </td>
+                <td data-sort="${perc}">
                     <div class="d-flex align-items-center gap-2">
                         <div class="perf-bar-bg flex-grow-1">
                             <div class="perf-bar-fill" style="width: ${perc}%; background: linear-gradient(90deg, #e74a3b, #f5a5a0);"></div>
@@ -821,11 +836,11 @@ $(document).ready(function() {
             paging: true,
             pageLength: 25,
             ordering: true,
-            order: [[2, 'desc']],
+            order: [[5, 'desc']], // Column index 5 is L/100 KM
             searching: true,
             info: true,
             columnDefs: [
-                { orderable: false, targets: [0, 7] }
+                { type: 'num', targets: [2, 3, 4, 5, 6, 7] }
             ]
         });
 
