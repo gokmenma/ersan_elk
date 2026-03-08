@@ -146,6 +146,12 @@
                                             </div>
 
                                             <div class="col-md-6">
+                                                <?php echo Form::FormFloatInput('text', 'ikame_alis_tarihi', null, '', 'İkame Alış Tarihi', 'calendar', 'form-control flatpickr'); ?>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <?php echo Form::FormFloatInput('text', 'ikame_iade_tarihi', null, '', 'İkame İade Tarihi', 'calendar', 'form-control flatpickr'); ?>
+                                            </div>
+                                            <div class="col-md-6">
                                                 <?php echo Form::FormFloatInput('number', 'ikame_teslim_km', null, '0', 'İkame Teslim KM', 'activity', 'form-control', false, null, 'on', false, 'min="0"'); ?>
                                             </div>
                                             <div class="col-md-6">

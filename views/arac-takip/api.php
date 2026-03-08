@@ -1234,11 +1234,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                 unset($data['action']);
                 $data['firma_id'] = $_SESSION['firma_id'];
-                $data['servis_tarihi'] = Date::Ymd($data['servis_tarihi'] ?? date('Y-m-d'));
+                if (!empty($data['servis_tarihi'])) {
+                    $data['servis_tarihi'] = Date::dttoeng($data['servis_tarihi']);
+                } else {
+                    $data['servis_tarihi'] = date('Y-m-d'); // Default to today if empty
+                }
+                
                 if (!empty($data['iade_tarihi'])) {
-                    $data['iade_tarihi'] = Date::Ymd($data['iade_tarihi']);
+                    $data['iade_tarihi'] = Date::dttoeng($data['iade_tarihi']);
                 } else {
                     $data['iade_tarihi'] = null;
+                }
+
+                if (!empty($data['ikame_alis_tarihi'])) {
+                    $data['ikame_alis_tarihi'] = Date::dttoeng($data['ikame_alis_tarihi']);
+                }
+                if (!empty($data['ikame_iade_tarihi'])) {
+                    $data['ikame_iade_tarihi'] = Date::dttoeng($data['ikame_iade_tarihi']);
                 }
                 $data['olusturan_kullanici_id'] = $_SESSION['user_id'] ?? null;
 
@@ -1299,7 +1311,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     throw new Exception("İkame araç kullanıldıysa, iade KM bilgisi zorunludur.");
                 }
 
-                $Servis->saveWithAttr($data);
+                $savedEncryptedId = $Servis->saveWithAttr($data);
+                $target_servis_id = $servis_id > 0 ? $servis_id : \App\Helper\Security::decrypt($savedEncryptedId);
 
                 // Araç KM güncelle (eğer çıkış KM girildiyse)
                 if (!empty($data['cikis_km'])) {
@@ -1371,10 +1384,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     }
                     
                     // İkame iade tarihini güncelle ve aracı pasife çek
-                    if ($servis_id > 0) {
+                    if ($target_servis_id > 0) {
                         $pdo = $Arac->getDb();
-                        $stmt = $pdo->prepare("UPDATE arac_servis_kayitlari SET ikame_iade_tarihi = NOW() WHERE id = ? AND firma_id = ?");
-                        $stmt->execute([$servis_id, $_SESSION['firma_id']]);
+                        $ikame_iade_tarihi_val = !empty($data['ikame_iade_tarihi']) ? $data['ikame_iade_tarihi'] : date('Y-m-d');
+                        $stmt = $pdo->prepare("UPDATE arac_servis_kayitlari SET ikame_iade_tarihi = ? WHERE id = ? AND firma_id = ?");
+                        $stmt->execute([$ikame_iade_tarihi_val, $target_servis_id, $_SESSION['firma_id']]);
 
                         // İkame aracı pasife çek (Artık listede görünmemeli)
                         $stmtPasif = $pdo->prepare("UPDATE araclar SET aktif_mi = 0 WHERE id = ? AND firma_id = ?");
@@ -1455,6 +1469,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $kayit->servis_tarihi = Date::dmY($kayit->servis_tarihi);
                 if ($kayit->iade_tarihi)
                     $kayit->iade_tarihi = Date::dmY($kayit->iade_tarihi);
+                if ($kayit->ikame_alis_tarihi)
+                    $kayit->ikame_alis_tarihi = Date::dmY($kayit->ikame_alis_tarihi);
+                if ($kayit->ikame_iade_tarihi)
+                    $kayit->ikame_iade_tarihi = Date::dmY($kayit->ikame_iade_tarihi);
 
                 echo json_encode(['status' => 'success', 'data' => $kayit]);
                 break;
@@ -2123,6 +2141,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 // Servis kayıtları
                 $servisKayitlar = $Servis->getByDateRange($baslangic, $bitis);
 
+                // Aktif zimmetleri (sürücüleri) al
+                $aktifZimmetler = $Zimmet->getAktifZimmetler();
+                $surucuMap = [];
+                foreach ($aktifZimmetler as $z) {
+                    $surucuMap[$z->arac_id] = $z->personel_adi;
+                }
+
                 // Servis verilerini araç bazlı grupla
                 $servisMap = [];
                 foreach ($servisKayitlar as $sk) {
@@ -2151,7 +2176,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             'yakit_maliyet' => 0,
                             'toplam_km' => 0,
                             'servis_sayisi' => 0,
-                            'servis_maliyet' => 0
+                            'servis_maliyet' => 0,
+                            'surucu' => $surucuMap[$y->arac_id] ?? null
                         ];
                     }
                     $aracPerformans[$y->arac_id]['toplam_litre'] = floatval($y->toplam_litre);
@@ -2171,7 +2197,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             'yakit_maliyet' => 0,
                             'toplam_km' => 0,
                             'servis_sayisi' => 0,
-                            'servis_maliyet' => 0
+                            'servis_maliyet' => 0,
+                            'surucu' => $surucuMap[$k->arac_id] ?? null
                         ];
                     }
                     $aracPerformans[$k->arac_id]['toplam_km'] = floatval($k->toplam_km);
@@ -2189,7 +2216,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             'yakit_maliyet' => 0,
                             'toplam_km' => 0,
                             'servis_sayisi' => 0,
-                            'servis_maliyet' => 0
+                            'servis_maliyet' => 0,
+                            'surucu' => $surucuMap[$aid] ?? null
                         ];
                     }
                     $aracPerformans[$aid]['servis_sayisi'] = $s['sayi'];

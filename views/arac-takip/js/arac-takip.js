@@ -29,7 +29,7 @@ const AracTakip = {
 
   showLoading: function (selector) {
     const table = $(selector).closest("table");
-    const colCount = table.find("thead tr:first th").length || 8;
+    const colCount = table.find("thead tr:first th").length || 9;
     let tds = "";
     for (let i = 0; i < colCount; i++) {
       if (i === 0)
@@ -1309,6 +1309,7 @@ const AracTakip = {
             const input = $("#servisModal").find('[name="' + key + '"]');
             if (input.length) {
               if (input.hasClass("flatpickr") && data[key]) {
+
                 const dateVal = data[key];
                 if (input[0]._flatpickr) {
                   // Eğer tarih dmY (dd.mm.yyyy) ise parçala, değilse direkt setDate
@@ -1330,6 +1331,7 @@ const AracTakip = {
                 input.val(data[key]);
               }
             }
+
           });
 
           $("#servisModal").modal("show");
@@ -1400,7 +1402,17 @@ const AracTakip = {
         let html = "";
         if (response.data && response.data.length > 0) {
           response.data.forEach(function (s, index) {
-            const ikameInfo = s.ikame_plaka ? `<span class="badge bg-warning text-dark" title="${s.ikame_plaka} - ${s.ikame_marka || ''} ${s.ikame_model || ''}"><i class="bx bx-transfer me-1"></i>${s.ikame_plaka}</span>` : '<span class="text-muted">-</span>';
+            const sJson = JSON.stringify(s).replace(/"/g, '&quot;');
+            
+            let ikameBadgeClass = "bg-warning text-dark";
+            let ikameTitle = "İkame Detayları";
+            if (s.ikame_iade_tarihi) {
+                ikameBadgeClass = "bg-success-subtle text-success";
+                ikameTitle = "İkame İade Edildi (Detaylar için tıkla)";
+            }
+            
+            const ikameInfo = s.ikame_plaka ? `<span class="badge ${ikameBadgeClass} ikame-detay-btn" style="cursor:pointer;" data-json="${sJson}" title="${ikameTitle}"><i class="bx bx-transfer me-1"></i>${s.ikame_plaka}</span>` : '<span class="text-muted">-</span>';
+
             html += `<tr>
                             <td class="text-center">${index + 1}</td>
                             <td><strong>${s.plaka || "-"}</strong><br><small>${s.marka || ""} ${s.model || ""}</small></td>
@@ -1426,9 +1438,10 @@ const AracTakip = {
                         </tr>`;
           });
         } else {
+          const colCount = $("#servisTable").find("thead tr:first th").length || 9;
           let tds =
             '<td class="text-center py-4 text-muted">-</td><td class="py-4 text-muted">Kayıt bulunamadı.</td>';
-          for (let i = 2; i < 9; i++) tds += "<td></td>";
+          for (let i = 2; i < colCount; i++) tds += "<td></td>";
           html = `<tr>${tds}</tr>`;
         }
         tbody.html(html);
@@ -1497,9 +1510,17 @@ const AracTakip = {
   resetServisModal: function () {
     $("#servisForm")[0].reset();
     $('#servisForm input[name="id"]').val("");
-    $("#servisModal #arac_id").val(null).trigger("change");
-    $("#servisModal #ikame_arac_id").val(null).trigger("change");
+    $("#servisForm #arac_id").val(null).trigger("change");
+    $("#servisForm #ikame_arac_id").val("");
+    
+    // Flatpickr alanlarını temizle
+    $("#servisForm .flatpickr").each(function() {
+      if (this._flatpickr) this._flatpickr.clear();
+      $(this).val("");
+    });
+
     $("#servisForm").data("ikame-confirmed", false);
+
     $("#ikameAracBilgiCard").hide();
     $("#servisModal")
       .find(".modal-title")
@@ -2657,4 +2678,16 @@ $(document).ready(function () {
     else if (activeTarget === "#raporContent") AracTakip.aylikRaporYukle();
     updateAracTakipUI();
   }
+
+  // İkame Detay Modal Listener
+  $(document).on("click", ".ikame-detay-btn", function () {
+    const s = $(this).data("json");
+    $("#ikame-detay-plaka").text(s.ikame_plaka || "-");
+    $("#ikame-detay-marka-model").text(`${s.ikame_marka || ""} ${s.ikame_model || ""}`.trim() || "-");
+    $("#ikame-detay-alis-tarih").text(AracTakip.formatDate(s.ikame_alis_tarihi));
+    $("#ikame-detay-iade-tarih").text(AracTakip.formatDate(s.ikame_iade_tarihi));
+    $("#ikame-detay-teslim-km").text(s.ikame_teslim_km ? AracTakip.formatNumber(s.ikame_teslim_km) + " km" : "-");
+    $("#ikame-detay-iade-km").text(s.ikame_iade_km ? AracTakip.formatNumber(s.ikame_iade_km) + " km" : "-");
+    $("#ikameDetayModal").modal("show");
+  });
 });

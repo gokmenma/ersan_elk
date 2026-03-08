@@ -1138,4 +1138,63 @@ if ($filter === 'muayene') {
     </div>
 </div>
 
+<!-- İkame Araç Detay Modal -->
+<div class="modal fade" id="ikameDetayModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark border-0">
+                <h5 class="modal-title fw-bold"><i class="bx bx-transfer me-2"></i>İkame Araç Bilgileri</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="p-4">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="bg-warning bg-opacity-10 rounded-circle p-3 me-3">
+                            <i class="bx bx-car text-warning fs-1"></i>
+                        </div>
+                        <div>
+                            <h4 class="mb-0 fw-bold" id="ikame-detay-plaka">-</h4>
+                            <p class="text-muted mb-0" id="ikame-detay-marka-model">-</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="text-muted small fw-bold mb-1">ALIŞ TARİHİ</label>
+                            <div class="d-flex align-items-center">
+                                <i class="bx bx-calendar me-2 text-primary"></i>
+                                <span class="fw-semibold" id="ikame-detay-alis-tarih">-</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="text-muted small fw-bold mb-1">İADE TARİHİ</label>
+                            <div class="d-flex align-items-center">
+                                <i class="bx bx-calendar-check me-2 text-success"></i>
+                                <span class="fw-semibold" id="ikame-detay-iade-tarih">-</span>
+                            </div>
+                        </div>
+                        <div class="col-6 border-top pt-3">
+                            <label class="text-muted small fw-bold mb-1">TESLİM KM</label>
+                            <div class="d-flex align-items-center">
+                                <i class="bx bx-tachometer me-2 text-info"></i>
+                                <span class="fw-semibold" id="ikame-detay-teslim-km">-</span>
+                            </div>
+                        </div>
+                        <div class="col-6 border-top pt-3">
+                            <label class="text-muted small fw-bold mb-1">İADE KM</label>
+                            <div class="d-flex align-items-center">
+                                <i class="bx bx-tachometer me-2 text-danger"></i>
+                                <span class="fw-semibold" id="ikame-detay-iade-km">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="views/arac-takip/js/arac-takip.js"></script>

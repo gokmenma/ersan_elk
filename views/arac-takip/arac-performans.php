@@ -231,12 +231,13 @@ for ($year = 2025; $year <= (int) $thisYear; $year++) {
                             <thead class="table-light">
                                 <tr>
                                     <th style="width:40px;" class="text-center">#</th>
-                                    <th>Plaka / Araç</th>
+                                    <th>Plaka / Araç (Sürücü)</th>
                                     <th class="text-end">Yakıt (L)</th>
                                     <th class="text-end">Yakıt Maliyeti</th>
                                     <th class="text-end">Toplam KM</th>
                                     <th class="text-center">Servis Sayısı</th>
                                     <th class="text-end">Servis Maliyeti</th>
+                                    <th class="text-end">L/100 KM</th>
                                     <th class="text-center" style="width:180px;">Yakıt Tüketimi</th>
                                 </tr>
                             </thead>
@@ -654,9 +655,17 @@ $(document).ready(function() {
     function updateBarChart(araclar) {
         // Yakıta göre sırala, top 10
         const sorted = [...araclar].filter(a => a.toplam_litre > 0).sort((a, b) => b.toplam_litre - a.toplam_litre).slice(0, 10).reverse();
-        const names = sorted.map(a => a.plaka);
+        const names = sorted.map(a => {
+            if (a.surucu) return [a.plaka, a.surucu];
+            return a.plaka;
+        });
         const values = sorted.map(a => parseFloat(a.toplam_litre));
-        const fullNames = sorted.map(a => `${a.plaka} - ${a.marka || ''} ${a.model || ''}`);
+        const fullNames = sorted.map(a => {
+            let n = `${a.plaka}`;
+            if (a.surucu) n += ` (${a.surucu})`;
+            n += ` - ${a.marka || ''} ${a.model || ''}`;
+            return n;
+        });
 
         if (barChart) barChart.destroy();
 
@@ -707,7 +716,15 @@ $(document).ready(function() {
             yaxis: {
                 labels: {
                     style: { fontSize: '11px', colors: '#334155', fontWeight: 600 },
-                    maxWidth: 120
+                    maxWidth: 300,
+                    formatter: function(val) {
+                        if (Array.isArray(val)) {
+                            // Plakayı büyük/bold, ismi small yapamaz mıyız? 
+                            // ApexCharts SVG içinde formatlamada sınırlı. \n kullanıyor array'de.
+                            return val;
+                        }
+                        return val;
+                    }
                 }
             },
             tooltip: {
@@ -743,6 +760,11 @@ $(document).ready(function() {
             const perc = maxLitre > 0 ? Math.round((a.toplam_litre / maxLitre) * 100) : 0;
             const medalClass = rank <= 3 ? 'rank-' + rank : 'rank-other';
             const aracLabel = `${a.marka || ''} ${a.model || ''}`.trim() || '-';
+            const surucuLabel = a.surucu ? ` <span class="badge bg-soft-info text-info ms-1" style="font-size:0.7rem;">${escapeHtml(a.surucu)}</span>` : '';
+            
+            // L/100 KM Hesapla
+            const l100km = (a.toplam_km > 0) ? (a.toplam_litre / a.toplam_km) * 100 : 0;
+            const l100kmLabel = l100km > 0 ? formatNumber(l100km.toFixed(2)) : '0';
 
             html += `<tr>
                 <td class="text-center">
@@ -750,7 +772,10 @@ $(document).ready(function() {
                 </td>
                 <td>
                     <div>
-                        <h6 class="mb-0 fw-bold" style="font-size:0.85rem;">${escapeHtml(a.plaka)}</h6>
+                        <div class="d-flex align-items-center">
+                            <h6 class="mb-0 fw-bold" style="font-size:0.85rem;">${escapeHtml(a.plaka)}</h6>
+                            ${surucuLabel}
+                        </div>
                         <small class="text-muted">${escapeHtml(aracLabel)}</small>
                     </div>
                 </td>
@@ -768,6 +793,9 @@ $(document).ready(function() {
                 </td>
                 <td class="text-end">
                     ${formatMoney(a.servis_maliyet)} ₺
+                </td>
+                <td class="text-end fw-bold">
+                    ${l100kmLabel}
                 </td>
                 <td>
                     <div class="d-flex align-items-center gap-2">
@@ -865,18 +893,20 @@ $(document).ready(function() {
         }
 
         let html = '<html><head><meta charset="utf-8"></head><body><table border="1">';
-        html += '<tr><th>Sıra</th><th>Plaka</th><th>Yakıt (L)</th><th>Yakıt Maliyeti</th><th>Toplam KM</th><th>Servis Sayısı</th><th>Servis Maliyeti</th></tr>';
+        html += '<tr><th>Sıra</th><th>Plaka</th><th>Sürücü</th><th>Yakıt (L)</th><th>Yakıt Maliyeti</th><th>Toplam KM</th><th>L/100 KM</th><th>Servis Sayısı</th><th>Servis Maliyeti</th></tr>';
 
         let sira = 1;
         dataTable.rows({ filter: 'applied' }).every(function() {
             const node = this.node();
             const plaka = $(node).find('td:eq(1) h6').text().trim();
+            const surucu = $(node).find('td:eq(1) .badge').text().trim() || '-';
             const yakit = $(node).find('td:eq(2)').text().trim();
             const yakitMaliyet = $(node).find('td:eq(3)').text().trim();
             const km = $(node).find('td:eq(4)').text().trim();
+            const l100km = $(node).find('td:eq(7)').text().trim();
             const servisSayi = $(node).find('td:eq(5)').text().trim();
             const servisMaliyet = $(node).find('td:eq(6)').text().trim();
-            html += `<tr><td>${sira++}</td><td>${plaka}</td><td>${yakit}</td><td>${yakitMaliyet}</td><td>${km}</td><td>${servisSayi}</td><td>${servisMaliyet}</td></tr>`;
+            html += `<tr><td>${sira++}</td><td>${plaka}</td><td>${surucu}</td><td>${yakit}</td><td>${yakitMaliyet}</td><td>${km}</td><td>${l100km}</td><td>${servisSayi}</td><td>${servisMaliyet}</td></tr>`;
         });
 
         html += '</table></body></html>';
