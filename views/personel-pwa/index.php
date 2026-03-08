@@ -287,12 +287,19 @@ if (!in_array($page, $allowed_pages)) {
             <span class="material-symbols-outlined <?php echo $page === 'ana-sayfa' ? 'filled' : ''; ?>">home</span>
             <span class="text-[10px] font-semibold">Ana Sayfa</span>
         </a>
-        <a href="?page=izin"
-            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'izin' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-            <span
-                class="material-symbols-outlined <?php echo $page === 'izin' ? 'filled' : ''; ?>">calendar_today</span>
-            <span class="text-[10px] font-semibold">İzinler</span>
-        </a>
+        <?php if ($isBuro): ?>
+            <a href="?page=izin"
+                class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'izin' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+                <span class="material-symbols-outlined <?php echo $page === 'izin' ? 'filled' : ''; ?>">calendar_today</span>
+                <span class="text-[10px] font-semibold">İzinler</span>
+            </a>
+        <?php else: ?>
+            <a href="?page=puantaj"
+                class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'puantaj' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+                <span class="material-symbols-outlined <?php echo $page === 'puantaj' ? 'filled' : ''; ?>">checklist</span>
+                <span class="text-[10px] font-semibold">İş Takibi</span>
+            </a>
+        <?php endif; ?>
         <?php if ($isEndeksOkuma && $isEkipSefi): ?>
             <a href="?page=ekip-takibi"
                 class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'ekip-takibi' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">

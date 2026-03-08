@@ -16,7 +16,7 @@ use App\Helper\Date;
 
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj']))) {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans']))) {
     $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
     $Arac = new AracModel();
@@ -730,20 +730,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
             // =============================================
             case 'aylik-rapor':
                 $arac_id = isset($_POST['arac_id']) && $_POST['arac_id'] !== '' ? intval($_POST['arac_id']) : null;
-                
+
                 $baslangic = null;
                 if (!empty($_POST['baslangic'])) {
                     $d = DateTime::createFromFormat('d.m.Y', $_POST['baslangic']);
-                    if ($d) $baslangic = $d->format('Y-m-d');
+                    if ($d)
+                        $baslangic = $d->format('Y-m-d');
                 }
                 $bitis = null;
                 if (!empty($_POST['bitis'])) {
                     $d = DateTime::createFromFormat('d.m.Y', $_POST['bitis']);
-                    if ($d) $bitis = $d->format('Y-m-d');
+                    if ($d)
+                        $bitis = $d->format('Y-m-d');
                 }
-                
-                if (!$baslangic) $baslangic = date('Y-m-01');
-                if (!$bitis) $bitis = date('Y-m-t');
+
+                if (!$baslangic)
+                    $baslangic = date('Y-m-01');
+                if (!$bitis)
+                    $bitis = date('Y-m-t');
 
                 $yakitOzet = $Yakit->getRangeOzet($baslangic, $bitis, $arac_id);
                 $kmOzet = $Km->getRangeOzet($baslangic, $bitis, $arac_id);
@@ -1238,12 +1242,58 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 }
                 $data['olusturan_kullanici_id'] = $_SESSION['user_id'] ?? null;
 
+                // İkame araç bilgileri - servis tarafından verilen araç
+                $ikame_arac_id = !empty($data['ikame_arac_id']) ? intval($data['ikame_arac_id']) : null;
+                $ikame_plaka = trim($data['ikame_plaka'] ?? '');
+
+                // İkame plaka girildiyse yeni araç kaydı oluştur veya mevcut ikame aracı bul
+                if (!empty($ikame_plaka) && !$ikame_arac_id) {
+                    // Aynı plaka ile daha önce ikame araç kaydedilmiş mi kontrol et
+                    $mevcutIkame = $Arac->getDb()->prepare("SELECT id FROM araclar WHERE plaka = :plaka AND firma_id = :firma_id AND silinme_tarihi IS NULL LIMIT 1");
+                    $mevcutIkame->execute(['plaka' => $ikame_plaka, 'firma_id' => $_SESSION['firma_id']]);
+                    $mevcutIkameRow = $mevcutIkame->fetch(PDO::FETCH_OBJ);
+
+                    if ($mevcutIkameRow) {
+                        $ikame_arac_id = $mevcutIkameRow->id;
+                        // Mevcut kaydı güncelle
+                        $updateStmt = $Arac->getDb()->prepare("UPDATE araclar SET ikame_mi = 1, arac_tipi = 'ikame', mulkiyet = 'İkame Araç', marka = :marka, model = :model WHERE id = :id");
+                        $updateStmt->execute([
+                            'marka' => $data['ikame_marka'] ?? null,
+                            'model' => $data['ikame_model'] ?? null,
+                            'id' => $ikame_arac_id
+                        ]);
+                    } else {
+                        // Yeni ikame araç kaydı oluştur
+                        $ikameAracData = [
+                            'firma_id' => $_SESSION['firma_id'],
+                            'plaka' => $ikame_plaka,
+                            'marka' => $data['ikame_marka'] ?? null,
+                            'model' => $data['ikame_model'] ?? null,
+                            'arac_tipi' => 'ikame',
+                            'mulkiyet' => 'İkame Araç',
+                            'aktif_mi' => 1,
+                            'ikame_mi' => 1,
+                            'baslangic_km' => $data['ikame_teslim_km'] ?? 0,
+                            'guncel_km' => $data['ikame_teslim_km'] ?? 0
+                        ];
+                        $encryptedId = $Arac->saveWithAttr($ikameAracData);
+                        $ikame_arac_id = Security::decrypt($encryptedId);
+                    }
+                }
+                $data['ikame_arac_id'] = $ikame_arac_id;
+
                 // Boş değerleri null yap
                 foreach ($data as $key => $value) {
                     if ($value === '') {
                         $data[$key] = null;
                     }
                 }
+
+                // Servis çıkışı yapılıyorsa (iade_tarihi set) ve ikame araç varsa → otomatik iade
+                $isServisCikisi = !empty($data['iade_tarihi']);
+                $oncekiServis = $servis_id > 0 ? $Servis->find($servis_id) : null;
+                $oncekiIadeTarihi = $oncekiServis ? $oncekiServis->iade_tarihi : null;
+                $yeniServisCikisi = $isServisCikisi && empty($oncekiIadeTarihi); // İlk kez çıkış yapılıyorsa
 
                 $Servis->saveWithAttr($data);
 
@@ -1254,7 +1304,80 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $Arac->updateKm($arac_id, $data['giris_km']);
                 }
 
+                // === İKAME ARAÇ OTOMATİK ZİMMET / İADE ===
+                $ikameMessages = [];
+                
+                if ($servis_id == 0 && $ikame_arac_id) {
+                    // YENİ SERVİS KAYDI: Araç personelin zimmetindeyse, ikame aracı personele zimmetle
+                    $aktifZimmet = $Zimmet->getAktifZimmetByArac($arac_id);
+                    if ($aktifZimmet) {
+                        $personel_id = $aktifZimmet->personel_id;
+                        
+                        // İkame aracın boşta olduğunu kontrol et
+                        $ikameZimmet = $Zimmet->getAktifZimmetByArac($ikame_arac_id);
+                        if (!$ikameZimmet) {
+                            // İkame aracı personele zimmetle
+                            $zimmetData = [
+                                'firma_id' => $_SESSION['firma_id'],
+                                'arac_id' => $ikame_arac_id,
+                                'personel_id' => $personel_id,
+                                'zimmet_tarihi' => $data['servis_tarihi'],
+                                'teslim_km' => $data['ikame_teslim_km'] ?? null,
+                                'notlar' => 'İkame araç olarak otomatik zimmetlendi (Servis: ' . ($data['ikame_plaka'] ?? '') . ' → ' . ($aktifZimmet->personel_adi ?? '') . ')',
+                                'durum' => 'aktif',
+                                'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null
+                            ];
+                            $Zimmet->saveWithAttr($zimmetData);
+                            $ikameMessages[] = 'İkame araç personele zimmetlendi.';
+                        }
+                    }
+                }
+
+                if ($yeniServisCikisi && $ikame_arac_id) {
+                    // SERVİS ÇIKIŞI: İkame aracı iade et ve asıl aracı tekrar personele zimmetle
+                    
+                    // 1. İkame aracın aktif zimmetini iade et
+                    $ikameAktifZimmet = $Zimmet->getAktifZimmetByArac($ikame_arac_id);
+                    if ($ikameAktifZimmet) {
+                        $personel_id_iade = $ikameAktifZimmet->personel_id;
+                        $Zimmet->iadeEt($ikameAktifZimmet->id, $data['ikame_iade_km'] ?? null, 'Servis çıkışı sonrası ikame araç otomatik iade edildi.');
+                        $ikameMessages[] = 'İkame araç iade edildi.';
+
+                        // 2. İkame araç KM güncelle
+                        if (!empty($data['ikame_iade_km'])) {
+                            $Arac->updateKm($ikame_arac_id, $data['ikame_iade_km']);
+                        }
+
+                        // 3. Asıl aracı personele geri zimmetle (eğer personel başka araca zimmetli değilse)
+                        $personelMevcutZimmet = $Zimmet->getAktifZimmetByPersonel($personel_id_iade);
+                        if (!$personelMevcutZimmet) {
+                            $geriZimmetData = [
+                                'firma_id' => $_SESSION['firma_id'],
+                                'arac_id' => $arac_id,
+                                'personel_id' => $personel_id_iade,
+                                'zimmet_tarihi' => $data['iade_tarihi'],
+                                'teslim_km' => $data['cikis_km'] ?? null,
+                                'notlar' => 'Servis çıkışı sonrası asıl araç geri zimmetlendi.',
+                                'durum' => 'aktif',
+                                'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null
+                            ];
+                            $Zimmet->saveWithAttr($geriZimmetData);
+                            $ikameMessages[] = 'Asıl araç personele geri zimmetlendi.';
+                        }
+                    }
+                    
+                    // İkame iade tarihini güncelle
+                    if ($servis_id > 0) {
+                        $pdo = $Arac->getDb();
+                        $stmt = $pdo->prepare("UPDATE arac_servis_kayitlari SET ikame_iade_tarihi = NOW() WHERE id = ? AND firma_id = ?");
+                        $stmt->execute([$servis_id, $_SESSION['firma_id']]);
+                    }
+                }
+
                 $message = $servis_id > 0 ? "Servis kaydı güncellendi." : "Servis kaydı eklendi.";
+                if (!empty($ikameMessages)) {
+                    $message .= ' ' . implode(' ', $ikameMessages);
+                }
                 echo json_encode(['status' => 'success', 'message' => $message]);
                 break;
 
@@ -1971,6 +2094,196 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 }
                 header('Content-Type: text/html; charset=UTF-8');
                 die($html);
+                break;
+
+            // =============================================
+            // ARAÇ PERFORMANS RAPORU
+            // =============================================
+            case 'arac-performans':
+                $baslangic = $_GET['baslangic'] ?? null;
+                $bitis = $_GET['bitis'] ?? null;
+
+                if (!$baslangic)
+                    $baslangic = date('Y-m-01');
+                if (!$bitis)
+                    $bitis = date('Y-m-t');
+
+                // Yakıt özeti (araç bazlı)
+                $yakitOzet = $Yakit->getRangeOzet($baslangic, $bitis);
+                // KM özeti (araç bazlı)
+                $kmOzet = $Km->getRangeOzet($baslangic, $bitis);
+                // Servis kayıtları
+                $servisKayitlar = $Servis->getByDateRange($baslangic, $bitis);
+
+                // Servis verilerini araç bazlı grupla
+                $servisMap = [];
+                foreach ($servisKayitlar as $sk) {
+                    $aid = $sk->arac_id;
+                    if (!isset($servisMap[$aid])) {
+                        $servisMap[$aid] = ['sayi' => 0, 'maliyet' => 0, 'plaka' => $sk->plaka, 'marka' => $sk->marka, 'model' => $sk->model];
+                    }
+                    $servisMap[$aid]['sayi']++;
+                    $servisMap[$aid]['maliyet'] += floatval($sk->tutar ?? 0);
+                }
+
+                // Araçları birleştir
+                $aracPerformans = [];
+                $aracIdSet = [];
+
+                // Yakıt verilerinden
+                foreach ($yakitOzet as $y) {
+                    $aracIdSet[$y->arac_id] = true;
+                    if (!isset($aracPerformans[$y->arac_id])) {
+                        $aracPerformans[$y->arac_id] = [
+                            'arac_id' => $y->arac_id,
+                            'plaka' => $y->plaka,
+                            'marka' => $y->marka,
+                            'model' => $y->model,
+                            'toplam_litre' => 0,
+                            'yakit_maliyet' => 0,
+                            'toplam_km' => 0,
+                            'servis_sayisi' => 0,
+                            'servis_maliyet' => 0
+                        ];
+                    }
+                    $aracPerformans[$y->arac_id]['toplam_litre'] = floatval($y->toplam_litre);
+                    $aracPerformans[$y->arac_id]['yakit_maliyet'] = floatval($y->toplam_tutar);
+                }
+
+                // KM verilerinden
+                foreach ($kmOzet as $k) {
+                    $aracIdSet[$k->arac_id] = true;
+                    if (!isset($aracPerformans[$k->arac_id])) {
+                        $aracPerformans[$k->arac_id] = [
+                            'arac_id' => $k->arac_id,
+                            'plaka' => $k->plaka,
+                            'marka' => $k->marka,
+                            'model' => $k->model,
+                            'toplam_litre' => 0,
+                            'yakit_maliyet' => 0,
+                            'toplam_km' => 0,
+                            'servis_sayisi' => 0,
+                            'servis_maliyet' => 0
+                        ];
+                    }
+                    $aracPerformans[$k->arac_id]['toplam_km'] = floatval($k->toplam_km);
+                }
+
+                // Servis verilerinden
+                foreach ($servisMap as $aid => $s) {
+                    if (!isset($aracPerformans[$aid])) {
+                        $aracPerformans[$aid] = [
+                            'arac_id' => $aid,
+                            'plaka' => $s['plaka'],
+                            'marka' => $s['marka'],
+                            'model' => $s['model'],
+                            'toplam_litre' => 0,
+                            'yakit_maliyet' => 0,
+                            'toplam_km' => 0,
+                            'servis_sayisi' => 0,
+                            'servis_maliyet' => 0
+                        ];
+                    }
+                    $aracPerformans[$aid]['servis_sayisi'] = $s['sayi'];
+                    $aracPerformans[$aid]['servis_maliyet'] = $s['maliyet'];
+                }
+
+                $aracList = array_values($aracPerformans);
+
+                // Aylık trend verileri (yakıt bazlı)
+                $trendSql = "SELECT 
+                        DATE_FORMAT(y.tarih, '%Y-%m') as ay,
+                        COALESCE(SUM(y.yakit_miktari), 0) as toplam_litre,
+                        COALESCE(SUM(y.toplam_tutar), 0) as toplam_tutar
+                    FROM arac_yakit_kayitlari y
+                    WHERE y.firma_id = :firma_id
+                    AND y.silinme_tarihi IS NULL
+                    AND y.tarih BETWEEN :baslangic AND :bitis
+                    GROUP BY DATE_FORMAT(y.tarih, '%Y-%m')
+                    ORDER BY ay ASC";
+                $trendStmt = $Yakit->getDb()->prepare($trendSql);
+                $trendStmt->execute([
+                    'firma_id' => $_SESSION['firma_id'],
+                    'baslangic' => $baslangic,
+                    'bitis' => $bitis
+                ]);
+                $aylikTrend = $trendStmt->fetchAll(PDO::FETCH_OBJ);
+
+                // KM aylık trend
+                $kmTrendSql = "SELECT 
+                        DATE_FORMAT(k.tarih, '%Y-%m') as ay,
+                        COALESCE(SUM(k.yapilan_km), 0) as toplam_km
+                    FROM arac_km_kayitlari k
+                    WHERE k.firma_id = :firma_id
+                    AND k.silinme_tarihi IS NULL
+                    AND k.tarih BETWEEN :baslangic AND :bitis
+                    GROUP BY DATE_FORMAT(k.tarih, '%Y-%m')
+                    ORDER BY ay ASC";
+                $kmTrendStmt = $Km->getDb()->prepare($kmTrendSql);
+                $kmTrendStmt->execute([
+                    'firma_id' => $_SESSION['firma_id'],
+                    'baslangic' => $baslangic,
+                    'bitis' => $bitis
+                ]);
+                $kmAylikTrend = $kmTrendStmt->fetchAll(PDO::FETCH_OBJ);
+
+                // Özet bilgiler
+                $toplamLitre = array_sum(array_column($aracList, 'toplam_litre'));
+                $toplamYakitMaliyet = array_sum(array_column($aracList, 'yakit_maliyet'));
+                $toplamKm = array_sum(array_column($aracList, 'toplam_km'));
+                $toplamServisMaliyet = array_sum(array_column($aracList, 'servis_maliyet'));
+                $toplamServisSayisi = array_sum(array_column($aracList, 'servis_sayisi'));
+                $aracSayisi = count($aracList);
+
+                // En çok/az sıralamaları
+                $enCokYakit = null;
+                $enAzYakit = null;
+                $enCokKm = null;
+                $enAzKm = null;
+                $enCokServis = null;
+
+                $yakitArr = array_filter($aracList, fn($a) => $a['toplam_litre'] > 0);
+                if (!empty($yakitArr)) {
+                    usort($yakitArr, fn($a, $b) => $b['toplam_litre'] <=> $a['toplam_litre']);
+                    $enCokYakit = $yakitArr[0];
+                    $enAzYakit = end($yakitArr);
+                }
+
+                $kmArr = array_filter($aracList, fn($a) => $a['toplam_km'] > 0);
+                if (!empty($kmArr)) {
+                    usort($kmArr, fn($a, $b) => $b['toplam_km'] <=> $a['toplam_km']);
+                    $enCokKm = $kmArr[0];
+                    $enAzKm = end($kmArr);
+                }
+
+                $servisArr = array_filter($aracList, fn($a) => $a['servis_sayisi'] > 0);
+                if (!empty($servisArr)) {
+                    usort($servisArr, fn($a, $b) => $b['servis_sayisi'] <=> $a['servis_sayisi']);
+                    $enCokServis = $servisArr[0];
+                }
+
+                echo json_encode([
+                    'status' => 'success',
+                    'araclar' => $aracList,
+                    'yakit_trend' => $aylikTrend,
+                    'km_trend' => $kmAylikTrend,
+                    'summary' => [
+                        'toplam_litre' => $toplamLitre,
+                        'toplam_yakit_maliyet' => $toplamYakitMaliyet,
+                        'toplam_km' => $toplamKm,
+                        'toplam_servis_maliyet' => $toplamServisMaliyet,
+                        'toplam_servis_sayisi' => $toplamServisSayisi,
+                        'arac_sayisi' => $aracSayisi,
+                        'toplam_maliyet' => $toplamYakitMaliyet + $toplamServisMaliyet,
+                        'en_cok_yakit' => $enCokYakit,
+                        'en_az_yakit' => $enAzYakit,
+                        'en_cok_km' => $enCokKm,
+                        'en_az_km' => $enAzKm,
+                        'en_cok_servis' => $enCokServis
+                    ],
+                    'baslangic' => $baslangic,
+                    'bitis' => $bitis
+                ]);
                 break;
 
             default:

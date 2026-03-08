@@ -150,14 +150,6 @@
                         <button class="liste-menu-btn" data-liste-id="${liste.id}">
                             <i class="bx bx-dots-vertical"></i>
                         </button>
-                        <div class="gorev-dropdown liste-dropdown" data-liste-id="${liste.id}">
-                            <button class="dropdown-item btn-liste-yeniden-adlandir" data-liste-id="${liste.id}">
-                                <i class="bx bx-edit"></i> Yeniden adlandır
-                            </button>
-                            <button class="dropdown-item danger btn-liste-sil" data-liste-id="${liste.id}">
-                                <i class="bx bx-trash"></i> Listeyi sil
-                            </button>
-                        </div>
                     </div>
                 </div>
 
@@ -565,39 +557,32 @@
       const $btn = $(this);
       const listeId = $btn.data("liste-id");
 
-      // Diğerlerini kapat
-      $(".liste-dropdown")
-        .not(`[data-liste-id="${listeId}"]`)
-        .removeClass("show");
-      if (!$(".liste-dropdown").is(":visible")) $(".liste-dropdown").remove(); // Temizlik
+      // Mevcut menüleri kaldır
+      $(".gorev-dropdown").remove();
 
       const offset = $btn.offset();
-      const $dropdown = $(`.liste-dropdown[data-liste-id="${listeId}"]`);
+      const dropdownHeight = 90; // Yaklaşık yükseklik
+      const windowHeight = $(window).height();
+      const spaceBelow = windowHeight - offset.top - $btn.outerHeight();
 
-      if ($dropdown.length) {
-        const dropdownHeight = 110; // Yaklaşık yükseklik
-        const windowHeight = $(window).height();
-        const spaceBelow = windowHeight - offset.top - $btn.outerHeight();
-
-        // Eğer altta yer yoksa yukarı aç
-        let topPos = offset.top + 35;
-        if (spaceBelow < dropdownHeight) {
-          topPos = offset.top - dropdownHeight + 5;
-        }
-
-        $dropdown
-          .css({
-            position: "fixed",
-            top: topPos + "px",
-            left: offset.left - 130 + "px",
-            "z-index": 9999,
-          })
-          .toggleClass("show");
-
-        if ($dropdown.hasClass("show")) {
-          $("body").append($dropdown);
-        }
+      // Eğer altta yer yoksa yukarı aç
+      let topPos = offset.top + 35;
+      if (spaceBelow < dropdownHeight) {
+        topPos = offset.top - dropdownHeight + 5;
       }
+
+      const dropdown = $(`
+        <div class="gorev-dropdown liste-dropdown show" style="top: ${topPos}px; left: ${offset.left - 130}px;">
+            <button class="dropdown-item btn-liste-yeniden-adlandir" data-liste-id="${listeId}">
+                <i class="bx bx-edit"></i> Yeniden adlandır
+            </button>
+            <button class="dropdown-item danger btn-liste-sil" data-liste-id="${listeId}">
+                <i class="bx bx-trash"></i> Listeyi sil
+            </button>
+        </div>
+      `);
+
+      $("body").append(dropdown);
     });
 
     // Görev menüsü

@@ -107,8 +107,8 @@
                                             ?>
                                         </div>
                                         <div class="col-md-4 mb-2">
-                                            <?php
-                                            $mulkiyetTipleri = ['Şirket Aracı' => 'Şirket Aracı', 'Personel Aracı' => 'Personel Aracı', 'Kiralık Araç' => 'Kiralık Araç'];
+                                                <?php
+                                            $mulkiyetTipleri = ['Şirket Aracı' => 'Şirket Aracı', 'Personel Aracı' => 'Personel Aracı', 'Kiralık Araç' => 'Kiralık Araç', 'İkame Araç' => 'İkame Araç'];
                                             echo Form::FormSelect2('mulkiyet', $mulkiyetTipleri, null, 'Mülkiyet Durumu', 'key');
                                             ?>
                                         </div>

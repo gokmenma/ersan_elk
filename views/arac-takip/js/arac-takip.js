@@ -1207,6 +1207,34 @@ const AracTakip = {
   // =============================================
   servisKaydet: function () {
     const form = $("#servisForm");
+    const ikamePlaka = $("#servisForm [name='ikame_plaka']").val();
+    const confirmed = $("#servisForm").data("ikame-confirmed");
+
+    if (!ikamePlaka && !confirmed) {
+      Swal.fire({
+        title: "İkame Araç",
+        text: "İkame araç kaydı yapılacak mı?",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Evet",
+        cancelButtonText: "Hayır",
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#6c757d",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          $("#servis-ikame-tab").tab("show");
+          setTimeout(() => {
+            $("#servisForm [name='ikame_plaka']").focus();
+          }, 200);
+        } else {
+          $("#servisForm").data("ikame-confirmed", true);
+          this.servisKaydet();
+        }
+      });
+      return;
+    }
+
+    const ikameId = $("#servisForm [name='ikame_arac_id']").val();
     const formData = new FormData(form[0]);
     formData.append("action", "servis-kaydet");
 
@@ -1355,6 +1383,7 @@ const AracTakip = {
         let html = "";
         if (response.data && response.data.length > 0) {
           response.data.forEach(function (s, index) {
+            const ikameInfo = s.ikame_plaka ? `<span class="badge bg-warning text-dark" title="${s.ikame_plaka} - ${s.ikame_marka || ''} ${s.ikame_model || ''}"><i class="bx bx-transfer me-1"></i>${s.ikame_plaka}</span>` : '<span class="text-muted">-</span>';
             html += `<tr>
                             <td class="text-center">${index + 1}</td>
                             <td><strong>${s.plaka || "-"}</strong><br><small>${s.marka || ""} ${s.model || ""}</small></td>
@@ -1363,6 +1392,7 @@ const AracTakip = {
                             <td class="text-end">${self.formatNumber(s.giris_km)} km</td>
                             <td class="text-end">${self.formatNumber(s.cikis_km)} km</td>
                             <td class="text-truncate" style="max-width: 200px;" title="${s.servis_nedeni}">${s.servis_nedeni || "-"}</td>
+                            <td class="text-center">${ikameInfo}</td>
                             <td class="text-center">
                                 <div class="dropdown">
                                     <a href="javascript:void(0);" class="text-muted" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 0.5rem; display: inline-block; line-height: 1;">
@@ -1381,7 +1411,7 @@ const AracTakip = {
         } else {
           let tds =
             '<td class="text-center py-4 text-muted">-</td><td class="py-4 text-muted">Kayıt bulunamadı.</td>';
-          for (let i = 2; i < 8; i++) tds += "<td></td>";
+          for (let i = 2; i < 9; i++) tds += "<td></td>";
           html = `<tr>${tds}</tr>`;
         }
         tbody.html(html);
@@ -1451,6 +1481,9 @@ const AracTakip = {
     $("#servisForm")[0].reset();
     $('#servisForm input[name="id"]').val("");
     $("#servisModal #arac_id").val(null).trigger("change");
+    $("#servisModal #ikame_arac_id").val(null).trigger("change");
+    $("#servisForm").data("ikame-confirmed", false);
+    $("#ikameAracBilgiCard").hide();
     $("#servisModal")
       .find(".modal-title")
       .html('<i class="bx bx-wrench me-2"></i>Yeni Servis Kaydı');

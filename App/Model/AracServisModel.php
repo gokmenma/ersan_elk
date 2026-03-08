@@ -20,7 +20,9 @@ class AracServisModel extends Model
     public function all()
     {
         $sql = $this->db->prepare("
-            SELECT s.*, a.plaka, a.marka, a.model
+            SELECT s.*, a.plaka, a.marka, a.model,
+                   s.ikame_arac_id, s.ikame_plaka, s.ikame_marka, s.ikame_model,
+                   s.ikame_teslim_km, s.ikame_iade_km, s.ikame_iade_tarihi
             FROM {$this->table} s
             INNER JOIN araclar a ON s.arac_id = a.id
             WHERE s.firma_id = :firma_id 
@@ -37,7 +39,9 @@ class AracServisModel extends Model
     public function getByArac($aracId)
     {
         $sql = $this->db->prepare("
-            SELECT s.*, a.plaka, a.marka, a.model
+            SELECT s.*, a.plaka, a.marka, a.model,
+                   s.ikame_arac_id, s.ikame_plaka, s.ikame_marka, s.ikame_model,
+                   s.ikame_teslim_km, s.ikame_iade_km, s.ikame_iade_tarihi
             FROM {$this->table} s
             INNER JOIN araclar a ON s.arac_id = a.id
             WHERE s.arac_id = :arac_id 
@@ -57,7 +61,9 @@ class AracServisModel extends Model
      */
     public function getByDateRange($baslangic, $bitis, $aracId = null)
     {
-        $sqlStr = "SELECT s.*, a.plaka, a.marka, a.model
+        $sqlStr = "SELECT s.*, a.plaka, a.marka, a.model,
+                          s.ikame_arac_id, s.ikame_plaka, s.ikame_marka, s.ikame_model,
+                          s.ikame_teslim_km, s.ikame_iade_km, s.ikame_iade_tarihi
                   FROM {$this->table} s
                   INNER JOIN araclar a ON s.arac_id = a.id
                   WHERE s.firma_id = :firma_id 

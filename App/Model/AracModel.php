@@ -22,6 +22,7 @@ class AracModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT a.*, 
+                   a.ikame_mi,
                    az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
@@ -168,11 +169,13 @@ class AracModel extends Model
                  WHERE a2.firma_id = :firma_id1 
                  AND a2.silinme_tarihi IS NULL 
                  AND a2.aktif_mi = 1
+                 AND a2.ikame_mi = 0
                  AND az.id IS NULL
                  AND NOT EXISTS (SELECT 1 FROM arac_servis_kayitlari s WHERE s.arac_id = a2.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL)) as bosta_arac
             FROM {$this->table}
             WHERE firma_id = :firma_id2
             AND silinme_tarihi IS NULL
+            AND ikame_mi = 0
         ");
         $sql->execute([
             'firma_id1' => $_SESSION['firma_id'],

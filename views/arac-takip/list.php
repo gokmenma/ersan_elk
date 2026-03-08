@@ -188,13 +188,7 @@ if ($filter === 'muayene') {
                                     <i class="bx bx-wrench me-1"></i> Servis Kayıtları
                                 </button>
                             </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link <?php echo $activeTab === 'rapor' ? 'active' : ''; ?>"
-                                    id="rapor-tab" data-bs-toggle="tab" data-bs-target="#raporContent" type="button"
-                                    role="tab">
-                                    <i class="bx bx-bar-chart-alt-2 me-1"></i> Raporlar
-                                </button>
-                            </li>
+
 
                         </ul>
 
@@ -445,7 +439,8 @@ if ($filter === 'muayene') {
                                                 'minibus' => 'Minibüs',
                                                 'otobus' => 'Otobüs',
                                                 'motosiklet' => 'Motosiklet',
-                                                'diger' => 'Diğer'
+                                                'diger' => 'Diğer',
+                                                'ikame' => 'İkame'
                                             ];
 
                                             $yakitLabels = [
@@ -471,6 +466,9 @@ if ($filter === 'muayene') {
                                                             data-id="<?php echo $arac->id; ?>">
                                                             <?php echo $arac->plaka; ?>
                                                         </a>
+                                                        <?php if (!empty($arac->ikame_mi)): ?>
+                                                            <span class="badge bg-warning text-dark ms-1" style="font-size: 9px; vertical-align: middle;">İkame</span>
+                                                        <?php endif; ?>
                                                         <span
                                                             class="model-label"><?php echo ($arac->marka ?? '-') . ' ' . ($arac->model ?? ''); ?></span>
                                                     </div>
@@ -668,11 +666,13 @@ if ($filter === 'muayene') {
                                             <div class="date-filter-mode-container w-100">
                                                 <input type="radio" name="yakitDateMode" id="yakitDateModeRange"
                                                     value="range" class="date-filter-mode-input" checked>
-                                                <label for="yakitDateModeRange" class="date-filter-mode-label">Tarih Aralığı</label>
+                                                <label for="yakitDateModeRange" class="date-filter-mode-label">Tarih
+                                                    Aralığı</label>
 
                                                 <input type="radio" name="yakitDateMode" id="yakitDateModePeriod"
                                                     value="period" class="date-filter-mode-input">
-                                                <label for="yakitDateModePeriod" class="date-filter-mode-label">Dönem</label>
+                                                <label for="yakitDateModePeriod"
+                                                    class="date-filter-mode-label">Dönem</label>
                                             </div>
                                         </div>
 
@@ -811,13 +811,15 @@ if ($filter === 'muayene') {
                                     <div class="row g-3">
                                         <div class="col-xl-2 col-md-4">
                                             <div class="date-filter-mode-container w-100">
-                                                <input type="radio" name="kmDateMode" id="kmDateModeRange"
-                                                    value="range" class="date-filter-mode-input" checked>
-                                                <label for="kmDateModeRange" class="date-filter-mode-label">Tarih Aralığı</label>
+                                                <input type="radio" name="kmDateMode" id="kmDateModeRange" value="range"
+                                                    class="date-filter-mode-input" checked>
+                                                <label for="kmDateModeRange" class="date-filter-mode-label">Tarih
+                                                    Aralığı</label>
 
                                                 <input type="radio" name="kmDateMode" id="kmDateModePeriod"
                                                     value="period" class="date-filter-mode-input">
-                                                <label for="kmDateModePeriod" class="date-filter-mode-label">Dönem</label>
+                                                <label for="kmDateModePeriod"
+                                                    class="date-filter-mode-label">Dönem</label>
                                             </div>
                                         </div>
                                         <div class="col-xl-2 col-md-4 km-range-field">
@@ -878,44 +880,7 @@ if ($filter === 'muayene') {
                             </div>
                         </div>
 
-                        <!-- =============================================
-                             RAPORLAR TAB
-                             ============================================= -->
-                        <div class="tab-pane fade <?php echo $activeTab === 'rapor' ? 'show active' : ''; ?>"
-                            id="raporContent" role="tabpanel">
-                            <!-- Filtre -->
-                            <div class="row mb-4">
-                                <div class="col-md-3">
-                                    <?php echo App\Helper\Form::FormFloatInput('text', 'rapor-filtre-baslangic', date('01.m.Y'), '', 'Başlangıç Tarihi', 'calendar', 'form-control flatpickr'); ?>
-                                </div>
-                                <div class="col-md-3">
-                                    <?php echo App\Helper\Form::FormFloatInput('text', 'rapor-filtre-bitis', date('t.m.Y'), '', 'Bitiş Tarihi', 'calendar', 'form-control flatpickr'); ?>
-                                </div>
-                                <div class="col-md-4">
-                                    <?php
-                                    $aracOptionsRapor = ['' => 'Tüm Araçlar'];
-                                    foreach ($araclar as $arac) {
-                                        $aracOptionsRapor[$arac->id] = $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? '');
-                                    }
-                                    echo App\Helper\Form::FormSelect2('rapor-filtre-arac', $aracOptionsRapor, '', 'Araç (Opsiyonel)', 'truck', 'key', '', 'form-select select2');
-                                    ?>
-                                </div>
-                                <div class="col-md-2 d-flex align-items-center">
-                                    <button type="button" class="btn btn-primary w-100" id="btnRaporYukle">
-                                        <i class="bx bx-search me-1"></i> Rapor Getir
-                                    </button>
-                                </div>
-                            </div>
 
-                            <!-- Rapor İçeriği -->
-                            <div id="raporIcerik">
-                                <div class="text-center py-5 text-muted">
-                                    <i class="bx bx-bar-chart-alt-2 display-1"></i>
-                                    <p class="mt-3">Rapor görüntülemek için yukarıdan filtre seçin ve "Rapor Getir"
-                                        butonuna tıklayın.</p>
-                                </div>
-                            </div>
-                        </div>
 
                         <!-- =============================================
                              SERVİS KAYITLARI TAB
@@ -991,11 +956,13 @@ if ($filter === 'muayene') {
                                             <div class="date-filter-mode-container w-100">
                                                 <input type="radio" name="servisDateMode" id="servisDateModeRange"
                                                     value="range" class="date-filter-mode-input" checked>
-                                                <label for="servisDateModeRange" class="date-filter-mode-label">Tarih Aralığı</label>
+                                                <label for="servisDateModeRange" class="date-filter-mode-label">Tarih
+                                                    Aralığı</label>
 
                                                 <input type="radio" name="servisDateMode" id="servisDateModePeriod"
                                                     value="period" class="date-filter-mode-input">
-                                                <label for="servisDateModePeriod" class="date-filter-mode-label">Dönem</label>
+                                                <label for="servisDateModePeriod"
+                                                    class="date-filter-mode-label">Dönem</label>
                                             </div>
                                         </div>
 
@@ -1038,7 +1005,8 @@ if ($filter === 'muayene') {
                                             <th style="width:12%">Servis Çıkış</th>
                                             <th style="width:10%" class="text-end">Giriş KM</th>
                                             <th style="width:10%" class="text-end">Çıkış KM</th>
-                                            <th style="width:25%">Servis Nedeni</th>
+                                            <th style="width:20%">Servis Nedeni</th>
+                                            <th style="width:10%" class="text-center">İkame Araç</th>
                                             <th style="width:10%" class="text-center">İşlemler</th>
                                         </tr>
                                     </thead>
@@ -1049,6 +1017,7 @@ if ($filter === 'muayene') {
                                                     role="status"></div>
                                             </td>
                                             <td class="py-4 text-muted">Yükleniyor...</td>
+                                            <td></td>
                                             <td></td>
                                             <td></td>
                                             <td></td>
@@ -1114,7 +1083,7 @@ if ($filter === 'muayene') {
         transition: all 0.2s ease;
     }
 
-    .date-filter-mode-input:checked + .date-filter-mode-label {
+    .date-filter-mode-input:checked+.date-filter-mode-label {
         background: #556ee6;
         color: #fff;
         box-shadow: 0 2px 6px rgba(85, 110, 230, 0.25);

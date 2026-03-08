@@ -56,6 +56,11 @@
                                             <i class="bx bx-log-out-circle me-1"></i> Çıkış Bilgileri
                                         </button>
                                     </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link fw-semibold" id="servis-ikame-tab" data-bs-toggle="pill" data-bs-target="#servis-ikame-bilgileri" type="button" role="tab" aria-controls="servis-ikame-bilgileri" aria-selected="false" style="border-radius: 8px;">
+                                            <i class="bx bx-transfer me-1"></i> İkame Araç
+                                        </button>
+                                    </li>
                                 </ul>
 
                                 <!-- Tab Content -->
@@ -116,6 +121,35 @@
                                             </div>
                                             <div class="col-md-6">
                                                 <?php echo Form::FormFloatInput('text', 'fatura_no', null, '', 'Fatura/Fiş No', 'bx bx-receipt'); ?>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- İkame Araç Tab -->
+                                    <div class="tab-pane fade" id="servis-ikame-bilgileri" role="tabpanel" aria-labelledby="servis-ikame-tab">
+                                        <div class="alert alert-info py-2 mb-3 small">
+                                            <i class="bx bx-info-circle me-1"></i>
+                                            <strong>Otomatik İşlemler:</strong> Servis tarafından verilen ikame araç bilgilerini girin. 
+                                            Eğer servise giren araç zimmetliyse, ikame araç otomatik olarak aynı personele zimmetlenecektir.
+                                            Servis çıkışında ikame araç otomatik iade edilecek ve asıl araç geri zimmetlenecektir.
+                                        </div>
+                                        <input type="hidden" name="ikame_arac_id" value="">
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <?php echo Form::FormFloatInput('text', 'ikame_plaka', null, '34 XX 1234', 'İkame Araç Plaka', 'bx bx-car'); ?>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <?php echo Form::FormFloatInput('text', 'ikame_marka', null, 'Marka', 'İkame Araç Marka', 'bx bx-tag'); ?>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <?php echo Form::FormFloatInput('text', 'ikame_model', null, 'Model', 'İkame Araç Model', 'bx bx-tag'); ?>
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <?php echo Form::FormFloatInput('number', 'ikame_teslim_km', null, '0', 'İkame Teslim KM', 'activity', 'form-control', false, null, 'on', false, 'min="0"'); ?>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <?php echo Form::FormFloatInput('number', 'ikame_iade_km', null, '0', 'İkame İade KM', 'activity', 'form-control', false, null, 'on', false, 'min="0"'); ?>
                                             </div>
                                         </div>
                                     </div>
