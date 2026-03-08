@@ -249,7 +249,22 @@ function updateMiktar(kalemId, miktar, field = "miktar") {
 }
 
 function exportHakedisToExcel(id) {
+  Swal.fire({
+    title: 'Excel Hazırlanıyor',
+    text: 'Dosya oluşturuluyor, lütfen bekleyin...',
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading();
+    }
+  });
+
+  // Start download
   window.location.href = "views/hakedisler/export-excel.php?id=" + id;
+
+  // Close loader after a few seconds (browser starts download usually within this time)
+  setTimeout(() => {
+    Swal.close();
+  }, 3000);
 }
 
 function addEndeksRow(containerId, type) {

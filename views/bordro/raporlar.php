@@ -142,6 +142,16 @@ $raporlar = [
         'url' => 'index?p=bordro/raporlar/ek-odemeler-raporu&donem=',
         'download_url' => null,
         'download_type' => null
+    ],
+    [
+        'id' => 'sodexo-raporu',
+        'baslik' => 'Sodexo Raporu',
+        'aciklama' => 'Personel yemek (Sodexo) ödemelerinin listesi ve dışa aktarımı.',
+        'icon' => 'bx-restaurant',
+        'renk' => 'success',
+        'url' => 'index?p=bordro/raporlar/sodexo-raporu&donem=',
+        'download_url' => 'views/bordro/excel-sodexo-export.php?donem_id=',
+        'download_type' => 'excel'
     ]
 ];
 ?>
@@ -278,21 +288,28 @@ $raporlar = [
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <a href="views/bordro/export-excel.php?donem=<?= $selectedDonemId ?>"
                                     class="btn btn-outline-success w-100">
                                     <i class="bx bx-spreadsheet me-2"></i>
                                     İcmal (Excel)
                                 </a>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <a href="views/bordro/excel-banka-export.php?donem=<?= $selectedDonemId ?>"
                                     class="btn btn-outline-info w-100">
                                     <i class="bx bxs-bank me-2"></i>
                                     Banka Listesi (Excel)
                                 </a>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
+                                <a href="views/bordro/excel-sodexo-export.php?donem_id=<?= $selectedDonemId ?>"
+                                    class="btn btn-outline-warning w-100">
+                                    <i class="bx bx-restaurant me-2"></i>
+                                    Sodexo (Excel)
+                                </a>
+                            </div>
+                            <div class="col-md-3">
                                 <a href="views/bordro/bordro-yazdir.php?donem=<?= $selectedDonemId ?>" target="_blank"
                                     class="btn btn-outline-primary w-100">
                                     <i class="bx bx-printer me-2"></i>

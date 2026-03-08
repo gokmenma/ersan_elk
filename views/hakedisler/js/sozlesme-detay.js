@@ -171,10 +171,27 @@ function editHakedis(id) {
           .trigger("change");
 
         const $dateInput = $form.find('[name="is_yapilan_ayin_son_gunu"]');
+        let dtVal = data.is_yapilan_ayin_son_gunu;
+        if (dtVal && typeof dtVal === 'string' && dtVal.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const parts = dtVal.split('-');
+            dtVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
         if ($dateInput[0] && $dateInput[0]._flatpickr) {
-          $dateInput[0]._flatpickr.setDate(data.is_yapilan_ayin_son_gunu);
+          $dateInput[0]._flatpickr.setDate(dtVal);
         } else {
-          $dateInput.val(data.is_yapilan_ayin_son_gunu);
+          $dateInput.val(dtVal);
+        }
+
+        const $tutanakInput = $form.find('[name="tutanak_tasdik_tarihi"]');
+        let tutanakVal = data.tutanak_tasdik_tarihi;
+        if (tutanakVal && typeof tutanakVal === 'string' && tutanakVal.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const parts = tutanakVal.split('-');
+            tutanakVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+        if ($tutanakInput[0] && $tutanakInput[0]._flatpickr) {
+            $tutanakInput[0]._flatpickr.setDate(tutanakVal);
+        } else {
+            $tutanakInput.val(tutanakVal);
         }
 
         // Set durum
@@ -236,6 +253,14 @@ $(document).on("click", '[data-bs-target="#yeniHakedisModal"]', function () {
     $dateInput[0]._flatpickr.setDate(lastDayStr);
   } else {
     $dateInput.val(lastDayStr);
+  }
+
+  // Clear tutanak tasdik tarihi
+  const $tutanakInput = $form.find('[name="tutanak_tasdik_tarihi"]');
+  if ($tutanakInput[0] && $tutanakInput[0]._flatpickr) {
+    $tutanakInput[0]._flatpickr.clear();
+  } else {
+    $tutanakInput.val('');
   }
 
   // Initialize Select2 with dropdownParent to prevent clipping

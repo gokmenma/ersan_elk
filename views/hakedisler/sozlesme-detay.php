@@ -222,6 +222,9 @@ $aylar = [
                         <?= Form::FormFloatInput('text', 'is_yapilan_ayin_son_gunu', '', '', 'İş Yapılan Ayın Son Günü', icon: 'calendar', class: 'form-control flatpickr') ?>
                     </div>
                     <div class="col-md-6 mb-3">
+                        <?= Form::FormFloatInput('text', 'tutanak_tasdik_tarihi', '', '', 'Tutanak Tasdik Tarihi', icon: 'calendar', class: 'form-control flatpickr') ?>
+                    </div>
+                    <div class="col-md-6 mb-3">
                         <?= Form::FormSelect2('durum', [
                             'taslak' => 'Taslak',
                             'hazirlandi' => 'Hazırlandı',

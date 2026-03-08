@@ -122,6 +122,12 @@ $aylar = [
                                         <div class="col-md-6 mb-3">
                                             <?= Form::FormFloatInput('text', 'isin_yuklenicisi', 'ER-SAN ELEKTRİK İNŞ. TAAH.TİC.LTD.ŞTİ.', 'Yüklenici Firma', 'İşin Yüklenicisi', icon: 'briefcase', required: true) ?>
                                         </div>
+                                        <div class="col-md-6 mb-3">
+                                            <?= Form::FormFloatTextarea('yuklenici_adres', '', 'Firma Adresi', 'Yüklenici Adres', icon: 'map', rows: 2, minHeight: '60px') ?>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <?= Form::FormFloatInput('tel', 'yuklenici_tel', '', '05xx xxx xx xx', 'Yüklenici Tel', icon: 'phone') ?>
+                                        </div>
                                         <div class="col-md-12">
                                             <?= Form::FormFloatTextarea('isin_adi', '', 'Sözleşmede geçen tam iş adı', 'İşin Adı', icon: 'file-text', required: true, rows: 2, minHeight: '80px') ?>
                                         </div>
@@ -181,6 +187,39 @@ $aylar = [
                                 </div>
 
                                 <div class="col-md-12 mt-4">
+                                    <div class="accordion" id="accordionEkstra">
+                                        <div class="accordion-item shadow-none border">
+                                            <h2 class="accordion-header" id="headingEkstra">
+                                                <button class="accordion-button collapsed fw-bold text-primary px-3 py-2 bg-light bg-opacity-50" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEkstra" aria-expanded="false" aria-controls="collapseEkstra">
+                                                    <i data-feather="info" class="me-2 text-primary" style="width: 18px;"></i> Excel Ön Kapak ve Geçici Kabul Bilgileri (İsteğe Bağlı)
+                                                </button>
+                                            </h2>
+                                            <div id="collapseEkstra" class="accordion-collapse collapse" aria-labelledby="headingEkstra">
+                                                <div class="accordion-body px-3 py-3 pb-0">
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-3">
+                                                            <?= Form::FormFloatInput('text', 'yuzde_yirmi_fazla_is', '', 'Tarih ve Sayılı Onay/Karar', '% 20 Fazla İş (Onay/Karar No)', icon: 'file-plus') ?>
+                                                        </div>
+                                                        <div class="col-md-6 mb-3">
+                                                            <?= Form::FormFloatInput('text', 'son_sure_uzatimi', '', '... Tarihi ve ... Sayılı', 'Son Süre Uzatımı (Olur vb.)', icon: 'clock') ?>
+                                                        </div>
+                                                        <div class="col-md-4 mb-3">
+                                                            <?= Form::FormFloatInput('text', 'gecici_kabul_tarihi', '', '', 'Geçici Kabul Tarihi', icon: 'calendar', class: 'form-control flatpickr') ?>
+                                                        </div>
+                                                        <div class="col-md-4 mb-3">
+                                                            <?= Form::FormFloatInput('text', 'gecici_kabul_itibar_tarihi', '', '', 'Kabul İtibar Tarihi', icon: 'calendar', class: 'form-control flatpickr') ?>
+                                                        </div>
+                                                        <div class="col-md-4 mb-3">
+                                                            <?= Form::FormFloatInput('text', 'gecici_kabul_onanma_tarihi', '', '', 'Kabul Onanma Tarihi', icon: 'calendar', class: 'form-control flatpickr') ?>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-12 mt-4">
                                     <hr>
                                     <h6 class="text-secondary d-flex align-items-center mb-3 mt-3 fw-bold">
                                         <i data-feather="users" class="me-2 text-secondary" style="width: 18px;"></i>
@@ -194,10 +233,20 @@ $aylar = [
                                         <div class="col-md-6">
                                             <div class="row">
                                                 <div class="col-12 mb-3">
-                                                    <?= Form::FormFloatInput('text', 'idare_onaylayan', '', 'KEMALETTİN GÜNEN', 'İdare Adına Onaylayan (İsim)', icon: 'user') ?>
+                                                    <?= Form::FormFloatInput('text', 'tasvip_eden', '', 'AHMET BOLAT', 'Tasvip Eden (İsim)', icon: 'user-check') ?>
                                                 </div>
                                                 <div class="col-12">
-                                                    <?= Form::FormFloatInput('text', 'idare_onaylayan_unvan', '', 'İdare Unvanı', 'Unvanı', icon: 'award') ?>
+                                                    <?= Form::FormFloatInput('text', 'tasvip_eden_unvan', '', 'ABONE KOORDİNASYON ŞUBE MÜDÜRÜ', 'Tasvip Eden Unvanı', icon: 'award') ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="row">
+                                                <div class="col-12 mb-3">
+                                                    <?= Form::FormFloatInput('text', 'idare_onaylayan', '', 'KEMALETTİN GÜNEN', 'Tasdik Eden / Kesin Onaylayan (İsim)', icon: 'user') ?>
+                                                </div>
+                                                <div class="col-12">
+                                                    <?= Form::FormFloatInput('text', 'idare_onaylayan_unvan', '', 'ABONE İŞLERİ DAİRE BAŞKANI', 'Tasdik Eden Unvanı', icon: 'award') ?>
                                                 </div>
                                             </div>
                                         </div>
@@ -318,11 +367,9 @@ $aylar = [
                     </div>
                 </div>
             </div>
-            <div class="modal-footer bg-light">
+            <div class="modal-footer px-0 pb-0 mt-3">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                <button type="submit" class="btn btn-primary" id="btnSaveSozlesme">
-                    <i class="bx bx-save me-1"></i> Sözleşmeyi Kaydet
-                </button>
+                <button type="submit" class="btn btn-dark"><i class="bx bx-save me-1"></i> Sözleşmeyi Kaydet</button>
             </div>
         </form>
     </div>
