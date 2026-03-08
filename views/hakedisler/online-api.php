@@ -2,10 +2,12 @@
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 session_start();
 
+use App\Helper\Date;
 use App\Model\HakedisSozlesmeModel;
 use App\Model\HakedisDonemModel;
 use App\Model\HakedisKalemModel;
 use App\Model\HakedisMiktarModel;
+use App\Helper\Helper;
 
 header('Content-Type: application/json');
 
@@ -100,10 +102,10 @@ try {
                 'kesif_bedeli' => !empty($_POST['kesif_bedeli']) ? floatval($_POST['kesif_bedeli']) : null,
                 'ihale_tenzilati' => !empty($_POST['ihale_tenzilati']) ? floatval($_POST['ihale_tenzilati']) : null,
                 'sozlesme_bedeli' => !empty($_POST['sozlesme_bedeli']) ? floatval($_POST['sozlesme_bedeli']) : null,
-                'sozlesme_tarihi' => convertDateToDb($_POST['sozlesme_tarihi'] ?? null),
-                'isin_bitecegi_tarih' => convertDateToDb($_POST['isin_bitecegi_tarih'] ?? null),
-                'ihale_tarihi' => convertDateToDb($_POST['ihale_tarihi'] ?? null),
-                'yer_teslim_tarihi' => convertDateToDb($_POST['yer_teslim_tarihi'] ?? null),
+                'sozlesme_tarihi' => Date::Ymd($_POST['sozlesme_tarihi'] ?? null),
+                'isin_bitecegi_tarih' => Date::Ymd($_POST['isin_bitecegi_tarih'] ?? null),
+                'ihale_tarihi' => Date::Ymd($_POST['ihale_tarihi'] ?? null),
+                'yer_teslim_tarihi' => Date::Ymd($_POST['yer_teslim_tarihi'] ?? null),
                 'isin_suresi' => !empty($_POST['isin_suresi']) ? intval($_POST['isin_suresi']) : null,
                 'kontrol_teskilati' => $_POST['kontrol_teskilati'] ?? '',
                 'idare_onaylayan' => $_POST['idare_onaylayan'] ?? '',
@@ -289,7 +291,7 @@ try {
                 'hakedis_no' => intval($_POST['hakedis_no'] ?? 1),
                 'hakedis_tarihi_ay' => intval($_POST['hakedis_tarihi_ay'] ?? date('n')),
                 'hakedis_tarihi_yil' => intval($_POST['hakedis_tarihi_yil'] ?? date('Y')),
-                'is_yapilan_ayin_son_gunu' => convertDateToDb($_POST['is_yapilan_ayin_son_gunu'] ?? null),
+                'is_yapilan_ayin_son_gunu' => Date::Ymd($_POST['is_yapilan_ayin_son_gunu'] ?? null),
                 'temel_endeks_ayi' => $_POST['temel_endeks_ayi'] ?? '',
                 'guncel_endeks_ayi' => $_POST['guncel_endeks_ayi'] ?? '',
                 'olusturan_personel_id' => $_SESSION['id'],
@@ -340,6 +342,46 @@ try {
             }
 
             if ($hakedis_id) {
+                // Tarih değiştiyse veya endekslerde eksiklik varsa, açıklandığı varsayımıyla verileri API'den otomatik çek/güncelle
+                $stmtCheckDate = $db->prepare("SELECT hakedis_tarihi_ay, hakedis_tarihi_yil, asgari_ucret_guncel, motorin_guncel, ufe_genel_guncel, makine_ekipman_guncel FROM hakedis_donemleri WHERE id = ?");
+                $stmtCheckDate->execute([$hakedis_id]);
+                if ($currDate = $stmtCheckDate->fetch(PDO::FETCH_ASSOC)) {
+                    $dateChanged = ($currDate['hakedis_tarihi_ay'] != $data['hakedis_tarihi_ay'] || $currDate['hakedis_tarihi_yil'] != $data['hakedis_tarihi_yil']);
+                    $missingData = (empty($currDate['asgari_ucret_guncel']) || empty($currDate['motorin_guncel']) || empty($currDate['ufe_genel_guncel']) || empty($currDate['makine_ekipman_guncel']));
+                    
+                    if ($dateChanged || $missingData) {
+                        require_once __DIR__ . '/endeks_api/akaryakit.php';
+                        require_once __DIR__ . '/endeks_api/hizmet_endeks.php';
+
+                        $hakedisAy = intval($data['hakedis_tarihi_ay']);
+                        $hakedisYil = intval($data['hakedis_tarihi_yil']);
+                        
+                        if ($dateChanged) {
+                            // Ay kasten değiştirildiyse eski verilerin bir anlamı kalmaz, temizle ve yenilerini çek.
+                            $data['motorin_guncel'] = null;
+                            $data['asgari_ucret_guncel'] = null;
+                            $data['ufe_genel_guncel'] = null;
+                            $data['makine_ekipman_guncel'] = null;
+                        }
+
+                        $motorinFiyat = getEpdkMotorinFiyati($hakedisYil, $hakedisAy);
+                        if ($motorinFiyat !== null) {
+                            $data['motorin_guncel'] = $motorinFiyat;
+                        }
+                        
+                        $endeksler = getHizmetEndeksleri($hakedisYil, $hakedisAy);
+                        if ($endeksler['asgari_ucret'] !== null) {
+                            $data['asgari_ucret_guncel'] = $endeksler['asgari_ucret'];
+                        }
+                        if ($endeksler['ufe'] !== null) {
+                            $data['ufe_genel_guncel'] = $endeksler['ufe'];
+                        }
+                        if ($endeksler['makine'] !== null) {
+                            $data['makine_ekipman_guncel'] = $endeksler['makine'];
+                        }
+                    }
+                }
+
                 // Update
                 $set = [];
                 $params = [];
@@ -677,6 +719,53 @@ try {
             $stmt = $db->prepare("DELETE FROM hakedis_kalemleri WHERE id = ?");
             $stmt->execute([$id]);
             echo json_encode(['status' => 'success']);
+            break;
+
+        case 'fetchEndeksForHakedis':
+            $hakedisAy = intval($_POST['hakedis_tarihi_ay'] ?? date('n'));
+            $hakedisYil = intval($_POST['hakedis_tarihi_yil'] ?? date('Y'));
+
+            require_once __DIR__ . '/endeks_api/akaryakit.php';
+            require_once __DIR__ . '/endeks_api/hizmet_endeks.php';
+
+            $sonuc = [
+                'asgari_ucret_guncel' => null,
+                'motorin_guncel' => null,
+                'ufe_genel_guncel' => null,
+                'makine_ekipman_guncel' => null,
+                'message' => ''
+            ];
+
+            // Motorin Güncel (EPDK Akaryakıt)
+            $motorinFiyat = getEpdkMotorinFiyati($hakedisYil, $hakedisAy);
+            if ($motorinFiyat !== null) {
+                $sonuc['motorin_guncel'] = $motorinFiyat;
+            }
+
+            // Asgari Ücret Güncel, Yİ-ÜFE Güncel, Makine-Ekipman Güncel (Hizmet İşleri Endeksleri)
+            $endeksler = getHizmetEndeksleri($hakedisYil, $hakedisAy);
+            if ($endeksler['asgari_ucret'] !== null) {
+                $sonuc['asgari_ucret_guncel'] = $endeksler['asgari_ucret'];
+            }
+            if ($endeksler['ufe'] !== null) {
+                $sonuc['ufe_genel_guncel'] = $endeksler['ufe'];
+            }
+            if ($endeksler['makine'] !== null) {
+                $sonuc['makine_ekipman_guncel'] = $endeksler['makine'];
+            }
+
+            $eksikVar = false;
+            foreach ($sonuc as $k => $v) {
+                if ($k !== 'message' && $v === null) {
+                    $eksikVar = true;
+                }
+            }
+
+            if ($eksikVar) {
+                $sonuc['message'] = 'Bazı endeks verileri bu ay için henüz açıklanmamış olabilir.';
+            }
+
+            echo json_encode(['status' => 'success', 'data' => $sonuc]);
             break;
 
         default:

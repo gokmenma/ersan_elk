@@ -219,7 +219,12 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label text-warning" title="Uygulama Ayı">Güncel (Hakediş Ayı) Endeksi</label>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label text-warning mb-0" title="Uygulama Ayı">Güncel (Hakediş Ayı) Endeksi</label>
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="fetchGuncelEndeksler()" title="TÜİK ve EPDK verilerini web'den çeker">
+                                <i class="bx bx-refresh"></i> Web'den Çek
+                            </button>
+                        </div>
                         <div id="guncelEndeksAlanda">
                             <div class="input-group border border-warning rounded-2 overflow-hidden">
                                 <span class="input-group-text bg-soft-warning text-warning border-warning"
@@ -376,4 +381,6 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
 <script>
     var currentHakedisId = <?= $hakedis->id ?>;
     var currentSozlesmeId = <?= $hakedis->sozlesme_id ?>;
+    var currentHakedisAy = <?= $hakedis->hakedis_tarihi_ay ?>;
+    var currentHakedisYil = <?= $hakedis->hakedis_tarihi_yil ?>;
 </script>

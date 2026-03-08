@@ -249,11 +249,7 @@ function updateMiktar(kalemId, miktar, field = "miktar") {
 }
 
 function exportHakedisToExcel(id) {
-  Swal.fire({
-    title: "Bilgi",
-    text: "Orijinal Excel şablonuna yazdırma özelliği bir sonraki aşamada (PhpSpreadsheet entegrasyonu ile) devreye alınacaktır.",
-    icon: "info",
-  });
+  window.location.href = "views/hakedisler/export-excel.php?id=" + id;
 }
 
 function addEndeksRow(containerId, type) {
@@ -273,4 +269,57 @@ function addEndeksRow(containerId, type) {
 
   $(`#${containerId}`).append(html);
   $(`#${containerId} .ek-param-row`).last().find('input[type="text"]').focus();
+}
+
+function fetchGuncelEndeksler() {
+    Swal.fire({
+        title: 'Veriler Çekiliyor...',
+        text: 'TÜİK ve EPDK sayfalarından güncel endeksler alınıyor, lütfen bekleyin.',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    $.post("views/hakedisler/online-api.php", {
+        type: "fetchEndeksForHakedis",
+        hakedis_tarihi_ay: currentHakedisAy,
+        hakedis_tarihi_yil: currentHakedisYil
+    }, function (res) {
+        if (res.status === "success") {
+            const d = res.data;
+            let updated = false;
+
+            if (d.asgari_ucret_guncel !== null) {
+                $('input[name="asgari_ucret_guncel"]').val(d.asgari_ucret_guncel);
+                updated = true;
+            }
+            if (d.motorin_guncel !== null) {
+                $('input[name="motorin_guncel"]').val(d.motorin_guncel);
+                updated = true;
+            }
+            if (d.ufe_genel_guncel !== null) {
+                $('input[name="ufe_genel_guncel"]').val(d.ufe_genel_guncel);
+                updated = true;
+            }
+            if (d.makine_ekipman_guncel !== null) {
+                $('input[name="makine_ekipman_guncel"]').val(d.makine_ekipman_guncel);
+                updated = true;
+            }
+
+            if (updated) {
+                if (d.message) {
+                    Swal.fire('Kısmi Veri', 'Veriler çekildi ancak bazı endeksler bu ay için henüz açıklanmamış. <br><br><small>' + d.message + '</small>', 'info');
+                } else {
+                    Swal.fire('Başarılı', 'Güncel endeks verileri başarıyla çekildi. Değişiklikleri kaydetmeyi unutmayın.', 'success');
+                }
+            } else {
+                Swal.fire('Bilgi', 'Bu ay için henüz hiçbir endeks verisi açıklanmamış. Lütfen kurumların verileri açıklamasını bekleyip daha sonra tekrar deneyin.', 'warning');
+            }
+        } else {
+            Swal.fire("Hata", res.message || "Veriler çekilirken bir hata oluştu.", "error");
+        }
+    }, "json").fail(function() {
+        Swal.fire("Hata", "Sunucu ile iletişim kurulamadı.", "error");
+    });
 }

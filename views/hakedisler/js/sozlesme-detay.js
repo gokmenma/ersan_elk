@@ -225,10 +225,18 @@ $(document).on("click", '[data-bs-target="#yeniHakedisModal"]', function () {
 
   // Reset date to current month's last day
   const now = new Date();
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    .toISOString()
-    .split("T")[0];
-  $form.find('[name="is_yapilan_ayin_son_gunu"]').val(lastDay);
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const y = lastDay.getFullYear();
+  const m = String(lastDay.getMonth() + 1).padStart(2, "0");
+  const d = String(lastDay.getDate()).padStart(2, "0");
+  const lastDayStr = `${d}.${m}.${y}`;
+  
+  const $dateInput = $form.find('[name="is_yapilan_ayin_son_gunu"]');
+  if ($dateInput[0] && $dateInput[0]._flatpickr) {
+    $dateInput[0]._flatpickr.setDate(lastDayStr);
+  } else {
+    $dateInput.val(lastDayStr);
+  }
 
   // Initialize Select2 with dropdownParent to prevent clipping
   setTimeout(() => {
@@ -263,9 +271,11 @@ $(document).on(
     const yil = parseInt($("#hakedis_tarihi_yil").val());
     if (ay && yil) {
       // Ayın son gününü bul
+      // JS Date'te ay 0-indexed, ama biz 1-indexed veriyoruz.
+      // new Date(yil, ay, 0) -> ay'ıncaya kadarki ayın (bir sonraki ayın) 0. günü = istenen ayın son günü
       const lastDayDate = new Date(yil, ay, 0);
       const y = lastDayDate.getFullYear();
-      const m = String(lastDayDate.getMonth() + 1).padStart(2, "0");
+      const m = String(lastDayDate.getMonth() + 1).padStart(2, "0"); 
       const d = String(lastDayDate.getDate()).padStart(2, "0");
       const lastDayStr = `${d}.${m}.${y}`; // dd.mm.yyyy formatı
 

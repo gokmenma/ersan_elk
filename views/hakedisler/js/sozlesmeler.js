@@ -207,10 +207,17 @@ function editSozlesme(id) {
         for (let key in data) {
           const el = $(form).find(`[name="${key}"]`);
           if (el.length) {
+            let val = data[key];
+            if (val && typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                // YYYY-MM-DD formatını DD.MM.YYYY yapalım
+                const parts = val.split('-');
+                val = `${parts[2]}.${parts[1]}.${parts[0]}`;
+            }
+
             if (el[0]._flatpickr) {
-              el[0]._flatpickr.setDate(data[key]);
+              el[0]._flatpickr.setDate(val);
             } else {
-              el.val(data[key]);
+              el.val(val);
             }
             if (el.hasClass("select2")) {
               el.trigger("change");
