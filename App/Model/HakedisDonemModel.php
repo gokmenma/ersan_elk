@@ -2,8 +2,9 @@
 
 namespace App\Model;
 
-use App\Model\Model;
 
+use App\Model\Model;
+use App\Helper\Helper;
 class HakedisDonemModel extends Model
 {
     protected $table = 'hakedis_donemleri';

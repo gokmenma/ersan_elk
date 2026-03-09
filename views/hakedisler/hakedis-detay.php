@@ -151,7 +151,7 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                         </div>
                         <div class="col-6 mb-3">
                             <label class="form-label" title="Motorin Katsayısı (b1)">b1 Katsayısı</label>
-                            <input type="number" step="0.00001" class="form-control form-control-sm" name="b1_katsayisi"
+                            <input type="number" step="0.0000001" class="form-control form-control-sm" name="b1_katsayisi"
                                 value="<?= $hakedis->b1_katsayisi ?>">
                         </div>
                     </div>
@@ -236,13 +236,13 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                             <div class="input-group mt-1 border border-warning rounded-2 overflow-hidden">
                                 <span class="input-group-text bg-soft-warning text-warning border-warning"
                                     style="width: 80px;">Motorin</span>
-                                <input type="number" step="0.00001" class="form-control border-warning"
+                                <input type="number" step="0.0000001" class="form-control border-warning"
                                     name="motorin_guncel" value="<?= $hakedis->motorin_guncel ?>" placeholder="Mn">
                             </div>
                             <div class="input-group mt-1 border border-warning rounded-2 overflow-hidden">
                                 <span class="input-group-text bg-soft-warning text-warning border-warning"
                                     style="width: 80px;">TÜFE</span>
-                                <input type="number" step="0.01" class="form-control border-warning"
+                                <input type="number" step="0.001" class="form-control border-warning"
                                     name="ufe_genel_guncel" value="<?= $hakedis->ufe_genel_guncel ?>"
                                     placeholder="ÜFEn">
                             </div>

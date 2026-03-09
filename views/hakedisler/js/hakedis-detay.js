@@ -82,10 +82,13 @@ function loadKalemler() {
         // For now, doing a basic update from backend if we fetch stats:
         if (typeof res.fiyat_farki !== "undefined") {
           const ffValue = parseFloat(res.fiyat_farki);
+
+          console.log(ffValue);
           $("#hesaplananFiyatFarki").text(
-            ffValue.toLocaleString("tr-TR", {
+            parseFloat(ffValue).toLocaleString("tr-TR", {
               minimumFractionDigits: 2,
-            }) + " ₺",
+              maximumFractionDigits: 2,
+            }) + " ₺"
           );
 
           $("#toplamImalatTutar").text(
@@ -93,7 +96,7 @@ function loadKalemler() {
           );
 
           $("#kdvDahilToplam").text(
-            parseFloat(res.kdv_dahil_toplam || 0).toLocaleString("tr-TR", { minimumFractionDigits: 3 }) + " ₺"
+            parseFloat(res.kdv_dahil_toplam || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2, }) + " ₺"
           );
         }
       } else {

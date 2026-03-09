@@ -224,16 +224,35 @@ try {
     $sheetBFTC = $spreadsheet->getSheetByName('BFTC');
     if ($sheetBFTC) {
         $rowStart = 5;
+        $genelToplam = 0;
+
+        // Öncelikle 5-11 arasındaki satırları temizle (Eski şablon verisi kalmasın)
+        for ($i = 5; $i <= 11; $i++) {
+            $sheetBFTC->setCellValue('C' . $i, '');
+            $sheetBFTC->setCellValue('D' . $i, '');
+            $sheetBFTC->setCellValue('E' . $i, '');
+            $sheetBFTC->setCellValue('F' . $i, '');
+            $sheetBFTC->setCellValue('G' . $i, '');
+        }
+
         for ($i = 0; $i < min(7, count($sonucKalemler)); $i++) {
             $row = $rowStart + $i;
             $k = $sonucKalemler[$i];
             
-            // $sheetBFTC->setCellValue('B' . $row, $k['id']); // Assuming 'Poz No' mapping or specific. 
+            $miktari = floatval($k['miktari']);
+            $b_fiyat = floatval($k['teklif_edilen_birim_fiyat']);
+            $tutar = $miktari * $b_fiyat;
+            $genelToplam += $tutar;
+            
             $sheetBFTC->setCellValue('C' . $row, $k['kalem_adi']);
             $sheetBFTC->setCellValue('D' . $row, $k['birim']);
-            $sheetBFTC->setCellValue('E' . $row, $k['miktari']); // Sözleşme miktarı
-            $sheetBFTC->setCellValue('F' . $row, $k['teklif_edilen_birim_fiyat']);
+            $sheetBFTC->setCellValue('E' . $row, $miktari); // Sözleşme miktarı
+            $sheetBFTC->setCellValue('F' . $row, $b_fiyat);
+            $sheetBFTC->setCellValue('G' . $row, $tutar);
         }
+
+        // Genel Toplamı G12 hücresine yazdır
+        $sheetBFTC->setCellValue('G12', $genelToplam);
     }
 
     // --- Fill 'İcmal' Sheet ---
@@ -254,6 +273,12 @@ try {
     $sheetFFT = $spreadsheet->getSheetByName('Fiyat Farkı Tutanağı');
     if ($sheetFFT) {
         $sheetFFT->setCellValue('C3', $hakedis['idare_baskanlik_adi'] ?? '');
+
+        // Hakediş tutarını hesapla ve A11 hücresine yaz (KDV Dahil Toplam)
+        $donemModel = new HakedisDonemModel();
+        $totals = $donemModel->calculateTotals($hakedis['id']);
+        $hakedisTutari = $totals['imalat_kumulatif'] ?? 0;
+        $sheetFFT->setCellValue('A11', $hakedisTutari);
         
         // Pn Formülü kaldırıldı.
         // Kullanıcının Hakedis.xlsx şablonunda metin kutusu yerine hücre bazlı
@@ -292,11 +317,6 @@ try {
         // Alt Satır Özet (30. Satır)
         $sheetFFT->setCellValue('A30', $hakedis['hakedis_tarihi_yil'] ?? '');
         $sheetFFT->setCellValue('B30', $aylar[$hakedis['hakedis_tarihi_ay']] ?? '');
-
-        // Eğer A11 (Çarşaf referansı) vb. 0 ise 00.01.1900 görünmemesi için temizleyelim
-        if ($sheetFFT->getCell('A11')->getOldCalculatedValue() == 0) {
-            $sheetFFT->setCellValue('A11', '');
-        }
     }
 
     // --- Fill 'Arka Kapak' Sheet ---
@@ -328,6 +348,62 @@ try {
         setExcelDate($sheetOnKapak, 'G42', $hakedis['gecici_kabul_tarihi']);
         setExcelDate($sheetOnKapak, 'G43', $hakedis['gecici_kabul_itibar_tarihi']);
         setExcelDate($sheetOnKapak, 'G44', $hakedis['gecici_kabul_onanma_tarihi']);
+    }
+
+    // --- Fill 'İş Takip Arka Yüz' Sheet ---
+    $sheetIsTakip = $spreadsheet->getSheetByName('İş Takip Arka Yüz');
+    if ($sheetIsTakip) {
+        $sozlesmeTarihi = $hakedis['sozlesme_tarihi'];
+        $sozlesmeYili = $sozlesmeTarihi ? substr($sozlesmeTarihi, 0, 4) : date('Y');
+        
+        $sheetIsTakip->setCellValue('C6', $hakedis['sozlesme_bedeli']);
+        
+        // Yıllar Başlığı (C9, D9, E9)
+        $sheetIsTakip->setCellValue('C9', $sozlesmeYili);
+        $sheetIsTakip->setCellValue('D9', $sozlesmeYili + 1);
+        $sheetIsTakip->setCellValue('E9', $sozlesmeYili + 2);
+
+        // Sözleşme Bedeline Göre Dağılım (İlk yıla sözleşme bedelinin tamamını atalım şimdilik)
+        $sheetIsTakip->setCellValue('C11', $hakedis['sozlesme_bedeli']);
+
+        // Yıl İçi Gerçekleşme (Tüm hakedişlerdeki imalat toplamı)
+        // Gerçekleşme olarak imalat kumulatif değerini alıyoruz
+        $donemModel = new HakedisDonemModel();
+        $totals = $donemModel->calculateTotals($hakedis['id']);
+        $yiliIciGerceklesme = $totals['imalat_kumulatif'] ?? 0;
+        
+        $sheetIsTakip->setCellValue('C12', $yiliIciGerceklesme);
+
+        // Genel Gerçekleşme Yüzdesi
+        $bedel = floatval($hakedis['sozlesme_bedeli'] ?? 0);
+        $yuzde = ($bedel > 0) ? ($yiliIciGerceklesme / $bedel) : 0;
+        $sheetIsTakip->setCellValue('C13', $yuzde);
+
+        // Kalem bazlı Yapılan Miktar ve Kalan Miktar bölümü (Satır 15'ten başlıyor)
+        $rowStart = 15;
+
+        // Eski dummy veriyi temizle
+        for ($i = 0; $i < 7; $i++) {
+            $r = $rowStart + $i;
+            $sheetIsTakip->setCellValue('F' . $r, '');
+            $sheetIsTakip->setCellValue('G' . $r, '');
+            $sheetIsTakip->setCellValue('I' . $r, '');
+            $sheetIsTakip->setCellValue('J' . $r, '');
+        }
+
+        for ($i = 0; $i < min(7, count($sonucKalemler)); $i++) {
+            $row = $rowStart + $i;
+            $k = $sonucKalemler[$i];
+            
+            $sozlesmeMiktar = floatval($k['miktari']);
+            $yapilanMiktar = floatval($k['onceki_miktar']) + floatval($k['bu_ay_miktar']);
+            $kalanMiktar = $sozlesmeMiktar - $yapilanMiktar;
+
+            $sheetIsTakip->setCellValue('F' . $row, $sozlesmeMiktar);
+            $sheetIsTakip->setCellValue('G' . $row, $sozlesmeMiktar); // Tatbikat Projesi Miktarı aynı kabul ediliyor
+            $sheetIsTakip->setCellValue('I' . $row, $yapilanMiktar);
+            $sheetIsTakip->setCellValue('J' . $row, $kalanMiktar);
+        }
     }
 
     // Calculate Formulas if needed (PhpSpreadsheet does this automatically on save for Excel)
