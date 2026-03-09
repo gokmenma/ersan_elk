@@ -96,6 +96,7 @@ try {
             $data = [
                 'firma_id' => $firma_id,
                 'idare_adi' => $_POST['idare_adi'] ?? '',
+                'idare_baskanlik_adi' => $_POST['idare_baskanlik_adi'] ?? '',
                 'isin_adi' => $_POST['isin_adi'] ?? '',
                 'isin_yuklenicisi' => $_POST['isin_yuklenicisi'] ?? '',
                 'ihale_kayit_no' => $_POST['ihale_kayit_no'] ?? '',
@@ -307,7 +308,8 @@ try {
                 'temel_endeks_ayi' => $_POST['temel_endeks_ayi'] ?? '',
                 'guncel_endeks_ayi' => $_POST['guncel_endeks_ayi'] ?? '',
                 'olusturan_personel_id' => $_SESSION['id'],
-                'durum' => $_POST['durum'] ?? 'taslak'
+                'durum' => $_POST['durum'] ?? 'taslak',
+                'onceki_hakedis_tutari' => Helper::formattedMoneyToNumber($_POST['onceki_hakedis_tutari']) ?: 0
             ];
 
             if (!$hakedis_id) {
@@ -350,6 +352,19 @@ try {
                 }
                 if ($endeksler['makine'] !== null) {
                     $data['makine_ekipman_guncel'] = $endeksler['makine'];
+                }
+
+                // Otomatik "Önceki Hakediş Tutarı" hesapla (Eğer girilmemişse)
+                if (empty($_POST['onceki_hakedis_tutari'])) {
+                    $stmtPrev = $db->prepare("
+                        SELECT SUM(hm.miktar * hk.teklif_edilen_birim_fiyat) as toplam
+                        FROM hakedis_miktarlari hm
+                        JOIN hakedis_donemleri hd ON hm.hakedis_donem_id = hd.id
+                        JOIN hakedis_kalemleri hk ON hm.kalem_id = hk.id
+                        WHERE hd.sozlesme_id = ? AND hd.hakedis_no < ? AND hd.silinme_tarihi IS NULL
+                    ");
+                    $stmtPrev->execute([$sozlesme_id, $data['hakedis_no']]);
+                    $data['onceki_hakedis_tutari'] = floatval($stmtPrev->fetchColumn() ?? 0);
                 }
             }
 
@@ -417,6 +432,18 @@ try {
                 $resultId = $db->lastInsertId();
             }
 
+            // Hakediş onaylandığında (durum='tamamlandi') toplam tutarı hesapla ve kaydet
+            if ($data['durum'] == 'tamamlandi') {
+                $totals = $model->calculateTotals($resultId);
+                if ($totals) {
+                    $toplamHakedis = $totals['kdv_dahil_toplam'];
+                    
+                    // hakedi_tutari alanını güncelle
+                    $stmtUpdateTotal = $db->prepare("UPDATE hakedis_donemleri SET hakedi_tutari = ? WHERE id = ?");
+                    $stmtUpdateTotal->execute([$toplamHakedis, $resultId]);
+                }
+            }
+
             echo json_encode(['status' => 'success', 'hakedis_id' => $resultId]);
             break;
 
@@ -442,16 +469,23 @@ try {
         case 'deleteHakedis':
             $id = $_POST['id'] ?? 0;
             if ($id) {
-                // Determine if hakedis belongs to a sozlesme of this firm
+                // Determine if hakedis belongs to a sozlesme of this firm and get status
                 $model = new HakedisDonemModel();
                 $db = $model->getDb();
                 $stmt = $db->prepare("
-                    SELECT hd.id FROM hakedis_donemleri hd
+                    SELECT hd.id, hd.durum FROM hakedis_donemleri hd
                     JOIN hakedis_sozlesmeler hs ON hd.sozlesme_id = hs.id
                     WHERE hd.id = ? AND hs.firma_id = ?
                 ");
                 $stmt->execute([$id, $firma_id]);
-                if ($stmt->fetch()) {
+                $hakedis = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($hakedis) {
+                    if ($hakedis['durum'] == 'tamamlandi') {
+                        echo json_encode(['status' => 'error', 'message' => 'Tamamlanmış hakedişler silinemez. Önce durumu değiştirmeniz gerekir.']);
+                        break;
+                    }
+
                     $stmt = $db->prepare("UPDATE hakedis_donemleri SET silinme_tarihi = NOW() WHERE id = ?");
                     $stmt->execute([$id]);
                     echo json_encode(['status' => 'success']);
@@ -672,55 +706,17 @@ try {
                 $sonuc[] = $k;
             }
 
-            // --- Fiyat Farkı Hesabı (Pn Katsayısı) ---
-            // Pn = a1*(In/Io) + b1*(Mn/Mo) + b2*(ÜFEn/ÜFEo) + c*(En/Eo)
-            $fiyat_farki = 0;
-            $pn = 1;
+            // --- Fiyat Farkı ve Toplam Hesapları (Merkezi Metod) ---
+            $donemModel = new HakedisDonemModel();
+            $totals = $donemModel->calculateTotals($hakedis_id);
 
-            // Önce hakediş paramlarını okuyalım
-            $stmtParam = $db->prepare("SELECT * FROM hakedis_donemleri WHERE id = ?");
-            $stmtParam->execute([$hakedis_id]);
-            $params = $stmtParam->fetch(PDO::FETCH_ASSOC);
-
-            if ($params) {
-                // Her bir çarpanın pay/payda kontrolünü yaparak Pn hesapla
-                $p1 = 0;
-
-                // a1 (İşçilik)
-                if (floatval($params['asgari_ucret_temel']) > 0) {
-                    $p1 += floatval($params['a1_katsayisi'] ?? 0.28) * (floatval($params['asgari_ucret_guncel']) / floatval($params['asgari_ucret_temel']));
-                }
-
-                // b1 (Motorin)
-                if (floatval($params['motorin_temel']) > 0) {
-                    $p1 += floatval($params['b1_katsayisi'] ?? 0.22) * (floatval($params['motorin_guncel']) / floatval($params['motorin_temel']));
-                }
-
-                // b2 (Yİ-ÜFE)
-                if (floatval($params['ufe_genel_temel']) > 0) {
-                    $p1 += floatval($params['b2_katsayisi'] ?? 0.25) * (floatval($params['ufe_genel_guncel']) / floatval($params['ufe_genel_temel']));
-                }
-
-                // c (Makine-Ekipman)
-                if (floatval($params['makine_ekipman_temel']) > 0) {
-                    $p1 += floatval($params['c_katsayisi'] ?? 0.25) * (floatval($params['makine_ekipman_guncel']) / floatval($params['makine_ekipman_temel']));
-                }
-
-                $pn = $p1;
-
-                // Calculate bu ay imalat total
-                $imalatBuAy = 0;
-                foreach ($sonuc as $k) {
-                    $imalatBuAy += floatval($k['bu_ay_miktar']) * floatval($k['teklif_edilen_birim_fiyat']);
-                }
-
-                if ($pn > 1) {
-                    // Fiyat Farkı = Tutar * 0.90 * (Pn - 1)
-                    $fiyat_farki = $imalatBuAy * 0.90 * ($pn - 1);
-                }
-            }
-
-            echo json_encode(['status' => 'success', 'data' => $sonuc, 'fiyat_farki' => $fiyat_farki]);
+            echo json_encode([
+                'status' => 'success', 
+                'data' => $sonuc, 
+                'fiyat_farki' => $totals['fiyat_farki'] ?? 0,
+                'imalat_kumulatif' => $totals['imalat_kumulatif'] ?? 0,
+                'kdv_dahil_toplam' => $totals['kdv_dahil_toplam'] ?? 0
+            ]);
             break;
 
         case 'deleteKalem':

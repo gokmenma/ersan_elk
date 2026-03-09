@@ -28,7 +28,7 @@ try {
 
     $stmt = $db->prepare("
         SELECT hd.*, 
-               hs.idare_adi, hs.isin_adi, hs.isin_yuklenicisi, hs.ihale_kayit_no, 
+               hs.idare_adi, hs.idare_baskanlik_adi, hs.isin_adi, hs.isin_yuklenicisi, hs.ihale_kayit_no, 
                hs.yuklenici_adres, hs.yuklenici_tel,
                hs.kesif_bedeli, hs.ihale_tenzilati, hs.sozlesme_bedeli, 
                hs.sozlesme_tarihi, hs.isin_bitecegi_tarih, hs.ihale_tarihi, 
@@ -36,7 +36,8 @@ try {
                hs.idare_onaylayan, hs.idare_onaylayan_unvan,
                hs.tasvip_eden, hs.tasvip_eden_unvan,
                hs.yuzde_yirmi_fazla_is, hs.son_sure_uzatimi,
-               hs.gecici_kabul_tarihi, hs.gecici_kabul_itibar_tarihi, hs.gecici_kabul_onanma_tarihi
+               hs.gecici_kabul_tarihi, hs.gecici_kabul_itibar_tarihi, hs.gecici_kabul_onanma_tarihi,
+               hd.onceki_hakedis_tutari
         FROM hakedis_donemleri hd
         JOIN hakedis_sozlesmeler hs ON hd.sozlesme_id = hs.id
         WHERE hd.id = ? AND hs.firma_id = ? AND hd.silinme_tarihi IS NULL
@@ -129,6 +130,8 @@ try {
             $excelDate = \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($dt);
             $worksheet->setCellValue($cell, $excelDate);
             $worksheet->getStyle($cell)->getNumberFormat()->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_DATE_DDMMYYYY);
+        } else {
+            $worksheet->setCellValue($cell, '');
         }
     }
 
@@ -153,19 +156,22 @@ try {
         setExcelDate($sheetBilgiler, 'D13', $hakedis['is_yapilan_ayin_son_gunu']);
         
         // --- Signature Mapping ---
-        // Kontrol (First split person)
+        // Kontrol (All members)
         $kontrolText = $hakedis['kontrol_teskilati'] ?? '';
         $kontrolLines = array_filter(array_map('trim', explode("\n", $kontrolText)));
-        if (!empty($kontrolLines)) {
-            $firstKontrol = $kontrolLines[0];
-            if (strpos($firstKontrol, '-') !== false) {
-                list($kName, $kTitle) = explode('-', $firstKontrol, 2);
-                $sheetBilgiler->setCellValue('D14', trim($kName));
-                $sheetBilgiler->setCellValue('D15', trim($kTitle));
+        $names = [];
+        $titles = [];
+        foreach ($kontrolLines as $line) {
+            if (strpos($line, '-') !== false) {
+                list($kName, $kTitle) = explode('-', $line, 2);
+                $names[] = trim($kName);
+                $titles[] = trim($kTitle);
             } else {
-                $sheetBilgiler->setCellValue('D14', $firstKontrol);
+                $names[] = trim($line);
             }
         }
+        $sheetBilgiler->setCellValue('D14', implode('  -  ', $names));
+        $sheetBilgiler->setCellValue('D15', implode('  -  ', $titles));
 
         // Müdür (Tasvip Eden)
         $sheetBilgiler->setCellValue('D16', $hakedis['tasvip_eden'] ?? '');
@@ -179,8 +185,18 @@ try {
         setExcelDate($sheetBilgiler, 'D21', $hakedis['yer_teslim_tarihi']);
         
         $sheetBilgiler->setCellValue('D22', $hakedis['isin_suresi']);
-        $sheetBilgiler->setCellValue('D23', $oncekiHakedisBedeli); // Önceki Hakediş Bedeli
-        setExcelDate($sheetBilgiler, 'D24', $hakedis['tutanak_tasdik_tarihi']); // Tutanak Tasdik Tarihi
+        
+        // --- Önceki Hakediş Tutarı Mantığı ---
+        // 1. Bir önceki hakedişin (hakedis_no - 1) sistemde kayıtlı 'hakedi_tutari' alanına bak.
+        $stmtPrevVal = $db->prepare("SELECT hakedi_tutari FROM hakedis_donemleri WHERE sozlesme_id = ? AND hakedis_no = ? AND silinme_tarihi IS NULL LIMIT 1");
+        $stmtPrevVal->execute([$hakedis['sozlesme_id'], $hakedis['hakedis_no'] - 1]);
+        $prevHakedisSaving = floatval($stmtPrevVal->fetchColumn() ?? 0);
+
+        // 2. Eğer o alan boşsa, mevcut hakedişteki manuel 'onceki_hakedis_tutari' alanını kullan.
+        $oncekiTutarFinal = ($prevHakedisSaving > 0) ? $prevHakedisSaving : floatval($hakedis['onceki_hakedis_tutari'] ?? 0);
+
+        $sheetBilgiler->setCellValue('D23', $oncekiTutarFinal); // Önceki Hakediş Bedeli
+        setExcelDate($sheetBilgiler, 'D24', $hakedis['tutanak_tasdik_tarihi']); 
         
         $sheetBilgiler->setCellValue('D25', $hakedis['hakedis_tarihi_yil']);
         $sheetBilgiler->setCellValue('D26', $aylar[$hakedis['hakedis_tarihi_ay']] ?? '');
@@ -233,7 +249,11 @@ try {
     // --- Fill 'Fiyat Farkı Tutanağı' Sheet ---
     $sheetFFT = $spreadsheet->getSheetByName('Fiyat Farkı Tutanağı');
     if ($sheetFFT) {
-        // Coefficients (Pn Components)
+        $sheetFFT->setCellValue('C3', $hakedis['idare_baskanlik_adi'] ?? '');
+        
+        // Pn Formülü kaldırıldı.
+        // Kullanıcının Hakedis.xlsx şablonunda metin kutusu yerine hücre bazlı
+        // veya resim bazlı bir çözüm uygulaması bekleniyor. (PhpSpreadsheet Textbox'ları siler)
         $sheetFFT->setCellValue('N8', $hakedis['a1_katsayisi'] ?? 0.28);
         $sheetFFT->setCellValue('N9', $hakedis['b1_katsayisi'] ?? 0.22);
         $sheetFFT->setCellValue('N10', $hakedis['b2_katsayisi'] ?? 0.25);
@@ -245,26 +265,50 @@ try {
         $sheetFFT->setCellValue('O10', $hakedis['ufe_genel_temel'] ?? 4632.89);
         $sheetFFT->setCellValue('O11', $hakedis['makine_ekipman_temel'] ?? 3319.76);
 
-        // Note: Pn components (P8, P9, P10, P11) are formulas referencing Bilgiler A30, C30, E30, G30
+        // --- Endeks Ay/Yıl ve 00.01.1900 Düzeltmeleri ---
+        // Üst Başlık (C2)
+        $sheetFFT->setCellValue('C2', $hakedis['idare_adi'] ?? '');
+
+        // Temel Endeks Satırı (20. Satır)
+        $sheetFFT->setCellValue('D20', $hakedis['temel_endeks_yil'] ?? '');
+        $sheetFFT->setCellValue('E20', $aylar[$hakedis['temel_endeks_ay']] ?? '');
+
+        // Güncel Endeks Satırı (21. Satır)
+        $sheetFFT->setCellValue('D21', $hakedis['hakedis_tarihi_yil'] ?? '');
+        $sheetFFT->setCellValue('E21', $aylar[$hakedis['hakedis_tarihi_ay']] ?? '');
+
+        // Fiyat Farkı Hesabı Satırı (23. Satır)
+        $sheetFFT->setCellValue('D23', $hakedis['hakedis_tarihi_yil'] ?? '');
+        $sheetFFT->setCellValue('E23', $aylar[$hakedis['hakedis_tarihi_ay']] ?? '');
+
+        // Üst Satır Özet (12. Satır)
+        $sheetFFT->setCellValue('E12', $hakedis['hakedis_tarihi_yil'] ?? '');
+        $sheetFFT->setCellValue('F12', $aylar[$hakedis['hakedis_tarihi_ay']] ?? '');
+
+        // Alt Satır Özet (30. Satır)
+        $sheetFFT->setCellValue('A30', $hakedis['hakedis_tarihi_yil'] ?? '');
+        $sheetFFT->setCellValue('B30', $aylar[$hakedis['hakedis_tarihi_ay']] ?? '');
+
+        // Eğer A11 (Çarşaf referansı) vb. 0 ise 00.01.1900 görünmemesi için temizleyelim
+        if ($sheetFFT->getCell('A11')->getOldCalculatedValue() == 0) {
+            $sheetFFT->setCellValue('A11', '');
+        }
     }
 
     // --- Fill 'Arka Kapak' Sheet ---
     $sheetArkaKapak = $spreadsheet->getSheetByName('Arka Kapak');
     if ($sheetArkaKapak) {
-        // Tasvip Eden
-        $tasvip_tarihi = '';
-        if (!empty($hakedis['is_yapilan_ayin_son_gunu']) && $hakedis['is_yapilan_ayin_son_gunu'] != '0000-00-00') {
-            $tasvip_tarihi = (new \DateTime($hakedis['is_yapilan_ayin_son_gunu']))->format('d.m.Y');
-        }
-        $sheetArkaKapak->setCellValue('A37', $tasvip_tarihi);
-        $sheetArkaKapak->setCellValue('A38', $hakedis['tasvip_eden'] ?? '');
-        $sheetArkaKapak->setCellValue('A39', $hakedis['tasvip_eden_unvan'] ?? '');
-
+      
         // Tasdik Eden
         $tasdik_tarihi = '...../...../2026';
         if (!empty($hakedis['tutanak_tasdik_tarihi']) && $hakedis['tutanak_tasdik_tarihi'] != '0000-00-00') {
             $tasdik_tarihi = (new \DateTime($hakedis['tutanak_tasdik_tarihi']))->format('d.m.Y');
         }
+
+        $sheetArkaKapak->setCellValue('A37', $tasdik_tarihi);
+        $sheetArkaKapak->setCellValue('A38', $hakedis['tasvip_eden'] ?? '');
+        $sheetArkaKapak->setCellValue('A39', $hakedis['tasvip_eden_unvan'] ?? '');
+
         $sheetArkaKapak->setCellValue('A47', $tasdik_tarihi);
         $sheetArkaKapak->setCellValue('A48', $hakedis['idare_onaylayan'] ?? '');
         $sheetArkaKapak->setCellValue('A49', $hakedis['idare_onaylayan_unvan'] ?? '');

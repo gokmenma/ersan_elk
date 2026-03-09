@@ -66,6 +66,13 @@ function initHakedisTable() {
       },
     },
     {
+      data: "hakedi_tutari",
+      render: function (data) {
+        if (!data) return '<span class="text-muted">-</span>';
+        return `<strong>${parseFloat(data).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺</strong>`;
+      },
+    },
+    {
       data: "durum",
       render: function (data) {
         const durumMap = {
@@ -81,7 +88,12 @@ function initHakedisTable() {
     {
       data: "id",
       orderable: false,
-      render: function (data) {
+      render: function (data, type, row) {
+        let deleteBtn = row.durum === 'tamamlandi' ? '' : `
+            <button class="btn btn-sm btn-danger" onclick="deleteHakedis(${data})" title="Sil">
+                <i class="bx bx-trash"></i>
+            </button>`;
+        
         return `
                         <div class="d-flex gap-2">
                             <a href="?p=hakedisler/hakedis-detay&id=${data}" class="btn btn-sm btn-primary" title="Miktarlar ve Fiyat Farkı">
@@ -90,9 +102,7 @@ function initHakedisTable() {
                             <button class="btn btn-sm btn-warning" onclick="editHakedis(${data})" title="Düzenle">
                                 <i class="bx bx-edit"></i>
                             </button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteHakedis(${data})" title="Sil">
-                                <i class="bx bx-trash"></i>
-                            </button>
+                            ${deleteBtn}
                         </div>
                     `;
       },
@@ -194,11 +204,12 @@ function editHakedis(id) {
             $tutanakInput.val(tutanakVal);
         }
 
-        // Set durum
         $form
           .find('[name="durum"]')
           .val(data.durum || "taslak")
           .trigger("change");
+
+        $form.find('[name="onceki_hakedis_tutari"]').val(data.onceki_hakedis_tutari || 0);
 
         // Update hidden fields
         $("#temel_endeks_ayi_hidden").val(data.temel_endeks_ayi || "");
@@ -342,6 +353,13 @@ $(document).on("change", '[name="is_yapilan_ayin_son_gunu"]', function (e) {
 });
 
 function deleteHakedis(id) {
+  // Check if it's completed from the table data first (for immediate feedback)
+  const rowData = hakedisTable.rows().data().toArray().find(r => r.id == id);
+  if (rowData && rowData.durum === 'tamamlandi') {
+    Swal.fire("Uyarı", "Tamamlanmış hakedişler silinemez. Lütfen önce durumu 'Taslak' veya 'Hazırlandı' olarak değiştirin.", "warning");
+    return;
+  }
+
   Swal.fire({
     title: "Emin misiniz?",
     text: "Bu hakedişin tüm detay verileri ve miktar girişleri silinecektir. Geri alınamaz!",

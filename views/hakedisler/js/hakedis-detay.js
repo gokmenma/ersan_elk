@@ -88,14 +88,12 @@ function loadKalemler() {
             }) + " ₺",
           );
 
-          let araToplam = totalImalat + ffValue;
-          const kdvRate = parseFloat($('input[name="kdv_orani"]').val() || 20);
-          const kdvTutar = (araToplam * kdvRate) / 100;
-          const genelToplam = araToplam + kdvTutar;
+          $("#toplamImalatTutar").text(
+            parseFloat(res.imalat_kumulatif || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " ₺"
+          );
 
           $("#kdvDahilToplam").text(
-            genelToplam.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) +
-              " ₺",
+            parseFloat(res.kdv_dahil_toplam || 0).toLocaleString("tr-TR", { minimumFractionDigits: 3 }) + " ₺"
           );
         }
       } else {

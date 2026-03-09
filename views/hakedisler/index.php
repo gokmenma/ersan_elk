@@ -120,6 +120,9 @@ $aylar = [
                                             <?= Form::FormFloatInput('text', 'idare_adi', '', 'T.C. KASKİ GENEL MÜDÜRLÜĞÜ', 'İdare Adı', icon: 'home', required: true) ?>
                                         </div>
                                         <div class="col-md-6 mb-3">
+                                            <?= Form::FormFloatInput('text', 'idare_baskanlik_adi', '', 'ABONE İŞLERİ DAİRE BAŞKANLIĞI', 'İdare Başkanlık Adı', icon: 'layers') ?>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
                                             <?= Form::FormFloatInput('text', 'isin_yuklenicisi', 'ER-SAN ELEKTRİK İNŞ. TAAH.TİC.LTD.ŞTİ.', 'Yüklenici Firma', 'İşin Yüklenicisi', icon: 'briefcase', required: true) ?>
                                         </div>
                                         <div class="col-md-6 mb-3">

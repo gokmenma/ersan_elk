@@ -208,6 +208,9 @@ function editSozlesme(id) {
           const el = $(form).find(`[name="${key}"]`);
           if (el.length) {
             let val = data[key];
+            if (val === '0000-00-00') {
+              val = '';
+            }
             if (val && typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}$/)) {
                 // YYYY-MM-DD formatını DD.MM.YYYY yapalım
                 const parts = val.split('-');

@@ -126,6 +126,7 @@ $aylar = [
                                 <th>Hakediş No</th>
                                 <th>Dönem (Ay/Yıl)</th>
                                 <th>Uygulanan Endeks (T/G)</th>
+                                <th>Tutar (KDV Dahil)</th>
                                 <th>Durum</th>
                                 <th>İşlemler</th>
                             </tr>
@@ -230,6 +231,17 @@ $aylar = [
                             'hazirlandi' => 'Hazırlandı',
                             'tamamlandi' => 'Tamamlandı'
                         ], 'taslak', 'Durum', icon: 'flag') ?>
+                        <small class="text-success d-block mt-1" style="font-size: 11px;">
+                            <i data-feather="check-circle" style="width:12px;height:12px"></i>
+                            Bu hakedişin tutarının bir sonraki dönemde otomatik çekilebilmesi için durumun <b>'Tamamlandı'</b> olarak kaydedilmesi gerekir.
+                        </small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <?= Form::FormFloatInput('text', 'onceki_hakedis_tutari', '0.00', '0.00', 'Önceki Hakediş Tutarı (TL)', class: "form-control money", icon: 'dollar-sign') ?>
+                        <small class="text-muted d-block mt-1" style="font-size: 11px;">
+                            <i data-feather="info" style="width:12px;height:12px"></i>
+                            Otomatik olarak bir önceki hakedişten gelecek (ilk hakediş durumunda yazınız)
+                        </small>
                     </div>
                 </div>
             </div>
