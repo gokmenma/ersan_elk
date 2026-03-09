@@ -343,7 +343,7 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                                 <th>Önceki T. Miktar</th>
                                 <th>Bu Ayki Miktar</th>
                                 <th class="text-bg-warning">Toplam Miktar</th>
-                                <th>Toplam Tutar (TL)</th>
+                                <th>Bu Ayki Tutar (TL)</th>
                                 <th>İşlemler</th>
                             </tr>
                         </thead>
@@ -355,7 +355,7 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                         </tbody>
                         <tfoot class="table-light">
                             <tr>
-                                <th colspan="7" class="text-end font-size-15 h5">Toplam Hakediş Tutarı (İmalat):</th>
+                                <th colspan="7" class="text-end font-size-15 h5">Bu Ayki Hakediş Tutarı (İmalat):</th>
                                 <th colspan="2" class="font-size-15 text-primary h5" id="toplamImalatTutar">0,00 ₺</th>
                             </tr>
                             <tr>
@@ -365,7 +365,7 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                                 </th>
                             </tr>
                             <tr>
-                                <th colspan="7" class="text-end font-size-15 h5 text-danger">KDV Dahil Genel Toplam:
+                                <th colspan="7" class="text-end font-size-15 h5 text-danger">Bu Ayki KDV Dahil Toplam:
                                 </th>
                                 <th colspan="2" class="font-size-15 text-danger h5" id="kdvDahilToplam">0,00 ₺</th>
                             </tr>

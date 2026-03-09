@@ -44,6 +44,7 @@ function loadKalemler() {
             const toplamMiktar = oncekiMiktar + buAyMiktar;
             const birimFiyat = parseFloat(kalem.teklif_edilen_birim_fiyat || 0);
             const rowTotal = toplamMiktar * birimFiyat;
+            const donemTutari = buAyMiktar * birimFiyat;
 
             totalImalat += rowTotal;
 
@@ -63,7 +64,7 @@ function loadKalemler() {
                                 <input type="number" step="0.01" class="form-control form-control-sm miktar-input" data-kalem-id="${kalem.id}" value="${buAyMiktar}" placeholder="0">
                             </td>
                             <td class="text-center table-warning fw-bold">${toplamMiktar.toLocaleString("tr-TR")}</td>
-                            <td class="text-end fw-bold text-success">${rowTotal.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺</td>
+                            <td class="text-end fw-bold text-success">${donemTutari.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺</td>
                             <td class="text-center actions-container">
                                 <div class="d-flex gap-1 justify-content-center">
                                     <button class="btn btn-sm btn-info" onclick="editKalemRow(this, ${kalem.id})" title="Düzenle"><i class="bx bx-edit"></i></button>
@@ -94,12 +95,18 @@ function loadKalemler() {
             }) + " ₺"
           );
 
+          // Bu ayın toplamı (İmalat + Fiyat Farkı)
+          const donemImalat = parseFloat(res.imalat_donem || 0);
+          const donemAraToplam = donemImalat + ffValue;
+          const kdvRate = parseFloat(res.kdv_orani || 20);
+          const donemKdvDahil = donemAraToplam * (1 + kdvRate / 100);
+
           $("#toplamImalatTutar").text(
-            parseFloat(res.imalat_kumulatif || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " ₺"
+            donemImalat.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " ₺"
           );
 
           $("#kdvDahilToplam").text(
-            parseFloat(res.kdv_dahil_toplam || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2, }) + " ₺"
+            donemKdvDahil.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2, }) + " ₺"
           );
         }
       } else {

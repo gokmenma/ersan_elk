@@ -717,6 +717,7 @@ try {
                 'data' => $sonuc, 
                 'fiyat_farki' => $totals['fiyat_farki'] ?? 0,
                 'imalat_kumulatif' => $totals['imalat_kumulatif'] ?? 0,
+                'imalat_donem' => $totals['imalat_donem'] ?? 0,
                 'kdv_dahil_toplam' => $totals['kdv_dahil_toplam'] ?? 0
             ]);
             break;
