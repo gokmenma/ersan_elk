@@ -146,6 +146,8 @@ try {
         $sheetBilgiler->setCellValue('D6', $hakedis['ihale_kayit_no']);
         $sheetBilgiler->setCellValue('D7', $hakedis['kesif_bedeli']);
         // D8 - İhale Tenzilatı is formula, skip
+        $sheetBilgiler->setCellValue('D8', $hakedis['ihale_tenzilati']);
+
         $sheetBilgiler->setCellValue('D9', $hakedis['sozlesme_bedeli']);
         
         setExcelDate($sheetBilgiler, 'D10', $hakedis['sozlesme_tarihi']);
@@ -320,7 +322,7 @@ try {
         $sheetOnKapak->setCellValue('F30', $hakedis['yuzde_yirmi_fazla_is'] ?? '');
         $sheetOnKapak->setCellValue('D35', $hakedis['son_sure_uzatimi'] ?? '');
         
-        setExcelDate($sheetOnKapak, 'G41', $hakedis['isin_bitecegi_tarih']);
+        //setExcelDate($sheetOnKapak, 'G41', $hakedis['isin_bitecegi_tarih']);
         setExcelDate($sheetOnKapak, 'G42', $hakedis['gecici_kabul_tarihi']);
         setExcelDate($sheetOnKapak, 'G43', $hakedis['gecici_kabul_itibar_tarihi']);
         setExcelDate($sheetOnKapak, 'G44', $hakedis['gecici_kabul_onanma_tarihi']);
