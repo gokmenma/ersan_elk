@@ -56,6 +56,7 @@ try {
             WHERE p.firma_id = ? 
             AND p.silinme_tarihi IS NULL 
             AND (p.aktif_mi = 1 OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi >= ?))
+            AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00' OR p.isten_cikis_tarihi >= ?)
             AND (p.disardan_sigortali = 0 OR FIND_IN_SET('puantaj', p.gorunum_modulleri))
             AND (p.ise_giris_tarihi IS NULL OR p.ise_giris_tarihi = '' OR p.ise_giris_tarihi <= ?)
             AND NOT EXISTS (
@@ -67,7 +68,7 @@ try {
             )
             ORDER BY p.adi_soyadi ASC
         ");
-        $personeller->execute([$firma_id, $startDate, $endDate, $endDate, $startDate]);
+        $personeller->execute([$firma_id, $startDate, $startDate, $endDate, $endDate, $startDate]);
         $personel_list = $personeller->fetchAll(PDO::FETCH_OBJ);
 
         // Varsayılan tanımlamaları al
@@ -785,6 +786,7 @@ try {
             WHERE p.firma_id = ? 
             AND p.silinme_tarihi IS NULL 
             AND (p.aktif_mi = 1 OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi >= ?))
+            AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00' OR p.isten_cikis_tarihi >= ?)
             AND (p.disardan_sigortali = 0 OR FIND_IN_SET('puantaj', p.gorunum_modulleri))
             AND (p.ise_giris_tarihi IS NULL OR p.ise_giris_tarihi = '' OR p.ise_giris_tarihi <= ?)
             AND NOT EXISTS (
@@ -796,7 +798,7 @@ try {
             )
             ORDER BY p.adi_soyadi ASC
         ");
-        $personeller->execute([$firma_id, $startDate, $endDate, $endDate, $startDate]);
+        $personeller->execute([$firma_id, $startDate, $startDate, $endDate, $endDate, $startDate]);
         $personel_list = $personeller->fetchAll(PDO::FETCH_OBJ);
 
         $varsayilan_X = $Tanimlamalar->db->prepare("SELECT id, tur_adi, kisa_kod, renk FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod = 'X' OR kisa_kod = 'x' OR tur_adi LIKE '%Çalışılan Gün%') AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");

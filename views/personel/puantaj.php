@@ -91,6 +91,7 @@ use App\Service\Gate;
 
         .table-puantaj th.is-sunday {
             background-color: #ef4444 !important;
+            color: #ffffff !important;
             border: none !important;
         }
 
@@ -515,10 +516,7 @@ use App\Service\Gate;
             /* Scroll snap removed for fluid scrolling without exact row jumps */
         }
 
-        /* Satır satır kaydırma kaldırıldı */
-        .table-puantaj tbody tr {
-            
-        }
+
 
         /* Thead sticky - wrapper içinde sabit kalır */
         .table-puantaj thead {
