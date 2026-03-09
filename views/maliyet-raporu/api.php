@@ -5,6 +5,7 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use App\Helper\Helper;
+use App\Helper\Date;
 use App\Helper\Security;
 use App\Model\ManuelGiderModel;
 use App\Model\MaliyetRaporuModel;
@@ -30,7 +31,7 @@ if ($action === 'manuel-gider-kaydet') {
             'kategori'     => $_POST['kategori'],
             'alt_kategori' => $_POST['alt_kategori'] ?? null,
             'tutar'        => Helper::formattedMoneyToNumber($_POST['tutar']),
-            'tarih'        => $_POST['tarih'],
+            'tarih'        => Date::Ymd($_POST['tarih']),
             'aciklama'     => $_POST['aciklama'] ?? null,
             'belge_no'     => $_POST['belge_no'] ?? null,
         ];
@@ -83,7 +84,7 @@ if ($action === 'manuel-gider-detay') {
     $id = Security::decrypt($_POST['id'] ?? '');
 
     try {
-        $kayit = $ManuelGider->find($id);
+        $kayit = $ManuelGider->getDetailById((int) $id);
         if ($kayit) {
             $kayit->enc_id = Security::encrypt($kayit->id);
             $status = 'success';

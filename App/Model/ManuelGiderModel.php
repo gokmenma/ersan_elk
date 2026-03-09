@@ -113,16 +113,39 @@ class ManuelGiderModel extends Model
     }
 
     /**
+     * Düzenleme formu için kayıt detayını standart alan adlarıyla getirir.
+     */
+    public function getDetailById(int $id)
+    {
+        $map = $this->getColumnMap();
+        $dateCol = $map['date'];
+        $categoryCol = $map['category'];
+
+        $stmt = $this->db->prepare("\n            SELECT mg.*,\n                   mg.{$dateCol} AS tarih,\n                   mg.{$categoryCol} AS kategori\n            FROM {$this->table} mg\n            WHERE mg.id = :id\n              AND mg.firma_id = :firma_id\n              AND mg.silinme_tarihi IS NULL\n            LIMIT 1\n        ");
+
+        $stmt->execute([
+            'id' => $id,
+            'firma_id' => $_SESSION['firma_id'],
+        ]);
+
+        return $stmt->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
      * Kayıt ekle
      */
     public function create($data)
     {
+        $map = $this->getColumnMap();
+        $dateCol = $map['date'];
+        $categoryCol = $map['category'];
+
         $this->attributes = [
             'firma_id'              => $_SESSION['firma_id'],
-            'kategori'              => $data['kategori'],
+            $categoryCol            => $data['kategori'],
             'alt_kategori'          => $data['alt_kategori'] ?? null,
             'tutar'                 => $data['tutar'],
-            'tarih'                 => $data['tarih'],
+            $dateCol                => $data['tarih'],
             'aciklama'              => $data['aciklama'] ?? null,
             'belge_no'              => $data['belge_no'] ?? null,
             'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null,
@@ -136,12 +159,16 @@ class ManuelGiderModel extends Model
      */
     public function updateById($id, $data)
     {
+        $map = $this->getColumnMap();
+        $dateCol = $map['date'];
+        $categoryCol = $map['category'];
+
         $this->attributes = [
             'id'           => $id,
-            'kategori'     => $data['kategori'],
+            $categoryCol   => $data['kategori'],
             'alt_kategori' => $data['alt_kategori'] ?? null,
             'tutar'        => $data['tutar'],
-            'tarih'        => $data['tarih'],
+            $dateCol       => $data['tarih'],
             'aciklama'     => $data['aciklama'] ?? null,
             'belge_no'     => $data['belge_no'] ?? null,
         ];

@@ -357,26 +357,70 @@ try {
         $sozlesmeYili = $sozlesmeTarihi ? substr($sozlesmeTarihi, 0, 4) : date('Y');
         
         $sheetIsTakip->setCellValue('C6', $hakedis['sozlesme_bedeli']);
+        // Yıllar Başlığı (H10, L10, P10 vb.)
+        $yilSutunlari = ['H', 'L', 'P', 'T']; // Maksimum 4 yıl destekleyelim
         
-        // Yıllar Başlığı (C9, D9, E9)
-        $sheetIsTakip->setCellValue('C9', $sozlesmeYili);
-        $sheetIsTakip->setCellValue('D9', $sozlesmeYili + 1);
-        $sheetIsTakip->setCellValue('E9', $sozlesmeYili + 2);
+        $bitisTarihi = $hakedis['isin_bitecegi_tarih'];
+        $bitisYili = $bitisTarihi ? substr($bitisTarihi, 0, 4) : $sozlesmeYili;
 
-        // Sözleşme Bedeline Göre Dağılım (İlk yıla sözleşme bedelinin tamamını atalım şimdilik)
-        $sheetIsTakip->setCellValue('C11', $hakedis['sozlesme_bedeli']);
+        $yilFarki = $bitisYili - $sozlesmeYili;
+        if ($yilFarki < 0) $yilFarki = 0;
+        if ($yilFarki > 3) $yilFarki = 3; // En fazla 4 yıl (0, 1, 2, 3) yazdırıyoruz şablona sığması için
 
-        // Yıl İçi Gerçekleşme (Tüm hakedişlerdeki imalat toplamı)
-        // Gerçekleşme olarak imalat kumulatif değerini alıyoruz
+        // Geçici Değişkenler
         $donemModel = new HakedisDonemModel();
-        $totals = $donemModel->calculateTotals($hakedis['id']);
-        $yiliIciGerceklesme = $totals['imalat_kumulatif'] ?? 0;
-        
-        $sheetIsTakip->setCellValue('C12', $yiliIciGerceklesme);
+        $yilinSonHakedisleri = [];
 
-        // Genel Gerçekleşme Yüzdesi
+        $stmtYillar = $db->prepare("
+            SELECT hakedis_tarihi_yil, MAX(hakedis_no) as max_no
+            FROM hakedis_donemleri
+            WHERE sozlesme_id = ? AND hakedis_no <= ? AND silinme_tarihi IS NULL
+            GROUP BY hakedis_tarihi_yil
+        ");
+        $stmtYillar->execute([$hakedis['sozlesme_id'], $hakedis['hakedis_no']]);
+
+        while ($row = $stmtYillar->fetch(\PDO::FETCH_ASSOC)) {
+            $stmtLastId = $db->prepare("SELECT id FROM hakedis_donemleri WHERE sozlesme_id = ? AND hakedis_no = ? AND silinme_tarihi IS NULL LIMIT 1");
+            $stmtLastId->execute([$hakedis['sozlesme_id'], $row['max_no']]);
+            $lastId = $stmtLastId->fetchColumn();
+            
+            if ($lastId) {
+                $totalsLast = $donemModel->calculateTotals($lastId);
+                $yilinSonHakedisleri[$row['hakedis_tarihi_yil']] = $totalsLast['imalat_kumulatif'] ?? 0;
+            }
+        }
+
+        $oncekiYilinKumulatifi = 0;
+
+        for ($i = 0; $i <= $yilFarki; $i++) {
+            $col = $yilSutunlari[$i];
+            $yil = $sozlesmeYili + $i;
+
+            // 10. Satır: YIL Bilgisi
+            $sheetIsTakip->setCellValue($col . '10', $yil);
+
+            // 11. Satır: Sözleşme Bedeline Göre Dağılım
+            // Tüm sözleşme bedelini ilk yıla yazdırıyoruz (Özel dağılım kuralı belirtilmediyse)
+            if ($i == 0) {
+                $sheetIsTakip->setCellValue($col . '11', $hakedis['sozlesme_bedeli']);
+            } else {
+                $sheetIsTakip->setCellValue($col . '11', '');
+            }
+
+            // 12. Satır: Yıl İçi Gerçekleşme (Bu Yılın Sonundaki - Önceki Yılın Sonundaki)
+            $buYilinKumulatifi = $yilinSonHakedisleri[$yil] ?? $oncekiYilinKumulatifi; 
+            $yilIciTutar = max(0, $buYilinKumulatifi - $oncekiYilinKumulatifi);
+            
+            $sheetIsTakip->setCellValue($col . '12', $yilIciTutar);
+            $oncekiYilinKumulatifi = $buYilinKumulatifi;
+        }
+
+        // Genel Gerçekleşme Yüzdesi (Kümülatif toplam / Sözleşme Bedeli) => C13'te kalabilir
+        $totals = $donemModel->calculateTotals($hakedis['id']);
+        $genelKumulatif = $totals['imalat_kumulatif'] ?? 0;
+        
         $bedel = floatval($hakedis['sozlesme_bedeli'] ?? 0);
-        $yuzde = ($bedel > 0) ? ($yiliIciGerceklesme / $bedel) : 0;
+        $yuzde = ($bedel > 0) ? ($genelKumulatif / $bedel) : 0;
         $sheetIsTakip->setCellValue('C13', $yuzde);
 
         // Kalem bazlı Yapılan Miktar ve Kalan Miktar bölümü (Satır 15'ten başlıyor)
