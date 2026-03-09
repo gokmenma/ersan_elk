@@ -145,8 +145,10 @@ try {
         $sheetBilgiler->setCellValue('D5', $hakedis['yuklenici_tel']);
         $sheetBilgiler->setCellValue('D6', $hakedis['ihale_kayit_no']);
         $sheetBilgiler->setCellValue('D7', $hakedis['kesif_bedeli']);
-        // D8 - İhale Tenzilatı is formula, skip
-        $sheetBilgiler->setCellValue('D8', $hakedis['ihale_tenzilati']);
+        
+        // D8 - İhale Tenzilatı: Excel hücre formatı '%' olduğu için değeri 100'e bölerek yazıyoruz. (örn: 16.88 -> 0.1688)
+        $tenzilat = floatval($hakedis['ihale_tenzilati']);
+        $sheetBilgiler->setCellValue('D8', $tenzilat / 100);
 
         $sheetBilgiler->setCellValue('D9', $hakedis['sozlesme_bedeli']);
         
