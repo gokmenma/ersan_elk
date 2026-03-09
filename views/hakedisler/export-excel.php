@@ -37,6 +37,7 @@ try {
                hs.tasvip_eden, hs.tasvip_eden_unvan,
                hs.yuzde_yirmi_fazla_is, hs.son_sure_uzatimi,
                hs.gecici_kabul_tarihi, hs.gecici_kabul_itibar_tarihi, hs.gecici_kabul_onanma_tarihi,
+               hs.temel_endeks_ay, hs.temel_endeks_yil,
                hd.onceki_hakedis_tutari
         FROM hakedis_donemleri hd
         JOIN hakedis_sozlesmeler hs ON hd.sozlesme_id = hs.id
@@ -228,6 +229,7 @@ try {
 
         // Öncelikle 5-11 arasındaki satırları temizle (Eski şablon verisi kalmasın)
         for ($i = 5; $i <= 11; $i++) {
+            $sheetBFTC->setCellValue('B' . $i, '');
             $sheetBFTC->setCellValue('C' . $i, '');
             $sheetBFTC->setCellValue('D' . $i, '');
             $sheetBFTC->setCellValue('E' . $i, '');
@@ -244,6 +246,7 @@ try {
             $tutar = $miktari * $b_fiyat;
             $genelToplam += $tutar;
             
+            $sheetBFTC->setCellValue('B' . $row, $k['poz_no'] ?? '');
             $sheetBFTC->setCellValue('C' . $row, $k['kalem_adi']);
             $sheetBFTC->setCellValue('D' . $row, $k['birim']);
             $sheetBFTC->setCellValue('E' . $row, $miktari); // Sözleşme miktarı
@@ -274,10 +277,10 @@ try {
     if ($sheetFFT) {
         $sheetFFT->setCellValue('C3', $hakedis['idare_baskanlik_adi'] ?? '');
 
-        // Hakediş tutarını hesapla ve A11 hücresine yaz (KDV Dahil Toplam)
+        // Hakediş tutarını hesapla ve A11 hücresine yaz (Donem Imalat)
         $donemModel = new HakedisDonemModel();
         $totals = $donemModel->calculateTotals($hakedis['id']);
-        $hakedisTutari = $totals['imalat_kumulatif'] ?? 0;
+        $hakedisTutari = $totals['imalat_donem'] ?? 0;
         $sheetFFT->setCellValue('A11', $hakedisTutari);
         
         // Pn Formülü kaldırıldı.

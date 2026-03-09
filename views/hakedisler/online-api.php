@@ -175,13 +175,13 @@ try {
 
                         if ($k_id > 0) {
                             // Güncelle
-                            $stmtExt = $db->prepare("UPDATE hakedis_kalemleri SET kalem_adi = ?, birim = ?, miktari = ?, teklif_edilen_birim_fiyat = ? WHERE id = ? AND sozlesme_id = ?");
-                            $stmtExt->execute([$k['kalem_adi'], $k['birim'], floatval($k['miktari']), floatval($k['teklif_edilen_birim_fiyat']), $k_id, $sid]);
+                            $stmtExt = $db->prepare("UPDATE hakedis_kalemleri SET poz_no = ?, kalem_adi = ?, birim = ?, miktari = ?, teklif_edilen_birim_fiyat = ? WHERE id = ? AND sozlesme_id = ?");
+                            $stmtExt->execute([$k['poz_no'], $k['kalem_adi'], $k['birim'], floatval($k['miktari']), floatval($k['teklif_edilen_birim_fiyat']), $k_id, $sid]);
                             $islenen_idleri[] = $k_id;
                         } else {
                             // Yeni ekle
-                            $stmtExt = $db->prepare("INSERT INTO hakedis_kalemleri (sozlesme_id, kalem_adi, birim, miktari, teklif_edilen_birim_fiyat) VALUES (?, ?, ?, ?, ?)");
-                            $stmtExt->execute([$sid, $k['kalem_adi'], $k['birim'], floatval($k['miktari']), floatval($k['teklif_edilen_birim_fiyat'])]);
+                            $stmtExt = $db->prepare("INSERT INTO hakedis_kalemleri (sozlesme_id, poz_no, kalem_adi, birim, miktari, teklif_edilen_birim_fiyat) VALUES (?, ?, ?, ?, ?, ?)");
+                            $stmtExt->execute([$sid, $k['poz_no'], $k['kalem_adi'], $k['birim'], floatval($k['miktari']), floatval($k['teklif_edilen_birim_fiyat'])]);
                             $islenen_idleri[] = $db->lastInsertId();
                         }
                     }
@@ -436,7 +436,7 @@ try {
             if ($data['durum'] == 'tamamlandi') {
                 $totals = $model->calculateTotals($resultId);
                 if ($totals) {
-                    $toplamHakedis = $totals['kdv_dahil_toplam'];
+                    $toplamHakedis = $totals['imalat_kumulatif'] ?? 0;
                     
                     // hakedi_tutari alanını güncelle
                     $stmtUpdateTotal = $db->prepare("UPDATE hakedis_donemleri SET hakedi_tutari = ? WHERE id = ?");
@@ -572,6 +572,7 @@ try {
 
             $data = [
                 'sozlesme_id' => $sozlesme_id,
+                'poz_no' => $_POST['poz_no'] ?? '',
                 'kalem_adi' => $_POST['kalem_adi'] ?? '',
                 'birim' => $_POST['birim'] ?? '',
                 'teklif_edilen_birim_fiyat' => floatval($_POST['teklif_edilen_birim_fiyat'] ?? 0),
@@ -598,6 +599,7 @@ try {
             }
 
             $data = [
+                'poz_no' => $_POST['poz_no'] ?? '',
                 'kalem_adi' => $_POST['kalem_adi'] ?? '',
                 'birim' => $_POST['birim'] ?? '',
                 'teklif_edilen_birim_fiyat' => floatval($_POST['teklif_edilen_birim_fiyat'] ?? 0)

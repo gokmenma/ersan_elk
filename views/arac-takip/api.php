@@ -860,6 +860,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $addedCount = 0;
                 $updatedCount = 0;
                 $errorDetails = [];
+                $addedDetails = [];
+                $updatedDetails = [];
 
                 // Numeric parsing function
                 $cleanNum = function ($val) {
@@ -988,6 +990,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                         kart_numarasi = VALUES(kart_numarasi),
                                         brut_tutar = VALUES(brut_tutar),
                                         fatura_tarihi = VALUES(fatura_tarihi),
+                                        silinme_tarihi = NULL,
                                         guncelleme_tarihi = NOW()";
 
                             $stmt = $Yakit->getDb()->prepare($sql);
@@ -1009,13 +1012,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                 ':olusturan_kullanici_id' => $newData['olusturan_kullanici_id']
                             ]);
 
-                            if ($stmt->rowCount() == 1)
+                            if ($stmt->rowCount() == 1) {
                                 $addedCount++;
-                            else
+                                $addedDetails[] = "Satır $rowNum (Plaka: $plaka, Fiş: " . ($newData['external_id'] ?? '-') . ")";
+                            } else {
                                 $updatedCount++;
+                                $updatedDetails[] = "Satır $rowNum (Plaka: $plaka, Fiş: " . ($newData['external_id'] ?? '-') . ")";
+                            }
                         } else {
                             $Yakit->saveWithAttr($newData);
                             $addedCount++;
+                            $addedDetails[] = "Satır $rowNum (Plaka: $plaka)";
                         }
 
                         // Araç KM güncelle
@@ -1041,7 +1048,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 echo json_encode([
                     'status' => 'success',
                     'message' => $responseMessage,
-                    'errors' => $errorDetails
+                    'errors' => $errorDetails,
+                    'addedDetails' => $addedDetails,
+                    'updatedDetails' => $updatedDetails
                 ]);
                 break;
 

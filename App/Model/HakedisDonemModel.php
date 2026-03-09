@@ -56,6 +56,7 @@ class HakedisDonemModel extends Model
         }
 
         $totalCumulativeImalat = 0;
+        $totalPeriodImalat = 0;
         foreach ($kalemler as $k) {
             $kalemId = $k['id'];
             $birimFiyat = floatval($k['teklif_edilen_birim_fiyat']);
@@ -74,6 +75,7 @@ class HakedisDonemModel extends Model
             }
             
             $totalCumulativeImalat += ($oncekiMiktar + $buAyMiktar) * $birimFiyat;
+            $totalPeriodImalat += $buAyMiktar * $birimFiyat;
         }
 
         // 4. Fiyat Farkı Hesapla
@@ -94,7 +96,8 @@ class HakedisDonemModel extends Model
 
         if ($pn > 1) {
             // Fiyat Farkı = Tutar * 0.90 * (Pn - 1)
-            $fiyatFarki = $totalCumulativeImalat * 0.90 * ($pn - 1);
+            // User clarified that calculation should be on current period manufacture
+            $fiyatFarki = $totalPeriodImalat * 0.90 * ($pn - 1);
         }
 
         $araToplam = $totalCumulativeImalat + $fiyatFarki;
@@ -103,6 +106,7 @@ class HakedisDonemModel extends Model
 
         return [
             'imalat_kumulatif' => $totalCumulativeImalat,
+            'imalat_donem' => $totalPeriodImalat,
             'fiyat_farki' => $fiyatFarki,
             'kdv_dahil_toplam' => $genelToplam,
             'kdv_orani' => $kdvRate

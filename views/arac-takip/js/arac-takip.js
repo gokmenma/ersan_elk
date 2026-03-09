@@ -1052,17 +1052,34 @@ const AracTakip = {
       success: function (response) {
         if (response.status === "success") {
           let msg = response.message;
+
+          if (response.updatedDetails && response.updatedDetails.length > 0) {
+            msg += `<br><br><details><summary class="text-primary fw-bold" style="cursor:pointer;">Güncellenen Kayıtlar (${response.updatedDetails.length})</summary>
+            <ul class="text-start small mt-2 mb-0" style="max-height: 150px; overflow-y: auto;">`;
+            response.updatedDetails.forEach(d => msg += `<li>${d}</li>`);
+            msg += `</ul></details>`;
+          }
+
+          if (response.addedDetails && response.addedDetails.length > 0) {
+            msg += `<br><details><summary class="text-success fw-bold" style="cursor:pointer;">Yeni Eklenen Kayıtlar (${response.addedDetails.length})</summary>
+            <ul class="text-start small mt-2 mb-0" style="max-height: 150px; overflow-y: auto;">`;
+            response.addedDetails.forEach(d => msg += `<li>${d}</li>`);
+            msg += `</ul></details>`;
+          }
+
           if (response.errors && response.errors.length > 0) {
-            msg += "<br><br><strong>Hatalar:</strong><ul>";
+            msg += "<br><br><strong>Hatalar:</strong><ul class='text-start small text-danger' style='max-height: 150px; overflow-y: auto;'>";
             response.errors.forEach(function (e) {
               msg += "<li>" + e + "</li>";
             });
             msg += "</ul>";
           }
+
           Swal.fire({
             icon: "success",
             title: "İşlem Tamamlandı",
             html: msg,
+            width: '600px',
             confirmButtonText: "Tamam",
           }).then(() => {
             $("#excelModal").modal("hide");

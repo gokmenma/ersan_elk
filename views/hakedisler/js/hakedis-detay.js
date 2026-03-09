@@ -50,7 +50,10 @@ function loadKalemler() {
             html += `
                         <tr id="kalem_row_${kalem.id}">
                             <td class="text-center fw-bold">${index + 1}</td>
-                            <td class="td-kalem-adi"><div class="text-wrap" style="width: 250px;">${kalem.kalem_adi}</div></td>
+                            <td class="td-kalem-adi">
+                                <span class="badge bg-secondary mb-1 poz-no-badge">${kalem.poz_no || ""}</span>
+                                <div class="text-wrap" style="width: 250px;">${kalem.kalem_adi}</div>
+                            </td>
                             <td class="td-birim">${kalem.birim}</td>
                             <td class="text-end td-fiyat">${birimFiyat.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺</td>
                             <td style="width:120px;">
@@ -138,6 +141,7 @@ function saveParametreler(form) {
 function editKalemRow(btn, id) {
   const tr = $(btn).closest("tr");
   const kalemAdi = tr.find(".td-kalem-adi .text-wrap").text().trim();
+  const pozNo = tr.find(".td-kalem-adi .poz-no-badge").text().trim();
   const birim = tr.find(".td-birim").text().trim();
   const rawFiyat = tr
     .find(".td-fiyat")
@@ -164,7 +168,8 @@ function editKalemRow(btn, id) {
   selectHtml += `</select>`;
 
   tr.find(".td-kalem-adi").html(
-    `<input type="text" class="form-control form-control-sm edit-kalem-adi" value="${kalemAdi}">`,
+    `<input type="text" class="form-control form-control-sm edit-poz-no mb-1" value="${pozNo}" placeholder="Poz No">
+     <input type="text" class="form-control form-control-sm edit-kalem-adi" value="${kalemAdi}">`
   );
   tr.find(".td-birim").html(selectHtml);
   tr.find(".td-fiyat").html(
@@ -182,6 +187,7 @@ function editKalemRow(btn, id) {
 function saveEditedKalem(btn, id) {
   const tr = $(btn).closest("tr");
   const kalemAdi = tr.find(".edit-kalem-adi").val();
+  const pozNo = tr.find(".edit-poz-no").val();
   const birim = tr.find(".edit-birim").val();
   const teklifFiyat = tr.find(".edit-fiyat").val();
 
@@ -195,6 +201,7 @@ function saveEditedKalem(btn, id) {
     {
       type: "updateKalem",
       kalem_id: id,
+      poz_no: pozNo,
       kalem_adi: kalemAdi,
       birim: birim,
       teklif_edilen_birim_fiyat: teklifFiyat,

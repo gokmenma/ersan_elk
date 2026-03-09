@@ -112,7 +112,7 @@ function saveSozlesme(form) {
       kalemler.push({
         id: kalemId,
         poz_no: pNo,
-        kalem_adi: (pNo ? pNo + " - " : "") + ad,
+        kalem_adi: ad,
         birim: birim,
         miktari: miktar,
         teklif_edilen_birim_fiyat: fiyat,
@@ -235,8 +235,8 @@ function editSozlesme(id) {
 
             // Deneyebilirsen poz_no çıkar
             let adi = k.kalem_adi;
-            let pz = "";
-            if (adi.includes(" - ")) {
+            let pz = k.poz_no || "";
+            if (!pz && adi.includes(" - ")) {
               let parts = adi.split(" - ");
               pz = parts[0];
               parts.shift();
