@@ -126,7 +126,8 @@ $aylar = [
                                 <th>Hakediş No</th>
                                 <th>Dönem (Ay/Yıl)</th>
                                 <th>Uygulanan Endeks (T/G)</th>
-                                <th>Tutar (KDV Dahil)</th>
+                                <th>Tutanak Tasdik Tarihi</th>
+                                <th>Tutar (İmalat)</th>
                                 <th>Durum</th>
                                 <th>İşlemler</th>
                             </tr>

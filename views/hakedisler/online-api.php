@@ -124,10 +124,9 @@ try {
                 'gecici_kabul_onanma_tarihi' => Date::Ymd($_POST['gecici_kabul_onanma_tarihi'] ?? null),
                 'durum' => $_POST['durum'] ?? 'aktif',
                 'a1_katsayisi' => !empty($_POST['a1_katsayisi']) ? floatval($_POST['a1_katsayisi']) : 0.28,
-                'b1_katsayisi' => floatval($_POST['b1_katsayisi'] ?? 0),
-                'b2_katsayisi' => floatval($_POST['b2_katsayisi'] ?? 0),
-                'c_katsayisi' => floatval($_POST['c_katsayisi'] ?? 0),
-                'asgari_farki_dahil_edilsin' => isset($_POST['asgari_farki_dahil_edilsin']) ? 1 : 0,
+                'b1_katsayisi' => !empty($_POST['b1_katsayisi']) ? floatval($_POST['b1_katsayisi']) : 0.22,
+                'b2_katsayisi' => !empty($_POST['b2_katsayisi']) ? floatval($_POST['b2_katsayisi']) : 0.25,
+                'c_katsayisi' => !empty($_POST['c_katsayisi']) ? floatval($_POST['c_katsayisi']) : 0.25,
                 'asgari_ucret_temel' => !empty($_POST['asgari_ucret_temel']) ? floatval($_POST['asgari_ucret_temel']) : null,
                 'motorin_temel' => !empty($_POST['motorin_temel']) ? floatval($_POST['motorin_temel']) : null,
                 'ufe_genel_temel' => !empty($_POST['ufe_genel_temel']) ? floatval($_POST['ufe_genel_temel']) : null,
@@ -266,7 +265,15 @@ try {
             $stmt->execute($params);
             $totalRecords = $stmt->fetchColumn();
 
-            $sql = "SELECT * FROM hakedis_donemleri WHERE $where ORDER BY hakedis_tarihi_yil $orderDir, hakedis_tarihi_ay $orderDir LIMIT :start, :length";
+            $sql = "SELECT hd.*, 
+                (SELECT SUM(m.miktar * k.teklif_edilen_birim_fiyat) 
+                 FROM hakedis_miktarlari m 
+                 JOIN hakedis_kalemleri k ON m.kalem_id = k.id 
+                 WHERE m.hakedis_donem_id = hd.id) as imalat_donem 
+                FROM hakedis_donemleri hd 
+                WHERE $where 
+                ORDER BY hakedis_tarihi_yil $orderDir, hakedis_tarihi_ay $orderDir 
+                LIMIT :start, :length";
             $stmt = $db->prepare($sql);
             foreach ($params as $key => $val) {
                 $stmt->bindValue($key, $val);
@@ -276,6 +283,35 @@ try {
             $stmt->execute();
 
             $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($data as &$row) {
+                $pn = 0;
+                $imalat = floatval($row['imalat_donem'] ?? 0);
+                
+                if (floatval($row['asgari_ucret_temel']) > 0 || floatval($row['a1_katsayisi']) > 0) {
+                    $a1 = floatval($row['a1_katsayisi'] ?: 0.28);
+                    if (isset($row['asgari_farki_dahil_edilsin']) && $row['asgari_farki_dahil_edilsin'] == 1 && floatval($row['asgari_ucret_temel']) > 0) {
+                        $pn += $a1 * (floatval($row['asgari_ucret_guncel']) / floatval($row['asgari_ucret_temel']));
+                    } else {
+                        $pn += $a1;
+                    }
+                }
+                if (floatval($row['motorin_temel']) > 0) {
+                    $pn += floatval($row['b1_katsayisi'] ?: 0.22) * (floatval($row['motorin_guncel']) / floatval($row['motorin_temel']));
+                }
+                if (floatval($row['ufe_genel_temel']) > 0) {
+                    $pn += floatval($row['b2_katsayisi'] ?: 0.25) * (floatval($row['ufe_genel_guncel']) / floatval($row['ufe_genel_temel']));
+                }
+                if (floatval($row['makine_ekipman_temel']) > 0) {
+                    $pn += floatval($row['c_katsayisi'] ?: 0.25) * (floatval($row['makine_ekipman_guncel']) / floatval($row['makine_ekipman_temel']));
+                }
+
+                $ff = 0;
+                if ($pn > 1) {
+                    $ff = $imalat * 0.90 * ($pn - 1);
+                }
+                $row['fiyat_farki'] = $ff;
+            }
 
             echo json_encode([
                 "draw" => intval($_POST['draw'] ?? 0),

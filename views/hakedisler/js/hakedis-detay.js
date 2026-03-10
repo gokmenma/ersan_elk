@@ -110,6 +110,10 @@ function loadKalemler() {
             donemImalat.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " ₺"
           );
 
+          $("#fiyatFarkiDahilToplam").text(
+            donemAraToplam.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ₺"
+          );
+
           $("#kdvDahilToplam").text(
             donemKdvDahil.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2, }) + " ₺"
           );

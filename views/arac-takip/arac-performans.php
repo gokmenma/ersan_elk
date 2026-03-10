@@ -209,6 +209,11 @@ for ($year = 2025; $year <= (int) $thisYear; $year++) {
                             </h6>
                         </div>
                         <div class="d-flex align-items-center gap-2">
+                            <select class="form-select form-select-sm" id="chartMetricSelector" style="width: 150px;">
+                                <option value="avg">Yakıt Ortalaması</option>
+                                <option value="km">En Çok KM</option>
+                                <option value="fuel">En Çok Yakıt</option>
+                            </select>
                             <div class="btn-group btn-group-sm">
                                 <button type="button" class="btn btn-outline-danger active" id="btnSortHigh">En Yüksek</button>
                                 <button type="button" class="btn btn-outline-success" id="btnSortLow">En Düşük</button>
@@ -368,6 +373,7 @@ $(document).ready(function() {
     let dataTable = null;
     let fpSingle = null;
     let barChartSort = 'desc'; // 'desc' or 'asc'
+    let currentMetric = 'avg'; // 'avg', 'km', 'fuel'
     let lastAraclar = [];
 
 
@@ -403,6 +409,7 @@ $(document).ready(function() {
                 }
             };
         } else if (currentPeriod === 'gunluk') {
+            options.mode = "range";
             options.dateFormat = "d.m.Y";
         }
 
@@ -448,16 +455,42 @@ $(document).ready(function() {
     $('#btnSortHigh').on('click', function() {
         barChartSort = 'desc';
         $(this).addClass('active').siblings().removeClass('active');
-        $('#barChartTitle').text('En Yüksek Yakıt Ortalaması');
+        updateBarChartTitle();
         updateBarChart(lastAraclar);
     });
 
     $('#btnSortLow').on('click', function() {
         barChartSort = 'asc';
         $(this).addClass('active').siblings().removeClass('active');
-        $('#barChartTitle').text('En Düşük Yakıt Ortalaması');
+        updateBarChartTitle();
         updateBarChart(lastAraclar);
     });
+
+    $('#chartMetricSelector').on('change', function() {
+        currentMetric = $(this).val();
+        updateBarChartTitle();
+        updateBarChart(lastAraclar);
+    });
+
+    function updateBarChartTitle() {
+        const sortText = barChartSort === 'desc' ? 'En Yüksek' : 'En Düşük';
+        let metricText = '';
+        let labelText = '';
+
+        if (currentMetric === 'avg') {
+            metricText = 'Yakıt Ortalaması';
+            labelText = 'L/100 KM';
+        } else if (currentMetric === 'km') {
+            metricText = 'Yapılan KM';
+            labelText = 'KM';
+        } else if (currentMetric === 'fuel') {
+            metricText = 'Harcanan Yakıt';
+            labelText = 'Litre';
+        }
+
+        $('#barChartTitle').text(`${sortText} ${metricText}`);
+        $('#barChartLabel').text(labelText);
+    }
 
     // =============================================
     // VERİ YÜKLEME
@@ -487,8 +520,15 @@ $(document).ready(function() {
                 baslangic = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
                 bitis = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
             } else if (currentPeriod === 'gunluk') {
-                baslangic = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                bitis = baslangic;
+                if (fpSingle.selectedDates.length === 2) {
+                    const start = fpSingle.selectedDates[0];
+                    const end = fpSingle.selectedDates[1];
+                    baslangic = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+                    bitis = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+                } else {
+                    baslangic = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    bitis = baslangic;
+                }
             }
         } else {
             const now = new Date();
@@ -682,16 +722,23 @@ $(document).ready(function() {
     function updateBarChart(araclar) {
         if (!araclar || araclar.length === 0) return;
 
-        // L/100 KM'ye göre hesapla ve sırala, top 10
+        // Metrik bazlı değer hazırla
         let mapped = araclar.map(a => {
-            const avg = a.toplam_km > 0 ? (a.toplam_litre / a.toplam_km) * 100 : 0;
-            return { ...a, avg: avg };
-        }).filter(a => a.avg > 0);
+            let val = 0;
+            if (currentMetric === 'avg') {
+                val = a.toplam_km > 0 ? (a.toplam_litre / a.toplam_km) * 100 : 0;
+            } else if (currentMetric === 'km') {
+                val = parseFloat(a.toplam_km) || 0;
+            } else if (currentMetric === 'fuel') {
+                val = parseFloat(a.toplam_litre) || 0;
+            }
+            return { ...a, displayVal: val };
+        }).filter(a => a.displayVal > 0);
 
         if (barChartSort === 'desc') {
-            mapped.sort((a, b) => b.avg - a.avg);
+            mapped.sort((a, b) => b.displayVal - a.displayVal);
         } else {
-            mapped.sort((a, b) => a.avg - b.avg);
+            mapped.sort((a, b) => a.displayVal - b.displayVal);
         }
 
         const sorted = mapped.slice(0, 10);
@@ -700,7 +747,7 @@ $(document).ready(function() {
             if (a.surucu) return [a.plaka, a.surucu];
             return a.plaka;
         });
-        const values = sorted.map(a => parseFloat(a.avg.toFixed(2)));
+        const values = sorted.map(a => parseFloat(a.displayVal.toFixed(2)));
         const fullNames = sorted.map(a => {
             let n = `${a.plaka}`;
             if (a.surucu) n += ` (${a.surucu})`;
@@ -710,8 +757,12 @@ $(document).ready(function() {
 
         if (barChart) barChart.destroy();
 
-        const chartColor = barChartSort === 'desc' ? '#e74a3b' : '#1cc88a';
-        const gradientColor = barChartSort === 'desc' ? '#f5a5a0' : '#87e0be';
+        const chartColor = barChartSort === 'desc' ? (currentMetric === 'km' ? '#556ee6' : '#e74a3b') : '#1cc88a';
+        const gradientColor = barChartSort === 'desc' ? (currentMetric === 'km' ? '#a5b4fc' : '#f5a5a0') : '#87e0be';
+
+        let unitLabel = 'L/100 KM';
+        if (currentMetric === 'km') unitLabel = 'KM';
+        else if (currentMetric === 'fuel') unitLabel = 'Litre';
 
         barChart = new ApexCharts(document.querySelector("#barChart"), {
             series: [{ name: 'L/100 KM', data: values }],
@@ -748,7 +799,7 @@ $(document).ready(function() {
             dataLabels: {
                 enabled: true,
                 textAnchor: 'start',
-                formatter: val => formatNumber(val) + ' L/100 KM',
+                formatter: val => formatNumber(val) + ' ' + unitLabel,
                 offsetX: 5,
                 style: { fontSize: '11px', fontWeight: 700, colors: ['#475569'] }
             },
@@ -777,7 +828,7 @@ $(document).ready(function() {
                     const val = series[seriesIndex][dataPointIndex];
                     return '<div class="p-2 shadow-sm" style="background:#fff; border:1px solid #e2e8f0; border-radius:6px;">' +
                         '<div class="fw-bold text-dark mb-1">' + fullNames[dataPointIndex] + '</div>' +
-                        '<div class="text-muted small">Ortalama: <span class="fw-bold text-danger">' + formatNumber(val) + ' L/100 KM</span></div>' +
+                        '<div class="text-muted small">Değer: <span class="fw-bold" style="color:'+chartColor+'">' + formatNumber(val) + ' ' + unitLabel + '</span></div>' +
                         '</div>';
                 }
             },

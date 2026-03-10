@@ -66,10 +66,24 @@ function initHakedisTable() {
       },
     },
     {
-      data: "hakedi_tutari",
+      data: "tutanak_tasdik_tarihi",
       render: function (data) {
-        if (!data) return '<span class="text-muted">-</span>';
-        return `<strong>${parseFloat(data).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺</strong>`;
+        if (!data || data === '0000-00-00') return '<span class="text-muted">-</span>';
+        const parts = data.split('-');
+        if (parts.length !== 3) return data;
+        return `${parts[2]}.${parts[1]}.${parts[0]}`;
+      },
+    },
+    {
+      data: "imalat_donem",
+      render: function (data, type, row) {
+        let manufacture = parseFloat(data || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " ₺";
+        let ff = parseFloat(row.fiyat_farki || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " ₺";
+        
+        return `<div><strong>${manufacture}</strong></div>
+                <div class="text-success" style="font-size: 11px;">
+                    <i class="bx bx-plus-circle me-1"></i>FF: ${ff}
+                </div>`;
       },
     },
     {

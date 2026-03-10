@@ -146,24 +146,24 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                     <div class="row">
                         <div class="col-6 mb-3">
                             <label class="form-label" title="İşçilik Katsayısı (a1)">a1 Katsayısı</label>
-                            <input type="number" step="0.00001" class="form-control form-control-sm" name="a1_katsayisi"
+                            <input type="number" step="0.000001" class="form-control form-control-sm" name="a1_katsayisi"
                                 value="<?= $hakedis->a1_katsayisi ?>">
                         </div>
                         <div class="col-6 mb-3">
                             <label class="form-label" title="Motorin Katsayısı (b1)">b1 Katsayısı</label>
-                            <input type="number" step="0.0000001" class="form-control form-control-sm" name="b1_katsayisi"
+                            <input type="number" step="0.000001" class="form-control form-control-sm" name="b1_katsayisi"
                                 value="<?= $hakedis->b1_katsayisi ?>">
                         </div>
                     </div>
                     <div class="row">
                         <div class="col-6 mb-3">
                             <label class="form-label" title="Yİ-ÜFE Katsayısı (b2)">b2 Katsayısı</label>
-                            <input type="number" step="0.00001" class="form-control form-control-sm" name="b2_katsayisi"
+                            <input type="number" step="0.000001" class="form-control form-control-sm" name="b2_katsayisi"
                                 value="<?= $hakedis->b2_katsayisi ?>">
                         </div>
                         <div class="col-6 mb-3">
                             <label class="form-label" title="Makine-Ekipman Katsayısı (c)">c Katsayısı</label>
-                            <input type="number" step="0.00001" class="form-control form-control-sm" name="c_katsayisi"
+                            <input type="number" step="0.000001" class="form-control form-control-sm" name="c_katsayisi"
                                 value="<?= $hakedis->c_katsayisi ?>">
                         </div>
                     </div>
@@ -182,22 +182,22 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                         <div id="temelEndeksAlanda">
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-muted" style="width: 80px;">A.Ücret</span>
-                                <input type="number" step="0.01" class="form-control" name="asgari_ucret_temel"
+                                <input type="number" step="0.000001" class="form-control" name="asgari_ucret_temel"
                                     value="<?= $hakedis->asgari_ucret_temel ?>" placeholder="Io">
                             </div>
                             <div class="input-group mt-1">
                                 <span class="input-group-text bg-light text-muted" style="width: 80px;">Motorin</span>
-                                <input type="number" step="0.00001" class="form-control" name="motorin_temel"
+                                <input type="number" step="0.000001" class="form-control" name="motorin_temel"
                                     value="<?= $hakedis->motorin_temel ?>" placeholder="Mo">
                             </div>
                             <div class="input-group mt-1">
                                 <span class="input-group-text bg-light text-muted" style="width: 80px;">TÜFE</span>
-                                <input type="number" step="0.01" class="form-control" name="ufe_genel_temel"
+                                <input type="number" step="0.000001" class="form-control" name="ufe_genel_temel"
                                     value="<?= $hakedis->ufe_genel_temel ?>" placeholder="ÜFEo">
                             </div>
                             <div class="input-group mt-1">
                                 <span class="input-group-text bg-light text-muted" style="width: 80px;">Makine</span>
-                                <input type="number" step="0.00001" class="form-control" name="makine_ekipman_temel"
+                                <input type="number" step="0.000001" class="form-control" name="makine_ekipman_temel"
                                     value="<?= $hakedis->makine_ekipman_temel ?>" placeholder="Eo">
                             </div>
                             <!-- Ekstra parametreler yüklendiğinde buraya gelir -->
@@ -238,27 +238,27 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                             <div class="input-group border border-warning rounded-2 overflow-hidden">
                                 <span class="input-group-text bg-soft-warning text-warning border-warning"
                                     style="width: 80px;">A.Ücret</span>
-                                <input type="number" step="0.01" class="form-control border-warning"
+                                <input type="number" step="0.000001" class="form-control border-warning"
                                     name="asgari_ucret_guncel" value="<?= $hakedis->asgari_ucret_guncel ?>"
                                     placeholder="In">
                             </div>
                             <div class="input-group mt-1 border border-warning rounded-2 overflow-hidden">
                                 <span class="input-group-text bg-soft-warning text-warning border-warning"
                                     style="width: 80px;">Motorin</span>
-                                <input type="number" step="0.0000001" class="form-control border-warning"
+                                <input type="number" step="0.000001" class="form-control border-warning"
                                     name="motorin_guncel" value="<?= $hakedis->motorin_guncel ?>" placeholder="Mn">
                             </div>
                             <div class="input-group mt-1 border border-warning rounded-2 overflow-hidden">
                                 <span class="input-group-text bg-soft-warning text-warning border-warning"
                                     style="width: 80px;">TÜFE</span>
-                                <input type="number" step="0.001" class="form-control border-warning"
+                                <input type="number" step="0.000001" class="form-control border-warning"
                                     name="ufe_genel_guncel" value="<?= $hakedis->ufe_genel_guncel ?>"
                                     placeholder="ÜFEn">
                             </div>
                             <div class="input-group mt-1 border border-warning rounded-2 overflow-hidden">
                                 <span class="input-group-text bg-soft-warning text-warning border-warning"
                                     style="width: 80px;">Makine</span>
-                                <input type="number" step="0.00001" class="form-control border-warning"
+                                <input type="number" step="0.000001" class="form-control border-warning"
                                     name="makine_ekipman_guncel" value="<?= $hakedis->makine_ekipman_guncel ?>"
                                     placeholder="En">
                             </div>
@@ -371,6 +371,12 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                                 <th colspan="7" class="text-end font-size-15 h5 text-success">Hesaplanan Fiyat Farkı:
                                 </th>
                                 <th colspan="2" class="font-size-15 text-success h5" id="hesaplananFiyatFarki">0,00 ₺
+                                </th>
+                            </tr>
+                            <tr>
+                                <th colspan="7" class="text-end font-size-15 h5 text-info">Fiyat Farkı Dahil Toplam:
+                                </th>
+                                <th colspan="2" class="font-size-15 text-info h5" id="fiyatFarkiDahilToplam">0,00 ₺
                                 </th>
                             </tr>
                             <tr>

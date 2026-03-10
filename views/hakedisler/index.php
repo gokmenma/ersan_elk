@@ -314,18 +314,18 @@ $aylar = [
                                     (P1)</h6>
                                 <div class="row mb-3">
                                     <div class="col-md-6">
-                                        <?= Form::FormFloatInput('number', 'a1_katsayisi', '0.28000', '0.28000', 'a1 (İşçilik) Katsayısı', icon: 'percent', attributes: 'step="0.00001"') ?>
+                                        <?= Form::FormFloatInput('number', 'a1_katsayisi', '0.28000', '0.28000', 'a1 (İşçilik) Katsayısı', icon: 'percent', attributes: 'step="0.000001"') ?>
                                     </div>
                                     <div class="col-md-6">
-                                        <?= Form::FormFloatInput('number', 'b1_katsayisi', '0.22000', '0.22000', 'b1 (Motorin) Katsayısı', icon: 'percent', attributes: 'step="0.00001"') ?>
+                                        <?= Form::FormFloatInput('number', 'b1_katsayisi', '0.22000', '0.22000', 'b1 (Motorin) Katsayısı', icon: 'percent', attributes: 'step="0.000001"') ?>
                                     </div>
                                 </div>
                                 <div class="row mb-3">
                                     <div class="col-md-6">
-                                        <?= Form::FormFloatInput('number', 'b2_katsayisi', '0.25000', '0.25000', 'b2 (Yİ-ÜFE) Katsayısı', icon: 'percent', attributes: 'step="0.00001"') ?>
+                                        <?= Form::FormFloatInput('number', 'b2_katsayisi', '0.25000', '0.25000', 'b2 (Yİ-ÜFE) Katsayısı', icon: 'percent', attributes: 'step="0.000001"') ?>
                                     </div>
                                     <div class="col-md-6">
-                                        <?= Form::FormFloatInput('number', 'c_katsayisi', '0.25000', '0.25000', 'c (Makine-Ekp) Katsayısı', icon: 'percent', attributes: 'step="0.00001"') ?>
+                                        <?= Form::FormFloatInput('number', 'c_katsayisi', '0.25000', '0.25000', 'c (Makine-Ekp) Katsayısı', icon: 'percent', attributes: 'step="0.000001"') ?>
                                     </div>
                                 </div>
 
@@ -354,16 +354,16 @@ $aylar = [
                                     </div>
                                 </div>
                                 <div class="mb-3">
-                                    <?= Form::FormFloatInput('number', 'asgari_ucret_temel', '', 'Örn: 26005.50', 'İşçilik (Asgari Ücret) - Io', icon: 'dollar-sign', attributes: 'step="0.01"') ?>
+                                    <?= Form::FormFloatInput('number', 'asgari_ucret_temel', '', 'Örn: 26005.50', 'İşçilik (Asgari Ücret) - Io', icon: 'dollar-sign', attributes: 'step="0.000001"') ?>
                                 </div>
                                 <div class="mb-3">
-                                    <?= Form::FormFloatInput('number', 'motorin_temel', '', 'Örn: 54.13308', 'Motorin Endeksi - Mo', icon: 'droplet', attributes: 'step="0.00001"') ?>
+                                    <?= Form::FormFloatInput('number', 'motorin_temel', '', 'Örn: 54.13308', 'Motorin Endeksi - Mo', icon: 'droplet', attributes: 'step="0.000001"') ?>
                                 </div>
                                 <div class="mb-3">
-                                    <?= Form::FormFloatInput('number', 'ufe_genel_temel', '', 'Örn: 4632.89', 'Yİ-ÜFE Genel Endeksi - ÜFEo', icon: 'trending-up', attributes: 'step="0.01"') ?>
+                                    <?= Form::FormFloatInput('number', 'ufe_genel_temel', '', 'Örn: 4632.89', 'Yİ-ÜFE Genel Endeksi - ÜFEo', icon: 'trending-up', attributes: 'step="0.000001"') ?>
                                 </div>
                                 <div class="mb-3">
-                                    <?= Form::FormFloatInput('number', 'makine_ekipman_temel', '', 'Örn: 3319.76', 'Makine-Ekipman Endeksi - Eo', icon: 'tool', attributes: 'step="0.01"') ?>
+                                    <?= Form::FormFloatInput('number', 'makine_ekipman_temel', '', 'Örn: 3319.76', 'Makine-Ekipman Endeksi - Eo', icon: 'tool', attributes: 'step="0.000001"') ?>
                                 </div>
                             </div>
                         </div>

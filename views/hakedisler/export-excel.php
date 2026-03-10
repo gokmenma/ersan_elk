@@ -242,6 +242,9 @@ try {
         $sheetBilgiler->setCellValue('C32', $hakedis['motorin_guncel']);
         $sheetBilgiler->setCellValue('E32', $hakedis['ufe_genel_guncel']);
         $sheetBilgiler->setCellValue('G32', $hakedis['makine_ekipman_guncel']);
+        
+        // Formats for indices
+        $sheetBilgiler->getStyle('A32:G32')->getNumberFormat()->setFormatCode('#,##0.000000');
     }
 
     // --- Fill 'BFTC' Sheet ---
@@ -321,6 +324,10 @@ try {
         $sheetFFT->setCellValue('O9', $hakedis['motorin_temel'] ?? 54.13308);
         $sheetFFT->setCellValue('O10', $hakedis['ufe_genel_temel'] ?? 4632.89);
         $sheetFFT->setCellValue('O11', $hakedis['makine_ekipman_temel'] ?? 3319.76);
+
+        // Formats for coefficients and indices
+        $sheetFFT->getStyle('N8:N11')->getNumberFormat()->setFormatCode('#,##0.000000');
+        $sheetFFT->getStyle('O8:O11')->getNumberFormat()->setFormatCode('#,##0.000000');
 
         // --- Endeks Ay/Yıl ve 00.01.1900 Düzeltmeleri ---
         // Üst Başlık (C2)
