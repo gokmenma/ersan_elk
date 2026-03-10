@@ -76,25 +76,6 @@ switch ($tab) {
         include_once __DIR__ . "/icerik/evraklar.php";
         break;
     case 'ek_odemeler':
-        $filter_params = [
-            'filter_ek_mode' => $_GET['filter_mode'] ?? $_GET['filter_ek_mode'] ?? $_SESSION['filter_ek_mode'] ?? 'donem',
-            'filter_ek_baslangic' => $_GET['filter_ek_baslangic'] ?? $_SESSION['filter_ek_baslangic'] ?? '',
-            'filter_ek_bitis' => $_GET['filter_ek_bitis'] ?? $_SESSION['filter_ek_bitis'] ?? '',
-            'filter_ek_donem' => $_GET['filter_ek_donem'] ?? $_SESSION['filter_ek_donem'] ?? '',
-            'filter_ek_ay_yil' => $_GET['filter_ek_ay_yil'] ?? $_SESSION['filter_ek_ay_yil'] ?? date('Y-m'),
-            'filter_ek_yil' => $_GET['filter_ek_yil'] ?? $_SESSION['filter_ek_yil'] ?? date('Y')
-        ];
-
-        // Oturumu güncelle
-        foreach ($filter_params as $key => $val) {
-            $_SESSION[$key] = $val;
-            $_GET[$key] = $val;
-        }
-
-        $PersonelEkOdemelerModel = new PersonelEkOdemelerModel();
-        // Model fonksiyonuna filtreleri gönder
-        $ek_odemeler = $PersonelEkOdemelerModel->getPersonelEkOdemeler($id, $filter_params);
-
         // Açık dönemleri getir
         $BordroDonemModel = new BordroDonemModel();
         $donemler_raw = $BordroDonemModel->getAllDonemsForFilter();
@@ -117,16 +98,20 @@ switch ($tab) {
             $acik_donemler[date('Y-m')] = date('m/Y') . ' (Otomatik)';
         }
 
-        include_once __DIR__ . "/icerik/ek_odemeler.php";
-        break;
-    case 'kesintiler':
+        $varsayilan_ek_donem = !empty($acik_donemler) ? array_key_first($acik_donemler) : '';
+
+        $filter_ek_donem = $_GET['filter_ek_donem'] ?? $_SESSION['filter_ek_donem'] ?? $varsayilan_ek_donem;
+        if ($filter_ek_donem === '' && !isset($_GET['filter_ek_donem'])) {
+            $filter_ek_donem = $varsayilan_ek_donem;
+        }
+
         $filter_params = [
-            'filter_kesinti_mode' => $_GET['filter_mode'] ?? $_GET['filter_kesinti_mode'] ?? $_SESSION['filter_kesinti_mode'] ?? 'donem',
-            'filter_kesinti_baslangic' => $_GET['filter_kesinti_baslangic'] ?? $_SESSION['filter_kesinti_baslangic'] ?? '',
-            'filter_kesinti_bitis' => $_GET['filter_kesinti_bitis'] ?? $_SESSION['filter_kesinti_bitis'] ?? '',
-            'filter_kesinti_donem' => $_GET['filter_kesinti_donem'] ?? $_SESSION['filter_kesinti_donem'] ?? '',
-            'filter_kesinti_ay_yil' => $_GET['filter_kesinti_ay_yil'] ?? $_SESSION['filter_kesinti_ay_yil'] ?? date('Y-m'),
-            'filter_kesinti_yil' => $_GET['filter_kesinti_yil'] ?? $_SESSION['filter_kesinti_yil'] ?? date('Y')
+            'filter_ek_mode' => $_GET['filter_mode'] ?? $_GET['filter_ek_mode'] ?? $_SESSION['filter_ek_mode'] ?? 'donem',
+            'filter_ek_baslangic' => $_GET['filter_ek_baslangic'] ?? $_SESSION['filter_ek_baslangic'] ?? '',
+            'filter_ek_bitis' => $_GET['filter_ek_bitis'] ?? $_SESSION['filter_ek_bitis'] ?? '',
+            'filter_ek_donem' => $filter_ek_donem,
+            'filter_ek_ay_yil' => $_GET['filter_ek_ay_yil'] ?? $_SESSION['filter_ek_ay_yil'] ?? date('Y-m'),
+            'filter_ek_yil' => $_GET['filter_ek_yil'] ?? $_SESSION['filter_ek_yil'] ?? date('Y')
         ];
 
         // Oturumu güncelle
@@ -135,10 +120,13 @@ switch ($tab) {
             $_GET[$key] = $val;
         }
 
-        $PersonelKesintileriModel = new PersonelKesintileriModel();
+        $PersonelEkOdemelerModel = new PersonelEkOdemelerModel();
         // Model fonksiyonuna filtreleri gönder
-        $kesintiler = $PersonelKesintileriModel->getPersonelKesintileri($id, $filter_params);
+        $ek_odemeler = $PersonelEkOdemelerModel->getPersonelEkOdemeler($id, $filter_params);
 
+        include_once __DIR__ . "/icerik/ek_odemeler.php";
+        break;
+    case 'kesintiler':
         // Açık dönemleri getir
         $BordroDonemModel = new BordroDonemModel();
         $donemler_raw = $BordroDonemModel->getAllDonemsForFilter();
@@ -162,6 +150,32 @@ switch ($tab) {
         if (empty($acik_donemler)) {
             $acik_donemler[0] = date('m/Y') . ' (Dönem Yok)';
         }
+
+        $varsayilan_kesinti_donem = !empty($acik_donemler) ? array_key_first($acik_donemler) : '';
+
+        $filter_kesinti_donem = $_GET['filter_kesinti_donem'] ?? $_SESSION['filter_kesinti_donem'] ?? $varsayilan_kesinti_donem;
+        if ($filter_kesinti_donem === '' && !isset($_GET['filter_kesinti_donem'])) {
+            $filter_kesinti_donem = $varsayilan_kesinti_donem;
+        }
+
+        $filter_params = [
+            'filter_kesinti_mode' => $_GET['filter_mode'] ?? $_GET['filter_kesinti_mode'] ?? $_SESSION['filter_kesinti_mode'] ?? 'donem',
+            'filter_kesinti_baslangic' => $_GET['filter_kesinti_baslangic'] ?? $_SESSION['filter_kesinti_baslangic'] ?? '',
+            'filter_kesinti_bitis' => $_GET['filter_kesinti_bitis'] ?? $_SESSION['filter_kesinti_bitis'] ?? '',
+            'filter_kesinti_donem' => $filter_kesinti_donem,
+            'filter_kesinti_ay_yil' => $_GET['filter_kesinti_ay_yil'] ?? $_SESSION['filter_kesinti_ay_yil'] ?? date('Y-m'),
+            'filter_kesinti_yil' => $_GET['filter_kesinti_yil'] ?? $_SESSION['filter_kesinti_yil'] ?? date('Y')
+        ];
+
+        // Oturumu güncelle
+        foreach ($filter_params as $key => $val) {
+            $_SESSION[$key] = $val;
+            $_GET[$key] = $val;
+        }
+
+        $PersonelKesintileriModel = new PersonelKesintileriModel();
+        // Model fonksiyonuna filtreleri gönder
+        $kesintiler = $PersonelKesintileriModel->getPersonelKesintileri($id, $filter_params);
 
         include_once __DIR__ . "/icerik/kesintiler.php";
         break;

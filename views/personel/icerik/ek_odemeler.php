@@ -357,23 +357,25 @@ foreach ($ek_odemeler as $k) {
                                                                 <?php endif; ?>
                                                             </td>
                                                             <td class="text-center">
-                                                                <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->aktif ?? 1) == 1): ?>
+                                                                <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->aktif ?? 1) == 1 && !($k->kapali_mi ?? 0)): ?>
                                                                     <button type="button"
                                                                         class="btn btn-sm btn-warning btn-personel-ek-odeme-sonlandir"
                                                                         data-id="<?= $k->id ?>" title="Sonlandır">
                                                                         <i class="bx bx-stop"></i>
                                                                     </button>
                                                                 <?php endif; ?>
-                                                                <button type="button"
-                                                                    class="btn btn-sm btn-primary btn-personel-ek-odeme-duzenle"
-                                                                    data-id="<?= $k->id ?>" title="Düzenle">
-                                                                    <i class="bx bx-edit"></i>
-                                                                </button>
-                                                                <button type="button"
-                                                                    class="btn btn-sm btn-danger btn-personel-ek-odeme-sil"
-                                                                    data-id="<?= $k->id ?>" title="Sil">
-                                                                    <i class="bx bx-trash"></i>
-                                                                </button>
+                                                                <?php if (!($k->kapali_mi ?? 0)): ?>
+                                                                    <button type="button"
+                                                                        class="btn btn-sm btn-primary btn-personel-ek-odeme-duzenle"
+                                                                        data-id="<?= $k->id ?>" title="Düzenle">
+                                                                        <i class="bx bx-edit"></i>
+                                                                    </button>
+                                                                    <button type="button"
+                                                                        class="btn btn-sm btn-danger btn-personel-ek-odeme-sil"
+                                                                        data-id="<?= $k->id ?>" title="Sil">
+                                                                        <i class="bx bx-trash"></i>
+                                                                    </button>
+                                                                <?php endif; ?>
                                                             </td>
                                                         </tr>
                                                     <?php endforeach; ?>
@@ -467,20 +469,22 @@ foreach ($ek_odemeler as $k) {
                                         <?php endif; ?>
                                     </td>
                                     <td class="text-center">
-                                        <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->aktif ?? 1) == 1): ?>
+                                        <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->aktif ?? 1) == 1 && !($k->kapali_mi ?? 0)): ?>
                                             <button type="button" class="btn btn-sm btn-warning btn-personel-ek-odeme-sonlandir"
                                                 data-id="<?= $k->id ?>" title="Sonlandır">
                                                 <i class="bx bx-stop"></i>
                                             </button>
                                         <?php endif; ?>
-                                        <button type="button" class="btn btn-sm btn-primary btn-personel-ek-odeme-duzenle"
-                                            data-id="<?= $k->id ?>" title="Düzenle">
-                                            <i class="bx bx-edit"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-danger btn-personel-ek-odeme-sil"
-                                            data-id="<?= $k->id ?>" title="Sil">
-                                            <i class="bx bx-trash"></i>
-                                        </button>
+                                        <?php if (!($k->kapali_mi ?? 0)): ?>
+                                            <button type="button" class="btn btn-sm btn-primary btn-personel-ek-odeme-duzenle"
+                                                data-id="<?= $k->id ?>" title="Düzenle">
+                                                <i class="bx bx-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-danger btn-personel-ek-odeme-sil"
+                                                data-id="<?= $k->id ?>" title="Sil">
+                                                <i class="bx bx-trash"></i>
+                                            </button>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

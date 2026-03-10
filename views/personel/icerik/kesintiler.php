@@ -8,7 +8,7 @@ use App\Model\BordroParametreModel;
 $BordroParametreModel = new BordroParametreModel();
 $kesinti_turleri_param = $BordroParametreModel->getKesintiTurleri();
 
-// PHP TABANLI FİLTRELEME (Server-side filtreleme yapıldığı için sadece input değerlerini $_GET üzerinden alır)
+// PHP TABANLI FİLTRELEME
 $filter_mode = $_GET['filter_mode'] ?? $_GET['filter_kesinti_mode'] ?? 'donem';
 $filter_baslangic = $_GET['filter_kesinti_baslangic'] ?? '';
 $filter_bitis = $_GET['filter_kesinti_bitis'] ?? '';
@@ -22,25 +22,20 @@ for ($i = 2025; $i <= date('Y'); $i++) {
 // İstatistikler ve Gruplama
 $toplamKesinti = 0;
 $aktifSurekliKesinti = 0;
-$bekleyenKesinti = 0;
 $grouped_kesintiler = [];
 
 foreach ($kesintiler as $k) {
     // İstatistikler
-    if ($k->tekrar_tipi == 'surekli' && $k->aktif == 1) {
+    if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->aktif ?? 1) == 1) {
         $aktifSurekliKesinti++;
     }
-    // Onaylanmış tek seferlik kesintilerin tutarını topla
-    if (($k->tekrar_tipi == 'tek_sefer' || ($k->tekrar_tipi == 'surekli' && $k->hesaplama_tipi == 'sabit')) && ($k->durum ?? 'beklemede') == 'onaylandi') {
+    // Tek seferlik ve sabit tutarların toplamı
+    if (($k->tekrar_tipi ?? 'tek_sefer') == 'tek_sefer' || (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->hesaplama_tipi ?? 'sabit') == 'sabit')) {
         $toplamKesinti += $k->tutar ?? 0;
-    }
-    // Bekleyen kesintileri say
-    if (($k->durum ?? 'beklemede') == 'beklemede') {
-        $bekleyenKesinti++;
     }
 
     // Gruplama
-    $grup_adi = $k->parametre_adi ?? ucfirst($k->tur);
+    $grup_adi = $k->parametre_adi ?? ucfirst($k->tur ?? 'Diğer');
     if (!isset($grouped_kesintiler[$grup_adi])) {
         $grouped_kesintiler[$grup_adi] = [
             'items' => [],
@@ -51,8 +46,8 @@ foreach ($kesintiler as $k) {
     $grouped_kesintiler[$grup_adi]['items'][] = $k;
     $grouped_kesintiler[$grup_adi]['count']++;
 
-    // Grup toplam (Sadece onaylı ve sabit olanlar)
-    if (($k->tekrar_tipi == 'tek_sefer' || ($k->tekrar_tipi == 'surekli' && $k->hesaplama_tipi == 'sabit')) && ($k->durum ?? 'beklemede') == 'onaylandi') {
+    // Grup toplam tutar
+    if (($k->tekrar_tipi ?? 'tek_sefer') == 'tek_sefer' || (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->hesaplama_tipi ?? 'sabit') == 'sabit')) {
         $grouped_kesintiler[$grup_adi]['toplam_tutar'] += $k->tutar ?? 0;
     }
 }
@@ -64,21 +59,16 @@ foreach ($kesintiler as $k) {
         <div class="card border">
             <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-3">
-                    <h5 class="card-title mb-0 text-primary"><i class="bx bx-minus-circle me-2"></i>Personel Kesintileri
+                    <h5 class="card-title mb-0 text-danger"><i class="bx bx-minus-circle me-2"></i>Personel Kesintileri
                     </h5>
                     <span class="badge bg-danger">Toplam: <?= number_format($toplamKesinti, 2, ',', '.') ?> TL</span>
-                    <?php if ($bekleyenKesinti > 0): ?>
-                        <span class="badge bg-warning text-dark"><i class="bx bx-time me-1"></i><?= $bekleyenKesinti ?> Onay
-                            Bekliyor</span>
-                    <?php endif; ?>
                     <?php if ($aktifSurekliKesinti > 0): ?>
-                        <span class="badge bg-warning text-dark"><i
-                                class="bx bx-refresh me-1"></i><?= $aktifSurekliKesinti ?> Sürekli Kesinti</span>
+                        <span class="badge bg-warning text-dark"><i class="bx bx-refresh me-1"></i><?= $aktifSurekliKesinti ?>
+                            Sürekli Kesinti</span>
                     <?php endif; ?>
                 </div>
+
                 <div class="d-flex align-items-center gap-3">
-
-
                     <!-- Görünüm Modu -->
                     <div class="segmented-control-container bg-light-subtle">
                         <input type="radio" class="segmented-control-input" name="kesintiViewMode" id="kesintiViewListe"
@@ -103,7 +93,7 @@ foreach ($kesintiler as $k) {
                         </button>
                         <div class="vr mx-1 d-none d-xl-block" style="height: 25px; align-self: center;"></div>
 
-                        <button type="button" class="btn btn-primary d-flex align-items-center"
+                        <button type="button" class="btn btn-danger d-flex align-items-center"
                             id="btnOpenKesintiModal">
                             <i class="bx bx-plus me-1 fs-5"></i> Yeni Kesinti Ekle
                         </button>
@@ -113,19 +103,19 @@ foreach ($kesintiler as $k) {
             <div class="card-body p-0">
                 <!-- Filtre Alanı -->
                 <?php
-                $is_kesinti_filter_open = $_GET['is_kesinti_filter_open'] ?? null;
-                if ($is_kesinti_filter_open !== null) {
-                    $kes_collapse_class = $is_kesinti_filter_open == '1' ? 'show' : '';
+                $is_filter_open = $_GET['is_kesinti_filter_open'] ?? null;
+                if ($is_filter_open !== null) {
+                    $collapse_class = $is_filter_open == '1' ? 'show' : '';
                 } else {
-                    $has_kes_filter = !empty($_GET['filter_mode']) && $_GET['filter_mode'] !== 'donem';
-                    if ($has_kes_filter || !empty($_GET['filter_kesinti_baslangic']) || !empty($_GET['filter_kesinti_bitis']) || !empty($_GET['filter_kesinti_donem'])) {
-                        $kes_collapse_class = 'show';
+                    $has_filter = !empty($_GET['filter_mode']) && $_GET['filter_mode'] !== 'donem';
+                    if ($has_filter || !empty($_GET['filter_kesinti_baslangic']) || !empty($_GET['filter_kesinti_bitis']) || !empty($_GET['filter_kesinti_donem'])) {
+                        $collapse_class = 'show';
                     } else {
-                        $kes_collapse_class = '';
+                        $collapse_class = '';
                     }
                 }
                 ?>
-                <div class="collapse border-bottom <?= $kes_collapse_class ?>" id="filterKesintiCollapse">
+                <div class="collapse border-bottom <?= $collapse_class ?>" id="filterKesintiCollapse">
                     <div class="p-4 bg-light-subtle">
                         <form id="formKesintiFilter" method="GET">
                             <?php foreach ($_GET as $key => $val): ?>
@@ -178,8 +168,7 @@ foreach ($kesintiler as $k) {
                                 </div>
 
                                 <!-- Yıl Inputu -->
-                                <div
-                                    class="col-md-2 filter-group filter-yil <?= $filter_mode !== 'yil' ? 'd-none' : '' ?>">
+                                <div class="col-md-2 filter-group filter-yil <?= $filter_mode !== 'yil' ? 'd-none' : '' ?>">
                                     <?= Form::FormSelect2(
                                         name: "filter_kesinti_yil",
                                         options: $years,
@@ -203,7 +192,6 @@ foreach ($kesintiler as $k) {
                     setTimeout(function () {
                         if (typeof feather !== 'undefined') { feather.replace(); }
 
-                        // Month Picker initialization
                         if (typeof flatpickr !== 'undefined') {
                             flatpickr(".flatpickr", {
                                 locale: "tr",
@@ -264,23 +252,20 @@ foreach ($kesintiler as $k) {
                             <tr>
                                 <th>Tür</th>
                                 <th>Kayıt Sayısı</th>
-                                <th>Toplam Tutar (Onaylı)</th>
+                                <th>Toplam Tutar</th>
                                 <th class="text-end">İşlem</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($grouped_kesintiler as $grup_adi => $grup): ?>
-                                <?php $row_id = 'grp_kes_' . md5($grup_adi . rand()); ?>
+                                <?php $row_id = 'grp_' . md5($grup_adi . rand()); ?>
                                 <tr style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#<?= $row_id ?>"
                                     aria-expanded="false">
-                                    <td class="fw-bold text-primary">
+                                    <td class="fw-bold text-danger">
                                         <i class="bx bx-chevron-right me-1"></i> <?= htmlspecialchars($grup_adi) ?>
                                     </td>
                                     <td><span class="badge bg-secondary"><?= $grup['count'] ?> Adet</span></td>
-                                    <td class="fw-bold text-danger">
-                                        <?= number_format($grup['toplam_tutar'], 2, ',', '.') ?>
-                                        TL
-                                    </td>
+                                    <td class="fw-bold"><?= number_format($grup['toplam_tutar'], 2, ',', '.') ?> TL</td>
                                     <td class="text-end"><i class="bx bx-chevron-down"></i></td>
                                 </tr>
                                 <tr class="collapse" id="<?= $row_id ?>">
@@ -293,7 +278,7 @@ foreach ($kesintiler as $k) {
                                                         <th>Tekrar</th>
                                                         <th>Hesaplama</th>
                                                         <th>Tutar / Oran</th>
-                                                        <th>Personel / Kayıt Tarihi</th>
+                                                        <th>Kayıt Yapan / Tarih</th>
                                                         <th>Dönem</th>
                                                         <th>Açıklama</th>
                                                         <th>Durum</th>
@@ -305,16 +290,12 @@ foreach ($kesintiler as $k) {
                                                         <?php $enc_id = Security::encrypt($k->id); ?>
                                                         <tr data-id="<?= $enc_id ?>">
                                                             <td>
-                                                                <span class="badge bg-soft-info text-info">
-                                                                    <?= $k->parametre_adi ?? ucfirst($k->tur) ?>
+                                                                <span class="badge bg-soft-danger text-danger">
+                                                                    <?= $k->parametre_adi ?? ucfirst($k->tur ?? 'Diğer') ?>
                                                                 </span>
-                                                                <?php if ($k->tur == 'icra' && $k->dosya_no): ?>
-                                                                    <br><small
-                                                                        class="text-muted"><?= htmlspecialchars($k->icra_dairesi . ' - ' . $k->dosya_no) ?></small>
-                                                                <?php endif; ?>
                                                             </td>
                                                             <td>
-                                                                <?php if ($k->tekrar_tipi == 'surekli'): ?>
+                                                                <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
                                                                     <span class="badge bg-warning text-dark"><i
                                                                             class="bx bx-refresh me-1"></i>Sürekli</span>
                                                                 <?php else: ?>
@@ -343,11 +324,11 @@ foreach ($kesintiler as $k) {
                                                                     <?= htmlspecialchars($k->kayit_yapan_ad_soyad ?? 'Sistem') ?>
                                                                 </div>
                                                                 <div class="text-muted small">
-                                                                    <?= !empty($k->olusturma_tarihi) ? date('d.m.Y H:i', strtotime($k->olusturma_tarihi)) : '-' ?>
+                                                                    <?= !empty($k->created_at) ? date('d.m.Y H:i', strtotime($k->created_at)) : '-' ?>
                                                                 </div>
                                                             </td>
                                                             <td>
-                                                                <?php if ($k->tekrar_tipi == 'surekli'): ?>
+                                                                <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
                                                                     <small>
                                                                         <?= $k->baslangic_donemi ? date('d.m.Y', strtotime($k->baslangic_donemi)) : '-' ?>
                                                                         <i class="bx bx-right-arrow-alt"></i>
@@ -359,48 +340,48 @@ foreach ($kesintiler as $k) {
                                                             </td>
                                                             <td><?= htmlspecialchars($k->aciklama ?? '-') ?></td>
                                                             <td>
-                                                                <?php
-                                                                $durum = $k->durum ?? 'beklemede';
-                                                                $durumBadges = [
-                                                                    'beklemede' => '<span class="badge bg-warning text-dark"><i class="bx bx-time me-1"></i>Beklemede</span>',
-                                                                    'onaylandi' => '<span class="badge bg-success"><i class="bx bx-check me-1"></i>Onaylandı</span>',
-                                                                    'reddedildi' => '<span class="badge bg-danger"><i class="bx bx-x me-1"></i>Reddedildi</span>'
-                                                                ];
-                                                                echo $durumBadges[$durum] ?? $durumBadges['beklemede'];
-                                                                ?>
+                                                                <?php if (($k->onay_durumu ?? 1) == 0): ?>
+                                                                    <span class="badge bg-warning">Bekliyor</span>
+                                                                <?php elseif (($k->onay_durumu ?? 1) == 1): ?>
+                                                                    <span class="badge bg-success">Onaylandı</span>
+                                                                <?php elseif (($k->onay_durumu ?? 1) == 2): ?>
+                                                                    <span class="badge bg-danger">Reddedildi</span>
+                                                                <?php endif; ?>
                                                             </td>
                                                             <td class="text-center">
-                                                                <?php if ($durum == 'beklemede'): ?>
-                                                                    <button type="button"
-                                                                        class="btn btn-sm btn-success btn-personel-kesinti-onayla"
-                                                                        data-id="<?= $k->id ?>" title="Onayla">
-                                                                        <i class="bx bx-check"></i>
-                                                                    </button>
-                                                                    <button type="button"
-                                                                        class="btn btn-sm btn-danger btn-personel-kesinti-reddet"
-                                                                        data-id="<?= $k->id ?>" title="Reddet">
-                                                                        <i class="bx bx-x"></i>
-                                                                    </button>
-                                                                <?php endif; ?>
-                                                                <?php if ($k->tekrar_tipi == 'surekli' && $k->aktif == 1): ?>
-                                                                    <button type="button"
-                                                                        class="btn btn-sm btn-warning btn-personel-kesinti-sonlandir"
-                                                                        data-id="<?= $k->id ?>" title="Sonlandır">
-                                                                        <i class="bx bx-stop"></i>
-                                                                    </button>
-                                                                <?php endif; ?>
-                                                                <button type="button"
-                                                                    class="btn btn-sm btn-primary btn-personel-kesinti-duzenle"
-                                                                    data-id="<?= $k->id ?>" title="Düzenle">
-                                                                    <i class="bx bx-edit"></i>
-                                                                </button>
-                                                                <?php if (!($k->kapali_mi ?? 0)): ?>
-                                                                    <button type="button"
-                                                                        class="btn btn-sm btn-danger btn-personel-kesinti-sil"
-                                                                        data-id="<?= $k->id ?>" title="Sil">
-                                                                        <i class="bx bx-trash"></i>
-                                                                    </button>
-                                                                <?php endif; ?>
+                                                                <div class="d-flex justify-content-center gap-1">
+                                                                    <?php if (($k->onay_durumu ?? 1) == 0 && !($k->kapali_mi ?? 0)): ?>
+                                                                        <button type="button"
+                                                                            class="btn btn-sm btn-outline-success btn-personel-kesinti-onayla"
+                                                                            data-id="<?= $k->id ?>" title="Onayla">
+                                                                            <i class="bx bx-check"></i>
+                                                                        </button>
+                                                                        <button type="button"
+                                                                            class="btn btn-sm btn-outline-danger btn-personel-kesinti-reddet"
+                                                                            data-id="<?= $k->id ?>" title="Reddet">
+                                                                            <i class="bx bx-x"></i>
+                                                                        </button>
+                                                                    <?php endif; ?>
+                                                                    <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->aktif ?? 1) == 1 && !($k->kapali_mi ?? 0)): ?>
+                                                                        <button type="button"
+                                                                            class="btn btn-sm btn-warning btn-personel-kesinti-sonlandir"
+                                                                            data-id="<?= $k->id ?>" title="Sonlandır">
+                                                                            <i class="bx bx-stop"></i>
+                                                                        </button>
+                                                                    <?php endif; ?>
+                                                                    <?php if (!($k->kapali_mi ?? 0)): ?>
+                                                                        <a href="javascript:void(0);"
+                                                                            class="btn btn-sm btn-primary btn-personel-kesinti-duzenle"
+                                                                            data-id="<?= $k->id ?>" title="Düzenle">
+                                                                            <i class="bx bx-edit"></i>
+                                                                        </a>
+                                                                        <button type="button"
+                                                                            class="btn btn-sm btn-danger btn-personel-kesinti-sil"
+                                                                            data-id="<?= $k->id ?>" title="Sil">
+                                                                            <i class="bx bx-trash"></i>
+                                                                        </button>
+                                                                    <?php endif; ?>
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     <?php endforeach; ?>
@@ -421,7 +402,7 @@ foreach ($kesintiler as $k) {
                                 <th>Tekrar</th>
                                 <th>Hesaplama</th>
                                 <th>Tutar / Oran</th>
-                                <th>Personel / Kayıt Tarihi</th>
+                                <th>Kayıt Yapan / Tarih</th>
                                 <th>Dönem</th>
                                 <th>Açıklama</th>
                                 <th>Durum</th>
@@ -433,16 +414,12 @@ foreach ($kesintiler as $k) {
                                 <?php $enc_id = Security::encrypt($k->id); ?>
                                 <tr data-id="<?= $enc_id ?>">
                                     <td>
-                                        <span class="badge bg-soft-info text-info">
-                                            <?= $k->parametre_adi ?? ucfirst($k->tur) ?>
+                                        <span class="badge bg-soft-danger text-danger">
+                                            <?= $k->parametre_adi ?? ucfirst($k->tur ?? 'Diğer') ?>
                                         </span>
-                                        <?php if ($k->tur == 'icra' && $k->dosya_no): ?>
-                                            <br><small
-                                                class="text-muted"><?= htmlspecialchars($k->icra_dairesi . ' - ' . $k->dosya_no) ?></small>
-                                        <?php endif; ?>
                                     </td>
                                     <td>
-                                        <?php if ($k->tekrar_tipi == 'surekli'): ?>
+                                        <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
                                             <span class="badge bg-warning text-dark"><i
                                                     class="bx bx-refresh me-1"></i>Sürekli</span>
                                         <?php else: ?>
@@ -471,11 +448,11 @@ foreach ($kesintiler as $k) {
                                             <?= htmlspecialchars($k->kayit_yapan_ad_soyad ?? 'Sistem') ?>
                                         </div>
                                         <div class="text-muted small">
-                                            <?= !empty($k->olusturma_tarihi) ? date('d.m.Y H:i', strtotime($k->olusturma_tarihi)) : '-' ?>
+                                            <?= !empty($k->created_at) ? date('d.m.Y H:i', strtotime($k->created_at)) : '-' ?>
                                         </div>
                                     </td>
                                     <td>
-                                        <?php if ($k->tekrar_tipi == 'surekli'): ?>
+                                        <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
                                             <small>
                                                 <?= $k->baslangic_donemi ? date('d.m.Y', strtotime($k->baslangic_donemi)) : '-' ?>
                                                 <i class="bx bx-right-arrow-alt"></i>
@@ -487,43 +464,47 @@ foreach ($kesintiler as $k) {
                                     </td>
                                     <td><?= htmlspecialchars($k->aciklama ?? '-') ?></td>
                                     <td>
-                                        <?php
-                                        $durum = $k->durum ?? 'beklemede';
-                                        $durumBadges = [
-                                            'beklemede' => '<span class="badge bg-warning text-dark"><i class="bx bx-time me-1"></i>Beklemede</span>',
-                                            'onaylandi' => '<span class="badge bg-success"><i class="bx bx-check me-1"></i>Onaylandı</span>',
-                                            'reddedildi' => '<span class="badge bg-danger"><i class="bx bx-x me-1"></i>Reddedildi</span>'
-                                        ];
-                                        echo $durumBadges[$durum] ?? $durumBadges['beklemede'];
-                                        ?>
+                                        <?php if (($k->onay_durumu ?? 1) == 0): ?>
+                                            <span class="badge bg-warning">Bekliyor</span>
+                                        <?php elseif (($k->onay_durumu ?? 1) == 1): ?>
+                                            <span class="badge bg-success">Onaylandı</span>
+                                        <?php elseif (($k->onay_durumu ?? 1) == 2): ?>
+                                            <span class="badge bg-danger">Reddedildi</span>
+                                        <?php endif; ?>
                                     </td>
                                     <td class="text-center">
-                                        <?php if ($durum == 'beklemede'): ?>
-                                            <button type="button" class="btn btn-sm btn-success btn-personel-kesinti-onayla"
-                                                data-id="<?= $k->id ?>" title="Onayla">
-                                                <i class="bx bx-check"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-danger btn-personel-kesinti-reddet"
-                                                data-id="<?= $k->id ?>" title="Reddet">
-                                                <i class="bx bx-x"></i>
-                                            </button>
-                                        <?php endif; ?>
-                                        <?php if ($k->tekrar_tipi == 'surekli' && $k->aktif == 1): ?>
-                                            <button type="button" class="btn btn-sm btn-warning btn-personel-kesinti-sonlandir"
-                                                data-id="<?= $k->id ?>" title="Sonlandır">
-                                                <i class="bx bx-stop"></i>
-                                            </button>
-                                        <?php endif; ?>
-                                        <button type="button" class="btn btn-sm btn-primary btn-personel-kesinti-duzenle"
-                                            data-id="<?= $k->id ?>" title="Düzenle">
-                                            <i class="bx bx-edit"></i>
-                                        </button>
-                                        <?php if (!($k->kapali_mi ?? 0)): ?>
-                                            <button type="button" class="btn btn-sm btn-danger btn-personel-kesinti-sil"
-                                                data-id="<?= $k->id ?>" title="Sil">
-                                                <i class="bx bx-trash"></i>
-                                            </button>
-                                        <?php endif; ?>
+                                        <div class="d-flex justify-content-center gap-1">
+                                            <?php if (($k->onay_durumu ?? 1) == 0 && !($k->kapali_mi ?? 0)): ?>
+                                                <button type="button"
+                                                    class="btn btn-sm btn-outline-success btn-personel-kesinti-onayla"
+                                                    data-id="<?= $k->id ?>" title="Onayla">
+                                                    <i class="bx bx-check"></i>
+                                                </button>
+                                                <button type="button"
+                                                    class="btn btn-sm btn-outline-danger btn-personel-kesinti-reddet"
+                                                    data-id="<?= $k->id ?>" title="Reddet">
+                                                    <i class="bx bx-x"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                            <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->aktif ?? 1) == 1 && !($k->kapali_mi ?? 0)): ?>
+                                                <button type="button" class="btn btn-sm btn-warning btn-personel-kesinti-sonlandir"
+                                                    data-id="<?= $k->id ?>" title="Sonlandır">
+                                                    <i class="bx bx-stop"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                            <?php if (!($k->kapali_mi ?? 0)): ?>
+                                                <a href="javascript:void(0);"
+                                                    class="btn btn-sm btn-primary btn-personel-kesinti-duzenle"
+                                                    data-id="<?= $k->id ?>" title="Düzenle">
+                                                    <i class="bx bx-edit"></i>
+                                                </a>
+                                                <button type="button"
+                                                    class="btn btn-sm btn-danger btn-personel-kesinti-sil"
+                                                    data-id="<?= $k->id ?>" title="Sil">
+                                                    <i class="bx bx-trash"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -568,8 +549,8 @@ foreach ($kesintiler as $k) {
 <div class="modal fade" id="modalPersonelKesintiEkle" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="bx bx-minus-circle me-2"></i>Yeni Kesinti Ekle</h5>
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bx bx-plus-circle me-2"></i>Yeni Kesinti Ekle</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="formPersonelKesintiEkle" novalidate>
@@ -586,7 +567,7 @@ foreach ($kesintiler as $k) {
                                     data-hesaplama="<?= $param->hesaplama_tipi ?>" data-oran="<?= $param->oran ?? 0 ?>"
                                     data-tutar="<?= $param->varsayilan_tutar ?? 0 ?>">
                                     <?= htmlspecialchars($param->etiket) ?>
-                                    <?php if (strpos($param->hesaplama_tipi, 'oran') !== false && $param->oran > 0): ?>
+                                    <?php if (strpos($param->hesaplama_tipi ?? '', 'oran') !== false && ($param->oran ?? 0) > 0): ?>
                                         (%<?= $param->oran ?>)
                                     <?php endif; ?>
                                 </option>
@@ -594,13 +575,11 @@ foreach ($kesintiler as $k) {
                         </select>
                     </div>
 
-
-
                     <!-- Tekrar Tipi Seçimi -->
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Kesinti Tipi</label>
                         <div class="d-flex gap-3">
-                            <div class="form-check form-check-primary">
+                            <div class="form-check form-check-danger">
                                 <input class="form-check-input" type="radio" name="tekrar_tipi" id="tekrar_tek_sefer"
                                     value="tek_sefer" checked>
                                 <label class="form-check-label" for="tekrar_tek_sefer">
@@ -635,13 +614,13 @@ foreach ($kesintiler as $k) {
                     <div class="row d-none" id="div_surekli_donem">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Başlangıç Tarihi <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="kesinti_baslangic_donemi"
-                                name="baslangic_donemi" value="<?= date('Y-m-d') ?>">
+                            <input type="date" class="form-control" id="baslangic_donemi" name="baslangic_donemi"
+                                value="<?= date('Y-m-d') ?>">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Bitiş Tarihi <small class="text-muted">(Boş =
                                     Süresiz)</small></label>
-                            <input type="date" class="form-control" id="kesinti_bitis_donemi" name="bitis_donemi">
+                            <input type="date" class="form-control" id="bitis_donemi" name="bitis_donemi">
                         </div>
                     </div>
 
@@ -675,27 +654,8 @@ foreach ($kesintiler as $k) {
 
                     <!-- Tutar/Oran Girişi -->
                     <div class="row">
-                        <div class="col-12 mb-3 d-none" id="div_ucretsiz_izin_secenek">
-                            <label class="form-label fw-bold d-block mb-2">Kesinti Yöntemi</label>
-                            <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" name="rad_kesinti_tip" id="kesinti_tip_tutar"
-                                    value="tutar" checked>
-                                <label class="btn btn-outline-danger" for="kesinti_tip_tutar"><i
-                                        class="bx bx-lira me-1"></i> Tutar Gir</label>
-
-                                <input type="radio" class="btn-check" name="rad_kesinti_tip" id="kesinti_tip_gun"
-                                    value="gun">
-                                <label class="btn btn-outline-danger" for="kesinti_tip_gun"><i
-                                        class="bx bx-calendar me-1"></i> Gün Gir</label>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6 mb-3 d-none" id="div_kesinti_gun">
-                            <?= Form::FormFloatInput("number", "kesinti_gun", "", "0", "Gün Sayısı", "calendar", "form-control", false, null, "off", false, 'id="kesinti_gun_sayisi" min="0" step="1"') ?>
-                        </div>
-
                         <div class="col-md-6 mb-3" id="div_tutar">
-                            <?= Form::FormFloatInput("number", "kesinti_tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", false, null, "off", false, 'step="0.01" min="0" id="kesinti_tutar"') ?>
+                            <?= Form::FormFloatInput("number", "kesinti_tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="kesinti_tutar" min="0"') ?>
                         </div>
                         <div class="col-md-6 mb-3 d-none" id="div_oran">
                             <?= Form::FormFloatInput("number", "oran", "", "0", "Oran (%)", "percent", "form-control", false, null, "off", false, 'step="0.01" id="kesinti_oran" min="0" max="100"') ?>
@@ -706,24 +666,6 @@ foreach ($kesintiler as $k) {
                         </div>
                     </div>
 
-                    <!-- İcra Dosyası Seçimi -->
-                    <div class="mb-3 d-none" id="div_icra_secimi">
-                        <div class="form-floating form-floating-custom">
-                            <select class="form-select select2" id="kesinti_icra_id" name="icra_id" style="width: 100%">
-                                <option value="">Dosya seçiniz...</option>
-                                <!-- AJAX ile doldurulacak -->
-                            </select>
-                            <label for="kesinti_icra_id">İcra Dosyası Seçin</label>
-                            <div class="form-floating-icon">
-                                <i data-feather="file-text"></i>
-                            </div>
-                        </div>
-                        <div class="form-text text-warning mt-2" id="no_icra_warning" style="display:none;">
-                            <i class="bx bx-info-circle me-1"></i> Aktif icra dosyası bulunamadı. Lütfen önce icra
-                            dosyası ekleyin.
-                        </div>
-                    </div>
-
                     <!-- Açıklama -->
                     <div class="mb-3">
                         <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama giriniz", "Açıklama", "message-square", "form-control", false, null, "off", false, 'id="kesinti_aciklama"') ?>
@@ -731,7 +673,7 @@ foreach ($kesintiler as $k) {
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="button" class="btn btn-primary" id="btnPersonelKesintiKaydet">
+                    <button type="button" class="btn btn-danger" id="btnPersonelKesintiKaydet">
                         <i class="bx bx-save me-1"></i>Kaydet
                     </button>
                 </div>

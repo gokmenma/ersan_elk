@@ -1,6 +1,8 @@
 <?php
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
@@ -29,8 +31,8 @@ if ($_POST["action"] == "gelir-gider-kaydet") {
         $data = [
             "id" => $id,
             "type" => $_POST["type"],
-            "islem_tarihi" => date("Y-m-d H:i:s", strtotime($_POST["islem_tarihi"])),
-            "islem_turu" => $_POST["islem_turu"],
+            "tarih" => date("Y-m-d H:i:s", strtotime($_POST["islem_tarihi"])),
+            "kategori" => $_POST["islem_turu"],
             "tutar" => Helper::formattedMoneyToNumber($_POST["tutar"]),
             "aciklama" => $_POST["aciklama"],
         ];
@@ -38,8 +40,6 @@ if ($_POST["action"] == "gelir-gider-kaydet") {
         if ($id == 0) {
             $data["kayit_yapan"] = $_SESSION["id"];
         }
-        $data["hesap_adi"] = $_POST["hesap_adi_text"];
-       
 
         $lastInsertId = $GelirGider->saveWithAttr($data) ?? $_POST["gelir_gider_id"];
         $status = "success";
@@ -96,12 +96,24 @@ if ($_POST["action"] == "gelir-gider-turu-getir") {
     echo json_encode($turler);
 }
 
+//DataTable Benzersiz Değerleri Getir (Gelişmiş Filtreler İçin)
+if ($_POST["action"] == "get-unique-values") {
+    try {
+        $column = $_POST['column'] ?? '';
+        $values = $GelirGider->getUniqueValues($column, $_POST);
+        echo json_encode(['status' => 'success', 'data' => $values]);
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+    exit;
+}
+
 
 //Excelden gelen verileri kaydet
 if ($_POST["action"] == "gelir-gider-excel-kaydet") {
         $file = $_FILES["excelFile"];
         $file_name = $file["name"];
-        $kasa_id = ($_POST["kasa_id"]);
+
     
 
         $file_tmp = $file["tmp_name"];   
@@ -143,11 +155,9 @@ if ($_POST["action"] == "gelir-gider-excel-kaydet") {
 
                      $data = [
                         "id" => 0,
-                        "islem_tarihi" => Date::convertExcelDate($row["A"]),
-                        "kasa_id" => $kasa_id,
-                        "hesap_adi" => Security::escape($row["E"]),
+                        "tarih" => Date::convertExcelDate($row["A"]),
                         "type" => Security::escape($type),
-                        "islem_turu" => Security::escape($islem_turu),
+                        "kategori" => Security::escape($islem_turu),
                         "tutar" => Security::escape($tutar),
                         "aciklama" => Security::escape($row["G"]),
                     ];
@@ -173,5 +183,64 @@ if ($_POST["action"] == "gelir-gider-excel-kaydet") {
         ];
     
         echo json_encode($res);
+}
+
+//Gelir gider ajax list (Server-side Datatables)
+if ($_POST["action"] == "gelir-gider-ajax-list") {
+    try {
+        $res = $GelirGider->ajaxList($_POST);
+        
+        // Her satırı formatla
+        $formattedData = [];
+        
+        foreach ($res['data'] as $row) {
+            $enc_id = Security::encrypt($row->id);
+            
+            $bakiye = $row->bakiye;
+            $color = $bakiye < 0 ? 'danger' : 'success';
+            
+            $actions = '
+                <div class="dropdown">
+                    <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="bx bx-dots-vertical-rounded font-size-24 text-dark"></i>
+                    </a>
+                    <div class="dropdown-menu">
+                        <a class="dropdown-item duzenle" href="#" data-id="' . $enc_id . '">
+                            <i class="bx bx-edit font-size-18 me-1"></i> Düzenle
+                        </a>
+                        <a class="dropdown-item gelir-gider-sil" href="#" data-id="' . $enc_id . '">
+                            <i class="bx bx-trash font-size-18 me-1"></i> Sil
+                        </a>
+                    </div>
+                </div>';
+
+            $formattedData[] = [
+                "id" => $row->id,
+                "kayit_tarihi" => $row->kayit_tarihi,
+                "type" => Helper::getBadge($row->type),
+                "kategori_adi" => $row->kategori_adi ?: '-',
+                "tarih" => $row->tarih ? date('d.m.Y H:i', strtotime($row->tarih)) : '-',
+                "tutar" => Helper::formattedMoney($row->tutar),
+                "bakiye" => '<span class="text-' . $color . '">' . Helper::formattedMoney($bakiye) . '</span>',
+                "aciklama" => $row->aciklama ?: '-',
+                "actions" => $actions
+            ];
+        }
+        
+        $res['data'] = $formattedData;
+        
+        // Ayrıca özeti de gönder ki JS ile kartlar güncellenebilsin
+        $res['summary'] = $GelirGider->summary($_POST);
+        
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($res);
+        exit;
+    } catch (Exception $e) {
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error' => $e->getMessage(), 'data' => []]);
+        exit;
+    }
 }
    

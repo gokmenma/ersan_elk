@@ -29,10 +29,20 @@ class TanimlamalarModel extends Model
     }
 
 
-    public function getGelirGiderTurleriSelect($type)
+    public function getGelirGiderTurleriSelect($type = null)
     {
-        $sql = $this->db->prepare("SELECT id,tur_adi FROM $this->table WHERE type = ? AND firma_id = ? AND silinme_tarihi IS NULL");
-        $sql->execute([$type, $_SESSION['firma_id']]);
+        $where = "silinme_tarihi IS NULL";
+        $params = [];
+        
+        if (!empty($type)) {
+            $where .= " AND type = ?";
+            $params[] = $type;
+        }
+
+        // Kategori isimleri gelir_gider tablosunda direkt varchar olarak tutuluyormuş 
+        // o yüzden tanimlamalar yerine gelir_gider tablosundan distinct olarak çekmeliyiz.
+        $sql = $this->db->prepare("SELECT DISTINCT kategori as tur_adi, kategori as id FROM gelir_gider WHERE $where ORDER BY kategori ASC");
+        $sql->execute($params);
         $result = $sql->fetchAll(PDO::FETCH_OBJ);
 
         $select = "<option value='0' disabled >Seçiniz</option>";

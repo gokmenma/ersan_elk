@@ -197,6 +197,64 @@ use App\Helper\Form;
         </div>
     </div>
 
+    <!-- Kişisel Performans Analizi -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm" style="border-radius: 12px; border-top: 3px solid var(--dept-color, #e74a3b);">
+                <div class="card-body p-3">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center" style="font-size: 0.95rem;">
+                                <i class="bx bx-user-pin me-2 text-muted fs-5"></i>Kişisel Performans Analizi
+                            </h6>
+                            <div style="width: 250px;">
+                                <select id="kisiselPersonelSelect" class="form-select form-select-sm select2" data-placeholder="Personel Seçiniz...">
+                                    <option value="">Personel Seçiniz...</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="btn-group btn-group-sm d-none" role="group" id="kisiselSiralamaGroup">
+                            <button type="button" class="btn btn-outline-secondary kisisel-sort-btn active" data-sort="tarih" title="Zamana Göre">
+                                <i class="bx bx-time-five"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary kisisel-sort-btn" data-sort="desc" title="En İyiden En Kötüye">
+                                <i class="bx bx-sort-down"></i> En İyi
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary kisisel-sort-btn" data-sort="asc" title="En Kötüden En İyiye">
+                                <i class="bx bx-sort-up"></i> En Kötü
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="kisiselChartContainer" style="display:none;">
+                        <div class="d-flex justify-content-between align-items-center mb-2 px-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <img id="kisiselImg" src="assets/images/users/user-dummy-img.jpg" class="rounded-circle" style="width:36px; height:36px; object-fit:cover;">
+                                <div>
+                                    <h6 class="mb-0 fw-bold" id="kisiselAd" style="font-size:0.9rem;">-</h6>
+                                    <small class="text-muted" id="kisiselDepartman">-</small>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <h5 class="mb-0 fw-bold" id="kisiselToplam" style="color: var(--dept-color, #e74a3b);">0</h5>
+                                <small class="text-muted fw-bold" style="font-size: 0.7rem;" id="kisiselBirimLabel">TOPLAM</small>
+                            </div>
+                        </div>
+                        <div id="kisiselChart" style="min-height: 280px;"></div>
+                    </div>
+
+                    <div id="kisiselEmptyState" class="text-center py-5">
+                        <div class="mb-3">
+                            <i class="bx bx-user-circle text-muted" style="font-size: 4rem; opacity: 0.5;"></i>
+                        </div>
+                        <h6 class="text-muted fw-bold">Grafiği görüntülemek için bir personel seçiniz.</h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Personel Sıralama Tablosu -->
     <div class="row">
         <div class="col-12">
@@ -229,7 +287,7 @@ use App\Helper\Form;
             </div>
         </div>
     </div>
-</div>
+    </div>
 
 <!-- Loading Overlay -->
 <div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); z-index:9999; display:flex; align-items:center; justify-content:center;">
@@ -357,6 +415,9 @@ $(document).ready(function() {
     let trendChart = null;
     let barChart = null;
     let dataTable = null;
+    let kisiselChart = null;
+    let kisiselSortOrder = 'tarih';
+    let currentKisiselData = [];
 
     // Flatpickr
     let fpSingle = null;
@@ -570,6 +631,9 @@ $(document).ready(function() {
                     updateBarChart(res.personeller);
                     updateTable(res.personeller);
                     updateDonemBilgisi(res);
+                    
+                    // Kişisel performans dropdown'ını güncelle
+                    updateKisiselPersonelSelect(res.personeller);
                 } else {
                     Swal.fire('Hata', res.message || 'Veri yüklenemedi.', 'error');
                 }
@@ -896,5 +960,186 @@ $(document).ready(function() {
 
     // İlk yükleme
     loadData();
+
+    // Kişisel Performans Fonksiyonları
+    function updateKisiselPersonelSelect(personeller) {
+        let optionsHtml = '<option value="">Personel Seçiniz...</option>';
+        personeller.forEach(p => {
+            optionsHtml += `<option value="${p.personel_id}" data-ad="${escapeHtml(p.adi_soyadi || '')}" data-img="${p.resim_yolu || ''}" data-dept="${escapeHtml(p.departman || '')}">${escapeHtml(p.adi_soyadi || 'Bilinmeyen')}</option>`;
+        });
+        
+        let select = $('#kisiselPersonelSelect');
+        const selectedId = select.val();
+        
+        select.html(optionsHtml);
+        
+        if (selectedId && select.find(`option[value="${selectedId}"]`).length > 0) {
+            select.val(selectedId).trigger('change.select2');
+        } else {
+            select.val('').trigger('change.select2');
+            $('#kisiselChartContainer').hide();
+            $('#kisiselEmptyState').show();
+            $('#kisiselSiralamaGroup').addClass('d-none');
+        }
+    }
+
+    $('#kisiselPersonelSelect').on('change', function() {
+        if ($(this).val()) {
+            $('#kisiselEmptyState').hide();
+            $('#kisiselSiralamaGroup').removeClass('d-none');
+            $('#kisiselChartContainer').show();
+            
+            const selectedOpt = $(this).find('option:selected');
+            $('#kisiselAd').text(selectedOpt.data('ad'));
+            $('#kisiselDepartman').text(selectedOpt.data('dept') || deptColors[currentDept].label);
+            $('#kisiselImg').attr('src', selectedOpt.data('img') || 'assets/images/users/user-dummy-img.jpg');
+            $('#kisiselBirimLabel').text('TOPLAM ' + deptColors[currentDept].unit.toUpperCase());
+            
+            loadKisiselData();
+        } else {
+            $('#kisiselChartContainer').hide();
+            $('#kisiselEmptyState').show();
+            $('#kisiselSiralamaGroup').addClass('d-none');
+        }
+    });
+
+    $('.kisisel-sort-btn').on('click', function() {
+        $('.kisisel-sort-btn').removeClass('active');
+        $(this).addClass('active');
+        kisiselSortOrder = $(this).data('sort');
+        renderKisiselChart(currentKisiselData);
+    });
+
+    function loadKisiselData() {
+        const personelId = $('#kisiselPersonelSelect').val();
+        if (!personelId) return;
+        
+        let startDate = '';
+        let endDate = '';
+        let dateVal = currentDate;
+
+        if (currentPeriod === 'yillik') {
+            dateVal = $('#yilSecici').val() + '-01-01';
+        } else if (fpSingle && fpSingle.selectedDates.length > 0) {
+            const dates = fpSingle.selectedDates;
+            if (currentPeriod === 'gunluk' && dates.length === 2) {
+                startDate = ymdFromDateObj(dates[0]);
+                endDate = ymdFromDateObj(dates[1]);
+                dateVal = startDate;
+            } else {
+                dateVal = ymdFromDateObj(dates[0]);
+            }
+        }
+
+        showLoading();
+
+        $.ajax({
+            url: 'views/personel/api/performans-raporu-api.php',
+            type: 'GET',
+            data: {
+                action: 'get-kisisel-performans',
+                personel_id: personelId,
+                departman: currentDept,
+                period: currentPeriod,
+                tarih: dateVal,
+                baslangic_tarih: startDate,
+                bitis_tarih: endDate
+            },
+            dataType: 'json',
+            success: function(res) {
+                hideLoading();
+                if (res.status === 'success') {
+                    currentKisiselData = res.kisisel_trend || [];
+                    $('#kisiselToplam').text(formatNumber(res.toplam));
+                    renderKisiselChart(currentKisiselData, res.group_by);
+                } else {
+                    Swal.fire('Hata', res.message || 'Kişisel veri yüklenemedi.', 'error');
+                }
+            },
+            error: function() {
+                hideLoading();
+                Swal.fire('Hata', 'Sunucu ile bağlantı kurulamadı.', 'error');
+            }
+        });
+    }
+
+    function renderKisiselChart(data, groupBy = 'gunluk') {
+        const info = deptColors[currentDept];
+        let chartData = [...data]; // Kopyasını al
+
+        if (kisiselSortOrder === 'desc') {
+            chartData.sort((a, b) => parseInt(b.toplam) - parseInt(a.toplam));
+        } else if (kisiselSortOrder === 'asc') {
+            chartData.sort((a, b) => parseInt(a.toplam) - parseInt(b.toplam));
+        }
+        // Eğer kisiselSortOrder === 'tarih', karışma
+
+        let categories = [];
+        let values = [];
+
+        chartData.forEach(d => {
+            if (groupBy === 'aylik') {
+                // d.tarih formatı Y-m
+                const parts = d.tarih.split('-');
+                if(parts.length >= 2) {
+                    const months = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+                    categories.push(months[parseInt(parts[1])-1] + ' ' + parts[0]);
+                } else {
+                    categories.push(d.tarih);
+                }
+            } else {
+                categories.push(formatDateLabel(d.tarih));
+            }
+            values.push(parseInt(d.toplam));
+        });
+
+        if (kisiselChart) kisiselChart.destroy();
+
+        kisiselChart = new ApexCharts(document.querySelector("#kisiselChart"), {
+            series: [{
+                name: info.unit,
+                data: values
+            }],
+            chart: {
+                type: 'bar',
+                height: 280,
+                toolbar: { show: true, tools: { download: true, selection: false, zoom: true, zoomin: true, zoomout: true, pan: false, reset: true } },
+                fontFamily: 'inherit',
+                animations: { enabled: true, easing: 'easeinout', speed: 500 }
+            },
+            plotOptions: {
+                bar: {
+                    horizontal: false,
+                    borderRadius: 4,
+                    columnWidth: '40%',
+                    distributed: false,
+                    dataLabels: { position: 'top' }
+                }
+            },
+            colors: [info.color],
+            dataLabels: {
+                enabled: true,
+                formatter: val => val > 0 ? formatNumber(val) : '',
+                offsetY: -20,
+                style: { fontSize: '10px', colors: ["#304758"] }
+            },
+            stroke: { show: true, width: 2, colors: ['transparent'] },
+            xaxis: {
+                categories: categories,
+                labels: { style: { fontSize: '10px', colors: '#94a3b8' }, rotate: -45, rotateAlways: categories.length > 10 },
+                axisBorder: { show: false },
+                axisTicks: { show: false }
+            },
+            yaxis: {
+                labels: { style: { fontSize: '11px', colors: '#94a3b8' }, formatter: val => formatNumber(Math.round(val)) }
+            },
+            tooltip: {
+                y: { formatter: val => formatNumber(val) + ' ' + info.unit.toLowerCase() },
+                theme: 'light'
+            },
+            grid: { borderColor: '#f1f5f9', strokeDashArray: 4 }
+        });
+        kisiselChart.render();
+    }
 });
 </script>

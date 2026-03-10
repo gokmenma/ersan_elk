@@ -1,11 +1,131 @@
-//api sayfasının url tanımlamasını yap
 let url = "views/gelir-gider/api.php";
+let gelirGiderTable;
+
+$(document).ready(function() {
+    initGelirGiderTable();
+});
+
+function initGelirGiderTable() {
+    const tableId = "#gelirGiderTable";
+    if ($.fn.DataTable.isDataTable(tableId)) {
+        $(tableId).DataTable().destroy();
+    }
+
+    var opts = getDatatableOptions();
+    var originalInitComplete = opts.initComplete;
+
+    opts.serverSide = true;
+    opts.processing = true;
+    opts.ajax = {
+        url: url,
+        type: "POST",
+        data: function(d) {
+            d.action = "gelir-gider-ajax-list";
+            d.yil = $('select[name="yil"]').val();
+            d.ay = $('select[name="ay"]').val();
+            d.tip = $('select[name="tip"]').val();
+        }
+    };
+    opts.columns = [
+        { data: 'id' },
+        { data: 'kayit_tarihi' },
+        { data: 'type' },
+        { data: 'kategori_adi' },
+        { data: 'tarih' },
+        { data: 'tutar' },
+        { data: 'bakiye' },
+        { data: 'aciklama' },
+        { data: 'actions' }
+    ];
+    opts.columnDefs = [
+        { targets: [0, 1, 2, 3, 4, 8], className: "text-center" },
+        { targets: [5, 6], className: "text-end" }
+    ];
+    opts.order = [[1, "desc"]]; // Kayıt tarihine göre azalan
+    opts.initComplete = function(settings, json) {
+        // Orijinal (global) initComplete'i çağır ki gelişmiş filtreler (data-filter) yüklenebilsin
+        if (typeof originalInitComplete === "function") {
+            originalInitComplete.call(this, settings, json);
+        }
+    };
+
+    gelirGiderTable = $(tableId).DataTable(opts);
+
+    gelirGiderTable.on('xhr.dt', function ( e, settings, json, xhr ) {
+        if (json && json.summary) {
+            updateSummaryCards(json.summary);
+        }
+    });
+}
+
+function reloadGelirGiderTable() {
+    if (gelirGiderTable) {
+        gelirGiderTable.ajax.reload(null, false);
+    } else {
+        initGelirGiderTable();
+    }
+}
+
+function updateSummaryCards(summary) {
+    if (!summary) return;
+    
+    // Rakamları formatlayan basit bir fonksiyon
+    const format = (val) => {
+        return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
+    };
+
+    $("#card_toplam_gelir").html(format(summary.toplam_gelir) + ' <span style="font-size:0.85rem;font-weight:600;">₺</span>');
+    $("#card_toplam_gider").html(format(summary.toplam_gider) + ' <span style="font-size:0.85rem;font-weight:600;">₺</span>');
+    $("#card_net_bakiye").html(format(summary.bakiye) + ' <span style="font-size:0.85rem;font-weight:600;">₺</span>');
+    
+    // Bakiye rengini güncelle
+    const bakiyeColor = summary.bakiye < 0 ? '#f43f5e' : '#0ea5e9';
+    $("#card_net_bakiye").closest('.card').css('border-bottom-color', bakiyeColor + ' !important');
+    $("#card_net_bakiye").closest('.card').find('i').css('color', bakiyeColor);
+}
+
 
 //yeni işlem kaydet
 $(document).on('click', '#gelirGiderEkle', function () {
 
   $("#gelir_gider_id").val(0);
 });
+
+// İşlem türüne göre kategorileri getir
+$(document).on('change', '.form-selectgroup-input', function() {
+    const type = $(this).val();
+    fetchCategories(type);
+});
+
+// Kategorileri getir (Filtreleme ile)
+function fetchCategories(type, selectedValue = null) {
+    const formData = new FormData();
+    formData.append("action", "gelir-gider-turu-getir");
+    formData.append("type", type);
+
+    return fetch(url, {
+        method: "POST",
+        body: formData,
+    })
+    .then(response => response.json())
+    .then(data => {
+        let options = '<option value="">Seçiniz</option>';
+        // Veri dizi değilse (HTML dönmüşse) hata vermemesi için kontrol
+        if (Array.isArray(data)) {
+            data.forEach(item => {
+                options += `<option value="${item.id}">${item.tur_adi}</option>`;
+            });
+        } else {
+            // Eski API <option> formatında HTML dönüyor olabilir
+            options = data;
+        }
+        $("#islem_turu").html(options).trigger("change.select2");
+        
+        if (selectedValue) {
+            $("#islem_turu").val(selectedValue).trigger("change.select2");
+        }
+    });
+}
 
 $(document).on("click", "#gelirGiderKaydet", function () {
   var form = $("#gelirGiderForm");
@@ -63,35 +183,18 @@ $(document).on("click", "#gelirGiderKaydet", function () {
     .then((data) => {
       title = data.status == "success" ? "Başarılı" : "Hata";
       console.log(data);
-      var table = $("#gelirGiderTable").DataTable();
-
-      if (data.status == "success" && gelir_gider_id == 0) {
-        //Eğer işlem başarılı ve yeni kayıt ise tabloya son eklenen kaydın bilgileri ekle ekle
-        // table.row.add($(data.son_kayit)).draw(false);
-        var addedRow = table.row.add($(data.son_kayit)).draw(false);
-      } else if (data.status == "success" && gelir_gider_id != 0) {
-        //Eğer işlem başarılı ve güncelleme ise tablodaki veriyi güncelle
-        let rowNode = table.$(`tr[data-id="${gelir_gider_id}"]`)[0];
-        if (rowNode) {
-          //console.log(rowNode);
-          table.row(rowNode).remove().draw();
-          var addedRow = table.row.add($(data.son_kayit)).draw(false);
-        }
-      }
-      // 2. Eklenen satırın DOM düğümünü al
-      var rowNode = addedRow.node();
-
-      // 3. Bu düğümü mevcut konumundan ayır (DOM'dan kaldır ama veriyi ve olayları koru)
-      $(rowNode).detach();
-
-      // 4. Ayrılan düğümü tablonun <tbody> elementinin en başına ekle
-      $(table.table().body()).prepend(rowNode);
+      
 
       swal.fire({
         title: title,
         text: data.message,
         icon: data.status,
         confirmButtonText: "Tamam",
+      }).then(() => {
+          if (data.status == "success") {
+              $("#gelirGiderModal").modal("hide");
+              reloadGelirGiderTable();
+          }
       });
 
       $("#gelir_gider_id").val(data.id);
@@ -134,21 +237,21 @@ $(document).on("click", ".duzenle", function () {
       console.log(data);
 
       $(`.form-selectgroup-input[value="${data.type}"]`)
-        .prop("checked", true)
-        .trigger("click"); // Bu trigger ile select options yüklenir
+        .prop("checked", true);
+        
+      // Kategorileri seçilen türe göre yükle ve sonra seçili olanı ayarla
+      fetchCategories(data.type, data.kategori).then(() => {
+          //Düzenleme modalini aç
+          $("#gelirGiderModal").modal("show");
 
-      //Düzenleme modalini aç
-      $("#gelirGiderModal").modal("show");
-      $("#hesap_adi_text").val(data.hesap_adi);
-      $("#islem_turu").val(data.islem_turu).trigger("change.select2");
-      $("#finansal_aciklama").val(data.aciklama); // Açıklama alanı varsa
-      $("#tutar").val(data.tutar);
-      $("#aciklama").val(data.aciklama);
-      // islem_tarihi'ni d.m.Y H:i formatında ayarlayan fonksiyon
+          $("#finansal_aciklama").val(data.aciklama);
+          $("#tutar").val(data.tutar);
+          $("#aciklama").val(data.aciklama);
 
-      if (data.islem_tarihi) {
-        $("#islem_tarihi").val(formatDateDMYHI(data.islem_tarihi));
-      }
+          if (data.tarih) {
+              $("#islem_tarihi").val(formatDateDMYHI(data.tarih));
+          }
+      });
     });
 });
 
@@ -164,51 +267,14 @@ $(document).on("click", ".gelir-gider-sil", function () {
   confirmAndDelete(url, formData, buttonElement, "gelirGiderTable");
 });
 
-//Gelir Gider Türlerini getir
-$(document).on("click", ".form-selectgroup-input", function () {
-  let type = $(this).val();
-
-  var formData = new FormData();
-  formData.append("action", "gelir-gider-turu-getir");
-  formData.append("type", type);
-
-  fetch(url, {
-    method: "POST",
-    body: formData,
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      //islem_turu selectine gelen datayı ekle
-      const select = $("#islem_turu");
-
-      // İçeriği temizle
-      select.empty();
-
-      // Gelen HTML option'ları direkt ekle
-      select.html(data).trigger("change.select2");
-    });
-});
 
 //gelirGiderEkle modalini temizle
 $(document).on("click", "#gelirGiderEkle", function () {
   $("#gelirGiderForm").trigger("reset");
-  $("#hesap_adi").val("").trigger("change.select2");
-  $("#islem_turu").val("").trigger("change.select2");
-});
-
-//Üye seçimi yapıldığında hesap adına atar
-$(document).on("change", "#hesap_adi", function () {
-  let hesap_adi = $(this).val();
-  $("#hesap_adi_text").val(hesap_adi);
-  $(this).val(null).trigger("change.select2");
-  //acordionu kapat
-
-  var accordionCollapseElement = $("#uye-sec");
-  var accordionButtonElement = $(".accordion-button");
-
-  accordionCollapseElement.removeClass("show");
-  accordionButtonElement.attr("aria-expanded", "false");
-  accordionButtonElement.addClass("collapsed");
+  // Varsayılan olarak Gider (2) seçili gelsin
+  $('.form-selectgroup-input[value="2"]').prop('checked', true);
+  // Kategorileri Gider (2) için yükle
+  fetchCategories(2);
 });
 
 
@@ -217,8 +283,8 @@ $(document).on("click", "#yeniIslemModal", function () {
   //Modalı temizle
   $("#gelir_gider_id").val(0);
   $("#gelirGiderForm").trigger("reset");
-  $("#hesap_adi").val("").trigger("change.select2");
+
   $("#islem_turu").val("").trigger("change.select2");
-  $("#hesap_adi_text").val("");
+
   $("#gelir_gider_id").val(0);
 });

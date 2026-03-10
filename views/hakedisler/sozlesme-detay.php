@@ -135,6 +135,13 @@ $aylar = [
                         <tbody>
                             <!-- Loading from JS -->
                         </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <th colspan="4" class="text-end align-middle font-size-14">Sayfa Toplamı:</th>
+                                <th id="tableSayfaToplam"></th>
+                                <th colspan="2"></th>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>

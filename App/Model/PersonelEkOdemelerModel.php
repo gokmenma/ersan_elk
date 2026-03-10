@@ -66,7 +66,7 @@ class PersonelEkOdemelerModel extends Model
         }
 
         $sql = $this->db->prepare("
-            SELECT peo.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bd.donem_adi,
+            SELECT peo.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bd.donem_adi, bd.kapali_mi,
                    p.adi_soyadi as kayit_yapan_ad_soyad
             FROM {$this->table} peo
             LEFT JOIN bordro_parametreleri bp ON peo.parametre_id = bp.id

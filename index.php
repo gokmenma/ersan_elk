@@ -85,7 +85,8 @@ if ($currentUserId <= 0 || !isset($_SESSION['firma_id'])) {
             if (!in_array($page, $publicPages, true)) {
                 $hasMenuAccess = $Menus->userCanAccessMenuLink($currentUserId, $page);
                 if (!$hasMenuAccess) {
-                    echo "<script> window.location.href = '/unauthorize.php'; </script>";
+
+                     echo "<script> window.location.href = '/unauthorize.php'; </script>";
                     exit;
                 }
             }

@@ -449,7 +449,7 @@ if ($id > 0) {
                         </div>
                         <div class="tab-pane <?php echo $activeTab === 'kesintiler' ? 'active show' : ''; ?>"
                             id="kesintiler" role="tabpanel" data-loaded="false"
-                            data-url="views/personel/get-tab-content.php?tab=kesintiler&id=<?php echo $id; ?>&filter_mode=<?= $_SESSION['filter_kesinti_mode'] ?? 'donem' ?>&filter_kesinti_baslangic=<?= $_SESSION['filter_kesinti_baslangic'] ?? '' ?>&filter_kesinti_bitis=<?= $_SESSION['filter_kesinti_bitis'] ?? '' ?>&filter_kesinti_donem=<?= $_SESSION['filter_kesinti_donem'] ?? '' ?>&filter_kesinti_ay_yil=<?= $_SESSION['filter_kesinti_ay_yil'] ?? date('Y-m') ?>">
+                            data-url="views/personel/get-tab-content.php?tab=kesintiler&id=<?php echo $id; ?>&filter_mode=<?= $_SESSION['filter_kesinti_mode'] ?? 'donem' ?>&filter_kesinti_baslangic=<?= $_SESSION['filter_kesinti_baslangic'] ?? '' ?>&filter_kesinti_bitis=<?= $_SESSION['filter_kesinti_bitis'] ?? '' ?><?= !empty($_SESSION['filter_kesinti_donem']) ? '&filter_kesinti_donem=' . $_SESSION['filter_kesinti_donem'] : '' ?>&filter_kesinti_ay_yil=<?= $_SESSION['filter_kesinti_ay_yil'] ?? date('Y-m') ?>">
                             <div class="text-center p-5">
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">Yükleniyor...</span>
@@ -458,7 +458,7 @@ if ($id > 0) {
                         </div>
                         <div class="tab-pane <?php echo $activeTab === 'ek_odemeler' ? 'active show' : ''; ?>"
                             id="ek_odemeler" role="tabpanel" data-loaded="false"
-                            data-url="views/personel/get-tab-content.php?tab=ek_odemeler&id=<?php echo $id; ?>&filter_mode=<?= $_SESSION['filter_ek_mode'] ?? 'donem' ?>&filter_ek_baslangic=<?= $_SESSION['filter_ek_baslangic'] ?? '' ?>&filter_ek_bitis=<?= $_SESSION['filter_ek_bitis'] ?? '' ?>&filter_ek_donem=<?= $_SESSION['filter_ek_donem'] ?? '' ?>&filter_ek_ay_yil=<?= $_SESSION['filter_ek_ay_yil'] ?? date('Y-m') ?>">
+                            data-url="views/personel/get-tab-content.php?tab=ek_odemeler&id=<?php echo $id; ?>&filter_mode=<?= $_SESSION['filter_ek_mode'] ?? 'donem' ?>&filter_ek_baslangic=<?= $_SESSION['filter_ek_baslangic'] ?? '' ?>&filter_ek_bitis=<?= $_SESSION['filter_ek_bitis'] ?? '' ?><?= !empty($_SESSION['filter_ek_donem']) ? '&filter_ek_donem=' . $_SESSION['filter_ek_donem'] : '' ?>&filter_ek_ay_yil=<?= $_SESSION['filter_ek_ay_yil'] ?? date('Y-m') ?>">
                             <div class="text-center p-5">
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">Yükleniyor...</span>

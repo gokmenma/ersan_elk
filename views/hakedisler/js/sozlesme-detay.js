@@ -123,6 +123,31 @@ function initHakedisTable() {
     },
   ]),
     (options.order = [[0, "asc"]]));
+
+  options.drawCallback = function (settings) {
+    let api = this.api();
+    let json = api.ajax.json();
+
+    if (json && json.data) {
+        let totalImalat = 0;
+        let totalFf = 0;
+
+        json.data.forEach(function (row) {
+            totalImalat += parseFloat(row.imalat_donem || 0);
+            totalFf += parseFloat(row.fiyat_farki || 0);
+        });
+
+        let tImalatFmt = totalImalat.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " ₺";
+        let tFfFmt = totalFf.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " ₺";
+
+        let html = `<div><strong>${tImalatFmt}</strong></div>
+            <div class="text-success" style="font-size: 11px;">
+                <i class="bx bx-plus-circle me-1"></i>FF: ${tFfFmt}
+            </div>`;
+        $("#tableSayfaToplam").html(html);
+    }
+  };
+
   hakedisTable = $("#hakedisTable").DataTable(options);
 }
 

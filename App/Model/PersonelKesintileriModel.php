@@ -60,7 +60,7 @@ class PersonelKesintileriModel extends Model
         }
 
         $sql = $this->db->prepare("
-            SELECT pk.*, pi.dosya_no, pi.icra_dairesi, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bd.donem_adi,
+            SELECT pk.*, pi.dosya_no, pi.icra_dairesi, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bd.donem_adi, bd.kapali_mi,
                                      COALESCE(pk.durum, 'beklemede') as durum,
                                      ky.adi_soyadi as kayit_yapan_ad_soyad
             FROM {$this->table} pk

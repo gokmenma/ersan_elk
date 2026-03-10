@@ -305,8 +305,138 @@ try {
             'period2' => $results['period2'],
         ], JSON_UNESCAPED_UNICODE);
 
+    } elseif ($action === 'get-kisisel-performans') {
+        // Kişisel performans
+        $departman = $normalizeDepartman($_GET['departman'] ?? 'kesme_acma');
+        $period = $_GET['period'] ?? 'aylik';
+        $tarih = $_GET['tarih'] ?? date('Y-m-d');
+        $baslangicTarih = trim($_GET['baslangic_tarih'] ?? '');
+        $bitisTarih = trim($_GET['bitis_tarih'] ?? '');
+        $personel_id = (int)($_GET['personel_id'] ?? 0);
+
+        if ($personel_id <= 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Geçerli bir personel seçilmedi.']);
+            exit;
+        }
+
+        $isValidDate = static function ($date) {
+            return (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $date);
+        };
+
+        if (!$isValidDate($tarih)) {
+            $tarih = date('Y-m-d');
+        }
+
+        // Tarih aralığını hesapla
+        $effectivePeriod = $period;
+        if ($isValidDate($baslangicTarih) && $isValidDate($bitisTarih)) {
+            $startDate = $baslangicTarih;
+            $endDate = $bitisTarih;
+            $effectivePeriod = 'aralik';
+        } else {
+            switch ($period) {
+                case 'gunluk':
+                    $startDate = $tarih;
+                    $endDate = $tarih;
+                    break;
+                case 'haftalik':
+                    $startDate = date('Y-m-d', strtotime('monday this week', strtotime($tarih)));
+                    $endDate = date('Y-m-d', strtotime('sunday this week', strtotime($tarih)));
+                    break;
+                case 'aylik':
+                    $startDate = date('Y-m-01', strtotime($tarih));
+                    $endDate = date('Y-m-t', strtotime($tarih));
+                    break;
+                case 'yillik':
+                    $startDate = date('Y-01-01', strtotime($tarih));
+                    $endDate = date('Y-12-31', strtotime($tarih));
+                    break;
+                default:
+                    $startDate = date('Y-m-01');
+                    $endDate = date('Y-m-t');
+                    $effectivePeriod = 'aylik';
+            }
+        }
+
+        if ($startDate > $endDate) {
+            $tmp = $startDate;
+            $startDate = $endDate;
+            $endDate = $tmp;
+        }
+
+        $db = (new \App\Model\Model('personel'))->getDb();
+
+        $kisiselTrend = [];
+
+        // Hangi döneme göre gruplanacak?
+        // yillik ise aya göre grupla (Y-m)
+        // aylik, haftalik, gunluk, aralik ise güne göre grupla (Y-m-d)
+        $groupByYm = ($effectivePeriod === 'yillik');
+
+        if ($departman === 'kesme_acma') {
+            $dateField = $groupByYm ? "DATE_FORMAT(t.tarih, '%Y-%m')" : "t.tarih";
+            $trendSql = "SELECT 
+                            {$dateField} as tarih,
+                            COALESCE(SUM(t.sonuclanmis), 0) as toplam
+                         FROM yapilan_isler t
+                         LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                         WHERE t.firma_id = ?
+                         AND t.personel_id = ?
+                         AND t.tarih BETWEEN ? AND ?
+                         AND t.silinme_tarihi IS NULL
+                         AND tn.rapor_sekmesi = 'kesme'
+                         AND tn.is_turu_ucret > 0
+                         GROUP BY {$dateField}
+                         ORDER BY {$dateField} ASC";
+            $stmtTrend = $db->prepare($trendSql);
+            $stmtTrend->execute([$firma_id, $personel_id, $startDate, $endDate]);
+            $kisiselTrend = $stmtTrend->fetchAll(PDO::FETCH_ASSOC);
+
+        } elseif ($departman === 'endeks_okuma') {
+            $dateField = $groupByYm ? "DATE_FORMAT(e.tarih, '%Y-%m')" : "e.tarih";
+            $trendSql = "SELECT 
+                            {$dateField} as tarih,
+                            COALESCE(SUM(e.okunan_abone_sayisi), 0) as toplam
+                         FROM endeks_okuma e
+                         WHERE e.firma_id = ?
+                         AND e.personel_id = ?
+                         AND e.tarih BETWEEN ? AND ?
+                         AND e.silinme_tarihi IS NULL
+                         GROUP BY {$dateField}
+                         ORDER BY {$dateField} ASC";
+            $stmtTrend = $db->prepare($trendSql);
+            $stmtTrend->execute([$firma_id, $personel_id, $startDate, $endDate]);
+            $kisiselTrend = $stmtTrend->fetchAll(PDO::FETCH_ASSOC);
+
+        } elseif ($departman === 'sayac_degisim') {
+            $dateField = $groupByYm ? "DATE_FORMAT(s.tarih, '%Y-%m')" : "s.tarih";
+            $trendSql = "SELECT 
+                            {$dateField} as tarih,
+                            COUNT(*) as toplam
+                         FROM sayac_degisim s
+                         WHERE s.firma_id = ?
+                         AND s.personel_id = ?
+                         AND s.tarih BETWEEN ? AND ?
+                         AND s.silinme_tarihi IS NULL
+                         GROUP BY {$dateField}
+                         ORDER BY {$dateField} ASC";
+            $stmtTrend = $db->prepare($trendSql);
+            $stmtTrend->execute([$firma_id, $personel_id, $startDate, $endDate]);
+            $kisiselTrend = $stmtTrend->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        // Eğer gruplama yılaysa, tarih formatını 'Y-m' den okuyup uygun bir format yapacağız ön yüzde
+        
+        $genelToplam = array_sum(array_column($kisiselTrend, 'toplam'));
+
+        echo json_encode([
+            'status' => 'success',
+            'kisisel_trend' => $kisiselTrend,
+            'toplam' => $genelToplam,
+            'group_by' => $groupByYm ? 'aylik' : 'gunluk'
+        ], JSON_UNESCAPED_UNICODE);
+
     } else {
-        echo json_encode(['status' => 'error', 'message' => 'Geçersiz action.']);
     }
 
 } catch (Exception $e) {
