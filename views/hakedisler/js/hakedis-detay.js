@@ -20,6 +20,11 @@ $(document).ready(function () {
     const miktarValue = $(this).val();
     updateMiktar(kalemId, miktarValue, "onceki_miktar");
   });
+
+  // Auto-save and recalculate when the asgari farkı dahil checkbox is toggled
+  $("#asgari_farki_dahil").on("change", function () {
+    $("#hakedisParametreForm").submit();
+  });
 });
 
 function loadKalemler() {

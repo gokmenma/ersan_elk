@@ -76,34 +76,57 @@ try {
     $kalemler = $stmtKalem->fetchAll(PDO::FETCH_ASSOC);
     
     // ... rest of the items logic ...
-    $relevantDonemIds = array_filter([$hakedis_id, $prevHakedisId]);
+    // 4. Miktarları çek (Mevcut dönem için)
     $miktarlarMap = [];
-    if (!empty($relevantDonemIds)) {
-        $placeholders = implode(',', array_fill(0, count($relevantDonemIds), '?'));
-        $stmtMiktar = $db->prepare("SELECT * FROM hakedis_miktarlari WHERE hakedis_donem_id IN ($placeholders)");
-        $stmtMiktar->execute(array_values($relevantDonemIds));
-        $allMiktar = $stmtMiktar->fetchAll(PDO::FETCH_ASSOC);
+    $stmtMiktar = $db->prepare("SELECT * FROM hakedis_miktarlari WHERE hakedis_donem_id = ?");
+    $stmtMiktar->execute([$hakedis_id]);
+    while ($m = $stmtMiktar->fetch(PDO::FETCH_ASSOC)) {
+        $miktarlarMap[$m['kalem_id']] = $m;
+    }
 
-        foreach ($allMiktar as $m) {
-            $miktarlarMap[$m['hakedis_donem_id']][$m['kalem_id']] = $m;
-        }
+    // 5. Tüm önceki miktarları kalem bazlı topla (Kümülatif doğruluk için)
+    $prevMiktarlarSum = [];
+    $stmtPrevSum = $db->prepare("
+        SELECT m.kalem_id, SUM(m.miktar) as toplam_prev
+        FROM hakedis_miktarlari m
+        JOIN hakedis_donemleri d ON m.hakedis_donem_id = d.id
+        WHERE d.sozlesme_id = ? AND d.hakedis_no < ? AND d.silinme_tarihi IS NULL
+        GROUP BY m.kalem_id
+    ");
+    $stmtPrevSum->execute([$sozlesme_id, $hNo]);
+    while ($row = $stmtPrevSum->fetch(PDO::FETCH_ASSOC)) {
+        $prevMiktarlarSum[$row['kalem_id']] = floatval($row['toplam_prev']);
+    }
+
+    // 6. İlk hakedişteki (hno=1) başlangıç 'onceki_miktar' değerlerini al
+    $baslangicMiktarlari = [];
+    $stmtBaslangic = $db->prepare("
+        SELECT m.kalem_id, m.onceki_miktar
+        FROM hakedis_miktarlari m
+        JOIN hakedis_donemleri d ON m.hakedis_donem_id = d.id
+        WHERE d.sozlesme_id = ? AND d.hakedis_no = 1 AND d.silinme_tarihi IS NULL
+    ");
+    $stmtBaslangic->execute([$sozlesme_id]);
+    while ($row = $stmtBaslangic->fetch(PDO::FETCH_ASSOC)) {
+        $baslangicMiktarlari[$row['kalem_id']] = floatval($row['onceki_miktar']);
     }
 
     $sonucKalemler = [];
     foreach ($kalemler as $k) {
         $kalem_id = $k['id'];
 
-        $curMiktarRow = $miktarlarMap[$hakedis_id][$kalem_id] ?? null;
+        // Bu ayki miktar
+        $curMiktarRow = $miktarlarMap[$kalem_id] ?? null;
         $buay_toplam = floatval($curMiktarRow['miktar'] ?? 0);
 
+        // Önceki toplam miktar
         $onceki_toplam = 0;
         if ($curMiktarRow && isset($curMiktarRow['onceki_miktar']) && $curMiktarRow['onceki_miktar'] != 0) {
             $onceki_toplam = floatval($curMiktarRow['onceki_miktar']);
-        } else if ($prevHakedisId) {
-            $prevMiktarRow = $miktarlarMap[$prevHakedisId][$kalem_id] ?? null;
-            if ($prevMiktarRow) {
-                $onceki_toplam = floatval($prevMiktarRow['onceki_miktar'] ?? 0) + floatval($prevMiktarRow['miktar'] ?? 0);
-            }
+        } else {
+            $prevSum = $prevMiktarlarSum[$kalem_id] ?? 0;
+            $baslangic = $baslangicMiktarlari[$kalem_id] ?? 0;
+            $onceki_toplam = $prevSum + $baslangic;
         }
 
         $k['onceki_miktar'] = $onceki_toplam;
@@ -255,6 +278,8 @@ try {
         }
 
         // Genel Toplamı G12 hücresine yazdır
+
+        $sheetBFTC->setCellValue('D12', "GENEL TOPLAM");
         $sheetBFTC->setCellValue('G12', $genelToplam);
     }
 

@@ -168,6 +168,15 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                         </div>
                     </div>
 
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <div class="form-check form-switch form-switch-lg text-primary" dir="ltr">
+                                <input type="checkbox" class="form-check-input" id="asgari_farki_dahil" name="asgari_farki_dahil_edilsin" value="1" <?= (isset($hakedis->asgari_farki_dahil_edilsin) && $hakedis->asgari_farki_dahil_edilsin == 1) ? 'checked' : '' ?>>
+                                <label class="form-check-label fw-bold mt-1" for="asgari_farki_dahil">İşçilik Endeks Farkını Hesaba (Pn) Dahil Et</label>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label" title="Temel Sözleşme Ayı">Temel (Sözleşme Ayı) Endeksi</label>
                         <div id="temelEndeksAlanda">
