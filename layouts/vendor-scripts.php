@@ -16,22 +16,6 @@ $page = $_GET['p'] ?? 'home';
 
 
 
-<!-- Select2 , Jquery Validate , iMask Scriptler -->
-<!--***************************************-->
-<?php if (
-    $page === 'home' ||
-    $page == "gelir-gider/list" || $page == "temsilcilik/talep" ||
-    $page == "tanimlamalar/gelir-gider-turu" ||
-    $page == "demirbas/list" || $page == "temsilcilik/duzenle" ||
-    $page == "personel/manage" || $page == "mail-sms/mail-gonder" || $page == "mail-sms/sms-gonder" ||
-    $page == "kullanici-gruplari/list" || $page == "kullanici/list"
-) { ?>
-
-<?php } ?>
-<!--***************************************-->
-
-
-
 
 <!-- Sayfalara Özel Scriptler -->
 <!--***************************************-->
@@ -57,22 +41,15 @@ $page = $_GET['p'] ?? 'home';
 <?php } ?>
 
 
-<?php if ($page == 'sube/duzenle') { ?>
-    <script src="views/sube/js/duzenle.js"></script>
-<?php } ?>
+
 
 <?php if ($page == 'gelir-gider/list') { ?>
-    <script src="views/gelir-gider/js/gelir-gider.js"></script>
+    <script src="views/gelir-gider/js/gelir-gider.js?v=<?php echo filemtime("views/gelir-gider/js/gelir-gider.js"); ?>"></script>
 <?php } ?>
 
-<?php if ($page == 'temsilcilik/talep') { ?>
-    <script src="views/temsilcilik/js/talep.js"></script>
-<?php } ?>
 
-<?php if ($page == 'temsilcilik/list' || $page == "temsilcilik/duzenle") { ?>
-    <script src="views/temsilcilik/js/temsilcilik.js"></script>
-    <script src="views/temsilcilik/js/atama.js"></script>
-<?php } ?>
+
+
 
 <!-- Gelir gider türü tanımlama -->
 <?php if ($page == 'tanimlamalar/gelir-gider-turu') { ?>
@@ -127,11 +104,6 @@ if ($page == "mail-sms/mail-gonder") {
     echo '<script src="views/mail-sms/js/mail.js"></script>';
 }
 
-// QA test skip test
-
-if ($page == "kasa/duzenle" || $page == "kasa/list") {
-    echo '<script src="views/kasa/js/kasa.js"></script>';
-}
 
 // parametreler.js artık parametreler.php içinde inline olarak tanımlıdır
 // Harici JS kaldırıldı - çift handler çakışması tutar alanının kaydedilmemesine neden oluyordu

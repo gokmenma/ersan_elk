@@ -152,11 +152,11 @@ if ($_POST["action"] == "gelir-gider-excel-kaydet") {
 
 
                     //B sütunundaki veriyi kontrol et, GELİR ise 1 değilse 2 yap
-                    $typeStr = mb_strtolower(trim($row["B"] ?? ''), 'UTF-8');
-                    if($typeStr === "gelir"){
+                    $typeText = trim($row["B"] ?? '');
+                    if (preg_match('/gel[iıİI]r/ui', $typeText)) {
                         $type = 1;
                         $islem_turu = empty($row["C"]) ? 2 : $row["C"];
-                    }else{
+                    } else {
                         $type = 2;
                         $islem_turu = empty($row["C"]) ? 1 : $row["C"];
                     }
