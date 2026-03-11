@@ -24,7 +24,7 @@ class CariModel extends Model
         $orders = $params['order'];
         $columns = $params['columns'];
 
-        $where = "c.Aktif = 1";
+        $where = "c.silinme_tarihi IS NULL";
         $bindParams = [];
 
         if (!empty($search)) {
@@ -33,7 +33,7 @@ class CariModel extends Model
         }
 
         // Toplam Kayıt Sayısı
-        $totalCount = $this->db->query("SELECT COUNT(*) FROM $this->table WHERE Aktif = 1")->fetchColumn();
+        $totalCount = $this->db->query("SELECT COUNT(*) FROM $this->table WHERE silinme_tarihi IS NULL")->fetchColumn();
 
         // Filtrelenmiş Kayıt Sayısı
         $filteredSql = "SELECT COUNT(*) FROM $this->table c WHERE $where";
@@ -85,10 +85,12 @@ class CariModel extends Model
     public function summary()
     {
         $sql = "SELECT 
-                ROUND(SUM(borc), 2) as toplam_borc,
-                ROUND(SUM(alacak), 2) as toplam_alacak,
-                ROUND(SUM(alacak) - SUM(borc), 2) as genel_bakiye
-                FROM cari_hareketleri WHERE silinme_tarihi IS NULL";
+                ROUND(SUM(ch.borc), 2) as toplam_borc,
+                ROUND(SUM(ch.alacak), 2) as toplam_alacak,
+                ROUND(SUM(ch.alacak) - SUM(ch.borc), 2) as genel_bakiye
+                FROM cari_hareketleri ch
+                INNER JOIN cari c ON ch.cari_id = c.id
+                WHERE ch.silinme_tarihi IS NULL AND c.silinme_tarihi IS NULL";
         return $this->db->query($sql)->fetch(PDO::FETCH_OBJ);
     }
 }

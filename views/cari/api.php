@@ -35,11 +35,14 @@ if ($action == "cari-ajax-list") {
                         <a class="dropdown-item hesap-hareketleri" href="index.php?p=cari/hesap-hareketleri&id=' . $enc_id . '" data-id="' . $enc_id . '">
                             <i class="bx bx-list-ul font-size-16 me-1"></i> Hareketler
                         </a>
+                        <a class="dropdown-item hareket-ekle" href="#" data-id="' . $enc_id . '">
+                            <i class="bx bx-plus-circle font-size-16 me-1 text-success"></i> Hareket Ekle
+                        </a>
                         <a class="dropdown-item duzenle" href="#" data-id="' . $enc_id . '">
                             <i class="bx bx-edit font-size-16 me-1"></i> Düzenle
                         </a>
                         <a class="dropdown-item cari-sil" href="#" data-id="' . $enc_id . '">
-                            <i class="bx bx-trash font-size-16 me-1"></i> Sil
+                            <i class="bx bx-trash font-size-16 me-1 text-danger"></i> Sil
                         </a>
                     </div>
                 </div>';

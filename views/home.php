@@ -510,12 +510,19 @@ if (Gate::allows("ana_sayfa")) {
                                 <i class='bx bx-grid-vertical drag-handle me-1 text-muted'></i> Araç Durumu
                             </h6>
                             <?php
-                            $sahadaki_arac = $extraStats->sahadaki_arac ?? 0;
-                            $servisteki_arac = $extraStats->servisteki_arac ?? 0;
+                            $aracModel = new \App\Model\AracModel();
+                            $aracStats = $aracModel->getStats();
+                            
                             $bosta_arac = $aracStats->bosta_arac ?? 0;
-                            $toplam_arac = $aracStats->toplam_arac ?? ($sahadaki_arac + $servisteki_arac + $bosta_arac);
+                            $servisteki_arac = $aracModel->getServistekiAracSayisi();
+                            $toplam_arac = $aracStats->toplam_arac ?? 0;
+                            
+                            $saha_arac = $toplam_arac - $servisteki_arac - $bosta_arac;
+                            if ($saha_arac < 0) $saha_arac = 0;
+                            
                             $toplam_a_div = $toplam_arac ?: 1;
-                            $saha_a_yuzde = ($sahadaki_arac / $toplam_a_div) * 100;
+                            
+                            $aktif_a_yuzde = ($saha_arac / $toplam_a_div) * 100;
                             $servis_a_yuzde = ($servisteki_arac / $toplam_a_div) * 100;
                             $bosta_a_yuzde = ($bosta_arac / $toplam_a_div) * 100;
                             ?>
@@ -529,8 +536,8 @@ if (Gate::allows("ana_sayfa")) {
 
                     <div class="progress mb-4" style="height: 20px; border-radius: 4px;">
                         <div class="progress-bar" role="progressbar"
-                            style="width: <?php echo $saha_a_yuzde; ?>%; background-color: #198754;"
-                            title="Sahada: <?php echo $sahadaki_arac; ?>"></div>
+                            style="width: <?php echo $aktif_a_yuzde; ?>%; background-color: #198754;"
+                            title="Aktif/Saha: <?php echo $saha_arac; ?>"></div>
                         <div class="progress-bar" role="progressbar"
                             style="width: <?php echo $servis_a_yuzde; ?>%; background-color: #dc3545;"
                             title="Serviste: <?php echo $servisteki_arac; ?>"></div>
@@ -545,7 +552,7 @@ if (Gate::allows("ana_sayfa")) {
                                 <div style="width: 3px; height: 32px; background-color: #198754; margin-right: 12px;"></div>
                                 <div>
                                     <p class="text-muted small mb-0 font-size-11">Saha Aracı</p>
-                                    <h6 class="mb-0 fw-bold text-dark"><?php echo $sahadaki_arac; ?> Adet</h6>
+                                    <h6 class="mb-0 fw-bold text-dark"><?php echo $saha_arac; ?> Adet</h6>
                                 </div>
                             </div>
                         </div>
@@ -553,7 +560,7 @@ if (Gate::allows("ana_sayfa")) {
                             <div class="d-flex align-items-center">
                                 <div style="width: 3px; height: 32px; background-color: #dc3545; margin-right: 12px;"></div>
                                 <div>
-                                    <p class="text-muted small mb-0 font-size-11">Servis / Pasif</p>
+                                    <p class="text-muted small mb-0 font-size-11">Serviste</p>
                                     <h6 class="mb-0 fw-bold text-dark"><?php echo $servisteki_arac; ?> Adet</h6>
                                 </div>
                             </div>

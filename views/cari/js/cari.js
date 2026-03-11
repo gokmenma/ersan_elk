@@ -108,7 +108,12 @@ $(document).ready(function () {
                             <span class="mobile-card-amt ${bakiyeCls}">${item.bakiye}</span>
                             <span class="mobile-card-type text-muted">${bakiyeLabel}</span>
                         </div>
-                        <i class="bx bx-chevron-right mobile-card-chevron fs-4"></i>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-sm btn-soft-success p-1 hareket-ekle mobile-quick-add" data-id="${encId}" onclick="event.stopPropagation();">
+                                <i class="bx bx-plus-circle fs-5"></i>
+                            </button>
+                            <i class="bx bx-chevron-right mobile-card-chevron fs-4"></i>
+                        </div>
                     </div>
                 </div>
             `;
@@ -184,12 +189,67 @@ $(document).ready(function () {
                     success: function (res) {
                         if (res.status === "success") {
                             table.ajax.reload();
+                            updateSummaryCards();
                             Swal.fire("Silindi!", res.message, "success");
                         } else {
                             Swal.fire("Hata!", res.message, "error");
                         }
                     }
                 });
+            }
+        });
+    });
+
+    function updateSummaryCards() {
+        table.ajax.reload(null, false); // Sayfayı kaydırmadan yenile
+    }
+
+    // Hızlı Hareket Ekle (Cari Listesi - Desktop & Mobile)
+    $(document).on('click', '.hareket-ekle', function (e) {
+        e.preventDefault();
+        const id = $(this).data('id');
+        $('#hizliIslemForm')[0].reset();
+        
+        // Reset radio buttons to default 'aldim'
+        $('#type_aldim').prop('checked', true);
+        
+        $('#hizli_islem_cari_id').val(id);
+        $('#hizliIslemModal').modal('show');
+        
+        // Maskeleri yenile ve focus yap
+        setTimeout(() => {
+            if(typeof applyMoneyMask === 'function') applyMoneyMask();
+            $('#hizliIslemForm input[name="tutar"]').focus();
+        }, 500);
+    });
+
+    // Kaydet - Hızlı İşlem
+    $('#hizliIslemForm').on('submit', function (e) {
+        e.preventDefault();
+        let submitBtn = $(this).find('button[type="submit"]');
+        let originalText = submitBtn.html();
+        submitBtn.html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Kaydediliyor...').prop('disabled', true);
+
+        $.ajax({
+            url: "views/cari/api.php",
+            type: "POST",
+            data: $(this).serialize(),
+            dataType: "json",
+            success: function (res) {
+                if (res.status === "success" || res.status === "success_alert") {
+                    $('#hizliIslemModal').modal('hide');
+                    table.ajax.reload();
+                    updateSummaryCards(); // Bakiyeleri güncellemek için
+                    Toast.fire({ icon: 'success', title: res.message || 'İşlem başarıyla eklendi.' });
+                } else {
+                    Swal.fire("Hata!", res.message || "İşlem kaydedilemedi.", "error");
+                }
+            },
+            error: function () {
+                Swal.fire("Hata!", "Sunucu hatası oluştu.", "error");
+            },
+            complete: function () {
+                submitBtn.html(originalText).prop('disabled', false);
             }
         });
     });

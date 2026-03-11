@@ -146,6 +146,22 @@ $title = 'Cari Yönetimi';
                 background: #135bec; /* Accent color */
                 opacity: 0.1;
             }
+
+            .btn-soft-success {
+                background-color: rgba(25, 135, 84, 0.1);
+                color: #198754;
+                border: none;
+                border-radius: 8px;
+                transition: all 0.2s;
+                height: 32px;
+                width: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .btn-soft-success:active { background-color: rgba(25, 135, 84, 0.2); transform: scale(0.9); }
+            
+            .mobile-quick-add { margin-left: auto; }
             
             .mobile-card-icon {
                 width: 40px;
@@ -177,25 +193,35 @@ $title = 'Cari Yönetimi';
             /* Modern FAB */
             .fab-button {
                 position: fixed;
-                bottom: 30px;
-                right: 25px;
-                width: auto;
-                min-width: 140px;
-                height: 52px;
-                background: #135bec;
+                bottom: 20px;
+                right: 20px;
+                background-color: #135bec;
                 color: white;
-                border-radius: 26px;
+                border-radius: 50px;
+                padding: 12px 20px;
+                box-shadow: 0 4px 12px rgba(19, 91, 236, 0.4);
                 display: flex;
                 align-items: center;
-                justify-content: center;
-                box-shadow: 0 8px 16px rgba(19, 91, 236, 0.3);
-                z-index: 1000;
+                gap: 8px;
                 border: none;
-                font-weight: 700;
-                gap: 10px;
-                padding: 0 25px;
+                z-index: 1000;
+                font-weight: 600;
+                transition: all 0.3s ease;
             }
-            .fab-button:active { transform: translateY(2px); box-shadow: 0 4px 8px rgba(19, 91, 236, 0.3); }
+            .fab-button:active { transform: scale(0.95); }
+
+            /* Flatpickr Time input fix for Modal */
+            .flatpickr-time input {
+                -webkit-appearance: none;
+                -moz-appearance: textfield;
+                appearance: none;
+            }
+            .flatpickr-time input::-webkit-outer-spin-button,
+            .flatpickr-time input::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                appearance: none;
+                margin: 0;
+            }
             
             .mobile-search-bar {
                 background: #fff;
@@ -308,6 +334,59 @@ $title = 'Cari Yönetimi';
                     </div>
                 </div>
                 
+                <div class="modal-footer border-top-0 pt-0 pb-4 px-4 justify-content-end">
+                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" style="background:#6c757d; color:#fff; border-radius: 10px; border:none; font-weight: 600;">İptal</button>
+                    <button type="submit" class="btn btn-dark px-4" style="background:#212529; color:#fff; border-radius: 10px; border:none; font-weight: 600;">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="hizliIslemModal" tabindex="-1" aria-labelledby="hizliIslemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4 align-items-start">
+                <div class="d-flex align-items-center w-100">
+                    <div class="bg-primary-subtle rounded-circle d-flex align-items-center justify-content-center me-3" id="hizliIslemIconBg" style="width: 48px; height: 48px;">
+                        <i class="bx bx-transfer font-size-24 text-primary" id="hizliIslemIcon"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h5 class="modal-title fw-bold mb-1" id="hizliIslemModalLabel" style="color: #1a1a1a;">Yeni İşlem Ekle</h5>
+                        <p class="text-muted small mb-0" id="hizliIslemModalDesc">İşlem türünü seçin ve bilgileri girin.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close mt-1" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <form id="hizliIslemForm">
+                <input type="hidden" name="action" value="hizli-hareket-kaydet">
+                <input type="hidden" name="cari_id" id="hizli_islem_cari_id" value="">
+                
+                <div class="modal-body px-4 pt-4 pb-2">
+                    <div class="mb-4 d-flex justify-content-center gap-2">
+                        <input type="radio" class="btn-check" name="type" id="type_aldim" value="aldim" autocomplete="off" checked>
+                        <label class="btn btn-outline-success flex-grow-1 fw-bold" for="type_aldim"><i class="bx bx-plus-circle me-1"></i>Tahsilat (Aldım)</label>
+
+                        <input type="radio" class="btn-check" name="type" id="type_verdim" value="verdim" autocomplete="off">
+                        <label class="btn btn-outline-danger flex-grow-1 fw-bold" for="type_verdim"><i class="bx bx-minus-circle me-1"></i>Ödeme (Verdim)</label>
+                    </div>
+
+                    <div class="mb-3">
+                        <?php 
+                        echo Form::FormFloatInput("text", "islem_tarihi", date('Y-m-d H:i'), "Tarih", "Tarih", "calendar", "form-control flatpickr-time-input", true, null, "off", false); 
+                        ?>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted mb-1">Tutar</label>
+                        <?php echo Form::FormFloatInput("text", "tutar", "", "0.00", "İşlem Tutarı", "dollar-sign", "form-control money", true, null, "off", false, 'step="0.01" min="0.01"'); ?>
+                    </div>
+                    <div class="mb-3">
+                        <?php echo Form::FormFloatInput("text", "belge_no", "", "Belge No", "Belge No", "hash", "form-control"); ?>
+                    </div>
+                    <div class="mb-3">
+                        <?php echo Form::FormFloatTextarea("aciklama", "", "Açıklama giriniz...", "Açıklama", "list", "form-control", false, "80px"); ?>
+                    </div>
+                </div>
                 <div class="modal-footer border-top-0 pt-0 pb-4 px-4 justify-content-end">
                     <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" style="background:#6c757d; color:#fff; border-radius: 10px; border:none; font-weight: 600;">İptal</button>
                     <button type="submit" class="btn btn-dark px-4" style="background:#212529; color:#fff; border-radius: 10px; border:none; font-weight: 600;">Kaydet</button>
