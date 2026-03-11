@@ -103,9 +103,12 @@ $(document).ready(function () {
                         <div class="mobile-card-title">${item.CariAdi}</div>
                         <div class="mobile-card-subtitle"><i class="bx bx-phone me-1"></i>${item.Telefon || '-'}</div>
                     </div>
-                    <div class="mobile-card-value text-end">
-                        <span class="mobile-card-amt ${bakiyeCls}">${item.bakiye}</span>
-                        <span class="mobile-card-type text-muted">${bakiyeLabel}</span>
+                    <div class="mobile-card-right">
+                        <div class="mobile-card-value">
+                            <span class="mobile-card-amt ${bakiyeCls}">${item.bakiye}</span>
+                            <span class="mobile-card-type text-muted">${bakiyeLabel}</span>
+                        </div>
+                        <i class="bx bx-chevron-right mobile-card-chevron fs-4"></i>
                     </div>
                 </div>
             `;

@@ -576,7 +576,7 @@ if (Gate::allows("ana_sayfa")) {
 
     if (\App\Service\Gate::allows("talepler")) {
         ob_start(); ?>
-        <div class="col-md-2 widget-item" id="widget-bekleyen-talepler">
+        <div class="col-6 col-md-2 widget-item" id="widget-bekleyen-talepler">
             <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card"
                 style="--card-color: #f6c23e; border-bottom: 3px solid var(--card-color) !important; --delay: 0.6s">
                 <div class="card-body p-3 pb-2">
@@ -606,7 +606,7 @@ if (Gate::allows("ana_sayfa")) {
     }
 
     ob_start(); ?>
-    <div class="col-md-2 widget-item" id="widget-gec-kalanlar">
+    <div class="col-6 col-md-2 widget-item" id="widget-gec-kalanlar">
         <a href="index.php?p=personel-takip/list&tab=tabGecKalanlar" class="text-decoration-none">
             <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card"
                 style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important; --delay: 0.65s">
@@ -629,7 +629,7 @@ if (Gate::allows("ana_sayfa")) {
     <?php $widgets['widget-gec-kalanlar'] = ob_get_clean();
 
     ob_start(); ?>
-    <div class="col-md-2 widget-item" id="widget-nobetciler">
+    <div class="col-6 col-md-2 widget-item" id="widget-nobetciler">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card"
             style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important; --delay: 0.75s">
             <div class="card-body p-3">
@@ -696,7 +696,7 @@ if (Gate::allows("ana_sayfa")) {
     <?php $widgets['widget-row-break'] = ob_get_clean();
 
     ob_start(); ?>
-    <div class="col-md-2 widget-item" id="widget-gunluk-muhurleme">
+    <div class="col-6 col-md-2 widget-item" id="widget-gunluk-muhurleme">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
             style="--card-color: #858796; border-bottom: 3px solid var(--card-color) !important; --delay: 0.7s">
             <div class="card-body p-3 pb-2">
@@ -747,7 +747,7 @@ if (Gate::allows("ana_sayfa")) {
 
 
     ob_start(); ?>
-    <div class="col-md-2 widget-item" id="widget-gunluk-kesme-acma">
+    <div class="col-6 col-md-2 widget-item" id="widget-gunluk-kesme-acma">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
             style="--card-color: #e74a3b; border-bottom: 3px solid var(--card-color) !important; --delay: 0.9s">
             <div class="card-body p-3 pb-2">
@@ -796,7 +796,7 @@ if (Gate::allows("ana_sayfa")) {
     <?php $widgets['widget-gunluk-kesme-acma'] = ob_get_clean();
 
     ob_start(); ?>
-    <div class="col-md-2 widget-item" id="widget-gunluk-endeks-okuma">
+    <div class="col-6 col-md-2 widget-item" id="widget-gunluk-endeks-okuma">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
             style="--card-color: #36b9cc; border-bottom: 3px solid var(--card-color) !important; --delay: 1.0s">
             <div class="card-body p-3 pb-2">
@@ -844,7 +844,7 @@ if (Gate::allows("ana_sayfa")) {
     <?php $widgets['widget-gunluk-endeks-okuma'] = ob_get_clean();
 
     ob_start(); ?>
-    <div class="col-md-2 widget-item" id="widget-gunluk-sayac-degisimi">
+    <div class="col-6 col-md-2 widget-item" id="widget-gunluk-sayac-degisimi">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
             style="--card-color: #1cc88a; border-bottom: 3px solid var(--card-color) !important; --delay: 1.1s">
             <div class="card-body p-3 pb-2">
@@ -893,7 +893,7 @@ if (Gate::allows("ana_sayfa")) {
         <?php $widgets['widget-gunluk-sayac-degisimi'] = ob_get_clean();
 
         ob_start(); ?>
-        <div class="col-md-2 widget-item" id="widget-kacak-sayisi">
+        <div class="col-6 col-md-2 widget-item" id="widget-kacak-sayisi">
             <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
                 style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important; --delay: 1.15s">
                 <div class="card-body p-3 pb-2">
@@ -3274,80 +3274,62 @@ if (Gate::allows("ana_sayfa")) {
                     margin-bottom: 12px;
                 }
 
-                .bordro-summary-card .card-body:not(.no-mobile-grid) {
-                    display: grid !important;
-                    grid-template-columns: 36px 1fr auto;
-                    align-items: center;
-                    gap: 0 12px;
-                    padding: 12px !important;
+                .stat-card {
+                    min-height: 75px !important;
                 }
 
-                .icon-label-container {
-                    display: contents !important;
-                }
-
-                .icon-box {
-                    width: 36px !important;
-                    height: 36px !important;
-                    grid-column: 1 !important;
-                    grid-row: 1 / span 2 !important;
-                    margin: 0 !important;
+                .stat-card .card-body {
                     display: flex !important;
+                    flex-direction: column;
                     align-items: center;
                     justify-content: center;
+                    padding: 10px 4px !important;
+                    text-align: center;
+                    gap: 2px;
                 }
 
-                .icon-box i {
+                .stat-card .icon-label-container {
+                    display: flex !important;
+                    justify-content: center;
+                    width: 100%;
+                    margin-bottom: 2px !important;
+                }
+                
+                .stat-card .icon-label-container > span,
+                .stat-card .icon-label-container > div:not(.icon-box) {
+                    display: none !important;
+                }
+
+                .stat-card .icon-box {
+                    width: 26px !important;
+                    height: 26px !important;
+                    margin: 0 auto !important;
+                }
+
+                .stat-card .icon-box i {
                     font-size: 1.1rem !important;
                 }
 
-                /* Target the tag/sync container on the right */
-                .icon-label-container>span,
-                .icon-label-container>div:not(.icon-box) {
-                    grid-column: 3 !important;
-                    grid-row: 1 / span 2 !important;
-                    justify-self: end;
-                }
-
-                .bordro-summary-card .card-body>p {
-                    grid-column: 2 !important;
-                    grid-row: 1 !important;
+                .stat-card .card-body>p.stat-label,
+                .stat-card .card-body>p.text-muted {
                     margin: 0 !important;
+                    font-size: 8px !important;
                     line-height: 1.2;
-                    font-size: 0.65rem !important;
-                    text-align: left !important;
+                    opacity: 0.8;
                 }
 
-                .bordro-summary-card .card-body>h4 {
-                    grid-column: 2 !important;
-                    grid-row: 2 !important;
+                .stat-card .card-body>h4 {
                     margin: 0 !important;
-                    line-height: 1.2;
-                    font-size: 1.1rem !important;
-                    text-align: left !important;
+                    font-size: 1.05rem !important;
+                    line-height: 1;
+                    margin-top: 2px !important;
                 }
 
-                .sub-text {
-                    grid-column: 1 / span 3 !important;
-                    margin-top: 8px !important;
-                    padding-top: 6px !important;
-                    border-top: 1px dashed rgba(0, 0, 0, 0.1);
-                    font-size: 9px !important;
-                }
-
-                .card-footer-actions {
-                    grid-column: 1 / span 3 !important;
-                    padding-top: 8px !important;
-                    margin-top: 6px !important;
-                }
-
-                .grid-content-area {
-                    grid-column: 1 / span 3 !important;
-                }
-
-                .btn-xs {
-                    padding: 2px 8px !important;
-                    font-size: 9px !important;
+                .stat-card .trend-badge,
+                .stat-card .sub-text,
+                .stat-card .card-footer-actions,
+                .stat-card .card-body > .mt-2.text-center {
+                    display: none !important;
                 }
 
                 .trend-badge {

@@ -51,6 +51,9 @@ use App\Helper\Form;
                             </div>
                         </div>
 
+                       
+
+
                         <!-- Dönem Seçimi -->
                         <div class="d-flex align-items-center gap-2">
                             <span class="text-muted small fw-bold me-1"><i class="bx bx-calendar me-1"></i>Dönem:</span>
@@ -64,6 +67,12 @@ use App\Helper\Form;
 
                         <!-- Tarih Seçici -->
                         <div class="d-flex flex-wrap align-items-end gap-2">
+                             <!-- Personel Seçimi -->
+                        <div id="topPersonelFilterWrapper" style="display:none;">
+                            <div class="filter-field" style="min-width: 220px;">
+                                <?php echo Form::FormSelect2("kisiselPersonelSelect", ["" => "Personel Seçiniz..."], "", "Personel", "users", "key", "", "form-select form-select-sm select2", false, "width:100%", 'data-placeholder="Personel Seçiniz..."'); ?>
+                            </div>
+                        </div>
                             <div class="filter-field" id="singleDateWrapper">
                                 <?php echo Form::FormFloatInput("text", "tarihSecici", "", "Tarih", "Seçiniz", "calendar", "form-control form-control-sm", false, null, "off"); ?>
                             </div>
@@ -83,240 +92,301 @@ use App\Helper\Form;
     <!-- Dönem Bilgisi -->
     <div class="row mb-3">
         <div class="col-12">
-            <div class="d-flex align-items-center">
-                <h6 class="mb-0 text-muted" id="donemBilgisi" style="font-size: 0.85rem;">
-                    <i class="bx bx-info-circle me-1"></i>
-                    <span id="donemText">Yükleniyor...</span>
-                </h6>
+            <div class="alert alert-warning" role="alert">
+                <h6 class="alert-heading">Dönem Bilgisi</h6>
+                <p class="mb-0" id="donemText">Yükleniyor...</p>
             </div>
-        </div>
-    </div>
-
-    <!-- KPI Kartları -->
-    <div class="row g-3 mb-4" id="kpiCards">
-        <!-- Toplam İş -->
-        <div class="col-md-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100 animate-card"
-                style="border-radius: 12px; border-bottom: 3px solid var(--dept-color, #e74a3b) !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="icon-box" style="background: rgba(var(--dept-rgb, 231, 74, 59), 0.1); width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
-                            <i class="bx bx-bar-chart-alt-2 fs-5" id="kpiIcon1" style="color: var(--dept-color, #e74a3b);"></i>
-                        </div>
-                        <span class="badge bg-light text-muted fw-bold" style="font-size:0.65rem;" id="kpiLabel">TOPLAM</span>
-                    </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;" id="kpiTitle1">TOPLAM İŞ</p>
-                    <h3 class="mb-0 fw-bold" id="kpiValue1" style="color: var(--dept-color, #e74a3b);">0</h3>
-                </div>
-            </div>
-        </div>
-
-        <!-- Personel Sayısı -->
-        <div class="col-md-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100 animate-card"
-                style="border-radius: 12px; border-bottom: 3px solid #556ee6 !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="icon-box" style="background: rgba(85, 110, 230, 0.1); width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
-                            <i class="bx bx-group fs-5" style="color: #556ee6;"></i>
-                        </div>
-                        <span class="badge bg-light text-muted fw-bold" style="font-size:0.65rem;">PERSONEL</span>
-                    </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">PERSONEL SAYISI</p>
-                    <h3 class="mb-0 fw-bold text-primary" id="kpiValue2">0</h3>
-                </div>
-            </div>
-        </div>
-
-        <!-- Kişi Başı Ortalama -->
-        <div class="col-md-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100 animate-card"
-                style="border-radius: 12px; border-bottom: 3px solid #34c38f !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="icon-box" style="background: rgba(52, 195, 143, 0.1); width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
-                            <i class="bx bx-trending-up fs-5" style="color: #34c38f;"></i>
-                        </div>
-                        <span class="badge bg-light text-muted fw-bold" style="font-size:0.65rem;">ORTALAMA</span>
-                    </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">KİŞİ BAŞI ORTALAMA</p>
-                    <h3 class="mb-0 fw-bold text-success" id="kpiValue3">0</h3>
-                </div>
-            </div>
-        </div>
-
-        <!-- En İyi Performans -->
-        <div class="col-md-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100 animate-card"
-                style="border-radius: 12px; border-bottom: 3px solid #f1b44c !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="icon-box" style="background: rgba(241, 180, 76, 0.1); width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
-                            <i class="bx bx-trophy fs-5" style="color: #f1b44c;"></i>
-                        </div>
-                        <span class="badge bg-light text-muted fw-bold" style="font-size:0.65rem;">EN İYİ</span>
-                    </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">EN İYİ PERFORMANS</p>
-                    <h4 class="mb-0 fw-bold" style="color: #f1b44c; font-size: 1.1rem;" id="kpiValue4">-</h4>
-                    <small class="text-muted" id="kpiValue4Sub"></small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Grafikler -->
-    <div class="row g-3 mb-4">
-        <!-- Trend Grafiği -->
-        <div class="col-xl-7">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
-                <div class="card-body p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold text-dark mb-0" style="font-size: 0.95rem;">
-                            <i class="bx bx-line-chart me-1 text-muted"></i>Performans Trendi
-                        </h6>
-                        <span class="badge bg-soft-primary text-primary" id="trendPeriodLabel">Aylık</span>
-                    </div>
-                    <div id="trendChart" style="min-height: 320px;"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Personel Karşılaştırma -->
-        <div class="col-xl-5">
-            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
-                <div class="card-body p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold text-dark mb-0" style="font-size: 0.95rem;">
-                            <i class="bx bx-bar-chart me-1 text-muted"></i>En İyi 15 Personel
-                        </h6>
-                        <span class="badge bg-soft-success text-success" id="barChartLabel">Sıralama</span>
-                    </div>
-                    <div id="barChart" style="min-height: 320px;"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Kişisel Performans Analizi -->
-    <div class="row mt-4">
+            </div>    <!-- Tab Navigasyonu -->
+    <div class="row mb-3">
         <div class="col-12">
-            <div class="card border-0 shadow-sm" style="border-radius: 12px; border-top: 3px solid var(--dept-color, #e74a3b);">
-                <div class="card-body p-3">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-3">
-                        <div class="d-flex flex-wrap align-items-center gap-3">
-                            <div class="d-flex align-items-center gap-2">
-                                <h6 class="fw-bold text-dark mb-0 d-flex align-items-center" style="font-size: 0.95rem;">
-                                    <i class="bx bx-user-pin me-2 text-muted fs-5"></i>Kişisel Analiz
+            <ul class="nav nav-pills nav-justified bg-white p-1 shadow-sm mb-3" role="tablist" style="border-radius: 12px;">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active fw-bold py-2" id="genel-tab" data-bs-toggle="tab" data-bs-target="#genel-bakis" type="button" role="tab">
+                        <i class="bx bx-pie-chart-alt-2 me-2"></i>Genel Performans
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-bold py-2" id="personel-tab" data-bs-toggle="tab" data-bs-target="#personel-analiz" type="button" role="tab">
+                        <i class="bx bx-user-circle me-2"></i>Personel Analizi
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="tab-content">
+        <!-- TAB 1: GENEL BAKIS -->
+        <div class="tab-pane fade show active" id="genel-bakis" role="tabpanel">
+            <!-- KPI Kartları -->
+            <div class="row g-3 mb-4" id="kpiCards">
+                <!-- Toplam İş -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100 animate-card"
+                        style="border-radius: 12px; border-bottom: 3px solid var(--dept-color, #e74a3b) !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <div class="icon-box" style="background: rgba(var(--dept-rgb, 231, 74, 59), 0.1); width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                                    <i class="bx bx-bar-chart-alt-2 fs-5" id="kpiIcon1" style="color: var(--dept-color, #e74a3b);"></i>
+                                </div>
+                                <span class="badge bg-light text-muted fw-bold" style="font-size:0.65rem;" id="kpiLabel">TOPLAM</span>
+                            </div>
+                            <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;" id="kpiTitle1">TOPLAM İŞ</p>
+                            <h3 class="mb-0 fw-bold" id="kpiValue1" style="color: var(--dept-color, #e74a3b);">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Personel Sayısı -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100 animate-card"
+                        style="border-radius: 12px; border-bottom: 3px solid #556ee6 !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <div class="icon-box" style="background: rgba(85, 110, 230, 0.1); width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                                    <i class="bx bx-group fs-5" style="color: #556ee6;"></i>
+                                </div>
+                                <span class="badge bg-light text-muted fw-bold" style="font-size:0.65rem;">PERSONEL</span>
+                            </div>
+                            <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">PERSONEL SAYISI</p>
+                            <h3 class="mb-0 fw-bold text-primary" id="kpiValue2">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kişi Başı Ortalama -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100 animate-card"
+                        style="border-radius: 12px; border-bottom: 3px solid #34c38f !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <div class="icon-box" style="background: rgba(52, 195, 143, 0.1); width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                                    <i class="bx bx-trending-up fs-5" style="color: #34c38f;"></i>
+                                </div>
+                                <span class="badge bg-light text-muted fw-bold" style="font-size:0.65rem;">ORTALAMA</span>
+                            </div>
+                            <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">KİŞİ BAŞI ORTALAMA</p>
+                            <h3 class="mb-0 fw-bold text-success" id="kpiValue3">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- En İyi Performans -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100 animate-card"
+                        style="border-radius: 12px; border-bottom: 3px solid #f1b44c !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <div class="icon-box" style="background: rgba(241, 180, 76, 0.1); width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                                    <i class="bx bx-trophy fs-5" style="color: #f1b44c;"></i>
+                                </div>
+                                <span class="badge bg-light text-muted fw-bold" style="font-size:0.65rem;">EN İYİ</span>
+                            </div>
+                            <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">EN İYİ PERFORMANS</p>
+                            <h4 class="mb-0 fw-bold" style="color: #f1b44c; font-size: 1.1rem;" id="kpiValue4">-</h4>
+                            <small class="text-muted" id="kpiValue4Sub"></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grafikler -->
+            <div class="row g-3 mb-4">
+                <div class="col-xl-7">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-bold text-dark mb-0" style="font-size: 0.95rem;">
+                                    <i class="bx bx-line-chart me-1 text-muted"></i>Performans Trendi
                                 </h6>
-                                <div style="width: 200px;">
-                                    <select id="kisiselPersonelSelect" class="form-select form-select-sm select2" data-placeholder="Personel Seçiniz...">
-                                        <option value="">Personel Seçiniz...</option>
-                                    </select>
-                                </div>
+                                <span class="badge bg-soft-primary text-primary" id="trendPeriodLabel">Aylık</span>
                             </div>
-                            
-                            <!-- Bölüme Özel Periyot -->
-                            <div class="d-flex align-items-center gap-2 border-start ps-3">
-                                <div class="btn-group btn-group-sm" role="group" id="kisiselPeriodGroup">
-                                    <button type="button" class="btn btn-outline-primary kisisel-period-btn" data-period="haftalik">Haftalık</button>
-                                    <button type="button" class="btn btn-primary kisisel-period-btn active" data-period="aylik">Aylık</button>
-                                    <button type="button" class="btn btn-outline-primary kisisel-period-btn" data-period="aralik">Dönem</button>
-                                </div>
-                            </div>
-
-                            <!-- Bölüme Özel Tarih Seçici -->
-                            <div class="d-flex align-items-center gap-2" id="kisiselDateWrapper">
-                                <div style="width: 130px;" id="kisiselSingleDateContainer">
-                                    <input type="text" id="kisiselTarihSecici" class="form-control form-control-sm" placeholder="Tarih Seç" readonly>
-                                </div>
-                                <div style="width: 200px; display:none;" id="kisiselRangeDateContainer">
-                                    <input type="text" id="kisiselAralikSecici" class="form-control form-control-sm" placeholder="Tarih Aralığı" readonly>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="btn-group btn-group-sm d-none" role="group" id="kisiselSiralamaGroup">
-                            <button type="button" class="btn btn-outline-secondary kisisel-sort-btn active" data-sort="tarih" title="Zamana Göre">
-                                <i class="bx bx-time-five"></i>
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary kisisel-sort-btn" data-sort="desc" title="En İyiden En Kötüye">
-                                <i class="bx bx-sort-down"></i> En İyi
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary kisisel-sort-btn" data-sort="asc" title="En Kötüden En İyiye">
-                                <i class="bx bx-sort-up"></i> En Kötü
-                            </button>
+                            <div id="trendChart" style="min-height: 320px;"></div>
                         </div>
                     </div>
-                    
-                    <div id="kisiselChartContainer" style="display:none;">
-                        <div class="d-flex justify-content-between align-items-center mb-2 px-2">
-                            <div class="d-flex align-items-center gap-2">
-                                <img id="kisiselImg" src="assets/images/users/user-dummy-img.jpg" class="rounded-circle" style="width:36px; height:36px; object-fit:cover;">
-                                <div>
-                                    <h6 class="mb-0 fw-bold" id="kisiselAd" style="font-size:0.9rem;">-</h6>
-                                    <small class="text-muted" id="kisiselDepartman">-</small>
+                </div>
+                <div class="col-xl-5">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-bold text-dark mb-0" style="font-size: 0.95rem;">
+                                    <i class="bx bx-bar-chart me-1 text-muted"></i>En İyi 15 Personel
+                                </h6>
+                                <span class="badge bg-soft-success text-success" id="barChartLabel">Sıralama</span>
+                            </div>
+                            <div id="barChart" style="min-height: 320px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Personel Sıralama Tablosu -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-bold text-dark mb-0" style="font-size: 0.95rem;">
+                                    <i class="bx bx-list-ol me-1 text-muted"></i>Personel Performans Sıralaması
+                                </h6>
+                                <button class="btn btn-sm btn-outline-success" id="btnExcelExport">
+                                    <i class="bx bx-file me-1"></i>Excel'e Aktar
+                                </button>
+                            </div>
+                            <div class="table-responsive">
+                                <table id="performansTable" class="table table-hover table-bordered w-100 align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 50px;" class="text-center">#</th>
+                                            <th>Personel</th>
+                                            <th>Departman</th>
+                                            <th class="text-end">Toplam</th>
+                                            <th class="text-center" style="width:200px;">Performans</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="performansTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: PERSONEL ANALIZ -->
+        <div class="tab-pane fade" id="personel-analiz" role="tabpanel">
+            <div class="row mb-3">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm" style="border-radius: 12px; border-top: 3px solid var(--dept-color, #e74a3b);">
+                        <div class="card-body p-3">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                                <div class="d-flex flex-wrap align-items-center gap-3">
+                                    <h6 class="fw-bold text-dark mb-0 d-flex align-items-center" style="font-size: 0.95rem;">
+                                        <i class="bx bx-bar-chart-alt-2 me-2 text-muted fs-5"></i>Personel Detay Analizi
+                                    </h6>
+                                </div>
+
+                                <div class="btn-group btn-group-sm d-none" role="group" id="kisiselSiralamaGroup">
+                                    <button type="button" class="btn btn-outline-secondary kisisel-sort-btn active" data-sort="tarih" title="Zamana Göre">
+                                        <i class="bx bx-time-five"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary kisisel-sort-btn" data-sort="desc" title="En İyiden En Kötüye">
+                                        <i class="bx bx-sort-down"></i> En İyi
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary kisisel-sort-btn" data-sort="asc" title="En Kötüden En İyiye">
+                                        <i class="bx bx-sort-up"></i> En Kötü
+                                    </button>
                                 </div>
                             </div>
-                            <div class="text-end">
-                                <h5 class="mb-0 fw-bold" id="kisiselToplam" style="color: var(--dept-color, #e74a3b);">0</h5>
-                                <small class="text-muted fw-bold" style="font-size: 0.7rem;" id="kisiselBirimLabel">TOPLAM</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Personel KPI Kartları -->
+            <div id="kisiselKPIs" class="row g-3 mb-4" style="display:none;">
+                <!-- Toplam İş -->
+                <div class="col-md-4 col-xl-2">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: rgba(var(--dept-rgb, 231, 74, 59), 0.05);">
+                        <div class="card-body p-3 text-center">
+                            <p class="text-muted mb-1 small fw-bold">TOPLAM İŞ</p>
+                            <h4 class="mb-0 fw-bold" id="kp_toplam" style="color: var(--dept-color, #e74a3b);">0</h4>
+                        </div>
+                    </div>
+                </div>
+                <!-- Günlük Ortalama -->
+                <div class="col-md-4 col-xl-2">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                        <div class="card-body p-3 text-center">
+                            <p class="text-muted mb-1 small fw-bold">GÜNLÜK ORT.</p>
+                            <h4 class="mb-0 fw-bold text-primary" id="kp_gunluk_ort">0</h4>
+                        </div>
+                    </div>
+                </div>
+                <!-- Aylık Ortalama -->
+                <div class="col-md-4 col-xl-2">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                        <div class="card-body p-3 text-center">
+                            <p class="text-muted mb-1 small fw-bold">AYLIK ORT.</p>
+                            <h4 class="mb-0 fw-bold text-success" id="kp_aylik_ort">0</h4>
+                        </div>
+                    </div>
+                </div>
+                <!-- Sıralama -->
+                <div class="col-md-4 col-xl-2">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: rgba(241, 180, 76, 0.05);">
+                        <div class="card-body p-3 text-center">
+                            <p class="text-muted mb-1 small fw-bold">EKİP SIRALAMASI</p>
+                            <h4 class="mb-0 fw-bold" id="kp_siralama" style="color: #f1b44c;">0</h4>
+                            <small class="text-muted" id="kp_toplam_personel">/ 0</small>
+                        </div>
+                    </div>
+                </div>
+                <!-- En Yüksek Gün -->
+                <div class="col-md-4 col-xl-2">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                        <div class="card-body p-3 text-center">
+                            <p class="text-muted mb-1 small fw-bold">EN YÜKSEK GÜN</p>
+                            <h4 class="mb-0 fw-bold text-info" id="kp_en_yuksek">0</h4>
+                            <small class="text-muted" id="kp_en_yuksek_tarih">-</small>
+                        </div>
+                    </div>
+                </div>
+                <!-- En Düşük Gün -->
+                <div class="col-md-4 col-xl-2">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                        <div class="card-body p-3 text-center">
+                            <p class="text-muted mb-1 small fw-bold">EN DÜŞÜK GÜN</p>
+                            <h4 class="mb-0 fw-bold text-danger" id="kp_en_dusuk">0</h4>
+                            <small class="text-muted" id="kp_en_dusuk_tarih">-</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kişisel Grafik -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div id="kisiselChartContainer" style="display:none;">
+                                <div class="d-flex justify-content-between align-items-center mb-2 px-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <img id="kisiselImg" src="assets/images/users/user-dummy-img.jpg" class="rounded-circle" style="width:40px; height:40px; object-fit:cover; border: 2px solid #eee;">
+                                        <div>
+                                            <h6 class="mb-0 fw-bold" id="kisiselAd" style="font-size:1rem;">-</h6>
+                                            <small class="text-muted fw-bold" id="kisiselDepartman">-</small>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-soft-primary text-primary px-3 py-2" style="font-size: 0.85rem;" id="kisiselChartLabel">Performas Grafiği</span>
+                                    </div>
+                                </div>
+                                <div id="kisiselChart" style="min-height: 350px;"></div>
+                            </div>
+
+                            <div id="kisiselEmptyState" class="text-center py-5">
+                                <div class="mb-3">
+                                    <i class="bx bx-user-circle text-muted" style="font-size: 5rem; opacity: 0.3;"></i>
+                                </div>
+                                <h5 class="text-muted fw-bold">Analiz için personel seçiniz</h5>
+                                <p class="text-muted small">Personel seçerek detaylı performans verilerini görüntüleyebilirsiniz.</p>
                             </div>
                         </div>
-                        <div id="kisiselChart" style="min-height: 280px;"></div>
-                    </div>
-
-                    <div id="kisiselEmptyState" class="text-center py-5">
-                        <div class="mb-3">
-                            <i class="bx bx-user-circle text-muted" style="font-size: 4rem; opacity: 0.5;"></i>
-                        </div>
-                        <h6 class="text-muted fw-bold">Grafiği görüntülemek için bir personel seçiniz.</h6>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Personel Sıralama Tablosu -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm" style="border-radius: 12px;">
-                <div class="card-body p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold text-dark mb-0" style="font-size: 0.95rem;">
-                            <i class="bx bx-list-ol me-1 text-muted"></i>Personel Performans Sıralaması
-                        </h6>
-                        <button class="btn btn-sm btn-outline-success" id="btnExcelExport">
-                            <i class="bx bx-file me-1"></i>Excel'e Aktar
-                        </button>
-                    </div>
-                    <div class="table-responsive">
-                        <table id="performansTable" class="table table-hover table-bordered w-100 align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 50px;" class="text-center">#</th>
-                                    <th>Personel</th>
-                                    <th>Departman</th>
-                                    <th class="text-end">Toplam</th>
-                                    <th class="text-center" style="width:200px;">Performans</th>
-                                </tr>
-                            </thead>
-                            <tbody id="performansTableBody">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    </div>
+</div>
 
 <!-- Loading Overlay -->
-<div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); z-index:9999; display:flex; align-items:center; justify-content:center;">
+<div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.73); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter: blur(3px);">
     <div class="text-center">
-        <div class="spinner-border text-primary mb-2" role="status" style="width:3rem; height:3rem;">
+        <div class="spinner-border text-primary mb-3" role="status" style="width:3.5rem; height:3.5rem; border-width: 0.3rem;">
             <span class="visually-hidden">Yükleniyor...</span>
         </div>
-        <p class="text-muted fw-bold">Veriler yükleniyor...</p>
+        <h5 class="text-dark fw-bold mb-1">Veriler Hazırlanıyor</h5>
+        <p class="text-muted">Lütfen bekleyiniz...</p>
     </div>
 </div>
 
@@ -324,6 +394,26 @@ use App\Helper\Form;
     :root {
         --dept-color: #e74a3b;
         --dept-rgb: 231, 74, 59;
+    }
+
+    .nav-pills .nav-link {
+        color: #64748b;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+        border: 1px solid transparent;
+        margin: 0 4px;
+    }
+
+    .nav-pills .nav-link.active {
+        background: #fff !important;
+        color: var(--dept-color, #e74a3b) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(var(--dept-rgb), 0.1);
+    }
+
+    .nav-pills .nav-link:not(.active):hover {
+        background: rgba(var(--dept-rgb), 0.05);
+        color: var(--dept-color);
     }
 
     .dept-btn {
@@ -608,54 +698,38 @@ $(document).ready(function() {
         loadData();
     });
 
-    // Kişisel Periyot Değişimi
-    $(document).on('click', '.kisisel-period-btn', function() {
-        if ($(this).hasClass('active')) return;
+    // Tab değişimi - Grafikleri yeniden boyutlandır
+    $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        // ApexCharts bazen gizli tabda iken boyutu yanlış hesaplar, bu yüzden resize tetikliyoruz
+        window.dispatchEvent(new Event('resize'));
         
-        $('.kisisel-period-btn').removeClass('btn-primary active').addClass('btn-outline-primary');
-        $(this).removeClass('btn-outline-primary').addClass('btn-primary active');
-        
-        kisiselPeriod = $(this).data('period');
-        updateKisiselDateControls();
-        loadKisiselData();
+        if (e.target.id === 'personel-tab') {
+            $('#topPersonelFilterWrapper').show();
+            // Personel tabına geçince eğer personel seçili değilse boş göster
+            if (!$('#kisiselPersonelSelect').val()) {
+                $('#kisiselEmptyState').show();
+                $('#kisiselChartContainer').hide();
+                $('#kisiselKPIs').hide();
+                $('#kisiselSiralamaGroup').addClass('d-none');
+            }
+        } else {
+            $('#topPersonelFilterWrapper').hide();
+        }
     });
 
-    function updateKisiselDateControls() {
-        if (fpKisiselSingle) fpKisiselSingle.destroy();
-        if (fpKisiselRange) fpKisiselRange.destroy();
-
-        $('#kisiselSingleDateContainer, #kisiselRangeDateContainer').hide();
-
-        if (kisiselPeriod === 'aralik') {
-            $('#kisiselRangeDateContainer').show();
-            fpKisiselRange = flatpickr("#kisiselAralikSecici", {
-                mode: "range",
-                locale: "tr",
-                dateFormat: "d.m.Y",
-                defaultDate: [new Date(new Date().setDate(new Date().getDate() - 30)), new Date()],
-                onClose: function(selectedDates) {
-                    if (selectedDates.length === 2) loadKisiselData();
-                }
-            });
-        } else {
-            $('#kisiselSingleDateContainer').show();
-            let opts = {
-                locale: "tr",
-                defaultDate: new Date(),
-                onChange: function() { loadKisiselData(); }
-            };
-
-            if (kisiselPeriod === 'aylik') {
-                opts.plugins = [new monthSelectPlugin({ shorthand: false, dateFormat: "F Y", theme: "light" })];
-            } else if (kisiselPeriod === 'haftalik') {
-                opts.plugins = [new weekSelect({})];
-            }
-            fpKisiselSingle = flatpickr("#kisiselTarihSecici", opts);
+    // Tablo satırına tıklayınca personel analizine geç
+    $(document).on('click', '#performansTable tbody tr', function() {
+        // Personel ID'sini bul (id gizli bir yerde veya satırda olabilir, şimdilik isimden eşleştirelim veya data attrib ekleyelim)
+        // Data attribute ekleyip oradan alacağız.
+        const pId = $(this).data('personel-id');
+        if (pId) {
+            $('#kisiselPersonelSelect').val(pId).trigger('change');
+            const tabEl = document.querySelector('#personel-tab');
+            const tab = new bootstrap.Tab(tabEl);
+            tab.show();
         }
-    }
+    });
 
-    // İlk açılışta kişisel tarih kontrollerini hazırla
-    updateKisiselDateControls();
 
     // Filtrele butonu
     $('#btnFiltrele').on('click', function() {
@@ -891,7 +965,7 @@ $(document).ready(function() {
             const medalClass = rank <= 3 ? 'rank-' + rank : 'rank-other';
             const img = p.resim_yolu || 'assets/images/users/user-dummy-img.jpg';
 
-            html += `<tr>
+            html += `<tr data-personel-id="${p.personel_id}" style="cursor:pointer;">
                 <td class="text-center">
                     <span class="rank-medal ${medalClass}">${rank}</span>
                 </td>
@@ -1047,9 +1121,9 @@ $(document).ready(function() {
         select.html(optionsHtml);
         
         if (selectedId && select.find(`option[value="${selectedId}"]`).length > 0) {
-            select.val(selectedId).trigger('change.select2');
+            select.val(selectedId).trigger('change.select2').trigger('change');
         } else {
-            select.val('').trigger('change.select2');
+            select.val('').trigger('change.select2').trigger('change');
             $('#kisiselChartContainer').hide();
             $('#kisiselEmptyState').show();
             $('#kisiselSiralamaGroup').addClass('d-none');
@@ -1061,6 +1135,7 @@ $(document).ready(function() {
             $('#kisiselEmptyState').hide();
             $('#kisiselSiralamaGroup').removeClass('d-none');
             $('#kisiselChartContainer').show();
+            $('#kisiselKPIs').show();
             
             const selectedOpt = $(this).find('option:selected');
             $('#kisiselAd').text(selectedOpt.data('ad'));
@@ -1072,6 +1147,7 @@ $(document).ready(function() {
         } else {
             $('#kisiselChartContainer').hide();
             $('#kisiselEmptyState').show();
+            $('#kisiselKPIs').hide();
             $('#kisiselSiralamaGroup').addClass('d-none');
         }
     });
@@ -1089,29 +1165,19 @@ $(document).ready(function() {
         
         let startDate = '';
         let endDate = '';
-        let dateVal = '';
+        let dateVal = currentDate;
 
-        if (kisiselPeriod === 'aralik') {
-            if (fpKisiselRange && fpKisiselRange.selectedDates.length === 2) {
-                startDate = ymdFromDateObj(fpKisiselRange.selectedDates[0]);
-                endDate = ymdFromDateObj(fpKisiselRange.selectedDates[1]);
+        if (currentPeriod === 'yillik') {
+            dateVal = $('#yilSecici').val() + '-01-01';
+        } else if (fpSingle && fpSingle.selectedDates.length > 0) {
+            const dates = fpSingle.selectedDates;
+            if (currentPeriod === 'gunluk' && dates.length === 2) {
+                startDate = ymdFromDateObj(dates[0]);
+                endDate = ymdFromDateObj(dates[1]);
                 dateVal = startDate;
             } else {
-                return; // Henüz seçilmedi
-            }
-        } else if (fpKisiselSingle && fpKisiselSingle.selectedDates.length > 0) {
-            const dates = fpKisiselSingle.selectedDates;
-            if (kisiselPeriod === 'haftalik') {
-                // Haftalıkta flatpickr weekSelect kullanıyor, dates[0] haftanın ilk günü olabilir
-                dateVal = ymdFromDateObj(dates[0]);
-            } else if (kisiselPeriod === 'aylik') {
-                dateVal = ymdFromDateObj(dates[0]);
-            } else {
                 dateVal = ymdFromDateObj(dates[0]);
             }
-        } else {
-             // Fallback to current global filters if no local choice yet
-             dateVal = currentDate;
         }
 
         showLoading();
@@ -1123,7 +1189,7 @@ $(document).ready(function() {
                 action: 'get-kisisel-performans',
                 personel_id: personelId,
                 departman: currentDept,
-                period: kisiselPeriod, // Use local period
+                period: currentPeriod,
                 tarih: dateVal,
                 baslangic_tarih: startDate,
                 bitis_tarih: endDate
@@ -1133,7 +1199,10 @@ $(document).ready(function() {
                 hideLoading();
                 if (res.status === 'success') {
                     currentKisiselData = res.kisisel_trend || [];
-                    $('#kisiselToplam').text(formatNumber(res.toplam));
+                    
+                    // Özet verileri güncelle
+                    updateKisiselKPIs(res.summary);
+                    
                     renderKisiselChart(currentKisiselData, res.group_by);
                 } else {
                     Swal.fire('Hata', res.message || 'Kişisel veri yüklenemedi.', 'error');
@@ -1144,6 +1213,32 @@ $(document).ready(function() {
                 Swal.fire('Hata', 'Sunucu ile bağlantı kurulamadı.', 'error');
             }
         });
+    }
+
+    function updateKisiselKPIs(summary) {
+        if (!summary) return;
+        
+        $('#kp_toplam').text(formatNumber(summary.toplam));
+        $('#kp_gunluk_ort').text(formatNumber(summary.gunluk_ortalama));
+        $('#kp_aylik_ort').text(formatNumber(summary.aylik_ortalama));
+        $('#kp_siralama').text(summary.siralama);
+        $('#kp_toplam_personel').text('/ ' + summary.toplam_personel);
+        
+        if (summary.en_yuksek_gun) {
+            $('#kp_en_yuksek').text(formatNumber(summary.en_yuksek_gun.toplam));
+            $('#kp_en_yuksek_tarih').text(formatDateFull(summary.en_yuksek_gun.tarih));
+        } else {
+            $('#kp_en_yuksek').text('0');
+            $('#kp_en_yuksek_tarih').text('-');
+        }
+
+        if (summary.en_dusuk_gun) {
+            $('#kp_en_dusuk').text(formatNumber(summary.en_dusuk_gun.toplam));
+            $('#kp_en_dusuk_tarih').text(formatDateFull(summary.en_dusuk_gun.tarih));
+        } else {
+            $('#kp_en_dusuk').text('0');
+            $('#kp_en_dusuk_tarih').text('-');
+        }
     }
 
     function renderKisiselChart(data, groupBy = 'gunluk') {

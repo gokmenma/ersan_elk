@@ -41,58 +41,59 @@ $title = 'Cari Yönetimi';
         </div>
     </div>
 
-    <!-- Özet Kartları (Bordro Stili) -->
-    <div class="row g-3 mb-4">
-        <div class="col-xl-4 col-md-4">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                style="--card-color: #f43f5e; border-bottom: 3px solid var(--card-color) !important;">
-                <div class="card-body p-3">
-                    <div class="icon-label-container">
+    <!-- Özet Kartları (Minimal Mobil ve Desktop) -->
+    <div class="row g-2 mb-4 summary-cards-container">
+        <div class="col-4 col-md-4">
+            <div class="card border-0 shadow-sm h-100 bordro-summary-card minimal-card"
+                style="--card-color: #f43f5e; border-bottom: 2px solid var(--card-color) !important;">
+                <div class="card-body p-2 text-center text-md-start">
+                    <div class="icon-label-container d-none d-md-flex">
                         <div class="icon-box" style="background: rgba(244, 63, 94, 0.1);">
                             <i class="bx bx-trending-up fs-4 text-danger"></i>
                         </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">BORÇ</span>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM BORÇ</p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading">
-                        <span id="toplam_borc">0,00</span> <span style="font-size: 0.85rem; font-weight: 600;">₺</span>
-                    </h4>
+                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM BORÇ</p>
+                    <p class="text-danger mb-0 small fw-bold d-md-none" style="font-size: 10px;">TOPLAM BORÇ</p>
+                    <h5 class="mb-0 fw-bold bordro-text-heading mt-md-0 mt-1">
+                        <span id="toplam_borc" style="font-size: 0.9rem;">0,00</span> <span style="font-size: 0.7rem; font-weight: 600;">₺</span>
+                    </h5>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-4 col-md-4">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                style="--card-color: #2a9d8f; border-bottom: 3px solid var(--card-color) !important;">
-                <div class="card-body p-3">
-                    <div class="icon-label-container">
+        <div class="col-4 col-md-4">
+            <div class="card border-0 shadow-sm h-100 bordro-summary-card minimal-card"
+                style="--card-color: #2a9d8f; border-bottom: 2px solid var(--card-color) !important;">
+                <div class="card-body p-2 text-center text-md-start">
+                    <div class="icon-label-container d-none d-md-flex">
                         <div class="icon-box" style="background: rgba(42, 157, 143, 0.1);">
                             <i class="bx bx-trending-down fs-4" style="color: #2a9d8f;"></i>
                         </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">ALACAK</span>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM ALACAK</p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading">
-                        <span id="toplam_alacak">0,00</span> <span style="font-size: 0.85rem; font-weight: 600;">₺</span>
-                    </h4>
+                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM ALACAK</p>
+                    <p class="text-success mb-0 small fw-bold d-md-none" style="font-size: 10px;">TOPLAM ALACAK</p>
+                    <h5 class="mb-0 fw-bold bordro-text-heading mt-md-0 mt-1">
+                        <span id="toplam_alacak" style="font-size: 0.9rem;">0,00</span> <span style="font-size: 0.7rem; font-weight: 600;">₺</span>
+                    </h5>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-4 col-md-4">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                style="--card-color: #135bec; border-bottom: 3px solid var(--card-color) !important;">
-                <div class="card-body p-3">
-                    <div class="icon-label-container">
+        <div class="col-4 col-md-4">
+            <div class="card border-0 shadow-sm h-100 bordro-summary-card minimal-card"
+                style="--card-color: #135bec; border-bottom: 2px solid var(--card-color) !important;">
+                <div class="card-body p-2 text-center text-md-start">
+                    <div class="icon-label-container d-none d-md-flex">
                         <div class="icon-box" style="background: rgba(19, 91, 236, 0.1);">
-                            <i class="bx bx-wallet fs-4 text-primary"></i>
+                            <i class="bx bx-briefcase fs-4 text-primary"></i>
                         </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">BAKİYE</span>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GENEL BAKİYE</p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading">
-                        <span id="genel_bakiye">0,00</span> <span style="font-size: 0.85rem; font-weight: 600;">₺</span>
-                    </h4>
+                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">BAKİYE</p>
+                    <p class="text-primary mb-0 small fw-bold d-md-none" id="mobile_bakiye_title" style="font-size: 10px;">GÜNCEL BAKİYE</p>
+                    <h5 class="mb-0 fw-bold bordro-text-heading mt-md-0 mt-1" id="bakiye_label_container">
+                        <span id="genel_bakiye" style="font-size: 0.9rem;">0,00</span> <span style="font-size: 0.7rem; font-weight: 600;">₺</span>
+                        <small id="bakiye_bilgi" style="font-size: 0.6rem; display: block;"></small>
+                    </h5>
                 </div>
             </div>
         </div>
@@ -101,8 +102,20 @@ $title = 'Cari Yönetimi';
     <style>
         /* Mobil Tasarım İyileştirmeleri - Dashboard Uyumluluğu */
         @media (max-width: 767.98px) {
-            .bordro-info-bar { border-radius: 15px !important; margin-bottom: 1.5rem !important; }
-            .bordro-summary-card { margin-bottom: 0.75rem !important; }
+            .bordro-info-bar { border-radius: 15px !important; margin-bottom: 1rem !important; }
+            .summary-cards-container { margin-bottom: 1rem !important; }
+            
+            .minimal-card { 
+                padding: 10px 5px !important; 
+                min-height: 70px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .minimal-card .card-body { padding: 5px !important; }
+            .minimal-card h5 { font-size: 0.85rem !important; margin-top: 2px !important; }
+            .minimal-card p.small { font-size: 8px !important; margin-bottom: 0 !important; }
+
             .datatable-deferred_wrapper .top { display: none; } 
             
             .cari-mobile-list { display: block !important; padding: 0 5px; }
@@ -110,40 +123,56 @@ $title = 'Cari Yönetimi';
             
             .mobile-card {
                 background: #fff;
-                border-radius: 15px;
-                padding: 15px;
-                margin-bottom: 12px;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+                border-radius: 12px;
+                padding: 12px 15px;
+                margin-bottom: 8px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
                 display: flex;
                 align-items: center;
-                justify-content: space-between;
-                border: 1px solid rgba(0,0,0,0.05);
+                border: 1px solid #f1f3f5;
                 transition: all 0.2s ease;
+                position: relative;
+                overflow: hidden;
             }
-            .mobile-card:active { background-color: #f8f9fa; transform: scale(0.98); }
+            .mobile-card:active { background-color: #f8f9fa; transform: scale(0.99); }
+            
+            .mobile-card::before {
+                content: '';
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 3px;
+                background: #135bec; /* Accent color */
+                opacity: 0.1;
+            }
             
             .mobile-card-icon {
-                width: 42px;
-                height: 42px;
-                background: rgba(19, 91, 236, 0.05);
+                width: 40px;
+                height: 40px;
+                background: #f8fbff;
                 color: #135bec;
-                border-radius: 12px;
+                border: 1px solid rgba(19, 91, 236, 0.1);
+                border-radius: 10px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 18px;
+                font-size: 16px;
                 font-weight: 700;
-                margin-right: 15px;
+                margin-right: 12px;
                 flex-shrink: 0;
             }
-            .mobile-card-content { flex-grow: 1; }
-            .mobile-card-title { font-weight: 700; font-size: 15px; color: #1a1a1a; margin-bottom: 2px; }
-            .mobile-card-subtitle { font-size: 12px; color: #6c757d; font-weight: 500; display: flex; align-items: center; }
-            .mobile-card-subtitle i { font-size: 14px; margin-right: 4px; }
+            .mobile-card-content { flex-grow: 1; padding-right: 10px; }
+            .mobile-card-title { font-weight: 600; font-size: 14px; color: #1a1a1a; margin-bottom: 1px; }
+            .mobile-card-subtitle { font-size: 11px; color: #6c757d; font-weight: 500; display: flex; align-items: center; }
+            .mobile-card-subtitle i { font-size: 12px; margin-right: 3px; }
             
+            .mobile-card-right { display: flex; align-items: center; gap: 8px; }
             .mobile-card-value { text-align: right; }
-            .mobile-card-amt { font-weight: 800; font-size: 14px; display: block; }
-            .mobile-card-type { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+            .mobile-card-amt { font-weight: 700; font-size: 13px; display: block; }
+            .mobile-card-type { font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; }
+            
+            .mobile-card-chevron { color: #dee2e6; flex-shrink: 0; }
             
             /* Modern FAB */
             .fab-button {

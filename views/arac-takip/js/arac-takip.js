@@ -2198,8 +2198,18 @@ $(document).ready(function () {
   // Excele Aktar Butonu
   $(document).on("click", "#btnExceleAktar", function (e) {
     e.preventDefault();
-    const activeTab = $(".tab-pane.active");
-    const table = activeTab.find("table");
+    const activeTabObj = $(".tab-pane.active");
+    const activeTabId = activeTabObj.attr("id");
+    
+    // Araçlar sekmesiyse özel exportu kullan
+    if (activeTabId === "aracContent") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const filter = urlParams.get("filter") || "";
+      window.location.href = AracTakip.apiUrl + "?action=arac-excel-aktar&filter=" + filter;
+      return;
+    }
+
+    const table = activeTabObj.find("table");
     if (table.length && $.fn.DataTable.isDataTable(table)) {
       table.DataTable().button(".buttons-excel").trigger();
     } else {

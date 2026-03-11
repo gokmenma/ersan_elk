@@ -16,7 +16,7 @@ use App\Helper\Date;
 
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans']))) {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar']))) {
     $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
     $Arac = new AracModel();
@@ -164,6 +164,120 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $araclar = $Arac->getForSelect($_POST['search'] ?? '');
                 echo json_encode(['results' => $araclar]);
                 break;
+
+            case 'arac-excel-aktar':
+                require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
+                
+                $filter = $_GET['filter'] ?? null;
+
+                if ($filter === 'muayene') {
+                    $araclar = $Arac->getMuayeneBitenler();
+                } elseif ($filter === 'muayene_yaklasan') {
+                    $araclar = $Arac->getMuayeneYaklasanlar(30);
+                } elseif ($filter === 'sigorta') {
+                    $araclar = $Arac->getSigortaBitenler();
+                } elseif ($filter === 'sigorta_yaklasan') {
+                    $araclar = $Arac->getSigortaYaklasanlar(30);
+                } elseif ($filter === 'kasko') {
+                    $araclar = $Arac->getKaskoBitenler();
+                } elseif ($filter === 'kasko_yaklasan') {
+                    $araclar = $Arac->getKaskoYaklasanlar(30);
+                } elseif ($filter === 'zimmetli') {
+                    $araclar = $Arac->getZimmetliAraclar();
+                } elseif ($filter === 'bosta') {
+                    $araclar = $Arac->getBostaAraclar();
+                } elseif ($filter === 'serviste') {
+                    $araclar = $Arac->getServistekiAraclar();
+                } elseif ($filter === 'ikame') {
+                    $araclar = $Arac->getIkameAraclar();
+                } else {
+                    $araclar = $Arac->all();
+                }
+
+                $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+                $sheet = $spreadsheet->getActiveSheet();
+                $sheet->setTitle('Araç Listesi');
+
+                $headerStyle = [
+                    'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                    'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '556EE6']],
+                    'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+                    'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+                ];
+
+                $headers = [
+                    'A' => 'SIRA', 'B' => 'TİP', 'C' => 'PLAKA', 'D' => 'MARKA', 'E' => 'MODEL', 
+                    'F' => 'DEPARTMAN', 'G' => 'MÜLKİYET', 'H' => 'ZİMMETLİ PERSONEL', 'I' => 'DURUM', 
+                    'J' => 'YAKIT', 'K' => 'GÜNCEL KM', 'L' => 'MUAYENE BİTİŞ', 'M' => 'SİGORTA BİTİŞ', 'N' => 'KASKO BİTİŞ'
+                ];
+
+                foreach ($headers as $col => $title) {
+                    $sheet->setCellValue($col . '1', $title);
+                    $sheet->getColumnDimension($col)->setAutoSize(true);
+                }
+                
+                $sheet->getStyle('A1:N1')->applyFromArray($headerStyle);
+                $sheet->getRowDimension(1)->setRowHeight(25);
+
+                $row = 2;
+                $i = 1;
+                
+                $tipLabels = [
+                    'binek' => 'Binek', 'kamyonet' => 'Kamyonet', 'kamyon' => 'Kamyon',
+                    'minibus' => 'Minibüs', 'otobus' => 'Otobüs', 'motosiklet' => 'Motosiklet',
+                    'diger' => 'Diğer', 'ikame' => 'İkame'
+                ];
+
+                $yakitLabels = [
+                    'benzin' => 'Benzin', 'dizel' => 'Dizel', 'lpg' => 'LPG',
+                    'elektrik' => 'Elektrik', 'hibrit' => 'Hibrit'
+                ];
+
+                foreach ($araclar as $arac) {
+                    $sheet->setCellValue('A' . $row, $i++);
+                    $sheet->setCellValue('B' . $row, $tipLabels[$arac->arac_tipi] ?? '-');
+                    $sheet->setCellValue('C' . $row, $arac->plaka);
+                    $sheet->setCellValue('D' . $row, $arac->marka ?? '-');
+                    $sheet->setCellValue('E' . $row, $arac->model ?? '-');
+                    $sheet->setCellValue('F' . $row, $arac->departmani ?: '-');
+                    $sheet->setCellValue('G' . $row, $arac->mulkiyet ?: '-');
+                    $sheet->setCellValue('H' . $row, $arac->zimmetli_personel_adi ?: 'Boşta');
+                    
+                    if ($arac->serviste_mi) {
+                        $durum = 'Serviste';
+                    } else {
+                        $durum = $arac->aktif_mi ? 'Aktif' : 'Pasif';
+                    }
+                    $sheet->setCellValue('I' . $row, $durum);
+                    
+                    $sheet->setCellValue('J' . $row, $yakitLabels[$arac->yakit_tipi] ?? '-');
+                    $sheet->setCellValue('K' . $row, $arac->guncel_km ?? 0);
+                    $sheet->getStyle('K' . $row)->getNumberFormat()->setFormatCode('#,##0');
+                    
+                    $sheet->setCellValue('L' . $row, $arac->muayene_bitis_tarihi ? date('d.m.Y', strtotime($arac->muayene_bitis_tarihi)) : '-');
+                    $sheet->setCellValue('M' . $row, $arac->sigorta_bitis_tarihi ? date('d.m.Y', strtotime($arac->sigorta_bitis_tarihi)) : '-');
+                    $sheet->setCellValue('N' . $row, $arac->kasko_bitis_tarihi ? date('d.m.Y', strtotime($arac->kasko_bitis_tarihi)) : '-');
+                    
+                    $row++;
+                }
+
+                $sheet->getStyle('A2:N' . ($row - 1))->applyFromArray([
+                    'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]],
+                    'alignment' => ['vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER]
+                ]);
+
+                $filename = 'Arac_Listesi_' . date('Ymd_His') . '.xlsx';
+                
+                // Clear any previous output that might corrupt the Excel file
+                if (ob_get_length()) ob_clean();
+                
+                header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                header('Content-Disposition: attachment;filename="' . $filename . '"');
+                header('Cache-Control: max-age=0');
+                
+                $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+                $writer->save('php://output');
+                exit;
 
             // =============================================
             // ZİMMET İŞLEMLERİ
@@ -529,6 +643,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $errors = [];
                 $unmatchedPlates = [];
 
+                $normalize = function($p) {
+                    $p = mb_strtoupper((string) $p, 'UTF-8');
+                    $p = str_replace(
+                        ['İ', 'I', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç'],
+                        ['I', 'I', 'G', 'U', 'S', 'O', 'C'],
+                        $p
+                    );
+                    $p = preg_replace('/[^A-Z0-9]/', '', $p);
+                    return ltrim($p, '0');
+                };
+
                 // Tüm araçları plaka => id map'i oluştur
                 $pdo = $Arac->getDb();
                 $stmtAraclar = $pdo->prepare(
@@ -537,7 +662,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $stmtAraclar->execute(['firma_id' => $_SESSION['firma_id']]);
                 $aracMap = [];
                 foreach ($stmtAraclar->fetchAll(\PDO::FETCH_OBJ) as $a) {
-                    $normalized = strtoupper(str_replace(' ', '', $a->plaka));
+                    $normalized = $normalize($a->plaka);
                     $aracMap[$normalized] = $a->id;
                 }
 
@@ -565,7 +690,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         continue;
                     }
 
-                    $plakaNorm = strtoupper(str_replace(' ', '', $plaka));
+                    $plakaNorm = $normalize($plaka);
                     if (!isset($aracMap[$plakaNorm])) {
                         if (!in_array($plaka, $unmatchedPlates)) {
                             $unmatchedPlates[] = $plaka;

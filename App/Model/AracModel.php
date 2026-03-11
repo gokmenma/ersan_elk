@@ -290,21 +290,26 @@ class AracModel extends Model
      */
     public function plakaKontrol($plaka, $excludeId = null, $includeDeleted = false)
     {
-        // Plakayı tamamen temizle: boşluklar, tireler, noktalar gitsin
-        $plakaTemiz = strtoupper(preg_replace('/[^A-Z0-9]/', '', $plaka));
+        $normalize = function ($p) {
+            $p = mb_strtoupper((string) $p, 'UTF-8');
+            $p = str_replace(
+                ['İ', 'I', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç'],
+                ['I', 'I', 'G', 'U', 'S', 'O', 'C'],
+                $p
+            );
+            $p = preg_replace('/[^A-Z0-9]/', '', $p);
+            return ltrim($p, '0');
+        };
 
-        $sql = "SELECT id FROM {$this->table} 
-                WHERE UPPER(REPLACE(REPLACE(REPLACE(plaka, ' ', ''), '-', ''), '.', '')) = :plaka 
-                AND firma_id = :firma_id";
+        $plakaTemiz = $normalize($plaka);
+
+        // Fetch all possible plates for this firm
+        $sql = "SELECT id, plaka FROM {$this->table} WHERE firma_id = :firma_id";
+        $params = ['firma_id' => $_SESSION['firma_id']];
 
         if (!$includeDeleted) {
             $sql .= " AND silinme_tarihi IS NULL";
         }
-
-        $params = [
-            'plaka' => $plakaTemiz,
-            'firma_id' => $_SESSION['firma_id']
-        ];
 
         if ($excludeId) {
             $sql .= " AND id != :exclude_id";
@@ -313,7 +318,15 @@ class AracModel extends Model
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetch(PDO::FETCH_OBJ);
+        $araclar = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        foreach ($araclar as $arac) {
+            if ($normalize($arac->plaka) === $plakaTemiz) {
+                return $arac;
+            }
+        }
+
+        return false;
     }
 
     /**

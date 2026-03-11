@@ -367,12 +367,9 @@ try {
         $db = (new \App\Model\Model('personel'))->getDb();
 
         $kisiselTrend = [];
-
-        // Hangi döneme göre gruplanacak?
-        // yillik ise aya göre grupla (Y-m)
-        // aylik, haftalik, gunluk, aralik ise güne göre grupla (Y-m-d)
         $groupByYm = ($effectivePeriod === 'yillik');
 
+        // Departmana göre sorgular
         if ($departman === 'kesme_acma') {
             $dateField = $groupByYm ? "DATE_FORMAT(t.tarih, '%Y-%m')" : "t.tarih";
             $trendSql = "SELECT 
@@ -392,6 +389,17 @@ try {
             $stmtTrend->execute([$firma_id, $personel_id, $startDate, $endDate]);
             $kisiselTrend = $stmtTrend->fetchAll(PDO::FETCH_ASSOC);
 
+            // Sıralama için tüm personel verisi
+            $rankSql = "SELECT t.personel_id, SUM(t.sonuclanmis) as toplam
+                        FROM yapilan_isler t
+                        LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                        WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
+                        AND tn.rapor_sekmesi = 'kesme' AND tn.is_turu_ucret > 0
+                        GROUP BY t.personel_id ORDER BY toplam DESC";
+            $stmtRank = $db->prepare($rankSql);
+            $stmtRank->execute([$firma_id, $startDate, $endDate]);
+            $rankList = $stmtRank->fetchAll(PDO::FETCH_ASSOC);
+
         } elseif ($departman === 'endeks_okuma') {
             $dateField = $groupByYm ? "DATE_FORMAT(e.tarih, '%Y-%m')" : "e.tarih";
             $trendSql = "SELECT 
@@ -408,6 +416,14 @@ try {
             $stmtTrend->execute([$firma_id, $personel_id, $startDate, $endDate]);
             $kisiselTrend = $stmtTrend->fetchAll(PDO::FETCH_ASSOC);
 
+            $rankSql = "SELECT e.personel_id, SUM(e.okunan_abone_sayisi) as toplam
+                        FROM endeks_okuma e
+                        WHERE e.firma_id = ? AND e.tarih BETWEEN ? AND ? AND e.silinme_tarihi IS NULL
+                        GROUP BY e.personel_id ORDER BY toplam DESC";
+            $stmtRank = $db->prepare($rankSql);
+            $stmtRank->execute([$firma_id, $startDate, $endDate]);
+            $rankList = $stmtRank->fetchAll(PDO::FETCH_ASSOC);
+
         } elseif ($departman === 'sayac_degisim') {
             $dateField = $groupByYm ? "DATE_FORMAT(s.tarih, '%Y-%m')" : "s.tarih";
             $trendSql = "SELECT 
@@ -423,20 +439,72 @@ try {
             $stmtTrend = $db->prepare($trendSql);
             $stmtTrend->execute([$firma_id, $personel_id, $startDate, $endDate]);
             $kisiselTrend = $stmtTrend->fetchAll(PDO::FETCH_ASSOC);
+
+            $rankSql = "SELECT s.personel_id, COUNT(*) as toplam
+                        FROM sayac_degisim s
+                        WHERE s.firma_id = ? AND s.tarih BETWEEN ? AND ? AND s.silinme_tarihi IS NULL
+                        GROUP BY s.personel_id ORDER BY toplam DESC";
+            $stmtRank = $db->prepare($rankSql);
+            $stmtRank->execute([$firma_id, $startDate, $endDate]);
+            $rankList = $stmtRank->fetchAll(PDO::FETCH_ASSOC);
         }
 
-        // Eğer gruplama yılaysa, tarih formatını 'Y-m' den okuyup uygun bir format yapacağız ön yüzde
-        
-        $genelToplam = array_sum(array_column($kisiselTrend, 'toplam'));
+        // Metrik hesaplamaları
+        $genelToplam = 0;
+        $gunler = [];
+        $aylar = [];
+        $enYuksekGun = null;
+        $enDusukGun = null;
+
+        foreach ($kisiselTrend as $item) {
+            $t = (int)$item['toplam'];
+            $genelToplam += $t;
+            
+            if ($t > 0) {
+                if ($groupByYm) {
+                    $aylar[] = $t;
+                } else {
+                    $gunler[] = $t;
+                }
+            }
+
+            if ($enYuksekGun === null || $t > $enYuksekGun['toplam']) {
+                $enYuksekGun = $item;
+            }
+            if ($t > 0 && ($enDusukGun === null || $t < $enDusukGun['toplam'])) {
+                $enDusukGun = $item;
+            }
+        }
+
+        // Ortalamalar
+        $gunlukOrt = count($gunler) > 0 ? round($genelToplam / count($gunler), 1) : 0;
+        $aylikOrt = count($aylar) > 0 ? round($genelToplam / count($aylar), 1) : $genelToplam;
+
+        // Sıralama
+        $siralama = 0;
+        $toplamPersonel = count($rankList);
+        foreach ($rankList as $index => $rankItem) {
+            if ((int)$rankItem['personel_id'] === $personel_id) {
+                $siralama = $index + 1;
+                break;
+            }
+        }
 
         echo json_encode([
             'status' => 'success',
+            'summary' => [
+                'toplam' => $genelToplam,
+                'gunluk_ortalama' => $gunlukOrt,
+                'aylik_ortalama' => $aylikOrt,
+                'en_yuksek_gun' => $enYuksekGun,
+                'en_dusuk_gun' => $enDusukGun,
+                'siralama' => $siralama,
+                'toplam_personel' => $toplamPersonel
+            ],
             'kisisel_trend' => $kisiselTrend,
-            'toplam' => $genelToplam,
             'group_by' => $groupByYm ? 'aylik' : 'gunluk'
         ], JSON_UNESCAPED_UNICODE);
 
-    } else {
     }
 
 } catch (Exception $e) {
