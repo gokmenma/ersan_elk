@@ -302,7 +302,6 @@ class DemirbasModel extends Model
         if ($tab === 'demirbas') {
             // indices: 0=>sira, 1=>no, 2=>kat, 3=>adi, 4=>marka, 5=>stok, 6=>durum, 7=>tutar, 8=>tarih
             $colSearchMap = [
-                1 => 'd.demirbas_no',
                 2 => 'k.tur_adi',
                 3 => 'd.demirbas_adi',
                 4 => 'CONCAT_WS(" ", d.marka, d.model, d.seri_no)',
@@ -488,7 +487,6 @@ class DemirbasModel extends Model
         if ($tab === 'demirbas') {
             $colMapOrder = [
                 0 => 'd.id',
-                1 => 'd.demirbas_no',
                 2 => 'k.tur_adi',
                 3 => 'd.demirbas_adi',
                 4 => 'd.marka',

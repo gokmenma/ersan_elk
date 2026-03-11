@@ -501,7 +501,6 @@ class DemirbasZimmetModel extends Model
 
         // Sütun Bazlı Arama
         $colSearchMap = [
-            1 => 'z.id',
             2 => 'k.tur_adi',
             3 => 'd.demirbas_adi',
             4 => 'CONCAT_WS(" ", d.marka, d.model, d.seri_no)',
