@@ -683,6 +683,7 @@ class DemirbasZimmetModel extends Model
 
         // Sıralama
         $colMapOrder = [
+            0 => 'z.id',
             1 => 'z.id',
             2 => 'k.kategori_adi',
             3 => 'd.demirbas_adi',

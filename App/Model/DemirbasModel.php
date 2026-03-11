@@ -188,8 +188,14 @@ class DemirbasModel extends Model
         $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
 
         return '<tr data-id="' . $enc_id . '">
+            <td class="text-center">
+                <div class="custom-checkbox-container d-inline-block">
+                    <input type="checkbox" class="custom-checkbox-input sayac-select" value="' . $enc_id . '" id="chk_' . $data->id . '">
+                    <label class="custom-checkbox-label" for="chk_' . $data->id . '"></label>
+                </div>
+            </td>
             <td class="text-center">' . $data->id . '</td>
-            <td class="text-center">' . $data->demirbas_no . '</td>
+            <td class="text-center">' . ($data->demirbas_no ?? '-') . '</td>
             <td><span class="badge bg-soft-primary text-primary">' . ($data->kategori_adi ?? 'Kategorisiz') . '</span></td>
             <td>
                 <a href="#" data-id="' . $enc_id . '" class="text-dark duzenle fw-medium">
@@ -201,12 +207,19 @@ class DemirbasModel extends Model
             </td>
             <td class="text-center">' . $stokBadge . '</td>
             <td class="text-center">' . $durumBadge . '</td>
-            <td class="text-end">' . Helper::formattedMoney($data->edinme_tutari ?? 0) . '</td>
-            <td>' . ($data->edinme_tarihi ?? '-') . '</td>
+            <td class="text-end">' . Helper::formattedMoney($data->edinme_tutari ?? 0) . ' ₺' . '</td>
+            <td>' . ($data->edinme_tarihi ? date('d.m.Y', strtotime($data->edinme_tarihi)) : '-') . '</td>
             <td class="text-center text-nowrap">
-                ' . ($kalan > 0 ? '<button type="button" class="btn btn-sm btn-soft-warning waves-effect waves-light zimmet-ver" data-id="' . $enc_id . '" data-raw-id="' . $data->id . '" data-name="' . $data->demirbas_adi . '" data-kalan="' . $kalan . '" title="Zimmet Ver"><i class="bx bx-transfer"></i></button>' : '') . '
-                <button type="button" class="btn btn-sm btn-soft-primary waves-effect waves-light duzenle" data-id="' . $enc_id . '" title="Düzenle"><i class="bx bx-edit"></i></button>
-                <button type="button" class="btn btn-sm btn-soft-danger waves-effect waves-light demirbas-sil" data-id="' . $enc_id . '" data-name="' . $data->demirbas_adi . '" title="Sil"><i class="bx bx-trash"></i></button>
+                <div class="dropdown d-inline-block">
+                    <button class="btn btn-soft-secondary btn-sm dropdown" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bx bx-dots-horizontal-rounded"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                        ' . ($kalan > 0 ? '<li><a class="dropdown-item py-2 zimmet-ver text-warning" href="javascript:void(0);" data-id="' . $enc_id . '" data-raw-id="' . $data->id . '" data-name="' . htmlspecialchars($data->demirbas_adi) . '" data-kalan="' . $kalan . '"><i class="bx bx-transfer me-2"></i> Zimmet Ver</a></li>' : '') . '
+                        <li><a class="dropdown-item py-2 duzenle text-primary" href="javascript:void(0);" data-id="' . $enc_id . '"><i class="bx bx-edit me-2"></i> Düzenle</a></li>
+                        <li><a class="dropdown-item py-2 demirbas-sil text-danger" href="javascript:void(0);" data-id="' . $enc_id . '" data-name="' . htmlspecialchars($data->demirbas_adi) . '"><i class="bx bx-trash me-2"></i> Sil</a></li>
+                    </ul>
+                </div>
             </td>
         </tr>';
     }
@@ -302,32 +315,33 @@ class DemirbasModel extends Model
         if ($tab === 'demirbas') {
             // indices: 0=>sira, 1=>no, 2=>kat, 3=>adi, 4=>marka, 5=>stok, 6=>durum, 7=>tutar, 8=>tarih
             $colSearchMap = [
-                2 => 'k.tur_adi',
-                3 => 'd.demirbas_adi',
-                4 => 'CONCAT_WS(" ", d.marka, d.model, d.seri_no)',
-                6 => 'd.durum',
-                7 => 'd.edinme_tutari',
-                8 => 'DATE_FORMAT(d.edinme_tarihi, "%d.%m.%Y")'
+                2 => 'd.demirbas_no',
+                3 => 'k.tur_adi',
+                4 => 'd.demirbas_adi',
+                5 => 'CONCAT_WS(" ", d.marka, d.model, d.seri_no)',
+                7 => 'd.durum',
+                8 => 'd.edinme_tutari',
+                9 => 'DATE_FORMAT(d.edinme_tarihi, "%d.%m.%Y")'
             ];
         } elseif ($tab === 'sayac') {
-            // indices: 0=>checkbox, 1=>sira, 2=>no, 3=>adi, 4=>marka, 5=>seri, 6=>stok, 7=>durum, 8=>tarih
+            // indices: 0=>checkbox, 1=>sira, 2=>no, 3=>adi, 4=>marka_model_seri, 5=>seri, 6=>stok, 7=>durum, 8=>tarih
             $colSearchMap = [
                 2 => 'd.demirbas_no',
                 3 => 'd.demirbas_adi',
-                4 => 'CONCAT_WS(" ", d.marka, d.model)',
+                4 => 'CONCAT_WS(" ", d.marka, d.model, d.seri_no)',
                 5 => 'd.seri_no',
                 7 => 'd.durum',
                 8 => 'DATE_FORMAT(d.edinme_tarihi, "%d.%m.%Y")'
             ];
         } else {
-            // aparat (no checkbox): 0=>sira, 1=>no, 2=>adi, 3=>marka, 4=>seri, 5=>stok, 6=>durum, 7=>tarih
+            // aparat (no checkbox): 0=>checkbox, 1=>sira, 2=>no, 3=>adi, 4=>marka_model_seri, 5=>seri, 6=>stok, 7=>durum, 8=>tarih
             $colSearchMap = [
-                1 => 'd.demirbas_no',
-                2 => 'd.demirbas_adi',
-                3 => 'CONCAT_WS(" ", d.marka, d.model)',
-                4 => 'd.seri_no',
-                6 => 'd.durum',
-                7 => 'DATE_FORMAT(d.edinme_tarihi, "%d.%m.%Y")'
+                2 => 'd.demirbas_no',
+                3 => 'd.demirbas_adi',
+                4 => 'CONCAT_WS(" ", d.marka, d.model, d.seri_no)',
+                5 => 'd.seri_no',
+                7 => 'd.durum',
+                8 => 'DATE_FORMAT(d.edinme_tarihi, "%d.%m.%Y")'
             ];
         }
 
@@ -350,11 +364,11 @@ class DemirbasModel extends Model
                         if ($val !== '' || $val2 !== null || in_array($mode, ['null', 'not_null', 'multi'])) {
 
                             // Tarih sütunu için d.m.Y -> Y-m-d dönüşümü
-                            if ($tab === 'demirbas' && $colIdx == 8)
+                            if ($tab === 'demirbas' && $colIdx == 9)
                                 $field = 'd.edinme_tarihi';
                             elseif ($tab === 'sayac' && $colIdx == 8)
                                 $field = 'd.edinme_tarihi';
-                            elseif ($tab === 'aparat' && $colIdx == 7)
+                            elseif ($tab === 'aparat' && $colIdx == 8)
                                 $field = 'd.edinme_tarihi';
 
                             $isDateColumn = ($field === 'd.edinme_tarihi');
@@ -487,16 +501,19 @@ class DemirbasModel extends Model
         if ($tab === 'demirbas') {
             $colMapOrder = [
                 0 => 'd.id',
-                2 => 'k.tur_adi',
-                3 => 'd.demirbas_adi',
-                4 => 'd.marka',
-                5 => 'd.kalan_miktar',
-                6 => 'd.durum',
-                7 => 'd.edinme_tutari',
-                8 => 'd.edinme_tarihi'
+                1 => 'd.id',
+                2 => 'd.demirbas_no',
+                3 => 'k.tur_adi',
+                4 => 'd.demirbas_adi',
+                5 => 'd.marka',
+                6 => 'd.kalan_miktar',
+                7 => 'd.durum',
+                8 => 'd.edinme_tutari',
+                9 => 'd.edinme_tarihi'
             ];
         } elseif ($tab === 'sayac') {
             $colMapOrder = [
+                0 => 'd.id',
                 1 => 'd.id',
                 2 => 'd.demirbas_no',
                 3 => 'd.demirbas_adi',
@@ -510,13 +527,14 @@ class DemirbasModel extends Model
             // aparat
             $colMapOrder = [
                 0 => 'd.id',
-                1 => 'd.demirbas_no',
-                2 => 'd.demirbas_adi',
-                3 => 'd.marka',
-                4 => 'd.seri_no',
-                5 => 'd.kalan_miktar',
-                6 => 'd.durum',
-                7 => 'd.edinme_tarihi'
+                1 => 'd.id',
+                2 => 'd.demirbas_no',
+                3 => 'd.demirbas_adi',
+                4 => 'd.marka',
+                5 => 'd.seri_no',
+                6 => 'd.kalan_miktar',
+                7 => 'd.durum',
+                8 => 'd.edinme_tarihi'
             ];
         }
 
@@ -546,4 +564,24 @@ class DemirbasModel extends Model
             "data" => $data
         ];
     }
-}
+
+    /**
+     * Seri numarası çakışma kontrolü
+     */
+    public function checkSeriNo($seri_no, $exclude_id = null)
+    {
+        if (empty($seri_no)) return false;
+
+        $sql = "SELECT id FROM {$this->table} WHERE seri_no = ? AND silinme_tarihi IS NULL";
+        $params = [$seri_no];
+
+        if ($exclude_id) {
+            $sql .= " AND id != ?";
+            $params[] = $exclude_id;
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchColumn();
+    }
+}

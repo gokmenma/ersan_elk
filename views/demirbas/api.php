@@ -43,6 +43,14 @@ if ($action == "demirbas-kaydet") {
     $id = Security::decrypt($_POST["demirbas_id"]);
 
     try {
+        // Seri No Çakışma Kontrolü
+        if (!empty($_POST["seri_no"])) {
+            $duplicateId = $Demirbas->checkSeriNo($_POST["seri_no"], $id);
+            if ($duplicateId) {
+                jsonResponse("error", "Bu seri numarası (" . $_POST["seri_no"] . ") zaten başka bir demirbaş kaydında kullanılmaktadır.");
+            }
+        }
+
         $miktar = intval($_POST["miktar"] ?? 1);
 
         $data = [
