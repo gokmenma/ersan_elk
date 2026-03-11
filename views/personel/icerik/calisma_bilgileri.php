@@ -160,6 +160,12 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                             // Flatpickr initialize edilmişse eventlerine ekle
                             setTimeout(function() {
                                 if (txtIstenCikis._flatpickr) {
+                                    if (!Array.isArray(txtIstenCikis._flatpickr.config.onChange)) {
+                                        txtIstenCikis._flatpickr.config.onChange = [];
+                                    }
+                                    if (!Array.isArray(txtIstenCikis._flatpickr.config.onClear)) {
+                                        txtIstenCikis._flatpickr.config.onClear = [];
+                                    }
                                     txtIstenCikis._flatpickr.config.onChange.push(checkIstenCikis);
                                     txtIstenCikis._flatpickr.config.onClear.push(checkIstenCikis);
                                 }

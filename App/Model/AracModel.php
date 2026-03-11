@@ -97,7 +97,8 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.personel_id as zimmetli_personel_id,
-                   p.adi_soyadi as zimmetli_personel_adi
+                   p.adi_soyadi as zimmetli_personel_adi,
+                   (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
             LEFT JOIN personel p ON az.personel_id = p.id
@@ -119,7 +120,8 @@ class AracModel extends Model
             SELECT a.*, 
                    az.personel_id as zimmetli_personel_id,
                    az.id as aktif_zimmet_id,
-                   p.adi_soyadi as zimmetli_personel_adi
+                   p.adi_soyadi as zimmetli_personel_adi,
+                   (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
             LEFT JOIN personel p ON az.personel_id = p.id

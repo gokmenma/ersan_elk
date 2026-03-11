@@ -285,20 +285,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $res = $Personel->saveWithAttr($data);
             $currentPid = ($personel_id > 0) ? $personel_id : Security::decrypt($res);
 
+            $warningMessage = "";
+
             // İşten çıkış tarihi varsa aktif ekip atamalarını ve görev geçmişini kapat
             if (!empty($data['isten_cikis_tarihi']) && $data['isten_cikis_tarihi'] != '0000-00-00') {
                 $Personel->closeActiveEkipAssignments($currentPid, $data['isten_cikis_tarihi']);
                 $Personel->closeActiveGorevGecmisi($currentPid, $data['isten_cikis_tarihi']);
+                
+                // Araç zimmet kontrolü (Kendi aracı / Personel aracı durumu)
+                $AracZimmetModel = new \App\Model\AracZimmetModel();
+                $AracModel = new \App\Model\AracModel();
+                $aktifZimmetler = $AracZimmetModel->getByPersonel($currentPid);
+                
+                foreach ($aktifZimmetler as $zimmet) {
+                    $aracKullanim = mb_strtolower($data['arac_kullanim'] ?? '', 'UTF-8');
+                    $aracDetay = $AracModel->find($zimmet->arac_id);
+                    $mulkiyet = mb_strtolower($aracDetay->mulkiyet ?? '', 'UTF-8');
+                    
+                    if (strpos($aracKullanim, 'kendi') !== false || strpos($mulkiyet, 'kendi') !== false || strpos($mulkiyet, 'personel') !== false) {
+                        // Zimmeti İade Al
+                        $AracZimmetModel->iadeEt($zimmet->id, $aracDetay->guncel_km, 'Personel işten ayrılış - Otomatik iade');
+                        // Aracı Pasife Çek
+                        $AracModel->saveWithAttr(['id' => $zimmet->arac_id, 'aktif_mi' => 0]);
+                        
+                        $warningMessage .= "<div class='alert alert-warning mt-3 mb-0' style='font-size: 13px;'>";
+                        $warningMessage .= "<strong><i class='bx bx-info-circle me-1'></i> Araç Bilgisi:</strong><br>";
+                        $warningMessage .= "Personelin üzerindeki kendi aracı (<b>{$aracDetay->plaka}</b>) zimmetten düşüldü ve araç pasife alındı.";
+                        $warningMessage .= "</div>";
+                    }
+                }
             }
 
-            $warningMessage = "";
             if (empty($data['isten_cikis_tarihi']) || $data['isten_cikis_tarihi'] == '0000-00-00') {
                 $bugun = date('Y-m-d');
                 $aktifGorev = $Personel->getAktifGorevGecmisi($currentPid);
 
                 // Eğer aktif görev bulunamadıysa VEYA aktif görev bugün/geçmişte bitmişse (Devam eden açık bir kaydı yoksa)
                 if (!$aktifGorev || (!empty($aktifGorev->bitis_tarihi) && $aktifGorev->bitis_tarihi <= $bugun)) {
-                    $warningMessage = "<br><br><span class=\"text-danger fw-bold\">Ancak Personelin Aktif Görev (Maaş Tipi) kaydı bulunmamaktadır.<br>Lütfen ekleyiniz!</span>";
+                    $warningMessage .= "<div class='alert alert-danger mt-3 mb-0' style='font-size: 13px;'>";
+                    $warningMessage .= "<strong><i class='bx bx-error me-1'></i> Görev Bilgisi:</strong><br>";
+                    $warningMessage .= "Personelin Aktif Görev (Maaş Tipi) kaydı bulunmamaktadır. Lütfen ekleyiniz!";
+                    $warningMessage .= "</div>";
                 }
             }
 

@@ -77,8 +77,12 @@ if ($filter === 'muayene') {
 } elseif ($filter === 'ikame') {
     $araclar = $Arac->getIkameAraclar();
     $title = "İkame Araçlar";
-} else {
+} elseif ($filter === 'tumu') {
     $araclar = $Arac->all();
+} else {
+    // Default: Show only active vehicles (but wait, all() in AracModel actually already filters by ikame_mi=0 and silinme_tarihi IS NULL, 
+    // let's use getAktifAraclar)
+    $araclar = $Arac->getAktifAraclar();
 }
 ?>
 
@@ -385,12 +389,13 @@ if ($filter === 'muayene') {
                             <!-- İstatistik Badge'leri -->
                             <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
                                 <span
-                                    class="badge bg-primary-subtle text-primary fs-6 badge-filter <?php echo empty($filter) ? 'active' : ''; ?>"
-                                    onclick="location.href='index.php?p=arac-takip/list'">
+                                    class="badge bg-primary-subtle text-primary fs-6 badge-filter <?php echo $filter === 'tumu' ? 'active' : ''; ?>"
+                                    onclick="location.href='index.php?p=arac-takip/list&filter=tumu'">
                                     <i class="bx bx-car me-1"></i> Araç:
                                     <?php echo $aracStats->toplam_arac ?? 0; ?>
                                 </span>
-                                <span class="badge bg-success-subtle text-success fs-6">
+                                <span class="badge bg-success-subtle text-success fs-6 badge-filter <?php echo empty($filter) ? 'active' : ''; ?>"
+                                    onclick="location.href='index.php?p=arac-takip/list'">
                                     <i class="bx bx-check-circle me-1"></i> Aktif:
                                     <?php echo $aracStats->aktif_arac ?? 0; ?>
                                 </span>
