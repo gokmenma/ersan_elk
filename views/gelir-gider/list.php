@@ -43,7 +43,7 @@ $tipSecenekleri = [
 // $kayit_sayisi = count($gelir_gider);
 
 $Tanimlama = new TanimlamalarModel();
-$summary = $GelirGider->summary($selectedYil, $selectedAy, $selectedTip);
+$summary = $GelirGider->summary(['yil' => $selectedYil, 'ay' => $selectedAy, 'tip' => $selectedTip]);
 
 ?>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -243,9 +243,9 @@ $summary = $GelirGider->summary($selectedYil, $selectedAy, $selectedTip);
                                 <i data-feather="file-text" class="me-1 fs-5"></i> <span class="d-none d-xl-inline">Excele Aktar</span>
                             </button>
                             <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <a href="index?p=gelir-gider/upload-from-xls" id="importExcel" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
+                            <button type="button" id="btnImportExcel" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#importExcelModal">
                                 <i data-feather="upload-cloud" class="me-1 fs-5"></i> <span class="d-none d-xl-inline">Excelden Yükle</span>
-                            </a>
+                            </button>
                             <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
                             <button type="button" id="gelirGiderEkle" class="btn btn-dark btn-sm text-white shadow-sm text-decoration-none px-3 d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#gelirGiderModal">
                                 <i data-feather="plus" class="me-1 fs-5"></i> <span class="d-none d-xl-inline">Yeni İşlem</span>
@@ -516,6 +516,57 @@ $summary = $GelirGider->summary($selectedYil, $selectedAy, $selectedTip);
                     </button>
                     <button type="button" id="gelirGiderKaydet" class="btn btn-premium-save waves-effect">
                         <i data-feather="save" class="me-1" style="width:18px"></i> Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Excel Import Modal -->
+    <div class="modal fade" id="importExcelModal" tabindex="-1" aria-labelledby="importExcelModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header d-flex align-items-center">
+                    <div class="premium-icon-box bg-success bg-opacity-10 text-success">
+                        <i data-feather="upload-cloud"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="importExcelModalLabel">Excel'den Gelir-Gider Yükle</h5>
+                        <small class="text-muted">Lütfen geçerli bir excel dosyası seçiniz.</small>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-success bg-success bg-opacity-10 border-0 mb-4 p-3 rounded-4">
+                        <div class="d-flex align-items-start">
+                            <div class="rounded-circle p-2 bg-success text-white me-3">
+                                <i data-feather="download" style="width:16px;height:16px"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold text-success font-size-14">Şablon Dosyasını İndirin</h6>
+                                <p class="mb-2 small text-muted">İşlemleri doğru yüklemek için şablon dosyasını kullanın.</p>
+                                <a href="files/gelir_gider_sablon.xlsx" class="btn btn-sm btn-success rounded-3 px-3">
+                                    <i data-feather="file-text" class="me-1" style="width:14px"></i> Şablonu İndir
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <form id="importExcelForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="excelFile" class="form-label fw-bold text-secondary small">Excel Dosyası (.xlsx, .xls)</label>
+                            <input class="form-control rounded-3" type="file" id="excelFile" name="excelFile" accept=".xlsx, .xls" required>
+                        </div>
+                    </form>
+                    <div class="alert alert-info bg-info bg-opacity-10 border-0 rounded-4 p-3 mb-0">
+                        <h6 class="fw-bold font-size-13 mb-2"><i data-feather="info" class="me-1" style="width:14px"></i> İşlem Tipleri</h6>
+                        <p class="mb-1 small"><strong>GELİR:</strong> Kasaya eklenecek tutarlar.</p>
+                        <p class="mb-0 small"><strong>GİDER:</strong> Kasadan düşülecek tutarlar.</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-premium-close" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-success rounded-3 px-4 py-2 fw-bold" id="btnUploadExcel">
+                        <i data-feather="upload" class="me-1" style="width:18px"></i> Yükle
                     </button>
                 </div>
             </div>

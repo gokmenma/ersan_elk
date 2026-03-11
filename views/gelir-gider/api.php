@@ -141,7 +141,7 @@ if ($_POST["action"] == "gelir-gider-excel-kaydet") {
                         continue;
                     }
 
-                    $tutar = $row["F"];
+                    $tutar = $row["E"];
                     if($tutar == 0 || $tutar == "" || $tutar == null){
                         continue;
                     }
@@ -152,7 +152,8 @@ if ($_POST["action"] == "gelir-gider-excel-kaydet") {
 
 
                     //B sütunundaki veriyi kontrol et, GELİR ise 1 değilse 2 yap
-                    if($row["B"] === "GELİR" || $row["B"] === "Gelir"){
+                    $typeStr = mb_strtolower(trim($row["B"] ?? ''), 'UTF-8');
+                    if($typeStr === "gelir"){
                         $type = 1;
                         $islem_turu = empty($row["C"]) ? 2 : $row["C"];
                     }else{
@@ -165,8 +166,9 @@ if ($_POST["action"] == "gelir-gider-excel-kaydet") {
                         "tarih" => Date::convertExcelDate($row["A"]),
                         "type" => Security::escape($type),
                         "kategori" => Security::escape($islem_turu),
+                        "hesap_adi" => Security::escape($row["D"]),
                         "tutar" => Security::escape($tutar),
-                        "aciklama" => Security::escape($row["G"]),
+                        "aciklama" => Security::escape($row["F"]),
                     ];
                    $lastInsertedId = $GelirGider->saveWithAttr($data) ?? 0;
                 }

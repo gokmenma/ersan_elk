@@ -92,6 +92,47 @@ $(document).on('click', '#gelirGiderEkle', function () {
   $("#gelir_gider_id").val(0);
 });
 
+// Excel'den Yükle
+$(document).on('click', '#btnUploadExcel', function() {
+    const fileInput = $('#excelFile');
+    if (!fileInput.val()) {
+        Swal.fire({ icon: 'warning', title: 'Uyarı', text: 'Lütfen bir Excel dosyası seçin.' });
+        return;
+    }
+
+    const formData = new FormData($('#importExcelForm')[0]);
+    formData.append("action", "gelir-gider-excel-kaydet");
+
+    const btn = $(this);
+    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Yükleniyor...');
+
+    $.ajax({
+        url: url,
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+            const data = typeof response === 'string' ? JSON.parse(response) : response;
+            if (data.status === 'success') {
+                Swal.fire({ icon: 'success', title: 'Başarılı', text: data.message });
+                $('#importExcelModal').modal('hide');
+                $('#importExcelForm').trigger('reset');
+                reloadGelirGiderTable();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Hata', text: data.message });
+            }
+        },
+        error: function() {
+            Swal.fire({ icon: 'error', title: 'Hata', text: 'Sunucu ile iletişim kurulamadı.' });
+        },
+        complete: function() {
+            btn.prop('disabled', false).html('<i data-feather="upload" class="me-1" style="width:18px"></i> Yükle');
+            feather.replace();
+        }
+    });
+});
+
 // İşlem türüne göre kategorileri getir
 $(document).on('change', '.form-selectgroup-input', function() {
     const type = $(this).val();
