@@ -79,6 +79,9 @@ if ($filter === 'muayene') {
     $title = "İkame Araçlar";
 } elseif ($filter === 'tumu') {
     $araclar = $Arac->all();
+} elseif ($filter === 'pasif') {
+    $araclar = $Arac->getPasifAraclar();
+    $title = "Pasif Araçlar";
 } else {
     // Default: Show only active vehicles (but wait, all() in AracModel actually already filters by ikame_mi=0 and silinme_tarihi IS NULL, 
     // let's use getAktifAraclar)
@@ -398,6 +401,11 @@ if ($filter === 'muayene') {
                                     onclick="location.href='index.php?p=arac-takip/list'">
                                     <i class="bx bx-check-circle me-1"></i> Aktif:
                                     <?php echo $aracStats->aktif_arac ?? 0; ?>
+                                </span>
+                                <span class="badge bg-danger-subtle text-danger fs-6 badge-filter <?php echo $filter === 'pasif' ? 'active' : ''; ?>"
+                                    onclick="location.href='index.php?p=arac-takip/list&filter=pasif'">
+                                    <i class="bx bx-x-circle me-1"></i> Pasif:
+                                    <?php echo $aracStats->pasif_arac ?? 0; ?>
                                 </span>
                                 <span
                                     class="badge bg-warning-subtle text-warning fs-6 badge-filter <?php echo $filter === 'zimmetli' ? 'active' : ''; ?>"

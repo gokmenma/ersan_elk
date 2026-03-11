@@ -548,4 +548,25 @@ class AracModel extends Model
         $sql->execute(['firma_id' => $_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
+    /**
+     * Pasif araçları getirir
+     */
+    public function getPasifAraclar()
+    {
+        $sql = $this->db->prepare("
+            SELECT a.*, 
+                   az.personel_id as zimmetli_personel_id,
+                   p.adi_soyadi as zimmetli_personel_adi,
+                   (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
+            FROM {$this->table} a
+            LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
+            LEFT JOIN personel p ON az.personel_id = p.id
+            WHERE a.firma_id = :firma_id 
+            AND a.aktif_mi = 0
+            AND a.silinme_tarihi IS NULL
+            ORDER BY a.plaka ASC
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
 }

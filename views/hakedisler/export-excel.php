@@ -485,6 +485,69 @@ try {
         }
     }
 
+    // --- Fill 'Hakediş Dengeleme Cetveli' Sheet ---
+    $sheetDengeleme = $spreadsheet->getSheetByName('Hakediş Dengeleme Cetveli');
+    if ($sheetDengeleme) {
+        $stmtAll = $db->prepare("
+            SELECT * FROM hakedis_donemleri 
+            WHERE sozlesme_id = ? AND hakedis_no <= ? AND silinme_tarihi IS NULL 
+            ORDER BY hakedis_no ASC
+        ");
+        $stmtAll->execute([$sozlesme_id, $hakedis['hakedis_no']]);
+        $allHakedis = $stmtAll->fetchAll(PDO::FETCH_ASSOC);
+
+        $rowIdx = 4;
+        $prevKumulatif = 0;
+
+        foreach ($allHakedis as $hRec) {
+            $hId = $hRec['id'];
+            $totals = $donemModel->calculateTotals($hId);
+            
+            $kumulatifImalat = floatval($totals['imalat_kumulatif'] ?? 0);
+            $donemImalat = floatval($totals['imalat_donem'] ?? 0);
+            $fiyatFarki = floatval($totals['fiyat_farki'] ?? 0);
+            $kdvOrani = floatval($totals['kdv_orani'] ?? 20);
+            
+            // Ara toplam (Pn farkı dahil ama KDV hariç) -> Aslında tahakkuk hesaplanırken bu kalemler ayrı
+            // Tahakkuka Bağlanan Hakediş Toplamı (f = c + d + e) -> c=bu hakedişte yapılan iş, d=fiyat farkı, e=kdv
+            $kdvTutar = ($donemImalat + $fiyatFarki) * ($kdvOrani / 100);
+            $tahakkukToplam = $donemImalat + $fiyatFarki + $kdvTutar;
+
+            // Kesintiler
+            $kesinHesapKesintisi = $donemImalat * 0.05; // %5 Kesin hesap kesintisi (h)
+            
+            $damgaVergisiOrani = floatval($hRec['damga_vergisi_orani'] ?? 0.00948);
+            $damgaVergisi = ($donemImalat + $fiyatFarki) * $damgaVergisiOrani;
+            
+            $avansMahsubu = floatval($hRec['avans_mahsubu'] ?? 0);
+            
+            $toplamKesinti = $kesinHesapKesintisi + $damgaVergisi + $avansMahsubu; // (g)
+            
+            $netHakedis = $tahakkukToplam - $toplamKesinti; // (i)
+
+            $sheetDengeleme->setCellValue('A' . $rowIdx, $hRec['hakedis_no']);
+            setExcelDate($sheetDengeleme, 'B' . $rowIdx, $hRec['tutanak_tasdik_tarihi']);
+            $sheetDengeleme->setCellValue('C' . $rowIdx, $kumulatifImalat); // (a)
+            $sheetDengeleme->setCellValue('D' . $rowIdx, $prevKumulatif); // (b)
+            $sheetDengeleme->setCellValue('E' . $rowIdx, $donemImalat); // (c = a - b)
+            $sheetDengeleme->setCellValue('F' . $rowIdx, $fiyatFarki); // (d)
+            $sheetDengeleme->setCellValue('G' . $rowIdx, $kdvTutar); // (e)
+            $sheetDengeleme->setCellValue('H' . $rowIdx, $tahakkukToplam); // (f = c+d+e)
+            $sheetDengeleme->setCellValue('I' . $rowIdx, $toplamKesinti); // (g)
+            $sheetDengeleme->setCellValue('J' . $rowIdx, $kesinHesapKesintisi); // (h)
+            $sheetDengeleme->setCellValue('K' . $rowIdx, $netHakedis); // (i = f-g)
+
+            $prevKumulatif = $kumulatifImalat;
+            $rowIdx++;
+        }
+        
+        // Formats for numbers
+        $lastRow = $rowIdx - 1;
+        if ($lastRow >= 4) {
+            $sheetDengeleme->getStyle('C4:K' . $lastRow)->getNumberFormat()->setFormatCode('#,##0.00');
+        }
+    }
+
     // Calculate Formulas if needed (PhpSpreadsheet does this automatically on save for Excel)
     // $spreadsheet->getActiveSheet()->calculateColumnWidths();
 
