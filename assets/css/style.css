@@ -1676,6 +1676,41 @@ Select group
   margin-top: 3px;
 }
 
+/* Placeholder accessibility and visibility */
+.form-floating-custom > .form-control::placeholder,
+.form-floating-custom > .form-select::placeholder,
+.form-floating-custom > textarea::placeholder {
+    color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+[data-bs-theme="dark"] .form-floating-custom > .form-control::placeholder,
+[data-bs-theme="dark"] .form-floating-custom > .form-select::placeholder,
+[data-bs-theme="dark"] .form-floating-custom > textarea::placeholder {
+    color: #64748b !important;
+}
+
+/* Hide label when placeholder is shown (empty input) and not focused */
+.form-floating-custom > .form-control[placeholder]:not([placeholder=""]):placeholder-shown:not(:focus) ~ label,
+.form-floating-custom > textarea[placeholder]:not([placeholder=""]):placeholder-shown:not(:focus) ~ label {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transition: all 0.2s ease;
+}
+
+/* Show label when focused, non-empty, or has no placeholder */
+.form-floating-custom > .form-control:focus ~ label,
+.form-floating-custom > .form-control:not(:placeholder-shown) ~ label,
+.form-floating-custom > .form-control:not([placeholder]) ~ label,
+.form-floating-custom > .form-control[placeholder=""] ~ label,
+.form-floating-custom > textarea:focus ~ label,
+.form-floating-custom > textarea:not(:placeholder-shown) ~ label,
+.form-floating-custom > textarea:not([placeholder]) ~ label,
+.form-floating-custom > textarea[placeholder=""] ~ label {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
 .form-selectgroup {
   display: inline-flex;
   margin: 0 -0.5rem -0.5rem 0;

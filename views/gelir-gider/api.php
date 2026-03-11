@@ -33,6 +33,7 @@ if ($_POST["action"] == "gelir-gider-kaydet") {
             "type" => $_POST["type"],
             "tarih" => date("Y-m-d H:i:s", strtotime($_POST["islem_tarihi"])),
             "kategori" => $_POST["islem_turu"],
+            "hesap_adi" => $_POST["hesap_adi"],
             "tutar" => Helper::formattedMoneyToNumber($_POST["tutar"]),
             "aciklama" => $_POST["aciklama"],
         ];
@@ -94,6 +95,12 @@ if ($_POST["action"] == "gelir-gider-turu-getir") {
     $type = $_POST["type"];
     $turler = $Tanimlamalar->getGelirGiderTurleriSelect($type);
     echo json_encode($turler);
+}
+
+//Hesap adlarını getir
+if ($_POST["action"] == "hesap-adlari-getir") {
+    $veriler = $GelirGider->getUniqueValues('hesap_adi');
+    echo json_encode($veriler);
 }
 
 //DataTable Benzersiz Değerleri Getir (Gelişmiş Filtreler İçin)
@@ -218,6 +225,7 @@ if ($_POST["action"] == "gelir-gider-ajax-list") {
                 "id" => $row->id,
                 "kayit_tarihi" => $row->kayit_tarihi,
                 "type" => Helper::getBadge($row->type),
+                "hesap_adi" => $row->hesap_adi ?: '-',
                 "kategori_adi" => $row->kategori_adi ?: '-',
                 "tarih" => $row->tarih ? date('d.m.Y H:i', strtotime($row->tarih)) : '-',
                 "tutar" => Helper::formattedMoney($row->tutar),

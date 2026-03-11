@@ -140,6 +140,55 @@ $summary = $GelirGider->summary($selectedYil, $selectedAy, $selectedTip);
         font-weight: 600;
         border: none;
     }
+
+    /* Dark Mode Overrides */
+    [data-bs-theme="dark"] #gelirGiderModal .modal-content {
+        background: #1e293b;
+        color: #f1f5f9;
+    }
+
+    [data-bs-theme="dark"] #gelirGiderModal .modal-header,
+    [data-bs-theme="dark"] #gelirGiderModal .modal-footer {
+        background: #0f172a;
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-bs-theme="dark"] #gelirGiderModal .premium-icon-box {
+        background: #334155;
+        color: #f1f5f9;
+    }
+
+    [data-bs-theme="dark"] #gelirGiderModal .form-selectgroup-label {
+        background: #1e293b;
+        border-color: #334155;
+        color: #f1f5f9;
+    }
+
+    [data-bs-theme="dark"] #gelirGiderModal .form-selectgroup-input:checked + .form-selectgroup-label {
+        background: #334155;
+        border-color: #64748b;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    [data-bs-theme="dark"] #gelirGiderModal .text-secondary {
+        color: #94a3b8 !important;
+    }
+
+    [data-bs-theme="dark"] .btn-premium-close {
+        background: #334155;
+        color: #f1f5f9;
+    }
+
+    [data-bs-theme="dark"] .btn-premium-close:hover {
+        background: #475569;
+        color: white;
+    }
+
+    [data-bs-theme="dark"] #gelirGiderModal .alert-info {
+        background: rgba(14, 165, 233, 0.1);
+        border: 1px solid rgba(14, 165, 233, 0.2);
+        color: #7dd3fc;
+    }
 </style>
 
 <div class="container-fluid pt-3">
@@ -297,6 +346,7 @@ $summary = $GelirGider->summary($selectedYil, $selectedAy, $selectedTip);
                                     <th data-data="id" style="width: 7%;" class="text-center">Sıra</th>
                                     <th data-data="kayit_tarihi" data-filter="date" class="text-center">Kayıt Tarihi</th>
                                     <th data-data="type" data-filter="select" class="text-center">Tür</th>
+                                    <th data-data="hesap_adi" data-filter="select" class="text-center">Hesap Adı</th>
                                     <th data-data="kategori_adi" data-filter="select" class="text-center">Kategori</th>
                                     <th data-data="tarih" data-filter="date" class="text-center">İşlem Tarihi</th>
                                     <th data-data="tutar" data-filter="number" class="text-end">Tutar</th>
@@ -371,7 +421,28 @@ $summary = $GelirGider->summary($selectedYil, $selectedAy, $selectedTip);
 
                         </div>
                         <div class="row mb-3">
-
+                            <!--Listede olmayan kategori için manuel olarak yazabilirsiniz-->
+                            <div class="alert alert-info">
+                                <div class="alert-title">
+                                    <i data-feather="info"></i>
+                                    <span>Bilgi</span>
+                                </div>
+                                <div class="alert-text">
+                                    Listede olmayan Hesap Adı veya Kategori için manuel olarak yazıt Enter'a basın!
+                                </div>
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <?php
+                                echo Form::FormSelect2(
+                                    "hesap_adi",
+                                    [],
+                                    "",
+                                    "Hesap Adı",
+                                    "user",
+                                    "id",
+                                    "hesap_adi",
+                                ); ?>
+                            </div>
                             <div class="col-md-12">
                                 <?php
                                 echo Form::FormSelect2(
@@ -462,8 +533,45 @@ $summary = $GelirGider->summary($selectedYil, $selectedAy, $selectedTip);
             });
         });
 
-        $(".islem_turu").select2({
-            tags:true
-        });
+        $(document).ready(function() {
+            // Select2 tag desteği
+            $("#islem_turu").select2({
+                tags: true,
+                placeholder: "Kategori Seçiniz",
+                allowClear: true,
+                dropdownParent: $('#gelirGiderModal')
+            });
 
+            $("#hesap_adi").select2({
+                tags: true,
+                placeholder: "Hesap Adı Seçiniz",
+                allowClear: true,
+                dropdownParent: $('#gelirGiderModal')
+            });
+
+            // Hesap adlarını yükle
+            function loadHesapAdlari() {
+                $.ajax({
+                    url: 'views/gelir-gider/api.php',
+                    type: 'POST',
+                    data: { action: 'hesap-adlari-getir' },
+                    dataType: 'json',
+                    success: function(response) {
+                        let currentVal = $("#hesap_adi").val();
+                        $("#hesap_adi").empty().append('<option></option>');
+                        response.forEach(function(item) {
+                            if(item != '0' && item != '' && item != null) {
+                                $("#hesap_adi").append(new Option(item, item));
+                            }
+                        });
+                        if (currentVal) $("#hesap_adi").val(currentVal).trigger('change');
+                    }
+                });
+            }
+
+            // Modal açıldığında hesap adlarını yenile
+            $('#gelirGiderModal').on('show.bs.modal', function() {
+                loadHesapAdlari();
+            });
+        });
     </script>

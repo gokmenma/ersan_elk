@@ -202,15 +202,36 @@ use App\Helper\Form;
         <div class="col-12">
             <div class="card border-0 shadow-sm" style="border-radius: 12px; border-top: 3px solid var(--dept-color, #e74a3b);">
                 <div class="card-body p-3">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center" style="font-size: 0.95rem;">
-                                <i class="bx bx-user-pin me-2 text-muted fs-5"></i>Kişisel Performans Analizi
-                            </h6>
-                            <div style="width: 250px;">
-                                <select id="kisiselPersonelSelect" class="form-select form-select-sm select2" data-placeholder="Personel Seçiniz...">
-                                    <option value="">Personel Seçiniz...</option>
-                                </select>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-3">
+                        <div class="d-flex flex-wrap align-items-center gap-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <h6 class="fw-bold text-dark mb-0 d-flex align-items-center" style="font-size: 0.95rem;">
+                                    <i class="bx bx-user-pin me-2 text-muted fs-5"></i>Kişisel Analiz
+                                </h6>
+                                <div style="width: 200px;">
+                                    <select id="kisiselPersonelSelect" class="form-select form-select-sm select2" data-placeholder="Personel Seçiniz...">
+                                        <option value="">Personel Seçiniz...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- Bölüme Özel Periyot -->
+                            <div class="d-flex align-items-center gap-2 border-start ps-3">
+                                <div class="btn-group btn-group-sm" role="group" id="kisiselPeriodGroup">
+                                    <button type="button" class="btn btn-outline-primary kisisel-period-btn" data-period="haftalik">Haftalık</button>
+                                    <button type="button" class="btn btn-primary kisisel-period-btn active" data-period="aylik">Aylık</button>
+                                    <button type="button" class="btn btn-outline-primary kisisel-period-btn" data-period="aralik">Dönem</button>
+                                </div>
+                            </div>
+
+                            <!-- Bölüme Özel Tarih Seçici -->
+                            <div class="d-flex align-items-center gap-2" id="kisiselDateWrapper">
+                                <div style="width: 130px;" id="kisiselSingleDateContainer">
+                                    <input type="text" id="kisiselTarihSecici" class="form-control form-control-sm" placeholder="Tarih Seç" readonly>
+                                </div>
+                                <div style="width: 200px; display:none;" id="kisiselRangeDateContainer">
+                                    <input type="text" id="kisiselAralikSecici" class="form-control form-control-sm" placeholder="Tarih Aralığı" readonly>
+                                </div>
                             </div>
                         </div>
 
@@ -418,11 +439,14 @@ $(document).ready(function() {
     let kisiselChart = null;
     let kisiselSortOrder = 'tarih';
     let currentKisiselData = [];
+    let kisiselPeriod = 'aylik';
 
     // Flatpickr
     let fpSingle = null;
     let fpStart = null;
     let fpEnd = null;
+    let fpKisiselSingle = null;
+    let fpKisiselRange = null;
 
     function parseTrDateToYmd(value) {
         if (!value) return '';
@@ -583,6 +607,55 @@ $(document).ready(function() {
         updateDateControlsByPeriod();
         loadData();
     });
+
+    // Kişisel Periyot Değişimi
+    $(document).on('click', '.kisisel-period-btn', function() {
+        if ($(this).hasClass('active')) return;
+        
+        $('.kisisel-period-btn').removeClass('btn-primary active').addClass('btn-outline-primary');
+        $(this).removeClass('btn-outline-primary').addClass('btn-primary active');
+        
+        kisiselPeriod = $(this).data('period');
+        updateKisiselDateControls();
+        loadKisiselData();
+    });
+
+    function updateKisiselDateControls() {
+        if (fpKisiselSingle) fpKisiselSingle.destroy();
+        if (fpKisiselRange) fpKisiselRange.destroy();
+
+        $('#kisiselSingleDateContainer, #kisiselRangeDateContainer').hide();
+
+        if (kisiselPeriod === 'aralik') {
+            $('#kisiselRangeDateContainer').show();
+            fpKisiselRange = flatpickr("#kisiselAralikSecici", {
+                mode: "range",
+                locale: "tr",
+                dateFormat: "d.m.Y",
+                defaultDate: [new Date(new Date().setDate(new Date().getDate() - 30)), new Date()],
+                onClose: function(selectedDates) {
+                    if (selectedDates.length === 2) loadKisiselData();
+                }
+            });
+        } else {
+            $('#kisiselSingleDateContainer').show();
+            let opts = {
+                locale: "tr",
+                defaultDate: new Date(),
+                onChange: function() { loadKisiselData(); }
+            };
+
+            if (kisiselPeriod === 'aylik') {
+                opts.plugins = [new monthSelectPlugin({ shorthand: false, dateFormat: "F Y", theme: "light" })];
+            } else if (kisiselPeriod === 'haftalik') {
+                opts.plugins = [new weekSelect({})];
+            }
+            fpKisiselSingle = flatpickr("#kisiselTarihSecici", opts);
+        }
+    }
+
+    // İlk açılışta kişisel tarih kontrollerini hazırla
+    updateKisiselDateControls();
 
     // Filtrele butonu
     $('#btnFiltrele').on('click', function() {
@@ -1016,19 +1089,29 @@ $(document).ready(function() {
         
         let startDate = '';
         let endDate = '';
-        let dateVal = currentDate;
+        let dateVal = '';
 
-        if (currentPeriod === 'yillik') {
-            dateVal = $('#yilSecici').val() + '-01-01';
-        } else if (fpSingle && fpSingle.selectedDates.length > 0) {
-            const dates = fpSingle.selectedDates;
-            if (currentPeriod === 'gunluk' && dates.length === 2) {
-                startDate = ymdFromDateObj(dates[0]);
-                endDate = ymdFromDateObj(dates[1]);
+        if (kisiselPeriod === 'aralik') {
+            if (fpKisiselRange && fpKisiselRange.selectedDates.length === 2) {
+                startDate = ymdFromDateObj(fpKisiselRange.selectedDates[0]);
+                endDate = ymdFromDateObj(fpKisiselRange.selectedDates[1]);
                 dateVal = startDate;
+            } else {
+                return; // Henüz seçilmedi
+            }
+        } else if (fpKisiselSingle && fpKisiselSingle.selectedDates.length > 0) {
+            const dates = fpKisiselSingle.selectedDates;
+            if (kisiselPeriod === 'haftalik') {
+                // Haftalıkta flatpickr weekSelect kullanıyor, dates[0] haftanın ilk günü olabilir
+                dateVal = ymdFromDateObj(dates[0]);
+            } else if (kisiselPeriod === 'aylik') {
+                dateVal = ymdFromDateObj(dates[0]);
             } else {
                 dateVal = ymdFromDateObj(dates[0]);
             }
+        } else {
+             // Fallback to current global filters if no local choice yet
+             dateVal = currentDate;
         }
 
         showLoading();
@@ -1040,7 +1123,7 @@ $(document).ready(function() {
                 action: 'get-kisisel-performans',
                 personel_id: personelId,
                 departman: currentDept,
-                period: currentPeriod,
+                period: kisiselPeriod, // Use local period
                 tarih: dateVal,
                 baslangic_tarih: startDate,
                 bitis_tarih: endDate

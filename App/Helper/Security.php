@@ -73,7 +73,7 @@ class Security
         $method = "AES-256-CBC";
         $key = hash('sha256', 'mysecretkey', true);
 
-        // Önce URL decode, sonra base64 decode
+        // JS çift encode yapabildiği için rawurldecode kullanmamız KESİNLİKLE kritik
         $decoded = base64_decode(rawurldecode($data));
 
         // En az 16 byte IV olmalı

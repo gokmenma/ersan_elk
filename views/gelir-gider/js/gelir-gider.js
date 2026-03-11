@@ -30,6 +30,7 @@ function initGelirGiderTable() {
         { data: 'id' },
         { data: 'kayit_tarihi' },
         { data: 'type' },
+        { data: 'hesap_adi' },
         { data: 'kategori_adi' },
         { data: 'tarih' },
         { data: 'tutar' },
@@ -38,8 +39,8 @@ function initGelirGiderTable() {
         { data: 'actions' }
     ];
     opts.columnDefs = [
-        { targets: [0, 1, 2, 3, 4, 8], className: "text-center" },
-        { targets: [5, 6], className: "text-end" }
+        { targets: [0, 1, 2, 3, 4, 5, 9], className: "text-center" },
+        { targets: [6, 7], className: "text-end" }
     ];
     opts.order = [[1, "desc"]]; // Kayıt tarihine göre azalan
     opts.initComplete = function(settings, json) {
@@ -109,7 +110,7 @@ function fetchCategories(type, selectedValue = null) {
     })
     .then(response => response.json())
     .then(data => {
-        let options = '<option value="">Seçiniz</option>';
+        let options = '<option></option>';
         // Veri dizi değilse (HTML dönmüşse) hata vermemesi için kontrol
         if (Array.isArray(data)) {
             data.forEach(item => {
@@ -247,6 +248,7 @@ $(document).on("click", ".duzenle", function () {
           $("#finansal_aciklama").val(data.aciklama);
           $("#tutar").val(data.tutar);
           $("#aciklama").val(data.aciklama);
+          $("#hesap_adi").val(data.hesap_adi).trigger("change.select2");
 
           if (data.tarih) {
               $("#islem_tarihi").val(formatDateDMYHI(data.tarih));
@@ -285,6 +287,7 @@ $(document).on("click", "#yeniIslemModal", function () {
   $("#gelirGiderForm").trigger("reset");
 
   $("#islem_turu").val("").trigger("change.select2");
+  $("#hesap_adi").val("").trigger("change.select2");
 
   $("#gelir_gider_id").val(0);
 });
