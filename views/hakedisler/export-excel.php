@@ -533,8 +533,10 @@ try {
             $sheetDengeleme->setCellValue('F' . $rowIdx, $fiyatFarki); // (d)
             $sheetDengeleme->setCellValue('G' . $rowIdx, $kdvTutar); // (e)
             $sheetDengeleme->setCellValue('H' . $rowIdx, $tahakkukToplam); // (f = c+d+e)
-            $sheetDengeleme->setCellValue('I' . $rowIdx, $toplamKesinti); // (g)
-            $sheetDengeleme->setCellValue('J' . $rowIdx, $kesinHesapKesintisi); // (h)
+           // $sheetDengeleme->setCellValue('I' . $rowIdx, $toplamKesinti); // (g)
+            $sheetDengeleme->setCellValue('I' . $rowIdx, 0); // (g)
+           // $sheetDengeleme->setCellValue('J' . $rowIdx, $kesinHesapKesintisi); // (h)
+            $sheetDengeleme->setCellValue('J' . $rowIdx, 0); // (h)
             $sheetDengeleme->setCellValue('K' . $rowIdx, $netHakedis); // (i = f-g)
 
             $prevKumulatif = $kumulatifImalat;

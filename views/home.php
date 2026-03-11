@@ -515,19 +515,20 @@ if (Gate::allows("ana_sayfa")) {
                             
                             $bosta_arac = $aracStats->bosta_arac ?? 0;
                             $servisteki_arac = $aracModel->getServistekiAracSayisi();
-                            $toplam_arac = $aracStats->toplam_arac ?? 0;
+                            // Sadece aktif olanları toplama dahil ediyoruz
+                            $toplam_aktif_arac = $aracStats->aktif_arac ?? 0;
                             
-                            $saha_arac = $toplam_arac - $servisteki_arac - $bosta_arac;
+                            $saha_arac = $toplam_aktif_arac - $servisteki_arac - $bosta_arac;
                             if ($saha_arac < 0) $saha_arac = 0;
                             
-                            $toplam_a_div = $toplam_arac ?: 1;
+                            $aktif_a_div = $toplam_aktif_arac ?: 1;
                             
-                            $aktif_a_yuzde = ($saha_arac / $toplam_a_div) * 100;
-                            $servis_a_yuzde = ($servisteki_arac / $toplam_a_div) * 100;
-                            $bosta_a_yuzde = ($bosta_arac / $toplam_a_div) * 100;
+                            $aktif_a_yuzde = ($saha_arac / $aktif_a_div) * 100;
+                            $servis_a_yuzde = ($servisteki_arac / $aktif_a_div) * 100;
+                            $bosta_a_yuzde = ($bosta_arac / $aktif_a_div) * 100;
                             ?>
-                            <p class="text-muted mb-0 ms-4" style="font-size: 0.8rem;">Toplam Araç</p>
-                            <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $toplam_arac; ?> <span
+                            <p class="text-muted mb-0 ms-4" style="font-size: 0.8rem;">Toplam Aktif Araç</p>
+                            <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $toplam_aktif_arac; ?> <span
                                     style="font-size: 0.9rem; font-weight: normal; color: #6c757d;">adet</span></h4>
                         </div>
                         <a href="index.php?p=arac-takip/list" class="text-primary fw-semibold small text-decoration-none"

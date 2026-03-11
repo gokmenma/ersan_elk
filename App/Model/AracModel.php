@@ -105,6 +105,7 @@ class AracModel extends Model
             WHERE a.firma_id = :firma_id 
             AND a.aktif_mi = 1
             AND a.silinme_tarihi IS NULL
+            AND a.ikame_mi = 0
             ORDER BY a.plaka ASC
         ");
         $sql->execute(['firma_id' => $_SESSION['firma_id']]);
@@ -231,7 +232,6 @@ class AracModel extends Model
             WHERE a.firma_id = :firma_id 
             AND a.silinme_tarihi IS NULL
             AND a.ikame_mi = 1
-            AND EXISTS (SELECT 1 FROM arac_servis_kayitlari s WHERE s.ikame_arac_id = a.id AND s.ikame_iade_tarihi IS NULL AND s.silinme_tarihi IS NULL)
             ORDER BY a.plaka ASC
         ");
         $sql->execute(['firma_id' => $_SESSION['firma_id']]);
@@ -243,7 +243,7 @@ class AracModel extends Model
      */
     public function getIkameAracSayisi()
     {
-        $sql = $this->db->prepare("SELECT COUNT(*) FROM araclar a WHERE a.firma_id = :firma_id AND a.silinme_tarihi IS NULL AND a.ikame_mi = 1 AND EXISTS (SELECT 1 FROM arac_servis_kayitlari s WHERE s.ikame_arac_id = a.id AND s.ikame_iade_tarihi IS NULL AND s.silinme_tarihi IS NULL)");
+        $sql = $this->db->prepare("SELECT COUNT(*) FROM araclar a WHERE a.firma_id = :firma_id AND a.silinme_tarihi IS NULL AND a.ikame_mi = 1");
         $sql->execute(['firma_id' => $_SESSION['firma_id']]);
         return $sql->fetchColumn();
     }
@@ -564,6 +564,7 @@ class AracModel extends Model
             WHERE a.firma_id = :firma_id 
             AND a.aktif_mi = 0
             AND a.silinme_tarihi IS NULL
+            AND a.ikame_mi = 0
             ORDER BY a.plaka ASC
         ");
         $sql->execute(['firma_id' => $_SESSION['firma_id']]);
