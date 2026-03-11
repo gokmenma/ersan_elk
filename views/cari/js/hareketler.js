@@ -163,7 +163,7 @@ $(document).ready(function () {
                         $('#toplam_borc_kart').text(res.new_borc);
                         $('#toplam_alacak_kart').text(res.new_alacak);
                     }
-                    Swal.fire("Başarılı!", res.message, "success");
+                    showToast(res.message, "success");
                 } else {
                     Swal.fire("Hata!", res.message, "error");
                 }
@@ -266,7 +266,7 @@ $(document).ready(function () {
                                 $('#toplam_borc_kart').text(res.new_borc);
                                 $('#toplam_alacak_kart').text(res.new_alacak);
                             }
-                            Swal.fire("Silindi!", res.message, "success");
+                            showToast(res.message, "success");
                         } else {
                             Swal.fire("Hata!", res.message, "error");
                         }

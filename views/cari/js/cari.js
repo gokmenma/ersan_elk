@@ -134,7 +134,7 @@ $(document).ready(function () {
                 if (res.status === "success") {
                     $('#cariModal').modal('hide');
                     table.ajax.reload();
-                    Swal.fire("Başarılı!", res.message, "success");
+                    showToast(res.message, "success");
                 } else {
                     Swal.fire("Hata!", res.message, "error");
                 }
@@ -190,7 +190,7 @@ $(document).ready(function () {
                         if (res.status === "success") {
                             table.ajax.reload();
                             updateSummaryCards();
-                            Swal.fire("Silindi!", res.message, "success");
+                            showToast(res.message, "success");
                         } else {
                             Swal.fire("Hata!", res.message, "error");
                         }
@@ -240,7 +240,7 @@ $(document).ready(function () {
                     $('#hizliIslemModal').modal('hide');
                     table.ajax.reload();
                     updateSummaryCards(); // Bakiyeleri güncellemek için
-                    Toast.fire({ icon: 'success', title: res.message || 'İşlem başarıyla eklendi.' });
+                    showToast(res.message || 'İşlem başarıyla eklendi.', 'success');
                 } else {
                     Swal.fire("Hata!", res.message || "İşlem kaydedilemedi.", "error");
                 }

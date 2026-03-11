@@ -474,7 +474,7 @@ if ($filter === 'muayene') {
                                                     <span
                                                         class="badge bg-light text-dark border"><?php echo $tipLabels[$arac->arac_tipi] ?? '-'; ?></span>
                                                 </td>
-                                                <td>
+                                                <td data-search="<?php echo $arac->plaka; ?>">
                                                     <div class="arac-info-box">
                                                         <a href="javascript:void(0)"
                                                             class="plaka-label text-primary arac-duzenle"

@@ -5,10 +5,10 @@
  */
 function showToast(message, type = "success") {
   const bgColors = {
-    success: "linear-gradient(to right, #00b09b, #96c93d)",
-    error: "linear-gradient(to right, #ff5f6d, #ffc371)",
-    warning: "linear-gradient(to right, #f1b44c, #f1d04b)",
-    info: "linear-gradient(to right, #2ab57d, #4ba6ef)",
+    success: "var(--bs-primary)",
+    error: "var(--bs-danger)",
+    warning: "var(--bs-warning)",
+    info: "var(--bs-info)",
   };
 
   // Ensure message is a string to prevent "Cannot read properties of undefined (reading 'call')" errors
@@ -22,6 +22,8 @@ function showToast(message, type = "success") {
     position: "center",
     style: {
       background: bgColors[type] || bgColors.success,
+      borderRadius: "6px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
     },
     stopOnFocus: true,
   }).showToast();
