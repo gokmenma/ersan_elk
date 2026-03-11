@@ -280,10 +280,10 @@ class SayacDegisimModel extends Model
     public function getSummaryByRange($startDate, $endDate)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT personel_id, ekip_kodu_id, tarih, COUNT(*) as toplam 
+        $sql = "SELECT personel_id, ekip_kodu_id, ekip, tarih, COUNT(*) as toplam 
                 FROM {$this->table} 
                 WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL
-                GROUP BY personel_id, ekip_kodu_id, tarih";
+                GROUP BY personel_id, ekip_kodu_id, ekip, tarih";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $startDate, $endDate]);
@@ -291,7 +291,8 @@ class SayacDegisimModel extends Model
 
         $summary = [];
         foreach ($results as $row) {
-            $summary[$row->personel_id][$row->ekip_kodu_id][$row->tarih] = $row->toplam;
+            $key = $row->ekip_kodu_id . '|' . ($row->ekip ?: '-');
+            $summary[$row->personel_id][$key][$row->tarih] = $row->toplam;
         }
         return $summary;
     }
@@ -355,10 +356,10 @@ class SayacDegisimModel extends Model
     public function getSummaryDetailedByRange($startDate, $endDate)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT personel_id, ekip_kodu_id, tarih, isemri_sonucu as is_emri_sonucu, COUNT(*) as toplam 
+        $sql = "SELECT personel_id, ekip_kodu_id, ekip, tarih, isemri_sonucu as is_emri_sonucu, COUNT(*) as toplam 
                 FROM {$this->table} 
                 WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL
-                GROUP BY personel_id, ekip_kodu_id, tarih, isemri_sonucu";
+                GROUP BY personel_id, ekip_kodu_id, ekip, tarih, isemri_sonucu";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $startDate, $endDate]);
@@ -366,7 +367,8 @@ class SayacDegisimModel extends Model
 
         $summary = [];
         foreach ($results as $row) {
-            $summary[$row->personel_id][$row->ekip_kodu_id][$row->tarih][$row->is_emri_sonucu] = $row->toplam;
+            $key = $row->ekip_kodu_id . '|' . ($row->ekip ?: '-');
+            $summary[$row->personel_id][$key][$row->tarih][$row->is_emri_sonucu] = $row->toplam;
         }
         return $summary;
     }

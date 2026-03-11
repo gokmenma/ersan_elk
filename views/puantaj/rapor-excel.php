@@ -441,7 +441,7 @@ $grandTotal = 0;
 $grandDusum = 0;
 
 // 1. Build Valid Pairs
-$validPairs = []; // key: [pId]_[tId] => ['pId' => X, 'tId' => Y]
+$validPairs = []; // key: [pId]_[compositeKey]
 foreach ($summary as $pId => $teams) {
     if ($activeTab === 'kacakkontrol') {
         $teamName = $pId; // In kacak summary, pId is actually teamName
@@ -461,12 +461,18 @@ foreach ($summary as $pId => $teams) {
             'pId' => 'kacak_' . $teamName,
             'tId' => $teamName,
             'isKacak' => true,
-            'teamName' => $teamName
+            'teamName' => $teamName,
+            'compositeKey' => $teamName
         ];
     } else {
-        foreach ($teams as $tId => $data) {
+        foreach ($teams as $compositeKey => $data) {
             if ($filterPersonelId && $pId != $filterPersonelId)
                 continue;
+
+            // compositeKey is "tId|ekipKodu"
+            $parts = explode('|', $compositeKey, 2);
+            $tId = (int)$parts[0];
+            $ekipKoduStr = $parts[1] ?? '';
 
             // Eğer okuma değilse, bu ekip/personel ikilisinin bu tabdaki iş türlerinden en az birine sahip olup olmadığını kontrol et
             $hasRelevantData = true;
@@ -485,19 +491,28 @@ foreach ($summary as $pId => $teams) {
             }
 
             // Eğer verisi yoksa, aralıkta mı bak
-            if (!$hasRelevantData) {
-                $team = $teamById[$tId] ?? null;
+            $teamNo = 0;
+            if ($tId > 0 && isset($teamById[$tId])) {
+                $team = $teamById[$tId];
                 $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim(($team->grup_adi ?? '') . ' ' . ($team->tur_adi ?? '')));
-                if ($team && $teamNo > 0) {
-                    if (!\App\Helper\EkipHelper::isTeamInTabRange($teamNo, $activeTab, $Settings)) {
-                        continue;
-                    }
-                } else {
-                    continue;
-                }
+            } else if (!empty($ekipKoduStr)) {
+                $teamNo = \App\Helper\EkipHelper::extractTeamNo($ekipKoduStr);
             }
 
-            $validPairs[$pId . '_' . $tId] = ['pId' => $pId, 'tId' => $tId];
+            if ($teamNo > 0) {
+                if (!\App\Helper\EkipHelper::isTeamInTabRange($teamNo, $activeTab, $Settings)) {
+                    continue;
+                }
+            } else if (!$hasRelevantData) {
+                continue;
+            }
+
+            $validPairs[$pId . '_' . $compositeKey] = [
+                'pId' => $pId, 
+                'tId' => $tId,
+                'ekipKodu' => $ekipKoduStr,
+                'compositeKey' => $compositeKey
+            ];
         }
     }
 }
@@ -530,7 +545,7 @@ foreach ($activeAssignments as $assign) {
             $isValid = true;
         }
     } elseif ($activeTab === 'muhurleme') {
-        if (\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'muhurleme', $Settings) && in_array('Mühürleme', $personelDepts)) {
+        if (\App\Helper\EkipHelper::isTeamInTabRange($teamNo, 'muhurleme', $Settings)) {
             $isValid = true;
         }
     } elseif ($activeTab === 'kacakkontrol') {
@@ -542,9 +557,12 @@ foreach ($activeAssignments as $assign) {
     }
 
     if ($isValid) {
-        $validPairs[$assign->personel_id . '_' . $assign->ekip_kodu_id] = [
+        $compositeKey = $assign->ekip_kodu_id . '|' . ($team->tur_adi ?? '');
+        $validPairs[$assign->personel_id . '_' . $compositeKey] = [
             'pId' => $assign->personel_id,
-            'tId' => $assign->ekip_kodu_id
+            'tId' => $assign->ekip_kodu_id,
+            'ekipKodu' => $team->tur_adi ?? '',
+            'compositeKey' => $compositeKey
         ];
     }
 }
@@ -554,8 +572,16 @@ $regionGrouped = [];
 foreach ($validPairs as $pair) {
     $pId = $pair['pId'];
     $tId = $pair['tId'];
+    $compositeKey = $pair['compositeKey'];
     $p = $personelById[$pId] ?? null;
-    $team = $teamById[$tId] ?? (object) ['id' => 0, 'tur_adi' => '-', 'ekip_bolge' => 'TANIMSIZ BÖLGE'];
+
+    if (isset($pair['isKacak'])) {
+        $teamName = $pair['teamName'];
+        $team = $teamById[$tId] ?? (object) ['id' => 0, 'tur_adi' => $teamName, 'ekip_bolge' => 'TANIMSIZ BÖLGE'];
+    } else {
+        $ekipKoduStr = $pair['ekipKodu'] ?? '';
+        $team = $teamById[$tId] ?? (object) ['id' => 0, 'tur_adi' => $ekipKoduStr ?: '-', 'ekip_bolge' => 'TANIMSIZ BÖLGE'];
+    }
 
     if (!$p) {
         $p = (object) [
@@ -574,7 +600,8 @@ foreach ($validPairs as $pair) {
         'pId' => $pId,
         'tId' => $tId,
         'isKacak' => $pair['isKacak'] ?? false,
-        'teamName' => $pair['teamName'] ?? ''
+        'teamName' => $pair['teamName'] ?? '',
+        'compositeKey' => $compositeKey
     ];
 }
 
@@ -620,7 +647,12 @@ foreach ($regions as $regionName) {
         $colIdx = $daysColStartIdx;
         if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol') {
             foreach ($reportDates as $date) {
-                $val = ($activeTab === 'kacakkontrol') ? ($summary[$team->tur_adi][$date] ?? 0) : ($summary[$pId][$tId][$date] ?? 0);
+                if ($activeTab === 'kacakkontrol') {
+                    $val = $summary[$team->tur_adi][$date] ?? 0;
+                } else {
+                    $compositeKey = $tData['compositeKey'] ?? ($tId . '|' . ($team->tur_adi ?? ''));
+                    $val = $summary[$pId][$compositeKey][$date] ?? 0;
+                }
                 if ($val > 0) {
                     $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
                     $sheet->setCellValue($colLetter . $row, $val);
@@ -722,7 +754,12 @@ foreach ($regionGrouped as $regionName => $teamsInRegion) {
         $colIdx = $daysColStartIdx;
         if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol') {
             foreach ($reportDates as $date) {
-                $val = ($activeTab === 'kacakkontrol') ? ($summary[$team->tur_adi][$date] ?? 0) : ($summary[$pId][$tId][$date] ?? 0);
+                if ($activeTab === 'kacakkontrol') {
+                    $val = $summary[$team->tur_adi][$date] ?? 0;
+                } else {
+                    $compositeKey = $tData['compositeKey'] ?? ($tId . '|' . ($team->tur_adi ?? ''));
+                    $val = $summary[$pId][$compositeKey][$date] ?? 0;
+                }
                 if ($val > 0) {
                     $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
                     $sheet->setCellValue($colLetter . $row, $val);

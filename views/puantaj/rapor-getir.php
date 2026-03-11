@@ -238,7 +238,7 @@ if (true) { // Always use unified logic for all standard tabs
     $validPairs = []; // key: [pId]_[tId] => ['pId' => X, 'tId' => Y]
 
     // 1. From Summary (The primary source of rows)
-    // For okuma/kesme/etc, summary is [pId][tId]
+    // For okuma/kesme/etc, summary is [pId][tId|ekipKodu]
     // For kacak, summary is [teamName][day]
     if (!empty($summary)) {
         foreach ($summary as $pId => $teams) {
@@ -261,12 +261,18 @@ if (true) { // Always use unified logic for all standard tabs
                     'pId' => 'kacak_' . $teamName,
                     'tId' => $teamName,
                     'isKacak' => true,
-                    'teamName' => $teamName
+                    'teamName' => $teamName,
+                    'compositeKey' => $teamName
                 ];
             } else {
-                foreach ($teams as $tId => $data) {
+                foreach ($teams as $compositeKey => $data) {
                     if ($filterPersonelId && $pId != $filterPersonelId)
                         continue;
+
+                    // compositeKey is "tId|ekipKodu"
+                    $parts = explode('|', $compositeKey, 2);
+                    $tId = (int)$parts[0];
+                    $ekipKoduStr = $parts[1] ?? '';
 
                     // Eğer okuma değilse, bu ekip/personel ikilisinin bu tabdaki iş türlerinden en az birine sahip olup olmadığını kontrol et
                     $hasRelevantData = true;
@@ -284,20 +290,29 @@ if (true) { // Always use unified logic for all standard tabs
                         }
                     }
 
-                    // Eğer ilgili verisi yoksa, en azından bu tabın belirlenen ekip aralığında mı diye bak (Eğer aralıktaysa boş da olsa gelsin diye)
-                    if (!$hasRelevantData) {
-                        $team = $teamById[$tId] ?? null;
+                    // Eğer ilgili verisi yoksa, en azından bu tabın belirlenen ekip aralığında mı diye bak
+                    $teamNo = 0;
+                    if ($tId > 0 && isset($teamById[$tId])) {
+                        $team = $teamById[$tId];
                         $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim(($team->grup_adi ?? '') . ' ' . ($team->tur_adi ?? '')));
-                        if ($team && $teamNo > 0) {
-                            if (!\App\Helper\EkipHelper::isTeamInTabRange($teamNo, $activeTab, $Settings)) {
-                                continue;
-                            }
-                        } else {
-                            continue;
-                        }
+                    } else if (!empty($ekipKoduStr)) {
+                        $teamNo = \App\Helper\EkipHelper::extractTeamNo($ekipKoduStr);
                     }
 
-                    $validPairs[$pId . '_' . $tId] = ['pId' => $pId, 'tId' => $tId];
+                    if ($teamNo > 0) {
+                        if (!\App\Helper\EkipHelper::isTeamInTabRange($teamNo, $activeTab, $Settings)) {
+                            continue;
+                        }
+                    } else if (!$hasRelevantData) {
+                        continue;
+                    }
+
+                    $validPairs[$pId . '_' . $compositeKey] = [
+                        'pId' => $pId, 
+                        'tId' => $tId, 
+                        'ekipKodu' => $ekipKoduStr,
+                        'compositeKey' => $compositeKey
+                    ];
                 }
             }
         }
@@ -336,20 +351,20 @@ if (true) { // Always use unified logic for all standard tabs
                 $isValid = true;
             }
         } elseif ($activeTab === 'kacakkontrol') {
-            // Kaçak Kontrol - Sadece verisi olanlar summary üzerinden eklensin isteniyor.
-            // Bu nedenle assignments üzerinden otomatik ekleme yapmıyoruz.
             $isValid = false;
         } else {
-            // Other unofficial tabs might show everyone, but still respect team range
             if (\App\Helper\EkipHelper::isTeamInTabRange($teamNo, $activeTab, $Settings)) {
                 $isValid = true;
             }
         }
 
         if ($isValid) {
-            $validPairs[$assign->personel_id . '_' . $assign->ekip_kodu_id] = [
+            $compositeKey = $assign->ekip_kodu_id . '|' . ($team->tur_adi ?? '');
+            $validPairs[$assign->personel_id . '_' . $compositeKey] = [
                 'pId' => $assign->personel_id,
-                'tId' => $assign->ekip_kodu_id
+                'tId' => $assign->ekip_kodu_id,
+                'ekipKodu' => $team->tur_adi ?? '',
+                'compositeKey' => $compositeKey
             ];
         }
     }
@@ -360,6 +375,7 @@ if (true) { // Always use unified logic for all standard tabs
     foreach ($validPairs as $pair) {
         $pId = $pair['pId'];
         $tId = $pair['tId'];
+        $compositeKey = $pair['compositeKey'];
 
         if (isset($pair['isKacak'])) {
             $teamName = $pair['teamName'];
@@ -391,13 +407,15 @@ if (true) { // Always use unified logic for all standard tabs
             $regionName = $team->ekip_bolge ?: 'TANIMSIZ BÖLGE';
         } else {
             $p = $personelById[$pId] ?? null;
-            $team = $teamById[$tId] ?? (object) ['id' => 0, 'tur_adi' => '-', 'ekip_bolge' => 'TANIMSIZ BÖLGE'];
+            $ekipKoduStr = $pair['ekipKodu'] ?? '';
+            $team = $teamById[$tId] ?? (object) ['id' => 0, 'tur_adi' => $ekipKoduStr ?: '-', 'ekip_bolge' => 'TANIMSIZ BÖLGE'];
 
             if (!$p) {
                 // Determine missing team
+                $displayText = $team->tur_adi;
                 $p = (object) [
                     'id' => 0,
-                    'adi_soyadi' => '<span class="text-danger fw-bold"><i class="bx bx-error-circle"></i> Eşleşmeyen Ekip: ' . htmlspecialchars($team->tur_adi) . '</span>',
+                    'adi_soyadi' => '<span class="text-danger fw-bold"><i class="bx bx-error-circle"></i> Eşleşmeyen Ekip: ' . htmlspecialchars($displayText) . '</span>',
                     'ekip_no' => $team->id
                 ];
             }
@@ -412,7 +430,8 @@ if (true) { // Always use unified logic for all standard tabs
             'team' => $team,
             'personel' => $p,
             'pId' => $pId,
-            'tId' => $tId
+            'tId' => $tId,
+            'compositeKey' => $compositeKey
         ];
     }
 
@@ -1015,14 +1034,15 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                             $regionTotal += array_sum($summary[$team->tur_adi]);
                         }
                     } else {
-                        if (isset($summary[$pId][$tId])) {
+                        $compositeKey = $tData['compositeKey'] ?? ($tId . '|' . ($team->tur_adi ?? ''));
+                        if (isset($summary[$pId][$compositeKey])) {
                             if ($activeTab === 'okuma') {
-                                $regionTotal += array_sum($summary[$pId][$tId]);
+                                $regionTotal += array_sum($summary[$pId][$compositeKey]);
                             } else {
                                 // İŞLEM TOPLAMLARI kolonlarının toplamını hesapla
                                 foreach ($workTypeCols as $wt) {
                                     $wtTotal = 0;
-                                    foreach ($summary[$pId][$tId] as $dayData) {
+                                    foreach ($summary[$pId][$compositeKey] as $dayData) {
                                         $wtTotal += $dayData[$wt['name']] ?? 0;
                                     }
                                     $regionTotal += $wtTotal;
@@ -1048,9 +1068,12 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                             $personelTotal = array_sum($summary[$team->tur_adi]);
                             $grandTotal += $personelTotal;
                         }
-                    } elseif ($activeTab === 'okuma' && isset($summary[$pId][$tId])) {
-                        $personelTotal = array_sum($summary[$pId][$tId]);
-                        $grandTotal += $personelTotal;
+                    } else {
+                        $compositeKey = $tData['compositeKey'] ?? ($tId . '|' . ($team->tur_adi ?? ''));
+                        if ($activeTab === 'okuma' && isset($summary[$pId][$compositeKey])) {
+                            $personelTotal = array_sum($summary[$pId][$compositeKey]);
+                            $grandTotal += $personelTotal;
+                        }
                     }
                     // Bölge ID'si olarak bölge adının hash'i kullanılıyor
                     $regionId = md5($item['region']);
@@ -1102,7 +1125,8 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                     $val = $summary[$team->tur_adi][$date] ?? 0;
                                     $pIdsStr = $kacakPersonelMapping[$team->tur_adi] ?? '';
                                 } else {
-                                    $val = $summary[$pId][$tId][$date] ?? 0;
+                                    $compositeKey = $tData['compositeKey'] ?? ($tId . '|' . ($team->tur_adi ?? ''));
+                                    $val = $summary[$pId][$compositeKey][$date] ?? 0;
                                 }
 
                                 $dailyTotals[$date] += $val;
@@ -1125,7 +1149,8 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                 <?php $idx = 0;
                                 foreach ($workTypeCols as $wt):
                                     $idx++;
-                                    $val = $summary[$pId][$tId][$date][$wt['name']] ?? 0;
+                                    $compositeKey = $tData['compositeKey'] ?? ($tId . '|' . ($team->tur_adi ?? ''));
+                                    $val = $summary[$pId][$compositeKey][$date][$wt['name']] ?? 0;
                                     if (!isset($dailyDetailedTotals[$date][$wt['name']]))
                                         $dailyDetailedTotals[$date][$wt['name']] = 0;
                                     $dailyDetailedTotals[$date][$wt['name']] += $val;
@@ -1138,7 +1163,8 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                 <?php if (in_array($activeTab, ['kesme', 'sokme_takma', 'muhurleme'])):
                                     $daySum = 0;
                                     foreach ($workTypeCols as $wt) {
-                                        $daySum += $summary[$pId][$tId][$date][$wt['name']] ?? 0;
+                                        $compositeKey = $tData['compositeKey'] ?? ($tId . '|' . ($team->tur_adi ?? ''));
+                                        $daySum += $summary[$pId][$compositeKey][$date][$wt['name']] ?? 0;
                                     }
                                     ?>
                                     <td class="day-total-col table-light fw-bold day-separator <?= ($dateIdx % 2 == 0) ? 'day-bg-alt' : '' ?> <?= $isSunday ? 'sunday-cell' : '' ?>"

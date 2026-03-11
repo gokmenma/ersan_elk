@@ -129,7 +129,7 @@ $style = '
     .day-grid { width: 100%; border-collapse: collapse; }
     .day-item { text-align: center; border-right: 1px solid #bae6fd; width: 25%; }
     .day-item:last-child { border-right: none; }
-    .day-label { font-size: 6.5pt; color: #0369a1; text-transform: uppercase; display: block; }
+    .day-label { font-size: 6.5pt; color: #0369a1; text-transform: uppercase; margin-right: 4px; }
     .day-value { font-size: 10pt; font-weight: bold; color: #0369a1; }
     
     .cost-section { background: #f8fafc; padding: 10px; border-radius: 10px; margin-top: 10px; border: 1px solid #f1f5f9; }
@@ -281,10 +281,10 @@ foreach ($bordroListesi as $index => $bordro) {
         <div class="days-box">
             <table class="day-grid">
                 <tr>
-                    <td class="day-item"><span class="day-label">Fiili Çalışma</span><span class="day-value">' . $calismaGunu . ' Gün</span></td>
-                    <td class="day-item"><span class="day-label">Ücretli İzin</span><span class="day-value">' . $ucretliIzinGunu . ' Gün</span></td>
-                    <td class="day-item"><span class="day-label">Ücretsiz İzin</span><span class="day-value">' . $ucretsizIzinGunu . ' Gün</span></td>
-                    <td class="day-item"><span class="day-label">Hakedilen Gün</span><span class="day-value">' . ($calismaGunu + $ucretliIzinGunu) . ' Gün</span></td>
+                    <td class="day-item"><span class="day-label">Fiili Çalışma:</span><span class="day-value">' . $calismaGunu . ' Gün</span></td>
+                    <td class="day-item"><span class="day-label">Ücretli İzin:</span><span class="day-value">' . $ucretliIzinGunu . ' Gün</span></td>
+                    <td class="day-item"><span class="day-label">Ücretsiz İzin:</span><span class="day-value">' . $ucretsizIzinGunu . ' Gün</span></td>
+                    <td class="day-item"><span class="day-label">Hakedilen Gün:</span><span class="day-value">' . ($calismaGunu + $ucretliIzinGunu) . ' Gün</span></td>
                 </tr>
             </table>
         </div>
@@ -409,9 +409,9 @@ foreach ($bordroListesi as $index => $bordro) {
         <div class="cost-section">
             <table class="cost-table">
                 <tr>
-                    <td class="cost-td" width="30%"><span class="day-label">SGK İşveren</span><span class="value" style="font-size: 8pt;">' . number_format($bordro->sgk_isveren ?? 0, 2, ',', '.') . ' ₺</span></td>
-                    <td class="cost-td" width="30%"><span class="day-label">İşsizlik İşveren</span><span class="value" style="font-size: 8pt;">' . number_format($bordro->issizlik_isveren ?? 0, 2, ',', '.') . ' ₺</span></td>
-                    <td class="cost-td" width="40%" style="border-left: 1px solid #e2e8f0;"><span class="day-label" style="color: #2563eb;">Toplam Maliyet</span><span class="value" style="color: #2563eb; font-size: 9pt;">' . number_format($bordro->toplam_maliyet ?? 0, 2, ',', '.') . ' ₺</span></td>
+                    <td class="cost-td" width="30%"><span class="day-label">SGK İşveren:</span><span class="value" style="font-size: 8pt;">' . number_format($bordro->sgk_isveren ?? 0, 2, ',', '.') . ' ₺</span></td>
+                    <td class="cost-td" width="30%"><span class="day-label">İşsizlik İşveren:</span><span class="value" style="font-size: 8pt;">' . number_format($bordro->issizlik_isveren ?? 0, 2, ',', '.') . ' ₺</span></td>
+                    <td class="cost-td" width="40%" style="border-left: 1px solid #e2e8f0;"><span class="day-label" style="color: #2563eb;">Toplam Maliyet:</span><span class="value" style="color: #2563eb; font-size: 9pt;">' . number_format($bordro->toplam_maliyet ?? 0, 2, ',', '.') . ' ₺</span></td>
                 </tr>
             </table>
         </div>
