@@ -35,11 +35,11 @@ class Db
         $dotenv = Dotenv::createImmutable(dirname(__DIR__, 2));
         $dotenv->load();
 
-        /** .env dosyasından verileri oku */
-        $this->host = $_ENV['DB_HOST'];
-        $this->db_name = $_ENV['DB_NAME'];
-        $this->username = $_ENV['DB_USER'];
-        $this->password = $_ENV['DB_PASS'];
+        /** .env dosyasından verileri oku (Önce $_ENV, sonra getenv() kontrol et) */
+        $this->host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?? 'localhost';
+        $this->db_name = $_ENV['DB_NAME'] ?? getenv('DB_NAME') ?? '';
+        $this->username = $_ENV['DB_USER'] ?? getenv('DB_USER') ?? '';
+        $this->password = $_ENV['DB_PASS'] ?? getenv('DB_PASS') ?? '';
 
 
         $this->getConnection();
