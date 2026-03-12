@@ -5,10 +5,8 @@ on:
     branches: [ "master", "main" ]
   pull_request:
     branches: [ "master", "main" ]
-
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   test-and-deploy:
     name: Test ve Otomatik Yukle
@@ -41,7 +39,7 @@ jobs:
         coverage: none
 
     - name: Önbelleklenmis Composer Paketlerini Getir
-      uses: actions/cache@v4
+      uses: actions/cache@v3
       with:
         path: vendor
         key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
@@ -49,11 +47,11 @@ jobs:
     - name: Node.js Ortamini Kur
       uses: actions/setup-node@v4
       with:
-        node-version: 24
+        node-version: 20
 
     - name: Playwright Tarayicilarini Cache'den Getir
       id: playwright-cache
-      uses: actions/cache@v4
+      uses: actions/cache@v3
       with:
         path: ~/.cache/ms-playwright
         key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
@@ -73,38 +71,9 @@ jobs:
         touch .env
         echo "APP_ENV=testing" >> .env
         echo "DB_HOST=127.0.0.1" >> .env
-        echo "DB_NAME=ersan_personel" >> .env
+        echo "DB_NAME=ersan_elk_test" >> .env
         echo "DB_USER=root" >> .env
         echo "DB_PASS=root" >> .env
-
-    - name: Veritabanı Şemasını Yükle
-      run: |
-        # Foreign key kontrollerini geçici olarak kapat ve tüm tabloları yükle
-        echo "SET FOREIGN_KEY_CHECKS=0;" > init.sql
-        
-        # 1. Ana tablo tanımlarını yükle (database/*.sql)
-        for f in database/*.sql; do
-          if [ -f "$f" ]; then
-            cat "$f" >> init.sql
-            echo "" >> init.sql
-          fi
-        done
-        
-        # 2. View ve diğer alt klasörlerdeki sql'leri yükle
-        find views -name "*.sql" -exec cat {} + >> init.sql
-        
-        # 3. Migrations klasöründeki sql'leri ekle
-        if [ -d database/migrations ]; then
-          for f in database/migrations/*.sql; do
-            cat "$f" >> init.sql
-            echo "" >> init.sql
-          done
-        fi
-        
-        echo "SET FOREIGN_KEY_CHECKS=1;" >> init.sql
-        
-        # Hepsini tek seferde çalıştır (Hataları yoksayarak devam et - kullanıcı talebi)
-        mysql -f -h 127.0.0.1 -u root -proot ersan_elk_test < init.sql || true
 
     # --- TESTLER (Hizli Gecme Mantigi Eklenebilir) ---
     - name: Backend Testlerini Kos (Pest)
@@ -117,8 +86,6 @@ jobs:
         PLAYWRIGHT_BASE_URL: "http://localhost:8000"
       run: |
         php -S localhost:8000 -t ./ &
-        # Sunucunun ayağa kalkmasını bekle
-        timeout 60s bash -c 'until curl -s localhost:8000 > /dev/null; do sleep 1; done'
         npx playwright test tests/e2e/e2e.spec.ts --project=chromium --reporter=list
 
     # --- DEPLOY (AYNI MAKINA ICINDE) ---
