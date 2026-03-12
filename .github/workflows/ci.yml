@@ -79,13 +79,32 @@ jobs:
 
     - name: Veritabanı Şemasını Yükle
       run: |
-        if [ -f database/migrations/create_manuel_giderler.sql ]; then
-          mysql -h 127.0.0.1 -u root -proot ersan_elk_test < database/migrations/create_manuel_giderler.sql
-        fi
-        # Diğer kritik şemaları da ekleyebiliriz. Şimdilik sadece klasörü kontrol edelim.
-        for f in database/migrations/*.sql; do
-          mysql -h 127.0.0.1 -u root -proot ersan_elk_test < "$f"
+        # Foreign key kontrollerini geçici olarak kapat ve tüm tabloları yükle
+        echo "SET FOREIGN_KEY_CHECKS=0;" > init.sql
+        
+        # 1. Ana tablo tanımlarını yükle (database/*.sql)
+        for f in database/*.sql; do
+          if [ -f "$f" ]; then
+            cat "$f" >> init.sql
+            echo "" >> init.sql
+          fi
         done
+        
+        # 2. View ve diğer alt klasörlerdeki sql'leri yükle
+        find views -name "*.sql" -exec cat {} + >> init.sql
+        
+        # 3. Migrations klasöründeki sql'leri ekle
+        if [ -d database/migrations ]; then
+          for f in database/migrations/*.sql; do
+            cat "$f" >> init.sql
+            echo "" >> init.sql
+          done
+        fi
+        
+        echo "SET FOREIGN_KEY_CHECKS=1;" >> init.sql
+        
+        # Hepsini tek seferde çalıştır
+        mysql -h 127.0.0.1 -u root -proot ersan_elk_test < init.sql
 
     # --- TESTLER (Hizli Gecme Mantigi Eklenebilir) ---
     - name: Backend Testlerini Kos (Pest)
