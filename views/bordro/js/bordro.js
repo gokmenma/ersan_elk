@@ -780,13 +780,11 @@ $(document).ready(function () {
     uploadExcelFile(formData, "Ödemeler Dağıtılıyor", "#odemeEkleModal");
   });
 
-  // Personel Resimi Zoomlatma
-  $(document).on("click", ".personel-img-zoom", function () {
-    const imgSrc = $(this).attr("src");
-    if (imgSrc) {
-      $("#enlargedPersonelImg").attr("src", imgSrc);
-      showModal("modalImageZoom");
-    }
+  // Personel Resimi Tooltip Preview
+  $(document).on("mouseenter", ".personel-img-zoom", function () {
+    $(this).siblings(".img-preview-tooltip").stop().fadeIn(200);
+  }).on("mouseleave", ".personel-img-zoom", function () {
+    $(this).siblings(".img-preview-tooltip").stop().fadeOut(150);
   });
 
   // Filtrelenmiş ID'leri al
