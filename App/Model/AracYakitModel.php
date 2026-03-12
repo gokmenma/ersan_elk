@@ -18,25 +18,31 @@ class AracYakitModel extends Model
     /**
      * Tüm yakıt kayıtlarını getirir
      */
-    public function all()
+    public function all($departman = null)
     {
-        $sql = $this->db->prepare("
+        $sql = "
             SELECT y.*, 
                    a.plaka, a.marka, a.model
             FROM {$this->table} y
             INNER JOIN araclar a ON y.arac_id = a.id
             WHERE y.firma_id = :firma_id
             AND y.silinme_tarihi IS NULL
-            ORDER BY y.tarih DESC, y.id DESC
-        ");
-        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        ";
+        $params = ['firma_id' => $_SESSION['firma_id']];
+        if ($departman) {
+            $sql .= " AND a.departmani = :departman";
+            $params['departman'] = $departman;
+        }
+        $sql .= " ORDER BY y.tarih DESC, y.id DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**
      * Araca göre yakıt kayıtları
      */
-    public function getByArac($aracId, $limit = null)
+    public function getByArac($aracId, $limit = null, $departman = null)
     {
         $sql = "
             SELECT y.*, 
@@ -49,22 +55,28 @@ class AracYakitModel extends Model
             ORDER BY y.tarih DESC, y.id DESC
         ";
 
+        $params = [
+            'arac_id' => $aracId,
+            'firma_id' => $_SESSION['firma_id']
+        ];
+        if ($departman) {
+            $sql .= " AND a.departmani = :departman";
+            $params['departman'] = $departman;
+        }
+
         if ($limit) {
             $sql .= " LIMIT " . intval($limit);
         }
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([
-            'arac_id' => $aracId,
-            'firma_id' => $_SESSION['firma_id']
-        ]);
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**
      * Tarih aralığına göre yakıt kayıtları
      */
-    public function getByDateRange($baslangic, $bitis, $aracId = null)
+    public function getByDateRange($baslangic, $bitis, $aracId = null, $departman = null)
     {
         $sql = "
             SELECT y.*, 
@@ -86,6 +98,10 @@ class AracYakitModel extends Model
             $sql .= " AND y.arac_id = :arac_id";
             $params['arac_id'] = $aracId;
         }
+        if ($departman) {
+            $sql .= " AND a.departmani = :departman";
+            $params['departman'] = $departman;
+        }
 
         $sql .= " ORDER BY y.tarih DESC, y.id DESC";
 
@@ -97,7 +113,7 @@ class AracYakitModel extends Model
     /**
      * Tarih aralığına göre özet (araç bazlı)
      */
-    public function getRangeOzet($baslangic, $bitis, $aracId = null)
+    public function getRangeOzet($baslangic, $bitis, $aracId = null, $departman = null)
     {
         $sql = "
             SELECT 
@@ -132,6 +148,10 @@ class AracYakitModel extends Model
             $sql .= " AND a.id = :arac_id";
             $params['arac_id'] = $aracId;
         }
+        if ($departman) {
+            $sql .= " AND a.departmani = :departman";
+            $params['departman'] = $departman;
+        }
 
         $sql .= " GROUP BY a.id, a.plaka, a.marka, a.model HAVING kayit_sayisi > 0 ORDER BY a.plaka";
 
@@ -143,7 +163,7 @@ class AracYakitModel extends Model
     /**
      * Aylık özet (araç bazlı)
      */
-    public function getAylikOzet($yil, $ay, $aracId = null)
+    public function getAylikOzet($yil, $ay, $aracId = null, $departman = null)
     {
         $sql = "
             SELECT 
@@ -179,6 +199,10 @@ class AracYakitModel extends Model
             $sql .= " AND a.id = :arac_id";
             $params['arac_id'] = $aracId;
         }
+        if ($departman) {
+            $sql .= " AND a.departmani = :departman";
+            $params['departman'] = $departman;
+        }
 
         $sql .= " GROUP BY a.id, a.plaka, a.marka, a.model ORDER BY a.plaka";
 
@@ -190,7 +214,7 @@ class AracYakitModel extends Model
     /**
      * Günlük özet (araç bazlı)
      */
-    public function getGunlukOzet($tarih, $aracId = null)
+    public function getGunlukOzet($tarih, $aracId = null, $departman = null)
     {
         $sql = "
             SELECT 
@@ -218,6 +242,10 @@ class AracYakitModel extends Model
             $sql .= " AND a.id = :arac_id";
             $params['arac_id'] = $aracId;
         }
+        if ($departman) {
+            $sql .= " AND a.departmani = :departman";
+            $params['departman'] = $departman;
+        }
 
         $sql .= " GROUP BY a.id, a.plaka, a.marka, a.model HAVING kayit_sayisi > 0 ORDER BY a.plaka";
 
@@ -229,17 +257,18 @@ class AracYakitModel extends Model
     /**
      * Genel istatistikler
      */
-    public function getStats($yil = null, $ay = null, $baslangic = null, $bitis = null, $aracId = null)
+    public function getStats($yil = null, $ay = null, $baslangic = null, $bitis = null, $aracId = null, $departman = null)
     {
         $sql = "
             SELECT 
                 COUNT(*) as toplam_kayit,
-                COALESCE(SUM(yakit_miktari), 0) as toplam_litre,
-                COALESCE(SUM(toplam_tutar), 0) as toplam_tutar,
-                COALESCE(AVG(birim_fiyat), 0) as ortalama_birim_fiyat
-            FROM {$this->table}
-            WHERE firma_id = :firma_id
-            AND silinme_tarihi IS NULL
+                COALESCE(SUM(y.yakit_miktari), 0) as toplam_litre,
+                COALESCE(SUM(y.toplam_tutar), 0) as toplam_tutar,
+                COALESCE(AVG(y.birim_fiyat), 0) as ortalama_birim_fiyat
+            FROM {$this->table} y
+            INNER JOIN araclar a ON y.arac_id = a.id
+            WHERE y.firma_id = :firma_id
+            AND y.silinme_tarihi IS NULL
         ";
 
         $params = ['firma_id' => $_SESSION['firma_id']];
@@ -255,14 +284,19 @@ class AracYakitModel extends Model
         }
 
         if ($baslangic && $bitis) {
-            $sql .= " AND tarih BETWEEN :baslangic AND :bitis";
+            $sql .= " AND y.tarih BETWEEN :baslangic AND :bitis";
             $params['baslangic'] = $baslangic;
             $params['bitis'] = $bitis;
         }
 
         if ($aracId) {
-            $sql .= " AND arac_id = :arac_id";
+            $sql .= " AND y.arac_id = :arac_id";
             $params['arac_id'] = $aracId;
+        }
+
+        if ($departman) {
+            $sql .= " AND a.departmani = :departman";
+            $params['departman'] = $departman;
         }
 
         $stmt = $this->db->prepare($sql);

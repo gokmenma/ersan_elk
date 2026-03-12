@@ -570,4 +570,22 @@ class AracModel extends Model
         $sql->execute(['firma_id' => $_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
+
+    /**
+     * Benzersiz departman listesini getirir
+     */
+    public function getDepartmanlar()
+    {
+        $sql = $this->db->prepare("
+            SELECT DISTINCT departmani 
+            FROM {$this->table} 
+            WHERE firma_id = :firma_id 
+            AND departmani IS NOT NULL 
+            AND departmani != '' 
+            AND silinme_tarihi IS NULL 
+            ORDER BY departmani ASC
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_COLUMN);
+    }
 }

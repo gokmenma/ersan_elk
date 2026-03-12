@@ -17,12 +17,12 @@ class EndeksOkumaModel extends Model
     public function getSummaryByRange($startDate, $endDate)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT t.personel_id, t.ekip_kodu_id, t.tarih, SUM(t.okunan_abone_sayisi) as toplam 
+        $sql = "SELECT t.personel_id, t.ekip_kodu_id, def.tur_adi as ekip_kodu, t.tarih, SUM(t.okunan_abone_sayisi) as toplam 
                 FROM $this->table t
                 LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
                 WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
                 AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'
-                GROUP BY t.personel_id, t.ekip_kodu_id, t.tarih";
+                GROUP BY t.personel_id, t.ekip_kodu_id, def.tur_adi, t.tarih";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $startDate, $endDate]);
@@ -30,7 +30,8 @@ class EndeksOkumaModel extends Model
 
         $summary = [];
         foreach ($results as $row) {
-            $summary[$row->personel_id][$row->ekip_kodu_id][$row->tarih] = $row->toplam;
+            $key = $row->ekip_kodu_id . '|' . $row->ekip_kodu;
+            $summary[$row->personel_id][$key][$row->tarih] = $row->toplam;
         }
         return $summary;
     }

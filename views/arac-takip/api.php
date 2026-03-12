@@ -16,7 +16,7 @@ use App\Helper\Date;
 
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar']))) {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar', 'get-arac-analiz']))) {
     $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
     $Arac = new AracModel();
@@ -422,6 +422,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
             case 'yakit-listesi':
 
                 $arac_id = isset($_POST['arac_id']) && $_POST['arac_id'] !== '' ? intval($_POST['arac_id']) : null;
+                $departman = isset($_POST['departman']) && $_POST['departman'] !== '' ? $_POST['departman'] : null;
                 $baslangic = null;
                 if (!empty($_POST['baslangic'])) {
                     $d = DateTime::createFromFormat('d.m.Y', $_POST['baslangic']);
@@ -442,11 +443,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     if (!$bitis)
                         $bitis = date('Y-m-t');
 
-                    $kayitlar = $Yakit->getByDateRange($baslangic, $bitis, $arac_id);
-                    $stats = $Yakit->getStats(null, null, $baslangic, $bitis, $arac_id);
+                    $kayitlar = $Yakit->getByDateRange($baslangic, $bitis, $arac_id, $departman);
+                    $stats = $Yakit->getStats(null, null, $baslangic, $bitis, $arac_id, $departman);
                 } elseif ($arac_id) {
-                    $kayitlar = $Yakit->getByArac($arac_id);
-                    $stats = $Yakit->getStats(null, null, null, null, $arac_id);
+                    $kayitlar = $Yakit->getByArac($arac_id, null, $departman);
+                    $stats = $Yakit->getStats(null, null, null, null, $arac_id, $departman);
+                } elseif ($departman) {
+                    $kayitlar = $Yakit->all($departman);
+                    $stats = $Yakit->getStats(date('Y'), date('m'), null, null, null, $departman); // Varsayılan aylık
                 } else {
                     $kayitlar = $Yakit->all();
                     $stats = $Yakit->getStats(date('Y'), date('m')); // Varsayılan aylık
@@ -578,6 +582,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
             case 'km-listesi':
                 $arac_id = isset($_POST['arac_id']) && $_POST['arac_id'] !== '' ? intval($_POST['arac_id']) : null;
+                $departman = isset($_POST['departman']) && $_POST['departman'] !== '' ? $_POST['departman'] : null;
                 $baslangic = null;
                 if (!empty($_POST['baslangic'])) {
                     $d = DateTime::createFromFormat('d.m.Y', $_POST['baslangic']);
@@ -598,11 +603,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     if (!$bitis)
                         $bitis = date('Y-m-t');
 
-                    $kayitlar = $Km->getByDateRange($baslangic, $bitis, $arac_id);
-                    $stats = $Km->getStats(null, null, $baslangic, $bitis, $arac_id);
+                    $kayitlar = $Km->getByDateRange($baslangic, $bitis, $arac_id, $departman);
+                    $stats = $Km->getStats(null, null, $baslangic, $bitis, $arac_id, $departman);
                 } elseif ($arac_id) {
-                    $kayitlar = $Km->getByArac($arac_id);
-                    $stats = $Km->getStats(null, null, null, null, $arac_id);
+                    $kayitlar = $Km->getByArac($arac_id, null, $departman);
+                    $stats = $Km->getStats(null, null, null, null, $arac_id, $departman);
+                } elseif ($departman) {
+                    $kayitlar = $Km->all($departman);
+                    $stats = $Km->getStats(date('Y'), date('m'), null, null, null, $departman); // Varsayılan aylık
                 } else {
                     $kayitlar = $Km->all();
                     $stats = $Km->getStats(date('Y'), date('m')); // Varsayılan aylık
@@ -2455,6 +2463,50 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     'bitis' => $bitis
                 ]);
                 break;
+
+            case 'get-arac-analiz':
+                $arac_id = intval($_GET['arac_id'] ?? 0);
+                $baslangic = $_GET['baslangic'] ?? date('Y-m-01');
+                $bitis = $_GET['bitis'] ?? date('Y-m-t');
+
+                if ($arac_id <= 0) throw new Exception("Araç seçimi zorunludur.");
+
+                // Seçilen dönem verileri
+                $yakitData = $Yakit->getByDateRange($baslangic, $bitis, $arac_id);
+                $kmData = $Km->getByDateRange($baslangic, $bitis, $arac_id);
+                $servisData = $Servis->getByDateRange($baslangic, $bitis, $arac_id);
+
+                // Bir önceki dönem (Kıyaslama için)
+                $diff = (strtotime($bitis) - strtotime($baslangic)) + 86400;
+                $prev_baslangic = date('Y-m-d', strtotime($baslangic) - $diff);
+                $prev_bitis = date('Y-m-d', strtotime($baslangic) - 86400);
+
+                $prevYakit = $Yakit->getStats(null, null, $prev_baslangic, $prev_bitis, $arac_id);
+                $prevKm = $Km->getStats(null, null, $prev_baslangic, $prev_bitis, $arac_id);
+
+                $currentYakitVal = array_sum(array_column($yakitData, 'yakit_miktari'));
+                $currentKmVal = array_sum(array_column($kmData, 'yapilan_km'));
+
+                echo json_encode([
+                    'status' => 'success',
+                    'current' => [
+                        'yakit' => floatval($currentYakitVal),
+                        'km' => floatval($currentKmVal),
+                        'yakit_maliyet' => floatval(array_sum(array_column($yakitData, 'toplam_tutar'))),
+                        'servis_maliyet' => floatval(array_sum(array_column($servisData, 'tutar'))),
+                        'servis_sayisi' => count($servisData)
+                    ],
+                    'prev' => [
+                        'yakit' => floatval($prevYakit ? $prevYakit->toplam_litre : 0),
+                        'km' => floatval($prevKm ? $prevKm->toplam_km : 0)
+                    ],
+                    'charts' => [
+                        'yakit' => $yakitData,
+                        'km' => $kmData
+                    ]
+                ]);
+                break;
+
 
             default:
                 throw new Exception("Geçersiz işlem.");

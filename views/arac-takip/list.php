@@ -17,8 +17,8 @@ $Yakit = new AracYakitModel();
 $Km = new AracKmModel();
 $Personel = new PersonelModel();
 $Servis = new AracServisModel();
-
 $personeller = $Personel->all(false, 'arac');
+$departmanlar = $Arac->getDepartmanlar();
 $aracStats = $Arac->getStats();
 $evrakStats = $Arac->getAracEvrakStats(30);
 $zimmetStats = $Zimmet->getStats();
@@ -725,6 +725,15 @@ if ($filter === 'muayene') {
 
 
                                         </div>
+                                        <div class="col-xl-2 col-md-4">
+                                            <?php
+                                            $departmanOptions = ['' => 'Tüm Departmanlar'];
+                                            foreach ($departmanlar as $departman) {
+                                                $departmanOptions[$departman] = $departman;
+                                            }
+                                            echo App\Helper\Form::FormSelect2('yakit-filtre-departman', $departmanOptions, '', 'Departman', 'codepen', 'key', '', 'form-select select2');
+                                            ?>
+                                        </div>
                                         <div class="col-xl-2 col-md-12 d-flex align-items-center gap-2">
                                             <button type="button" class="btn btn-primary w-100" id="btnYakitFiltrele">
                                                 <i class="bx bx-filter-alt me-1"></i> Filtrele
@@ -870,6 +879,15 @@ if ($filter === 'muayene') {
 
 
 
+                                        </div>
+                                        <div class="col-xl-2 col-md-4">
+                                            <?php
+                                            $departmanOptions = ['' => 'Tüm Departmanlar'];
+                                            foreach ($departmanlar as $departman) {
+                                                $departmanOptions[$departman] = $departman;
+                                            }
+                                            echo App\Helper\Form::FormSelect2('km-filtre-departman', $departmanOptions, '', 'Departman', 'codepen', 'key', '', 'form-select select2');
+                                            ?>
                                         </div>
                                         <div class="col-xl-2 col-md-12 d-flex align-items-center gap-2">
                                             <button type="button" class="btn btn-primary w-100" id="btnKmFiltrele">

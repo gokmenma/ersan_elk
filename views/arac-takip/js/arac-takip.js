@@ -693,8 +693,7 @@ const AracTakip = {
       }
     });
   },
-
-  yakitListesiYukle: function (aracId = null, baslangic = null, bitis = null) {
+  yakitListesiYukle: function (aracId = null, baslangic = null, bitis = null, departman = null) {
     const self = this;
     if ($.fn.DataTable.isDataTable("#yakitTable")) {
       $("#yakitTable").DataTable().clear().destroy();
@@ -706,6 +705,7 @@ const AracTakip = {
     if (aracId) data.arac_id = aracId;
     if (baslangic) data.baslangic = baslangic;
     if (bitis) data.bitis = bitis;
+    if (departman) data.departman = departman;
 
     $.post(this.apiUrl, data, function (response) {
       if (response.status === "success") {
@@ -845,7 +845,7 @@ const AracTakip = {
     });
   },
 
-  kmListesiYukle: function (aracId = null, baslangic = null, bitis = null) {
+  kmListesiYukle: function (aracId = null, baslangic = null, bitis = null, departman = null) {
     const self = this;
     if ($.fn.DataTable.isDataTable("#kmTable")) {
       $("#kmTable").DataTable().clear().destroy();
@@ -857,6 +857,7 @@ const AracTakip = {
     if (aracId) data.arac_id = aracId;
     if (baslangic) data.baslangic = baslangic;
     if (bitis) data.bitis = bitis;
+    if (departman) data.departman = departman;
 
     $.post(this.apiUrl, data, function (response) {
       if (response.status === "success") {
@@ -2154,12 +2155,14 @@ $(document).ready(function () {
         $("#yakit-filtre-arac").val(),
         dateRange.baslangic,
         dateRange.bitis,
+        $("#yakit-filtre-departman").val()
       );
     } else if (type === "km") {
       AracTakip.kmListesiYukle(
         $("#km-filtre-arac").val(),
         dateRange.baslangic,
         dateRange.bitis,
+        $("#km-filtre-departman").val()
       );
     } else if (type === "servis") {
       AracTakip.servisListesiYukle(

@@ -930,6 +930,7 @@ $(document).ready(function () {
   $(document).on("change", ".update-sodexo", function () {
     const input = $(this);
     const id = input.data("id");
+    const toplam_alacak = parseFloat(input.data("toplam_alacak")) || 0;
     const net = parseFloat(input.data("net")) || 0;
     const banka = parseFloat(input.data("banka")) || 0;
     const diger = parseFloat(input.data("diger")) || 0;
@@ -946,12 +947,12 @@ $(document).ready(function () {
     const elden = Math.max(0, net - banka - sodexo - icra - diger);
 
     // Üst sınır kontrolü (%25)
-    const maxSodexo = net * 0.25;
+    const maxSodexo = toplam_alacak * 0.20;
     if (sodexo > maxSodexo) {
       Swal.fire({
         icon: "warning",
         title: "Üst Sınır Uyarısı",
-        text: `Sodexo tutarı toplam alacağın %25'ini (${formatMoney(maxSodexo)} ₺) geçemez!`,
+        text: `Sodexo tutarı toplam alacağın %20'ini (${formatMoney(maxSodexo)} ₺) geçemez!`,
       });
       // Değeri geri al
       span.text(formatMoney(oldSodexo) + " ₺");

@@ -1191,6 +1191,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $net = floatval($data->net_maas ?? 0);
+                $toplam_alacak = $net + $icra;
 
                 // İcra kesintisini JSON'dan al
                 $icra = 0;
@@ -1203,9 +1204,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 // Üst sınır kontrolü (%25)
-                $maxSodexo = $net * 0.25;
+                $maxSodexo = $toplam_alacak * 0.15;
                 if ($sodexo > $maxSodexo + 0.01) { // Küçük kuruş farklarını tolore etmek için
-                    throw new Exception('Sodexo tutarı toplam alacağın %25\'ini geçemez!');
+                    throw new Exception('Sodexo tutarı toplam alacağın %15\'ini geçemez!');
                 }
 
                 $elden = max(0, $net - $banka - $sodexo - $icra - $diger);
@@ -1230,7 +1231,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $personel_id = intval($_POST['personel_id'] ?? 0);
                 $donem_id = intval($_POST['donem_id'] ?? 0);
                 $aciklama = trim($_POST['aciklama'] ?? '');
-                $tutar = floatval($_POST['tutar'] ?? 0);
+                $tutar = floatval($_POST['gelir_tutar'] ?? 0);
                 $tur = trim($_POST['ek_odeme_tur'] ?? 'diger');
                 $tarih = !empty($_POST['tarih']) ? $_POST['tarih'] : date('Y-m-d');
 
@@ -1288,7 +1289,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $personel_id = intval($_POST['personel_id'] ?? 0);
                 $donem_id = intval($_POST['donem_id'] ?? 0);
                 $aciklama = trim($_POST['aciklama'] ?? '');
-                $tutar = floatval($_POST['tutar'] ?? 0);
+                $tutar = floatval($_POST['kesinti_tutar'] ?? 0);
                 $tur = trim($_POST['kesinti_tur'] ?? 'diger');
                 $tarih = !empty($_POST['tarih']) ? $_POST['tarih'] : date('Y-m-d');
 
