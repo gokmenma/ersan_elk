@@ -185,6 +185,10 @@ if ($isSayacSokmeTakma) {
         <div class="flex flex-col gap-4 pb-6">
             <div>
                 <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Defter Seçin</label>
+                <div class="relative mb-2">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
+                    <input type="text" id="defter-filter" class="form-input text-sm pl-9" placeholder="Hızlı ara (Defter no veya mahalle)..." autocomplete="off">
+                </div>
                 <select id="search-defter" class="form-select text-sm">
                     <option value="">Yükleniyor...</option>
                 </select>
@@ -213,6 +217,7 @@ if ($isSayacSokmeTakma) {
     let puantajData = [];
     let endeksData = [];
     let workTypes = [];
+    let allDefters = []; // Filtreleme için tüm listeyi tutar
     
     // Last Update Dates
     var lastUpdateYapilanIsler = "<?php echo Helper::getLastUpdateDate('yapilan_isler'); ?>";
@@ -276,29 +281,56 @@ if ($isSayacSokmeTakma) {
                 end_date: end
             });
             if (response.success && response.data) {
-                const currentValue = select.value;
-                select.innerHTML = '<option value="">Defter Seçiniz</option>';
-                
-                if (response.data.length === 0) {
-                    select.innerHTML = '<option value="">Bu aralıkta okuma bulunamadı</option>';
-                    return;
-                }
-
-                response.data.forEach(defter => {
-                    const opt = document.createElement('option');
-                    opt.value = defter.id;
-                    opt.textContent = `${defter.bolge} - [${defter.kod}] ${defter.isim || ''}`;
-                    if (defter.id == currentValue) opt.selected = true;
-                    select.appendChild(opt);
-                });
+                allDefters = response.data;
+                renderDefterOptions(allDefters);
             } else {
                 select.innerHTML = '<option value="">Hata: Defter bulunamadı</option>';
             }
         } catch (error) {
-            console.error('Defter listesi yüklenemedi:', error);
-            select.innerHTML = '<option value="">Yükleme hatası</option>';
+            console.error('Liste hatası:', error);
+            select.innerHTML = '<option value="">Sistem hatası</option>';
         }
     }
+
+    function renderDefterOptions(data) {
+        const select = document.getElementById('search-defter');
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">Defter Seçiniz</option>';
+        
+        if (data.length === 0) {
+            select.innerHTML = '<option value="">Arama sonucu bulunamadı</option>';
+            return;
+        }
+
+        data.forEach(defter => {
+            const opt = document.createElement('option');
+            opt.value = defter.id;
+            opt.textContent = `${defter.bolge} - [${defter.kod}] ${defter.isim || ''}`;
+            if (defter.id == currentValue) opt.selected = true;
+            select.appendChild(opt);
+        });
+    }
+
+    // Defter Filtreleme Dinleyici
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterInput = document.getElementById('defter-filter');
+        if (filterInput) {
+            filterInput.addEventListener('input', function(e) {
+                const query = e.target.value.toLowerCase().trim();
+                if (!query) {
+                    renderDefterOptions(allDefters);
+                    return;
+                }
+
+                const filtered = allDefters.filter(d => 
+                    (d.bolge || '').toLowerCase().includes(query) || 
+                    (d.kod || '').toLowerCase().includes(query) || 
+                    (d.isim || '').toLowerCase().includes(query)
+                );
+                renderDefterOptions(filtered);
+            });
+        }
+    });
 
     // Modal açıldığında ve tarihler değiştiğinde listeyi güncelle
     document.getElementById('search-start-date').addEventListener('change', loadDefterList);
@@ -344,11 +376,42 @@ if ($isSayacSokmeTakma) {
                         </div>
                     `;
                 } else {
+                    // Toplam okuma sayısını ve durum özeti HTML'ini hazırla
+                    const totalPeriodCount = (data.status_summary || []).reduce((sum, s) => sum + parseInt(s.count), 0);
+                    const statusChartHtml = (data.status_summary || []).map(s => {
+                        const percent = ((parseInt(s.count) / totalPeriodCount) * 100).toFixed(1);
+                        // Status bazlı renk seçimi (Basit eşleştirme)
+                        let colorClass = "bg-slate-400";
+                        if (s.status.includes("NORMAL")) colorClass = "bg-green-500";
+                        else if (s.status.includes("ARIZA") || s.status.includes("BOZUK")) colorClass = "bg-red-500";
+                        else if (s.status.includes("YOK") || s.status.includes("KAPALI")) colorClass = "bg-amber-500";
+
+                        return `
+                            <div class="mb-2">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase truncate pr-2">${s.status}</span>
+                                    <span class="text-[10px] font-black text-slate-900 dark:text-white">${s.count} <span class="text-slate-400 font-normal">%${percent}</span></span>
+                                </div>
+                                <div class="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                    <div class="${colorClass} h-full rounded-full" style="width: ${percent}%"></div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
                     container.innerHTML = `
-                        <div class="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/30 rounded-xl mb-4 text-center">
-                            <p class="text-[11px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">Sorgu Aralığı</p>
-                            <p class="text-xs text-amber-800 dark:text-amber-200 mt-0.5">${formatDate(start)} - ${formatDate(end)}</p>
+                        <div class="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 rounded-2xl mb-5">
+                            <div class="flex flex-col items-center mb-4 pb-4 border-b border-slate-200 dark:border-slate-700/50">
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Sorgu Aralığı</p>
+                                <p class="text-xs font-bold text-slate-700 dark:text-slate-300 mt-1">${formatDate(start)} - ${formatDate(end)}</p>
+                            </div>
+                            
+                            <div class="flex flex-col">
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-3 text-center">Durum Dağılımı</p>
+                                ${statusChartHtml}
+                            </div>
                         </div>
+
                         <div class="flex flex-col gap-3">
                             ${data.breakdown.map(item => `
                                 <div class="card p-4 bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden active:scale-[0.98] transition-all cursor-pointer" onclick="showDefterDailyDetail('${item.tarih}', '${defterId}')">

@@ -2058,6 +2058,13 @@ try {
             $stmt->execute([$endDate, $startDate, $endDate, $startDate, $personel_id, $firmaId, $startDate, $endDate]);
             $defterler = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+            // Tanimlamalarda bulunmayan defterler için geçici ID (Composite key) oluştur
+            foreach ($defterler as &$d) {
+                if (empty($d['id'])) {
+                    $d['id'] = "COMP|" . $d['bolge'] . "|" . $d['kod'];
+                }
+            }
+
             response(true, $defterler);
             break;
 
@@ -2071,11 +2078,24 @@ try {
                 response(false, null, 'Lütfen tüm alanları doldurun.');
             }
 
-            // Defter bilgilerini al (Bölge ve Kod eşleşmesi için)
-            $TanimlamalarModel = new \App\Model\TanimlamalarModel();
-            $defterInfo = $TanimlamalarModel->find($defterId);
-            if (!$defterInfo) {
-                response(false, null, 'Defter bilgisi bulunamadı.');
+            $tur_adi = "";
+            $defter_bolge = "";
+            $defter_mahalle = "";
+
+            if (strpos($defterId, 'COMP|') === 0) {
+                $parts = explode('|', $defterId);
+                $defter_bolge = $parts[1] ?? '';
+                $tur_adi = $parts[2] ?? '';
+                $defter_mahalle = $tur_adi;
+            } else {
+                $TanimlamalarModel = new \App\Model\TanimlamalarModel();
+                $defterInfo = $TanimlamalarModel->find($defterId);
+                if (!$defterInfo) {
+                    response(false, null, 'Defter bilgisi bulunamadı.');
+                }
+                $tur_adi = $defterInfo->tur_adi;
+                $defter_bolge = $defterInfo->defter_bolge;
+                $defter_mahalle = $defterInfo->defter_mahalle ?: $defterInfo->tur_adi;
             }
 
             $db = (new \App\Model\Model('endeks_okuma'))->getDb();
@@ -2086,13 +2106,24 @@ try {
                     GROUP BY tarih
                     ORDER BY tarih DESC";
             $stmt = $db->prepare($sql);
-            $stmt->execute([$defterInfo->tur_adi, $defterInfo->defter_bolge, $startDate, $endDate, $firmaId]);
+            $stmt->execute([$tur_adi, $defter_bolge, $startDate, $endDate, $firmaId]);
             $breakdown = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+            // Tüm dönem için durum bazlı özet (Grafik için)
+            $sqlStatus = "SELECT sayac_durum as status, SUM(okunan_abone_sayisi) as count 
+                          FROM endeks_okuma 
+                          WHERE defter = ? AND bolge = ? AND tarih BETWEEN ? AND ? AND firma_id = ? AND silinme_tarihi IS NULL
+                          GROUP BY sayac_durum
+                          ORDER BY count DESC";
+            $stmtStatus = $db->prepare($sqlStatus);
+            $stmtStatus->execute([$tur_adi, $defter_bolge, $startDate, $endDate, $firmaId]);
+            $statusSummary = $stmtStatus->fetchAll(PDO::FETCH_ASSOC);
+
             response(true, [
-                'name' => $defterInfo->defter_mahalle ?: $defterInfo->tur_adi,
-                'code' => $defterInfo->tur_adi,
-                'breakdown' => $breakdown
+                'name' => $defter_mahalle,
+                'code' => $tur_adi,
+                'breakdown' => $breakdown,
+                'status_summary' => $statusSummary
             ]);
             break;
 
@@ -2105,14 +2136,27 @@ try {
                 response(false, null, 'Eksik parametre.');
             }
 
-            // Defter bilgilerini al
-            $TanimlamalarModel = new \App\Model\TanimlamalarModel();
-            $defterInfo = $TanimlamalarModel->find($defterId);
-            if (!$defterInfo) {
-                response(false, null, 'Defter bilgisi bulunamadı.');
+            $tur_adi = "";
+            $defter_bolge = "";
+            $defter_mahalle = "";
+
+            if (strpos($defterId, 'COMP|') === 0) {
+                $parts = explode('|', $defterId);
+                $defter_bolge = $parts[1] ?? '';
+                $tur_adi = $parts[2] ?? '';
+                $defter_mahalle = $tur_adi; // Composite ID'lerde mahalle adı kod ile aynı
+            } else {
+                $TanimlamalarModel = new \App\Model\TanimlamalarModel();
+                $defterInfo = $TanimlamalarModel->find($defterId);
+                if (!$defterInfo) {
+                    response(false, null, 'Defter bilgisi bulunamadı.');
+                }
+                $tur_adi = $defterInfo->tur_adi;
+                $defter_bolge = $defterInfo->defter_bolge;
+                $defter_mahalle = $defterInfo->defter_mahalle ?: $defterInfo->tur_adi;
             }
 
-            $db = $TanimlamalarModel->getDb();
+            $db = (new \App\Model\Model('endeks_okuma'))->getDb();
             
             // O günün okumalarını durum bazlı grupla
             $sql = "SELECT sayac_durum as status, SUM(okunan_abone_sayisi) as count 
@@ -2121,13 +2165,13 @@ try {
                     GROUP BY sayac_durum
                     ORDER BY count DESC";
             $stmt = $db->prepare($sql);
-            $stmt->execute([$defterInfo->tur_adi, $defterInfo->defter_bolge, $tarih, $firmaId]);
+            $stmt->execute([$tur_adi, $defter_bolge, $tarih, $firmaId]);
             $details = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             response(true, [
                 'tarih' => $tarih,
-                'defter_adi' => $defterInfo->defter_mahalle ?: $defterInfo->tur_adi,
-                'defter_kodu' => $defterInfo->tur_adi,
+                'defter_adi' => $defter_mahalle,
+                'defter_kodu' => $tur_adi,
                 'details' => $details
             ]);
             break;
