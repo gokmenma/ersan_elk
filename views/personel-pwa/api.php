@@ -2011,6 +2011,127 @@ try {
             response(true, $results);
             break;
 
+        case 'getDefterList':
+            $TanimlamalarModel = new \App\Model\TanimlamalarModel();
+            $firmaId = $_SESSION['firma_id'] ?? 0;
+            $startDate = $_POST['start_date'] ?? '';
+            $endDate = $_POST['end_date'] ?? '';
+            $db = $TanimlamalarModel->getDb();
+
+            // Personelin okuma yaptığı defter+bölge çiftlerini getir
+            // Sorgulama tarih aralığına göre endeks_okuma filtrelenir
+            // tanimlamalar'dan isim alırken, o tarih aralığında geçerli olan tanım kullanılır
+            $sql = "SELECT e.defter as kod, e.bolge,
+                        (SELECT tt.defter_mahalle 
+                         FROM tanimlamalar tt 
+                         WHERE tt.tur_adi = e.defter 
+                         AND tt.defter_bolge = e.bolge 
+                         AND tt.firma_id = e.firma_id 
+                         AND tt.grup = 'defter_kodu' 
+                         AND tt.silinme_tarihi IS NULL 
+                         AND (tt.baslangic_tarihi IS NULL OR tt.baslangic_tarihi <= ?)
+                         AND (tt.bitis_tarihi IS NULL OR tt.bitis_tarihi >= ?)
+                         LIMIT 1) as isim,
+                        (SELECT tt.id 
+                         FROM tanimlamalar tt 
+                         WHERE tt.tur_adi = e.defter 
+                         AND tt.defter_bolge = e.bolge 
+                         AND tt.firma_id = e.firma_id 
+                         AND tt.grup = 'defter_kodu' 
+                         AND tt.silinme_tarihi IS NULL 
+                         AND (tt.baslangic_tarihi IS NULL OR tt.baslangic_tarihi <= ?)
+                         AND (tt.bitis_tarihi IS NULL OR tt.bitis_tarihi >= ?)
+                         LIMIT 1) as id
+                    FROM (
+                        SELECT bolge, defter, firma_id 
+                        FROM endeks_okuma 
+                        WHERE personel_id = ? 
+                        AND firma_id = ?
+                        AND silinme_tarihi IS NULL 
+                        AND okunan_abone_sayisi > 0
+                        AND tarih BETWEEN ? AND ?
+                        GROUP BY bolge, defter
+                    ) e
+                    ORDER BY e.bolge ASC, CAST(e.defter AS UNSIGNED) ASC";
+            
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$endDate, $startDate, $endDate, $startDate, $personel_id, $firmaId, $startDate, $endDate]);
+            $defterler = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            response(true, $defterler);
+            break;
+
+        case 'getDefterSorgu':
+            $defterId = $_POST['defter_id'] ?? '';
+            $startDate = $_POST['start_date'] ?? '';
+            $endDate = $_POST['end_date'] ?? '';
+            $firmaId = $_SESSION['firma_id'] ?? 0;
+
+            if (empty($defterId) || empty($startDate) || empty($endDate)) {
+                response(false, null, 'Lütfen tüm alanları doldurun.');
+            }
+
+            // Defter bilgilerini al (Bölge ve Kod eşleşmesi için)
+            $TanimlamalarModel = new \App\Model\TanimlamalarModel();
+            $defterInfo = $TanimlamalarModel->find($defterId);
+            if (!$defterInfo) {
+                response(false, null, 'Defter bilgisi bulunamadı.');
+            }
+
+            $db = (new \App\Model\Model('endeks_okuma'))->getDb();
+            
+            // Günlere göre gruplanmış sonuçlar
+            $sql = "SELECT tarih, SUM(okunan_abone_sayisi) as count FROM endeks_okuma 
+                    WHERE defter = ? AND bolge = ? AND tarih BETWEEN ? AND ? AND firma_id = ? AND silinme_tarihi IS NULL
+                    GROUP BY tarih
+                    ORDER BY tarih DESC";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$defterInfo->tur_adi, $defterInfo->defter_bolge, $startDate, $endDate, $firmaId]);
+            $breakdown = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            response(true, [
+                'name' => $defterInfo->defter_mahalle ?: $defterInfo->tur_adi,
+                'code' => $defterInfo->tur_adi,
+                'breakdown' => $breakdown
+            ]);
+            break;
+
+        case 'getDefterDailyDetail':
+            $defterId = $_POST['defter_id'] ?? '';
+            $tarih = $_POST['tarih'] ?? '';
+            $firmaId = $_SESSION['firma_id'] ?? 0;
+
+            if (empty($defterId) || empty($tarih)) {
+                response(false, null, 'Eksik parametre.');
+            }
+
+            // Defter bilgilerini al
+            $TanimlamalarModel = new \App\Model\TanimlamalarModel();
+            $defterInfo = $TanimlamalarModel->find($defterId);
+            if (!$defterInfo) {
+                response(false, null, 'Defter bilgisi bulunamadı.');
+            }
+
+            $db = $TanimlamalarModel->getDb();
+            
+            // O günün okumalarını durum bazlı grupla
+            $sql = "SELECT sayac_durum as status, SUM(okunan_abone_sayisi) as count 
+                    FROM endeks_okuma 
+                    WHERE defter = ? AND bolge = ? AND tarih = ? AND firma_id = ? AND silinme_tarihi IS NULL
+                    GROUP BY sayac_durum
+                    ORDER BY count DESC";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$defterInfo->tur_adi, $defterInfo->defter_bolge, $tarih, $firmaId]);
+            $details = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            response(true, [
+                'tarih' => $tarih,
+                'defter_adi' => $defterInfo->defter_mahalle ?: $defterInfo->tur_adi,
+                'defter_kodu' => $defterInfo->tur_adi,
+                'details' => $details
+            ]);
+            break;
+
         case 'getRecentActivities':
             $PersonelModel = new PersonelModel();
             $db = $PersonelModel->getDb();

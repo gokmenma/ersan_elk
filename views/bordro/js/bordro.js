@@ -780,6 +780,15 @@ $(document).ready(function () {
     uploadExcelFile(formData, "Ödemeler Dağıtılıyor", "#odemeEkleModal");
   });
 
+  // Personel Resimi Zoomlatma
+  $(document).on("click", ".personel-img-zoom", function () {
+    const imgSrc = $(this).attr("src");
+    if (imgSrc) {
+      $("#enlargedPersonelImg").attr("src", imgSrc);
+      showModal("modalImageZoom");
+    }
+  });
+
   // Filtrelenmiş ID'leri al
   function getFilteredIds() {
     const table = $("#bordroTable").DataTable();

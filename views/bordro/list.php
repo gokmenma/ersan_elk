@@ -894,7 +894,7 @@ if (!empty($dbGelirler)) {
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
-                                                                alt="" class="rounded-circle avatar-sm me-2">
+                                                                alt="" class="rounded-circle avatar-sm me-2 personel-img-zoom cursor-pointer">
                                                             <div>
                                                                 <div class="fw-medium">
                                                                     <a target="_blank"
@@ -1648,6 +1648,17 @@ if (!empty($dbGelirler)) {
                         <button type="submit" class="btn btn-primary"><i class="bx bx-save me-1"></i>Güncelle</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+    <!-- Personel Resim Zoom Modal -->
+    <div class="modal fade" id="modalImageZoom" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content bg-transparent border-0 shadow-none">
+                <div class="modal-body p-0 text-center position-relative">
+                    <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close" style="z-index: 1060;"></button>
+                    <img id="enlargedPersonelImg" src="" alt="" class="img-fluid rounded shadow-lg" style="max-height: 85vh; border: 4px solid white;">
+                </div>
             </div>
         </div>
     </div>

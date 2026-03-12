@@ -39,12 +39,16 @@ class EndeksOkumaModel extends Model
     public function getFiltered($startDate, $endDate, $personelId = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT t.*, p.adi_soyadi as personel_adi, def.ekip_bolge 
+        $sql = "SELECT t.*, p.adi_soyadi as personel_adi, def.ekip_bolge,
+                       tm.defter_mahalle as defter_adi
                 FROM $this->table t 
                 LEFT JOIN personel p ON t.personel_id = p.id 
                 LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
-                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL
-                AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'";
+                LEFT JOIN tanimlamalar tm ON t.defter = tm.tur_adi 
+                    AND tm.grup = 'defter_kodu' 
+                    AND t.bolge = tm.defter_bolge 
+                    AND tm.firma_id = t.firma_id
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL";
         $params = [$firmaId];
 
         if ($startDate) {

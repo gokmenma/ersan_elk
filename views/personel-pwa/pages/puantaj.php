@@ -79,6 +79,22 @@ if ($isSayacSokmeTakma) {
     <!-- Filter Section -->
     <section class="px-4 mt-6">
         <div class="flex flex-col gap-3">
+            <!-- Defter Sorgulama Toggle (Yellow Area) -->
+            <?php if ($isEndeksOkuma): ?>
+            <div id="defter-sorgu-toggle" class="hidden mb-1">
+                <button onclick="toggleDefterSearch()" 
+                    class="w-full py-2.5 px-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl flex items-center justify-between group active:scale-[0.98] transition-all">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-800 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-amber-600 text-[20px]">search</span>
+                        </div>
+                        <span class="text-sm font-bold text-amber-800 dark:text-amber-200">Deftere Göre Okuma Sayısı Sorgula</span>
+                    </div>
+                    <span class="material-symbols-outlined text-amber-400 group-hover:translate-x-1 transition-transform">chevron_right</span>
+                </button>
+            </div>
+            <?php endif; ?>
+
             <div class="flex items-center gap-2">
                 <div class="flex-1">
                     <label class="text-xs text-slate-500 mb-1 block">Başlangıç</label>
@@ -150,6 +166,47 @@ if ($isSayacSokmeTakma) {
     </div>
 </div>
 
+<!-- Defter Search Modal -->
+<div id="defter-search-modal" class="modal-overlay">
+    <div class="modal-content p-6 pt-3">
+        <div class="modal-handle"></div>
+
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-amber-600 text-2xl">search</span>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Deftere Göre Sorgula</h3>
+            </div>
+            <button onclick="Modal.close('defter-search-modal')"
+                class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <span class="material-symbols-outlined text-slate-600">close</span>
+            </button>
+        </div>
+
+        <div class="flex flex-col gap-4 pb-6">
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Defter Seçin</label>
+                <select id="search-defter" class="form-select text-sm">
+                    <option value="">Yükleniyor...</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Başlangıç</label>
+                    <input type="date" id="search-start-date" class="form-input" value="<?php echo date('Y-m-01'); ?>">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Bitiş</label>
+                    <input type="date" id="search-end-date" class="form-input" value="<?php echo date('Y-m-d'); ?>">
+                </div>
+            </div>
+            <button onclick="performDefterSearch()" class="btn btn-primary w-full py-3 mt-2 flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined">analytics</span>
+                <span>Sorgula</span>
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
     let currentTab = '<?php echo $defaultTab; ?>';
     const isSayacTakibi = <?php echo $isSayacSokmeTakma ? 'true' : 'false'; ?>;
@@ -184,6 +241,7 @@ if ($isSayacSokmeTakma) {
         if (tab === 'kesme' || tab === 'sokme_takma') {
             kesmeFilters.classList.remove('hidden');
             kesmeFilters.classList.add('grid');
+            if (document.getElementById('defter-sorgu-toggle')) document.getElementById('defter-sorgu-toggle').classList.add('hidden');
             document.getElementById('list-title').textContent = tab === 'sokme_takma' ? 'Sayaç Değişimleri' : 'Kesme-Açma İşleri';
             document.getElementById('label-toplam').textContent = 'Toplam İş';
             document.getElementById('label-sonuclanan').textContent = 'Sonuçlanan';
@@ -191,6 +249,7 @@ if ($isSayacSokmeTakma) {
         } else {
             kesmeFilters.classList.add('hidden');
             kesmeFilters.classList.remove('grid');
+            if (document.getElementById('defter-sorgu-toggle')) document.getElementById('defter-sorgu-toggle').classList.remove('hidden');
             document.getElementById('list-title').textContent = 'Okuma Listesi';
             document.getElementById('label-toplam').textContent = 'Toplam Okunan';
             document.getElementById('label-sonuclanan').textContent = '-';
@@ -198,6 +257,198 @@ if ($isSayacSokmeTakma) {
         }
 
         loadData();
+    }
+
+    // --- Defter Sorgu Fonksiyonları ---
+    async function toggleDefterSearch() {
+        Modal.open('defter-search-modal');
+        loadDefterList();
+    }
+
+    async function loadDefterList() {
+        const select = document.getElementById('search-defter');
+        const start = document.getElementById('search-start-date').value;
+        const end = document.getElementById('search-end-date').value;
+
+        try {
+            const response = await API.request('getDefterList', {
+                start_date: start,
+                end_date: end
+            });
+            if (response.success && response.data) {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Defter Seçiniz</option>';
+                
+                if (response.data.length === 0) {
+                    select.innerHTML = '<option value="">Bu aralıkta okuma bulunamadı</option>';
+                    return;
+                }
+
+                response.data.forEach(defter => {
+                    const opt = document.createElement('option');
+                    opt.value = defter.id;
+                    opt.textContent = `${defter.bolge} - [${defter.kod}] ${defter.isim || ''}`;
+                    if (defter.id == currentValue) opt.selected = true;
+                    select.appendChild(opt);
+                });
+            } else {
+                select.innerHTML = '<option value="">Hata: Defter bulunamadı</option>';
+            }
+        } catch (error) {
+            console.error('Defter listesi yüklenemedi:', error);
+            select.innerHTML = '<option value="">Yükleme hatası</option>';
+        }
+    }
+
+    // Modal açıldığında ve tarihler değiştiğinde listeyi güncelle
+    document.getElementById('search-start-date').addEventListener('change', loadDefterList);
+    document.getElementById('search-end-date').addEventListener('change', loadDefterList);
+
+    async function performDefterSearch() {
+        const defterId = document.getElementById('search-defter').value;
+        const start = document.getElementById('search-start-date').value;
+        const end = document.getElementById('search-end-date').value;
+
+        if (!defterId || !start || !end) {
+            Alert.show({
+                icon: 'warning',
+                title: 'Eksik Bilgi',
+                content: 'Lütfen defter ve tarih aralığını seçiniz.'
+            });
+            return;
+        }
+
+        Loading.show();
+        try {
+            const response = await API.request('getDefterSorgu', {
+                defter_id: defterId,
+                start_date: start,
+                end_date: end
+            });
+
+            Loading.hide();
+            if (response.success) {
+                Modal.close('defter-search-modal');
+                
+                const data = response.data;
+                const container = document.getElementById('puantaj-detail-content');
+                const modalHeader = document.querySelector('#puantaj-detail-modal h3');
+
+                modalHeader.textContent = `[${data.code}] ${data.name}`;
+
+                if (data.breakdown.length === 0) {
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center justify-center py-12 text-slate-400">
+                            <span class="material-symbols-outlined text-5xl mb-3">search_off</span>
+                            <p class="text-sm">Bu tarih aralığında okuma bulunamadı.</p>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <div class="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/30 rounded-xl mb-4 text-center">
+                            <p class="text-[11px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">Sorgu Aralığı</p>
+                            <p class="text-xs text-amber-800 dark:text-amber-200 mt-0.5">${formatDate(start)} - ${formatDate(end)}</p>
+                        </div>
+                        <div class="flex flex-col gap-3">
+                            ${data.breakdown.map(item => `
+                                <div class="card p-4 bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden active:scale-[0.98] transition-all cursor-pointer" onclick="showDefterDailyDetail('${item.tarih}', '${defterId}')">
+                                     <div class="absolute inset-0 pointer-events-none select-none z-0 opacity-[0.2] flex items-center justify-center">
+                                        <span class="text-[5rem] font-black leading-none tracking-tighter text-slate-100 dark:text-slate-800/50">
+                                            ${new Date(item.tarih).getDate()}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-3 relative z-10">
+                                        <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary/10">
+                                            <span class="material-symbols-outlined text-xl text-primary">calendar_today</span>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <h5 class="font-bold text-slate-900 dark:text-white text-[13px] truncate uppercase tracking-tight">${formatDate(item.tarih)}</h5>
+                                            <p class="text-[12px] text-slate-500 mt-0.5 truncate">${new Date(item.tarih).toLocaleDateString('tr-TR', { weekday: 'long' })}</p>
+                                        </div>
+                                        <div class="flex flex-col items-end">
+                                            <span class="text-2xl font-bold text-slate-900 dark:text-white">${item.count}</span>
+                                            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">OKUMA</span>
+                                        </div>
+                                        <div class="ms-2">
+                                             <span class="material-symbols-outlined text-slate-300 text-lg">chevron_right</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                Modal.open('puantaj-detail-modal');
+            } else {
+                Alert.show({
+                    icon: 'error',
+                    title: 'Hata',
+                    content: response.message || 'Sorgu yapılamadı.'
+                });
+            }
+        } catch (error) {
+            Loading.hide();
+            console.error('Sorgu hatası:', error);
+            Alert.show({
+                icon: 'error',
+                title: 'Hata',
+                content: 'Bir sistem hatası oluştu.'
+            });
+        }
+    }
+
+    async function showDefterDailyDetail(tarih, defterId) {
+        Loading.show();
+        try {
+            const response = await API.request('getDefterDailyDetail', {
+                defter_id: defterId,
+                tarih: tarih
+            });
+
+            Loading.hide();
+            if (response.success && response.data) {
+                const data = response.data;
+                const total = data.details.reduce((sum, item) => sum + parseInt(item.count), 0);
+
+                Alert.show({
+                    title: `${formatDate(tarih)} Okuma Detayı`,
+                    content: `
+                        <div class="text-left py-2">
+                            <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl mb-4 border border-slate-100 dark:border-slate-700">
+                                <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Defter</p>
+                                <p class="font-bold text-slate-900 dark:text-white">[${data.defter_kodu}] ${data.defter_adi}</p>
+                            </div>
+                            
+                            <div class="flex flex-col gap-2">
+                                ${data.details.map(item => `
+                                    <div class="flex items-center justify-between p-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl">
+                                        <div class="flex-1">
+                                            <p class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tight">${item.status || 'BELİRTİLMEMİŞ'}</p>
+                                        </div>
+                                        <div class="flex items-baseline gap-1">
+                                            <span class="text-lg font-black text-primary">${item.count}</span>
+                                            <span class="text-[9px] text-slate-400 font-bold">OKUMA</span>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                                
+                                <div class="mt-2 p-3 bg-primary/5 rounded-xl border border-primary/10 flex items-center justify-between">
+                                    <span class="text-xs font-bold text-primary uppercase">Günlük Toplam</span>
+                                    <span class="text-lg font-black text-primary">${total}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `,
+                    showConfirmButton: true,
+                    confirmButtonText: 'Kapat'
+                });
+            }
+        } catch (error) {
+            Loading.hide();
+            console.error('Detay hatası:', error);
+            Alert.show({ icon: 'error', title: 'Hata', content: 'Detaylar yüklenemedi.' });
+        }
     }
 
     async function loadData() {
@@ -559,20 +810,42 @@ if ($isSayacSokmeTakma) {
 
         modalHeader.textContent = formatDate(date) + ' Endeks Okuma';
 
+        // Hem deftere hem de duruma göre grupla
+        const groups = items.reduce((acc, item) => {
+            const defterKod = item.defter || '-';
+            const status = item.sayac_durum || 'BELİRTİLMEMİŞ';
+            const defterAdi = item.defter_adi || defterKod;
+            const key = `${defterKod}|${status}`;
+            
+            if (!acc[key]) {
+                acc[key] = {
+                    defterKod: defterKod,
+                    defterAdi: defterAdi,
+                    status: status,
+                    count: 0
+                };
+            }
+            acc[key].count += (parseInt(item.okunan_abone_sayisi) || 0);
+            return acc;
+        }, {});
+
+        const sortedGroups = Object.values(groups).sort((a, b) => a.defterKod.localeCompare(b.defterKod));
+
         container.innerHTML = `
             <div class="flex flex-col gap-3 pt-2">
-                ${items.map(item => `
-                    <div class="card p-4 bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 shadow-sm">
-                        <div class="flex items-center gap-3">
+                ${sortedGroups.map(group => `
+                    <div class="card p-4 bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                        <div class="flex items-center gap-3 relative z-10">
                             <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary/10">
                                 <span class="material-symbols-outlined text-xl text-primary">visibility</span>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <h5 class="font-bold text-slate-900 dark:text-white text-[13px] truncate uppercase tracking-tight">${item.bolge || item.ekip_bolge || 'BÖLGE YOK'}</h5>
-                                <p class="text-[12px] text-slate-500 mt-0.5 truncate">Okunan</p>
+                                <h5 class="font-bold text-slate-900 dark:text-white text-[13px] truncate uppercase tracking-tight">${group.status}</h5>
+                                <p class="text-[12px] text-slate-500 mt-0.5 truncate">${group.defterKod} - ${group.defterAdi}</p>
                             </div>
                             <div class="flex flex-col items-end">
-                                <span class="text-2xl font-bold text-slate-900 dark:text-white">${item.okunan_abone_sayisi}</span>
+                                <span class="text-2xl font-bold text-slate-900 dark:text-white">${group.count}</span>
+                                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">OKUMA</span>
                             </div>
                         </div>
                     </div>
