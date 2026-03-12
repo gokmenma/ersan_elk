@@ -1182,7 +1182,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 // Net maaşı al
-                $sql = $BordroPersonel->getDb()->prepare("SELECT net_maas FROM bordro_personel WHERE id = ?");
+                $sql = $BordroPersonel->getDb()->prepare("SELECT net_maas, kesinti_tutar FROM bordro_personel WHERE id = ?");
                 $sql->execute([$id]);
                 $data = $sql->fetch(PDO::FETCH_OBJ);
 
@@ -1191,7 +1191,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $net = floatval($data->net_maas ?? 0);
-                $toplam_alacak = $net + $icra;
+                $kesinti_tutar = floatval($data->kesinti_tutar ?? 0);
+                $toplam_alacak = $net + $kesinti_tutar;
 
                 // İcra kesintisini JSON'dan al
                 $icra = 0;
@@ -1203,10 +1204,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $icra = floatval($detayJson['odeme_dagilimi']['icra_kesintisi'] ?? 0);
                 }
 
-                // Üst sınır kontrolü (%25)
-                $maxSodexo = $toplam_alacak * 0.15;
+                // Üst sınır kontrolü (%20)
+                $maxSodexo = $toplam_alacak * 0.20;
                 if ($sodexo > $maxSodexo + 0.01) { // Küçük kuruş farklarını tolore etmek için
-                    throw new Exception('Sodexo tutarı toplam alacağın %15\'ini geçemez!');
+                    throw new Exception('Sodexo tutarı toplam alacağın %20\'ini geçemez!');
                 }
 
                 $elden = max(0, $net - $banka - $sodexo - $icra - $diger);

@@ -38,7 +38,7 @@ jobs:
         coverage: none
 
     - name: Önbelleklenmis Composer Paketlerini Getir
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: vendor
         key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
@@ -46,11 +46,11 @@ jobs:
     - name: Node.js Ortamini Kur
       uses: actions/setup-node@v4
       with:
-        node-version: 20
+        node-version: 24
 
     - name: Playwright Tarayicilarini Cache'den Getir
       id: playwright-cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/ms-playwright
         key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
@@ -74,6 +74,16 @@ jobs:
         echo "DB_USER=root" >> .env
         echo "DB_PASS=root" >> .env
 
+    - name: Veritabanı Şemasını Yükle
+      run: |
+        if [ -f database/migrations/create_manuel_giderler.sql ]; then
+          mysql -h 127.0.0.1 -u root -proot ersan_elk_test < database/migrations/create_manuel_giderler.sql
+        fi
+        # Diğer kritik şemaları da ekleyebiliriz. Şimdilik sadece klasörü kontrol edelim.
+        for f in database/migrations/*.sql; do
+          mysql -h 127.0.0.1 -u root -proot ersan_elk_test < "$f"
+        done
+
     # --- TESTLER (Hizli Gecme Mantigi Eklenebilir) ---
     - name: Backend Testlerini Kos (Pest)
       run: vendor/bin/pest
@@ -85,6 +95,8 @@ jobs:
         PLAYWRIGHT_BASE_URL: "http://localhost:8000"
       run: |
         php -S localhost:8000 -t ./ &
+        # Sunucunun ayağa kalkmasını bekle
+        timeout 60s bash -c 'until curl -s localhost:8000 > /dev/null; do sleep 1; done'
         npx playwright test tests/e2e/e2e.spec.ts --project=chromium --reporter=list
 
     # --- DEPLOY (AYNI MAKINA ICINDE) ---

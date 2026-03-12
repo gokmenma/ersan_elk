@@ -854,6 +854,9 @@ $(document).ready(function () {
     $("#sodexo_odemesi").val(sodexo);
     $("#diger_odeme").val(diger);
 
+    // Toplam alacak değerini sakla (Sodexo limit kontrolü için)
+    $("#formOdemeDagit").data("toplam_alacak", $(this).data("toplam_alacak"));
+
     hesaplaEldenOdeme();
     showModal("odemeDagitModal");
   });
@@ -944,9 +947,7 @@ $(document).ready(function () {
     val = val.replace("₺", "").replace(/\./g, "").replace(",", ".");
     const sodexo = parseFloat(val) || 0;
 
-    const elden = Math.max(0, net - banka - sodexo - icra - diger);
-
-    // Üst sınır kontrolü (%25)
+    // Üst sınır kontrolü (%20)
     const maxSodexo = toplam_alacak * 0.20;
     if (sodexo > maxSodexo) {
       Swal.fire({
@@ -960,6 +961,7 @@ $(document).ready(function () {
       return;
     }
 
+    const elden = Math.max(0, net - banka - sodexo - icra - diger);
     const diff = sodexo - oldSodexo;
 
     $.ajax({
@@ -1500,7 +1502,7 @@ function updateButtonStates() {
   const table = $("#bordroTable").DataTable();
   const selectedCount = table.$(".personel-check:checked").length;
   // Maaş hesapla butonu her zaman aktif kalsın (seçim yoksa hepsini hesaplar)
-  // Sadece export butonu seçim varsa aktif olsun (veya o da hepsi için çalışabilir ama mevcut yapıyı koruyalım)
+  // Sadece export butonu seçim varsa aktif olsun (o da hepsi için çalışabilir ama mevcut yapıyı koruyalım)
   $("#btnExportExcel").prop("disabled", selectedCount === 0);
 }
 
@@ -1568,6 +1570,28 @@ function hesaplaEldenOdeme() {
   const banka = parseFloat($("#banka_odemesi").val()) || 0;
   const sodexo = parseFloat($("#sodexo_odemesi").val()) || 0;
   const diger = parseFloat($("#diger_odeme").val()) || 0;
+  const toplam_alacak =
+    parseFloat($("#formOdemeDagit").data("toplam_alacak")) || 0;
+
+  // Sodexo limit kontrolü (%20)
+  const maxSodexo = toplam_alacak * 0.20;
+  if (sodexo > maxSodexo + 0.01) {
+    $("#sodexo_odemesi").addClass("is-invalid");
+    if (!$("#sodexo_limit_warning").length) {
+      $("#sodexo_odemesi").after(
+        `<div id="sodexo_limit_warning" class="text-danger small mt-1">Sodexo limiti: ${formatMoney(
+          maxSodexo
+        )} ₺ (%20)</div>`
+      );
+    } else {
+      $("#sodexo_limit_warning").text(
+        `Sodexo limiti: ${formatMoney(maxSodexo)} ₺ (%20)`
+      );
+    }
+  } else {
+    $("#sodexo_odemesi").removeClass("is-invalid");
+    $("#sodexo_limit_warning").remove();
+  }
 
   const elden = net - banka - sodexo - diger - icra;
   $("#elden_odeme_goster").text(formatMoney(elden >= 0 ? elden : 0) + " ₺");
