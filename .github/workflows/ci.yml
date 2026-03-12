@@ -74,7 +74,29 @@ jobs:
         echo "DB_NAME=ersan_personel" >> .env
         echo "DB_USER=root" >> .env
         echo "DB_PASS=root" >> .env
-
+ 
+    - name: Veritabanı Şemasını Yükle
+      run: |
+        # Veritabanı tablolarını oluştur (Eğer projenizde bir ana schema.sql varsa onu da buraya eklemeliyiz)
+        # Mevcut tüm SQL dosyalarını yüklemeye çalışalım
+        for f in database/*.sql; do
+          if [ -f "$f" ]; then
+            echo "Yükleniyor: $f"
+            mysql -h 127.0.0.1 -u root -proot ersan_personel < "$f"
+          fi
+        done
+        for f in database/migrations/*.sql; do
+          if [ -f "$f" ]; then
+            echo "Yükleniyor: $f"
+            mysql -h 127.0.0.1 -u root -proot ersan_personel < "$f"
+          fi
+        done
+        for f in sql/*.sql; do
+          if [ -f "$f" ]; then
+            echo "Yükleniyor: $f"
+            mysql -h 127.0.0.1 -u root -proot ersan_personel < "$f"
+          fi
+        done
     # --- TESTLER (Hizli Gecme Mantigi Eklenebilir) ---
     - name: Backend Testlerini Kos (Pest)
       run: vendor/bin/pest
