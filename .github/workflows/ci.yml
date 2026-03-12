@@ -103,8 +103,8 @@ jobs:
         
         echo "SET FOREIGN_KEY_CHECKS=1;" >> init.sql
         
-        # Hepsini tek seferde çalıştır
-        mysql -h 127.0.0.1 -u root -proot ersan_elk_test < init.sql
+        # Hepsini tek seferde çalıştır (Hataları yoksayarak devam et - kullanıcı talebi)
+        mysql -f -h 127.0.0.1 -u root -proot ersan_elk_test < init.sql || true
 
     # --- TESTLER (Hizli Gecme Mantigi Eklenebilir) ---
     - name: Backend Testlerini Kos (Pest)
