@@ -77,26 +77,24 @@ jobs:
  
     - name: Veritabanı Şemasını Yükle
       run: |
-        # Veritabanı tablolarını oluştur (Eğer projenizde bir ana schema.sql varsa onu da buraya eklemeliyiz)
-        # Mevcut tüm SQL dosyalarını yüklemeye çalışalım
-        for f in database/*.sql; do
-          if [ -f "$f" ]; then
-            echo "Yükleniyor: $f"
-            mysql -h 127.0.0.1 -u root -proot ersan_personel < "$f"
-          fi
-        done
-        for f in database/migrations/*.sql; do
-          if [ -f "$f" ]; then
-            echo "Yükleniyor: $f"
-            mysql -h 127.0.0.1 -u root -proot ersan_personel < "$f"
-          fi
-        done
-        for f in sql/*.sql; do
-          if [ -f "$f" ]; then
-            echo "Yükleniyor: $f"
-            mysql -h 127.0.0.1 -u root -proot ersan_personel < "$f"
-          fi
-        done
+        # Ana şemayı yükle (Localdan yeni aldığımız export)
+        if [ -f "database/schema.sql" ]; then
+          echo "Ana şema yükleniyor..."
+          (echo "SET FOREIGN_KEY_CHECKS=0;"; cat "database/schema.sql") | mysql -h 127.0.0.1 -u root -proot ersan_personel
+        fi
+        
+        # Ek olarak yeni migrationları veya SQL dosyalarını yükle (Üzerine yazma veya eksikleri tamamlama)
+        load_sql() {
+          for f in $1; do
+            if [ -f "$f" ] && [ "$f" != "database/schema.sql" ]; then
+              echo "Yükleniyor: $f"
+              (echo "SET FOREIGN_KEY_CHECKS=0;"; cat "$f") | mysql -h 127.0.0.1 -u root -proot ersan_personel
+            fi
+          done
+        }
+        
+        load_sql "database/migrations/*.sql"
+        load_sql "sql/*.sql"
     # --- TESTLER (Hizli Gecme Mantigi Eklenebilir) ---
     - name: Backend Testlerini Kos (Pest)
       run: vendor/bin/pest
