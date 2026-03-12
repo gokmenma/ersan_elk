@@ -80,7 +80,7 @@ jobs:
         # Ana şemayı yükle (Localdan yeni aldığımız export)
         if [ -f "database/schema.sql" ]; then
           echo "Ana şema yükleniyor..."
-          (echo "SET FOREIGN_KEY_CHECKS=0;"; cat "database/schema.sql") | mysql -h 127.0.0.1 -u root -proot ersan_personel
+          (echo "SET FOREIGN_KEY_CHECKS=0;"; cat "database/schema.sql") | mysql -h 127.0.0.1 -u root -proot --binary-mode=1 ersan_personel
         fi
         
         # Ek olarak yeni migrationları veya SQL dosyalarını yükle (Üzerine yazma veya eksikleri tamamlama)
@@ -88,7 +88,7 @@ jobs:
           for f in $1; do
             if [ -f "$f" ] && [ "$f" != "database/schema.sql" ]; then
               echo "Yükleniyor: $f"
-              (echo "SET FOREIGN_KEY_CHECKS=0;"; cat "$f") | mysql -h 127.0.0.1 -u root -proot ersan_personel
+              (echo "SET FOREIGN_KEY_CHECKS=0;"; cat "$f") | mysql -h 127.0.0.1 -u root -proot --binary-mode=1 ersan_personel
             fi
           done
         }
