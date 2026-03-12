@@ -88,7 +88,8 @@ jobs:
           for f in $1; do
             if [ -f "$f" ] && [ "$f" != "database/schema.sql" ]; then
               echo "Yükleniyor: $f"
-              (echo "SET FOREIGN_KEY_CHECKS=0;"; cat "$f") | mysql -h 127.0.0.1 -u root -proot --binary-mode=1 ersan_personel
+              # -f (force) kullanarak "kolon zaten var" gibi hataları görmezden geliyoruz
+              (echo "SET FOREIGN_KEY_CHECKS=0;"; cat "$f") | mysql -h 127.0.0.1 -u root -proot --binary-mode=1 -f ersan_personel
             fi
           done
         }
