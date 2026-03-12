@@ -73,7 +73,7 @@ jobs:
         touch .env
         echo "APP_ENV=testing" >> .env
         echo "DB_HOST=127.0.0.1" >> .env
-        echo "DB_NAME=ersan_elk_test" >> .env
+        echo "DB_NAME=ersan_personel" >> .env
         echo "DB_USER=root" >> .env
         echo "DB_PASS=root" >> .env
 
