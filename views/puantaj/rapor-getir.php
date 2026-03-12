@@ -435,40 +435,24 @@ if (true) { // Always use unified logic for all standard tabs
         ];
     }
 
-    // Build final tableData from grouped regions
-    foreach ($regions as $rName) {
-        if (!empty($regionGrouped[$rName])) {
-            $teams = $regionGrouped[$rName];
-            usort($teams, function ($a, $b) {
-                $teamA = $a['team']->tur_adi ?? '';
-                $teamB = $b['team']->tur_adi ?? '';
-                preg_match('/(?:EK[İI\?]?P-?\s?)(\d+)/ui', $teamA, $matchA);
-                $numA = isset($matchA[1]) ? (int) $matchA[1] : 999999;
-
-                preg_match('/(?:EK[İI\?]?P-?\s?)(\d+)/ui', $teamB, $matchB);
-                $numB = isset($matchB[1]) ? (int) $matchB[1] : 999999;
-
-                if ($numA !== $numB) {
-                    return $numA - $numB;
-                }
-
-                $cmp = strcoll((string) $teamA, (string) $teamB);
-                if ($cmp !== 0) {
-                    return $cmp;
-                }
-
-                return strcoll((string) ($a['personel']->adi_soyadi ?? ''), (string) ($b['personel']->adi_soyadi ?? ''));
-            });
-            $tableData[] = [
-                'region' => $rName,
-                'teams' => $teams
-            ];
-            unset($regionGrouped[$rName]);
+    // Build final tableData from grouped regions, sorted by minimum team number in each region
+    $regionMinTeams = [];
+    foreach ($regionGrouped as $rName => $teams) {
+        $minNum = 999999;
+        foreach ($teams as $tData) {
+            $teamName = $tData['team']->tur_adi ?? '';
+            preg_match('/(?:EK[İI\?]?P-?\s?)(\d+)/ui', $teamName, $match);
+            $num = isset($match[1]) ? (int) $match[1] : 999999;
+            if ($num < $minNum) $minNum = $num;
         }
+        $regionMinTeams[$rName] = $minNum;
     }
 
-    // Remaining (Tanımsızlar)
-    foreach ($regionGrouped as $rName => $teams) {
+    // Sort regions by their minimum team number
+    asort($regionMinTeams);
+
+    foreach ($regionMinTeams as $rName => $minNum) {
+        $teams = $regionGrouped[$rName];
         usort($teams, function ($a, $b) {
             $teamA = $a['team']->tur_adi ?? '';
             $teamB = $b['team']->tur_adi ?? '';

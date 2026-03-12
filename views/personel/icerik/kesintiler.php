@@ -193,12 +193,19 @@ foreach ($kesintiler as $k) {
                         if (typeof feather !== 'undefined') { feather.replace(); }
 
                         if (typeof flatpickr !== 'undefined') {
-                            flatpickr(".flatpickr", {
+                            // Filtre formundaki flatpickrlar için otomatik submit
+                            flatpickr("#formKesintiFilter .flatpickr", {
                                 locale: "tr",
                                 dateFormat: "d.m.Y",
                                 onChange: function () {
                                     $('#formKesintiFilter').submit();
                                 }
+                            });
+
+                            // Diğer flatpickrlar (modallar vb.) için normal başlatma
+                            flatpickr(".flatpickr:not(#formKesintiFilter .flatpickr)", {
+                                locale: "tr",
+                                dateFormat: "d.m.Y"
                             });
                         }
                     }, 200);
@@ -279,6 +286,7 @@ foreach ($kesintiler as $k) {
                                                         <th>Hesaplama</th>
                                                         <th>Tutar / Oran</th>
                                                         <th>Kayıt Yapan / Tarih</th>
+                                                        <th>Tarih</th>
                                                         <th>Dönem</th>
                                                         <th>Açıklama</th>
                                                         <th>Durum</th>
@@ -325,6 +333,11 @@ foreach ($kesintiler as $k) {
                                                                 </div>
                                                                 <div class="text-muted small">
                                                                     <?= !empty($k->created_at) ? date('d.m.Y H:i', strtotime($k->created_at)) : '-' ?>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <div class="fw-bold">
+                                                                    <?= !empty($k->tarih) ? date('d.m.Y', strtotime($k->tarih)) : '-' ?>
                                                                 </div>
                                                             </td>
                                                             <td>
@@ -403,6 +416,7 @@ foreach ($kesintiler as $k) {
                                 <th>Hesaplama</th>
                                 <th>Tutar / Oran</th>
                                 <th>Kayıt Yapan / Tarih</th>
+                                <th>Tarih</th>
                                 <th>Dönem</th>
                                 <th>Açıklama</th>
                                 <th>Durum</th>
@@ -449,6 +463,11 @@ foreach ($kesintiler as $k) {
                                         </div>
                                         <div class="text-muted small">
                                             <?= !empty($k->created_at) ? date('d.m.Y H:i', strtotime($k->created_at)) : '-' ?>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold">
+                                            <?= !empty($k->tarih) ? date('d.m.Y', strtotime($k->tarih)) : '-' ?>
                                         </div>
                                     </td>
                                     <td>

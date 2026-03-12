@@ -199,12 +199,19 @@ foreach ($ek_odemeler as $k) {
 
                         // Month Picker initialization - REMOVED
                         if (typeof flatpickr !== 'undefined') {
-                            flatpickr(".flatpickr", {
+                            // Filtre formundaki flatpickrlar için otomatik submit
+                            flatpickr("#formEkOdemeFilter .flatpickr", {
                                 locale: "tr",
                                 dateFormat: "d.m.Y",
                                 onChange: function () {
                                     $('#formEkOdemeFilter').submit();
                                 }
+                            });
+
+                            // Diğer flatpickrlar (modallar vb.) için normal başlatma
+                            flatpickr(".flatpickr:not(#formEkOdemeFilter .flatpickr)", {
+                                locale: "tr",
+                                dateFormat: "d.m.Y"
                             });
                         }
                     }, 200);
@@ -285,6 +292,7 @@ foreach ($ek_odemeler as $k) {
                                                         <th>Hesaplama</th>
                                                         <th>Tutar / Oran</th>
                                                         <th>Personel / Kayıt Tarihi</th>
+                                                        <th>Tarih</th>
                                                         <th>Dönem</th>
                                                         <th>Açıklama</th>
                                                         <th>Durum</th>
@@ -331,6 +339,11 @@ foreach ($ek_odemeler as $k) {
                                                                 </div>
                                                                 <div class="text-muted small">
                                                                     <?= !empty($k->created_at) ? date('d.m.Y H:i', strtotime($k->created_at)) : '-' ?>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <div class="fw-bold">
+                                                                    <?= !empty($k->tarih) ? date('d.m.Y', strtotime($k->tarih)) : '-' ?>
                                                                 </div>
                                                             </td>
                                                             <td>
@@ -397,6 +410,7 @@ foreach ($ek_odemeler as $k) {
                                 <th>Hesaplama</th>
                                 <th>Tutar / Oran</th>
                                 <th>Personel / Kayıt Tarihi</th>
+                                <th>Tarih</th>
                                 <th>Dönem</th>
                                 <th>Açıklama</th>
                                 <th>Durum</th>
@@ -443,6 +457,11 @@ foreach ($ek_odemeler as $k) {
                                         </div>
                                         <div class="text-muted small">
                                             <?= !empty($k->created_at) ? date('d.m.Y H:i', strtotime($k->created_at)) : '-' ?>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold">
+                                            <?= !empty($k->tarih) ? date('d.m.Y', strtotime($k->tarih)) : '-' ?>
                                         </div>
                                     </td>
                                     <td>
