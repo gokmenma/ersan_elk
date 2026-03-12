@@ -1856,7 +1856,7 @@ CREATE TABLE `personel_izinleri` (
   `silinme_tarihi` datetime DEFAULT NULL,
   `onay_durumu` varchar(50) DEFAULT 'Beklemede',
   `onaylayan_id` varchar(50) DEFAULT 'Beklemede',
-  `olusturma_tarihi` date DEFAULT current_timestamp(),
+  `olusturma_tarihi` datetime DEFAULT current_timestamp(),
   `silen_kullanici` int(11) DEFAULT NULL,
   `silinme_aciklama` text DEFAULT NULL,
   PRIMARY KEY (`id`),
