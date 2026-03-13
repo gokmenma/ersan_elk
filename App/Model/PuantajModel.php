@@ -315,15 +315,15 @@ class PuantajModel extends Model
             $params['search'] = $searchValue;
         }
 
-        // Sütun bazlı arama (yeni sıralama: Tarih, Ekip Kodu, Personel, İş Emri Tipi, İş Emri Sonucu, Sonuçlanmış, Açık Olanlar)
+        // Sütun bazlı arama (yeni sıralama: [0:Checkbox], 1:Tarih, 2:Ekip Kodu, 3:Personel, 4:İş Emri Tipi, 5:İş Emri Sonucu, 6:Sonuçlanmış, 7:Açık Olanlar)
         $colSearchMap = [
-            0 => 'DATE_FORMAT(t.tarih, "%d.%m.%Y")',
-            1 => 'ek.tur_adi',
-            2 => 'p.adi_soyadi',
-            3 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
-            4 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
-            5 => 't.sonuclanmis',
-            6 => 't.acik_olanlar'
+            1 => 'DATE_FORMAT(t.tarih, "%d.%m.%Y")',
+            2 => 'ek.tur_adi',
+            3 => 'p.adi_soyadi',
+            4 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
+            5 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
+            6 => 't.sonuclanmis',
+            7 => 't.acik_olanlar'
         ];
 
 
@@ -473,13 +473,13 @@ class PuantajModel extends Model
         $orderColumn = 't.tarih';
         $orderDir = 'DESC';
         $colMap = [
-            0 => 't.tarih',
-            1 => 'ek.tur_adi',
-            2 => 'p.adi_soyadi',
-            3 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
-            4 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
-            5 => 't.sonuclanmis',
-            6 => 't.acik_olanlar'
+            1 => 't.tarih',
+            2 => 'ek.tur_adi',
+            3 => 'p.adi_soyadi',
+            4 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
+            5 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
+            6 => 't.sonuclanmis',
+            7 => 't.acik_olanlar'
         ];
         if (isset($request['order'][0])) {
             $orderColIdx = $request['order'][0]['column'];

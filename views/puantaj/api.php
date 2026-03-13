@@ -1209,7 +1209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $memur = trim($veri['MEMUR'] ?? '');
             $sonuclandiranKullanici = trim($veri['SONUCLANDIRAN_KULLANICI'] ?? '');
             $bolge = trim($veri['BOLGE'] ?? '');
-            $kayitTarihiRaw = trim($veri['KAYIT_TARIHI'] ?? '');
+            $kayitTarihiRaw = trim($veri['SONUC_TARIHI'] ?? '');
             $isemriNo = trim($veri['ISEMRI_NO'] ?? '');
             $aboneNo = trim($veri['ABONE_NO'] ?? '');
             $isemriSonucu = trim($veri['ISEMRI_SONUCU'] ?? '');
@@ -3077,34 +3077,93 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $workType = $_GET['work_type'] ?? '';
     $workResult = $_GET['work_result'] ?? '';
 
-    // DataTables parameters
-    $draw = isset($_GET['draw']) ? (int)$_GET['draw'] : 0;
-    $start = isset($_GET['start']) ? (int)$_GET['start'] : 0;
-    $length = isset($_GET['length']) ? (int)$_GET['length'] : 10;
-
-    $totalRecords = $Puantaj->getFiltered($startDate, $endDate, $ekipKodu, $workType, $workResult, null, null, null, true);
-    $data = $Puantaj->getFiltered($startDate, $endDate, $ekipKodu, $workType, $workResult, null, $length, $start);
+    // Correctly call getDataTable which handles advanced filters
+    $response = $Puantaj->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $workType, $workResult);
     
-    $result = [];
-    foreach ($data as $row) {
-        $result[] = [
+    // Map data for display
+    $response['data'] = array_map(function($row) {
+        return [
             'id' => $row->id,
+            'checkbox' => '<div class="form-check"><input class="form-check-input row-check" type="checkbox" value="'.$row->id.'"></div>',
             'tarih' => \App\Helper\Date::dmY($row->tarih),
-            'ekip_kodu' => $row->ekip_kodu ?: ($row->ekip_kodu_tanim ?? '-'),
+            'ekip_kodu' => $row->ekip_kodu_adi ?: ($row->ekip_kodu ?: ($row->ekip_kodu_tanim ?? '-')),
             'personel_adi' => $row->personel_adi ?: 'Eşleşmedi',
             'is_emri_tipi' => $row->is_emri_tipi,
             'is_emri_sonucu' => $row->is_emri_sonucu,
             'sonuclanmis' => $row->sonuclanmis,
             'acik_olanlar' => $row->acik_olanlar
         ];
+    }, $response['data']);
+
+    echo json_encode($response);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'sorgu-sil-toplu') {
+    $ids = $_POST['ids'] ?? [];
+    if (empty($ids)) {
+        echo json_encode(['status' => 'error', 'message' => 'Silinecek kayıt bulunamadı.']);
+        exit;
+    }
+    
+    $Puantaj = new PuantajModel('yapilan_isler_sorgu');
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $Puantaj->db->prepare("UPDATE yapilan_isler_sorgu SET silinme_tarihi = NOW() WHERE id IN ($placeholders)");
+    $result = $stmt->execute($ids);
+    
+    echo json_encode(['status' => $result ? 'success' : 'error']);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'export-excel-sorgu') {
+    $Puantaj = new PuantajModel('yapilan_isler_sorgu');
+    $startDate = $_GET['start_date'] ?? date('Y-m-d');
+    $endDate = $_GET['end_date'] ?? date('Y-m-d');
+    $ekipKodu = $_GET['ekip_kodu'] ?? '';
+    $workType = $_GET['work_type'] ?? '';
+    $workResult = $_GET['work_result'] ?? '';
+
+    // Fetch all filtered records (length = -1)
+    $data = $Puantaj->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $workType, $workResult);
+    $records = $data['data'] ?? [];
+
+    $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setTitle('Puantaj Sorgu');
+
+    // Headers
+    $headers = ['Tarih', 'Ekip Kodu', 'Personel', 'İş Emri Tipi', 'İş Emri Sonucu', 'Sonuçlanmış', 'Açık Olanlar'];
+    $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+    foreach ($headers as $idx => $header) {
+        $sheet->setCellValue($cols[$idx] . '1', $header);
+    }
+    $sheet->getStyle('A1:G1')->getFont()->setBold(true);
+
+    // Data
+    $rowIdx = 2;
+    foreach ($records as $row) {
+        $sheet->setCellValue('A' . $rowIdx, \App\Helper\Date::dmY($row->tarih));
+        $sheet->setCellValue('B' . $rowIdx, $row->ekip_kodu_adi ?: ($row->ekip_kodu ?: '-'));
+        $sheet->setCellValue('C' . $rowIdx, $row->personel_adi ?: 'Eşleşmedi');
+        $sheet->setCellValue('D' . $rowIdx, $row->is_emri_tipi);
+        $sheet->setCellValue('E' . $rowIdx, $row->is_emri_sonucu);
+        $sheet->setCellValue('F' . $rowIdx, $row->sonuclanmis);
+        $sheet->setCellValue('G' . $rowIdx, $row->acik_olanlar);
+        $rowIdx++;
     }
 
-    echo json_encode([
-        'draw' => $draw,
-        'recordsTotal' => $totalRecords,
-        'recordsFiltered' => $totalRecords,
-        'data' => $result
-    ]);
+    // Auto size columns
+    foreach (range('A', 'G') as $colId) {
+        $sheet->getColumnDimension($colId)->setAutoSize(true);
+    }
+
+    $filename = 'Puantaj_Sorgu_Export_' . date('Ymd_His') . '.xlsx';
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment;filename="' . $filename . '"');
+    header('Cache-Control: max-age=0');
+
+    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+    $writer->save('php://output');
     exit;
 }
 

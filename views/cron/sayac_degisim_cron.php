@@ -289,12 +289,12 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
             }
 
             $kayitTarihi = null;
-            if (!empty($veri['KAYIT_TARIHI'])) {
-                $kDate = \DateTime::createFromFormat('d/m/Y H:i:s', $veri['KAYIT_TARIHI']);
+            if (!empty($veri['SONUC_TARIHI'])) {
+                $kDate = \DateTime::createFromFormat('d/m/Y H:i:s', $veri['SONUC_TARIHI']);
                 if ($kDate) {
                     $kayitTarihi = $kDate->format('Y-m-d H:i:s');
                 } else {
-                    $kayitTarihi = date('Y-m-d H:i:s', strtotime(str_replace('/', '-', $veri['KAYIT_TARIHI'])));
+                    $kayitTarihi = date('Y-m-d H:i:s', strtotime(str_replace('/', '-', $veri['SONUC_TARIHI'])));
                 }
             }
 

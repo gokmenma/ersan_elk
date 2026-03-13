@@ -109,7 +109,13 @@ foreach ($workResults as $wr) {
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h4 class="card-title">Sorgu Sonuçları (yapilan_isler_sorgu)</h4>
-                    <div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-danger btn-sm" id="btnBulkDelete" style="display: none;">
+                            <i class="mdi mdi-trash-can me-1"></i> Toplu Sil
+                        </button>
+                        <button type="button" class="btn btn-success btn-sm" id="btnExportSorguExcel">
+                            <i class="mdi mdi-file-excel me-1"></i> Excel'e Aktar
+                        </button>
                         <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#importOnlineSorguModal">
                             <i class="mdi mdi-cloud-search-outline me-1"></i> Online Sorgula
                         </button>
@@ -119,13 +125,18 @@ foreach ($workResults as $wr) {
                     <table id="sorguTable" class="table table-bordered dt-responsive nowrap w-100">
                         <thead>
                             <tr class="table-light">
-                                <th>Tarih</th>
-                                <th>Ekip Kodu</th>
-                                <th>Personel</th>
-                                <th>İş Emri Tipi</th>
-                                <th>İş Emri Sonucu</th>
-                                <th>Sonuçlanmış</th>
-                                <th>Açık Olanlar</th>
+                                <th style="width: 20px;">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="checkAll">
+                                    </div>
+                                </th>
+                                <th data-filter="date">Tarih</th>
+                                <th data-filter="string">Ekip Kodu</th>
+                                <th data-filter="string">Personel</th>
+                                <th data-filter="select">İş Emri Tipi</th>
+                                <th data-filter="select">İş Emri Sonucu</th>
+                                <th data-filter="number">Sonuçlanmış</th>
+                                <th data-filter="number">Açık Olanlar</th>
                                 <th>İşlem</th>
                             </tr>
                         </thead>
@@ -192,7 +203,7 @@ foreach ($workResults as $wr) {
 
 <script>
 $(document).ready(function() {
-    var table = $('#sorguTable').DataTable({
+    var table = $('#sorguTable').DataTable($.extend(true, {}, getDatatableOptions(), {
         processing: true,
         serverSide: true,
         ajax: {
@@ -204,9 +215,18 @@ $(document).ready(function() {
                 d.ekip_kodu = $('select[name="ekip_kodu"]').val();
                 d.work_type = $('select[name="work_type"]').val();
                 d.work_result = $('select[name="work_result"]').val();
+                
+                // Add advanced filter data from DataTables
+                $('#sorguTable thead tr.dt-filter-row input, #sorguTable thead tr.dt-filter-row select').each(function() {
+                    let colIdx = $(this).closest('th').index();
+                    if (this.value) {
+                        d.columns[colIdx].search.value = this.value;
+                    }
+                });
             }
         },
         columns: [
+            { data: 'checkbox', orderable: false, searchable: false },
             { data: 'tarih' },
             { data: 'ekip_kodu' },
             { data: 'personel_adi' },
@@ -218,11 +238,36 @@ $(document).ready(function() {
                 data: 'id',
                 render: function(data) {
                     return '<button class="btn btn-danger btn-sm delete-sorgu" data-id="' + data + '"><i class="bx bx-trash"></i></button>';
-                }
+                },
+                orderable: false
             }
         ],
-        language: { url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/tr.json' }
+        order: [[1, 'desc']] // History is column 1 now
+    }));
+
+    // Select all logic
+    $('#checkAll').on('click', function() {
+        $('.row-check').prop('checked', this.checked);
+        toggleBulkDeleteButton();
     });
+
+    $(document).on('change', '.row-check', function() {
+        if (!this.checked) $('#checkAll').prop('checked', false);
+        toggleBulkDeleteButton();
+    });
+
+    function toggleBulkDeleteButton() {
+        if ($('.row-check:checked').length > 0) {
+            $('#btnBulkDelete').fadeIn();
+        } else {
+            $('#btnBulkDelete').fadeOut();
+        }
+    }
+
+    // Trigger advanced filter initialization
+    if (typeof initAdvancedFilters === 'function') {
+        initAdvancedFilters(table, table.settings()[0]);
+    }
 
     $('#filterForm').on('submit', function(e) {
         e.preventDefault();
@@ -248,6 +293,57 @@ $(document).ready(function() {
             }
             $('#onlineSorguResult').html(html).show();
         }, 'json');
+    });
+
+    $('#btnBulkDelete').on('click', function() {
+        var ids = [];
+        $('.row-check:checked').each(function() {
+            ids.push($(this).val());
+        });
+
+        if (ids.length === 0) return;
+
+        Swal.fire({
+            title: ids.length + ' adet kaydı silmek istediğinize emin misiniz?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, sil',
+            cancelButtonText: 'İptal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post('views/puantaj/api.php', { action: 'sorgu-sil-toplu', ids: ids }, function(res) {
+                    if (res.status === 'success') {
+                        table.ajax.reload(null, false);
+                        $('#checkAll').prop('checked', false);
+                        toggleBulkDeleteButton();
+                        Swal.fire('Silindi!', '', 'success');
+                    } else {
+                        Swal.fire('Hata!', res.message || 'Silme işlemi başarısız.', 'error');
+                    }
+                }, 'json');
+            }
+        });
+    });
+
+    $('#btnExportSorguExcel').on('click', function() {
+        var params = $.param({
+            action: 'export-excel-sorgu',
+            start_date: $('input[name="start_date"]').val(),
+            end_date: $('input[name="end_date"]').val(),
+            ekip_kodu: $('select[name="ekip_kodu"]').val(),
+            work_type: $('select[name="work_type"]').val(),
+            work_result: $('select[name="work_result"]').val()
+        });
+        
+        // Add advanced filter data
+        $('#sorguTable thead tr.dt-filter-row input, #sorguTable thead tr.dt-filter-row select').each(function() {
+            let colIdx = $(this).closest('th').index();
+            if (this.value) {
+                params += '&columns[' + colIdx + '][search][value]=' + encodeURIComponent(this.value);
+            }
+        });
+
+        window.location.href = 'views/puantaj/api.php?' + params;
     });
 
     $(document).on('click', '.delete-sorgu', function() {
