@@ -483,17 +483,17 @@ class TanimlamalarModel extends Model
 
     public function isEmriSonucu($isEmriTipi, $isEmriSonucu)
     {
-        // Gelen verileri ve veritabanı değerlerini trim ile karşılaştır
+        // Gelen verileri ve veritabanı değerlerini normalize ederek karşılaştır
         $sql = "SELECT * FROM $this->table 
                         WHERE grup = 'is_turu' 
-                        AND TRIM(tur_adi) = :tur_adi 
-                        AND TRIM(is_emri_sonucu) = :is_emri_sonucu 
+                        AND TRIM(REPLACE(tur_adi, CHAR(160), ' ')) = :tur_adi 
+                        AND TRIM(REPLACE(is_emri_sonucu, CHAR(160), ' ')) = :is_emri_sonucu 
                         AND firma_id = :firma_id 
                         AND silinme_tarihi IS NULL";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
-            'tur_adi' => trim($isEmriTipi),
-            'is_emri_sonucu' => trim($isEmriSonucu),
+            'tur_adi' => \App\Helper\Helper::cleanString($isEmriTipi),
+            'is_emri_sonucu' => \App\Helper\Helper::cleanString($isEmriSonucu),
             'firma_id' => $_SESSION['firma_id']
         ]);
         return $stmt->fetch(PDO::FETCH_OBJ);

@@ -325,4 +325,18 @@ class Helper
         $text = preg_replace('/[\s-]+/', '-', $text);
         return strtolower(trim($text, '-'));
     }
+
+    /**
+     * Robust string normalization (Super Trim)
+     * Handles non-breaking spaces (NBSP), Unicode whitespace, and control characters.
+     * @param string $str
+     * @return string
+     */
+    public static function cleanString($str)
+    {
+        if ($str === null || $str === '') return '';
+        // Replace non-breaking spaces and all Unicode whitespace/control characters with a standard space
+        $str = preg_replace('/[\p{Z}\p{C}]+/u', ' ', $str);
+        return trim($str);
+    }
 }

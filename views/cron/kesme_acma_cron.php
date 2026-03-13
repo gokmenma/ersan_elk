@@ -304,9 +304,9 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         $insertBatch = [];
         $resultNamesInApi = [];
         foreach ($apiData as $veri) {
-            $isEmriTipi = trim($veri['ISEMRITIPI'] ?? '');
-            $ekipKoduStr = trim($veri['EKIP'] ?? '');
-            $isEmriSonucu = trim($veri['SONUC'] ?? '');
+            $isEmriTipi = \App\Helper\Helper::cleanString($veri['ISEMRITIPI'] ?? '');
+            $ekipKoduStr = \App\Helper\Helper::cleanString($veri['EKIP'] ?? '');
+            $isEmriSonucu = \App\Helper\Helper::cleanString($veri['SONUC'] ?? '');
 
             // Sayaç değişim işlemlerini geç (yeni cron'a alındı)
             $isEmriTipiUpper = mb_strtoupper($isEmriTipi, 'UTF-8');

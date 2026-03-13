@@ -103,12 +103,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $excelRowNum = $i + 1; // Excel satır numarası (1-indexed)
 
             // Extract data using map
-            $firma = isset($colMap['firma']) ? trim($row[$colMap['firma']]) : '';
-            $isEmriTipi = isset($colMap['is_emri_tipi']) ? trim($row[$colMap['is_emri_tipi']]) : '';
-            $ekip = isset($colMap['ekip']) ? trim($row[$colMap['ekip']]) : '';
-            $isEmriSonucu = isset($colMap['is_emri_sonucu']) ? trim($row[$colMap['is_emri_sonucu']]) : '';
-            $sonuclanmis = isset($colMap['sonuclanmis']) ? (int) trim($row[$colMap['sonuclanmis']]) : 0;
-            $acikOlanlar = isset($colMap['acik_olanlar']) ? (int) trim($row[$colMap['acik_olanlar']]) : 0;
+            $firma = isset($colMap['firma']) ? \App\Helper\Helper::cleanString($row[$colMap['firma']]) : '';
+            $isEmriTipi = isset($colMap['is_emri_tipi']) ? \App\Helper\Helper::cleanString($row[$colMap['is_emri_tipi']]) : '';
+            $ekip = isset($colMap['ekip']) ? \App\Helper\Helper::cleanString($row[$colMap['ekip']]) : '';
+            $isEmriSonucu = isset($colMap['is_emri_sonucu']) ? \App\Helper\Helper::cleanString($row[$colMap['is_emri_sonucu']]) : '';
+            $sonuclanmis = isset($colMap['sonuclanmis']) ? (int) \App\Helper\Helper::cleanString($row[$colMap['sonuclanmis']]) : 0;
+            $acikOlanlar = isset($colMap['acik_olanlar']) ? (int) \App\Helper\Helper::cleanString($row[$colMap['acik_olanlar']]) : 0;
 
             // Skip empty rows or summary rows (often total rows have empty fields)
             // If ekip is empty, it's definitely not a data row we want to process or warn about
@@ -230,8 +230,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     $data = [
                         'firma_id' => $_SESSION["firma_id"],
                         'grup' => 'is_turu',
-                        'tur_adi' => $isEmriTipi,
-                        'is_emri_sonucu' => $isEmriSonucu,
+                        'tur_adi' => \App\Helper\Helper::cleanString($isEmriTipi),
+                        'is_emri_sonucu' => \App\Helper\Helper::cleanString($isEmriSonucu),
                         'aciklama' => "Puantaj yükleme sırasında otomatik oluşturuldu"
                     ];
                     $encryptedId = $Tanimlamalar->saveWithAttr($data);
@@ -380,7 +380,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $pattern = '/([\d.,]+)(\d+)\s+(ER-SAN\s+ELEKTR[İI]K\s+EK[İI]P-?\s?\d*)([A-ZÇĞİIÖŞÜ\s]+?)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+\.\d{2})(\d+)\s+([\d.,]+\.\d{2})(\d+)/ui';
 
                 if (preg_match($pattern, $line, $matches)) {
-                    $kullaniciAdi = trim($matches[3]);
+                    $kullaniciAdi = \App\Helper\Helper::cleanString($matches[3]);
 
                     // Extract team number from name
                     $teamNo = 0;
@@ -393,7 +393,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         continue;
 
                     $rows[] = [
-                        'bolge' => trim($matches[4]),
+                        'bolge' => \App\Helper\Helper::cleanString($matches[4]),
                         'kullanici_adi' => $kullaniciAdi,
                         'team_no' => $teamNo,
                         'sarfiyat' => $matches[5],
@@ -414,7 +414,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $patternGlobal = '/([\d.,]+)(\d+)\s+(ER-SAN\s+ELEKTR[İI]K\s+EK[İI]P-?\s?\d*)([A-ZÇĞİIÖŞÜ\s]+?)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+\.\d{2})(\d+)\s+([\d.,]+\.\d{2})(\d+)/ui';
                 if (preg_match_all($patternGlobal, $cleanText, $allMatches, PREG_SET_ORDER)) {
                     foreach ($allMatches as $m) {
-                        $kullaniciAdi = trim($m[3]);
+                        $kullaniciAdi = \App\Helper\Helper::cleanString($m[3]);
                         $teamNo = 0;
                         if (preg_match('/EK[İI]P-?\s?(\d+)/ui', $kullaniciAdi, $tm)) {
                             $teamNo = $tm[1];
@@ -424,7 +424,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             continue;
 
                         $rows[] = [
-                            'bolge' => trim($m[4]),
+                            'bolge' => \App\Helper\Helper::cleanString($m[4]),
                             'kullanici_adi' => $kullaniciAdi,
                             'team_no' => $teamNo,
                             'sarfiyat' => $m[5],
@@ -482,8 +482,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 for ($i = $headerRowIndex + 1; $i < count($excelRows); $i++) {
                     $row = $excelRows[$i];
                     $excelRowNum = $i + 1; // Excel satır numarası (1-indexed)
-                    $bolge = isset($colMap['bolge']) ? trim($row[$colMap['bolge']]) : '';
-                    $kullanici_adi = isset($colMap['kullanici_adi']) ? trim($row[$colMap['kullanici_adi']]) : '';
+                    $bolge = isset($colMap['bolge']) ? \App\Helper\Helper::cleanString($row[$colMap['bolge']]) : '';
+                    $kullanici_adi = isset($colMap['kullanici_adi']) ? \App\Helper\Helper::cleanString($row[$colMap['kullanici_adi']]) : '';
 
                     if (empty($bolge) && empty($kullanici_adi))
                         continue;
@@ -682,8 +682,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         for ($i = $headerRowIndex + 1; $i < count($rows); $i++) {
             $row = $rows[$i];
             $excelRowNum = $i + 1; // Excel satır numarası (1-indexed, header dahil)
-            $ekipStr = isset($colMap['ekip']) ? trim($row[$colMap['ekip']]) : '';
-            $sayi = isset($colMap['sayi']) ? (int) trim($row[$colMap['sayi']]) : 0;
+            $ekipStr = isset($colMap['ekip']) ? \App\Helper\Helper::cleanString($row[$colMap['ekip']]) : '';
+            $sayi = isset($colMap['sayi']) ? (int) \App\Helper\Helper::cleanString($row[$colMap['sayi']]) : 0;
             $aciklama = isset($colMap['aciklama']) ? trim($row[$colMap['aciklama']]) : '';
 
             if (empty($ekipStr))
@@ -927,13 +927,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'personel_adi' => $record->personel_adi ?: '<span class="text-muted">' . htmlspecialchars($record->kullanici_adi) . '</span>',
             'okunan_abone_sayisi' => $record->okunan_abone_sayisi,
             'sayac_durum' => $record->sayac_durum ?? '-',
-            'sarfiyat' => number_format($record->sarfiyat, 2, ',', '.'),
-            'ort_sarfiyat_gunluk' => number_format($record->ort_sarfiyat_gunluk, 2, ',', '.'),
-            'tahakkuk' => number_format($record->tahakkuk, 2, ',', '.'),
-            'ort_tahakkuk_gunluk' => number_format($record->ort_tahakkuk_gunluk, 2, ',', '.'),
+            'sarfiyat' => number_format($record->sarfiyat ?? 0, 2, ',', '.'),
+            'ort_sarfiyat_gunluk' => number_format($record->ort_sarfiyat_gunluk ?? 0, 2, ',', '.'),
+            'tahakkuk' => number_format($record->tahakkuk ?? 0, 2, ',', '.'),
+            'ort_tahakkuk_gunluk' => number_format($record->ort_tahakkuk_gunluk ?? 0, 2, ',', '.'),
             'okunan_gun_sayisi' => $record->okunan_gun_sayisi,
-            'ort_okunan_abone_sayisi_gunluk' => number_format($record->ort_okunan_abone_sayisi_gunluk, 2, ',', '.'),
-            'okuma_performansi' => '%' . number_format($record->okuma_performansi, 2, ',', '.'),
+            'ort_okunan_abone_sayisi_gunluk' => number_format($record->ort_okunan_abone_sayisi_gunluk ?? 0, 2, ',', '.'),
+            'okuma_performansi' => '%' . number_format($record->okuma_performansi ?? 0, 2, ',', '.'),
             'id' => $record->id
         ];
     }
@@ -1204,7 +1204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $insertBatch = [];
 
         foreach ($apiData as $veri) {
-            $isemriSebep = trim($veri['ISEMRI_SEBEP'] ?? '');
+            $isemriSebep = \App\Helper\Helper::cleanString($veri['ISEMRI_SEBEP'] ?? '');
             $ekipStr = trim($veri['EKIP'] ?? '');
             $memur = trim($veri['MEMUR'] ?? '');
             $sonuclandiranKullanici = trim($veri['SONUCLANDIRAN_KULLANICI'] ?? '');
@@ -1212,7 +1212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $kayitTarihiRaw = trim($veri['SONUC_TARIHI'] ?? '');
             $isemriNo = trim($veri['ISEMRI_NO'] ?? '');
             $aboneNo = trim($veri['ABONE_NO'] ?? '');
-            $isemriSonucu = trim($veri['ISEMRI_SONUCU'] ?? '');
+            $isemriSonucu = \App\Helper\Helper::cleanString($veri['ISEMRI_SONUCU'] ?? '');
             $sonucAciklama = $veri['SONUC_ACIKLAMA'] ?? null;
             $takilanSayacNo = trim($veri['TAKILAN_SAYACNO'] ?? '');
 
@@ -1814,9 +1814,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $idx = 0;
         foreach ($apiData as $veri) {
             $idx++;
-            $isEmriTipi = trim($veri['ISEMRITIPI'] ?? '');
-            $ekipKoduStr = trim($veri['EKIP'] ?? '');
-            $isEmriSonucu = trim($veri['SONUC'] ?? '');
+            $isEmriTipi = \App\Helper\Helper::cleanString($veri['ISEMRITIPI'] ?? '');
+            $ekipKoduStr = \App\Helper\Helper::cleanString($veri['EKIP'] ?? '');
+            $isEmriSonucu = \App\Helper\Helper::cleanString($veri['SONUC'] ?? '');
             $sonuclanmis = $veri['SONUCLANMIS'] ?? 0;
             $acikOlanlar = $veri['ACIK'] ?? 0;
             $tarihRaw = $veri['TARIH'];
@@ -1916,8 +1916,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $encryptedId = $Tanimlamalar->saveWithAttr([
                     'firma_id' => $firmaId,
                     'grup' => 'is_turu',
-                    'tur_adi' => $isEmriTipi,
-                    'is_emri_sonucu' => $isEmriSonucu,
+                    'tur_adi' => \App\Helper\Helper::cleanString($isEmriTipi),
+                    'is_emri_sonucu' => \App\Helper\Helper::cleanString($isEmriSonucu),
                     'aciklama' => "Online sorgulama"
                 ]);
                 $isEmriSonucuId = \App\Helper\Security::decrypt($encryptedId);
@@ -2166,11 +2166,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 continue;
             }
 
-            $okuyucuAdi = trim($veri['OKUYUCUADI'] ?? '');
-            $bolge = trim($veri['BOLGE'] ?? '');
-            $defter = trim($veri['DEFTER'] ?? '');
-            $okuyucuNo = trim($veri['OKUYUCUNO'] ?? '');
-            $sayacDurum = trim($veri['SAYACDURUM'] ?? '');
+            $okuyucuAdi = \App\Helper\Helper::cleanString($veri['OKUYUCUADI'] ?? '');
+            $bolge = \App\Helper\Helper::cleanString($veri['BOLGE'] ?? '');
+            $defter = \App\Helper\Helper::cleanString($veri['DEFTER'] ?? '');
+            $okuyucuNo = \App\Helper\Helper::cleanString($veri['OKUYUCUNO'] ?? '');
+            $sayacDurum = \App\Helper\Helper::cleanString($veri['SAYACDURUM'] ?? '');
 
             $normDate = \App\Helper\Date::convertExcelDate($veri['OKUMATARIHI'], 'Y-m-d') ?: $veri['OKUMATARIHI'];
             $rawIdString = $normDate . '|' . $bolge . '|' . $defter . '|' . $okuyucuNo . '|' . $sayacDurum;
@@ -2953,9 +2953,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         $insertBatch = [];
         foreach ($apiData as $veri) {
-            $isEmriTipi = trim($veri['ISEMRITIPI'] ?? '');
-            $ekipKoduStr = trim($veri['EKIP'] ?? '');
-            $isEmriSonucu = trim($veri['SONUC'] ?? '');
+            $isEmriTipi = \App\Helper\Helper::cleanString($veri['ISEMRITIPI'] ?? '');
+            $ekipKoduStr = \App\Helper\Helper::cleanString($veri['EKIP'] ?? '');
+            $isEmriSonucu = \App\Helper\Helper::cleanString($veri['SONUC'] ?? '');
             $sonuclanmis = $veri['SONUCLANMIS'] ?? 0;
             $acikOlanlar = $veri['ACIK'] ?? 0;
             $tarihRaw = $veri['TARIH'];
@@ -2970,7 +2970,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             // 1. Identify Ekip/Team ID
             $defId = 0;
-            $ekipKoduStrClean = trim($ekipKoduStr);
+            $ekipKoduStrClean = $ekipKoduStr;
             $ekipKoduStrLower = mb_strtolower($ekipKoduStrClean, 'UTF-8');
             
             $ekipNo = \App\Helper\EkipHelper::extractTeamNo($ekipKoduStrClean);
@@ -3002,7 +3002,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if ($filterWorkType !== '' && $isEmriTipi != $filterWorkType) continue;
             if ($filterWorkResult !== '' && $isEmriSonucu != $filterWorkResult) continue;
 
-            $islemId = md5($normDate . '|' . trim($ekipKoduStr) . '|' . trim($isEmriTipi) . '|' . trim($isEmriSonucu));
+            $islemId = md5($normDate . '|' . $ekipKoduStr . '|' . $isEmriTipi . '|' . $isEmriSonucu);
 
             if ($defId === 0 && !empty($ekipKoduStrClean)) {
                 $uniqKey = "EKIP|" . $ekipKoduStrClean;
@@ -3018,8 +3018,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $encryptedId = $Tanimlamalar->saveWithAttr([
                     'firma_id' => $firmaId,
                     'grup' => 'is_turu',
-                    'tur_adi' => $isEmriTipi,
-                    'is_emri_sonucu' => $isEmriSonucu,
+                    'tur_adi' => \App\Helper\Helper::cleanString($isEmriTipi),
+                    'is_emri_sonucu' => \App\Helper\Helper::cleanString($isEmriSonucu),
                     'aciklama' => "Online sorgulama"
                 ]);
                 $isEmriSonucuId = \App\Helper\Security::decrypt($encryptedId);

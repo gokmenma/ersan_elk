@@ -324,11 +324,11 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
                 continue;
             }
 
-            $okuyucuAdi = trim($veri['OKUYUCUADI'] ?? '');
-            $bolge = trim($veri['BOLGE'] ?? '');
-            $defter = trim($veri['DEFTER'] ?? '');
-            $okuyucuNo = trim($veri['OKUYUCUNO'] ?? '');
-            $sayacDurum = trim($veri['SAYACDURUM'] ?? '');
+            $okuyucuAdi = \App\Helper\Helper::cleanString($veri['OKUYUCUADI'] ?? '');
+            $bolge = \App\Helper\Helper::cleanString($veri['BOLGE'] ?? '');
+            $defter = \App\Helper\Helper::cleanString($veri['DEFTER'] ?? '');
+            $okuyucuNo = \App\Helper\Helper::cleanString($veri['OKUYUCUNO'] ?? '');
+            $sayacDurum = \App\Helper\Helper::cleanString($veri['SAYACDURUM'] ?? '');
 
             $normDate = \App\Helper\Date::convertExcelDate($veri['OKUMATARIHI'], 'Y-m-d') ?: $veri['OKUMATARIHI'];
             $islemId = md5($normDate . '|' . $bolge . '|' . $defter . '|' . $okuyucuNo . '|' . $sayacDurum);
