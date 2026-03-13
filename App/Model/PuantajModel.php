@@ -24,10 +24,8 @@ class PuantajModel extends Model
             $select = "t.*, 
                     p.adi_soyadi as personel_adi,
                     f.firma_adi as firma,
-                    COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi_raw,
-                    COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu_raw,
-                    TRIM(REPLACE(COALESCE(tn.tur_adi, t.is_emri_tipi), CHAR(160), ' ')) as is_emri_tipi,
-                    TRIM(REPLACE(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), CHAR(160), ' ')) as is_emri_sonucu,
+                    COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi,
+                    COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu,
                     tn.is_turu_ucret,
                     tn.rapor_sekmesi";
         }
@@ -53,7 +51,7 @@ class PuantajModel extends Model
             $params[] = $ekipKodu;
         }
         if ($workType) {
-            $sql .= " AND (TRIM(REPLACE(tn.tur_adi, CHAR(160), ' ')) = ? OR TRIM(REPLACE(t.is_emri_tipi, CHAR(160), ' ')) = ?)";
+            $sql .= " AND (tn.tur_adi = ? OR t.is_emri_tipi = ?)";
             $params[] = $workType;
             $params[] = $workType;
         }
@@ -68,7 +66,7 @@ class PuantajModel extends Model
         } elseif ($workResult === 'acik') {
             $sql .= " AND (t.acik_olanlar > 0)";
         } elseif ($workResult) {
-            $sql .= " AND (TRIM(REPLACE(tn.is_emri_sonucu, CHAR(160), ' ')) = ? OR TRIM(REPLACE(t.is_emri_sonucu, CHAR(160), ' ')) = ?)";
+            $sql .= " AND (tn.is_emri_sonucu = ? OR t.is_emri_sonucu = ?)";
             $params[] = $workResult;
             $params[] = $workResult;
         } else {
@@ -98,7 +96,7 @@ class PuantajModel extends Model
         $firmaId = $_SESSION['firma_id'] ?? 0;
         // Hem yeni normalized hem de eski string alanından unique değerleri al
         $sql = "
-            SELECT DISTINCT TRIM(REPLACE(COALESCE(tn.tur_adi, t.is_emri_tipi), CHAR(160), ' ')) as tur_adi
+            SELECT DISTINCT COALESCE(tn.tur_adi, t.is_emri_tipi) as tur_adi
             FROM $this->table t 
             LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id 
             WHERE t.firma_id = ? 
@@ -122,7 +120,7 @@ class PuantajModel extends Model
         $firmaId = $_SESSION['firma_id'] ?? 0;
         // Hem yeni normalized hem de eski string alanından unique değerleri al
         $sql = "
-            SELECT DISTINCT TRIM(REPLACE(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), CHAR(160), ' ')) as is_emri_sonucu
+            SELECT DISTINCT COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu
             FROM $this->table t 
             LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id 
             WHERE t.firma_id = ? 
@@ -142,7 +140,7 @@ class PuantajModel extends Model
             $params[] = $workType;
         }
 
-        $sql .= " ORDER BY TRIM(REPLACE(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), CHAR(160), ' ')) ASC";
+        $sql .= " ORDER BY COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) ASC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -172,12 +170,12 @@ class PuantajModel extends Model
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $sql = "SELECT t.personel_id, t.ekip_kodu_id, t.ekip_kodu, t.tarih, 
-                    TRIM(REPLACE(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), CHAR(160), ' ')) as is_emri_sonucu, 
+                    TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) as is_emri_sonucu, 
                     SUM(t.sonuclanmis) as toplam 
                 FROM $this->table t
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
                 WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
-                GROUP BY t.personel_id, t.ekip_kodu_id, t.ekip_kodu, t.tarih, TRIM(REPLACE(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), CHAR(160), ' '))";
+                GROUP BY t.personel_id, t.ekip_kodu_id, t.ekip_kodu, t.tarih, TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu))";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $startDate, $endDate]);
@@ -280,7 +278,7 @@ class PuantajModel extends Model
         }
         if ($workType) {
             // Hem yeni normalized hem de eski string alanından filtrele
-            $baseWhere .= " AND (TRIM(REPLACE(tn.tur_adi, CHAR(160), ' ')) = :work_type OR TRIM(REPLACE(t.is_emri_tipi, CHAR(160), ' ')) = :work_type)";
+            $baseWhere .= " AND (tn.tur_adi = :work_type OR t.is_emri_tipi = :work_type)";
             $params['work_type'] = $workType;
         }
         if ($workResult === 'sonuclanan') {
@@ -289,7 +287,7 @@ class PuantajModel extends Model
             $baseWhere .= " AND (t.acik_olanlar > 0)";
         } elseif ($workResult) {
             // Hem yeni normalized hem de eski string alanından filtrele
-            $baseWhere .= " AND (TRIM(REPLACE(tn.is_emri_sonucu, CHAR(160), ' ')) = :work_result OR TRIM(REPLACE(t.is_emri_sonucu, CHAR(160), ' ')) = :work_result)";
+            $baseWhere .= " AND (tn.is_emri_sonucu = :work_result OR t.is_emri_sonucu = :work_result)";
             $params['work_result'] = $workResult;
         }
 
@@ -322,8 +320,8 @@ class PuantajModel extends Model
             1 => 'DATE_FORMAT(t.tarih, "%d.%m.%Y")',
             2 => 'ek.tur_adi',
             3 => 'p.adi_soyadi',
-            4 => 'TRIM(REPLACE(COALESCE(tn.tur_adi, t.is_emri_tipi), CHAR(160), \' \'))',
-            5 => 'TRIM(REPLACE(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), CHAR(160), \' \'))',
+            4 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
+            5 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
             6 => 't.sonuclanmis',
             7 => 't.acik_olanlar'
         ];
@@ -478,8 +476,8 @@ class PuantajModel extends Model
             1 => 't.tarih',
             2 => 'ek.tur_adi',
             3 => 'p.adi_soyadi',
-            4 => 'TRIM(REPLACE(COALESCE(tn.tur_adi, t.is_emri_tipi), CHAR(160), \' \'))',
-            5 => 'TRIM(REPLACE(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), CHAR(160), \' \'))',
+            4 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
+            5 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
             6 => 't.sonuclanmis',
             7 => 't.acik_olanlar'
         ];
@@ -496,8 +494,8 @@ class PuantajModel extends Model
         $sql = "SELECT t.*, 
                     p.adi_soyadi as personel_adi,
                     f.firma_adi,
-                    TRIM(REPLACE(COALESCE(tn.tur_adi, t.is_emri_tipi), CHAR(160), ' ')) as is_emri_tipi,
-                    TRIM(REPLACE(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), CHAR(160), ' ')) as is_emri_sonucu,
+                    COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi,
+                    COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu,
                     ek.tur_adi as ekip_kodu_adi
                 FROM {$this->table} t 
                 LEFT JOIN personel p ON t.personel_id = p.id 
@@ -598,7 +596,7 @@ class PuantajModel extends Model
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $sql = "SELECT 
                     MONTH(t.tarih) as ay,
-                    TRIM(COALESCE(tn.tur_adi, t.is_emri_tipi)) as tur,
+                    COALESCE(tn.tur_adi, t.is_emri_tipi) as tur,
                     COUNT(*) as toplam
                 FROM $this->table t
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
@@ -613,7 +611,7 @@ class PuantajModel extends Model
             $params[] = $month;
         }
 
-        $sql .= " GROUP BY MONTH(t.tarih), TRIM(COALESCE(tn.tur_adi, t.is_emri_tipi))
+        $sql .= " GROUP BY MONTH(t.tarih), COALESCE(tn.tur_adi, t.is_emri_tipi)
                 ORDER BY MONTH(t.tarih) ASC";
 
         $stmt = $this->db->prepare($sql);
@@ -626,7 +624,7 @@ class PuantajModel extends Model
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $sql = "SELECT 
                     MONTH(t.tarih) as ay,
-                    TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) as sonuc,
+                    COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as sonuc,
                     COUNT(*) as toplam
                 FROM $this->table t
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
@@ -641,7 +639,7 @@ class PuantajModel extends Model
             $params[] = $month;
         }
 
-        $sql .= " GROUP BY MONTH(t.tarih), TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu))
+        $sql .= " GROUP BY MONTH(t.tarih), COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)
                 ORDER BY MONTH(t.tarih) ASC";
 
         $stmt = $this->db->prepare($sql);

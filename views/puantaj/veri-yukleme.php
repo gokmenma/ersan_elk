@@ -326,6 +326,11 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="kacakIslemlerDropdown">
                                     <li>
+                                        <button class="dropdown-item d-flex align-items-center text-success fw-medium" type="button" id="btnExportKacakExcel">
+                                            <i class="mdi mdi-file-excel fs-5 me-2"></i> Excel'e Aktar
+                                        </button>
+                                    </li>
+                                    <li>
                                         <button class="dropdown-item d-flex align-items-center text-primary fw-medium" type="button" data-bs-toggle="modal" data-bs-target="#importKacakModal">
                                             <i class="mdi mdi-upload fs-5 me-2"></i> Excel Yükle
                                         </button>
@@ -364,6 +369,18 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 data-bs-toggle="modal" data-bs-target="#importOnlineSayacDegisimModal">
                                 <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Online Sorgula
                             </button>
+                            <div class="dropdown ms-2">
+                                <button class="btn btn-soft-primary btn-sm px-3 fw-bold dropdown-toggle d-flex align-items-center" type="button" id="sayacIslemlerDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 6px 12px;">
+                                    <i class="bx bx-cog fs-5 me-1"></i> İşlemler
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="sayacIslemlerDropdown">
+                                    <li>
+                                        <button class="dropdown-item d-flex align-items-center text-success fw-medium" type="button" id="btnExportSayacExcel">
+                                            <i class="mdi mdi-file-excel fs-5 me-2"></i> Excel'e Aktar
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
@@ -400,6 +417,18 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 id="btnOnlineMuhurlemeSorgula">
                                 <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Online Sorgula
                             </button>
+                            <div class="dropdown ms-2">
+                                <button class="btn btn-soft-primary btn-sm px-3 fw-bold dropdown-toggle d-flex align-items-center" type="button" id="muhurlemeIslemlerDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 6px 12px;">
+                                    <i class="bx bx-cog fs-5 me-1"></i> İşlemler
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="muhurlemeIslemlerDropdown">
+                                    <li>
+                                        <button class="dropdown-item d-flex align-items-center text-success fw-medium" type="button" id="btnExportMuhurlemeExcel">
+                                            <i class="mdi mdi-file-excel fs-5 me-2"></i> Excel'e Aktar
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
@@ -1118,39 +1147,10 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 language: $.extend({}, baseOptions.language, {
                     processing: '<div class="spinner-border text-primary" role="status"></div>'
                 }),
-                buttons: [
-                    {
-                        extend: 'excel',
-                        title: '',
-                        filename: 'Ersan_Export_' + new Date().getTime(),
-                        action: function (e, dt, button, config) {
-                            var self = this;
-                            var originalPageLength = dt.page.len();
-
-                            Swal.fire({
-                                title: 'Excel Hazırlanıyor',
-                                text: 'Tüm kayıtlar indiriliyor, lütfen bekleyin...',
-                                allowOutsideClick: false,
-                                didOpen: () => {
-                                    Swal.showLoading();
-                                }
-                            });
-
-                            // Tüm kayıtları çekmek için length'i -1 yapıyoruz
-                            dt.page.len(-1).draw();
-
-                            dt.one('draw', function () {
-                                $.fn.dataTable.ext.buttons.excelHtml5.action.call(self, e, dt, button, config);
-                                
-                                // Orijinal sayfa uzunluğuna geri dön
-                                dt.page.len(originalPageLength).draw();
-                                Swal.close();
-                            });
-                        }
-                    }
-                ]
+                buttons: []
             }, customOptions);
         }
+
 
         // Endeks Okuma tablosu için Server-Side DataTable
         function initEndeksDataTable() {
@@ -1388,27 +1388,55 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         });
 
         // Excel Export
+        function getExportUrl(tab, dt = null) {
+            let url = new URL('views/puantaj/export-excel.php', window.location.origin + window.location.pathname);
+            url.searchParams.set('tab', tab);
+            url.searchParams.set('start_date', $('input[name="start_date"]').val());
+            url.searchParams.set('end_date', $('input[name="end_date"]').val());
+            url.searchParams.set('ekip_kodu', $('select[name="ekip_kodu"]').val());
+            url.searchParams.set('work_type', $('select[name="work_type"]').val());
+            url.searchParams.set('work_result', $('select[name="work_result"]').val());
+
+            if (dt) {
+                // Main search
+                url.searchParams.set('search[value]', dt.search());
+                
+                // Column search
+                dt.columns().every(function (index) {
+                    let searchVal = this.search();
+                    if (searchVal) {
+                        url.searchParams.set('columns[' + index + '][search][value]', searchVal);
+                    }
+                });
+            }
+            return url.toString();
+        }
+
         $('#btnExportEndeksExcel').on('click', function () {
             if (endeksDataTable) {
-                endeksDataTable.button(0).trigger();
+                window.location.href = getExportUrl('okuma', endeksDataTable);
             }
         });
 
         $('#btnExportPuantajExcel').on('click', function () {
             if (puantajDataTable) {
-                puantajDataTable.button(0).trigger();
+                window.location.href = getExportUrl('yapilan_isler', puantajDataTable);
             }
+        });
+
+        $(document).on('click', '#btnExportKacakExcel', function () {
+            window.location.href = getExportUrl('kacak_kontrol', kacakDataTable);
         });
 
         $(document).on('click', '#btnExportSayacExcel', function () {
             if (sayacDegisimDataTable) {
-                sayacDegisimDataTable.button(0).trigger();
+                window.location.href = getExportUrl('sayac_sokme_takma', sayacDegisimDataTable);
             }
         });
 
         $(document).on('click', '#btnExportMuhurlemeExcel', function () {
             if (muhurlemeDataTable) {
-                muhurlemeDataTable.button(0).trigger();
+                window.location.href = getExportUrl('muhurleme', muhurlemeDataTable);
             }
         });
 

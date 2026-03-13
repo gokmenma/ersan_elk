@@ -112,8 +112,8 @@ class EndeksOkumaModel extends Model
         if (!empty($request['search']['value'])) {
             $searchValue = "%" . $request['search']['value'] . "%";
             $searchWhere = " AND (
-                TRIM(REPLACE(t.bolge, CHAR(160), ' ')) LIKE :search OR
-                TRIM(REPLACE(t.kullanici_adi, CHAR(160), ' ')) LIKE :search OR
+                t.bolge LIKE :search OR
+                t.kullanici_adi LIKE :search OR
                 p.adi_soyadi LIKE :search OR
                 t.defter LIKE :search OR
                 t.sayac_durum LIKE :search OR
@@ -125,12 +125,12 @@ class EndeksOkumaModel extends Model
         // Sütun bazlı arama (Yeni tablo yapısına göre güncellendi)
         $colSearchMap = [
             0 => 'DATE_FORMAT(t.tarih, "%d.%m.%Y")',
-            1 => 'TRIM(REPLACE(t.defter, CHAR(160), \' \'))',
-            2 => 'TRIM(REPLACE(t.bolge, CHAR(160), \' \'))',
-            3 => 'TRIM(REPLACE(def.tur_adi, CHAR(160), \' \'))', // Ekip No
-            4 => 'TRIM(REPLACE(p.adi_soyadi, CHAR(160), \' \'))',
+            1 => 't.defter',
+            2 => 't.bolge',
+            3 => 'def.tur_adi', // Ekip No
+            4 => 'p.adi_soyadi',
             5 => 't.okunan_abone_sayisi',
-            6 => 'TRIM(REPLACE(t.sayac_durum, CHAR(160), \' \'))'
+            6 => 't.sayac_durum'
         ];
 
         if (isset($request['columns']) && is_array($request['columns'])) {
@@ -273,12 +273,12 @@ class EndeksOkumaModel extends Model
         $orderDir = 'DESC';
         $colMap = [
             0 => 't.tarih',
-            1 => 'TRIM(REPLACE(t.defter, CHAR(160), \' \'))',
-            2 => 'TRIM(REPLACE(t.bolge, CHAR(160), \' \'))',
-            3 => 'TRIM(REPLACE(def.tur_adi, CHAR(160), \' \'))',
-            4 => 'TRIM(REPLACE(p.adi_soyadi, CHAR(160), \' \'))',
+            1 => 't.defter',
+            2 => 't.bolge',
+            3 => 'def.tur_adi',
+            4 => 'p.adi_soyadi',
             5 => 't.okunan_abone_sayisi',
-            6 => 'TRIM(REPLACE(t.sayac_durum, CHAR(160), \' \'))'
+            6 => 't.sayac_durum'
         ];
         if (isset($request['order'][0])) {
             $orderColIdx = $request['order'][0]['column'];
@@ -343,9 +343,9 @@ class EndeksOkumaModel extends Model
         $buAy = date('Y-m-01');
         $sonGun = date('Y-m-t');
 
-        $sql = "SELECT SUM(okunan_abone_sayisi) as toplam
-                FROM $this->table
-                WHERE firma_id = ?
+        $sql = "SELECT SUM(okunan_abone_sayisi) as toplam 
+                FROM $this->table 
+                WHERE firma_id = ? 
                 AND tarih >= ? AND tarih <= ?
                 AND silinme_tarihi IS NULL";
 

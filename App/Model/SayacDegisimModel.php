@@ -362,10 +362,10 @@ class SayacDegisimModel extends Model
     public function getSummaryDetailedByRange($startDate, $endDate)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT personel_id, ekip_kodu_id, ekip, tarih, TRIM(REPLACE(isemri_sonucu, CHAR(160), ' ')) as is_emri_sonucu, COUNT(*) as toplam 
+        $sql = "SELECT personel_id, ekip_kodu_id, ekip, tarih, isemri_sonucu as is_emri_sonucu, COUNT(*) as toplam 
                 FROM {$this->table} 
                 WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL
-                GROUP BY personel_id, ekip_kodu_id, ekip, tarih, TRIM(REPLACE(isemri_sonucu, CHAR(160), ' '))";
+                GROUP BY personel_id, ekip_kodu_id, ekip, tarih, isemri_sonucu";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $startDate, $endDate]);
@@ -385,9 +385,9 @@ class SayacDegisimModel extends Model
     public function getDistinctWorkTypes()
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT TRIM(REPLACE(t.isemri_sonucu, CHAR(160), ' ')) as isemri_sonucu, MAX(def.id) as def_id 
+        $sql = "SELECT t.isemri_sonucu, MAX(def.id) as def_id 
                 FROM {$this->table} t
-                JOIN tanimlamalar def ON TRIM(REPLACE(t.isemri_sonucu, CHAR(160), ' ')) = TRIM(REPLACE(def.is_emri_sonucu, CHAR(160), ' '))
+                JOIN tanimlamalar def ON TRIM(t.isemri_sonucu) = TRIM(def.is_emri_sonucu)
                 WHERE t.firma_id = ? 
                 AND t.silinme_tarihi IS NULL 
                 AND t.isemri_sonucu IS NOT NULL 
@@ -395,8 +395,7 @@ class SayacDegisimModel extends Model
                 AND def.grup = 'is_turu'
                 AND def.is_turu_ucret > 0
                 AND def.silinme_tarihi IS NULL
-                GROUP BY TRIM(REPLACE(t.isemri_sonucu, CHAR(160), ' '))
-                ORDER BY TRIM(REPLACE(t.isemri_sonucu, CHAR(160), ' ')) ASC";
+                GROUP BY TRIM(t.isemri_sonucu)";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId]);
         $results = $stmt->fetchAll(PDO::FETCH_OBJ);

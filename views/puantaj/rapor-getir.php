@@ -89,7 +89,7 @@ if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])) {
         $sqlDusum = "SELECT personel_id, ekip_kodu_id, SUM(ABS(sonuclanmis)) as total_dusum 
                     FROM yapilan_isler 
                     WHERE firma_id = ? 
-                    AND TRIM(REPLACE(is_emri_tipi, CHAR(160), ' ')) = 'Manuel Düşüm' 
+                    AND is_emri_tipi = 'Manuel Düşüm' 
                     AND tarih BETWEEN ? AND ? 
                     AND silinme_tarihi IS NULL 
                     GROUP BY personel_id, ekip_kodu_id";

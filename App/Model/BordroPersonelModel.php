@@ -1124,8 +1124,8 @@ class BordroPersonelModel extends Model
 
         // Hesaplama tipi ve oran bilgisini al
         $hTip = $param ? $param->hesaplama_tipi : 'sabit';
-        if ($hTip === 'oran_bazli_net')
-            $hTip = 'oran_net';
+        if ($hTip === 'oran_bazli_net' || $hTip === 'oran_net')
+            $hTip = 'asgari_oran_net';
         if ($hTip === 'oran_bazli_brut')
             $hTip = 'oran_brut';
         $oran = $param ? floatval($param->oran ?? 0) : 0;
@@ -2326,7 +2326,7 @@ class BordroPersonelModel extends Model
             if ($firstHTip === 'asgari_oran_net') {
                 // Net asgari ücretin yüzdesi (bankaya yatacak baz üzerinden)
                 $oranKullan = ($firstOran > 0) ? $firstOran : 25;
-                $toplamIcraBudget = round($bankaYatacakBaz * ($oranKullan / 100), 2);
+                $toplamIcraBudget = round($hakedisNet * ($oranKullan / 100), 2);
             } elseif ($firstHTip === 'oran_net') {
                 // Net ücretin (toplam alacağı) yüzdesi
                 $oranKullan = ($firstOran > 0) ? $firstOran : 25;
