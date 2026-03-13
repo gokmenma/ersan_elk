@@ -253,16 +253,21 @@ class SayacDegisimModel extends Model
                 FROM {$this->table} t 
                 LEFT JOIN personel p ON t.personel_id = p.id 
                 LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
-                WHERE $baseWhere $searchWhere 
-                ORDER BY $orderColumn $orderDir 
-                LIMIT :start, :length";
+                ORDER BY $orderColumn $orderDir";
+
+        if (isset($request['length']) && (int)$request['length'] !== -1) {
+            $sql .= " LIMIT :start, :length";
+        }
 
         $stmt = $this->db->prepare($sql);
         foreach ($params as $key => $val) {
             $stmt->bindValue(":$key", $val);
         }
-        $stmt->bindValue(':start', (int) ($request['start'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':length', (int) ($request['length'] ?? 10), PDO::PARAM_INT);
+
+        if (isset($request['length']) && (int)$request['length'] !== -1) {
+            $stmt->bindValue(':start', (int) ($request['start'] ?? 0), PDO::PARAM_INT);
+            $stmt->bindValue(':length', (int) ($request['length'] ?? 10), PDO::PARAM_INT);
+        }
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_OBJ);
 

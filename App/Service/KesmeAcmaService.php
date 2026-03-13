@@ -86,16 +86,21 @@ class KesmeAcmaService
                 $errorTitle = "Zaman Aşımı (Gateway Timeout)";
             }
 
+            $msg = "$errorTitle (HTTP $httpCode) [$startDate - $endDate]";
             if ($error_msg) {
-                throw new Exception("cURL Hatası: " . $error_msg);
+                throw new Exception("cURL Hatası: $error_msg ($msg)");
             }
-            throw new Exception("$errorTitle (HTTP $httpCode): " . $response);
+            throw new Exception("$msg: " . substr($response, 0, 500));
+        }
+
+        if (empty(trim($response))) {
+            return ['success' => true, 'data' => ['data' => []]]; // Return empty structure if body is empty but HTTP 200
         }
 
         $decodedResponse = json_decode($response, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception("API yanıtı JSON formatında değil: " . $response);
+            throw new Exception("API yanıtı JSON formatında değil [$startDate - $endDate]: " . substr($response, 0, 500));
         }
 
         return $decodedResponse;

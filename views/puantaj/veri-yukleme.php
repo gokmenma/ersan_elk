@@ -1117,7 +1117,38 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 serverSide: true,
                 language: $.extend({}, baseOptions.language, {
                     processing: '<div class="spinner-border text-primary" role="status"></div>'
-                })
+                }),
+                buttons: [
+                    {
+                        extend: 'excel',
+                        title: '',
+                        filename: 'Ersan_Export_' + new Date().getTime(),
+                        action: function (e, dt, button, config) {
+                            var self = this;
+                            var originalPageLength = dt.page.len();
+
+                            Swal.fire({
+                                title: 'Excel Hazırlanıyor',
+                                text: 'Tüm kayıtlar indiriliyor, lütfen bekleyin...',
+                                allowOutsideClick: false,
+                                didOpen: () => {
+                                    Swal.showLoading();
+                                }
+                            });
+
+                            // Tüm kayıtları çekmek için length'i -1 yapıyoruz
+                            dt.page.len(-1).draw();
+
+                            dt.one('draw', function () {
+                                $.fn.dataTable.ext.buttons.excelHtml5.action.call(self, e, dt, button, config);
+                                
+                                // Orijinal sayfa uzunluğuna geri dön
+                                dt.page.len(originalPageLength).draw();
+                                Swal.close();
+                            });
+                        }
+                    }
+                ]
             }, customOptions);
         }
 
@@ -1359,13 +1390,25 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         // Excel Export
         $('#btnExportEndeksExcel').on('click', function () {
             if (endeksDataTable) {
-                endeksDataTable.button('.buttons-excel').trigger();
+                endeksDataTable.button(0).trigger();
             }
         });
 
         $('#btnExportPuantajExcel').on('click', function () {
             if (puantajDataTable) {
-                puantajDataTable.button('.buttons-excel').trigger();
+                puantajDataTable.button(0).trigger();
+            }
+        });
+
+        $(document).on('click', '#btnExportSayacExcel', function () {
+            if (sayacDegisimDataTable) {
+                sayacDegisimDataTable.button(0).trigger();
+            }
+        });
+
+        $(document).on('click', '#btnExportMuhurlemeExcel', function () {
+            if (muhurlemeDataTable) {
+                muhurlemeDataTable.button(0).trigger();
             }
         });
 

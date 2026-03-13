@@ -137,6 +137,7 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "bordro/list" || $page == "demirbas/list" || $page == "puantaj/veri-yukleme" ||
     $page == "tanimlamalar/is-turu" || $page == "mail-sms/list" || $page == "tanimlamalar/izin-turu" ||
     strpos($page, "tanimlamalar/") === 0 ||
+    strpos($page, "puantaj/") === 0 ||
     $page == "mail-sms/mail-gonder" || $page == "arac-takip/list" || $page == "arac-takip/duzenle" ||
     $page == "personel-takip/list" || $page == "nobet/talepler" || $page == "talepler/list" ||
     $page == "tanimlamalar/unvan-ucret" ||

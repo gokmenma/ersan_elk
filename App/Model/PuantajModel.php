@@ -8,23 +8,29 @@ use App\Helper\Date;
 
 class PuantajModel extends Model
 {
-    protected $table = 'yapilan_isler';
-
-    public function __construct()
+    public function __construct($tableName = 'yapilan_isler')
     {
+        $this->table = $tableName;
         parent::__construct($this->table);
     }
 
-    public function getFiltered($startDate, $endDate, $ekipKodu, $workType, $workResult = '', $raporSekmesi = '')
+    public function getFiltered($startDate = null, $endDate = null, $ekipKodu = null, $workType = null, $workResult = null, $raporSekmesi = null, $limit = null, $offset = null, $onlyCount = false)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT t.*, 
+        
+        if ($onlyCount) {
+            $select = "COUNT(*) as total";
+        } else {
+            $select = "t.*, 
                     p.adi_soyadi as personel_adi,
                     f.firma_adi as firma,
                     COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi,
                     COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu,
                     tn.is_turu_ucret,
-                    tn.rapor_sekmesi
+                    tn.rapor_sekmesi";
+        }
+
+        $sql = "SELECT $select
                 FROM $this->table t 
                 LEFT JOIN personel p ON t.personel_id = p.id 
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
@@ -68,7 +74,17 @@ class PuantajModel extends Model
             $sql .= " AND (t.sonuclanmis > 0 OR t.acik_olanlar > 0)";
         }
 
+        if ($onlyCount) {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            return (int) $stmt->fetchColumn();
+        }
+
         $sql .= " ORDER BY t.tarih DESC";
+
+        if ($limit !== null && $offset !== null) {
+            $sql .= " LIMIT " . (int)$offset . ", " . (int)$limit;
+        }
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -486,16 +502,22 @@ class PuantajModel extends Model
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
                 LEFT JOIN firmalar f ON t.firma_id = f.id
                 LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
-                WHERE $baseWhere $searchWhere 
-                ORDER BY $orderColumn $orderDir 
-                LIMIT :start, :length";
+                WHERE $baseWhere $searchWhere
+                ORDER BY $orderColumn $orderDir";
+
+        if (isset($request['length']) && (int)$request['length'] !== -1) {
+            $sql .= " LIMIT :start, :length";
+        }
 
         $stmt = $this->db->prepare($sql);
         foreach ($params as $key => $val) {
             $stmt->bindValue(":$key", $val);
         }
-        $stmt->bindValue(':start', (int) ($request['start'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':length', (int) ($request['length'] ?? 10), PDO::PARAM_INT);
+
+        if (isset($request['length']) && (int)$request['length'] !== -1) {
+            $stmt->bindValue(':start', (int) ($request['start'] ?? 0), PDO::PARAM_INT);
+            $stmt->bindValue(':length', (int) ($request['length'] ?? 10), PDO::PARAM_INT);
+        }
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_OBJ);
 

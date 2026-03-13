@@ -303,8 +303,10 @@
       ? `<div class="gorev-aciklama-text">${escHtml(g.aciklama)}</div>`
       : "";
 
+    const isAnaSayfa = g.ana_sayfa_goster == 1;
+
     return `
-            <div class="gorev-item" data-gorev-id="${g.id}" data-liste-id="${g.liste_id}">
+            <div class="gorev-item" data-gorev-id="${g.id}" data-liste-id="${g.liste_id}" data-ana-sayfa="${isAnaSayfa ? 1 : 0}">
                 <div class="gorev-checkbox" data-gorev-id="${g.id}" data-tamamlandi="${tamamlandi ? 1 : 0}" title="${tamamlandi ? "Geri al" : "Tamamla"}"></div>
                 <div class="gorev-info">
                     <div class="gorev-baslik">${escHtml(g.baslik)}</div>
@@ -590,12 +592,14 @@
       e.stopPropagation();
       const $btn = $(this);
       const gorevId = $btn.data("gorev-id");
+      const $item = $btn.closest(".gorev-item");
+      const isAnaSayfa = $item.data("ana-sayfa") == 1;
 
       // Mevcut menüleri kaldır
       $(".gorev-item-dropdown").remove();
 
       const offset = $btn.offset();
-      const dropdownHeight = 90; // Yaklaşık yükseklik
+      const dropdownHeight = 180; // Yaklaşık yükseklik (yeni butonlarla arttı)
       const windowHeight = $(window).height();
       const spaceBelow = windowHeight - offset.top - $btn.outerHeight();
 
@@ -610,6 +614,14 @@
             <button class="dropdown-item btn-gorev-kullanici-sec" data-gorev-id="${gorevId}">
                 <i class="bx bx-user-plus"></i> Kullanıcılar
             </button>
+            <button class="dropdown-item btn-gorev-reminders" data-gorev-id="${gorevId}">
+                <i class="bx bx-bell"></i> Hatırlatıcılar
+            </button>
+            <button class="dropdown-item btn-gorev-ana-sayfa" data-gorev-id="${gorevId}">
+                <i class="bx ${isAnaSayfa ? 'bx-home-circle' : 'bx-home-alt'}"></i>
+                ${isAnaSayfa ? 'Ana Sayfada Gösterme' : 'Ana Sayfada Göster'}
+            </button>
+            <hr class="dropdown-divider">
             <button class="dropdown-item btn-gorev-sil" data-gorev-id="${gorevId}">
                 <i class="bx bx-trash"></i> Sil
             </button>
@@ -686,6 +698,47 @@
     // Görev Kullanıcı Seç Kaydet
     $(document).on("click", "#gorevKullaniciSecKaydet", function () {
       saveGorevKullaniciSec();
+    });
+
+    // Ana Sayfada Göster toggle
+    $(document).on('click', '.btn-gorev-ana-sayfa', function (e) {
+        e.stopPropagation();
+        const gorevId = $(this).data('gorev-id');
+        const $item = $(`.gorev-item[data-gorev-id="${gorevId}"]`);
+        const currentStatus = $item.data('ana-sayfa');
+        const newStatus = currentStatus == 1 ? 0 : 1;
+
+        $.post(
+            API_URL,
+            {
+                action: 'update-gorev',
+                gorev_id: gorevId,
+                ana_sayfa_goster: newStatus
+            },
+            function (res) {
+                if (res.success) {
+                    $item.data('ana-sayfa', newStatus);
+                    if (newStatus == 1) {
+                        showToast('Görev ana sayfada gösterilecek', 'success');
+                    } else {
+                        showToast('Görev ana sayfadan kaldırıldı', 'success');
+                    }
+                    loadAll(); // Reload to update UI, especially the menu item
+                } else {
+                    showToast(res.message || 'Bir hata oluştu', 'error');
+                }
+            },
+            "json"
+        );
+        $(".gorev-item-dropdown").remove(); // Close dropdown after action
+    });
+
+    // Hatırlatıcılar butonu (şimdilik sadece placeholder)
+    $(document).on('click', '.btn-gorev-reminders', function (e) {
+      e.stopPropagation();
+      const gorevId = $(this).data("gorev-id");
+      showToast("Hatırlatıcılar özelliği yakında!", "info");
+      $(".gorev-item-dropdown").remove();
     });
 
     // Yıldız toggle

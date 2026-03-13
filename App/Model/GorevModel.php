@@ -134,10 +134,10 @@ class GorevModel extends Model
 
         $sql = "INSERT INTO gorevler (liste_id, firma_id, baslik, aciklama, tarih, saat, sira, 
                 yineleme_sikligi, yineleme_birimi, yineleme_gunleri, yineleme_baslangic, 
-                yineleme_bitis_tipi, yineleme_bitis_tarihi, yineleme_bitis_adet, olusturan_id, gorev_kullanicilari) 
+                yineleme_bitis_tipi, yineleme_bitis_tarihi, yineleme_bitis_adet, olusturan_id, gorev_kullanicilari, ana_sayfa_goster) 
                 VALUES (:liste_id, :firma_id, :baslik, :aciklama, :tarih, :saat, :sira,
                 :yineleme_sikligi, :yineleme_birimi, :yineleme_gunleri, :yineleme_baslangic,
-                :yineleme_bitis_tipi, :yineleme_bitis_tarihi, :yineleme_bitis_adet, :olusturan_id, :gorev_kullanicilari)";
+                :yineleme_bitis_tipi, :yineleme_bitis_tarihi, :yineleme_bitis_adet, :olusturan_id, :gorev_kullanicilari, :ana_sayfa_goster)";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             ':liste_id' => $data['liste_id'],
@@ -155,7 +155,8 @@ class GorevModel extends Model
             ':yineleme_bitis_tarihi' => $data['yineleme_bitis_tarihi'] ?? null,
             ':yineleme_bitis_adet' => $data['yineleme_bitis_adet'] ?? null,
             ':olusturan_id' => $data['olusturan_id'],
-            ':gorev_kullanicilari' => $data['gorev_kullanicilari'] ?? null
+            ':gorev_kullanicilari' => $data['gorev_kullanicilari'] ?? null,
+            ':ana_sayfa_goster' => $data['ana_sayfa_goster'] ?? 1
         ]);
         return $this->db->lastInsertId();
     }
@@ -178,7 +179,8 @@ class GorevModel extends Model
             'yineleme_bitis_tipi',
             'yineleme_bitis_tarihi',
             'yineleme_bitis_adet',
-            'gorev_kullanicilari'
+            'gorev_kullanicilari',
+            'ana_sayfa_goster'
         ];
 
         $tarihSaatDegisti = false;
@@ -267,6 +269,7 @@ class GorevModel extends Model
                 JOIN gorev_listeleri gl ON g.liste_id = gl.id 
                 WHERE g.firma_id = :firma_id 
                 AND g.tamamlandi = 0 
+                AND g.ana_sayfa_goster = 1 
                 ORDER BY g.tarih ASC, g.saat ASC, g.id ASC 
                 LIMIT :limit";
         $stmt = $this->db->prepare($sql);

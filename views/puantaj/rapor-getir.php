@@ -488,9 +488,9 @@ if (!empty($workTypeCols)) {
         foreach ($tableData as $item) {
             foreach ($item['teams'] as $tData) {
                 $pId = $tData['pId'];
-                $tId = $tData['tId'];
-                if (isset($summary[$pId][$tId])) {
-                    foreach ($summary[$pId][$tId] as $dayData) {
+                $compKey = $tData['compositeKey'] ?? ($tData['tId'] . '|' . ($tData['team']->tur_adi ?? ''));
+                if (isset($summary[$pId][$compKey])) {
+                    foreach ($summary[$pId][$compKey] as $dayData) {
                         $total += $dayData[$wt['name']] ?? 0;
                     }
                 }
@@ -1162,8 +1162,10 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                             $personelActTotals = [];
                             foreach ($workTypeCols as $wt) {
                                 $actTotal = 0;
-                                foreach ($summary[$pId][$tId] ?? [] as $dayData) {
-                                    $actTotal += $dayData[$wt['name']] ?? 0;
+                                if (isset($summary[$pId][$compositeKey])) {
+                                    foreach ($summary[$pId][$compositeKey] as $dayData) {
+                                        $actTotal += $dayData[$wt['name']] ?? 0;
+                                    }
                                 }
                                 $personelActTotals[$wt['name']] = $actTotal;
                             }
@@ -1183,7 +1185,8 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                         <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])): ?>
                             <?php
                             if ($activeTab === 'kacakkontrol') {
-                                $dusum = $manuelDusumMap[0][$tId] ?? 0;
+                                // Kaçak kontrol manuel düşüm map'i ekip name (ekip_kodu_id alias) ile indeksli
+                                $dusum = $manuelDusumMap[0][$team->tur_adi] ?? 0;
                             } else {
                                 $dusum = $manuelDusumMap[$pId][$tId] ?? 0;
                             }

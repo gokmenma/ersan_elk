@@ -2820,3 +2820,299 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'online-sorgu-sorgula') {
+    ob_start();
+    header('Content-Type: application/json; charset=utf-8');
+
+    if (($_SESSION["firma_kodu"] ?? 17) != 17) {
+        echo json_encode(['status' => 'error', 'message' => 'API sorgulaması şu an sadece Firma Kodu 17 için desteklenmektedir.']);
+        exit;
+    }
+
+    $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
+
+    try {
+        ini_set('memory_limit', '512M');
+        $ilkFirma = $_POST['ilk_firma'] ?? ($_SESSION['firma_kodu'] ?? 17);
+        $sonFirma = $_POST['son_firma'] ?? ($_SESSION['firma_kodu'] ?? 17);
+        $baslangicTarihiRaw = $_POST['baslangic_tarihi'] ?? date('Y-m-d');
+        $bitisTarihiRaw = $_POST['bitis_tarihi'] ?? date('Y-m-d');
+
+        $baslangicTarihi = \App\Helper\Date::convertExcelDate($baslangicTarihiRaw, 'Y-m-d') ?: date('Y-m-d');
+        $bitisTarihi = \App\Helper\Date::convertExcelDate($bitisTarihiRaw, 'Y-m-d') ?: date('Y-m-d');
+
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $Settings = new \App\Model\SettingsModel();
+
+        // CONCURRENCY LOCK
+        $lockKey = 'lock_online_sorgu_sorgula_' . $firmaId;
+        $activeLock = $Settings->getSettings($lockKey);
+        $currentUserId = $_SESSION['user_id'] ?? 0;
+
+        if (!empty($activeLock)) {
+            $lockParts = explode('|', $activeLock);
+            $lockTime = strtotime($lockParts[0]);
+            if ((time() - $lockTime) < 600) {
+                throw new Exception("Şu anda devam eden bir sorgulama işlemi bulunuyor.");
+            }
+        }
+        $Settings->upsertSetting($lockKey, date('Y-m-d H:i:s') . '|' . $currentUserId);
+
+        $resultsFilter = $_POST['results_filter'] ?? '';
+        $yeniKayit = 0;
+        $guncellenenKayit = 0;
+        $bosSonucSayisi = 0;
+        $atlanAnKayitlar = [];
+        $atlanAnListesi = [];
+        $mevcutHatalar = [];
+
+        $KesmeAcmaSvc = new KesmeAcmaService();
+        $apiData = [];
+
+        $begin = new DateTime($baslangicTarihi);
+        $end = new DateTime($bitisTarihi);
+        $end->modify('+1 day');
+        $interval = new DateInterval('P1D');
+        $daterange = new DatePeriod($begin, $interval, $end);
+
+        set_time_limit(1800); // 30 mins
+        ini_set('max_execution_time', 1800);
+
+        $gunlukHatalar = [];
+        foreach ($daterange as $date) {
+            $currentDateAPI = $date->format('d/m/Y');
+            try {
+                $offset = 0;
+                $limit = 500;
+                $hasMore = true;
+
+                while ($hasMore) {
+                    $apiResponse = $KesmeAcmaSvc->getData($currentDateAPI, $currentDateAPI, $ilkFirma, $sonFirma, $limit, $offset);
+                    if (!($apiResponse['success'] ?? false)) break;
+
+                    $batchData = $apiResponse['data']['data'] ?? [];
+                    if (empty($batchData)) {
+                        $hasMore = false;
+                    } else {
+                        foreach ($batchData as $item) {
+                            $item['TARIH'] = $date->format('Y-m-d');
+                            $apiData[] = $item;
+                        }
+                        if (count($batchData) < $limit) $hasMore = false;
+                        else $offset += $limit;
+                    }
+                    if ($offset >= 5000) break;
+                }
+            } catch (Exception $e) {
+                $gunlukHatalar[] = $currentDateAPI . ": " . $e->getMessage();
+            }
+        }
+
+        $Tanimlamalar = new \App\Model\TanimlamalarModel();
+        $Puantaj = new \App\Model\PuantajModel('yapilan_isler_sorgu');
+
+        // Filter parameters from request
+        $filterPersonelId = (int)($_POST['filter_personel_id'] ?? 0);
+        $filterEkipKoduId = (int)($_POST['filter_ekip_kodu'] ?? 0);
+        $filterWorkType = trim($_POST['filter_work_type'] ?? '');
+        $filterWorkResult = trim($_POST['filter_work_result'] ?? '');
+
+        // Lookup data for efficient processing
+        $stmtAllEkip = $Puantaj->db->prepare("SELECT id, tur_adi, grup FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
+        $stmtAllEkip->execute();
+        $ekipKodlariByNo = [];
+        $ekipKodlariByName = [];
+        while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
+            $name = trim($ek['tur_adi']);
+            $ekipKodlariByName[mb_strtolower($name, 'UTF-8')] = $ek['id'];
+            $gp = trim((string) ($ek['grup'] ?? ''));
+            if ($gp !== '') $ekipKodlariByName[mb_strtolower($gp, 'UTF-8')] = $ek['id'];
+            $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim($gp . ' ' . $name));
+            if ($teamNo > 0) $ekipKodlariByNo[$teamNo] = $ek['id'];
+        }
+
+        $stmtAllPersonel = $Puantaj->db->prepare("SELECT id, adi_soyadi, ekip_no FROM personel WHERE silinme_tarihi IS NULL");
+        $stmtAllPersonel->execute();
+        $personelByName = [];
+        $personelByEkip = [];
+        while ($p = $stmtAllPersonel->fetch(PDO::FETCH_ASSOC)) {
+            $name = trim($p['adi_soyadi']);
+            $personelByName[mb_strtolower($name, 'UTF-8')] = $p;
+            if (($p['ekip_no'] ?? 0) > 0) $personelByEkip[$p['ekip_no']] = $p['id'];
+        }
+
+        $stmtAllHist = $Puantaj->db->prepare("SELECT ekip_kodu_id, personel_id, baslangic_tarihi, bitis_tarihi FROM personel_ekip_gecmisi WHERE firma_id = ?");
+        $stmtAllHist->execute([$firmaId]);
+        $ekipGecmisi = [];
+        while ($h = $stmtAllHist->fetch(PDO::FETCH_ASSOC)) {
+            $ekipGecmisi[$h['ekip_kodu_id']][] = $h;
+        }
+
+        $deleteSql = "UPDATE yapilan_isler_sorgu SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL";
+        $deleteParams = [$firmaId, $baslangicTarihi, $bitisTarihi];
+
+        $insertBatch = [];
+        foreach ($apiData as $veri) {
+            $isEmriTipi = trim($veri['ISEMRITIPI'] ?? '');
+            $ekipKoduStr = trim($veri['EKIP'] ?? '');
+            $isEmriSonucu = trim($veri['SONUC'] ?? '');
+            $sonuclanmis = $veri['SONUCLANMIS'] ?? 0;
+            $acikOlanlar = $veri['ACIK'] ?? 0;
+            $tarihRaw = $veri['TARIH'];
+
+            if (empty(trim($isEmriTipi))) continue;
+            if ((int) $sonuclanmis === 0) {
+                $bosSonucSayisi++;
+                continue;
+            }
+
+            $normDate = $tarihRaw;
+
+            // 1. Identify Ekip/Team ID
+            $defId = 0;
+            $ekipKoduStrClean = trim($ekipKoduStr);
+            $ekipKoduStrLower = mb_strtolower($ekipKoduStrClean, 'UTF-8');
+            
+            $ekipNo = \App\Helper\EkipHelper::extractTeamNo($ekipKoduStrClean);
+            if ($ekipNo > 0) $defId = $ekipKodlariByNo[$ekipNo] ?? 0;
+            if (!$defId && isset($ekipKodlariByName[$ekipKoduStrLower])) $defId = $ekipKodlariByName[$ekipKoduStrLower];
+
+            // 2. Identify Personel via History matching the date
+            $personelId = 0;
+            if ($defId > 0) {
+                if (isset($ekipGecmisi[$defId])) {
+                    foreach ($ekipGecmisi[$defId] as $hist) {
+                        if ($hist['baslangic_tarihi'] <= $normDate && ($hist['bitis_tarihi'] === null || $hist['bitis_tarihi'] >= $normDate)) {
+                            $personelId = $hist['personel_id'];
+                            break;
+                        }
+                    }
+                }
+                if (!$personelId) $personelId = $personelByEkip[$defId] ?? 0;
+            }
+
+            // Fallback for personel if EKIP string matches name
+            if (!$personelId && isset($personelByName[$ekipKoduStrLower])) {
+                $personelId = $personelByName[$ekipKoduStrLower]['id'];
+            }
+
+            // APPLY FILTERS
+            if ($filterPersonelId > 0 && $personelId != $filterPersonelId) continue;
+            if ($filterEkipKoduId > 0 && $defId != $filterEkipKoduId) continue;
+            if ($filterWorkType !== '' && $isEmriTipi != $filterWorkType) continue;
+            if ($filterWorkResult !== '' && $isEmriSonucu != $filterWorkResult) continue;
+
+            $islemId = md5($normDate . '|' . trim($ekipKoduStr) . '|' . trim($isEmriTipi) . '|' . trim($isEmriSonucu));
+
+            if ($defId === 0 && !empty($ekipKoduStrClean)) {
+                $uniqKey = "EKIP|" . $ekipKoduStrClean;
+                if (!isset($mevcutHatalar[$uniqKey])) {
+                    $atlanAnKayitlar[] = ['ekip_kodu' => "Sistemde Ekip Yok: " . $ekipKoduStrClean, 'tarih' => date('d.m.Y', strtotime($normDate))];
+                    $mevcutHatalar[$uniqKey] = true;
+                }
+            }
+
+            $existingTur = $Tanimlamalar->isEmriSonucu(trim($isEmriTipi), trim($isEmriSonucu));
+            $isEmriSonucuId = $existingTur ? $existingTur->id : 0;
+            if (!$isEmriSonucuId && (!empty($isEmriTipi) || !empty($isEmriSonucu))) {
+                $encryptedId = $Tanimlamalar->saveWithAttr([
+                    'firma_id' => $firmaId,
+                    'grup' => 'is_turu',
+                    'tur_adi' => $isEmriTipi,
+                    'is_emri_sonucu' => $isEmriSonucu,
+                    'aciklama' => "Online sorgulama"
+                ]);
+                $isEmriSonucuId = \App\Helper\Security::decrypt($encryptedId);
+            }
+
+            $insertBatch[] = [$islemId, $personelId, $defId, $firmaId, $isEmriSonucuId, $isEmriTipi, $ekipKoduStr, $isEmriSonucu, $sonuclanmis, $acikOlanlar, $normDate];
+            $yeniKayit++;
+        }
+
+        $Puantaj->db->beginTransaction();
+        $deleteStmt = $Puantaj->db->prepare($deleteSql);
+        $deleteStmt->execute($deleteParams);
+        $silinenKayit = $deleteStmt->rowCount();
+
+        if (!empty($insertBatch)) {
+            $chunks = array_chunk($insertBatch, 500);
+            foreach ($chunks as $chunk) {
+                $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?)'));
+                $sql = "INSERT INTO yapilan_isler_sorgu (islem_id, personel_id, ekip_kodu_id, firma_id, is_emri_sonucu_id, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih) VALUES $placeholders";
+                $stmt = $Puantaj->db->prepare($sql);
+                $flatParams = [];
+                foreach ($chunk as $row) $flatParams = array_merge($flatParams, $row);
+                $stmt->execute($flatParams);
+            }
+        }
+        $Puantaj->db->commit();
+
+        $response = [
+            'status' => 'success',
+            'yeni_kayit' => $yeniKayit,
+            'silinen_kayit' => $silinenKayit,
+            'atlan_kayit_bos' => $bosSonucSayisi,
+            'atlanAn_kayitlar' => $atlanAnKayitlar,
+            'gunluk_hatalar' => $gunlukHatalar,
+            'toplam_api_kayit' => count($apiData),
+            'message' => "$yeniKayit yeni kayıt eklendi." . (count($gunlukHatalar) > 0 ? " (Bazı günlerde hata oluştu: " . count($gunlukHatalar) . " gün)" : "")
+        ];
+
+    } catch (Exception $e) {
+        $response['message'] = $e->getMessage();
+    } finally {
+        if (isset($Settings) && isset($lockKey)) $Settings->upsertSetting($lockKey, '');
+    }
+
+    ob_end_clean();
+    echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get-puantaj-sorgu-datatable') {
+    $Puantaj = new PuantajModel('yapilan_isler_sorgu');
+    $startDate = $_GET['start_date'] ?? date('Y-m-d');
+    $endDate = $_GET['end_date'] ?? date('Y-m-d');
+    $ekipKodu = $_GET['ekip_kodu'] ?? '';
+    $workType = $_GET['work_type'] ?? '';
+    $workResult = $_GET['work_result'] ?? '';
+
+    // DataTables parameters
+    $draw = isset($_GET['draw']) ? (int)$_GET['draw'] : 0;
+    $start = isset($_GET['start']) ? (int)$_GET['start'] : 0;
+    $length = isset($_GET['length']) ? (int)$_GET['length'] : 10;
+
+    $totalRecords = $Puantaj->getFiltered($startDate, $endDate, $ekipKodu, $workType, $workResult, null, null, null, true);
+    $data = $Puantaj->getFiltered($startDate, $endDate, $ekipKodu, $workType, $workResult, null, $length, $start);
+    
+    $result = [];
+    foreach ($data as $row) {
+        $result[] = [
+            'id' => $row->id,
+            'tarih' => \App\Helper\Date::dmY($row->tarih),
+            'ekip_kodu' => $row->ekip_kodu ?: ($row->ekip_kodu_tanim ?? '-'),
+            'personel_adi' => $row->personel_adi ?: 'Eşleşmedi',
+            'is_emri_tipi' => $row->is_emri_tipi,
+            'is_emri_sonucu' => $row->is_emri_sonucu,
+            'sonuclanmis' => $row->sonuclanmis,
+            'acik_olanlar' => $row->acik_olanlar
+        ];
+    }
+
+    echo json_encode([
+        'draw' => $draw,
+        'recordsTotal' => $totalRecords,
+        'recordsFiltered' => $totalRecords,
+        'data' => $result
+    ]);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'sorgu-sil') {
+    $id = $_POST['id'] ?? 0;
+    $Puantaj = new PuantajModel('yapilan_isler_sorgu');
+    $stmt = $Puantaj->db->prepare("UPDATE yapilan_isler_sorgu SET silinme_tarihi = NOW() WHERE id = ?");
+    $result = $stmt->execute([$id]);
+    echo json_encode(['status' => $result ? 'success' : 'error']);
+    exit;
+}

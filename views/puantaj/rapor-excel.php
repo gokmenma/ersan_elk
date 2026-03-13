@@ -622,6 +622,7 @@ foreach ($regions as $regionName) {
         $personel = $tData['personel'];
         $pId = $tData['pId'];
         $tId = $tData['tId'];
+        $compositeKey = $tData['compositeKey'] ?? ($tId . '|' . ($team->tur_adi ?? ''));
         $personelTotal = 0;
 
         $sheet->setCellValue('A' . $row, $sira++);
@@ -667,7 +668,7 @@ foreach ($regions as $regionName) {
                 $personelWorkTypeTotals[$wt['name']] = 0;
             foreach ($reportDates as $date) {
                 foreach ($workTypeCols as $wt) {
-                    $val = $summary[$pId][$tId][$date][$wt['name']] ?? 0;
+                    $val = $summary[$pId][$compositeKey][$date][$wt['name']] ?? 0;
                     if ($val > 0) {
                         $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
                         $sheet->setCellValue($colLetter . $row, $val);
@@ -694,7 +695,7 @@ foreach ($regions as $regionName) {
         // (-) Sayı ve Kalan verileri
         if ($hasManuelCols) {
             if ($activeTab === 'kacakkontrol') {
-                $dusum = $manuelDusumMap[0][$tId] ?? 0;
+                $dusum = $manuelDusumMap[0][$team->tur_adi] ?? 0;
             } else {
                 $dusum = $manuelDusumMap[$pId][$tId] ?? 0;
             }
@@ -729,6 +730,7 @@ foreach ($regionGrouped as $regionName => $teamsInRegion) {
         $personel = $tData['personel'];
         $pId = $tData['pId'];
         $tId = $tData['tId'];
+        $compositeKey = $tData['compositeKey'] ?? ($tId . '|' . ($team->tur_adi ?? ''));
         $personelTotal = 0;
 
         $sheet->setCellValue('A' . $row, $sira++);
@@ -774,7 +776,7 @@ foreach ($regionGrouped as $regionName => $teamsInRegion) {
                 $personelWorkTypeTotals[$wt['name']] = 0;
             foreach ($reportDates as $date) {
                 foreach ($workTypeCols as $wt) {
-                    $val = $summary[$pId][$tId][$date][$wt['name']] ?? 0;
+                    $val = $summary[$pId][$compositeKey][$date][$wt['name']] ?? 0;
                     if ($val > 0) {
                         $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
                         $sheet->setCellValue($colLetter . $row, $val);

@@ -233,6 +233,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $data['gorev_kullanicilari'] = !empty($realIds) ? implode(',', $realIds) : null;
                 }
 
+                if (isset($_POST['ana_sayfa_goster']))
+                    $data['ana_sayfa_goster'] = $_POST['ana_sayfa_goster'];
+
+                if (empty($data)) {
+                    echo json_encode(['success' => true, 'message' => 'Değişiklik yok.']);
+                    break;
+                }
+
                 $result = $Gorev->updateGorev($id, $data);
                 if ($result) {
                     $gorev = $Gorev->findGorev($id);
