@@ -26,4 +26,4 @@ Bu klasöre aşağıdaki boyutlarda PWA ikonları ekleyin:
 
 ## Örnek İkon
 
-Mavi arka plan (#135bec) üzerine beyaz "P" harfi veya şirket logosu.
+Mavi arka plan (#135bec) üzerine beyaz "Er" harfi.

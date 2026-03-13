@@ -48,6 +48,18 @@ if ($personel_id > 0) {
     if (!isset($_SESSION['firma_id']) && isset($personel->firma_id)) {
         $_SESSION['firma_id'] = $personel->firma_id;
     }
+
+    // Okuma Ekip Şefi mi? (Kısıtlama için)
+    $isOkumaSefi = false;
+    if (isset($personel) && stripos($personel->departman ?? '', 'Endeks Okuma') !== false) {
+        $ekipGecmisi = $PersonelModel->getEkipGecmisi($personel_id);
+        foreach ($ekipGecmisi as $g) {
+            if (($g->ekip_sefi_mi ?? 0) == 1 && (empty($g->bitis_tarihi) || $g->bitis_tarihi >= date('Y-m-d'))) {
+                $isOkumaSefi = true;
+                break;
+            }
+        }
+    }
 }
 
 // Response helper
@@ -186,12 +198,19 @@ try {
             $db = (new \App\Model\Model('tanimlamalar'))->getDb();
 
             $adminFilter = "AND tn.is_turu_ucret > 0 AND tn.rapor_sekmesi IS NOT NULL AND tn.rapor_sekmesi != ''";
+            
+            // Okuma Şefleri için 1 Nisan 2026 öncesi kesme açma işlerini gizleyelim
+            $cutoffDate = '2026-04-01';
+            $cutoffFilter = "";
+            if ($isOkumaSefi) {
+                $cutoffFilter = " AND (tn.rapor_sekmesi != 'kesme' OR t.tarih >= '$cutoffDate')";
+            }
 
             // Günlük Toplam
             $sqlIslerDaily = "SELECT SUM(t.sonuclanmis) as toplam 
                             FROM yapilan_isler t
                             LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
-                            WHERE t.personel_id = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih = ? $adminFilter";
+                            WHERE t.personel_id = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih = ? $adminFilter $cutoffFilter";
             $stmt = $db->prepare($sqlIslerDaily);
             $stmt->execute([$personel_id, $firmaId, $today]);
             $dailyIsler = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
@@ -200,7 +219,7 @@ try {
             $sqlIslerMonthly = "SELECT SUM(t.sonuclanmis) as toplam 
                             FROM yapilan_isler t
                             LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
-                            WHERE t.personel_id = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ? $adminFilter";
+                            WHERE t.personel_id = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ? $adminFilter $cutoffFilter";
             $stmt = $db->prepare($sqlIslerMonthly);
             $stmt->execute([$personel_id, $firmaId, $startOfMonth, $endOfMonth]);
             $monthlyIsler = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
@@ -209,7 +228,7 @@ try {
             $sqlSekmeDaily = "SELECT tn.rapor_sekmesi, SUM(t.sonuclanmis) as toplam 
                              FROM yapilan_isler t
                              LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
-                             WHERE t.personel_id = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih = ? $adminFilter
+                             WHERE t.personel_id = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih = ? $adminFilter $cutoffFilter
                              GROUP BY tn.rapor_sekmesi";
             $stmt = $db->prepare($sqlSekmeDaily);
             $stmt->execute([$personel_id, $firmaId, $today]);
@@ -219,7 +238,7 @@ try {
             $sqlSekmeMonthly = "SELECT tn.rapor_sekmesi, SUM(t.sonuclanmis) as toplam 
                                FROM yapilan_isler t
                                LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
-                               WHERE t.personel_id = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ? $adminFilter
+                               WHERE t.personel_id = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ? $adminFilter $cutoffFilter
                                GROUP BY tn.rapor_sekmesi";
             $stmt = $db->prepare($sqlSekmeMonthly);
             $stmt->execute([$personel_id, $firmaId, $startOfMonth, $endOfMonth]);
@@ -1945,6 +1964,14 @@ try {
             $workResult = $_POST['work_result'] ?? '';
             $raporSekmesi = $_POST['rapor_sekmesi'] ?? '';
 
+            // Okuma Şefleri için 1 Nisan 2026 kısıtlaması (Kesme-Açma İşleri için)
+            if ($isOkumaSefi && $raporSekmesi === 'kesme') {
+                $cutoffDate = '2026-04-01';
+                if (empty($startDate) || $startDate < $cutoffDate) {
+                    $startDate = $cutoffDate;
+                }
+            }
+
             $PuantajModel = new \App\Model\PuantajModel();
             $items = $PuantajModel->getFiltered($startDate, $endDate, $personel_id, $workType, $workResult, $raporSekmesi);
 
@@ -2081,6 +2108,7 @@ try {
             $tur_adi = "";
             $defter_bolge = "";
             $defter_mahalle = "";
+            $total_subscribers = 0;
 
             if (strpos($defterId, 'COMP|') === 0) {
                 $parts = explode('|', $defterId);
@@ -2096,6 +2124,7 @@ try {
                 $tur_adi = $defterInfo->tur_adi;
                 $defter_bolge = $defterInfo->defter_bolge;
                 $defter_mahalle = $defterInfo->defter_mahalle ?: $defterInfo->tur_adi;
+                $total_subscribers = $defterInfo->defter_abone_sayisi ?: 0;
             }
 
             $db = (new \App\Model\Model('endeks_okuma'))->getDb();
@@ -2122,6 +2151,7 @@ try {
             response(true, [
                 'name' => $defter_mahalle,
                 'code' => $tur_adi,
+                'total_subscribers' => $total_subscribers,
                 'breakdown' => $breakdown,
                 'status_summary' => $statusSummary
             ]);

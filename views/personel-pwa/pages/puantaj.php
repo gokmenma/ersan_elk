@@ -9,6 +9,18 @@ use App\Helper\Date;
 $isSayacSokmeTakma = (stripos($personel->departman ?? '', 'Sayaç Sökme Takma') !== false);
 $isEndeksOkuma = (stripos($personel->departman ?? '', 'Endeks Okuma') !== false);
 
+// Okuma Ekip Şefi mi?
+$isOkumaSefi = false;
+if ($isEndeksOkuma) {
+    $ekipGecmisi = $PersonelModel->getEkipGecmisi($personel->id);
+    foreach ($ekipGecmisi as $g) {
+        if (($g->ekip_sefi_mi ?? 0) == 1 && (empty($g->bitis_tarihi) || $g->bitis_tarihi >= date('Y-m-d'))) {
+            $isOkumaSefi = true;
+            break;
+        }
+    }
+}
+
 if ($isSayacSokmeTakma) {
     $defaultTab = 'sokme_takma'; // Sayaç ekipleri için varsayılan sökme takma gelsin
 } else {
@@ -75,6 +87,20 @@ if ($isSayacSokmeTakma) {
             <?php endif; ?>
         </div>
     </section>
+
+    <!-- Cut-off Warning Banner for Okuma Şefleri -->
+    <?php if ($isOkumaSefi): ?>
+    <section id="cutoff-warning-banner" class="px-4 mt-3 hidden">
+        <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-3 flex items-center gap-3 shadow-sm">
+            <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-800 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-amber-600 text-[20px]">info</span>
+            </div>
+            <p class="text-[11px] font-bold text-amber-800 dark:text-amber-200 leading-tight">
+                Kesme-Açma verileri 1 Nisan 2026 itibariyle gösterilmektedir.
+            </p>
+        </div>
+    </section>
+    <?php endif; ?>
 
     <!-- Filter Section -->
     <section class="px-4 mt-6">
@@ -214,6 +240,7 @@ if ($isSayacSokmeTakma) {
 <script>
     let currentTab = '<?php echo $defaultTab; ?>';
     const isSayacTakibi = <?php echo $isSayacSokmeTakma ? 'true' : 'false'; ?>;
+    const isOkumaSefi = <?php echo $isOkumaSefi ? 'true' : 'false'; ?>;
     let puantajData = [];
     let endeksData = [];
     let workTypes = [];
@@ -259,6 +286,15 @@ if ($isSayacSokmeTakma) {
             document.getElementById('label-toplam').textContent = 'Toplam Okunan';
             document.getElementById('label-sonuclanan').textContent = '-';
             document.getElementById('label-date').textContent = 'Son Güncelleme: ' + lastUpdateEndeks;
+        }
+
+        // Warning Banner Toggle
+        if (isOkumaSefi) {
+            const banner = document.getElementById('cutoff-warning-banner');
+            if (banner) {
+                if (tab === 'kesme') banner.classList.remove('hidden');
+                else banner.classList.add('hidden');
+            }
         }
 
         loadData();
@@ -404,6 +440,17 @@ if ($isSayacSokmeTakma) {
                             <div class="flex flex-col items-center mb-4 pb-4 border-b border-slate-200 dark:border-slate-700/50">
                                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Sorgu Aralığı</p>
                                 <p class="text-xs font-bold text-slate-700 dark:text-slate-300 mt-1">${formatDate(start)} - ${formatDate(end)}</p>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 mb-5">
+                                <div class="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm text-center">
+                                    <p class="text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-1">Toplam Abone</p>
+                                    <p class="text-xl font-black text-slate-900 dark:text-white">${data.total_subscribers || '-'}</p>
+                                </div>
+                                <div class="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm text-center">
+                                    <p class="text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-1">Okunan Abone</p>
+                                    <p class="text-xl font-black text-primary">${totalPeriodCount}</p>
+                                </div>
                             </div>
                             
                             <div class="flex flex-col">
