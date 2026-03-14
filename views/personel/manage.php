@@ -555,9 +555,8 @@ if ($id > 0) {
     };
 
     function initPlugins(container) {
-        /**Sayfada Select2 varsa init yap */
-        if ($(container).find(".select2").length > 0) {
-            $(container).find(".select2").each(function () {
+        if ($(container).find(".select2:not(#topbar-personel-search)").length > 0) {
+            $(container).find(".select2:not(#topbar-personel-search)").each(function () {
                 $(this).select2({
                     dropdownParent: $(this).closest('.modal').length ? $(this).closest('.modal') : $(document.body)
                 });

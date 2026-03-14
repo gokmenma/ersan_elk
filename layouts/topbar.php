@@ -46,6 +46,7 @@ $firma_option = $FirmaModel->optionByUserPermission();
             </button>
 
             <!-- App Search-->
+            <?php if (count($firma_option) > 1): ?>
             <form class="app-search d-none d-lg-block" style="width: 200px;">
 
 
@@ -62,6 +63,23 @@ $firma_option = $FirmaModel->optionByUserPermission();
                     class: 'form-control select2 w-100 p-1'
                 ); ?>
             </form>
+            <?php endif; ?>
+
+            <?php if (\App\Service\Gate::allows('personel_listesi')): ?>
+            <form class="app-search d-none d-lg-block ms-2" style="width: 250px;">
+                <?php
+                echo Form::FormSelect2(
+                    name: "topbar_personel_search",
+                    options: ['' => ''],
+                    selectedValue: "",
+                    label: "Personel Ara",
+                    icon: "users",
+                    class: 'form-control w-100 p-1',
+                    id: 'topbar-personel-search'
+                );
+                ?>
+            </form>
+            <?php endif; ?>
         </div>
 
         <div class="d-flex">
@@ -390,5 +408,51 @@ $firma_option = $FirmaModel->optionByUserPermission();
                 }
             }, 'json');
         });
+
+        // Personel Arama Kutusu JS Kodları
+        if ($('#topbar-personel-search').length > 0) {
+            $('#topbar-personel-search').select2({
+                placeholder: 'Personel Ara...',
+                allowClear: true,
+                ajax: {
+                    url: 'views/personel/ajax_search.php',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            q: params.term
+                        };
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: data.results || []
+                        };
+                    },
+                    cache: true
+                },
+                minimumInputLength: 2,
+                language: {
+                    inputTooShort: function () {
+                        return "En az 2 karakter girmelisiniz";
+                    },
+                    noResults: function () {
+                        return "Personel bulunamadı";
+                    },
+                    searching: function () {
+                        return "Aranıyor...";
+                    }
+                },
+                templateResult: function (repo) {
+                    if (repo.loading) return repo.text;
+                    return $('<span><i class="bx bx-user me-2 text-primary"></i>' + repo.text + '</span>');
+                }
+            }).on('select2:select', function (e) {
+                var data = e.params.data;
+                if (data.id) {
+                    window.location.href = 'index.php?p=personel/manage&id=' + data.id;
+                }
+            });
+        }
+
     });
 </script>
