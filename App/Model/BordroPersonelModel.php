@@ -1746,13 +1746,8 @@ class BordroPersonelModel extends Model
                 if ($hesapBitis >= $hesapBaslangic) {
                     $gecerliGun = round(($hesapBitis - $hesapBaslangic) / (60 * 60 * 24)) + 1;
 
-                    // Şubatı 30'a tamamlama vs (ticari ay mantığı - opsiyonel)
-                    // Hata onarımı: eğer bitiş tarihi girilmiş ama ayın son günü ise, yine de 30'a tamamla
-                    if (date('m', $donemBitisTs) == '02' && date('d', $hesapBitis) >= 28 && (empty($g->bitis_tarihi) || $hesapBitis == $donemBitisTs)) {
-                        $gecerliGun = 30 - round(($hesapBaslangic - $donemBaslangicTs) / (60 * 60 * 24));
-                    }
-
                     // Günlük fiyatını bul ve çarp
+                    // Günlük tutarı nominal aylık üzerinden buluyoruz
                     $gunlukTutar = floatval($g->maas_tutari) / 30;
                     $agirlikliBrutMaas += ($gunlukTutar * $gecerliGun);
                     $toplamGecerliGun += $gecerliGun;
@@ -1766,20 +1761,24 @@ class BordroPersonelModel extends Model
                 }
             }
 
-            // Toplam geçerli gün 30'u geçemez
-            if ($toplamGecerliGun > 30)
-                $toplamGecerliGun = 30;
-
             // NEW: Eğer ayı 30 gün olarak kabul ediyorsak (bordro mantığı), görev geçmişi gününü de bu orana çekmeliyiz
             // Özellikle Şubat ayı için (28/29 gün) tam çalışanların 30 gün görünmesi için bu oranlama şart
+            // ÖNEMLİ: Bu oranlama sadece ayı TAM töötüyse yapılmalıdır. Eksik töötülen günlerde gerçek takvim günü alınır.
             $aydakiGunSayisiDonem = date('t', strtotime($donemTarihi));
             if ($toplamGecerliGun > 0 && $aydakiGunSayisiDonem != 30) {
                 if ($toplamGecerliGun >= $aydakiGunSayisiDonem) {
+                    // Ayı tam çalışmışsa 30'a tamamla
+                    $eskToplam = $toplamGecerliGun;
                     $toplamGecerliGun = 30;
-                } else {
-                    $toplamGecerliGun = round($toplamGecerliGun * (30 / $aydakiGunSayisiDonem));
+                    // Eğer 30 güne çıkartıldıysa, ağırlıklı brüt maaşı da orantılı olarak arttır ki nominal net tutar 33.000 gibi tam miktar çıksın
+                    $agirlikliBrutMaas = ($agirlikliBrutMaas / $eskToplam) * 30;
                 }
+                // Else: Eksik gün çalışmışsa olduğu gibi bırakıyoruz, GERÇEK GÜN hesaplanıyor
             }
+
+            // Toplam geçerli gün 30'u geçemez
+            if ($toplamGecerliGun > 30)
+                $toplamGecerliGun = 30;
 
             // Nominal Brüt Maaş (Daily wage hesabı için oranlanmamış tam aylık tutar)
             // Eğer 30 günün tamamı kapsanmıyorsa (kıst çalışma), ağırlık üzerinden 30 güne tamamlıyoruz

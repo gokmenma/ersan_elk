@@ -473,9 +473,8 @@ if (!empty($dbGelirler)) {
                                 if ($ggToplamGun > 0 && $aydakiGunSayisi != 30) {
                                     if ($ggToplamGun >= $aydakiGunSayisi) {
                                         $ggToplamGun = 30;
-                                    } else {
-                                        $ggToplamGun = round($ggToplamGun * (30 / $aydakiGunSayisi));
                                     }
+                                    // Eksik gün çalışmışsa oranlama yapılmaz, gerçek gün hesaba katılır
                                 }
                                 $pGunlukBase = min($pGunlukBase, $ggToplamGun);
                             }
