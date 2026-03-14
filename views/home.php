@@ -35,7 +35,7 @@ if (Gate::allows("ana_sayfa")) {
     $bugun = date('Y-m-d');
     $nobetciler = $nobetModel->getNobetlerByTarih($bugun);
     $gec_kalan_sayisi = $hareketModel->getGecKalanlarCount($_SESSION['firma_id'] ?? null);
-    $yaklasan_gorevler = $gorevModel->getYaklasanGorevler($_SESSION['firma_id'] ?? 0, 5);
+    $yaklasan_gorevler = $gorevModel->getYaklasanGorevler($_SESSION['firma_id'] ?? 0, $_SESSION['user_id'] ?? 0, 5);
 
     // Dashboard Ayarlarını Çerezden Oku
     $extraStats = $personelModel->getAdvancedDashboardStats();

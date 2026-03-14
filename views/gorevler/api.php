@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // LİSTE İŞLEMLERİ
             // =====================================================
             case 'get-listeler':
-                $listeler = $Gorev->getListeler($firmaId);
+                $listeler = $Gorev->getListeler($firmaId, $userId);
                 foreach ($listeler as &$liste) {
                     $liste->id = Security::encrypt($liste->id);
                 }
@@ -97,8 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // =====================================================
             case 'get-gorevler':
                 $liste_id = Security::decrypt($_POST['liste_id']);
-                $aktifGorevler = $Gorev->getGorevler($liste_id, 0);
-                $tamamlananlar = $Gorev->getTamamlananlar($liste_id);
+                $aktifGorevler = $Gorev->getGorevler($liste_id, $userId, 0);
+                $tamamlananlar = $Gorev->getTamamlananlar($liste_id, $userId);
 
                 foreach ($aktifGorevler as &$g) {
                     $g->id = Security::encrypt($g->id);
@@ -117,12 +117,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             case 'get-tum-gorevler':
-                $listeler = $Gorev->getListeler($firmaId);
+                $listeler = $Gorev->getListeler($firmaId, $userId);
                 $result = [];
 
                 foreach ($listeler as $liste) {
-                    $aktifGorevler = $Gorev->getGorevler($liste->id, 0);
-                    $tamamlananlar = $Gorev->getTamamlananlar($liste->id);
+                    $aktifGorevler = $Gorev->getGorevler($liste->id, $userId, 0);
+                    $tamamlananlar = $Gorev->getTamamlananlar($liste->id, $userId);
 
                     $encListeId = Security::encrypt($liste->id);
 
@@ -317,7 +317,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
-                $bekleyenGorevler = $Gorev->getBildirimBekleyenGorevler();
+                $bekleyenGorevler = $Gorev->getBildirimBekleyenGorevler($userId);
 
                 $benimGorevlerim = array_filter($bekleyenGorevler, function ($g) use ($userId, $targetUserIds) {
                     $sorumluId = $g->olusturan_id ?? $g->liste_olusturan_id;

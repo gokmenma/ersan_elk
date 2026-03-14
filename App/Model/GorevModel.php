@@ -19,11 +19,12 @@ class GorevModel extends Model
     // LİSTE İŞLEMLERİ
     // =====================================================
 
-    public function getListeler($firma_id)
+    public function getListeler($firma_id, $user_id = null)
     {
+        $userFilter = $user_id ? " AND (g.olusturan_id = $user_id OR FIND_IN_SET($user_id, g.gorev_kullanicilari))" : "";
         $sql = "SELECT gl.*, 
-                (SELECT COUNT(*) FROM gorevler g WHERE g.liste_id = gl.id AND g.tamamlandi = 0) as aktif_gorev_sayisi,
-                (SELECT COUNT(*) FROM gorevler g WHERE g.liste_id = gl.id AND g.tamamlandi = 1) as tamamlanan_gorev_sayisi
+                (SELECT COUNT(*) FROM gorevler g WHERE g.liste_id = gl.id AND g.tamamlandi = 0 $userFilter) as aktif_gorev_sayisi,
+                (SELECT COUNT(*) FROM gorevler g WHERE g.liste_id = gl.id AND g.tamamlandi = 1 $userFilter) as tamamlanan_gorev_sayisi
                 FROM gorev_listeleri gl 
                 WHERE gl.firma_id = :firma_id 
                 ORDER BY gl.sira ASC, gl.id ASC";
@@ -103,25 +104,31 @@ class GorevModel extends Model
     // GÖREV İŞLEMLERİ
     // =====================================================
 
-    public function getGorevler($liste_id, $tamamlandi = 0)
+    public function getGorevler($liste_id, $user_id = null, $tamamlandi = 0)
     {
+        $userFilter = $user_id ? " AND (olusturan_id = :user_id OR FIND_IN_SET(:user_id, gorev_kullanicilari))" : "";
         $sql = "SELECT * FROM gorevler 
-                WHERE liste_id = :liste_id AND tamamlandi = :tamamlandi 
+                WHERE liste_id = :liste_id AND tamamlandi = :tamamlandi $userFilter
                 ORDER BY sira ASC, id ASC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':liste_id' => $liste_id, ':tamamlandi' => $tamamlandi]);
+        $params = [':liste_id' => $liste_id, ':tamamlandi' => $tamamlandi];
+        if ($user_id) $params[':user_id'] = $user_id;
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
-    public function getTumGorevler($firma_id)
+    public function getTumGorevler($firma_id, $user_id = null)
     {
+        $userFilter = $user_id ? " AND (g.olusturan_id = :user_id OR FIND_IN_SET(:user_id, g.gorev_kullanicilari))" : "";
         $sql = "SELECT g.*, gl.baslik as liste_adi 
                 FROM gorevler g 
                 JOIN gorev_listeleri gl ON g.liste_id = gl.id 
-                WHERE g.firma_id = :firma_id 
+                WHERE g.firma_id = :firma_id $userFilter
                 ORDER BY gl.sira ASC, g.tamamlandi ASC, g.sira ASC, g.id ASC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':firma_id' => $firma_id]);
+        $params = [':firma_id' => $firma_id];
+        if ($user_id) $params[':user_id'] = $user_id;
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -252,29 +259,34 @@ class GorevModel extends Model
         return true;
     }
 
-    public function getTamamlananlar($liste_id)
+    public function getTamamlananlar($liste_id, $user_id = null)
     {
+        $userFilter = $user_id ? " AND (olusturan_id = :user_id OR FIND_IN_SET(:user_id, gorev_kullanicilari))" : "";
         $sql = "SELECT * FROM gorevler 
-                WHERE liste_id = :liste_id AND tamamlandi = 1 
+                WHERE liste_id = :liste_id AND tamamlandi = 1 $userFilter
                 ORDER BY tamamlanma_tarihi DESC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':liste_id' => $liste_id]);
+        $params = [':liste_id' => $liste_id];
+        if ($user_id) $params[':user_id'] = $user_id;
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
-    public function getYaklasanGorevler($firma_id, $limit = 5)
+    public function getYaklasanGorevler($firma_id, $user_id = null, $limit = 5)
     {
+        $userFilter = $user_id ? " AND (g.olusturan_id = :user_id OR FIND_IN_SET(:user_id, g.gorev_kullanicilari))" : "";
         $sql = "SELECT g.*, gl.baslik as liste_adi, gl.renk as liste_renk 
                 FROM gorevler g 
                 JOIN gorev_listeleri gl ON g.liste_id = gl.id 
                 WHERE g.firma_id = :firma_id 
                 AND g.tamamlandi = 0 
-                AND g.ana_sayfa_goster = 1 
+                AND g.ana_sayfa_goster = 1 $userFilter
                 ORDER BY g.tarih ASC, g.saat ASC, g.id ASC 
                 LIMIT :limit";
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':firma_id', $firma_id, PDO::PARAM_INT);
         $stmt->bindValue(':limit', (int) $limit, PDO::PARAM_INT);
+        if ($user_id) $stmt->bindValue(':user_id', $user_id, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
@@ -294,10 +306,12 @@ class GorevModel extends Model
     /**
      * Bugün tarihli, saati gelmiş veya ön bildirim saati gelmiş görevleri döner
      */
-    public function getBildirimBekleyenGorevler()
+    public function getBildirimBekleyenGorevler($user_id = null)
     {
         $Settings = new \App\Model\SettingsModel();
         $offset = (int) ($Settings->getSettings('gorev_bildirim_dakika') ?? 0);
+
+        $userFilter = $user_id ? " AND (g.olusturan_id = :user_id OR FIND_IN_SET(:user_id, g.gorev_kullanicilari))" : "";
 
         // 1. ÖN BİLDİRİM BEKLEYENLER (Offset süresi gelenler)
         $sqlOn = "SELECT g.*, gl.baslik as liste_adi, gl.olusturan_id as liste_olusturan_id, 'on' as bildirim_tipi
@@ -307,7 +321,7 @@ class GorevModel extends Model
                     AND g.tamamlandi = 0
                     AND g.on_bildirim_gonderildi = 0
                     AND COALESCE(g.saat, '09:00:00') <= ADDTIME(CURTIME(), SEC_TO_TIME(:offset * 60))
-                    AND COALESCE(g.saat, '09:00:00') > CURTIME()";
+                    AND COALESCE(g.saat, '09:00:00') > CURTIME() $userFilter";
 
         // 2. TAM VAKİT BİLDİRİM BEKLEYENLER (Saati gelmiş/geçmiş olanlar)
         $sqlTam = "SELECT g.*, gl.baslik as liste_adi, gl.olusturan_id as liste_olusturan_id, 'tam' as bildirim_tipi
@@ -316,20 +330,24 @@ class GorevModel extends Model
                    WHERE g.tarih = CURDATE()
                      AND g.tamamlandi = 0
                      AND g.tam_vakit_bildirim_gonderildi = 0
-                     AND COALESCE(g.saat, '09:00:00') <= CURTIME()";
+                     AND COALESCE(g.saat, '09:00:00') <= CURTIME() $userFilter";
 
         $results = [];
 
         // Ön bildirimleri çek (Sadece offset 0'dan büyükse)
         if ($offset > 0) {
             $stmtOn = $this->db->prepare($sqlOn);
-            $stmtOn->execute([':offset' => $offset]);
+            $paramsOn = [':offset' => $offset];
+            if ($user_id) $paramsOn[':user_id'] = $user_id;
+            $stmtOn->execute($paramsOn);
             $results = array_merge($results, $stmtOn->fetchAll(PDO::FETCH_OBJ));
         }
 
         // Tam vakit bildirimlerini çek
         $stmtTam = $this->db->prepare($sqlTam);
-        $stmtTam->execute();
+        $paramsTam = [];
+        if ($user_id) $paramsTam[':user_id'] = $user_id;
+        $stmtTam->execute($paramsTam);
         $results = array_merge($results, $stmtTam->fetchAll(PDO::FETCH_OBJ));
 
         return $results;
