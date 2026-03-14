@@ -289,7 +289,7 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         $personelByEkip = [];
         while ($p = $stmtAllPersonel->fetch(PDO::FETCH_ASSOC)) {
             if (($p['ekip_no'] ?? 0) > 0) {
-                $personelByEkip[$p['ekip_no']] = $p['id'];
+                $personelByEkip[$p['ekip_no']][] = $p['id'];
             }
         }
 
@@ -321,8 +321,8 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
                 $resultNamesInApi[] = $isEmriSonucu;
             }
 
-            $sonuclanmis = $veri['SONUCLANMIS'] ?? 0;
-            $acikOlanlar = $veri['ACIK'] ?? 0;
+            $sonuclanmis = (float)($veri['SONUCLANMIS'] ?? 0);
+            $acikOlanlar = (float)($veri['ACIK'] ?? 0);
 
             if ((int) $sonuclanmis === 0) {
                 $bosSonucSayisi++;
@@ -330,7 +330,7 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             }
 
             $normDate = $tarih;
-            $islemId = md5($normDate . '|' . trim($ekipKoduStr) . '|' . trim($isEmriTipi) . '|' . trim($isEmriSonucu));
+            $islemIdPrefix = md5($normDate . '|' . trim($ekipKoduStr) . '|' . trim($isEmriTipi) . '|' . trim($isEmriSonucu));
 
             // İş Türü ID Bul/Oluştur
             $existingTur = $Tanimlamalar->isEmriSonucu(trim($isEmriTipi), trim($isEmriSonucu));
@@ -346,8 +346,8 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
                 $isEmriSonucuId = \App\Helper\Security::decrypt($encryptedId);
             }
 
-            // Ekip ve Personel Bul
-            $personelId = 0;
+            // Ekip ve Personel Bul (TÜM aktif personeller)
+            $personelMatches = [];
             $defId = 0;
             $ekipNo = 0;
             if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $ekipKoduStr, $m)) {
@@ -357,33 +357,56 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
                     if (isset($ekipGecmisi[$defId])) {
                         foreach ($ekipGecmisi[$defId] as $hist) {
                             if ($hist['baslangic_tarihi'] <= $normDate && ($hist['bitis_tarihi'] === null || $hist['bitis_tarihi'] >= $normDate)) {
-                                $personelId = $hist['personel_id'];
-                                break;
+                                $personelMatches[] = $hist['personel_id'];
                             }
                         }
                     }
-                    if (!$personelId)
-                        $personelId = $personelByEkip[$defId] ?? 0;
+                    if (empty($personelMatches) && isset($personelByEkip[$defId])) {
+                        $personelMatches = $personelByEkip[$defId];
+                    }
                 }
             }
 
-            if ($defId === 0) {
+            if ($defId === 0 || empty($personelMatches)) {
                 $atlanAnKayitlar++;
                 $atlanAnListesi[] = $ekipKoduStr . " (API: $isEmriTipi - $isEmriSonucu)";
                 continue;
             }
 
-            $insertBatch[] = [$islemId, $personelId, $defId, $firmaId, $isEmriSonucuId, $isEmriTipi, $ekipKoduStr, $isEmriSonucu, $sonuclanmis, $acikOlanlar, $normDate];
-            $yeniKayit++;
+            // Bölüştürme
+            $personelSayisi = count($personelMatches);
+            $bolunmusSonuclanmis = $sonuclanmis / $personelSayisi;
+            $bolunmusAcikOlanlar = $acikOlanlar / $personelSayisi;
+            $ekAciklama = $personelSayisi > 1 ? " (İş $personelSayisi kişiye bölündü)" : "";
 
-            // Demirbaş işlemi
-            if ($personelId > 0) {
-                $zRes = $Zimmet->checkAndProcessAutomaticZimmet($personelId, $isEmriSonucuId, $normDate, $islemId, $sonuclanmis);
-                // Zimmet eksikliği uyarısını topla
-                if (!empty($zRes['iade'])) {
-                    foreach ($zRes['iade'] as $iRes) {
-                        if (($iRes['status'] ?? '') === 'error' && ($iRes['type'] ?? '') === 'no_zimmet_found') {
-                            $eksikZimmetListesi[] = $iRes['personel_adi'];
+            foreach ($personelMatches as $pId) {
+                $perPersonIslemId = $islemIdPrefix . '_' . $pId;
+
+                $insertBatch[] = [
+                    $perPersonIslemId, 
+                    $pId, 
+                    $defId, 
+                    $firmaId, 
+                    $isEmriSonucuId, 
+                    $isEmriTipi, 
+                    $ekipKoduStr, 
+                    $isEmriSonucu, 
+                    $bolunmusSonuclanmis, 
+                    $bolunmusAcikOlanlar, 
+                    $normDate,
+                    "Cron sorgulama" . $ekAciklama
+                ];
+                $yeniKayit++;
+
+                // Demirbaş işlemi
+                if ($pId > 0) {
+                    $zRes = $Zimmet->checkAndProcessAutomaticZimmet($pId, $isEmriSonucuId, $normDate, $perPersonIslemId, $bolunmusSonuclanmis);
+                    // Zimmet eksikliği uyarısını topla
+                    if (!empty($zRes['iade'])) {
+                        foreach ($zRes['iade'] as $iRes) {
+                            if (($iRes['status'] ?? '') === 'error' && ($iRes['type'] ?? '') === 'no_zimmet_found') {
+                                $eksikZimmetListesi[] = $iRes['personel_adi'];
+                            }
                         }
                     }
                 }
@@ -405,8 +428,8 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         if (!empty($insertBatch)) {
             $chunks = array_chunk($insertBatch, 500);
             foreach ($chunks as $chunk) {
-                $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?)'));
-                $sql = "INSERT INTO yapilan_isler (islem_id, personel_id, ekip_kodu_id, firma_id, is_emri_sonucu_id, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih) VALUES $placeholders";
+                $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?)'));
+                $sql = "INSERT INTO yapilan_isler (islem_id, personel_id, ekip_kodu_id, firma_id, is_emri_sonucu_id, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih, aciklama) VALUES $placeholders";
                 $stmt = $Puantaj->db->prepare($sql);
                 $flatParams = [];
                 foreach ($chunk as $row) {

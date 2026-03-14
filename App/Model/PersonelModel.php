@@ -308,6 +308,15 @@ class PersonelModel extends Model
             return null;
         }
 
+        // Önce ekibin çoklu kullanıma uygun olup olmadığını kontrol et
+        $stmtCheck = $this->db->prepare("SELECT birden_fazla_personel_kullanabilir FROM tanimlamalar WHERE id = ?");
+        $stmtCheck->execute([$ekip_no]);
+        $ekip = $stmtCheck->fetch(PDO::FETCH_OBJ);
+
+        if ($ekip && $ekip->birden_fazla_personel_kullanabilir == 1) {
+            return null; // Çoklu kullanıma uygunsa her zaman müsait
+        }
+
         $sql = "SELECT id, adi_soyadi, ekip_no FROM $this->table 
                 WHERE ekip_no = ? 
                 AND aktif_mi = 1 
@@ -828,11 +837,41 @@ class PersonelModel extends Model
         return $stmt->fetchColumn() > 0;
     }
 
+    public function getActivePersonnelByTeamAndDate($ekip_kodu_id, $date)
+    {
+        $sql = "SELECT p.id, p.adi_soyadi 
+                FROM personel_ekip_gecmisi pg
+                JOIN personel p ON pg.personel_id = p.id
+                WHERE pg.ekip_kodu_id = :ekip_kodu_id 
+                AND pg.baslangic_tarihi <= :date
+                AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= :date)
+                AND p.silinme_tarihi IS NULL
+                AND pg.firma_id = :firma_id";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            'ekip_kodu_id' => $ekip_kodu_id,
+            'date' => $date,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+        
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
     /**
      * Belirli bir ekip kodunun başka bir personel tarafından o tarihlerde kullanılıp kullanılmadığını kontrol eder
      */
     public function isEkipKoduAvailable($ekip_kodu_id, $startDate, $endDate, $exclude_gecmis_id = null)
     {
+        // Önce ekibin çoklu kullanıma uygun olup olmadığını kontrol et
+        $stmtCheck = $this->db->prepare("SELECT birden_fazla_personel_kullanabilir FROM tanimlamalar WHERE id = ?");
+        $stmtCheck->execute([$ekip_kodu_id]);
+        $ekip = $stmtCheck->fetch(PDO::FETCH_OBJ);
+
+        if ($ekip && $ekip->birden_fazla_personel_kullanabilir == 1) {
+            return null; // Çoklu kullanıma uygunsa her zaman müsait
+        }
+
         $sql = "SELECT p.adi_soyadi FROM personel_ekip_gecmisi pg
                 JOIN personel p ON pg.personel_id = p.id
                 WHERE pg.ekip_kodu_id = :ekip_kodu_id 

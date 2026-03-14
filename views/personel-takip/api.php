@@ -17,6 +17,7 @@ use App\Helper\Security;
 // Response helper
 function response($success, $data = null, $message = '')
 {
+    if (ob_get_length()) ob_clean();
     echo json_encode([
         'success' => $success,
         'data' => $data,
@@ -109,7 +110,7 @@ try {
                 }
 
                 $foto = $p->foto
-                    ? '<img src="uploads/personel/' . htmlspecialchars($p->foto) . '" class="rounded-circle" width="32" height="32" style="object-fit:cover;">'
+                    ? '<img src="' . htmlspecialchars($p->foto) . '" class="rounded-circle" width="32" height="32" style="object-fit:cover;">'
                     : '<div class="avatar-xs"><span class="avatar-title rounded-circle bg-soft-primary text-primary">' . mb_substr($p->adi_soyadi, 0, 1) . '</span></div>';
 
                 $baslama_saat = $p->son_baslama ? date('H:i', strtotime($p->son_baslama)) : '-';
@@ -362,7 +363,7 @@ try {
                         if (!$gunler[$tarih]['basla'] || $saat < $gunler[$tarih]['basla']) {
                             $gunler[$tarih]['basla'] = $saat;
                         }
-                        $baslama_saatleri[] = strtotime('1970-01-01 ' . $saat_sn);
+                        $baslama_saatleri[] = strtotime('1970-01-01 ' . ($saat_sn ?? '00:00:00'));
 
                         // Geç kalma kontrolü
                         if ($saat > $limit_saat) {
@@ -372,15 +373,15 @@ try {
                         if (!$gunler[$tarih]['bitir'] || $saat > $gunler[$tarih]['bitir']) {
                             $gunler[$tarih]['bitir'] = $saat;
                         }
-                        $bitis_saatleri[] = strtotime('1970-01-01 ' . $saat_sn);
+                        $bitis_saatleri[] = strtotime('1970-01-01 ' . ($saat_sn ?? '00:00:00'));
                     }
                 }
 
                 // Toplam çalışma süresini hesapla
                 foreach ($gunler as $gun) {
                     if ($gun['basla'] && $gun['bitir']) {
-                        $start = strtotime($gun['basla']);
-                        $end = strtotime($gun['bitir']);
+                        $start = strtotime($gun['basla'] ?? '');
+                        $end = strtotime($gun['bitir'] ?? '');
                         if ($end > $start) {
                             $toplam_dakika += ($end - $start) / 60;
                         }

@@ -109,6 +109,9 @@ $canManageRules = Gate::allows('ekip_kodu_kurallari');
                                     <td class="text-center text-nowrap">
                                         <?php
                                         echo $ekip->kullanim_sayisi > 0 ? '<span class="badge bg-danger">Dolu</span>' : '<span class="badge bg-success">Boşta</span>';
+                                        if ($ekip->birden_fazla_personel_kullanabilir == 1) {
+                                            echo ' <span class="badge bg-info">Çoklu</span>';
+                                        }
                                         if (!empty($ekip->personel_isimleri)) {
                                             echo '<br><small class="text-muted">' . $ekip->personel_isimleri . '</small>';
                                         }
@@ -231,6 +234,15 @@ $canManageRules = Gate::allows('ekip_kodu_kurallari');
                                             "Açıklama",
                                             "map-pin",
                                         ); ?>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <div class="form-check form-switch form-switch-lg" dir="ltr">
+                                        <input class="form-check-input" type="checkbox" name="birden_fazla_personel_kullanabilir" id="birden_fazla_personel_kullanabilir" value="1">
+                                        <label class="form-check-label" for="birden_fazla_personel_kullanabilir">Bu ekip kodu birden fazla personele atanabilir</label>
+                                    </div>
                                 </div>
                             </div>
                         </form>

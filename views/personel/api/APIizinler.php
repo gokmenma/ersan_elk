@@ -67,15 +67,28 @@ try {
         // Şifreli ID'yi çöz
         $izinId = Security::decrypt($encryptedId);
 
-        // Onay bilgisi varsa kaydet
-        if (!empty($onaylayan_id)) {
+        // Onay bilgisi varsa kaydet (Güncelleme durumunda eski onayları silip yenisini atıyor veya Model bunu handle ediyor olabilir)
+        // Mevcut kod her seferinde yeni onay kaydı ekliyor (addOnayKaydi seviye artırıyor).
+        if (!empty($onaylayan_id) && $izinId > 0) {
             $IzinOnaylariModel = new IzinOnaylariModel();
+            
+            // Tarih formatını kontrol et (dd.mm.yyyy gelirse Y-m-d H:i:s yap)
+            $formattedOnayTarihi = $onay_tarihi;
+            if (strpos($formattedOnayTarihi, '.') !== false) {
+                // Basit bir dd.mm.yyyy HH:ii -> Y-m-d HH:ii dönüşümü
+                $parts = explode(' ', $formattedOnayTarihi);
+                $dateParts = explode('.', $parts[0]);
+                if (count($dateParts) === 3) {
+                    $formattedOnayTarihi = $dateParts[2] . '-' . $dateParts[1] . '-' . $dateParts[0] . (isset($parts[1]) ? ' ' . $parts[1] : ' ' . date('H:i:s'));
+                }
+            }
+
             $onayData = [
                 'izin_id' => $izinId,
                 'onaylayan_id' => $onaylayan_id,
                 'onay_durumu' => $onay_durumu,
                 'aciklama' => $onay_aciklama,
-                'onay_tarihi' => $onay_tarihi ?: date('Y-m-d H:i:s')
+                'onay_tarihi' => !empty($formattedOnayTarihi) ? $formattedOnayTarihi : date('Y-m-d H:i:s')
             ];
             $IzinOnaylariModel->saveWithAttr($onayData);
         }

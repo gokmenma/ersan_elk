@@ -59,6 +59,24 @@ $(document).ready(function () {
       $("#icra_kesinti_orani").attr("required", true);
     }
   });
+  
+  // Bitiş tarihi değiştiğinde uyarı ver
+  $(document).on("change", "#icra_bitis", function () {
+    var val = $(this).val();
+    var durum = $("#icra_durum").val();
+    if (val && val !== "" && val !== "0000-00-00" && durum === "devam_ediyor") {
+        Swal.fire({
+            title: "Durum Güncelleme Hatırlatması",
+            text: "Bitiş tarihi girdiğinizde, dosya kapandığında icra durumunu da 'Tamamlandı' veya 'Kesinti Bitti' şeklinde güncellemeyi unutmayınız.",
+            icon: "info",
+            confirmButtonText: "Anladım",
+            customClass: {
+                confirmButton: "btn btn-info px-4"
+            },
+            buttonsStyling: false
+        });
+    }
+  });
 
   // İcra Düzenle Modal Aç
   $(document).on("click", ".btn-icra-duzenle", function () {

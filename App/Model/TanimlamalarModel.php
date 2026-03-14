@@ -114,6 +114,9 @@ class TanimlamalarModel extends Model
 
         $enc_id = Security::encrypt($data->id);
         $durum = $data->kullanim_sayisi > 0 ? '<span class="badge bg-danger">Dolu</span>' : '<span class="badge bg-success">Boşta</span>';
+        if (isset($data->birden_fazla_personel_kullanabilir) && $data->birden_fazla_personel_kullanabilir == 1) {
+            $durum .= ' <span class="badge bg-info">Çoklu</span>';
+        }
         $personel = !empty($data->personel_isimleri) ? '<br><small class="text-muted">' . $data->personel_isimleri . '</small>' : '';
 
         return '<tr id="row_' . $data->id . '">
@@ -264,7 +267,7 @@ class TanimlamalarModel extends Model
         $tumEkipKodlari = $sql->fetchAll(PDO::FETCH_OBJ);
 
         $musaitEkipKodlari = array_filter($tumEkipKodlari, function ($item) use ($aktifEkipKodlariResult) {
-            return !in_array($item->id, $aktifEkipKodlariResult);
+            return (isset($item->birden_fazla_personel_kullanabilir) && $item->birden_fazla_personel_kullanabilir == 1) || !in_array($item->id, $aktifEkipKodlariResult);
         });
 
         return array_values($musaitEkipKodlari);
@@ -424,7 +427,7 @@ class TanimlamalarModel extends Model
         $bolgeEkipKodlari = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         $musaitEkipKodlari = array_filter($bolgeEkipKodlari, function ($item) use ($aktifEkipKodlariResult) {
-            return !in_array($item->id, $aktifEkipKodlariResult);
+            return (isset($item->birden_fazla_personel_kullanabilir) && $item->birden_fazla_personel_kullanabilir == 1) || !in_array($item->id, $aktifEkipKodlariResult);
         });
 
         return array_values($musaitEkipKodlari);

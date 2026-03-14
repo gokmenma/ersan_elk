@@ -468,7 +468,16 @@ if (!empty($dbGelirler)) {
 
                             // USER REQ: Maaş hesaplaması görev geçmişi kapsamına göre olmalı (Örn: Geçmiş 1 günlük ise 1 gün ödenmeli)
                             if (!empty($p->gorev_gecmisi_var) && isset($p->gg_toplam_gun)) {
-                                $pGunlukBase = min($pGunlukBase, intval($p->gg_toplam_gun));
+                                $ggToplamGun = intval($p->gg_toplam_gun);
+                                // NEW: Eğer ayı 30 gün olarak kabul ediyorsak (bordro mantığı), görev geçmişi gününü de bu orana çekmeliyiz
+                                if ($ggToplamGun > 0 && $aydakiGunSayisi != 30) {
+                                    if ($ggToplamGun == $aydakiGunSayisi) {
+                                        $ggToplamGun = 30;
+                                    } else {
+                                        $ggToplamGun = round($ggToplamGun * (30 / $aydakiGunSayisi));
+                                    }
+                                }
+                                $pGunlukBase = min($pGunlukBase, $ggToplamGun);
                             }
 
                             $pCalismaGunu = $pGunlukBase;

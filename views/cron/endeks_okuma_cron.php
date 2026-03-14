@@ -290,7 +290,7 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         while ($p = $stmtAllPersonel->fetch(PDO::FETCH_ASSOC)) {
             $personelByName[$p['adi_soyadi']] = $p;
             if ($p['ekip_no'] > 0) {
-                $personelByEkip[$p['ekip_no']] = $p['id'];
+                $personelByEkip[$p['ekip_no']][] = $p['id'];
             }
         }
 
@@ -333,13 +333,14 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             $normDate = \App\Helper\Date::convertExcelDate($veri['OKUMATARIHI'], 'Y-m-d') ?: $veri['OKUMATARIHI'];
             $islemId = md5($normDate . '|' . $bolge . '|' . $defter . '|' . $okuyucuNo . '|' . $sayacDurum);
 
-            // Personel eşleştirme
-            $personelId = 0;
+            // Personel eşleştirme (TÜM aktif personeller)
+            $personelMatches = [];
             $ekipKoduId = 0;
 
             if (isset($personelByName[$okuyucuAdi])) {
-                $personelId = $personelByName[$okuyucuAdi]['id'];
+                $pId = $personelByName[$okuyucuAdi]['id'];
                 $ekipKoduId = $personelByName[$okuyucuAdi]['ekip_no'];
+                $personelMatches[] = $pId;
             } else {
                 if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $okuyucuAdi, $m)) {
                     $ekipNo = $m[1];
@@ -349,44 +350,50 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
                         if (isset($ekipGecmisi[$ekipKoduId])) {
                             foreach ($ekipGecmisi[$ekipKoduId] as $hist) {
                                 if ($hist['baslangic_tarihi'] <= $normDate && ($hist['bitis_tarihi'] === null || $hist['bitis_tarihi'] >= $normDate)) {
-                                    $personelId = $hist['personel_id'];
-                                    break;
+                                    $personelMatches[] = $hist['personel_id'];
                                 }
                             }
                         }
-                        if (!$personelId) {
-                            $personelId = $personelByEkip[$ekipKoduId] ?? 0;
+                        if (empty($personelMatches) && isset($personelByEkip[$ekipKoduId])) {
+                            $personelMatches = $personelByEkip[$ekipKoduId];
                         }
                     }
                 }
             }
 
-            if ($ekipKoduId === 0) {
+            if ($ekipKoduId === 0 || empty($personelMatches)) {
                 $atlanAnKayitlar++;
                 $atlanAnListesi[] = $okuyucuAdi . " (Bölge: " . $bolge . ")";
                 continue;
             }
 
-            $insertBatch[] = [
-                $islemId,
-                $personelId,
-                $ekipKoduId,
-                $firmaId,
-                $bolge,
-                $okuyucuAdi,
-                0,
-                0,
-                0,
-                0, // sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk
-                1, // okunan_gun_sayisi
-                $veri['ABONE_SAYISI'],
-                $veri['ABONE_SAYISI'], // ort_okunan_abone_sayisi_gunluk
-                100, // okuma_performansi
-                $normDate,
-                $defter,
-                $sayacDurum
-            ];
-            $yeniKayit++;
+            // Bölüştürme
+            $personelSayisi = count($personelMatches);
+            $bolunmusAbone = (float)$veri['ABONE_SAYISI'] / $personelSayisi;
+            $ekAciklama = $personelSayisi > 1 ? " (İş $personelSayisi kişiye bölündü. Toplam: {$veri['ABONE_SAYISI']})" : "";
+
+            foreach ($personelMatches as $pId) {
+                $perPersonIslemId = $islemId . '_' . $pId;
+
+                $insertBatch[] = [
+                    $perPersonIslemId,
+                    $pId,
+                    $ekipKoduId,
+                    $firmaId,
+                    $bolge,
+                    $okuyucuAdi,
+                    0, 0, 0, 0, // sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk
+                    1, // okunan_gun_sayisi
+                    $bolunmusAbone,
+                    $bolunmusAbone, // ort_okunan_abone_sayisi_gunluk
+                    100, // okuma_performansi
+                    $normDate,
+                    $defter,
+                    $sayacDurum,
+                    "Cron sorgulama" . $ekAciklama
+                ];
+                $yeniKayit++;
+            }
         }
 
         // 4. Eski verileri sil ve Toplu INSERT yap (Transaction içinde)
@@ -402,8 +409,8 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         if (!empty($insertBatch)) {
             $insertChunks = array_chunk($insertBatch, 500);
             foreach ($insertChunks as $chunk) {
-                $valuesPart = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'));
-                $sql = "INSERT INTO endeks_okuma (islem_id, personel_id, ekip_kodu_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih, defter, sayac_durum) VALUES $valuesPart";
+                $valuesPart = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'));
+                $sql = "INSERT INTO endeks_okuma (islem_id, personel_id, ekip_kodu_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih, defter, sayac_durum, aciklama) VALUES $valuesPart";
                 $params = [];
                 foreach ($chunk as $row) {
                     $params = array_merge($params, $row);

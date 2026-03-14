@@ -113,6 +113,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "ekip-kodu-kaydet") {
             "grup" => "ekip_kodu",
             "ekip_bolge" => $_POST["ekip_bolge"],
             "tur_adi" => $_POST["ekip_kodu"],
+            "birden_fazla_personel_kullanabilir" => isset($_POST["birden_fazla_personel_kullanabilir"]) ? 1 : 0,
             "aciklama" => $_POST["aciklama"],
         ];
 

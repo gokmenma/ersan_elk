@@ -174,8 +174,15 @@ $title = "Saha Personel Takibi";
                         <!-- HARİTA TAB -->
                         <div class="tab-pane fade" id="tabHarita" role="tabpanel">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div class="d-flex align-items-center gap-4">
+                                <div class="d-flex align-items-center gap-3">
                                     <h5 class="mb-0">Personel Konum Haritası</h5>
+                                    <div class="input-group input-group-sm ms-2" style="width: 250px;">
+                                        <span class="input-group-text"><i class="bx bx-search"></i></span>
+                                        <input type="text" class="form-control" id="mapSearchInput" placeholder="Personel ara..." onkeyup="filterMapMarkers()">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('mapSearchInput').value=''; filterMapMarkers();">
+                                            <i class="bx bx-x"></i>
+                                        </button>
+                                    </div>
                                     <div class="btn-group btn-group-sm" role="group">
                                         <input type="radio" class="btn-check" name="haritaModu" id="modGorev" checked
                                             onchange="loadHaritaVerileri()">
@@ -410,6 +417,7 @@ $title = "Saha Personel Takibi";
     var currentPersonelId = null;
     var personelTakipDT = null;
     var haritaMap = null;
+    var allMapData = []; // Store raw data for filtering
     var haritaMarkers = [];
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -655,82 +663,104 @@ $title = "Saha Personel Takibi";
                 body: 'action=getHaritaVerileri&tumPersoneller=1&viewType=' + viewType
             });
             const result = await response.json();
+            allMapData = result.data || []; // Store for filtering
 
-            // Mevcut markerları temizle
-            haritaMarkers.forEach(m => haritaMap.removeLayer(m));
-            haritaMarkers = [];
-
-            if (result.success && result.data && result.data.length > 0) {
-                var bounds = [];
-
-                result.data.forEach(function (p) {
-                    // Konum yoksa Kahramanmaraş merkez + rastgele offset
-                    var lat = p.lat || (kahramanmarasLat + (Math.random() - 0.5) * 0.05);
-                    var lng = p.lng || (kahramanmarasLng + (Math.random() - 0.5) * 0.05);
-                    var hasLocation = p.lat && p.lng;
-
-                    // Durum rengine göre marker
-                    var markerColor = '#f46a6a'; // Varsayılan: kırmızı (başlamadı)
-                    var statusIcon = 'bx-time-five';
-
-                    if (p.durum === 'aktif') {
-                        markerColor = '#34c38f'; // Yeşil
-                        statusIcon = 'bx-run';
-                    } else if (p.durum === 'bitti') {
-                        markerColor = '#556ee6'; // Mavi
-                        statusIcon = 'bx-check';
-                    }
-
-                    // Konum yoksa marker'ı farklı göster
-                    var markerStyle = hasLocation
-                        ? 'border: 3px solid white;'
-                        : 'border: 3px dashed white; opacity: 0.7;';
-
-                    var icon = L.divIcon({
-                        className: 'custom-marker',
-                        html: '<div style="background-color: ' + markerColor + '; width: 32px; height: 32px; border-radius: 50%; ' + markerStyle + ' box-shadow: 0 2px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;"><i class="bx ' + statusIcon + '" style="color: white; font-size: 16px;"></i></div>',
-                        iconSize: [32, 32],
-                        iconAnchor: [16, 16]
-                    });
-
-                    var marker = L.marker([lat, lng], { icon: icon }).addTo(haritaMap);
-
-                    // Popup içeriği
-                    var fotoHtml = p.foto
-                        ? '<img src="uploads/personel/' + p.foto + '" width="50" height="50" style="object-fit: cover; border-radius: 50%;">'
-                        : '<div style="width:50px;height:50px;background:#556ee6;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:18px;">' + p.adi_soyadi.charAt(0) + '</div>';
-
-                    var konumInfo = hasLocation
-                        ? '<small class="text-muted">Son konum: ' + new Date(p.son_zaman || Date.now()).toLocaleTimeString('tr-TR') + '</small>'
-                        : '<small class="text-warning"><i class="bx bx-error-circle"></i> Konum bilgisi yok</small>';
-
-                    var badgeClass = p.durum === 'aktif' ? 'bg-success' : (p.durum === 'bitti' ? 'bg-primary' : 'bg-secondary');
-
-                    marker.bindPopup(
-                        '<div class="marker-popup" style="text-align:center; min-width: 150px;">' +
-                        fotoHtml +
-                        '<h6 class="mt-2 mb-1">' + p.adi_soyadi + '</h6>' +
-                        '<span class="badge ' + badgeClass + ' mb-1">' + p.durum_text + '</span><br>' +
-                        konumInfo +
-                        '<div class="mt-2 pt-2 border-top">' +
-                        '<button class="btn btn-sm btn-soft-danger w-100" onclick="konumIste(' + p.id + ')">' +
-                        '<i class="bx bx-target-lock me-1"></i> Anlık Konum İste' +
-                        '</button>' +
-                        '</div>' +
-                        '</div>'
-                    );
-
-                    haritaMarkers.push(marker);
-                    bounds.push([lat, lng]);
-                });
-
-                // Markerlar varsa bounds'a göre zoom, yoksa Kahramanmaraş'ta kal
-                if (bounds.length > 0) {
-                    haritaMap.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
-                }
-            }
+            renderMapMarkers(allMapData);
         } catch (error) {
             console.error('Harita verileri yüklenirken hata:', error);
+        }
+    }
+
+    function filterMapMarkers() {
+        const searchText = document.getElementById('mapSearchInput').value.toLowerCase().trim();
+        
+        if (!searchText) {
+            renderMapMarkers(allMapData);
+            return;
+        }
+
+        const filteredData = allMapData.filter(p => 
+            p.adi_soyadi.toLowerCase().includes(searchText)
+        );
+
+        renderMapMarkers(filteredData);
+    }
+
+    function renderMapMarkers(data) {
+        if (!haritaMap) return;
+
+        // Mevcut markerları temizle
+        haritaMarkers.forEach(m => haritaMap.removeLayer(m));
+        haritaMarkers = [];
+
+        if (data && data.length > 0) {
+            var bounds = [];
+
+            data.forEach(function (p) {
+                // Konum yoksa Kahramanmaraş merkez + rastgele offset
+                var lat = p.lat || (kahramanmarasLat + (Math.random() - 0.5) * 0.05);
+                var lng = p.lng || (kahramanmarasLng + (Math.random() - 0.5) * 0.05);
+                var hasLocation = p.lat && p.lng;
+
+                // Durum rengine göre marker
+                var markerColor = '#f46a6a'; // Varsayılan: kırmızı (başlamadı)
+                var statusIcon = 'bx-time-five';
+
+                if (p.durum === 'aktif') {
+                    markerColor = '#34c38f'; // Yeşil
+                    statusIcon = 'bx-run';
+                } else if (p.durum === 'bitti') {
+                    markerColor = '#556ee6'; // Mavi
+                    statusIcon = 'bx-check';
+                }
+
+                // Konum yoksa marker'ı farklı göster
+                var markerStyle = hasLocation
+                    ? 'border: 3px solid white;'
+                    : 'border: 3px dashed white; opacity: 0.7;';
+
+                var icon = L.divIcon({
+                    className: 'custom-marker',
+                    html: '<div style="background-color: ' + markerColor + '; width: 32px; height: 32px; border-radius: 50%; ' + markerStyle + ' box-shadow: 0 2px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;"><i class="bx ' + statusIcon + '" style="color: white; font-size: 16px;"></i></div>',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                });
+
+                var marker = L.marker([lat, lng], { icon: icon }).addTo(haritaMap);
+
+                // Popup içeriği
+                var fotoHtml = p.foto
+                    ? '<img src="' + p.foto + '" width="50" height="50" style="object-fit: cover; border-radius: 50%;">'
+                    : '<div style="width:50px;height:50px;background:#556ee6;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:18px;">' + p.adi_soyadi.charAt(0) + '</div>';
+
+                var konumInfo = hasLocation
+                    ? '<small class="text-muted">Son konum: ' + new Date(p.son_zaman || Date.now()).toLocaleTimeString('tr-TR') + '</small>'
+                    : '<small class="text-warning"><i class="bx bx-error-circle"></i> Konum bilgisi yok</small>';
+
+                var badgeClass = p.durum === 'aktif' ? 'bg-success' : (p.durum === 'bitti' ? 'bg-primary' : 'bg-secondary');
+
+                marker.bindPopup(
+                    '<div class="marker-popup" style="text-align:center; min-width: 150px;">' +
+                    fotoHtml +
+                    '<h6 class="mt-2 mb-1">' + p.adi_soyadi + '</h6>' +
+                    '<span class="badge ' + badgeClass + ' mb-1">' + p.durum_text + '</span><br>' +
+                    konumInfo +
+                    '<div class="mt-2 pt-2 border-top">' +
+                    '<button class="btn btn-sm btn-soft-danger w-100" onclick="konumIste(' + p.id + ')">' +
+                    '<i class="bx bx-target-lock me-1"></i> Anlık Konum İste' +
+                    '</button>' +
+                    '</div>' +
+                    '</div>'
+                );
+
+                haritaMarkers.push(marker);
+                bounds.push([lat, lng]);
+            });
+
+            // Markerlar varsa bounds'a göre zoom, yoksa Kahramanmaraş'ta kal
+            if (bounds.length > 0) {
+                haritaMap.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+            }
         }
     }
 

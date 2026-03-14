@@ -870,7 +870,7 @@ class BordroPersonelModel extends Model
         $sql = $this->db->prepare("
             SELECT 
                 isemri_sonucu,
-                COUNT(*) as adet
+                SUM(is_sayisi) as adet
             FROM sayac_degisim
             WHERE personel_id = ? 
             AND tarih BETWEEN ? AND ?
@@ -1218,9 +1218,10 @@ class BordroPersonelModel extends Model
             AND durum = 'devam_ediyor'
             AND silinme_tarihi IS NULL
             AND (baslangic_tarihi IS NULL OR baslangic_tarihi <= ?)
+            AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
             ORDER BY sira ASC, id ASC
         ");
-        $sql->execute([$personel_id, $bitis_tarihi]);
+        $sql->execute([$personel_id, $bitis_tarihi, $baslangic_tarihi]);
         $icralar = $sql->fetchAll(PDO::FETCH_OBJ);
 
         if (empty($icralar)) {
@@ -1768,6 +1769,17 @@ class BordroPersonelModel extends Model
             if ($toplamGecerliGun > 30)
                 $toplamGecerliGun = 30;
 
+            // NEW: Eğer ayı 30 gün olarak kabul ediyorsak (bordro mantığı), görev geçmişi gününü de bu orana çekmeliyiz
+            // Özellikle Şubat ayı için (28/29 gün) tam çalışanların 30 gün görünmesi için bu oranlama şart
+            $aydakiGunSayisiDonem = date('t', strtotime($donemTarihi));
+            if ($toplamGecerliGun > 0 && $aydakiGunSayisiDonem != 30) {
+                if ($toplamGecerliGun == $aydakiGunSayisiDonem) {
+                    $toplamGecerliGun = 30;
+                } else {
+                    $toplamGecerliGun = round($toplamGecerliGun * (30 / $aydakiGunSayisiDonem));
+                }
+            }
+
             // Nominal Brüt Maaş (Daily wage hesabı için oranlanmamış tam aylık tutar)
             // Eğer 30 günün tamamı kapsanmıyorsa (kıst çalışma), ağırlık üzerinden 30 güne tamamlıyoruz
             $nominalBrutMaas = ($toplamGecerliGun > 0) ? ($agirlikliBrutMaas / $toplamGecerliGun * 30) : $agirlikliBrutMaas;
@@ -1942,6 +1954,12 @@ class BordroPersonelModel extends Model
 
         // Puantajdan (yapılan işler) fiili çalışma gününü al
         $puantajGunSayisi = $this->getCalismaGunuSayisi($kayit->personel_id, $donemTarihi, $donemBitis);
+
+        // NEW: Eğer ayı 30 gün olarak kabul ediyorsak (bordro mantığı), puantaj gününü de bu orana çekmeliyiz
+        // Özellikle Şubat ayı için (28/29 gün) tam çalışanların 30 gün görünmesi için bu oranlama şart
+        if ($puantajGunSayisi > 0 && $aydakiGunSayisi != 30) {
+            $puantajGunSayisi = round($puantajGunSayisi * (30 / $aydakiGunSayisi));
+        }
 
         // USER REQ: Puantaj kaydı varsa gunlukBase'i oradan al (Örn: Gökhan Bey 22 gün)
         if ($puantajGunSayisi > 0) {
@@ -2377,6 +2395,7 @@ class BordroPersonelModel extends Model
         $fiiliCalismaGunu = $gunlukBase - $ucretsizIzinGunu - $ucretliIzinGunu;
         // Puantaj kontrolü
         if ($puantajGunSayisi > 0) {
+            // $puantajGunSayisi yukarıda zaten oranlanmış durumda
             $fiiliCalismaGunu = min($fiiliCalismaGunu, $puantajGunSayisi);
         }
         if ($fiiliCalismaGunu < 0)

@@ -127,6 +127,7 @@ $(document).on("click", "#actionEkle", function () {
   $("#ekip_id").val(0);
   $("#ekipKoduInfo").html("");
   $("#actionModalLabel").text("Ekip Kodu Ekle");
+  $("#birden_fazla_personel_kullanabilir").prop("checked", false);
 
   // İlk sekmeye dön
   $("#ekipKodu-tab").tab("show");
@@ -220,6 +221,7 @@ $(document).on("click", ".duzenle", function (e) {
 
         $("#ekip_kodu").val(data.data.ekip_kodu);
         $("#aciklama").val(data.data.aciklama);
+        $("#birden_fazla_personel_kullanabilir").prop("checked", data.data.birden_fazla_personel_kullanabilir == 1);
         $("#actionModalLabel").text("Ekip Kodu Düzenle");
 
         // İlk sekmeye dön

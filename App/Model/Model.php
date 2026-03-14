@@ -99,6 +99,7 @@ class Model extends Db
         $this->attributes = $data;
         if (isset($data[$this->primaryKey]) && $data[$this->primaryKey] > 0) {
             $this->update();
+            return Security::encrypt($this->attributes[$this->primaryKey]);
         } else {
             return $this->insert();
         }

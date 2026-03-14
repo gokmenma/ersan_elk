@@ -942,7 +942,7 @@ $title = 'Nöbet Planlama';
                             filteredData = data.filter(ev => ev.extendedProps.raw_personel_id == selectedFilterPersonelId);
                         }
                         successCallback(filteredData);
-                        updateStats(data, filteredData); // Hem ham hem filtrelenmiş veriyi gönder
+                        updateStats(data, filteredData);
                     })
                     .catch(error => {
                         console.error('Takvim yükleme hatası:', error);
@@ -1779,13 +1779,25 @@ $title = 'Nöbet Planlama';
 
         function updateStats(allEvents, filteredEvents) {
             const today = new Date().toISOString().split('T')[0];
+            const viewStart = calendar.view.activeStart;
+            const viewEnd = calendar.view.activeEnd;
+
+            // Görünür aralıkta olan ve iptal edilmemiş nöbetleri filtrele
+            const isVisible = (event) => {
+                const eventDate = new Date(event.start);
+                // durum === 'iptal' olanları sayma (istatistiklerde ve listede görünmesin)
+                return eventDate >= viewStart && eventDate < viewEnd && event.extendedProps.durum !== 'iptal';
+            };
+
+            const visibleAllEvents = allEvents.filter(isVisible);
+            const visibleFilteredEvents = filteredEvents.filter(isVisible);
 
             // 1. İstatistik Kartlarını Güncelle (Sadece filtrelenmiş veriye göre)
-            let totalCount = filteredEvents.length;
+            let totalCount = visibleFilteredEvents.length;
             let weekendCount = 0;
             let todayNames = [];
 
-            filteredEvents.forEach(event => {
+            visibleFilteredEvents.forEach(event => {
                 const eventDate = new Date(event.start);
                 const dayOfWeek = eventDate.getDay();
 
@@ -1810,7 +1822,7 @@ $title = 'Nöbet Planlama';
             const allCounts = {};
             const monthPersonels = new Map();
 
-            allEvents.forEach(event => {
+            visibleAllEvents.forEach(event => {
                 if (event.extendedProps && event.extendedProps.raw_personel_id) {
                     const pIdStr = event.extendedProps.raw_personel_id;
                     allCounts[pIdStr] = (allCounts[pIdStr] || 0) + 1;
