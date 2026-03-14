@@ -83,12 +83,16 @@ class NobetModel extends Model
     /**
      * Personelin nöbetlerini getirir
      */
-    public function getPersonelNobetleri($personel_id, $baslangic = null, $bitis = null, $include_deleted = false)
+    public function getPersonelNobetleri($personel_id, $baslangic = null, $bitis = null, $include_deleted = false, $only_approved = false)
     {
         $sql = "SELECT n.*, p.adi_soyadi, p.departman
                 FROM {$this->table} n
                 LEFT JOIN personel p ON n.personel_id = p.id
                 WHERE n.personel_id = :personel_id ";
+        
+        if ($only_approved) {
+            $sql .= " AND n.yonetici_onayi = 1";
+        }
 
         if (!$include_deleted) {
             $sql .= " AND n.silinme_tarihi IS NULL";
@@ -118,9 +122,9 @@ class NobetModel extends Model
     public function addNobet($data)
     {
         $sql = "INSERT INTO {$this->table} 
-                (firma_id, personel_id, nobet_tarihi, baslangic_saati, bitis_saati, nobet_tipi, aciklama, olusturan_id, olusturma_tarihi)
+                (firma_id, personel_id, nobet_tarihi, baslangic_saati, bitis_saati, nobet_tipi, aciklama, olusturan_id, yonetici_onayi, olusturma_tarihi)
                 VALUES 
-                (:firma_id, :personel_id, :nobet_tarihi, :baslangic_saati, :bitis_saati, :nobet_tipi, :aciklama, :olusturan_id, NOW())";
+                (:firma_id, :personel_id, :nobet_tarihi, :baslangic_saati, :bitis_saati, :nobet_tipi, :aciklama, :olusturan_id, :yonetici_onayi, NOW())";
         $tip = $data['nobet_tipi'] ?? 'standart';
         $gun = date('N', strtotime($data['nobet_tarihi']));
         if ($tip === 'standart' && $gun == 7) {
@@ -136,7 +140,8 @@ class NobetModel extends Model
             'bitis_saati' => $data['bitis_saati'] ?? '08:00:00',
             'nobet_tipi' => $tip,
             'aciklama' => $data['aciklama'] ?? null,
-            'olusturan_id' => $_SESSION['user_id'] ?? null
+            'olusturan_id' => $_SESSION['user_id'] ?? null,
+            'yonetici_onayi' => $data['yonetici_onayi'] ?? 0
         ]);
 
         return $result ? $this->db->lastInsertId() : false;
@@ -212,7 +217,7 @@ class NobetModel extends Model
      */
     public function onaylaNobetTalebi($nobet_id)
     {
-        $sql = "UPDATE {$this->table} SET durum = 'onaylandi', olusturan_id = :olusturan_id WHERE id = :id AND durum = 'talep_edildi'";
+        $sql = "UPDATE {$this->table} SET durum = 'onaylandi', olusturan_id = :olusturan_id, yonetici_onayi = 1 WHERE id = :id AND durum = 'talep_edildi'";
         $query = $this->db->prepare($sql);
         return $query->execute([
             'id' => $nobet_id,
@@ -522,9 +527,10 @@ class NobetModel extends Model
             throw new \Exception("Talep bulunamadı.");
         }
 
-        // Nöbetin personelini değiştir
+        // Nöbetin personelini değiştir ve yönetici onayını 1 yap
         $this->updateNobet($talep->nobet_id, [
-            'personel_id' => $talep->talep_edilen_id
+            'personel_id' => $talep->talep_edilen_id,
+            'yonetici_onayi' => 1
         ]);
 
         // Talebi güncelle
@@ -1103,4 +1109,90 @@ class NobetModel extends Model
             'pending' => (int) ($result['pending'] ?? 0)
         ];
     }
+
+    // =====================================================
+    // ONAY İŞLEMLERİ
+    // =====================================================
+
+    /**
+     * Onay bekleyen nöbetleri getirir
+     */
+    public function getOnayBekleyenNobetler($ay = null, $yil = null)
+    {
+        $firma_id = $_SESSION['firma_id'] ?? null;
+        $params = [':firma_id' => $firma_id];
+        $where = "WHERE n.firma_id = :firma_id AND n.silinme_tarihi IS NULL AND (n.yonetici_onayi = 0 OR n.yonetici_onayi IS NULL)";
+
+        if ($ay > 0 && $yil > 0) {
+            $where .= " AND MONTH(n.nobet_tarihi) = :ay AND YEAR(n.nobet_tarihi) = :yil";
+            $params[':ay'] = $ay;
+            $params[':yil'] = $yil;
+        } else if ($yil > 0) {
+            $where .= " AND YEAR(n.nobet_tarihi) = :yil";
+            $params[':yil'] = $yil;
+        }
+
+        $sql = "SELECT n.*, p.adi_soyadi as personel_adi, p.departman
+                FROM {$this->table} n
+                JOIN personel p ON n.personel_id = p.id
+                $where
+                ORDER BY n.nobet_tarihi DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Nöbeti onaylar
+     */
+    public function onaylaNobet($id)
+    {
+        return $this->updateNobet($id, ['yonetici_onayi' => 1]);
+    }
+
+    /**
+     * Nöbetin onayını kaldırır
+     */
+    public function onayiKaldirNobet($id)
+    {
+        return $this->updateNobet($id, ['yonetici_onayi' => 0]);
+    }
+
+    /**
+     * Toplu onaylama
+     */
+    public function bulkOnaylaNobet($ids)
+    {
+        if (empty($ids)) return false;
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "UPDATE {$this->table} SET yonetici_onayi = 1 WHERE id IN ($placeholders)";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute($ids);
+    }
+
+    /**
+     * Toplu onay kaldırma
+     */
+    public function bulkOnayiKaldirNobet($ids)
+    {
+        if (empty($ids)) return false;
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "UPDATE {$this->table} SET yonetici_onayi = 0 WHERE id IN ($placeholders)";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute($ids);
+    }
+
+    /**
+     * Toplu silme
+     */
+    public function bulkSilNobet($ids)
+    {
+        if (empty($ids)) return false;
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "UPDATE {$this->table} SET silinme_tarihi = NOW() WHERE id IN ($placeholders)";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute($ids);
+    }
 }
+

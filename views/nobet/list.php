@@ -12,6 +12,7 @@ $settingsData = $Settings->getAllSettingsAsKeyValue($_SESSION['firma_id'] ?? nul
 $canEditPast = ($settingsData['nobet_gecmis_islem'] ?? '0') === '1';
 $showDeletedToStaff = ($settingsData['nobet_silinmis_goster'] ?? '0') === '1';
 $hasSettingPermission = Gate::allows("nobet_onceki_gunlerde_islem_yapabilir");
+$canApprove = Gate::allows("yonetici_onayi");
 
 $personeller = $Personel->all(true, 'nobet');
 
@@ -150,6 +151,11 @@ foreach ($uniqueDepts as $dName) {
         font-family: 'boxicons' !important;
         margin-left: auto;
         font-size: 18px;
+    }
+
+    .fc-event-unapproved {
+        opacity: 0.8 !important;
+        border-style: dashed !important;
     }
 </style>
 
@@ -815,6 +821,17 @@ $title = 'Nöbet Planlama';
 <!-- Custom Context Menu -->
 <div id="custom-context-menu" class="custom-context-menu shadow-lg">
     <div class="menu-header" id="menu-personel-name">PERSONEL ADI</div>
+      <?php if ($canApprove): ?>
+    <div class="menu-divider admin-only"></div>
+    <div id="menu-item-approve" class="menu-item admin-only text-success">
+        <i class="bx bx-check-circle"></i>
+        <span>Nöbeti Onayla</span>
+    </div>
+    <div id="menu-item-unapprove" class="menu-item admin-only text-warning">
+        <i class="bx bx-undo"></i>
+        <span>Onayı Kaldır</span>
+    </div>
+    <?php endif; ?>
     <div class="menu-divider"></div>
     <div class="menu-item menu-item-tip" data-tip="hafta_sonu">
         <i class="bx bx-calendar-week text-primary"></i>
@@ -828,6 +845,13 @@ $title = 'Nöbet Planlama';
         <i class="bx bx-flag text-warning"></i>
         <span>Resmi Tatil Nöbeti Yap</span>
     </div>
+    <div class="menu-divider"></div>
+    <div id="menu-item-delete" class="menu-item text-danger">
+        <i class="bx bx-trash"></i>
+        <span>Nöbeti Sil</span>
+    </div>
+    
+  
 
 </div>
 
@@ -1102,6 +1126,14 @@ $title = 'Nöbet Planlama';
                             item.classList.remove('active');
                         }
                     });
+
+                    // Onay butonlarını göster/gizle
+                    const isOnayli = info.event.extendedProps.yonetici_onayi == 1;
+                    const approveBtn = document.getElementById('menu-item-approve');
+                    const unapproveBtn = document.getElementById('menu-item-unapprove');
+                    
+                    if (approveBtn) approveBtn.style.display = isOnayli ? 'none' : 'flex';
+                    if (unapproveBtn) unapproveBtn.style.display = isOnayli ? 'flex' : 'none';
                 });
             },
 
@@ -2189,6 +2221,46 @@ $title = 'Nöbet Planlama';
                 deleteNobet(eventId);
             }
         });
+
+        const menuApprove = document.getElementById('menu-item-approve');
+        if (menuApprove) {
+            menuApprove.addEventListener('click', function() {
+                const eventId = document.getElementById('custom-context-menu').dataset.eventId;
+                if (eventId) approveNobetFromCalendar(eventId);
+            });
+        }
+
+        const menuUnapprove = document.getElementById('menu-item-unapprove');
+        if (menuUnapprove) {
+            menuUnapprove.addEventListener('click', function() {
+                const eventId = document.getElementById('custom-context-menu').dataset.eventId;
+                if (eventId) unapproveNobetFromCalendar(eventId);
+            });
+        }
+
+        function approveNobetFromCalendar(id) {
+            actionFetch('onayla-nobet', { nobet_id: id });
+        }
+
+        function unapproveNobetFromCalendar(id) {
+            actionFetch('onayi-kaldir-nobet', { nobet_id: id });
+        }
+
+        function actionFetch(action, extraData) {
+            const params = new URLSearchParams({ action: action, ...extraData });
+            fetch('views/nobet/api.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params
+            }).then(r => r.json()).then(data => {
+                if (data.success || data.status === 'success') {
+                    showToast('success', data.message);
+                    calendar.refetchEvents();
+                } else {
+                    showToast('error', data.message || 'İşlem başarısız.');
+                }
+            });
+        }
 
         function updateEventTipi(id, tip) {
             fetch('views/nobet/api.php', {

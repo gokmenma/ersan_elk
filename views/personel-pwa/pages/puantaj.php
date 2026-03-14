@@ -8,6 +8,37 @@ use App\Helper\Date;
 
 $isSayacSokmeTakma = (stripos($personel->departman ?? '', 'Sayaç Sökme Takma') !== false);
 $isEndeksOkuma = (stripos($personel->departman ?? '', 'Endeks Okuma') !== false);
+$isKacakKontrol = (stripos($personel->departman ?? '', 'Kaçak Kontrol') !== false);
+
+// İş geçmişi kontrolü (Sadece Kaçak personeli için kısıtlama yapılacaksa)
+$hasIsler = true;
+$hasEndeks = true;
+$hasSayac = true;
+$hasKacak = true;
+
+if ($isKacakKontrol) {
+    $db = (new \App\Model\Model('yapilan_isler'))->getDb();
+    
+    // Yapılan İşler (Kesme-Açma)
+    $stmt = $db->prepare("SELECT COUNT(*) FROM yapilan_isler WHERE personel_id = ? AND silinme_tarihi IS NULL");
+    $stmt->execute([$personel->id]);
+    $hasIsler = ($stmt->fetchColumn() > 0);
+
+    // Endeks Okuma
+    $stmt = $db->prepare("SELECT COUNT(*) FROM endeks_okuma WHERE personel_id = ? AND silinme_tarihi IS NULL");
+    $stmt->execute([$personel->id]);
+    $hasEndeks = ($stmt->fetchColumn() > 0);
+
+    // Sayaç Değişim
+    $stmt = $db->prepare("SELECT COUNT(*) FROM sayac_degisim WHERE personel_id = ? AND silinme_tarihi IS NULL");
+    $stmt->execute([$personel->id]);
+    $hasSayac = ($stmt->fetchColumn() > 0);
+
+    // Kaçak Kontrol
+    $stmt = $db->prepare("SELECT COUNT(*) FROM kacak_kontrol WHERE FIND_IN_SET(?, personel_ids) AND silinme_tarihi IS NULL");
+    $stmt->execute([$personel->id]);
+    $hasKacak = ($stmt->fetchColumn() > 0);
+}
 
 // Okuma Ekip Şefi mi?
 $isOkumaSefi = false;
@@ -21,7 +52,9 @@ if ($isEndeksOkuma) {
     }
 }
 
-if ($isSayacSokmeTakma) {
+if ($isKacakKontrol && $hasKacak) {
+    $defaultTab = 'kacak';
+} elseif ($isSayacSokmeTakma) {
     $defaultTab = 'sokme_takma'; // Sayaç ekipleri için varsayılan sökme takma gelsin
 } else {
     $defaultTab = $isEndeksOkuma ? 'endeks' : 'kesme';
@@ -66,7 +99,36 @@ if ($isSayacSokmeTakma) {
     <!-- Tab Navigation -->
     <section class="px-4 mt-4">
         <div class="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-            <?php if ($isSayacSokmeTakma): ?>
+            <?php if ($isKacakKontrol): ?>
+                <?php if ($hasKacak): ?>
+                <button onclick="switchTab('kacak')" id="tab-btn-kacak" 
+                    class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all <?php echo $defaultTab === 'kacak' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'; ?>">
+                    Kaçak Kontrol
+                </button>
+                <?php endif; ?>
+                
+                <?php if ($hasIsler): ?>
+                <button onclick="switchTab('kesme')" id="tab-btn-kesme" 
+                    class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all <?php echo $defaultTab === 'kesme' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'; ?>">
+                    Kesme-Açma
+                </button>
+                <?php endif; ?>
+
+                <?php if ($hasEndeks): ?>
+                <button onclick="switchTab('endeks')" id="tab-btn-endeks"
+                    class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all <?php echo $defaultTab === 'endeks' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'; ?>">
+                    Endeks Okuma
+                </button>
+                <?php endif; ?>
+
+                <?php if ($hasSayac): ?>
+                <button onclick="switchTab('sokme_takma')" id="tab-btn-sokme_takma"
+                    class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all <?php echo $defaultTab === 'sokme_takma' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'; ?>">
+                    Sayaç Değişimi
+                </button>
+                <?php endif; ?>
+
+            <?php elseif ($isSayacSokmeTakma): ?>
                 <button onclick="switchTab('sokme_takma')" id="tab-btn-sokme_takma" 
                     class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all <?php echo $defaultTab === 'sokme_takma' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'; ?>">
                     Sayaç Değişimi
@@ -240,9 +302,11 @@ if ($isSayacSokmeTakma) {
 <script>
     let currentTab = '<?php echo $defaultTab; ?>';
     const isSayacTakibi = <?php echo $isSayacSokmeTakma ? 'true' : 'false'; ?>;
+    const isKacakKontrol = <?php echo $isKacakKontrol ? 'true' : 'false'; ?>;
     const isOkumaSefi = <?php echo $isOkumaSefi ? 'true' : 'false'; ?>;
     let puantajData = [];
     let endeksData = [];
+    let kacakData = [];
     let workTypes = [];
     let allDefters = []; // Filtreleme için tüm listeyi tutar
     
@@ -260,13 +324,13 @@ if ($isSayacSokmeTakma) {
         currentTab = tab;
         
         // Update Buttons
-        if (isSayacTakibi) {
-            document.getElementById('tab-btn-kesme').className = `flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'kesme' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'}`;
-            document.getElementById('tab-btn-sokme_takma').className = `flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'sokme_takma' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'}`;
-        } else {
-            document.getElementById('tab-btn-kesme').className = `flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'kesme' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'}`;
-            document.getElementById('tab-btn-endeks').className = `flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'endeks' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'}`;
-        }
+        const tabs = ['kesme', 'endeks', 'sokme_takma', 'kacak'];
+        tabs.forEach(t => {
+            const btn = document.getElementById('tab-btn-' + t);
+            if (btn) {
+                btn.className = `flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${tab === t ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-slate-500'}`;
+            }
+        });
 
         // Toggle Filters
         const kesmeFilters = document.getElementById('kesme-filters');
@@ -278,7 +342,7 @@ if ($isSayacSokmeTakma) {
             document.getElementById('label-toplam').textContent = 'Toplam İş';
             document.getElementById('label-sonuclanan').textContent = 'Sonuçlanan';
             document.getElementById('label-date').textContent = 'Son Güncelleme: ' + lastUpdateYapilanIsler;
-        } else {
+        } else if (tab === 'endeks') {
             kesmeFilters.classList.add('hidden');
             kesmeFilters.classList.remove('grid');
             if (document.getElementById('defter-sorgu-toggle')) document.getElementById('defter-sorgu-toggle').classList.remove('hidden');
@@ -286,6 +350,14 @@ if ($isSayacSokmeTakma) {
             document.getElementById('label-toplam').textContent = 'Toplam Okunan';
             document.getElementById('label-sonuclanan').textContent = '-';
             document.getElementById('label-date').textContent = 'Son Güncelleme: ' + lastUpdateEndeks;
+        } else if (tab === 'kacak') {
+            kesmeFilters.classList.add('hidden');
+            kesmeFilters.classList.remove('grid');
+            if (document.getElementById('defter-sorgu-toggle')) document.getElementById('defter-sorgu-toggle').classList.add('hidden');
+            document.getElementById('list-title').textContent = 'Kaçak Kontrol Listesi';
+            document.getElementById('label-toplam').textContent = 'Toplam Sayı';
+            document.getElementById('label-sonuclanan').textContent = '-';
+            document.getElementById('label-date').textContent = '-';
         }
 
         // Warning Banner Toggle
@@ -564,9 +636,155 @@ if ($isSayacSokmeTakma) {
     async function loadData() {
         if (currentTab === 'endeks') {
             await loadEndeksData();
+        } else if (currentTab === 'kacak') {
+            await loadKacakData();
         } else {
             await loadPuantajData();
         }
+    }
+
+    async function loadKacakData() {
+        const listContainer = document.getElementById('puantaj-list');
+        const emptyState = document.getElementById('empty-state');
+        
+        listContainer.innerHTML = `
+            <div class="card p-4 animate-pulse">
+                <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4 mb-2"></div>
+                <div class="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
+            </div>`;
+        emptyState.classList.add('hidden');
+
+        const startDate = document.getElementById('filter-start-date').value;
+        const endDate = document.getElementById('filter-end-date').value;
+
+        try {
+            const response = await API.request('getKacakKontrolData', {
+                start_date: startDate,
+                end_date: endDate
+            });
+
+            if (response.success) {
+                kacakData = response.data.items || [];
+                const stats = response.data.stats || {};
+                
+                document.getElementById('sonuclanan-is').textContent = stats.toplam || 0;
+                document.getElementById('toplam-is').textContent = '-';
+
+                if (kacakData.length === 0) {
+                    listContainer.innerHTML = '';
+                    emptyState.classList.remove('hidden');
+                } else {
+                    renderKacakList();
+                }
+            } else {
+                listContainer.innerHTML = '';
+                emptyState.classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Kaçak verileri yüklenemedi:', error);
+            listContainer.innerHTML = '';
+            emptyState.classList.remove('hidden');
+        }
+    }
+
+    function renderKacakList() {
+        const listContainer = document.getElementById('puantaj-list');
+        const emptyState = document.getElementById('empty-state');
+
+        if (kacakData.length === 0) {
+            listContainer.innerHTML = '';
+            emptyState.classList.remove('hidden');
+            return;
+        }
+        emptyState.classList.add('hidden');
+
+        // Group by date
+        const groups = kacakData.reduce((acc, item) => {
+            const date = item.tarih;
+            if (!acc[date]) acc[date] = {
+                date: date,
+                items: [],
+                total: 0
+            };
+            acc[date].items.push(item);
+            acc[date].total += (parseInt(item.sayi) || 0);
+            return acc;
+        }, {});
+
+        const sortedGroups = Object.values(groups).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        listContainer.innerHTML = sortedGroups.map(group => {
+            const dateObj = new Date(group.date);
+            const gunAdi = dateObj.toLocaleDateString('tr-TR', { weekday: 'long' });
+            const dayNum = dateObj.getDate().toString().padStart(2, '0');
+
+            return `
+            <div class="card card-premium p-4 mb-1.5 hover:shadow-md transition-all active:scale-[0.99] cursor-pointer group relative overflow-hidden" 
+                 onclick="showKacakDailyDetail('${group.date}')">
+                
+                <div class="absolute inset-0 pointer-events-none select-none z-0 opacity-[0.42] flex items-center justify-center">
+                    <span class="text-[9rem] font-black leading-none tracking-tighter text-slate-100 dark:text-slate-800/50">
+                        ${dayNum}
+                    </span>
+                </div>
+
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between">
+                        <div class="flex flex-col">
+                            <span class="text-[12px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">${gunAdi}</span>
+                            <h4 class="font-bold text-slate-900 dark:text-white text-lg">${formatDate(group.date)}</h4>
+                        </div>
+                        <div class="flex flex-col items-end">
+                            <div class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/50 px-2.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                                 <span class="text-[13px] font-bold text-primary">${group.total} ADET</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3.5 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                             <span class="bg-primary/10 text-primary px-2 py-1 rounded text-xs font-bold uppercase">
+                                KAÇAK KONTROL
+                             </span>
+                        </div>
+                        <div class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shrink-0">
+                            <span class="material-symbols-outlined text-sm">chevron_right</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+        }).join('');
+    }
+
+    function showKacakDailyDetail(date) {
+        const items = kacakData.filter(p => p.tarih === date);
+        const container = document.getElementById('puantaj-detail-content');
+        const modalHeader = document.querySelector('#puantaj-detail-modal h3');
+
+        modalHeader.textContent = formatDate(date) + ' Kaçak Kontrol';
+
+        container.innerHTML = `
+            <div class="flex flex-col gap-3 pt-2">
+                ${items.map(item => `
+                    <div class="card p-4 bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                        <div class="flex items-center gap-3 relative z-10">
+                            <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary/10">
+                                <span class="material-symbols-outlined text-xl text-primary">security</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h5 class="font-bold text-slate-900 dark:text-white text-[13px] truncate uppercase tracking-tight">${item.ekip_adi || 'Kaçak Kontrol'}</h5>
+                                <p class="text-[12px] text-slate-500 mt-0.5 truncate">${item.aciklama || '-'}</p>
+                            </div>
+                            <div class="flex flex-col items-end">
+                                <span class="text-2xl font-bold text-slate-900 dark:text-white">${item.sayi || 0}</span>
+                                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">ADET</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        Modal.open('puantaj-detail-modal');
     }
 
     async function loadWorkTypes() {

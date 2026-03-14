@@ -823,6 +823,85 @@ class BordroPersonelModel extends Model
     }
 
     /**
+     * Personelin sayaç değişim verilerine göre ek ödemelerini oluşturur
+     * 
+     * İş Kuralı:
+     * - sayac_degisim tablosundaki verileri baz alır
+     * - is_emri_sonucuna göre ücretlendirme yapılır
+     */
+    public function olusturSayacDegisimOdemeleri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
+    {
+        // 1. Personel bilgilerini al
+        $PersonelModel = new \App\Model\PersonelModel();
+        $personel = $PersonelModel->find($personel_id);
+        if (!$personel) return;
+
+        // 2. Önceki sayaç değişim kaynaklı ek ödemeleri temizle
+        $this->db->prepare("
+            DELETE FROM personel_ek_odemeler 
+            WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[Sayaç]%'
+        ")->execute([$personel_id, $donem_id]);
+
+        // 3. Tanımlamalar tablosundan ücretli iş türlerini al
+        $TanimlamalarModel = new \App\Model\TanimlamalarModel();
+        $isTurleri = $TanimlamalarModel->getIsTurleri(); // grup = 'is_turu'
+
+        $isAracli = (isset($personel->arac_kullanim) && $personel->arac_kullanim === 'Kendi Aracı');
+
+        $isEmriSonucuMap = [];
+        foreach ($isTurleri as $tur) {
+            $ucretAlani = $isAracli ? 'aracli_personel_is_turu_ucret' : 'is_turu_ucret';
+            $birimUcret = floatval(\App\Helper\Helper::formattedMoneyToNumber($tur->$ucretAlani ?? 0));
+            if ($isAracli && $birimUcret <= 0) {
+                $birimUcret = floatval(\App\Helper\Helper::formattedMoneyToNumber($tur->is_turu_ucret ?? 0));
+            }
+
+            if ($birimUcret > 0 && !empty($tur->is_emri_sonucu)) {
+                $isEmriSonucuMap[$tur->is_emri_sonucu] = [
+                    'tur_adi' => $tur->tur_adi,
+                    'birim_ucret' => $birimUcret
+                ];
+            }
+        }
+
+        if (empty($isEmriSonucuMap)) return;
+
+        // 4. Sayaç değişimlerini is_emri_sonucu bazında grupla
+        $sql = $this->db->prepare("
+            SELECT 
+                isemri_sonucu,
+                COUNT(*) as adet
+            FROM sayac_degisim
+            WHERE personel_id = ? 
+            AND tarih BETWEEN ? AND ?
+            AND silinme_tarihi IS NULL
+            GROUP BY isemri_sonucu
+        ");
+        $sql->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
+        $veriler = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        // 5. Kaydet
+        foreach ($veriler as $v) {
+            $isemriSonucu = $v->isemri_sonucu;
+            $adet = floatval($v->adet);
+
+            if (!isset($isEmriSonucuMap[$isemriSonucu])) continue;
+
+            $birimUcret = $isEmriSonucuMap[$isemriSonucu]['birim_ucret'];
+            $toplamTutar = round($adet * $birimUcret, 2);
+            $aciklama = "[Sayaç] $isemriSonucu (" . round($adet) . " Adet x " . number_format($birimUcret, 2, ',', '.') . " ₺)";
+
+            $this->db->prepare("
+                INSERT INTO personel_ek_odemeler 
+                (personel_id, donem_id, tur, aciklama, tutar, tekrar_tipi, durum, aktif, created_at)
+                VALUES (?, ?, 'prim', ?, ?, 'tek_sefer', 'onaylandi', 1, NOW())
+            ")->execute([$personel_id, $donem_id, $aciklama, $toplamTutar]);
+        }
+    }
+
+
+
+    /**
      * Personelin nöbetlerini dönem için ek ödeme olarak oluşturur
      * 
      * Nöbet tipleri (nobet_tipi):
@@ -847,6 +926,7 @@ class BordroPersonelModel extends Model
             WHERE personel_id = ? 
             AND nobet_tarihi BETWEEN ? AND ?
             AND silinme_tarihi IS NULL
+            AND yonetici_onayi = 1
             AND (durum IS NULL OR durum NOT IN ('talep_edildi', 'reddedildi', 'iptal'))
             GROUP BY nobet_tipi
         ");
@@ -1766,6 +1846,7 @@ class BordroPersonelModel extends Model
         AND (
             ana_odeme_id IS NOT NULL
             OR aciklama LIKE '[Puantaj]%'
+            OR aciklama LIKE '[Sayaç]%'
             OR aciklama LIKE '[Nöbet]%'
             OR aciklama LIKE '[Kaçak Kontrol]%'
         )
@@ -1778,6 +1859,9 @@ class BordroPersonelModel extends Model
 
         // Puantaj (Yapılan İşler) Hesaplaması
         $this->olusturPuantajOdemeleri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+
+        // Sayaç Değişim Hesaplaması
+        $this->olusturSayacDegisimOdemeleri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
         // ========== NÖBET ÖDEMELERİ ==========
         // Dönem içindeki onaylanmış nöbetleri bulup ek ödeme olarak ekle
@@ -1856,10 +1940,24 @@ class BordroPersonelModel extends Model
             $gunlukBase = min($gunlukBase, $workingHistoryCoverage);
         }
 
+        // Puantajdan (yapılan işler) fiili çalışma gününü al
+        $puantajGunSayisi = $this->getCalismaGunuSayisi($kayit->personel_id, $donemTarihi, $donemBitis);
+
+        // USER REQ: Puantaj kaydı varsa gunlukBase'i oradan al (Örn: Gökhan Bey 22 gün)
+        if ($puantajGunSayisi > 0) {
+            $gunlukBase = min($gunlukBase, $puantajGunSayisi);
+        }
+
         // Ücretsiz izin günü varsa brüt maaşı düşür (Günlük ücret × izin günü kadar)
         if ($isNetMaas || $maasDurumu === 'brüt') {
             // Net veya Brüt maaş tipi: toplam alacağı = (maaş / 30) * gün
             $fiiliCalismaGunuTemp = $gunlukBase - $ucretsizIzinGunu - $ucretliIzinGunu;
+            
+            // USER REQ: Puantaj kaydı varsa fiili günü oradan al (Örn: Gökhan Bey 22 gün)
+            if ($puantajGunSayisi > 0) {
+                $fiiliCalismaGunuTemp = min($fiiliCalismaGunuTemp, $puantajGunSayisi);
+            }
+
             if ($fiiliCalismaGunuTemp < 0)
                 $fiiliCalismaGunuTemp = 0;
             $brutMaas = round(($nominalBrutMaas / 30) * $fiiliCalismaGunuTemp, 2);
@@ -1868,6 +1966,12 @@ class BordroPersonelModel extends Model
                 $ucretsizIzinDusumu = 0;
         } else {
             $fiiliCalismaGunuTemp = $gunlukBase - $ucretsizIzinGunu - $ucretliIzinGunu;
+            
+            // USER REQ: Puantaj kaydı varsa fiili günü oradan al (Örn: Gökhan Bey 22 gün)
+            if ($puantajGunSayisi > 0) {
+                $fiiliCalismaGunuTemp = min($fiiliCalismaGunuTemp, $puantajGunSayisi);
+            }
+
             if ($fiiliCalismaGunuTemp < 0)
                 $fiiliCalismaGunuTemp = 0;
 
@@ -2271,6 +2375,10 @@ class BordroPersonelModel extends Model
         // NOT: Gün tüm maaş tipleri için düşer (banka/sodexo oranlaması için gerekli)
         // Prim Usülü'de fark: toplam alacağı gün bazlı düşmez, ama banka/sodexo düşer
         $fiiliCalismaGunu = $gunlukBase - $ucretsizIzinGunu - $ucretliIzinGunu;
+        // Puantaj kontrolü
+        if ($puantajGunSayisi > 0) {
+            $fiiliCalismaGunu = min($fiiliCalismaGunu, $puantajGunSayisi);
+        }
         if ($fiiliCalismaGunu < 0)
             $fiiliCalismaGunu = 0;
 
@@ -2326,11 +2434,11 @@ class BordroPersonelModel extends Model
             if ($firstHTip === 'asgari_oran_net') {
                 // Net asgari ücretin yüzdesi (bankaya yatacak baz üzerinden)
                 $oranKullan = ($firstOran > 0) ? $firstOran : 25;
-                $toplamIcraBudget = round($hakedisNet * ($oranKullan / 100), 2);
+                $toplamIcraBudget = round(min($hakedisNet, $bankaYatacakBaz) * ($oranKullan / 100), 2);
             } elseif ($firstHTip === 'oran_net') {
                 // Net ücretin (toplam alacağı) yüzdesi
                 $oranKullan = ($firstOran > 0) ? $firstOran : 25;
-                $toplamIcraBudget = round($hakedisNet * ($oranKullan / 100), 2);
+                $toplamIcraBudget = round(min($hakedisNet, $bankaYatacakBaz) * ($oranKullan / 100), 2);
             } else {
                 // Sabit tutar: tüm icra dosyalarının aylik_kesinti_tutari toplamı
                 foreach ($icraDetaylar as $d) {

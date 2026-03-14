@@ -1070,7 +1070,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $stmt = $Personel->db->prepare("SELECT COUNT(*) FROM yapilan_isler WHERE personel_id = ? AND ekip_kodu_id = ? AND silinme_tarihi IS NULL");
             $stmt->execute([$gecmis->personel_id, $gecmis->ekip_kodu_id]);
             if ($stmt->fetchColumn() > 0) {
-                throw new Exception("Bu ekip atamasına ait 'Yapılan İşler' kaydı bulunduğu için silemezsiniz.");
+                throw new Exception("Bu ekip atamasına ait 'Yapılan İşler' kaydı bulunduğu için silemezsiniz.". $gecmis->personel_id . " ---- " . $gecmis->ekip_kodu_id);
             }
 
             // Endeks okuma tablosunda kontrol et

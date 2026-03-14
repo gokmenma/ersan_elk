@@ -10,6 +10,7 @@ use App\Model\PersonelModel;
 use App\Helper\Security;
 use App\Helper\Date;
 use App\Model\SystemLogModel;
+use App\Service\Gate;
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $action = $_POST['action'] ?? '';
@@ -239,10 +240,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'title' => $nobet->adi_soyadi,
                         'start' => $nobet->nobet_tarihi,
                         'allDay' => true,
-                        'backgroundColor' => $color,
-                        'borderColor' => $borderColor,
+                        'backgroundColor' => ($nobet->yonetici_onayi == 0) ? '#9ca3af' : $color, // Onaysızsa gri
+                        'borderColor' => ($nobet->yonetici_onayi == 0) ? '#6b7280' : $borderColor,
                         'textColor' => $textColor,
-                        'classNames' => $nobet->nobet_tipi == 'hafta_sonu' ? 'fc-event-weekend' : ($nobet->nobet_tipi == 'resmi_tatil' ? 'fc-event-holiday' : ''),
+                        'classNames' => ($nobet->yonetici_onayi == 0 ? 'fc-event-unapproved ' : '') . ($nobet->nobet_tipi == 'hafta_sonu' ? 'fc-event-weekend' : ($nobet->nobet_tipi == 'resmi_tatil' ? 'fc-event-holiday' : '')),
                         'extendedProps' => [
                             'personel_id' => Security::encrypt($nobet->personel_id),
                             'raw_personel_id' => $nobet->personel_id,
@@ -252,6 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             'telefon' => $nobet->cep_telefonu,
                             'durum' => $nobet->durum,
                             'nobet_tipi' => $nobet->nobet_tipi,
+                            'yonetici_onayi' => $nobet->yonetici_onayi,
                             'baslangic_saati' => $nobet->baslangic_saati,
                             'bitis_saati' => $nobet->bitis_saati,
                             'aciklama' => $nobet->aciklama,
@@ -277,7 +279,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'baslangic_saati' => $_POST['baslangic_saati'] ?? '18:00:00',
                     'bitis_saati' => $_POST['bitis_saati'] ?? '08:00:00',
                     'nobet_tipi' => $_POST['nobet_tipi'] ?? 'standart',
-                    'aciklama' => $_POST['aciklama'] ?? null
+                    'aciklama' => $_POST['aciklama'] ?? null,
+                    'yonetici_onayi' => Gate::allows('yonetici_onayi') ? 1 : 0
                 ];
 
                 // Çakışma kontrolü
@@ -426,7 +429,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'nobet_tarihi' => $nobet_tarihi,
                     'baslangic_saati' => $_POST['baslangic_saati'] ?? '18:00:00',
                     'bitis_saati' => $_POST['bitis_saati'] ?? '08:00:00',
-                    'nobet_tipi' => $_POST['nobet_tipi'] ?? 'standart'
+                    'nobet_tipi' => $_POST['nobet_tipi'] ?? 'standart',
+                    'yonetici_onayi' => Gate::allows('yonetici_onayi') ? 1 : 0
                 ];
 
                 // Çakışma kontrolü
@@ -792,6 +796,76 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     echo json_encode(['success' => true, 'message' => 'Mazeret reddedildi. Nöbet tekrar aktif duruma alındı.']);
                 } else {
                     throw new Exception("İşlem başarısız.");
+                }
+                break;
+
+            // =====================================================
+            // NÖBET ONAY İŞLEMLERİ
+            // =====================================================
+            case 'get-onay-bekleyen-nobetler':
+                $ay = $_POST['ay'] ?? null;
+                $yil = $_POST['yil'] ?? null;
+                $results = $Nobet->getOnayBekleyenNobetler($ay, $yil);
+                foreach ($results as &$r) {
+                    $r->id = Security::encrypt($r->id);
+                    $r->personel_id = Security::encrypt($r->personel_id);
+                }
+                echo json_encode(['success' => true, 'data' => $results]);
+                break;
+
+            case 'onayla-nobet':
+                $id = Security::decrypt($_POST['nobet_id']);
+                $result = $Nobet->onaylaNobet($id);
+                if ($result) {
+                    echo json_encode(['success' => true, 'message' => 'Nöbet onaylandı.']);
+                } else {
+                    throw new Exception("Onaylama işlemi başarısız.");
+                }
+                break;
+
+            case 'onayi-kaldir-nobet':
+                $id = Security::decrypt($_POST['nobet_id']);
+                $result = $Nobet->onayiKaldirNobet($id);
+                if ($result) {
+                    echo json_encode(['success' => true, 'message' => 'Nöbet onayı kaldırıldı.']);
+                } else {
+                    throw new Exception("İşlem başarısız.");
+                }
+                break;
+
+            case 'bulk-onayla-nobet':
+                $ids = $_POST['ids'] ?? [];
+                if (!is_array($ids)) $ids = explode(',', $ids);
+                $ids = array_filter(array_map(fn($id) => Security::decrypt($id), $ids));
+                $result = $Nobet->bulkOnaylaNobet($ids);
+                if ($result) {
+                    echo json_encode(['success' => true, 'message' => count($ids) . ' adet nöbet onaylandı.']);
+                } else {
+                    throw new Exception("Toplu onaylama başarısız.");
+                }
+                break;
+
+            case 'bulk-onayi-kaldir-nobet':
+                $ids = $_POST['ids'] ?? [];
+                if (!is_array($ids)) $ids = explode(',', $ids);
+                $ids = array_filter(array_map(fn($id) => Security::decrypt($id), $ids));
+                $result = $Nobet->bulkOnayiKaldirNobet($ids);
+                if ($result) {
+                    echo json_encode(['success' => true, 'message' => count($ids) . ' adet nöbetin onayı kaldırıldı.']);
+                } else {
+                    throw new Exception("Toplu onay kaldırma başarısız.");
+                }
+                break;
+
+            case 'bulk-sil-nobet':
+                $ids = $_POST['ids'] ?? [];
+                if (!is_array($ids)) $ids = explode(',', $ids);
+                $ids = array_filter(array_map(fn($id) => Security::decrypt($id), $ids));
+                $result = $Nobet->bulkSilNobet($ids);
+                if ($result) {
+                    echo json_encode(['success' => true, 'message' => count($ids) . ' adet nöbet silindi.']);
+                } else {
+                    throw new Exception("Toplu silme başarısız.");
                 }
                 break;
 

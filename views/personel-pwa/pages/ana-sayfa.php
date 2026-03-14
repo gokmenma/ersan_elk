@@ -671,10 +671,10 @@ use App\Helper\Helper;
         }
 
         async function gorevBasla() {
-            if (!userIsSef) {
-                Toast.show('Bu işlemi gerçekleştirmek için "Şef" yetkisine sahip olmalısınız.', 'error');
-                return;
-            }
+            // if (!userIsSef) {
+            //     Toast.show('Bu işlemi gerçekleştirmek için "Şef" yetkisine sahip olmalısınız.', 'error');
+            //     return;
+            // }
 
             var btn = document.getElementById('btn-gorev-basla');
             var originalHtml = btn.innerHTML;

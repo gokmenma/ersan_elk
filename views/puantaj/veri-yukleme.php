@@ -279,6 +279,11 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                         </button>
                                     </li>
                                     <li>
+                                        <button class="dropdown-item d-flex align-items-center text-danger fw-medium" type="button" id="btnBulkDeletePuantaj">
+                                            <i class="mdi mdi-trash-can-outline fs-5 me-2"></i> Seçilenleri Sil
+                                        </button>
+                                    </li>
+                                    <li>
                                         <button class="dropdown-item d-flex align-items-center text-primary fw-medium" type="button" data-bs-toggle="modal" data-bs-target="#importPuantajModal">
                                             <i class="mdi mdi-upload fs-5 me-2"></i> Excel Yükle
                                         </button>
@@ -291,6 +296,11 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         <table id="puantajTable" class="table table-bordered dt-responsive nowrap w-100">
                             <thead>
                                 <tr class="table-light">
+                                    <th style="width: 20px;">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="checkAllPuantaj">
+                                        </div>
+                                    </th>
                                     <th data-filter="date">Tarih</th>
                                     <th data-filter="string">Ekip Kodu</th>
                                     <th data-filter="string">Personel</th>
@@ -427,6 +437,11 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                             <i class="mdi mdi-file-excel fs-5 me-2"></i> Excel'e Aktar
                                         </button>
                                     </li>
+                                    <li>
+                                        <button class="dropdown-item d-flex align-items-center text-danger fw-medium" type="button" id="btnBulkDeleteMuhurleme">
+                                            <i class="mdi mdi-trash-can-outline fs-5 me-2"></i> Seçilenleri Sil
+                                        </button>
+                                    </li>
                                 </ul>
                             </div>
                         </div>
@@ -435,6 +450,11 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         <table id="muhurlemeTable" class="table table-bordered dt-responsive nowrap w-100">
                             <thead>
                                 <tr class="table-light">
+                                    <th style="width: 20px;">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="checkAllMuhurleme">
+                                        </div>
+                                    </th>
                                     <th data-filter="date">Tarih</th>
                                     <th data-filter="string">Ekip Kodu</th>
                                     <th data-filter="string">Personel</th>
@@ -1213,6 +1233,14 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     }
                 },
                 columns: [
+                    {
+                        data: 'id',
+                        render: function (data, type, row) {
+                            return `<div class="form-check"><input class="form-check-input row-check" type="checkbox" value="${data}"></div>`;
+                        },
+                        orderable: false,
+                        searchable: false
+                    },
                     { data: 'tarih' },
                     { data: 'ekip_kodu', defaultContent: '-' },
                     { data: 'personel_adi' },
@@ -1228,7 +1256,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         orderable: false
                     }
                 ],
-                order: [[0, 'desc']]
+                order: [[1, 'desc']]
             }));
         }
 
@@ -1317,6 +1345,14 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     }
                 },
                 columns: [
+                    {
+                        data: 'id',
+                        render: function (data, type, row) {
+                            return `<div class="form-check"><input class="form-check-input row-check" type="checkbox" value="${data}"></div>`;
+                        },
+                        orderable: false,
+                        searchable: false
+                    },
                     { data: 'tarih' },
                     { data: 'ekip_kodu', defaultContent: '-' },
                     { data: 'personel_adi' },
@@ -1332,7 +1368,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         orderable: false
                     }
                 ],
-                order: [[0, 'desc']]
+                order: [[1, 'desc']]
             }));
         }
 
@@ -2059,6 +2095,63 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     });
                 }
             });
+        });
+
+        // Toplu İşlemler
+        function handleBulkDelete(tableId, dataTable) {
+            var selectedIds = [];
+            $(`#${tableId} .row-check:checked`).each(function () {
+                selectedIds.push($(this).val());
+            });
+
+            if (selectedIds.length === 0) {
+                Swal.fire('Uyarı', 'Lütfen silinecek kayıtları seçiniz.', 'warning');
+                return;
+            }
+
+            Swal.fire({
+                title: 'Emin misiniz?',
+                text: `${selectedIds.length} adet kayıt silinecektir!`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Evet, toplu sil!',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('views/puantaj/api.php', {
+                        action: 'puantaj-sil-toplu',
+                        ids: selectedIds
+                    }, function (response) {
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
+                        if (res.status === 'success') {
+                            Swal.fire('Silindi!', 'Seçili kayıtlar başarıyla silindi.', 'success');
+                            $(`#checkAllPuantaj, #checkAllMuhurleme`).prop('checked', false);
+                            dataTable.ajax.reload(null, false);
+                        } else {
+                            Swal.fire('Hata', 'Kayıtlar silinemedi: ' + (res.message || ''), 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        $('#btnBulkDeletePuantaj').on('click', function () {
+            handleBulkDelete('puantajTable', puantajDataTable);
+        });
+
+        $('#btnBulkDeleteMuhurleme').on('click', function () {
+            handleBulkDelete('muhurlemeTable', muhurlemeDataTable);
+        });
+
+        // Select All checkboxes
+        $(document).on('change', '#checkAllPuantaj', function () {
+            $('#puantajTable .row-check').prop('checked', $(this).prop('checked'));
+        });
+
+        $(document).on('change', '#checkAllMuhurleme', function () {
+            $('#muhurlemeTable .row-check').prop('checked', $(this).prop('checked'));
         });
     });
 

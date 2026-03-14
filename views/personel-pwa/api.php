@@ -2025,6 +2025,44 @@ try {
             ]);
             break;
 
+        case 'getKacakKontrolData':
+            $startDate = $_POST['start_date'] ?? '';
+            $endDate = $_POST['end_date'] ?? '';
+            $firmaId = $_SESSION['firma_id'] ?? 0;
+
+            $db = (new \App\Model\Model('kacak_kontrol'))->getDb();
+            $sql = "SELECT id, tarih, ekip_adi, sayi, aciklama, olusturma_tarihi 
+                    FROM kacak_kontrol 
+                    WHERE (FIND_IN_SET(?, personel_ids) OR FIND_IN_SET(?, personel_ids))
+                    AND firma_id = ? 
+                    AND silinme_tarihi IS NULL";
+
+            if (!empty($startDate)) {
+                $sql .= " AND tarih >= " . $db->quote($startDate);
+            }
+            if (!empty($endDate)) {
+                $sql .= " AND tarih <= " . $db->quote($endDate);
+            }
+
+            $sql .= " ORDER BY tarih DESC, olusturma_tarihi DESC";
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$personel_id, $personel_id, $firmaId]);
+            $items = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+            $total = 0;
+            foreach ($items as $item) {
+                $total += (int) ($item->sayi ?? 0);
+            }
+
+            response(true, [
+                'items' => $items,
+                'stats' => [
+                    'toplam' => $total
+                ]
+            ]);
+            break;
+
         case 'getPuantajWorkTypes':
             $PuantajModel = new \App\Model\PuantajModel();
             $types = $PuantajModel->getWorkTypes($personel_id);
@@ -2677,7 +2715,7 @@ try {
             $baslangic = "$yil-" . str_pad($ay, 2, '0', STR_PAD_LEFT) . "-01";
             $bitis = date('Y-m-t', strtotime($baslangic));
 
-            $nobetler = $NobetModel->getPersonelNobetleri($personel_id, $baslangic, $bitis, $include_deleted);
+            $nobetler = $NobetModel->getPersonelNobetleri($personel_id, $baslangic, $bitis, $include_deleted, true);
 
             $data = [];
             foreach ($nobetler as $nobet) {

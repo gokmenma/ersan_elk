@@ -3099,6 +3099,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'puantaj-sil-toplu') {
+    $ids = $_POST['ids'] ?? [];
+    if (empty($ids)) {
+        echo json_encode(['status' => 'error', 'message' => 'Silinecek kayıt bulunamadı.']);
+        exit;
+    }
+    
+    $Puantaj = new PuantajModel();
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE id IN ($placeholders)");
+    $result = $stmt->execute($ids);
+    
+    echo json_encode(['status' => $result ? 'success' : 'error']);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'sorgu-sil-toplu') {
     $ids = $_POST['ids'] ?? [];
     if (empty($ids)) {

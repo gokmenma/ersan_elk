@@ -60,7 +60,7 @@ use App\Helper\Date;
                 <span class="badge badge-success">Aktif</span>
             </div>
 
-            <div class="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+            <!-- <div class="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
                 <div>
                     <p class="text-2xl font-bold text-slate-900 dark:text-white" id="kalan-izin-profil">15</p>
                     <p class="text-xs text-slate-500">Kalan İzin</p>
@@ -73,7 +73,7 @@ use App\Helper\Date;
                     <p class="text-2xl font-bold text-primary" id="puan">4.8</p>
                     <p class="text-xs text-slate-500">Performans</p>
                 </div>
-            </div>
+            </div> -->
         </div>
     </section>
 
