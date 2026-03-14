@@ -471,7 +471,7 @@ if (!empty($dbGelirler)) {
                                 $ggToplamGun = intval($p->gg_toplam_gun);
                                 // NEW: Eğer ayı 30 gün olarak kabul ediyorsak (bordro mantığı), görev geçmişi gününü de bu orana çekmeliyiz
                                 if ($ggToplamGun > 0 && $aydakiGunSayisi != 30) {
-                                    if ($ggToplamGun == $aydakiGunSayisi) {
+                                    if ($ggToplamGun >= $aydakiGunSayisi) {
                                         $ggToplamGun = 30;
                                     } else {
                                         $ggToplamGun = round($ggToplamGun * (30 / $aydakiGunSayisi));

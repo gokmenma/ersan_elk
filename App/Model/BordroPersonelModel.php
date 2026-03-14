@@ -1747,7 +1747,8 @@ class BordroPersonelModel extends Model
                     $gecerliGun = round(($hesapBitis - $hesapBaslangic) / (60 * 60 * 24)) + 1;
 
                     // Şubatı 30'a tamamlama vs (ticari ay mantığı - opsiyonel)
-                    if (date('m', $donemBitisTs) == '02' && date('d', $hesapBitis) >= 28 && empty($g->bitis_tarihi)) {
+                    // Hata onarımı: eğer bitiş tarihi girilmiş ama ayın son günü ise, yine de 30'a tamamla
+                    if (date('m', $donemBitisTs) == '02' && date('d', $hesapBitis) >= 28 && (empty($g->bitis_tarihi) || $hesapBitis == $donemBitisTs)) {
                         $gecerliGun = 30 - round(($hesapBaslangic - $donemBaslangicTs) / (60 * 60 * 24));
                     }
 
@@ -1773,7 +1774,7 @@ class BordroPersonelModel extends Model
             // Özellikle Şubat ayı için (28/29 gün) tam çalışanların 30 gün görünmesi için bu oranlama şart
             $aydakiGunSayisiDonem = date('t', strtotime($donemTarihi));
             if ($toplamGecerliGun > 0 && $aydakiGunSayisiDonem != 30) {
-                if ($toplamGecerliGun == $aydakiGunSayisiDonem) {
+                if ($toplamGecerliGun >= $aydakiGunSayisiDonem) {
                     $toplamGecerliGun = 30;
                 } else {
                     $toplamGecerliGun = round($toplamGecerliGun * (30 / $aydakiGunSayisiDonem));
@@ -1953,12 +1954,24 @@ class BordroPersonelModel extends Model
         }
 
         // Puantajdan (yapılan işler) fiili çalışma gününü al
-        $puantajGunSayisi = $this->getCalismaGunuSayisi($kayit->personel_id, $donemTarihi, $donemBitis);
+        $puantajGunSayisiRaw = $this->getCalismaGunuSayisi($kayit->personel_id, $donemTarihi, $donemBitis);
+        $puantajGunSayisi = $puantajGunSayisiRaw;
+
+        // USER REQ: Hak edilen hafta tatili (6 güne 1 gün) eklenmelidir. 
+        // Aksi takdirde puantaj pazar günlerini içermediği için tam çalışan personel 26 günde kalır.
+        if ($puantajGunSayisi > 0) {
+            $haftaTatili = floor($puantajGunSayisi / 6);
+            $puantajGunSayisi += $haftaTatili;
+        }
 
         // NEW: Eğer ayı 30 gün olarak kabul ediyorsak (bordro mantığı), puantaj gününü de bu orana çekmeliyiz
         // Özellikle Şubat ayı için (28/29 gün) tam çalışanların 30 gün görünmesi için bu oranlama şart
         if ($puantajGunSayisi > 0 && $aydakiGunSayisi != 30) {
-            $puantajGunSayisi = round($puantajGunSayisi * (30 / $aydakiGunSayisi));
+            if ($puantajGunSayisi >= $aydakiGunSayisi) {
+                $puantajGunSayisi = 30;
+            } else {
+                $puantajGunSayisi = round($puantajGunSayisi * (30 / $aydakiGunSayisi));
+            }
         }
 
         // USER REQ: Puantaj kaydı varsa gunlukBase'i oradan al (Örn: Gökhan Bey 22 gün)
