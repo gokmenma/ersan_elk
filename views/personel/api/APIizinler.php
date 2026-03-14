@@ -67,21 +67,25 @@ try {
         // Şifreli ID'yi çöz
         $izinId = Security::decrypt($encryptedId);
 
-        // Onay bilgisi varsa kaydet (Güncelleme durumunda eski onayları silip yenisini atıyor veya Model bunu handle ediyor olabilir)
-        // Mevcut kod her seferinde yeni onay kaydı ekliyor (addOnayKaydi seviye artırıyor).
+        // Onay bilgisi varsa kaydet
         if (!empty($onaylayan_id) && $izinId > 0) {
             $IzinOnaylariModel = new IzinOnaylariModel();
+            $db = (new Db())->getConnection();
             
-            // Tarih formatını kontrol et (dd.mm.yyyy gelirse Y-m-d H:i:s yap)
+            // Tarih formatını kontrol et
             $formattedOnayTarihi = $onay_tarihi;
             if (strpos($formattedOnayTarihi, '.') !== false) {
-                // Basit bir dd.mm.yyyy HH:ii -> Y-m-d HH:ii dönüşümü
                 $parts = explode(' ', $formattedOnayTarihi);
                 $dateParts = explode('.', $parts[0]);
                 if (count($dateParts) === 3) {
                     $formattedOnayTarihi = $dateParts[2] . '-' . $dateParts[1] . '-' . $dateParts[0] . (isset($parts[1]) ? ' ' . $parts[1] : ' ' . date('H:i:s'));
                 }
             }
+
+            // Mevcut bir onay kaydı var mı bak (özellikle seviye 1 için)
+            $check = $db->prepare("SELECT id FROM izin_onaylari WHERE izin_id = ? ORDER BY seviye_no ASC LIMIT 1");
+            $check->execute([$izinId]);
+            $existing = $check->fetch(PDO::FETCH_OBJ);
 
             $onayData = [
                 'izin_id' => $izinId,
@@ -90,6 +94,15 @@ try {
                 'aciklama' => $onay_aciklama,
                 'onay_tarihi' => !empty($formattedOnayTarihi) ? $formattedOnayTarihi : date('Y-m-d H:i:s')
             ];
+
+            if ($existing) {
+                // Varsa güncelle
+                $onayData['id'] = $existing->id;
+            } else {
+                // Yoksa yeni ekle (ilk seviye)
+                $onayData['seviye_no'] = 1;
+            }
+
             $IzinOnaylariModel->saveWithAttr($onayData);
         }
 

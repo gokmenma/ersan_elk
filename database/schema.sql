@@ -1161,7 +1161,7 @@ CREATE TABLE `izin_onaylari` (
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
 /*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_onay_sonuc` AFTER UPDATE ON `izin_onaylari` FOR EACH ROW UPDATE personel_izinleri p
-SET p.durum =
+SET p.onay_durumu =
     CASE
         WHEN EXISTS (
             SELECT 1
@@ -1177,7 +1177,7 @@ SET p.durum =
               AND io.onay_durumu = 'Beklemede'
         ) THEN 'Onaylandı'
 
-        ELSE p.durum
+        ELSE p.onay_durumu
     END
 WHERE p.id = NEW.izin_id */;;
 DELIMITER ;
