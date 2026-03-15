@@ -435,7 +435,7 @@ async function saveListe() {
     if(isEdit) fd.append('liste_id', activeListId);
     
     try {
-        const res = await fetch('../views/gorevler/api.php', { method: 'POST', body: fd.toString() });
+        const res = await fetch('../views/gorevler/api.php', { method: 'POST', body: fd });
         const data = await res.json();
         if(data.success) {
             window.location.reload();
@@ -457,7 +457,7 @@ async function deleteListe(id) {
     fd.append('action', 'delete-liste');
     fd.append('liste_id', id);
     try {
-        const res = await fetch('../views/gorevler/api.php', { method: 'POST', body: fd.toString() });
+        const res = await fetch('../views/gorevler/api.php', { method: 'POST', body: fd });
         const data = await res.json();
         window.location.reload();
     } catch {
@@ -516,7 +516,7 @@ async function saveGorev() {
     }
     
     try {
-        const res = await fetch('../views/gorevler/api.php', { method: 'POST', body: fd.toString() });
+        const res = await fetch('../views/gorevler/api.php', { method: 'POST', body: fd });
         const data = await res.json();
         if(data.success) {
             window.location.reload();
@@ -538,7 +538,7 @@ async function deleteGorevDirect(id) {
     fd.append('action', 'delete-gorev');
     fd.append('gorev_id', id);
     try {
-        const res = await fetch('../views/gorevler/api.php', { method: 'POST', body: fd.toString() });
+        const res = await fetch('../views/gorevler/api.php', { method: 'POST', body: fd });
         const data = await res.json();
         window.location.reload();
     } catch {
@@ -563,7 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fd = new URLSearchParams();
                 fd.append('action', action);
                 fd.append('gorev_id', gorevId);
-                const res = await fetch('../views/gorevler/api.php', { method: 'POST', body: fd.toString() });
+                const res = await fetch('../views/gorevler/api.php', { method: 'POST', body: fd });
                 const data = await res.json();
                 if (data.success) window.location.reload(); 
                 else { alert(data.message); e.target.checked = !isChecked; hideLoader(); }

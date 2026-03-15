@@ -271,10 +271,15 @@ foreach ($cards as &$card) {
     // Totals accumulation
     if ($activeTab === 'okuma') {
         $cT = [ 'A' => 0 ];
+
         if (isset($summary[$pId][$compKey])) {
-            foreach ($summary[$pId][$compKey] as $dayData) {
-                // $dayData is the sum of okunan_abone_sayisi directly scalar
-                $cT['A'] += (int) $dayData;
+            $dataToSum = $summary[$pId][$compKey];
+            if (is_array($dataToSum)) {
+                foreach ($dataToSum as $dayData) {
+                    $cT['A'] += (int) $dayData;
+                }
+            } else {
+                $cT['A'] = (int) $dataToSum;
             }
         }
         $card['totals'] = $cT;

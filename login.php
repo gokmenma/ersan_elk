@@ -31,7 +31,7 @@ if (isset($_COOKIE["remember_me"])) {
             $_SESSION["id"] = $user->id;
             $_SESSION["owner_id"] = $user->owner_id;
             $_SESSION["username"] = $user->user_name;
-            $_SESSION["user_full_name"] = $user->UserName;
+            $_SESSION["user_full_name"] = $user->adi_soyadi;
             $_SESSION["sube_id"] = $user->sube_id;
 
             // Mobil cihazdan giriş kontrolü
@@ -112,7 +112,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $_SESSION["id"] = $user->id;
                 $_SESSION["owner_id"] = $user->owner_id;
                 $_SESSION["username"] = $username;
-                $_SESSION["user_full_name"] = $user->UserName;
+                $_SESSION["user_full_name"] = $user->adi_soyadi;
                 // sube_id
                 $_SESSION["sube_id"] = $user->sube_id;
                 // Remember Me

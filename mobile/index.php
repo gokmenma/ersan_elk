@@ -58,12 +58,12 @@ foreach ($menu_data as $group => $items) {
 // Tüm mobil özellikler (Erişim kontrolü için link anahtar kelimeleriyle)
 $all_mobile_menus = [
     'home'        => ['label' => 'Ana Sayfa',   'icon' => 'home', 'color_bg' => 'bg-blue-100 dark:bg-blue-900/30', 'color_icon' => 'text-blue-600', 'link_match' => 'home'],
-    'cari-takip'  => ['label' => 'Cari',        'icon' => 'account_balance_wallet', 'color_bg' => 'bg-emerald-100 dark:bg-emerald-900/30', 'color_icon' => 'text-emerald-600', 'link_match' => 'gelir-gider'],
-    'raporlar'    => ['label' => 'Raporlar',    'icon' => 'bar_chart', 'color_bg' => 'bg-purple-100 dark:bg-purple-900/30', 'color_icon' => 'text-purple-600', 'link_match' => 'raporlar'],
-    'arac'        => ['label' => 'Araç',        'icon' => 'directions_car', 'color_bg' => 'bg-teal-100 dark:bg-teal-900/30', 'color_icon' => 'text-teal-600', 'link_match' => 'arac-takip'],
-    'personel'    => ['label' => 'Personel',    'icon' => 'group', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'personel'],
-    'gorevler'    => ['label' => 'Görevler',    'icon' => 'task_alt', 'color_bg' => 'bg-green-100 dark:bg-green-900/30', 'color_icon' => 'text-green-600', 'link_match' => 'gorevler'],
-    'talepler'    => ['label' => 'Talepler',    'icon' => 'assignment', 'color_bg' => 'bg-orange-100 dark:bg-orange-900/30', 'color_icon' => 'text-orange-600', 'link_match' => 'talepler'],
+    'cari-takip'  => ['label' => 'Cari',        'icon' => 'account_balance_wallet', 'color_bg' => 'bg-emerald-100 dark:bg-emerald-900/30', 'color_icon' => 'text-emerald-600', 'link_match' => 'cari/list'],
+    'raporlar'    => ['label' => 'Raporlar',    'icon' => 'bar_chart', 'color_bg' => 'bg-purple-100 dark:bg-purple-900/30', 'color_icon' => 'text-purple-600', 'link_match' => 'puantaj/raporlar'],
+    'arac'        => ['label' => 'Araç',        'icon' => 'directions_car', 'color_bg' => 'bg-teal-100 dark:bg-teal-900/30', 'color_icon' => 'text-teal-600', 'link_match' => 'arac-takip/list'],
+    'personel'    => ['label' => 'Personel',    'icon' => 'group', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'personel/list'],
+    'gorevler'    => ['label' => 'Görevler',    'icon' => 'task_alt', 'color_bg' => 'bg-green-100 dark:bg-green-900/30', 'color_icon' => 'text-green-600', 'link_match' => 'gorevler/list'],
+    'talepler'    => ['label' => 'Talepler',    'icon' => 'assignment', 'color_bg' => 'bg-orange-100 dark:bg-orange-900/30', 'color_icon' => 'text-orange-600', 'link_match' => 'talepler/list'],
 ];
 
 $user_mobile_menus = [];
@@ -73,14 +73,7 @@ $user_mobile_menus['home'] = $all_mobile_menus['home'];
 // Diğer menülerin yetkisi var mı?
 foreach ($all_mobile_menus as $pKey => $mData) {
     if ($pKey === 'home') continue;
-    $has_access = false;
-    foreach ($permitted_links as $link) {
-        if (strpos($link, $mData['link_match']) !== false) {
-            $has_access = true;
-            break;
-        }
-    }
-    if ($has_access) {
+    if (in_array($mData['link_match'], $permitted_links)) {
         $user_mobile_menus[$pKey] = $mData;
     }
 }

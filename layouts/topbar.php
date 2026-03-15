@@ -217,7 +217,15 @@ $firma_option = $FirmaModel->optionByUserPermission();
                         src="<?php echo Helper::base_url('assets/images/users/avatar.png'); ?>" alt="Header Avatar"
                         id="user_image">
                     <span class="d-none d-xl-inline-block ms-1 fw-medium setting_user_name"
-                        id="setting_user_name"><?php echo $_SESSION["user_full_name"]; ?></span>
+                        id="setting_user_name">
+                        <?php 
+                        $displayName = $_SESSION['user_full_name'] ?? '';
+                        if (empty($displayName) && isset($_SESSION['user'])) {
+                            $displayName = $_SESSION['user']->adi_soyadi ?? 'Yönetici';
+                        }
+                        echo htmlspecialchars($displayName ?: 'Yönetici');
+                        ?>
+                    </span>
                     <i class="mdi mdi-chevron-down d-none d-xl-inline-block"></i>
                 </button>
                 <div class="dropdown-menu dropdown-menu-end">

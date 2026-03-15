@@ -190,7 +190,13 @@ $toplam_bekleyen = $bekleyen_talep + $bekleyen_avans + $bekleyen_izin;
             ?>
         </p>
         <h2 class="text-lg font-bold leading-tight">
-            <?= htmlspecialchars($_SESSION['user_full_name'] ?? 'Yönetici') ?>
+            <?php 
+            $displayName = $_SESSION['user_full_name'] ?? '';
+            if (empty($displayName) && isset($_SESSION['user'])) {
+                $displayName = $_SESSION['user']->adi_soyadi ?? 'Yönetici';
+            }
+            echo htmlspecialchars($displayName ?: 'Yönetici');
+            ?>
         </h2>
         <p class="text-white/60 text-xs mt-0.5"><?= date('d.m.Y') ?> – Yönetim Paneli</p>
     </div>

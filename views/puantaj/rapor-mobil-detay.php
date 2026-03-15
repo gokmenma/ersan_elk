@@ -50,12 +50,19 @@ if ($activeTab !== 'okuma' && !empty($workTypes)) {
 $personelData = [];
 // Find if the person exists in summary
 if (isset($summary[$pId])) {
-    if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol') {
-        // For these tabs, summary[$pId] is [day => scalar]
+    if ($activeTab === 'okuma') {
+        // Okuma summary is [pId][compKey][day]
+        foreach($summary[$pId] as $compKey => $dayDataArray) {
+            foreach($dayDataArray as $day => $val) {
+                if(!isset($personelData[$day])) $personelData[$day] = [];
+                $personelData[$day]['Okunan Abone'] = ($personelData[$day]['Okunan Abone'] ?? 0) + (int)$val;
+            }
+        }
+    } elseif ($activeTab === 'kacakkontrol') {
+        // For kacakkontrol, summary[$pId] is [day => scalar]
         foreach($summary[$pId] as $day => $val) {
             if(!isset($personelData[$day])) $personelData[$day] = [];
-            $label = ($activeTab === 'okuma') ? 'Okunan Abone' : 'İşlem Sayısı';
-            $personelData[$day][$label] = ($personelData[$day][$label] ?? 0) + (int)$val;
+            $personelData[$day]['İşlem Sayısı'] = ($personelData[$day]['İşlem Sayısı'] ?? 0) + (int)$val;
         }
     } else {
         // Determine the compositeKey, we might have multiple teams for the same person
@@ -92,8 +99,14 @@ $titleStr = $monthName . ' ' . $year . ' İşlem Dökümü';
                 foreach($metrics as $k => $v) { if($v > 0) $hasSomeValue = true; }
                 if(!$hasSomeValue) continue; 
                 
+                if (empty($day) || strpos($day, '-') === false) continue;
+                
                 $dayArr = explode('-', $day);
-                $dayFormatted = $dayArr[2] . ' ' . Date::MONTHS[(int)$dayArr[1]] . ' ' . $dayArr[0];
+                if (count($dayArr) < 3) continue;
+                
+                $mIndex = (int)$dayArr[1];
+                $mName = Date::MONTHS[$mIndex] ?? '';
+                $dayFormatted = $dayArr[2] . ' ' . $mName . ' ' . $dayArr[0];
                 $dayName = Date::gunAdi($day);
             ?>
             <div class="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-100 dark:border-slate-800 shadow-sm">
