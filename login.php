@@ -115,13 +115,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $_SESSION["user_full_name"] = $user->UserName;
                 // sube_id
                 $_SESSION["sube_id"] = $user->sube_id;
-
-                // Mobil cihazdan giriş kontrolü
-                $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
-                if (preg_match('/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i', $ua)) {
-                    $_SESSION['mobile_login_alert'] = true;
-                }
-
                 // Remember Me
                 if (isset($_POST["remember"])) {
                     $encrypted_user_id = Security::encrypt($user->id);
@@ -142,8 +135,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 }
 
                 header("location: firma-secim.php");
+                exit;
             } else {
-                // Display an error message if password is not valid
                 $password_err = "Hatalı şifre girdiniz.";
 
                 // Başarısız giriş denemesini logla

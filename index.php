@@ -3,6 +3,25 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 include 'layouts/session.php';
 
+// Kullanıcı masaüstü kilidini kaldırmak isterse (?mobile=1) tekrar mobil yönlendirmeyi aç
+if (isset($_GET['mobile']) && $_GET['mobile'] === '1') {
+    unset($_SESSION['force_desktop']);
+}
+
+// Mobil cihaz yönlendirmesi: herhangi bir HTML çıktısından önce yap
+if (!isset($_SESSION['force_desktop'])) {
+    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $chMobile = $_SERVER['HTTP_SEC_CH_UA_MOBILE'] ?? '';
+    $isMobileUa = preg_match('/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i', $ua);
+    $isMobileCh = ($chMobile === '?1');
+
+    if ($isMobileUa || $isMobileCh) {
+        $p = urlencode($_GET['p'] ?? 'home');
+        header("Location: mobile/index.php?p=$p");
+        exit();
+    }
+}
+
 
 
 
@@ -46,38 +65,12 @@ $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
 
 //Eğer oturum açmamışsa giriş sayfasına yönlendir
 if ($currentUserId <= 0 || !isset($_SESSION['firma_id'])) {
-    header("Location: " . "/logout.php");
+    header("Location: logout.php");
     exit();
 }
 
 
 //echo "sube id : " . $_SESSION['sube_id'];
-
-// Mobil giriş uyarısı (bir kez göster)
-$mobileLoginAlert = !empty($_SESSION['mobile_login_alert']);
-if ($mobileLoginAlert) {
-    unset($_SESSION['mobile_login_alert']);
-}
-?>
-<script>
-(function () {
-    var serverDetected = <?= $mobileLoginAlert ? 'true' : 'false' ?>;
-    var alreadyShown   = sessionStorage.getItem('mobile_alert_shown');
-    var isMobileView   = window.innerWidth <= 768;
-
-    if ((serverDetected || isMobileView) && !alreadyShown) {
-        sessionStorage.setItem('mobile_alert_shown', '1');
-        alert('Mobil cihazdan / görünümden giriş yaptınız. Daha iyi bir deneyim için masaüstü uygulamasını kullanmanızı öneririz.');
-    }
-})();
-</script>
-<?php
-
-
-
-
-
-
 
 ?>
 
@@ -106,7 +99,7 @@ if ($mobileLoginAlert) {
                 $hasMenuAccess = $Menus->userCanAccessMenuLink($currentUserId, $page);
                 if (!$hasMenuAccess) {
 
-                     echo "<script> window.location.href = '/unauthorize.php'; </script>";
+                    echo "<script> window.location.href = 'unauthorize.php'; </script>";
                     exit;
                 }
             }
@@ -120,6 +113,7 @@ if ($mobileLoginAlert) {
 
             if ($page === 'home') {
                 ?>
+
                 <style id="early-home-skeleton-style">
                     #early-home-skeleton {
                         position: fixed;
