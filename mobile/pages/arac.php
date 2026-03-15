@@ -18,14 +18,52 @@ $servistekiSayi = $Arac->getServistekiAracSayisi();
 
 $araclar = $Arac->getAktifAraclar() ?? [];
 $zimmetler = $Zimmet->all() ?? [];
-$yakitlar = $Yakit->all() ?? [];
-$kmlar = $Km->all() ?? [];
 $servisler = $Servis->all() ?? [];
+
+// Filtreleme Periyodu
+$period = $_GET['period'] ?? 'this_month';
+$selectedAy = $_GET['ay'] ?? date('m');
+$selectedYil = $_GET['yil'] ?? date('Y');
+
+$todayDate = date('Y-m-d');
+$firstDayOfMonth = date('Y-m-01');
+$lastDayOfMonth = date('Y-m-t');
+$firstDayOfLastMonth = date('Y-m-01', strtotime('first day of last month'));
+$lastDayOfLastMonth = date('Y-m-t', strtotime('last day of last month'));
+
+if ($period == 'today') {
+    $yakitlar = $Yakit->getByDateRange($todayDate, $todayDate);
+    $kmlar = $Km->getByDateRange($todayDate, $todayDate);
+} elseif ($period == 'this_month') {
+    $yakitlar = $Yakit->getByDateRange($firstDayOfMonth, $lastDayOfMonth);
+    $kmlar = $Km->getByDateRange($firstDayOfMonth, $lastDayOfMonth);
+} elseif ($period == 'custom') {
+    $firstDay = "$selectedYil-$selectedAy-01";
+    $lastDay = date('Y-m-t', strtotime($firstDay));
+    $yakitlar = $Yakit->getByDateRange($firstDay, $lastDay);
+    $kmlar = $Km->getByDateRange($firstDay, $lastDay);
+} else {
+    $yakitlar = $Yakit->all() ?? [];
+    $kmlar = $Km->all() ?? [];
+}
+
+// Toplamları hesapla (Slicedan önce)
+$totalYakitTutar = 0;
+$totalYakitLitre = 0;
+foreach($yakitlar as $y) {
+    $totalYakitTutar += (float)($y->toplam_tutar ?? 0);
+    $totalYakitLitre += (float)($y->yakit_miktari ?? 0);
+}
+
+$totalYapilanKm = 0;
+foreach($kmlar as $k) {
+    $totalYapilanKm += (float)($k->yapilan_km ?? 0);
+}
 
 // Mobil görünüm için sadece son 20 kaydı alalım, sayfa şişmesin
 $zimmetler = array_slice($zimmetler, 0, 20);
-$yakitlar = array_slice($yakitlar, 0, 20);
-$kmlar = array_slice($kmlar, 0, 20);
+$yakitlar_list = array_slice($yakitlar, 0, 20);
+$kmlar_list = array_slice($kmlar, 0, 20);
 $servisler = array_slice($servisler, 0, 20);
 
 // Format helper
@@ -140,6 +178,67 @@ if (!function_exists('formatKmMobile')) {
             Servis
         </button>
     </div>
+    
+    <!-- Toplam Özet Kartları (Sekmeye Göre) -->
+    <div id="summary-yakit" class="summary-area hidden">
+        <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white shadow-lg relative overflow-hidden mb-1">
+             <div class="absolute right-[-10px] top-[-10px] opacity-10">
+                 <span class="material-symbols-outlined text-8xl">local_gas_station</span>
+             </div>
+             <div class="relative z-10 grid grid-cols-2 gap-4">
+                 <div>
+                     <span class="text-[10px] uppercase font-bold opacity-80 block mb-0.5 tracking-wider">Toplam Tutar</span>
+                     <h4 class="text-xl font-black"><?= formatMoneyMobile($totalYakitTutar) ?></h4>
+                 </div>
+                 <div>
+                     <span class="text-[10px] uppercase font-bold opacity-80 block mb-0.5 tracking-wider">Toplam Litre</span>
+                     <h4 class="text-xl font-black"><?= number_format($totalYakitLitre, 2, ',', '.') ?> <small class="text-[10px] font-normal">L</small></h4>
+                 </div>
+             </div>
+        </div>
+    </div>
+
+    <div id="summary-km" class="summary-area hidden">
+        <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg relative overflow-hidden mb-1">
+             <div class="absolute right-[-10px] top-[-10px] opacity-10">
+                 <span class="material-symbols-outlined text-8xl">speed</span>
+             </div>
+             <div class="relative z-10">
+                 <span class="text-[10px] uppercase font-bold opacity-80 block mb-0.5 tracking-wider">Toplam Yapılan KM</span>
+                 <h4 class="text-2xl font-black"><?= formatKmMobile($totalYapilanKm) ?></h4>
+             </div>
+        </div>
+    </div>
+
+    <!-- Dönem Seçici -->
+    <div id="period-selector-area" class="flex gap-2 overflow-x-auto no-scrollbar py-1">
+        <?php
+        $periods = [
+            'today' => 'Bugün',
+            'this_month' => 'Bu Ay',
+            'all' => 'Tümü'
+        ];
+        foreach ($periods as $key => $label):
+            $isActive = ($period == $key);
+        ?>
+            <button onclick="changePeriod('<?= $key ?>')" 
+               class="flex-none px-4 py-1.5 rounded-full text-[11px] font-bold transition-all <?= $isActive ? 'bg-teal-500 text-white shadow-md' : 'bg-white dark:bg-card-dark text-slate-500 border border-slate-100 dark:border-slate-800' ?>">
+                <?= $label ?>
+            </button>
+        <?php endforeach; ?>
+        
+        <!-- Ay Seçimi -->
+        <?php
+        $monthNames = ['01' => 'Ocak', '02' => 'Şubat', '03' => 'Mart', '04' => 'Nisan', '05' => 'Mayıs', '06' => 'Haziran', '07' => 'Temmuz', '08' => 'Ağustos', '09' => 'Eylül', '10' => 'Ekim', '11' => 'Kasım', '12' => 'Aralık'];
+        $customLabel = $period == 'custom' ? ($monthNames[$selectedAy] . ' ' . $selectedYil) : 'Ay Seç';
+        $isCustomActive = ($period == 'custom');
+        ?>
+        <button onclick="openMonthPicker()" 
+           class="flex-none px-4 py-1.5 rounded-full text-[11px] font-bold transition-all flex items-center gap-1.5 <?= $isCustomActive ? 'bg-teal-500 text-white shadow-md' : 'bg-white dark:bg-card-dark text-slate-500 border border-slate-100 dark:border-slate-800' ?>">
+            <span class="material-symbols-outlined text-[16px]">calendar_month</span>
+            <?= $customLabel ?>
+        </button>
+    </div>
 
     <!-- Arama Alanı -->
     <div class="relative">
@@ -216,39 +315,49 @@ if (!function_exists('formatKmMobile')) {
                             }
                         }
                     ?>
-                    <div class="space-y-3 mt-4">
-                        <?php 
-                        $evraklar = [
-                            ['isim' => 'Muayene', 'tarih' => $arac->muayene_bitis_tarihi],
-                            ['isim' => 'Sigorta', 'tarih' => $arac->sigorta_bitis_tarihi],
-                            ['isim' => 'Kasko', 'tarih' => $arac->kasko_bitis_tarihi]
-                        ];
+                    <div class="mt-4 border-t border-slate-50 dark:border-slate-800/50 pt-3">
+                        <button onclick="toggleEvraklar(event, this)" class="w-full flex justify-between items-center text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest hover:text-teal-500 transition-colors">
+                            <span class="flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[16px]">assignment</span>
+                                Evrak Durumları
+                            </span>
+                            <span class="material-symbols-outlined text-[18px] transition-transform duration-300">expand_more</span>
+                        </button>
                         
-                        foreach ($evraklar as $evrak): 
-                            $isEmpty = empty($evrak['tarih']);
-                            if ($isEmpty) {
-                                $width = 0;
-                                $colorClass = 'bg-slate-300 dark:bg-slate-700'; // Boş durum rengi
-                                $textColorClass = 'text-slate-400 dark:text-slate-500';
-                                $displayDate = 'Yok';
-                            } else {
-                                $daysLeft = (strtotime($evrak['tarih']) - time()) / (60 * 60 * 24);
-                                $width = getProgressBarWidth($daysLeft);
-                                $colorClass = getProgressBarColor($daysLeft);
-                                $textColorClass = $daysLeft <= 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-600 dark:text-slate-400';
-                                $displayDate = formatDateMobile($evrak['tarih']);
-                            }
-                        ?>
-                            <div>
-                                <div class="flex justify-between items-center text-[10px] mb-1">
-                                    <span class="font-bold uppercase opacity-70 <?= $textColorClass ?>"><?= $evrak['isim'] ?></span>
-                                    <span class="font-bold <?= $textColorClass ?>"><?= $displayDate ?></span>
+                        <div class="evraklar-content hidden space-y-3 mt-3 overflow-hidden">
+                            <?php 
+                            $evraklar = [
+                                ['isim' => 'Muayene', 'tarih' => $arac->muayene_bitis_tarihi],
+                                ['isim' => 'Sigorta', 'tarih' => $arac->sigorta_bitis_tarihi],
+                                ['isim' => 'Kasko', 'tarih' => $arac->kasko_bitis_tarihi]
+                            ];
+                            
+                            foreach ($evraklar as $evrak): 
+                                $isEmpty = empty($evrak['tarih']);
+                                if ($isEmpty) {
+                                    $width = 0;
+                                    $colorClass = 'bg-slate-300 dark:bg-slate-700'; // Boş durum rengi
+                                    $textColorClass = 'text-slate-400 dark:text-slate-500';
+                                    $displayDate = 'Yok';
+                                } else {
+                                    $daysLeft = (strtotime($evrak['tarih']) - time()) / (60 * 60 * 24);
+                                    $width = getProgressBarWidth($daysLeft);
+                                    $colorClass = getProgressBarColor($daysLeft);
+                                    $textColorClass = $daysLeft <= 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-600 dark:text-slate-400';
+                                    $displayDate = formatDateMobile($evrak['tarih']);
+                                }
+                            ?>
+                                <div>
+                                    <div class="flex justify-between items-center text-[10px] mb-1">
+                                        <span class="font-bold uppercase opacity-70 <?= $textColorClass ?>"><?= $evrak['isim'] ?></span>
+                                        <span class="font-bold <?= $textColorClass ?>"><?= $displayDate ?></span>
+                                    </div>
+                                    <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5">
+                                        <div class="<?= $colorClass ?> h-1.5 rounded-full transition-all duration-500" style="width: <?= $width ?>%"></div>
+                                    </div>
                                 </div>
-                                <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5">
-                                    <div class="<?= $colorClass ?> h-1.5 rounded-full transition-all duration-500" style="width: <?= $width ?>%"></div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -299,7 +408,7 @@ if (!function_exists('formatKmMobile')) {
 
     <!-- YAKIT TAB -->
     <div id="tab-content-yakit" class="tab-content hidden space-y-3">
-        <?php if (empty($yakitlar)): ?>
+        <?php if (empty($yakitlar_list)): ?>
              <div class="bg-white dark:bg-card-dark rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-800 shadow-sm mt-4">
                 <div class="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
                     <span class="material-symbols-outlined text-slate-400 text-2xl">info</span>
@@ -307,7 +416,7 @@ if (!function_exists('formatKmMobile')) {
                 <h3 class="font-bold text-slate-800 dark:text-white">Yakıt Kaydı Yok</h3>
             </div>
         <?php else: ?>
-            <?php foreach ($yakitlar as $yak): ?>
+            <?php foreach ($yakitlar_list as $yak): ?>
                 <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4">
                     <div class="flex items-center justify-between mb-3 border-b border-slate-100 dark:border-slate-800/60 pb-2">
                         <div class="flex items-center gap-2">
@@ -344,7 +453,7 @@ if (!function_exists('formatKmMobile')) {
 
     <!-- KM TAB -->
     <div id="tab-content-km" class="tab-content hidden space-y-3">
-         <?php if (empty($kmlar)): ?>
+         <?php if (empty($kmlar_list)): ?>
              <div class="bg-white dark:bg-card-dark rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-800 shadow-sm mt-4">
                 <div class="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
                     <span class="material-symbols-outlined text-slate-400 text-2xl">info</span>
@@ -352,7 +461,7 @@ if (!function_exists('formatKmMobile')) {
                 <h3 class="font-bold text-slate-800 dark:text-white">KM Kaydı Yok</h3>
             </div>
         <?php else: ?>
-            <?php foreach ($kmlar as $kmData): ?>
+            <?php foreach ($kmlar_list as $kmData): ?>
                 <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4">
                      <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center gap-2">
@@ -469,12 +578,64 @@ if (!function_exists('formatKmMobile')) {
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
+    function changePeriod(period) {
+        const hash = window.location.hash || '#araclar';
+        window.location.href = `?p=arac&period=${period}${hash}`;
+    }
+
+    function openMonthPicker() {
+        MobileSwal.fire({
+            title: 'Dönem Seçin',
+            html: `
+                <div class="p-2">
+                    <input type="month" id="swalMonth" 
+                        class="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white font-bold focus:ring-2 focus:ring-teal-500 outline-none" 
+                        value="<?= "$selectedYil-$selectedAy" ?>">
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Uygula',
+            cancelButtonText: 'İptal',
+            preConfirm: () => {
+                const val = document.getElementById('swalMonth').value;
+                if(!val) {
+                    Swal.showValidationMessage('Lütfen bir ay seçin');
+                    return false;
+                }
+                return val;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const [year, month] = result.value.split('-');
+                const hash = window.location.hash || '#araclar';
+                window.location.href = `?p=arac&period=custom&ay=${month}&yil=${year}${hash}`;
+            }
+        });
+    }
+
+    function toggleEvraklar(event, btn) {
+        event.stopPropagation();
+        const content = btn.nextElementSibling;
+        const icon = btn.querySelector('.material-symbols-outlined:last-child');
+        
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden');
+            icon.style.transform = 'rotate(180deg)';
+        } else {
+            content.classList.add('hidden');
+            icon.style.transform = 'rotate(0deg)';
+        }
+    }
+
     function switchTab(tabId) {
         // Hide all tabs
         document.querySelectorAll('.tab-content').forEach(el => {
             el.classList.add('hidden');
             el.classList.remove('block');
         });
+        
+        // Hide all summary areas
+        document.querySelectorAll('.summary-area').forEach(el => el.classList.add('hidden'));
         
         // Reset button styles
         document.querySelectorAll('[id^=btn-tab-]').forEach(btn => {
@@ -484,6 +645,18 @@ if (!function_exists('formatKmMobile')) {
         // Show active tab
         document.getElementById('tab-content-' + tabId).classList.remove('hidden');
         document.getElementById('tab-content-' + tabId).classList.add('block');
+        
+        // Show/Hide period filter area
+        const filterArea = document.getElementById('period-selector-area');
+        if (tabId === 'araclar') {
+            filterArea.classList.add('hidden');
+        } else {
+            filterArea.classList.remove('hidden');
+        }
+        
+        // Show active summary if exists
+        const summaryEl = document.getElementById('summary-' + tabId);
+        if(summaryEl) summaryEl.classList.remove('hidden');
         
         // Activate button style
         const activeBtn = document.getElementById('btn-tab-' + tabId);

@@ -174,6 +174,23 @@ try {
 }
 
 $toplam_bekleyen = $bekleyen_talep + $bekleyen_avans + $bekleyen_izin;
+
+// Bugünün nöbetçileri
+try {
+    $db_nobet = $personelModel->getDb();
+    $stmt_nobet = $db_nobet->prepare("SELECT n.*, p.adi_soyadi, p.cep_telefonu, p.resim_yolu
+                                FROM nobetler n 
+                                JOIN personel p ON n.personel_id = p.id 
+                                WHERE n.nobet_tarihi = CURDATE() 
+                                AND n.firma_id = :firma_id 
+                                AND n.silinme_tarihi IS NULL 
+                                AND n.durum != 'iptal' 
+                                ORDER BY n.baslangic_saati ASC");
+    $stmt_nobet->execute([':firma_id' => $_SESSION['firma_id'] ?? 0]);
+    $bugunku_nobetler = $stmt_nobet->fetchAll(\PDO::FETCH_ASSOC);
+} catch (\Exception $e) {
+    $bugunku_nobetler = [];
+}
 ?>
 
 <!-- Gradient Başlık -->
@@ -292,6 +309,8 @@ $toplam_bekleyen = $bekleyen_talep + $bekleyen_avans + $bekleyen_izin;
         </div>
     </div>
 
+
+
     <!-- Operasyonel Istatistikler (minimal) -->
     <section class="bg-white dark:bg-card-dark rounded-2xl shadow-sm p-3">
         <div class="flex items-center justify-between mb-2">
@@ -339,6 +358,45 @@ $toplam_bekleyen = $bekleyen_talep + $bekleyen_avans + $bekleyen_izin;
             <?php endforeach; ?>
         </div>
     </section>
+
+    <!-- Bugünün Nöbetçileri -->
+    <?php if (!empty($bugunku_nobetler)): ?>
+    <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm p-4">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1">
+                <span class="material-symbols-outlined text-[20px] text-primary">event_busy</span>
+                Bugünün Nöbetçileri
+            </h3>
+            <span class="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold uppercase"><?= count($bugunku_nobetler) ?> KİŞİ</span>
+        </div>
+        <div class="space-y-3">
+            <?php foreach ($bugunku_nobetler as $nobet): ?>
+            <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold overflow-hidden">
+                        <?php if (!empty($nobet['resim_yolu'])): ?>
+                            <img src="../<?= $nobet['resim_yolu'] ?>" class="w-full h-full object-cover" onerror="this.onerror=null; this.parentElement.innerHTML='<?= mb_substr($nobet['adi_soyadi'], 0, 1) ?>';">
+                        <?php else: ?>
+                            <?= mb_substr($nobet['adi_soyadi'], 0, 1) ?>
+                        <?php endif; ?>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-slate-900 dark:text-white leading-tight"><?= htmlspecialchars($nobet['adi_soyadi']) ?></p>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                            <?= date('H:i', strtotime($nobet['baslangic_saati'])) ?> - <?= date('H:i', strtotime($nobet['bitis_saati'])) ?>
+                        </p>
+                    </div>
+                </div>
+                <?php if (!empty($nobet['cep_telefonu'])): ?>
+                <a href="tel:<?= $nobet['cep_telefonu'] ?>" class="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 active:scale-95 transition-transform">
+                    <span class="material-symbols-outlined text-[20px]">call</span>
+                </a>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <?php if ($toplam_bekleyen > 0): ?>
     <!-- Bekleyen Onay Uyarı Kartı -->
