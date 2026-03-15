@@ -174,6 +174,39 @@ class Gate
     }
 
 
+    /**
+     * Süper admin kontrolü,roles alanı birden fazla id içerir
+     */
+    public static function isSuperAdmin(): bool
+    {
+        $user = AuthController::user();
+        
+        // Kullanıcının roles alanını alalım (uyumluluk için role_id'ye de bakıyoruz)
+        $rolesStr = $user->roles ?? $user->role_id ?? null;
+
+        if (!$user || empty($rolesStr)) {
+            return false;
+        }
+
+        // Virgülle ayrılmış id'leri diziye çevirelim
+        $rolesArray = array_filter(array_map('trim', explode(',', (string)$rolesStr)));
+        if (empty($rolesArray)) {
+            return false;
+        }
+
+        // Veritabanı bağlantısı almak için Model sınıfından yararlanalım
+        $db = (new \App\Model\Model())->db;
+        
+        $placeholders = implode(',', array_fill(0, count($rolesArray), '?'));
+        
+        // Kullanıcının roles alanındaki id'lerden herhangi biri superadmin=1 olarak işaretlenmiş mi kontrol et
+        $sql = "SELECT COUNT(*) FROM user_roles WHERE superadmin = 1 AND id IN ($placeholders)";
+        $stmt = $db->prepare($sql);
+        $stmt->execute($rolesArray);
+        
+        return $stmt->fetchColumn() > 0;
+    }
+
 
 
 

@@ -1623,6 +1623,18 @@ if (isset($_GET["action"]) && $_GET["action"] == "get-report-table") {
     exit;
 }
 
+// Mobil Kart Tablosunu Getir
+if (isset($_GET["action"]) && $_GET["action"] == "get-mobile-report-cards") {
+    require_once 'rapor-getir-mobil.php';
+    exit;
+}
+
+// Mobil Personel Detaylarini Getir
+if (isset($_GET["action"]) && $_GET["action"] == "get-mobile-personel-details") {
+    require_once 'rapor-mobil-detay.php';
+    exit;
+}
+
 // Karşılaştırma Raporu Getir
 if (isset($_GET["action"]) && $_GET["action"] == "get-comparison-report") {
     require_once 'karsilastirma-getir.php';

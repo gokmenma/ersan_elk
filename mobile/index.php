@@ -39,7 +39,57 @@ if (isset($_GET['force_desktop'])) {
 $raw_page = $_GET['p'] ?? 'home';
 $page     = preg_replace('/[^a-z0-9\-_]/', '', strtolower($raw_page));
 
-$allowed_pages = ['home', 'personel', 'arac', 'gorevler', 'talepler', 'raporlar'];
+use App\Model\MenuModel;
+$Menus = new MenuModel();
+$menu_data = $Menus->getHierarchicalMenuForRole($currentUserId);
+
+$permitted_links = [];
+foreach ($menu_data as $group => $items) {
+    foreach ($items as $item) {
+        if (!empty($item->menu_link)) $permitted_links[] = $item->menu_link;
+        if (!empty($item->children)) {
+            foreach ($item->children as $child) {
+                if (!empty($child->menu_link)) $permitted_links[] = $child->menu_link;
+            }
+        }
+    }
+}
+
+// Tüm mobil özellikler (Erişim kontrolü için link anahtar kelimeleriyle)
+$all_mobile_menus = [
+    'home'        => ['label' => 'Ana Sayfa',   'icon' => 'home', 'color_bg' => 'bg-blue-100 dark:bg-blue-900/30', 'color_icon' => 'text-blue-600', 'link_match' => 'home'],
+    'cari-takip'  => ['label' => 'Cari',        'icon' => 'account_balance_wallet', 'color_bg' => 'bg-emerald-100 dark:bg-emerald-900/30', 'color_icon' => 'text-emerald-600', 'link_match' => 'gelir-gider'],
+    'raporlar'    => ['label' => 'Raporlar',    'icon' => 'bar_chart', 'color_bg' => 'bg-purple-100 dark:bg-purple-900/30', 'color_icon' => 'text-purple-600', 'link_match' => 'raporlar'],
+    'arac'        => ['label' => 'Araç',        'icon' => 'directions_car', 'color_bg' => 'bg-teal-100 dark:bg-teal-900/30', 'color_icon' => 'text-teal-600', 'link_match' => 'arac-takip'],
+    'personel'    => ['label' => 'Personel',    'icon' => 'group', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'personel'],
+    'gorevler'    => ['label' => 'Görevler',    'icon' => 'task_alt', 'color_bg' => 'bg-green-100 dark:bg-green-900/30', 'color_icon' => 'text-green-600', 'link_match' => 'gorevler'],
+    'talepler'    => ['label' => 'Talepler',    'icon' => 'assignment', 'color_bg' => 'bg-orange-100 dark:bg-orange-900/30', 'color_icon' => 'text-orange-600', 'link_match' => 'talepler'],
+];
+
+$user_mobile_menus = [];
+// Ana sayfa her zaman var
+$user_mobile_menus['home'] = $all_mobile_menus['home'];
+
+// Diğer menülerin yetkisi var mı?
+foreach ($all_mobile_menus as $pKey => $mData) {
+    if ($pKey === 'home') continue;
+    $has_access = false;
+    foreach ($permitted_links as $link) {
+        if (strpos($link, $mData['link_match']) !== false) {
+            $has_access = true;
+            break;
+        }
+    }
+    if ($has_access) {
+        $user_mobile_menus[$pKey] = $mData;
+    }
+}
+
+$allowed_pages = array_keys($user_mobile_menus);
+
+// Menüde görünmeyen gizli mobil alt sayfalar
+$sub_pages = ['hesap-hareketleri'];
+$allowed_pages = array_merge($allowed_pages, $sub_pages);
 
 if (!in_array($page, $allowed_pages)) {
     $page = 'home';
@@ -48,24 +98,35 @@ if (!in_array($page, $allowed_pages)) {
 $page_file = __DIR__ . '/pages/' . $page . '.php';
 
 $page_titles = [
-    'home'     => 'Ana Sayfa',
-    'personel' => 'Personel',
-    'arac'     => 'Araç Takip',
-    'gorevler' => 'Görevler',
-    'talepler' => 'Talepler',
-    'raporlar' => 'Raporlar',
+    'home'        => 'Ana Sayfa',
+    'personel'    => 'Personel',
+    'arac'        => 'Araç Takip',
+    'gorevler'    => 'Görevler',
+    'gelir-gider' => 'Gelir Gider Takibi',
+    'cari-takip'  => 'Cari',    
+    'hesap-hareketleri' => 'Hesap Hareketleri',
+    'talepler'    => 'Talepler',
+    'raporlar'    => 'Raporlar',
 ];
 
 $currentTitle = $page_titles[$page] ?? 'Ana Sayfa';
 
-$nav_items = [
-    ['page' => 'home',     'label' => 'Ana Sayfa', 'icon' => 'home'],
-    ['page' => 'personel', 'label' => 'Personel',  'icon' => 'group'],
-    ['page' => 'gorevler', 'label' => 'Görevler',  'icon' => 'task_alt'],
-    ['page' => 'arac',     'label' => 'Araç',      'icon' => 'directions_car'],
-];
+$nav_items = [];
+$more_pages_data = [];
+$more_pages = [];
 
-$more_pages   = ['talepler', 'raporlar'];
+$i = 0;
+// İlk 4 tanesini ana navigasyon olarak alıyoruz, kalan "Daha Fazla"da gösterilecek
+foreach ($user_mobile_menus as $pKey => $mData) {
+    if ($i < 4) {
+        $nav_items[] = ['page' => $pKey, 'label' => $mData['label'], 'icon' => $mData['icon']];
+    } else {
+        $more_pages_data[$pKey] = $mData;
+        $more_pages[] = $pKey;
+    }
+    $i++;
+}
+
 $isMoreActive = in_array($page, $more_pages);
 ?>
 <!DOCTYPE html>
@@ -139,6 +200,24 @@ $isMoreActive = in_array($page, $more_pages);
                 }
             }
         }
+    </script>
+
+    <!-- Desktop Redirect -->
+    <script>
+        (function () {
+            function checkDesktopRedirect() {
+                var isMobileView = window.matchMedia('(max-width: 768px)').matches;
+                if (!isMobileView) {
+                    var qs = new URLSearchParams(window.location.search);
+                    var p = qs.get('p') || 'home';
+                    // mobile=1 ekleyerek force_desktop session'ının temizlenmesini sağlarız.
+                    window.location.replace('../index.php?p=' + encodeURIComponent(p) + '&mobile=1');
+                }
+            }
+            // Sayfa yüklendiğinde ve ekran boyutu değiştiğinde kontrol et
+            checkDesktopRedirect();
+            window.addEventListener('resize', checkDesktopRedirect);
+        })();
     </script>
 
     <!-- PWA stillerini personel-pwa'dan doğrudan yeniden kullan -->
@@ -225,11 +304,13 @@ $isMoreActive = in_array($page, $more_pages);
                     <span class="text-[10px] font-semibold"><?= $item['label'] ?></span>
                 </a>
             <?php endforeach; ?>
+            <?php if (!empty($more_pages)): ?>
             <button type="button" onclick="toggleMoreMenu()"
                 class="nav-item flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-all <?= $isMoreActive ? 'text-primary' : 'text-slate-400 dark:text-slate-500' ?>">
                 <span class="material-symbols-outlined text-[26px] <?= $isMoreActive ? 'filled' : '' ?>">more_horiz</span>
                 <span class="text-[10px] font-semibold">Daha Fazla</span>
             </button>
+            <?php endif; ?>
         </div>
     </nav>
 
@@ -259,25 +340,20 @@ $isMoreActive = in_array($page, $more_pages);
                 <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
             </a>
 
+            <?php if (!empty($more_pages_data)): ?>
             <div class="h-px bg-slate-100 dark:bg-slate-700 my-2"></div>
 
-            <a href="?p=talepler"
-                class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?= $page === 'talepler' ? 'bg-primary/10' : '' ?>">
-                <div class="w-9 h-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-orange-600 text-lg">assignment</span>
+            <?php foreach ($more_pages_data as $pKey => $mItem): ?>
+            <a href="?p=<?= $pKey ?>"
+                class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?= $page === $pKey ? 'bg-primary/10' : '' ?>">
+                <div class="w-9 h-9 rounded-lg <?= $mItem['color_bg'] ?> flex items-center justify-center">
+                    <span class="material-symbols-outlined <?= $mItem['color_icon'] ?> text-lg"><?= $mItem['icon'] ?></span>
                 </div>
-                <span class="font-medium text-slate-900 dark:text-white text-sm">Talepler</span>
+                <span class="font-medium text-slate-900 dark:text-white text-sm"><?= $mItem['label'] ?></span>
                 <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
             </a>
-
-            <a href="?p=raporlar"
-                class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?= $page === 'raporlar' ? 'bg-primary/10' : '' ?>">
-                <div class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-purple-600 text-lg">bar_chart</span>
-                </div>
-                <span class="font-medium text-slate-900 dark:text-white text-sm">Raporlar</span>
-                <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
-            </a>
+            <?php endforeach; ?>
+            <?php endif; ?>
 
             <div class="h-px bg-slate-100 dark:bg-slate-700 my-2"></div>
 

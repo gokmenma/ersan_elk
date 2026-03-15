@@ -2,14 +2,15 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 include 'layouts/session.php';
+use App\Service\Gate;
 
 // Kullanıcı masaüstü kilidini kaldırmak isterse (?mobile=1) tekrar mobil yönlendirmeyi aç
 if (isset($_GET['mobile']) && $_GET['mobile'] === '1') {
     unset($_SESSION['force_desktop']);
 }
 
-// Mobil cihaz yönlendirmesi: herhangi bir HTML çıktısından önce yap
-if (!isset($_SESSION['force_desktop'])) {
+// Mobil cihaz yönlendirmesi: herhangi bir HTML çıktısından önce yap, kullanıcı süper admin ise yönlendirme yapma
+if (!isset($_SESSION['force_desktop']) && Gate::isSuperAdmin()) {
     $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
     $chMobile = $_SERVER['HTTP_SEC_CH_UA_MOBILE'] ?? '';
     $isMobileUa = preg_match('/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i', $ua);
@@ -30,6 +31,27 @@ if (!isset($_SESSION['force_desktop'])) {
 <?php include 'layouts/main.php'; ?>
 
 <head>
+
+    <script>
+        <?php if (!isset($_SESSION['force_desktop'])): ?>
+        (function () {
+            function checkMobileRedirect() {
+                var isMobileView = window.matchMedia('(max-width: 768px)').matches;
+                if (isMobileView) {
+                    var qs = new URLSearchParams(window.location.search);
+                    var p = qs.get('p') || 'home';
+                    window.location.replace('mobile/index.php?p=' + encodeURIComponent(p));
+                }
+            }
+            
+            // Sayfa yüklendiğinde kontrol et
+            checkMobileRedirect();
+            
+            // Tarayıcı boyutu değiştiğinde (DevTools mobil görünüme geçince) kontrol et
+            window.addEventListener('resize', checkMobileRedirect);
+        })();
+        <?php endif; ?>
+    </script>
 
     <title>Ersan Elektrik | Personel Yönetimi</title>
 
