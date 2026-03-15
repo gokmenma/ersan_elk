@@ -150,22 +150,22 @@ function saveServis() {
     const form = document.getElementById('servisForm');
     
     if(!form.arac_id.value || !form.servis_tarihi.value || !form.giris_km.value) {
-        Swal.fire({icon: 'warning', title: 'Hata', text: 'Giriş Tarihi ve Grup KM zorunludur.', confirmButtonColor: '#6366f1'})
+        MobileSwal.fire({icon: 'warning', title: 'Hata', text: 'Giriş Tarihi ve Grup KM zorunludur.'})
         .then(() => switchServisTab('giris'));
         return;
     }
 
     const formData = new FormData(form);
-    Swal.fire({title: 'Kaydediliyor...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
-    fetch('?p=arac-takip/api', { method: 'POST', body: formData })
+    MobileSwal.fire({title: 'Kaydediliyor...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
+    fetch('../views/arac-takip/api.php', { method: 'POST', body: formData })
     .then(r => r.json())
     .then(data => {
         if (data.status === 'success') {
-            Swal.fire({icon: 'success', title: 'Başarılı', text: data.message, confirmButtonColor: '#6366f1', timer: 1500})
+            MobileSwal.fire({icon: 'success', title: 'Başarılı', text: data.message, timer: 1500})
             .then(() => { location.hash = 'servis'; location.reload(); });
         } else {
-            Swal.fire('Hata', data.message, 'error');
+            MobileSwal.fire('Hata', data.message, 'error');
         }
-    }).catch(() => Swal.fire('Hata', 'Bağlantı sorunu', 'error'));
+    }).catch(() => MobileSwal.fire('Hata', 'Bağlantı sorunu', 'error'));
 }
 </script>

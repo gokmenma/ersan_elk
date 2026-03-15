@@ -139,20 +139,20 @@ inToplam.addEventListener('input', calcPrices);
 function saveYakit() {
     const form = document.getElementById('yakitForm');
     if(!form.arac_id.value || !form.tarih.value || !form.km.value || !form.yakit_miktari.value || !form.toplam_tutar.value) {
-        Swal.fire({icon: 'warning', title: 'Hata', text: 'Zorunlu alanları doldurun.', confirmButtonColor: '#10b981'});
+        MobileSwal.fire({icon: 'warning', title: 'Hata', text: 'Zorunlu alanları doldurun.'});
         return;
     }
     const formData = new FormData(form);
     if(!form.tam_depo_mu.checked) formData.append('tam_depo_mu', '0');
 
-    Swal.fire({title: 'Kaydediliyor...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
-    fetch('?p=arac-takip/api', { method: 'POST', body: formData })
+    MobileSwal.fire({title: 'Kaydediliyor...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
+    fetch('../views/arac-takip/api.php', { method: 'POST', body: formData })
     .then(r => r.json())
     .then(data => {
         if (data.status === 'success') {
-            Swal.fire({icon: 'success', title: 'Başarılı', text: data.message, confirmButtonColor: '#10b981', timer: 1500})
+            MobileSwal.fire({icon: 'success', title: 'Başarılı', text: data.message, timer: 1500})
             .then(() => { location.hash = 'yakit'; location.reload(); });
-        } else Swal.fire('Hata', data.message, 'error');
-    }).catch(() => Swal.fire('Hata', 'Bağlantı sorunu', 'error'));
+        } else MobileSwal.fire('Hata', data.message, 'error');
+    }).catch(() => MobileSwal.fire('Hata', 'Bağlantı sorunu', 'error'));
 }
 </script>

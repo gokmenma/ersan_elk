@@ -466,6 +466,8 @@ if (!function_exists('formatKmMobile')) {
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
     function switchTab(tabId) {
         // Hide all tabs
@@ -597,17 +599,32 @@ if (!function_exists('formatKmMobile')) {
 
     // Modal / Bottom Sheet Scriptleri
     let currentOpenSheetId = null;
+
+    // SweetAlert Tema Ayarı
+    const MobileSwal = Swal.mixin({
+        customClass: {
+            container: 'z-[9999]',
+            popup: 'rounded-[2rem] shadow-2xl bg-white dark:bg-slate-800 dark:text-white border border-slate-100 dark:border-slate-700',
+            title: 'text-lg font-extrabold text-slate-800 dark:text-white tracking-tight',
+            htmlContainer: 'text-sm text-slate-500 dark:text-slate-400',
+            confirmButton: 'w-full py-3 bg-teal-500 hover:bg-teal-600 active:scale-95 text-white font-bold rounded-xl transition-all shadow-md focus:outline-none mb-2',
+            cancelButton: 'w-full py-3 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 font-bold rounded-xl transition-all focus:outline-none'
+        },
+        buttonsStyling: false,
+        showClass: { popup: 'animate__animated animate__zoomIn animate__faster' },
+        hideClass: { popup: 'animate__animated animate__zoomOut animate__faster' }
+    });
     
     // Düzenleme Fonksiyonları
     function openAracEdit(id) {
         // Araç düzenleme için bilgileri form içine yerleştir (TBA)
-        Swal.fire({
+        MobileSwal.fire({
             title: 'Yükleniyor...',
             allowOutsideClick: false,
             didOpen: () => Swal.showLoading()
         });
         
-        fetch(`?p=arac-takip/api`, {
+        fetch(`../views/arac-takip/api.php`, {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: `action=arac-detay&id=${id}`
@@ -620,24 +637,36 @@ if (!function_exists('formatKmMobile')) {
                 const form = document.getElementById('aracForm');
                 
                 // Form elementlerini dataya göre doldur
-                form.arac_id.value = data.id;
+                form.id.value = data.id;
                 form.plaka.value = data.plaka || '';
                 form.marka.value = data.marka || '';
                 form.model.value = data.model || '';
-                form.durum.value = data.durum || 'aktif';
-                form.baslangic_km.value = data.baslangic_km || '';
-                form.guncel_km.value = data.guncel_km || '';
+                form.durum.value = data.durum || '1';
+                form.baslangic_km.value = data.baslangic_km || '0';
+                form.guncel_km.value = data.guncel_km || '0';
                 form.yakit_tipi.value = data.yakit_tipi || '';
-                form.muayene_tarihi.value = data.muayene_tarihi || '';
-                form.sigorta_tarihi.value = data.sigorta_tarihi || '';
-                form.kasko_tarihi.value = data.kasko_tarihi || '';
+                form.arac_tipi.value = data.arac_tipi || '';
+                
+                // Tarihler
+                if(data.muayene_bitis_tarihi && data.muayene_bitis_tarihi !== '-') {
+                    const parts = data.muayene_bitis_tarihi.split('.');
+                    if(parts.length === 3) form.muayene_tarihi.value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                }
+                if(data.sigorta_bitis_tarihi && data.sigorta_bitis_tarihi !== '-') {
+                    const parts = data.sigorta_bitis_tarihi.split('.');
+                    if(parts.length === 3) form.sigorta_tarihi.value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                }
+                if(data.kasko_bitis_tarihi && data.kasko_bitis_tarihi !== '-') {
+                    const parts = data.kasko_bitis_tarihi.split('.');
+                    if(parts.length === 3) form.kasko_tarihi.value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                }
+
                 form.sase_no.value = data.sase_no || '';
                 form.ruhsat_no.value = data.ruhsat_no || '';
-                form.departman_id.value = data.departman_id || '';
                 
                 openSheet('arac');
             } else {
-                Swal.fire('Hata', res.message, 'error');
+                MobileSwal.fire('Hata', res.message, 'error');
             }
         });
     }
@@ -717,4 +746,3 @@ if (!function_exists('formatKmMobile')) {
         }, 300);
     }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

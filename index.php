@@ -22,7 +22,7 @@ if (isset($_GET['mobile']) && $_GET['mobile'] === '1') {
 }
 
 // Mobil cihaz yönlendirmesi: herhangi bir HTML çıktısından önce yap, kullanıcı süper admin ise yönlendirme yapma
-if (!isset($_SESSION['force_desktop']) && !Gate::isSuperAdmin()) {
+if (!isset($_SESSION['force_desktop']) && Gate::isSuperAdmin() && $_SESSION["user_id"] == 62) {
     $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
     $chMobile = $_SERVER['HTTP_SEC_CH_UA_MOBILE'] ?? '';
     $isMobileUa = preg_match('/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i', $ua);

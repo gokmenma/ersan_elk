@@ -72,20 +72,20 @@ document.getElementById('z_arac_id').addEventListener('change', function() {
 function saveZimmet() {
     const form = document.getElementById('zimmetForm');
     if(!form.arac_id.value || !form.personel_id.value || !form.zimmet_tarihi.value || !form.teslim_km.value) {
-        Swal.fire({icon: 'warning', title: 'Hata', text: 'Zorunlu alanları doldurun.', confirmButtonColor: '#f59e0b'});
+        MobileSwal.fire({icon: 'warning', title: 'Hata', text: 'Zorunlu alanları doldurun.'});
         return;
     }
     const formData = new FormData(form);
-    Swal.fire({title: 'Kaydediliyor...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
-    fetch('?p=arac-takip/api', { method: 'POST', body: formData })
+    MobileSwal.fire({title: 'Kaydediliyor...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
+    fetch('../views/arac-takip/api.php', { method: 'POST', body: formData })
     .then(r => r.json())
     .then(data => {
         if (data.status === 'success') {
-            Swal.fire({icon: 'success', title: 'Başarılı', text: data.message, confirmButtonColor: '#f59e0b', timer: 1500})
+            MobileSwal.fire({icon: 'success', title: 'Başarılı', text: data.message, timer: 1500})
             .then(() => { location.hash = 'zimmet'; location.reload(); });
         } else {
-            Swal.fire('Hata', data.message, 'error');
+            MobileSwal.fire('Hata', data.message, 'error');
         }
-    }).catch(() => Swal.fire('Hata', 'Bağlantı sorunu', 'error'));
+    }).catch(() => MobileSwal.fire('Hata', 'Bağlantı sorunu', 'error'));
 }
 </script>

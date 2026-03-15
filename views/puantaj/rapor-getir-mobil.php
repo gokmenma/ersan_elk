@@ -105,9 +105,10 @@ if (!empty($summary)) {
             }
             $validPairs['kacak_' . $teamName] = [
                 'pId' => 'kacak_' . $teamName,
-                'tId' => $teamName,
+                'tId' => $tId,
                 'isKacak' => true,
                 'teamName' => $teamName,
+                'ekipKodu' => $teamName,
                 'compositeKey' => $teamName
             ];
         } else {
@@ -121,6 +122,11 @@ if (!empty($summary)) {
                     $hasRelevantData = false;
                     foreach ($data as $day => $workTypeCounts) {
                         foreach ($workTypeCounts as $workTypeName => $count) {
+                            if ($activeTab === 'muhurleme' && $count > 0) {
+                                $hasRelevantData = true;
+                                break 2;
+                            }
+                            
                             foreach ($workTypeCols as $wtCol) {
                                 if ($wtCol['name'] === $workTypeName && $count > 0) {
                                     $hasRelevantData = true;
@@ -274,12 +280,24 @@ foreach ($cards as &$card) {
         $card['totals'] = $cT;
     } elseif ($activeTab === 'kacakkontrol') {
         $totalSayi = 0;
-        if (isset($summary[$pId][$compKey])) {
-            foreach ($summary[$pId][$compKey] as $dayData) {
-                $totalSayi += $dayData['sayi'] ?? 0;
+        if (isset($summary[$pId])) {
+            foreach ($summary[$pId] as $dayStr => $sayiVal) {
+                if (!is_array($sayiVal)) {
+                    $totalSayi += (int)$sayiVal;
+                }
             }
         }
         $card['totals'] = ['Sayı' => $totalSayi];
+    } elseif ($activeTab === 'muhurleme') {
+        $totalSayi = 0;
+        if (isset($summary[$pId][$compKey])) {
+            foreach ($summary[$pId][$compKey] as $dayData) {
+                foreach($dayData as $vItem) {
+                    $totalSayi += (int)$vItem;
+                }
+            }
+        }
+        $card['totals'] = ['Mühürleme' => $totalSayi];
     } else {
         $cT = [];
         foreach($workTypeCols as $wt) {
@@ -313,7 +331,7 @@ foreach ($cards as $c) {
 }
 ?>
 
-<div class="px-2 pt-2 pb-8">
+<div class="px-2 pt-2 pb-2">
 <?php if (count($groupedCards) === 0): ?>
     <div class="text-center py-12 px-6">
         <span class="material-symbols-outlined text-4xl text-slate-300 mb-2">inbox</span>
@@ -385,6 +403,8 @@ foreach ($cards as $c) {
                         $operationCount = $c['totals']['A'] ?? 0;
                     } elseif ($activeTab === 'kacakkontrol') {
                         $operationCount = $c['totals']['Sayı'] ?? 0;
+                    } elseif ($activeTab === 'muhurleme') {
+                        $operationCount = $c['totals']['Mühürleme'] ?? 0;
                     } else {
                         $operationCount = $totalValForColors;
                     }

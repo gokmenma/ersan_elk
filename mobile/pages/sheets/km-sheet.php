@@ -98,23 +98,23 @@ inkBit.addEventListener('input', calcNetKm);
 function saveKm() {
     const form = document.getElementById('kmForm');
     if(!form.arac_id.value || !form.tarih.value || !form.baslangic_km.value || !form.bitis_km.value) {
-        Swal.fire({icon: 'warning', title: 'Hata', text: 'Zorunlu alanları doldurun.', confirmButtonColor: '#0ea5e9'});
+        MobileSwal.fire({icon: 'warning', title: 'Hata', text: 'Zorunlu alanları doldurun.'});
         return;
     }
     if (parseInt(form.bitis_km.value) < parseInt(form.baslangic_km.value)) {
-        Swal.fire('Hata', 'Bitiş KM, başlangıç KM\'den küçük olamaz!', 'warning');
+        MobileSwal.fire('Hata', 'Bitiş KM, başlangıç KM\'den küçük olamaz!', 'warning');
         return;
     }
     const formData = new FormData(form);
     
-    Swal.fire({title: 'Kaydediliyor...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
-    fetch('?p=arac-takip/api', { method: 'POST', body: formData })
+    MobileSwal.fire({title: 'Kaydediliyor...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
+    fetch('../views/arac-takip/api.php', { method: 'POST', body: formData })
     .then(r => r.json())
     .then(data => {
         if (data.status === 'success') {
-            Swal.fire({icon: 'success', title: 'Başarılı', text: data.message, confirmButtonColor: '#0ea5e9', timer: 1500})
+            MobileSwal.fire({icon: 'success', title: 'Başarılı', text: data.message, timer: 1500})
             .then(() => { location.hash = 'km'; location.reload(); });
-        } else Swal.fire('Hata', data.message, 'error');
-    }).catch(() => Swal.fire('Hata', 'Bağlantı sorunu', 'error'));
+        } else MobileSwal.fire('Hata', data.message, 'error');
+    }).catch(() => MobileSwal.fire('Hata', 'Bağlantı sorunu', 'error'));
 }
 </script>

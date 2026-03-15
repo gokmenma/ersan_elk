@@ -50,17 +50,19 @@ if ($activeTab !== 'okuma' && !empty($workTypes)) {
 $personelData = [];
 // Find if the person exists in summary
 if (isset($summary[$pId])) {
-    // Determine the compositeKey, we might have multiple teams for the same person
-    foreach($summary[$pId] as $compKey => $dayDataArray) {
-        // Collect by day
-        foreach($dayDataArray as $day => $vals) {
+    if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol') {
+        // For these tabs, summary[$pId] is [day => scalar]
+        foreach($summary[$pId] as $day => $val) {
             if(!isset($personelData[$day])) $personelData[$day] = [];
-            
-            if ($activeTab === 'okuma') {
-                $personelData[$day]['Okunan Abone'] = ($personelData[$day]['Okunan Abone'] ?? 0) + (int)$vals;
-            } elseif ($activeTab === 'kacakkontrol') {
-                $personelData[$day]['İşlem Sayısı'] = ($personelData[$day]['İşlem Sayısı'] ?? 0) + ($vals['sayi'] ?? 0);
-            } else {
+            $label = ($activeTab === 'okuma') ? 'Okunan Abone' : 'İşlem Sayısı';
+            $personelData[$day][$label] = ($personelData[$day][$label] ?? 0) + (int)$val;
+        }
+    } else {
+        // Determine the compositeKey, we might have multiple teams for the same person
+        foreach($summary[$pId] as $compKey => $dayDataArray) {
+            // Collect by day
+            foreach($dayDataArray as $day => $vals) {
+                if(!isset($personelData[$day])) $personelData[$day] = [];
                 foreach($workTypeCols as $wt) {
                     $personelData[$day][$wt['name']] = ($personelData[$day][$wt['name']] ?? 0) + ($vals[$wt['name']] ?? 0);
                 }

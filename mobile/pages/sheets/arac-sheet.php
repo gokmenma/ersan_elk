@@ -133,35 +133,34 @@ function saveArac() {
     const plaka = form.plaka.value.trim();
     
     if(!plaka) {
-        Swal.fire({
+        MobileSwal.fire({
             icon: 'warning',
             title: 'Hata',
-            text: 'Plaka zorunludur.',
-            confirmButtonColor: '#14b8a6'
+            text: 'Plaka zorunludur.'
         });
         return;
     }
 
     const formData = new FormData(form);
     
-    Swal.fire({
+    MobileSwal.fire({
         title: 'Kaydediliyor...',
         allowOutsideClick: false,
         didOpen: () => Swal.showLoading()
     });
 
-    fetch('?p=arac-takip/api', {
+    fetch('../views/arac-takip/api.php', {
         method: 'POST',
         body: formData
     })
     .then(r => r.json())
     .then(data => {
         if (data.status === 'success') {
-            Swal.fire({icon: 'success', title: 'Başarılı', text: data.message, confirmButtonColor: '#14b8a6', timer: 1500}).then(() => location.reload());
+            MobileSwal.fire({icon: 'success', title: 'Başarılı', text: data.message, timer: 1500}).then(() => location.reload());
         } else {
-            Swal.fire('Hata', data.message, 'error');
+            MobileSwal.fire('Hata', data.message, 'error');
         }
     })
-    .catch(() => Swal.fire('Hata', 'Bağlantı sorunu', 'error'));
+    .catch(() => MobileSwal.fire('Hata', 'Bağlantı sorunu', 'error'));
 }
 </script>

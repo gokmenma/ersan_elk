@@ -7,55 +7,59 @@ $Tanimlamalar = new TanimlamalarModel();
 $Personel = new PersonelModel();
 ?>
 
-<div class="px-3 py-4 space-y-4 pb-28 flex flex-col h-full h-screen">
+<div class="px-3 py-2 space-y-3 pb-5">
     
-    <!-- Top Nav / Header Card -->
-    <div class="bg-white dark:bg-card-dark rounded-xl shadow-sm p-3 flex flex-col gap-3 shrink-0">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 flex items-center justify-center shrink-0">
-                    <span class="material-symbols-outlined">analytics</span>
-                </div>
-                <div>
-                    <h2 class="font-bold text-slate-900 dark:text-white leading-tight mb-0.5 text-sm">İşlem Özetleri</h2>
-                    <p class="text-[11px] text-slate-500 font-medium tracking-wide">Personel Bazlı Performans</p>
-                </div>
-            </div>
-        </div>
+    <!-- STICKY HEADER WRAPPER -->
+    <div class="sticky top-0 z-30 bg-slate-50 dark:bg-slate-950 -mx-3 px-3 pt-2 pb-3 space-y-3 shadow-md shadow-slate-200/50 dark:shadow-none">
         
-        <!-- Filter Toggle Buttons -->
-        <div class="flex gap-2 mt-1">
-            <button id="btnFilterBugun" class="flex-[0.35] py-2 text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all bg-primary text-white shadow-primary/20" onclick="window.applyDateFilter('bugun')">Bugün</button>
-            <div class="flex-[0.65] relative">
-                <input type="month" id="monthPickerInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="window.applyDateFilter('custom', this.value)" title="Geçmiş ayları seçmek için dokunun" onclick="if(currentFilterType !== 'buay') { window.applyDateFilter('custom', this.value); }" max="<?= date('Y-m') ?>" value="<?= date('Y-m') ?>">
-                <button id="btnFilterCustom" class="w-full h-full pointer-events-none flex flex-row items-center justify-between px-3 gap-1 py-1.5 text-xs font-bold rounded-lg shadow-sm transition-all bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-700">
-                    <span id="customFilterLabel" class="truncate overflow-hidden w-full text-left">Bu Ay</span>
-                    <span class="material-symbols-outlined text-[16px] text-slate-400 border-l border-slate-200 dark:border-slate-700 pl-2">calendar_month</span>
-                </button>
+        <!-- Top Nav / Header Card -->
+        <div class="bg-white dark:bg-card-dark rounded-xl shadow-sm p-3 flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined">analytics</span>
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-slate-900 dark:text-white leading-tight mb-0.5 text-sm">İşlem Özetleri</h2>
+                        <p class="text-[11px] text-slate-500 font-medium tracking-wide">Personel Bazlı Performans</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filter Toggle Buttons -->
+            <div class="flex gap-2 mt-1">
+                <button id="btnFilterBugun" class="flex-[0.35] py-2 text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all bg-primary text-white shadow-primary/20" onclick="window.applyDateFilter('bugun')">Bugün</button>
+                <div class="flex-[0.65] relative">
+                    <input type="month" id="monthPickerInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="window.applyDateFilter('custom', this.value)" title="Geçmiş ayları seçmek için dokunun" onclick="if(currentFilterType !== 'buay') { window.applyDateFilter('custom', this.value); }" max="<?= date('Y-m') ?>" value="<?= date('Y-m') ?>">
+                    <button id="btnFilterCustom" class="w-full h-full pointer-events-none flex flex-row items-center justify-between px-3 gap-1 py-1.5 text-xs font-bold rounded-lg shadow-sm transition-all bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-700">
+                        <span id="customFilterLabel" class="truncate overflow-hidden w-full text-left">Bu Ay</span>
+                        <span class="material-symbols-outlined text-[16px] text-slate-400 border-l border-slate-200 dark:border-slate-700 pl-2">calendar_month</span>
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Scrollable Tabs -->
-    <div class="overflow-x-auto hide-scrollbar -mx-3 px-3 shrink-0" id="raporTabsContainer">
-        <div class="flex gap-2 min-w-max pb-2">
-            <button class="rapor-tab bg-primary text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm shadow-primary/20 active:scale-95 transition-transform" data-tab="okuma">Endeks Okuma</button>
-            <button class="rapor-tab bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-transform" data-tab="kesme">Kesme/Açma</button>
-            <button class="rapor-tab bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-transform" data-tab="sokme_takma">Sayaç Sö/Ta</button>
-            <button class="rapor-tab bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-transform" data-tab="muhurleme">Mühürleme</button>
-            <button class="rapor-tab bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-transform" data-tab="kacakkontrol">Kaçak Kont.</button>
+        <!-- Scrollable Tabs -->
+        <div class="overflow-x-auto hide-scrollbar -mx-3 px-3" id="raporTabsContainer">
+            <div class="flex gap-2 min-w-max pb-1">
+                <button class="rapor-tab bg-primary text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm shadow-primary/20 active:scale-95 transition-transform" data-tab="okuma">Endeks Okuma</button>
+                <button class="rapor-tab bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-transform" data-tab="kesme">Kesme/Açma</button>
+                <button class="rapor-tab bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-transform" data-tab="sokme_takma">Sayaç Sö/Ta</button>
+                <button class="rapor-tab bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-transform" data-tab="muhurleme">Mühürleme</button>
+                <button class="rapor-tab bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 px-4 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-transform" data-tab="kacakkontrol">Kaçak Kont.</button>
+            </div>
         </div>
-    </div>
 
-    <!-- Live Search -->
-    <div class="relative px-1 shrink-0">
-        <span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">search</span>
-        <input type="text" id="personelSearchInput" placeholder="Personel ara..." class="w-full pl-10 pr-4 py-3 bg-white dark:bg-card-dark border border-slate-100 dark:border-slate-800 rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-semibold shadow-sm placeholder:text-slate-400 placeholder:font-normal">
+        <!-- Live Search -->
+        <div class="relative px-1">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">search</span>
+            <input type="text" id="personelSearchInput" placeholder="Personel ara..." class="w-full pl-10 pr-4 py-3 bg-white dark:bg-card-dark border border-slate-100 dark:border-slate-800 rounded-xl text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-semibold shadow-sm placeholder:text-slate-400 placeholder:font-normal">
+        </div>
     </div>
 
     <!-- Report Cards Container -->
-    <div class="flex-grow min-h-0 overflow-y-auto overscroll-contain relative -mx-1 px-1">
-        <div id="reportContent" class="min-h-full pb-32">
+    <div class="relative -mx-1 px-1">
+        <div id="reportContent" class="pb-2">
             <div class="flex flex-col items-center justify-center p-12 text-slate-400">
                 <div class="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-3"></div>
                 <p class="text-xs font-semibold">Veriler getiriliyor...</p>
@@ -143,16 +147,24 @@ function setupLiveSearch() {
     const srch = document.getElementById('personelSearchInput');
     srch.addEventListener('input', function() {
         const val = this.value.trim().toLowerCase();
-        const cards = document.querySelectorAll('#reportContent > div > .grid > div');
+        const regions = document.querySelectorAll('#reportContent div.flex-col > div.border');
         
-        cards.forEach(c => {
-            const h4 = c.querySelector('h4');
-            const h4text = h4 ? h4.innerText.toLowerCase() : '';
-            if(val === '' || h4text.indexOf(val) !== -1) {
-                c.style.display = 'flex';
-            } else {
-                c.style.display = 'none';
-            }
+        regions.forEach(region => {
+            let hasVisibleCard = false;
+            const cards = region.querySelectorAll('.grid > div.group');
+            cards.forEach(c => {
+                const h4 = c.querySelector('h4');
+                const h4text = h4 ? h4.innerText.toLowerCase() : '';
+                if(val === '' || h4text.indexOf(val) !== -1) {
+                    c.style.display = 'flex';
+                    hasVisibleCard = true;
+                } else {
+                    c.style.display = 'none';
+                }
+            });
+            
+            // Hide region wrapper entirely if no card inside is visible
+            region.style.display = hasVisibleCard ? 'block' : 'none';
         });
     });
 }
