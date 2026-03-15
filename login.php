@@ -34,6 +34,12 @@ if (isset($_COOKIE["remember_me"])) {
             $_SESSION["user_full_name"] = $user->UserName;
             $_SESSION["sube_id"] = $user->sube_id;
 
+            // Mobil cihazdan giriş kontrolü
+            $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+            if (preg_match('/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i', $ua)) {
+                $_SESSION['mobile_login_alert'] = true;
+            }
+
             // Log the automatic login
             try {
                 $SystemLog = new SystemLogModel();
@@ -109,6 +115,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $_SESSION["user_full_name"] = $user->UserName;
                 // sube_id
                 $_SESSION["sube_id"] = $user->sube_id;
+
+                // Mobil cihazdan giriş kontrolü
+                $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                if (preg_match('/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i', $ua)) {
+                    $_SESSION['mobile_login_alert'] = true;
+                }
 
                 // Remember Me
                 if (isset($_POST["remember"])) {

@@ -462,6 +462,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
             case 'yakit-detay':
                 $id = intval($_POST['id'] ?? 0);
                 $kayit = $Yakit->find($id);
+                /**tarihi çevir */
+                $kayit->tarih = Date::dmy($kayit->tarih);
 
                 if (!$kayit) {
                     throw new Exception("Yakıt kaydı bulunamadı.");
@@ -622,6 +624,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
             case 'km-detay':
                 $id = intval($_POST['id'] ?? 0);
                 $kayit = $Km->find($id);
+                /**tarihi çevir */
+                $kayit->tarih = Date::dmy($kayit->tarih);
 
                 if (!$kayit) {
                     throw new Exception("KM kaydı bulunamadı.");

@@ -1113,6 +1113,7 @@ const AracTakip = {
           const input = $("#yakitModal").find('[name="' + key + '"]');
           if (input.length) {
             if (input.hasClass("flatpickr") && data[key]) {
+              console.log(data[key]);
               // Flatpickr tarih formatı
               if (input[0]._flatpickr) {
                 input[0]._flatpickr.setDate(data[key]);

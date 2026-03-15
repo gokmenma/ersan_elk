@@ -53,6 +53,26 @@ if ($currentUserId <= 0 || !isset($_SESSION['firma_id'])) {
 
 //echo "sube id : " . $_SESSION['sube_id'];
 
+// Mobil giriş uyarısı (bir kez göster)
+$mobileLoginAlert = !empty($_SESSION['mobile_login_alert']);
+if ($mobileLoginAlert) {
+    unset($_SESSION['mobile_login_alert']);
+}
+?>
+<script>
+(function () {
+    var serverDetected = <?= $mobileLoginAlert ? 'true' : 'false' ?>;
+    var alreadyShown   = sessionStorage.getItem('mobile_alert_shown');
+    var isMobileView   = window.innerWidth <= 768;
+
+    if ((serverDetected || isMobileView) && !alreadyShown) {
+        sessionStorage.setItem('mobile_alert_shown', '1');
+        alert('Mobil cihazdan / görünümden giriş yaptınız. Daha iyi bir deneyim için masaüstü uygulamasını kullanmanızı öneririz.');
+    }
+})();
+</script>
+<?php
+
 
 
 
