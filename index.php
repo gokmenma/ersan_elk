@@ -1,7 +1,19 @@
 <?php
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 include 'layouts/session.php';
+//require_once __DIR__ . '/Autoloader.php';
+require __DIR__ . '/vendor/autoload.php';
+setlocale(LC_CTYPE, 'tr_TR.UTF-8');
+
+use App\Model\MenuModel;
+
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv->load();
+
+
+
 use App\Service\Gate;
 
 // Kullanıcı masaüstü kilidini kaldırmak isterse (?mobile=1) tekrar mobil yönlendirmeyi aç
@@ -10,7 +22,7 @@ if (isset($_GET['mobile']) && $_GET['mobile'] === '1') {
 }
 
 // Mobil cihaz yönlendirmesi: herhangi bir HTML çıktısından önce yap, kullanıcı süper admin ise yönlendirme yapma
-if (!isset($_SESSION['force_desktop']) && Gate::isSuperAdmin()) {
+if (!isset($_SESSION['force_desktop']) && !Gate::isSuperAdmin()) {
     $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
     $chMobile = $_SERVER['HTTP_SEC_CH_UA_MOBILE'] ?? '';
     $isMobileUa = preg_match('/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i', $ua);
@@ -69,14 +81,6 @@ if (!isset($_SESSION['force_desktop']) && Gate::isSuperAdmin()) {
 
 <?php
 
-//require_once __DIR__ . '/Autoloader.php';
-require __DIR__ . '/vendor/autoload.php';
-setlocale(LC_CTYPE, 'tr_TR.UTF-8');
-
-use App\Model\MenuModel;
-
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
-$dotenv->load();
 
 
 

@@ -25,7 +25,7 @@ use App\Service\FileLogger;
 use App\Service\DataBaseLogger;
 use App\Core\Db;
 use App\Exceptions\AuthorizationException;
-
+use App\Service\Gate;
 
 
 // --- .env DEĞİŞKENLERİNİ YÜKLEME ---

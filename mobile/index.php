@@ -88,7 +88,7 @@ foreach ($all_mobile_menus as $pKey => $mData) {
 $allowed_pages = array_keys($user_mobile_menus);
 
 // Menüde görünmeyen gizli mobil alt sayfalar
-$sub_pages = ['hesap-hareketleri'];
+$sub_pages = ['hesap-hareketleri', 'personel-duzenle'];
 $allowed_pages = array_merge($allowed_pages, $sub_pages);
 
 if (!in_array($page, $allowed_pages)) {
@@ -251,7 +251,7 @@ $isMoreActive = in_array($page, $more_pages);
     <!-- iOS Güvenli Alan Boşluğu -->
     <div class="h-safe-top bg-primary dark:bg-primary-dark"></div>
 
-    <!-- Üst Başlık -->
+    <!-- Üst Başlık (Kullanıcı isteğiyle gizlendi) 
     <header class="sticky top-0 z-40 bg-white dark:bg-card-dark border-b border-slate-100 dark:border-slate-700 shadow-sm">
         <div class="flex items-center justify-between px-4 py-3">
             <h1 class="text-base font-bold text-slate-900 dark:text-white">
@@ -270,9 +270,43 @@ $isMoreActive = in_array($page, $more_pages);
             </div>
         </div>
     </header>
+    -->
+
+    <?php 
+    // Kendi özel (gradient vb.) başlık yapısı olan veya üst bar istenmeyen sayfalar
+    $no_header_pages = ['home', 'hesap-hareketleri', 'arac', 'gorevler', 'talepler', 'personel', 'personel-duzenle'];
+    if (!in_array($page, $no_header_pages)): 
+    ?>
+    <!-- Sayfa Başlığı (Gradient) -->
+    <header class="bg-gradient-primary text-white px-4 pt-4 pb-5 rounded-b-3xl relative overflow-hidden z-40 shadow-sm shrink-0">
+        <div class="absolute inset-0 opacity-10 pointer-events-none">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-white rounded-full -mr-16 -mt-16"></div>
+            <div class="absolute bottom-0 left-0 w-24 h-24 bg-white rounded-full -ml-12 -mb-12"></div>
+        </div>
+        <div class="relative z-10 flex items-center justify-between">
+            <div>
+                <h1 class="text-[17px] font-bold leading-tight">
+                    <?= htmlspecialchars($currentTitle) ?>
+                </h1>
+                <p class="text-white/70 text-[10px] mt-0.5"><?= date('d.m.Y') ?> – Yönetim Paneli</p>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <button onclick="toggleDarkMode()"
+                    class="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-95 transition-transform bg-white/10 hover:bg-white/20">
+                    <span class="material-symbols-outlined text-[18px] dark:hidden">dark_mode</span>
+                    <span class="material-symbols-outlined text-[18px] hidden dark:block">light_mode</span>
+                </button>
+                <a href="../logout.php"
+                    class="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-95 transition-transform bg-white/10 hover:bg-white/20">
+                    <span class="material-symbols-outlined text-[18px]">logout</span>
+                </a>
+            </div>
+        </div>
+    </header>
+    <?php endif; ?>
 
     <!-- Ana İçerik -->
-    <main id="main-content" class="min-h-screen">
+    <main id="main-content" class="<?= (!in_array($page, $no_header_pages)) ? 'min-h-[calc(100vh-85px)]' : 'min-h-screen' ?>">
         <?php if (file_exists($page_file)): ?>
             <?php include $page_file; ?>
         <?php else: ?>

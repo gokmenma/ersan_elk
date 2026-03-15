@@ -201,7 +201,7 @@ $izinTurleri = [
             <div class="tab-content">
                 <!-- Avans Talepleri Tab -->
                 <div class="tab-pane fade show active" id="tabAvans" role="tabpanel">
-                    <div class="table-responsive">
+                    <div class="table-responsive d-none d-lg-block">
                         <table class="table datatables table-hover table-bordered nowrap align-middle w-100 datatable"
                             id="avansTable">
                             <thead class="table-light">
@@ -303,11 +303,61 @@ $izinTurleri = [
                             </tbody>
                         </table>
                     </div>
+                    <!-- Mobil Görünüm (Avans) -->
+                    <div class="d-block d-lg-none mt-3">
+                        <div class="row g-3">
+                            <?php foreach ($avanslar as $avans): ?>
+                                <div class="col-12" data-id="<?= $avans->id ?>" data-tip="avans">
+                                    <div class="card border shadow-sm h-100">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <img src="<?= !empty($avans->resim_yolu) ? $avans->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>" class="rounded-circle avatar-sm" alt="">
+                                                    <div>
+                                                        <h6 class="mb-0 fs-14"><?= htmlspecialchars($avans->adi_soyadi) ?></h6>
+                                                        <small class="text-muted"><?= date('d.m.Y H:i', strtotime($avans->talep_tarihi)) ?></small>
+                                                    </div>
+                                                </div>
+                                                <span class="badge bg-success"><i class="bx bx-money me-1"></i>Avans</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="text-muted small">Tutar:</span>
+                                                <span class="text-success fw-bold"><?= number_format($avans->tutar, 2, ',', '.') ?> ₺</span>
+                                            </div>
+                                            <?php
+                                            $durumType = 'warning';
+                                            $durumText = ucfirst($avans->durum);
+                                            if ($avans->durum == 'onaylandi') { $durumType = 'success'; $durumText = 'Onaylandı'; }
+                                            if ($avans->durum == 'reddedildi') { $durumType = 'danger'; $durumText = 'Reddedildi'; }
+                                            ?>
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <span class="text-muted small">Durum:</span>
+                                                <span class="badge bg-<?= $durumType ?>"><i class="bx bx-<?= $durumType == 'success' ? 'check-circle' : ($durumType == 'danger' ? 'x-circle' : 'time-five') ?>"></i> <?= $durumText ?></span>
+                                            </div>
+                                            
+                                            <div class="d-flex gap-2 mt-2 pt-2 border-top">
+                                                <?php if ($avans->durum != 'onaylandi'): ?>
+                                                    <button class="btn btn-sm btn-soft-success flex-fill btn-avans-onayla" type="button" data-id="<?= $avans->id ?>" data-personel="<?= htmlspecialchars($avans->adi_soyadi) ?>" data-tutar="<?= $avans->tutar ?>"><i class="bx bx-check"></i> Onayla</button>
+                                                <?php endif; ?>
+                                                <?php if ($avans->durum != 'reddedildi'): ?>
+                                                    <button class="btn btn-sm btn-soft-danger flex-fill btn-avans-reddet" type="button" data-id="<?= $avans->id ?>" data-personel="<?= htmlspecialchars($avans->adi_soyadi) ?>"><i class="bx bx-x"></i> Red</button>
+                                                <?php endif; ?>
+                                                <button class="btn btn-sm btn-soft-info flex-fill btn-avans-detay" type="button" data-id="<?= $avans->id ?>"><i class="bx bx-show"></i> Detay</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                            <?php if(empty($avanslar)): ?>
+                                <div class="col-12"><div class="alert alert-info text-center mb-0">Gösterilecek kayıt bulunamadı.</div></div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- İzin Talepleri Tab -->
                 <div class="tab-pane fade" id="tabIzin" role="tabpanel">
-                    <div class="table-responsive">
+                    <div class="table-responsive d-none d-lg-block">
                         <table class="table datatables table-hover table-bordered nowrap align-middle w-100 datatable"
                             id="izinTable">
                             <thead class="table-light">
@@ -417,11 +467,63 @@ $izinTurleri = [
                             </tbody>
                         </table>
                     </div>
+                    <!-- Mobil Görünüm (İzin) -->
+                    <div class="d-block d-lg-none mt-3">
+                        <div class="row g-3">
+                            <?php foreach ($izinler as $izin): 
+                                $gunSayisi = $izinModel->hesaplaIzinGunu($izin->baslangic_tarihi, $izin->bitis_tarihi);
+                                $izinTuruLabel = $izin->izin_tipi_adi ?? $izin->izin_tipi ?? 'Belirtilmemiş';
+                            ?>
+                                <div class="col-12" data-id="<?= $izin->id ?>" data-tip="izin">
+                                    <div class="card border shadow-sm h-100">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <img src="<?= !empty($izin->resim_yolu) ? $izin->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>" class="rounded-circle avatar-sm" alt="">
+                                                    <div>
+                                                        <h6 class="mb-0 fs-14"><?= htmlspecialchars($izin->adi_soyadi) ?></h6>
+                                                        <small class="text-muted"><span class="badge bg-info"><?= $izinTuruLabel ?></span></small>
+                                                    </div>
+                                                </div>
+                                                <span class="badge bg-secondary"><?= $gunSayisi ?> Gün</span>
+                                            </div>
+                                            <div class="mb-2 text-muted small">
+                                                <i class="bx bx-calendar"></i> <?= date('d.m.Y', strtotime($izin->baslangic_tarihi)) ?> - <?= date('d.m.Y', strtotime($izin->bitis_tarihi)) ?>
+                                            </div>
+                                            <?php
+                                            $durumType = 'warning';
+                                            $durumText = ucfirst($izin->onay_durumu);
+                                            if ($izin->onay_durumu == 'Onaylandı') { $durumType = 'success'; }
+                                            if ($izin->onay_durumu == 'Reddedildi') { $durumType = 'danger'; }
+                                            ?>
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <span class="text-muted small">Durum:</span>
+                                                <span class="badge bg-<?= $durumType ?>"><i class="bx bx-<?= $durumType == 'success' ? 'check-circle' : ($durumType == 'danger' ? 'x-circle' : 'time-five') ?>"></i> <?= $durumText ?></span>
+                                            </div>
+                                            
+                                            <div class="d-flex gap-2 mt-2 pt-2 border-top">
+                                                <?php if ($izin->onay_durumu != 'Onaylandı'): ?>
+                                                    <button class="btn btn-sm btn-soft-success flex-fill btn-izin-onayla" type="button" data-id="<?= $izin->id ?>" data-personel="<?= htmlspecialchars($izin->adi_soyadi) ?>" data-tur="<?= $izinTuruLabel ?>" data-gun="<?= $gunSayisi ?>"><i class="bx bx-check"></i> Onayla</button>
+                                                <?php endif; ?>
+                                                <?php if ($izin->onay_durumu != 'Reddedildi'): ?>
+                                                    <button class="btn btn-sm btn-soft-danger flex-fill btn-izin-reddet" type="button" data-id="<?= $izin->id ?>" data-personel="<?= htmlspecialchars($izin->adi_soyadi) ?>"><i class="bx bx-x"></i> Red</button>
+                                                <?php endif; ?>
+                                                <button class="btn btn-sm btn-soft-info flex-fill btn-izin-detay" type="button" data-id="<?= $izin->id ?>"><i class="bx bx-show"></i> Detay</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                            <?php if(empty($izinler)): ?>
+                                <div class="col-12"><div class="alert alert-info text-center mb-0">Gösterilecek kayıt bulunamadı.</div></div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Genel Talepler Tab -->
                 <div class="tab-pane fade" id="tabTalepler" role="tabpanel">
-                    <div class="table-responsive">
+                    <div class="table-responsive d-none d-lg-block">
                         <table class="table datatables table-hover table-bordered nowrap align-middle w-100 datatable"
                             id="taleplerTable">
                             <thead class="table-light">
@@ -550,6 +652,71 @@ $izinTurleri = [
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+                    </div>
+                    <!-- Mobil Görünüm (Talepler) -->
+                    <div class="d-block d-lg-none mt-3">
+                        <div class="row g-3">
+                            <?php foreach ($talepler as $talep): 
+                                $durumType = 'warning';
+                                if ($talep->durum == 'islemde') $durumType = 'info';
+                                if ($talep->durum == 'cozuldu' || $talep->durum == 'onaylandi') $durumType = 'success';
+                                if ($talep->durum == 'reddedildi' || $talep->durum == 'iptal_edildi') $durumType = 'danger';
+
+                                $oncelikType = 'secondary';
+                                if (isset($talep->oncelik)) {
+                                    if ($talep->oncelik == 'yuksek') $oncelikType = 'danger';
+                                    if ($talep->oncelik == 'orta') $oncelikType = 'warning';
+                                    if ($talep->oncelik == 'dusuk') $oncelikType = 'success';
+                                }
+                            ?>
+                                <div class="col-12" data-id="<?= $talep->id ?>" data-tip="talep">
+                                    <div class="card border shadow-sm h-100">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <img src="<?= !empty($talep->resim_yolu) ? $talep->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>" class="rounded-circle avatar-sm" alt="">
+                                                    <div>
+                                                        <h6 class="mb-0 fs-14"><?= htmlspecialchars($talep->adi_soyadi) ?></h6>
+                                                        <small class="text-muted"><span class="badge bg-<?= $oncelikType ?>"><?= ucfirst($talep->oncelik ?? 'Normal') ?></span></small>
+                                                    </div>
+                                                </div>
+                                                <span class="text-muted small"><?= date('d.m.Y H:i', strtotime($talep->olusturma_tarihi)) ?></span>
+                                            </div>
+                                            <div class="mb-2">
+                                                <h6 class="mb-1"><?= htmlspecialchars($talep->baslik ?? '-') ?></h6>
+                                                <p class="text-muted small mb-0 text-truncate"><?= htmlspecialchars($talep->aciklama ?? '-') ?></p>
+                                            </div>
+                                            <?php
+                                            $durumText = ucfirst($talep->durum);
+                                            if ($talep->durum == 'cozuldu') $durumText = 'Çözüldü';
+                                            if ($talep->durum == 'onaylandi') $durumText = 'Onaylandı';
+                                            if ($talep->durum == 'reddedildi') $durumText = 'Reddedildi';
+                                            if ($talep->durum == 'iptal_edildi') $durumText = 'İptal Edildi';
+                                            if ($talep->durum == 'islemde') $durumText = 'İşlemde';
+                                            if ($talep->durum == 'beklemede') $durumText = 'Beklemede';
+                                            ?>
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <span class="text-muted small">Durum:</span>
+                                                <span class="badge bg-<?= $durumType ?>"><i class="bx bx-<?= $durumType == 'success' ? 'check-circle' : ($durumType == 'info' ? 'play-circle' : ($durumType == 'danger' ? 'x-circle' : 'time-five')) ?>"></i> <?= $durumText ?></span>
+                                            </div>
+                                            
+                                            <div class="d-flex gap-2 mt-2 pt-2 border-top">
+                                                <?php if ($talep->durum != 'islemde' && $talep->durum != 'cozuldu' && $talep->durum != 'onaylandi'): ?>
+                                                    <button class="btn btn-sm btn-soft-warning flex-fill btn-talep-isleme" type="button" data-id="<?= $talep->id ?>"><i class="bx bx-play"></i> İşleme Al</button>
+                                                <?php endif; ?>
+                                                <?php if ($talep->durum != 'cozuldu' && $talep->durum != 'onaylandi'): ?>
+                                                    <button class="btn btn-sm btn-soft-success flex-fill btn-talep-cozuldu" type="button" data-id="<?= $talep->id ?>" data-personel="<?= htmlspecialchars($talep->adi_soyadi) ?>" data-baslik="<?= htmlspecialchars($talep->baslik ?? '') ?>"><i class="bx bx-check"></i> Çözüldü</button>
+                                                <?php endif; ?>
+                                                <button class="btn btn-sm btn-soft-info flex-fill btn-talep-detay" type="button" data-id="<?= $talep->id ?>"><i class="bx bx-show"></i> Detay</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                            <?php if(empty($talepler)): ?>
+                                <div class="col-12"><div class="alert alert-info text-center mb-0">Gösterilecek kayıt bulunamadı.</div></div>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
             </div>
