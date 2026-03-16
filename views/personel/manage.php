@@ -6,6 +6,7 @@ use App\Helper\Helper;
 use App\Helper\Form;
 use App\Helper\Security;
 use App\Service\Gate;
+use App\Model\FirmaModel;
 use App\Helper\Alert;
 
 $id = Security::decrypt($_GET['id'] ?? 0);
@@ -18,6 +19,7 @@ if (Gate::allows('personel_duzenle')) {
 $PersonelModel = new PersonelModel();
 $personel = $id > 0 ? $PersonelModel->findByEkipNo($id) : null;
 $TanimlamalarModel = new TanimlamalarModel();
+$FirmaModel = new FirmaModel();
 
 if ($personel) {
     $ekip_adi = $personel->ekip_no ? $TanimlamalarModel->getTurAdi($personel->ekip_no) : "Ekip Yok";

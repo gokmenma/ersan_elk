@@ -57,8 +57,12 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                     </div>
                     <div class="col-md-2 mb-2">
                         <?php
+                        if (!isset($FirmaModel)) {
+                            $FirmaModel = new \App\Model\FirmaModel();
+                        }
+                        $firma = $FirmaModel->find($_SESSION['firma_id']);
+                        $firma_adi = $firma->firma_adi ?? 'Firma Bulunamadı';
 
-                        $firma_adi = $FirmaModel->find($_SESSION['firma_id'])->firma_adi;
                         $firma_option = [
                             $firma_adi => $firma_adi,
                             "İŞKUR" => "İŞKUR",
