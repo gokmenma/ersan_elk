@@ -79,11 +79,25 @@ if ($action == "cari-kaydet") {
             "Telefon" => $_POST["Telefon"],
             "Email" => $_POST["Email"],
             "Adres" => $_POST["Adres"],
+            "notlar" => $_POST["notlar"] ?? null,
             "Aktif" => 1
         ];
 
         $Cari->saveWithAttr($data);
         echo json_encode(["status" => "success", "message" => "Cari başarıyla kaydedildi."]);
+    } catch (Exception $e) {
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    }
+    exit;
+}
+
+// Cari Not Kaydet
+if ($action == "cari-not-kaydet") {
+    $id = Security::decrypt($_POST["cari_id"]);
+    $notlar = $_POST["notlar"];
+    try {
+        $Cari->db->prepare("UPDATE cari SET notlar = ? WHERE id = ?")->execute([$notlar, $id]);
+        echo json_encode(["status" => "success", "message" => "Not başarıyla güncellendi."]);
     } catch (Exception $e) {
         echo json_encode(["status" => "error", "message" => $e->getMessage()]);
     }

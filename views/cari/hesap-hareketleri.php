@@ -57,7 +57,19 @@ $bakiye = $ozet->bakiye ?? 0;
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
 
             <button type="button" id="exportExcel" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
-                    <i class="mdi mdi-file-excel fs-5 me-1"></i> Excele Aktar
+                    <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel
+                </button>
+               
+                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+
+                <a href="views/cari/export-ekstre-pdf.php?id=<?= $cari_id_enc ?>" target="_blank" class="btn btn-link btn-sm text-danger text-decoration-none px-2 d-flex align-items-center">
+                    <i class="mdi mdi-file-pdf-box fs-5 me-1"></i> PDF Ekstre
+                </a>
+
+                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+
+                <button type="button" onclick="editCariNoteDesktop()" class="btn btn-link btn-sm text-warning text-decoration-none px-2 d-flex align-items-center">
+                    <i class="mdi mdi-note-edit-outline fs-5 me-1"></i> Cari Notu
                 </button>
                
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
@@ -141,6 +153,27 @@ $bakiye = $ozet->bakiye ?? 0;
             </div>
         </div>
     </div>
+
+    <?php if($cariData->notlar): ?>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm" style="border-radius: 15px; background: #fffbeb; border: 1px solid #fef3c7 !important;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div class="d-flex align-items-center">
+                            <i data-feather="sticky-note" class="text-warning me-2" style="width: 18px;"></i>
+                            <h6 class="mb-0 fw-bold text-warning-emphasis">Cari Notu</h6>
+                        </div>
+                        <button type="button" onclick="editCariNoteDesktop()" class="btn btn-sm btn-light-warning">
+                            <i data-feather="edit-2" style="width: 14px;"></i> Düzenle
+                        </button>
+                    </div>
+                    <p class="mb-0 text-muted small italic"><?= nl2br(htmlspecialchars($cariData->notlar)) ?></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <style>
         /* Mobil Tasarım İyileştirmeleri - Desktop Uyumluluğu */
@@ -333,6 +366,31 @@ $bakiye = $ozet->bakiye ?? 0;
 
 <script>
     const global_cari_id = '<?php echo $cari_id_enc; ?>';
+
+    async function editCariNoteDesktop() {
+        const { value: text } = await Swal.fire({
+            title: 'Cari Notu Düzenle',
+            input: 'textarea',
+            inputValue: <?= json_encode($cariData->notlar ?: '') ?>,
+            showCancelButton: true,
+            confirmButtonText: 'Kaydet',
+            cancelButtonText: 'İptal',
+        });
+
+        if (text !== undefined) {
+            $.post('views/cari/api.php', {
+                action: 'cari-not-kaydet',
+                cari_id: global_cari_id,
+                notlar: text
+            }, function(res) {
+                if(res.status === 'success') {
+                    location.reload();
+                } else {
+                    Swal.fire('Hata', res.message, 'error');
+                }
+            }, 'json');
+        }
+    }
 </script>
 <script src="views/cari/js/hareketler.js?v=<?php echo time(); ?>"></script>
 

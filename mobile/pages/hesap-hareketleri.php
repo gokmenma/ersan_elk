@@ -81,15 +81,25 @@ if (!function_exists('formatMoneyCariTakip')) {
                 <p class="font-bold <?= $bakiye < 0 ? 'text-rose-600' : ($bakiye > 0 ? 'text-emerald-600' : 'text-slate-600') ?> text-xs sm:text-sm truncate px-1 w-full"><?= absMoneyCariTakip($bakiye) ?></p>
             </div>
         </div>
+
+        <?php if($cariData->notlar): ?>
+        <div class="mt-2 p-2 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20 rounded-lg">
+            <div class="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 mb-0.5">
+                <span class="material-symbols-outlined text-[14px]">sticky_note_2</span>
+                <span class="text-[10px] font-bold uppercase tracking-wider">Cari Notu</span>
+            </div>
+            <p class="text-[11px] text-slate-700 dark:text-slate-300 leading-tight italic"><?= nl2br(htmlspecialchars($cariData->notlar)) ?></p>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- Hızlı Aksiyonlar -->
     <div class="flex items-center justify-around bg-white dark:bg-card-dark rounded-xl shadow-sm p-2 mb-2">
-        <a class="flex flex-col items-center gap-1.5 p-2 rounded-lg active:bg-slate-50 dark:active:bg-slate-800 active:scale-95 transition-all text-slate-600 dark:text-slate-300 w-1/4">
+        <a onclick="window.editCariNote()" class="flex flex-col items-center gap-1.5 p-2 rounded-lg active:bg-slate-50 dark:active:bg-slate-800 active:scale-95 transition-all text-slate-600 dark:text-slate-300 w-1/4 cursor-pointer">
             <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-[20px]">edit_note</span>
+                <span class="material-symbols-outlined text-[20px]">sticky_note_2</span>
             </div>
-            <span class="text-[10px] font-semibold text-center leading-tight">Not Ekle</span>
+            <span class="text-[10px] font-semibold text-center leading-tight">Cari Notu</span>
         </a>
         <a href="tel:<?= htmlspecialchars($cariData->Telefon) ?>" class="flex flex-col items-center gap-1.5 p-2 rounded-lg active:bg-slate-50 dark:active:bg-slate-800 active:scale-95 transition-all text-slate-600 dark:text-slate-300 w-1/4">
             <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary">
@@ -97,13 +107,13 @@ if (!function_exists('formatMoneyCariTakip')) {
             </div>
             <span class="text-[10px] font-semibold text-center leading-tight">Ara</span>
         </a>
-        <a class="flex flex-col items-center gap-1.5 p-2 rounded-lg active:bg-slate-50 dark:active:bg-slate-800 active:scale-95 transition-all text-slate-600 dark:text-slate-300 w-1/4">
+        <a onclick="window.shareCari()" class="flex flex-col items-center gap-1.5 p-2 rounded-lg active:bg-slate-50 dark:active:bg-slate-800 active:scale-95 transition-all text-slate-600 dark:text-slate-300 w-1/4 cursor-pointer">
             <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary">
                 <span class="material-symbols-outlined text-[20px]">share</span>
             </div>
             <span class="text-[10px] font-semibold text-center leading-tight">Paylaş</span>
         </a>
-        <a class="flex flex-col items-center gap-1.5 p-2 rounded-lg active:bg-slate-50 dark:active:bg-slate-800 active:scale-95 transition-all text-slate-600 dark:text-slate-300 w-1/4">
+        <a onclick="window.exportEkstre()" class="flex flex-col items-center gap-1.5 p-2 rounded-lg active:bg-slate-50 dark:active:bg-slate-800 active:scale-95 transition-all text-slate-600 dark:text-slate-300 w-1/4 cursor-pointer">
             <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary">
                 <span class="material-symbols-outlined text-[20px]">description</span>
             </div>
@@ -130,26 +140,47 @@ if (!function_exists('formatMoneyCariTakip')) {
             $currentBakiye = $h->yuruyen_bakiye ?? ($h->alacak - $h->borc);
             $cbColor = $currentBakiye < 0 ? 'text-rose-600' : ($currentBakiye > 0 ? 'text-emerald-600' : 'text-slate-500');
         ?>
-        <div class="bg-white dark:bg-card-dark border border-slate-100 dark:border-slate-800 rounded-xl p-3 flex items-center justify-between shadow-sm" onclick="alert('Belge No: <?= htmlspecialchars($h->belge_no ?: "-") ?>\nNot: <?= htmlspecialchars($h->aciklama ?: "-") ?>')">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0 <?= $iconColor ?>">
-                    <span class="material-symbols-outlined text-[22px]"><?= $icon ?></span>
-                </div>
-                <div>
-                    <p class="font-bold text-[12px] text-slate-800 dark:text-slate-300 leading-tight mb-0.5"><?= $isBorc ? 'Ödeme (Verdim)' : 'Tahsilat (Aldım)' ?></p>
-                    <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                        <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[11px]">event</span> <?= $dateFormatted ?> <?= $timeFormatted ?></span>
-                    </div>
+        <div class="relative movement-item-container overflow-hidden rounded-xl shadow-sm">
+            <!-- Delete Action (Reveal on swipe right) -->
+            <div class="absolute left-0 top-0 bottom-0 w-[70px] bg-rose-500 flex items-center justify-center text-white cursor-pointer swipe-action-right opacity-0" 
+                 onclick="event.stopPropagation(); window.deleteHareket('<?= Security::encrypt($h->id) ?>')">
+                <div class="flex flex-col items-center gap-1">
+                    <span class="material-symbols-outlined text-[20px]">delete</span>
+                    <span class="text-[9px] font-bold uppercase">Sil</span>
                 </div>
             </div>
-            
-            <div class="flex flex-col items-end pl-2">
-                <p class="font-bold text-sm <?= $isBorc ? 'text-slate-900 dark:text-white' : 'text-emerald-600 dark:text-emerald-400' ?>">
-                    <?= $isBorc ? '-' : '+' ?><?= absMoneyCariTakip($amt) ?>
-                </p>
-                <div class="mt-0.5 flex items-center text-[9px] uppercase tracking-wide">
-                    <span class="text-slate-400 mr-1">Bakiye:</span>
-                    <span class="font-bold <?= $cbColor ?>"><?= absMoneyCariTakip($currentBakiye) ?> <?= $currentBakiye < 0 ? '(B)' : ($currentBakiye > 0 ? '(A)' : '') ?></span>
+
+            <!-- Edit Action (Reveal on swipe left) -->
+            <div class="absolute right-0 top-0 bottom-0 w-[70px] bg-amber-500 flex items-center justify-center text-white cursor-pointer swipe-action-left opacity-0" 
+                 onclick="event.stopPropagation(); window.editHareket('<?= Security::encrypt($h->id) ?>')">
+                <div class="flex flex-col items-center gap-1">
+                    <span class="material-symbols-outlined text-[20px]">edit</span>
+                    <span class="text-[9px] font-bold uppercase">Düzenle</span>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-card-dark border border-slate-100 dark:border-slate-800 p-3 flex items-center justify-between transition-transform duration-200 swipe-content" 
+                 onclick="if(Math.abs(parseInt(this.style.transform.replace(/[^\d-]/g, '') || 0)) > 10) { window.closeAllSwipes(); return; } alert('Belge No: <?= htmlspecialchars($h->belge_no ?: "-") ?>\nNot: <?= htmlspecialchars($h->aciklama ?: "-") ?>')">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0 <?= $iconColor ?>">
+                        <span class="material-symbols-outlined text-[22px]"><?= $icon ?></span>
+                    </div>
+                    <div>
+                        <p class="font-bold text-[12px] text-slate-800 dark:text-slate-300 leading-tight mb-0.5"><?= $isBorc ? 'Ödeme (Verdim)' : 'Tahsilat (Aldım)' ?></p>
+                        <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                            <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[11px]">event</span> <?= $dateFormatted ?> <?= $timeFormatted ?></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col items-end pl-2">
+                    <p class="font-bold text-sm <?= $isBorc ? 'text-slate-900 dark:text-white' : 'text-emerald-600 dark:text-emerald-400' ?>">
+                        <?= $isBorc ? '-' : '+' ?><?= absMoneyCariTakip($amt) ?>
+                    </p>
+                    <div class="mt-0.5 flex items-center text-[9px] uppercase tracking-wide">
+                        <span class="text-slate-400 mr-1">Bakiye:</span>
+                        <span class="font-bold <?= $cbColor ?>"><?= absMoneyCariTakip($currentBakiye) ?> <?= $currentBakiye < 0 ? '(B)' : ($currentBakiye > 0 ? '(A)' : '') ?></span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -171,7 +202,7 @@ if (!function_exists('formatMoneyCariTakip')) {
         </button>
         <button onclick="window.openHizliIslem('<?= $cari_id_enc ?>', 'verdim')" class="flex-1 py-3 px-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-sm">
             <span class="material-symbols-outlined text-[20px]">do_not_disturb_on</span>
-            <span class="text-sm border-b">Ödeme (- Para)</span>
+            <span class="text-sm">Ödeme (- Para)</span>
         </button>
     </div>
 </div>
@@ -205,18 +236,19 @@ if (!function_exists('formatMoneyCariTakip')) {
         <form id="hizliIslemForm" onsubmit="window.submitHizliIslemForm(event)">
             <input type="hidden" name="action" value="hizli-hareket-kaydet">
             <input type="hidden" name="cari_id" id="hizli_islem_cari_id" value="">
+            <input type="hidden" name="hareket_id" id="hizli_islem_hareket_id" value="">
             <input type="hidden" name="type" id="hidden_type" value="aldim">
             
             <div class="space-y-4">
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">İşlem Tarihi</label>
-                        <input type="datetime-local" name="islem_tarihi" value="<?= date('Y-m-d\TH:i') ?>" required class="w-full px-3 py-3 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm font-semibold">
+                        <input type="datetime-local" id="field_islem_tarihi" name="islem_tarihi" value="<?= date('Y-m-d\TH:i') ?>" required class="w-full px-3 py-3 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm font-semibold">
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Tutar (TL)</label>
                         <div class="relative flex items-center">
-                            <input type="number" step="0.01" min="0.01" name="tutar" placeholder="0.00" required class="w-full pl-4 pr-8 py-3 bg-white dark:bg-background-dark border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-primary focus:ring-primary/20 text-lg text-right font-black text-slate-800 dark:text-white shadow-sm">
+                            <input type="number" step="0.01" min="0.01" id="field_tutar" name="tutar" placeholder="0.00" required class="w-full pl-4 pr-8 py-3 bg-white dark:bg-background-dark border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-primary focus:ring-primary/20 text-lg text-right font-black text-slate-800 dark:text-white shadow-sm">
                             <span class="absolute right-4 text-slate-400 font-black text-sm pointer-events-none">₺</span>
                         </div>
                     </div>
@@ -226,7 +258,7 @@ if (!function_exists('formatMoneyCariTakip')) {
                     <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Evrak / Belge No</label>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">receipt_long</span>
-                        <input type="text" name="belge_no" placeholder="Örn: 0045" class="w-full pl-9 pr-3 py-3 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm font-semibold placeholder-slate-300">
+                        <input type="text" id="field_belge_no" name="belge_no" placeholder="Örn: 0045" class="w-full pl-9 pr-3 py-3 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm font-semibold placeholder-slate-300">
                     </div>
                 </div>
                 
@@ -234,7 +266,7 @@ if (!function_exists('formatMoneyCariTakip')) {
                     <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Açıklama</label>
                     <div class="relative">
                         <span class="absolute left-3 top-3 material-symbols-outlined text-slate-400 text-[18px]">notes</span>
-                        <textarea name="aciklama" rows="2" placeholder="Not ekleyin..." class="w-full pl-9 pr-3 py-3 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm font-semibold placeholder-slate-300"></textarea>
+                        <textarea id="field_aciklama" name="aciklama" rows="2" placeholder="Not ekleyin..." class="w-full pl-9 pr-3 py-3 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm font-semibold placeholder-slate-300"></textarea>
                     </div>
                 </div>
             </div>
@@ -246,10 +278,233 @@ if (!function_exists('formatMoneyCariTakip')) {
     </div>
 </div>
 
+<!-- Cari Notu Modal -->
+<div id="cariNotuModal" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-3xl z-[61] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom max-h-[90vh] overflow-y-auto w-full max-w-lg mx-auto flex flex-col">
+    <div class="px-4 py-4 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between sticky top-0 bg-white/95 dark:bg-card-dark/95 backdrop-blur-sm z-10 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-xl">sticky_note_2</span>
+            </div>
+            <div>
+                <h3 class="font-bold text-slate-900 dark:text-white text-sm">Cari Notu</h3>
+                <p class="text-[10px] text-slate-500 font-medium tracking-wide">Müşteri hakkındaki genel notlarınız</p>
+            </div>
+        </div>
+        <button onclick="window.closeModals()" class="w-8 h-8 flex items-center justify-center text-slate-400 rounded-full bg-slate-100 dark:bg-slate-800 active:scale-95 transition-transform shrink-0">
+            <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+    </div>
+    
+    <div class="p-4">
+        <form id="cariNotuForm" onsubmit="window.submitCariNotu(event)">
+            <input type="hidden" name="action" value="cari-not-kaydet">
+            <input type="hidden" name="cari_id" value="<?= $cari_id_enc ?>">
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Not Detayı</label>
+                    <textarea name="notlar" rows="6" placeholder="Örn: Ödemelerini genellikle ayın 15inde yapar..." class="w-full px-4 py-3 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20 text-sm font-medium placeholder-slate-300"><?= htmlspecialchars($cariData->notlar ?: '') ?></textarea>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2 mt-6">
+                <button type="button" onclick="window.closeModals()" class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-bold active:scale-95 transition-transform">İptal</button>
+                <button type="submit" id="cariNotuSubmitBtn" class="flex-1 py-3 bg-amber-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg shadow-amber-500/30">
+                    <span class="material-symbols-outlined text-[18px]">save</span> Kaydet
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+// Action Button Functions
+window.editCariNote = function() {
+    document.getElementById('modalOverlay').classList.remove('pointer-events-none', 'opacity-0');
+    document.getElementById('cariNotuModal').classList.remove('translate-y-full');
+    setTimeout(() => { document.querySelector('#cariNotuModal textarea').focus(); }, 300);
+};
+
+window.submitCariNotu = function(e) {
+    e.preventDefault();
+    const form = e.target;
+    const btn = document.getElementById('cariNotuSubmitBtn');
+    const defaultBtnHtml = btn.innerHTML;
+    const formData = new FormData(form);
+    
+    btn.disabled = true;
+    btn.innerHTML = '<div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>';
+    
+    fetch('../views/cari/api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === 'success') {
+            window.location.reload();
+        } else {
+            alert("Hata: " + (data.message || "Bir hata oluştu."));
+            btn.disabled = false;
+            btn.innerHTML = defaultBtnHtml;
+        }
+    })
+    .catch(err => {
+        alert("Sunucu ile bağlantı kurulamadı.");
+        btn.disabled = false;
+        btn.innerHTML = defaultBtnHtml;
+    });
+};
+
+window.shareCari = function() {
+    const bakiyeText = '<?= absMoneyCariTakip($bakiye) ?> <?= $bakiye < 0 ? "(Borç)" : ($bakiye > 0 ? "(Alacak)" : "") ?>';
+    const text = `Cari Bilgisi:\nAdı: <?= addslashes($cariData->CariAdi) ?>\nTelefon: <?= $cariData->Telefon ?: '-' ?>\nGüncel Bakiye: ${bakiyeText}`;
+    
+    if (navigator.share) {
+        navigator.share({
+            title: 'Cari Bilgisi',
+            text: text
+        }).catch(err => {
+            console.log('Paylaşım iptal edildi veya hata oluştu', err);
+        });
+    } else {
+        const el = document.createElement('textarea');
+        el.value = text;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        if(window.Alert) Alert.success("Kopyalandı", "Cari bilgileri panoya kopyalandı.");
+        else alert("Cari bilgileri panoya kopyalandı.");
+    }
+};
+
+window.exportEkstre = function() {
+    // encodeURIComponent ile gondererek '+' karakterinin ' ' (bosluk) olarak algilanmasini onluyoruz
+    window.location.href = '../views/cari/export-ekstre-pdf.php?id=' + encodeURIComponent('<?= $cari_id_enc ?>');
+};
+
+// Swipe Functionality for Movements
+(function() {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isMoving = false;
+
+    window.closeAllSwipes = function() {
+        document.querySelectorAll('.swipe-content').forEach(el => {
+            el.style.transform = 'translateX(0)';
+        });
+        document.querySelectorAll('.swipe-action-right, .swipe-action-left').forEach(el => {
+            el.style.opacity = '0';
+        });
+    };
+
+    document.addEventListener('touchstart', e => {
+        const container = e.target.closest('.movement-item-container');
+        if (!container) {
+            window.closeAllSwipes();
+            return;
+        }
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        isMoving = false;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', e => {
+        const container = e.target.closest('.movement-item-container');
+        if (!container) return;
+        const currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+        const diffX = currentX - touchStartX;
+        const diffY = currentY - touchStartY;
+        
+        if (Math.abs(diffX) > Math.abs(diffY)) {
+            isMoving = true;
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchend', e => {
+        const container = e.target.closest('.movement-item-container');
+        if (!container) return;
+        const touchEndX = e.changedTouches[0].clientX;
+        const diffX = touchEndX - touchStartX;
+        
+        const swipeContent = container.querySelector('.swipe-content');
+        const actionRight = container.querySelector('.swipe-action-right');
+        const actionLeft = container.querySelector('.swipe-action-left');
+
+        if (isMoving && diffX > 50) {
+            // Swipe Right
+            window.closeAllSwipes();
+            swipeContent.style.transform = 'translateX(70px)';
+            if (actionRight) actionRight.style.opacity = '1';
+        } else if (isMoving && diffX < -50) {
+            // Swipe Left
+            window.closeAllSwipes();
+            swipeContent.style.transform = 'translateX(-70px)';
+            if (actionLeft) actionLeft.style.opacity = '1';
+        }
+    }, { passive: true });
+})();
+
+window.editHareket = function(hareketId) {
+    const formData = new FormData();
+    formData.append('action', 'hareket-getir');
+    formData.append('hareket_id', hareketId);
+
+    fetch('../views/cari/api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data) {
+            window.openHizliIslem('<?= $cari_id_enc ?>', data.type);
+            document.getElementById('hizli_islem_hareket_id').value = hareketId;
+            
+            // Fill fields
+            document.getElementById('field_tutar').value = data.tutar.replace(/[^\d.]/g, '');
+            document.getElementById('field_belge_no').value = data.belge_no || '';
+            document.getElementById('field_aciklama').value = data.aciklama || '';
+            
+            // Format date for datetime-local
+            const d = data.islem_tarihi.split('.');
+            const [day, month, rest] = d;
+            const [year, time] = rest.split(' ');
+            document.getElementById('field_islem_tarihi').value = `${year}-${month}-${day}T${time}`;
+
+            document.querySelector('#hizliIslemModal h3').innerText = 'İşlemi Düzenle';
+            window.closeAllSwipes();
+        }
+    });
+};
+
+window.deleteHareket = async function(hareketId) {
+    const confirmed = await Alert.confirmDelete("İşlem Silinsin mi?", "Bu hareket kaydı kalıcı olarak silinecek.");
+    if (confirmed) {
+        const formData = new FormData();
+        formData.append('action', 'hareket-sil');
+        formData.append('hareket_id', hareketId);
+
+        fetch('../views/cari/api.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                window.location.reload();
+            } else {
+                Alert.error("Hata", data.message);
+            }
+        });
+    }
+};
+
 window.openHizliIslem = function(cariId, type) {
     document.getElementById('hizliIslemForm').reset();
     document.getElementById('hizli_islem_cari_id').value = cariId;
+    document.getElementById('hizli_islem_hareket_id').value = '';
     document.getElementById('hidden_type').value = type;
     
     // UI feedback for modal theme depending on type
@@ -292,6 +547,7 @@ window.openHizliIslem = function(cariId, type) {
 window.closeModals = function() {
     document.getElementById('modalOverlay').classList.add('pointer-events-none', 'opacity-0');
     document.getElementById('hizliIslemModal').classList.add('translate-y-full');
+    document.getElementById('cariNotuModal').classList.add('translate-y-full');
 };
 
 window.submitHizliIslemForm = function(e) {

@@ -76,14 +76,26 @@ if (!function_exists('formatMoneyCariTakip')) {
         ?>
         <div class="relative cari-item-container overflow-hidden rounded-xl shadow-sm">
             <!-- Delete Action (revealed on swipe right) -->
-            <div class="absolute left-0 top-0 bottom-0 w-[70px] bg-rose-500 flex items-center justify-center text-white cursor-pointer swipe-action opacity-0" 
+            <div class="absolute left-0 top-0 bottom-0 w-[70px] bg-rose-500 flex items-center justify-center text-white cursor-pointer swipe-action-right opacity-0" 
                  onclick="event.stopPropagation(); window.deleteCari('<?= $encId ?>', '<?= addslashes($cari->CariAdi) ?>')">
-                <span class="material-symbols-outlined text-[24px]">delete</span>
+                <div class="flex flex-col items-center gap-1">
+                    <span class="material-symbols-outlined text-[20px]">delete</span>
+                    <span class="text-[9px] font-bold uppercase">Sil</span>
+                </div>
+            </div>
+
+            <!-- Edit Action (revealed on swipe left) -->
+            <div class="absolute right-0 top-0 bottom-0 w-[70px] bg-amber-500 flex items-center justify-center text-white cursor-pointer swipe-action-left opacity-0" 
+                 onclick="event.stopPropagation(); window.editCari('<?= $encId ?>')">
+                <div class="flex flex-col items-center gap-1">
+                    <span class="material-symbols-outlined text-[20px]">edit</span>
+                    <span class="text-[9px] font-bold uppercase">Düzenle</span>
+                </div>
             </div>
 
             <div class="bg-white dark:bg-card-dark p-3 border border-slate-100 dark:border-slate-700/50 flex items-center transition-transform duration-200 swipe-content cari-item" 
                  data-search="<?= htmlspecialchars($searchString) ?>" 
-                 onclick="if(this.style.transform === 'translateX(70px)') { this.style.transform = 'translateX(0)'; this.previousElementSibling.style.opacity='0'; return; } location.href='?p=hesap-hareketleri&id=<?= $encId ?>'">
+                 onclick="if(Math.abs(parseInt(this.style.transform.replace(/[^\d-]/g, '') || 0)) > 10) { window.closeAllSwipes(); return; } location.href='?p=hesap-hareketleri&id=<?= $encId ?>'">
                 <!-- Icon -->
                 <div class="w-10 h-10 rounded-[10px] bg-[#f8fbff] dark:bg-slate-800 text-primary uppercase font-bold text-lg flex items-center justify-center shrink-0 border border-primary/10 dark:border-slate-700">
                     <?= $initial ?>
@@ -279,9 +291,21 @@ if (!function_exists('formatMoneyCariTakip')) {
     let touchStartY = 0;
     let isMoving = false;
 
+    window.closeAllSwipes = function() {
+        document.querySelectorAll('.swipe-content').forEach(el => {
+            el.style.transform = 'translateX(0)';
+        });
+        document.querySelectorAll('.swipe-action-right, .swipe-action-left').forEach(el => {
+            el.style.opacity = '0';
+        });
+    };
+
     document.addEventListener('touchstart', e => {
         const container = e.target.closest('.cari-item-container');
-        if (!container) return;
+        if (!container) {
+            window.closeAllSwipes();
+            return;
+        }
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         isMoving = false;
@@ -306,17 +330,55 @@ if (!function_exists('formatMoneyCariTakip')) {
         const touchEndX = e.changedTouches[0].clientX;
         const diffX = touchEndX - touchStartX;
         
-        if (isMoving && diffX > 60) {
-            // Swipe Right
-            container.querySelector('.swipe-content').style.transform = 'translateX(70px)';
-            container.querySelector('.swipe-action').style.opacity = '1';
-        } else if (isMoving && diffX < -30) {
-            // Swipe Left (close)
-            container.querySelector('.swipe-content').style.transform = 'translateX(0)';
-            container.querySelector('.swipe-action').style.opacity = '0';
+        const swipeContent = container.querySelector('.swipe-content');
+        const actionRight = container.querySelector('.swipe-action-right');
+        const actionLeft = container.querySelector('.swipe-action-left');
+
+        if (isMoving && diffX > 50) {
+            // Swipe Right (Reveal Delete on Left)
+            window.closeAllSwipes();
+            swipeContent.style.transform = 'translateX(70px)';
+            if (actionRight) actionRight.style.opacity = '1';
+        } else if (isMoving && diffX < -50) {
+            // Swipe Left (Reveal Edit on Right)
+            window.closeAllSwipes();
+            swipeContent.style.transform = 'translateX(-70px)';
+            if (actionLeft) actionLeft.style.opacity = '1';
+        } else if (isMoving && Math.abs(diffX) < 20) {
+            // Cancel swipe if movement is small
+            swipeContent.style.transform = 'translateX(0)';
+            if (actionRight) actionRight.style.opacity = '0';
+            if (actionLeft) actionLeft.style.opacity = '0';
         }
     }, { passive: true });
 })();
+
+window.editCari = function(id) {
+    const formData = new FormData();
+    formData.append('action', 'cari-getir');
+    formData.append('cari_id', id);
+
+    fetch('../views/cari/api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data) {
+            const form = document.getElementById('cariForm');
+            form.querySelector('input[name="cari_id"]').value = id;
+            form.querySelector('input[name="CariAdi"]').value = data.CariAdi || '';
+            form.querySelector('input[name="Telefon"]').value = data.Telefon || '';
+            form.querySelector('input[name="Email"]').value = data.Email || '';
+            form.querySelector('textarea[name="Adres"]').value = data.Adres || '';
+            
+            document.querySelector('#cariModal h3').innerText = 'Cari Düzenle';
+            document.getElementById('modalOverlay').classList.remove('pointer-events-none', 'opacity-0');
+            document.getElementById('cariModal').classList.remove('translate-y-full');
+            window.closeAllSwipes();
+        }
+    });
+};
 
 window.deleteCari = async function(id, name) {
     const result = await Swal.fire({
