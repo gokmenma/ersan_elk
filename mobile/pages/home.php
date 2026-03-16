@@ -719,6 +719,13 @@ function openPersonelDetay(type, title) {
                         ? `<img src="${imgSrc}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs\'>${initials}</div>'">` 
                         : `<div class="w-full h-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">${initials}</div>`;
                     
+                    let leaveInfo = '';
+                    if (p.baslangic_tarihi && p.bitis_tarihi) {
+                        const start = new Date(p.baslangic_tarihi).toLocaleDateString('tr-TR');
+                        const end = new Date(p.bitis_tarihi).toLocaleDateString('tr-TR');
+                        leaveInfo = `<p class="text-[9px] text-amber-500 font-bold mt-0.5"><i class="bx bxs-calendar-event me-1"></i>${start} - ${end}</p>`;
+                    }
+
                     html += `
                         <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
                             <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
@@ -727,6 +734,7 @@ function openPersonelDetay(type, title) {
                             <div class="min-w-0 flex-grow">
                                 <p class="font-bold text-slate-900 dark:text-white text-sm truncate">${p.adi_soyadi}</p>
                                 <p class="text-[10px] text-slate-400 truncate">${p.gorev || p.departman || '-'}</p>
+                                ${leaveInfo}
                             </div>
                             <div class="flex items-center gap-2">
                                 ${p.cep_telefonu ? `

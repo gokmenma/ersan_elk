@@ -530,7 +530,8 @@ try {
             $data = [];
 
             if ($type === 'izinli') {
-                $sql = "SELECT p.id, p.adi_soyadi, p.resim_yolu as foto, p.departman, p.gorev, p.cep_telefonu
+                $sql = "SELECT p.id, p.adi_soyadi, p.resim_yolu as foto, p.departman, p.gorev, p.cep_telefonu,
+                               pi.baslangic_tarihi, pi.bitis_tarihi
                         FROM personel_izinleri pi
                         JOIN personel p ON pi.personel_id = p.id
                         WHERE pi.baslangic_tarihi <= :bugun AND pi.bitis_tarihi >= :bugun 
