@@ -45,6 +45,36 @@ class PushSubscriptionModel extends Model
     }
 
     /**
+     * Kullanıcı aboneliği kaydeder veya günceller
+     */
+    public function saveUserSubscription($userId, $endpoint, $publicKey, $authToken, $contentEncoding = 'aes128gcm')
+    {
+        // Önce bu endpoint var mı kontrol et
+        $stmt = $this->db->prepare("SELECT id FROM {$this->table} WHERE endpoint = ?");
+        $stmt->execute([$endpoint]);
+        $existing = $stmt->fetch(PDO::FETCH_OBJ);
+
+        if ($existing) {
+            // Güncelle
+            $sql = "UPDATE {$this->table} SET 
+                    user_id = ?, 
+                    public_key = ?, 
+                    auth_token = ?, 
+                    content_encoding = ?,
+                    updated_at = NOW() 
+                    WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([$userId, $publicKey, $authToken, $contentEncoding, $existing->id]);
+        } else {
+            // Ekle
+            $sql = "INSERT INTO {$this->table} (user_id, endpoint, public_key, auth_token, content_encoding) 
+                    VALUES (?, ?, ?, ?, ?)";
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([$userId, $endpoint, $publicKey, $authToken, $contentEncoding]);
+        }
+    }
+
+    /**
      * Personelin tüm aboneliklerini getirir
      */
     public function getSubscriptionsByPersonel($personelId)
@@ -52,6 +82,16 @@ class PushSubscriptionModel extends Model
         $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE personel_id = ?");
         $stmt->execute([$personelId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC); // WebPush kütüphanesi array bekler
+    }
+
+    /**
+     * Kullanıcının tüm aboneliklerini getirir
+     */
+    public function getSubscriptionsByUser($userId)
+    {
+        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**

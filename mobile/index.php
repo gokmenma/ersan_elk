@@ -59,6 +59,7 @@ foreach ($menu_data as $group => $items) {
 $all_mobile_menus = [
     'home'        => ['label' => 'Ana Sayfa',   'icon' => 'home', 'color_bg' => 'bg-blue-100 dark:bg-blue-900/30', 'color_icon' => 'text-blue-600', 'link_match' => 'home'],
     'cari-takip'  => ['label' => 'Cari',        'icon' => 'account_balance_wallet', 'color_bg' => 'bg-emerald-100 dark:bg-emerald-900/30', 'color_icon' => 'text-emerald-600', 'link_match' => 'cari/list'],
+    'gelir-gider' => ['label' => 'Gelir Gider', 'icon' => 'account_balance', 'color_bg' => 'bg-amber-100 dark:bg-amber-900/30', 'color_icon' => 'text-amber-600', 'link_match' => 'gelir-gider/list'],
     'raporlar'    => ['label' => 'Raporlar',    'icon' => 'bar_chart', 'color_bg' => 'bg-purple-100 dark:bg-purple-900/30', 'color_icon' => 'text-purple-600', 'link_match' => 'puantaj/raporlar'],
     'arac'        => ['label' => 'Araç',        'icon' => 'directions_car', 'color_bg' => 'bg-teal-100 dark:bg-teal-900/30', 'color_icon' => 'text-teal-600', 'link_match' => 'arac-takip/list'],
     'personel'    => ['label' => 'Personel',    'icon' => 'group', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'personel/list'],
@@ -109,8 +110,18 @@ $more_pages_data = [];
 $more_pages = [];
 
 $i = 0;
-// İlk 4 tanesini ana navigasyon olarak alıyoruz, kalan "Daha Fazla"da gösterilecek
+$hasCariPermission = isset($user_mobile_menus['cari-takip']);
+$hasGelirGiderPermission = isset($user_mobile_menus['gelir-gider']);
+
+// Navigasyon elemanlarını belirle
 foreach ($user_mobile_menus as $pKey => $mData) {
+    // Eğer ikisi de varsa, Gelir Gider'i zorla 'More' kısmına at (Cari top 4'te kalsın)
+    if ($hasCariPermission && $hasGelirGiderPermission && $pKey === 'gelir-gider') {
+        $more_pages_data[$pKey] = $mData;
+        $more_pages[] = $pKey;
+        continue;
+    }
+
     if ($i < 4) {
         $nav_items[] = ['page' => $pKey, 'label' => $mData['label'], 'icon' => $mData['icon']];
     } else {
@@ -514,5 +525,6 @@ $isMoreActive = in_array($page, $more_pages);
         }
     </script>
 
+    <script src="assets/js/push-config.js?v=<?= time() ?>"></script>
 </body>
 </html>

@@ -397,7 +397,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     ];
 
                     foreach ($usersToNotify as $targetId) {
-                        $pushService->sendToPersonel($targetId, $payload);
+                        $pushService->sendToUser($targetId, $payload);
 
                         // Mail gönderimi için kullanıcı e-postasını al
                         $User = new \App\Model\UserModel();
@@ -486,6 +486,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 echo json_encode(['success' => true, 'data' => ['users' => $userList]]);
+                break;
+
+            case 'save-subscription':
+                $subscription = json_decode($_POST['subscription'] ?? '{}', true);
+                if (empty($subscription) || empty($subscription['endpoint'])) {
+                    throw new Exception('Geçersiz abonelik verisi');
+                }
+                $PushSubscriptionModel = new \App\Model\PushSubscriptionModel();
+                $result = $PushSubscriptionModel->saveUserSubscription(
+                    $userId,
+                    $subscription['endpoint'],
+                    $subscription['keys']['p256dh'] ?? null,
+                    $subscription['keys']['auth'] ?? null
+                );
+                if ($result) {
+                    echo json_encode(['success' => true, 'message' => 'Bildirim aboneliği başarıyla kaydedildi']);
+                } else {
+                    throw new Exception('Abonelik kaydedilirken bir hata oluştu');
+                }
                 break;
 
             default:

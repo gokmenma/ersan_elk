@@ -55,10 +55,34 @@ class PushNotificationService
      */
     public function sendToPersonel($personelId, $payload)
     {
+        return $this->sendNotification('personel', $personelId, $payload);
+    }
+
+    /**
+     * Kullanıcıya bildirim gönderir
+     * 
+     * @param int $userId
+     * @param array $payload ['title' => '...', 'body' => '...', 'url' => '...']
+     * @return bool
+     */
+    public function sendToUser($userId, $payload)
+    {
+        return $this->sendNotification('user', $userId, $payload);
+    }
+
+    /**
+     * Ortak bildirim gönderme fonksiyonu
+     */
+    private function sendNotification($type, $id, $payload)
+    {
         $pushSent = false;
 
         if ($this->webPush) {
-            $subscriptions = $this->subscriptionModel->getSubscriptionsByPersonel($personelId);
+            if ($type === 'user') {
+                $subscriptions = $this->subscriptionModel->getSubscriptionsByUser($id);
+            } else {
+                $subscriptions = $this->subscriptionModel->getSubscriptionsByPersonel($id);
+            }
 
             if (!empty($subscriptions)) {
                 foreach ($subscriptions as $subData) {
@@ -75,23 +99,15 @@ class PushNotificationService
                     );
                 }
 
-                // Bildirimleri gönder
                 $results = $this->webPush->flush();
 
                 $successCount = 0;
-
-                // Sonuçları işle ve geçersiz abonelikleri temizle
                 foreach ($results as $report) {
                     if ($report->isSuccess()) {
                         $successCount++;
                     } else {
-                        // Endpoint'i al
                         $endpoint = $report->getRequest()->getUri()->__toString();
-
-                        // Log error
                         error_log("Push Notification Error for {$endpoint}: " . $report->getReason());
-
-                        // Eğer abonelik süresi dolmuşsa veya geçersizse veritabanından sil
                         if ($report->isSubscriptionExpired()) {
                             $this->subscriptionModel->deleteByEndpoint($endpoint);
                         }
@@ -104,10 +120,58 @@ class PushNotificationService
             }
         }
 
-        // Her durumda mail gönder (Kullanıcı talebi: hem bildirim hem mail gitsin)
-        $this->sendEmailFallback($personelId, $payload);
+        // Email fallback
+        if ($type === 'user') {
+            $this->sendUserEmailFallback($id, $payload);
+        } else {
+            $this->sendEmailFallback($id, $payload);
+        }
 
         return $pushSent;
+    }
+
+    /**
+     * Kullanıcıya email fallback gönderir
+     */
+    private function sendUserEmailFallback($userId, $payload)
+    {
+        try {
+            $userModel = new \App\Model\UserModel();
+            $user = $userModel->find($userId);
+
+            if ($user && !empty($user->email_adresi)) {
+                $targetEmail = trim($user->email_adresi);
+                $subject = $payload['title'] ?? 'Yeni Bildirim';
+                $body = $payload['body'] ?? '';
+                $url = $payload['url'] ?? '';
+
+                $fullUrl = null;
+                if ($url) {
+                    // Admin panel için base URL index.php üzerinden
+                    if (strpos($url, 'http') === false) {
+                        $fullUrl = "https://" . ($_SERVER['HTTP_HOST'] ?? 'softran.online') . "/" . ltrim($url, '/');
+                    } else {
+                        $fullUrl = $url;
+                    }
+                }
+
+                $emailContent = "<p>Merhaba <b>{$user->adi_soyadi}</b>,</p>";
+                $emailContent .= "<p>{$body}</p>";
+
+                $content = \App\Helper\EmailTemplateHelper::getTemplate(
+                    $subject,
+                    $emailContent,
+                    $fullUrl ? 'Detayları Görüntüle' : null,
+                    $fullUrl
+                );
+
+                return \App\Service\MailGonderService::gonder([$targetEmail], $subject, $content);
+            }
+            return false;
+        } catch (\Exception $e) {
+            error_log("User Email fallback EXCEPTION: " . $e->getMessage());
+            return false;
+        }
     }
 
     /**

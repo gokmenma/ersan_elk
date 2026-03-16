@@ -86,10 +86,32 @@ try {
                 $body = $gorev->baslik . $saatStr . $listeStr;
                 $link = 'index.php?p=gorevler/list';
 
-                // 1. In-app bildirim oluştur (olusturan_id'ye gönder)
-                $userId = $gorev->olusturan_id ?? $gorev->liste_olusturan_id;
+                // 1. Bilirimm gidecek kullanıcıları belirle
+                $targetUserIds = [];
+                
+                // Görevi oluşturan veya liste sahibini ekle
+                if ($gorev->olusturan_id) $targetUserIds[] = (int)$gorev->olusturan_id;
+                else if ($gorev->liste_olusturan_id) $targetUserIds[] = (int)$gorev->liste_olusturan_id;
+                
+                // Göreve atanan kullanıcılar varsa onları da ekle
+                if (!empty($gorev->gorev_kullanicilari)) {
+                    $atamaIds = explode(',', $gorev->gorev_kullanicilari);
+                    foreach ($atamaIds as $aid) {
+                        $aid = (int)trim($aid);
+                        if ($aid > 0) $targetUserIds[] = $aid;
+                    }
+                }
+                
+                $targetUserIds = array_unique($targetUserIds);
 
-                if ($userId) {
+                if (empty($targetUserIds)) {
+                    cronLog("  ⚠ Görev #{$gorev->id} '{$gorev->baslik}' → Kullanıcı ID bulunamadı, atlanıyor.");
+                    $gorevModel->markBildirimGonderildi($gorev->id);
+                    continue;
+                }
+
+                foreach ($targetUserIds as $userId) {
+                    // In-app bildirim oluştur
                     $bildirimModel->createNotification(
                         $userId,
                         $title,
@@ -99,7 +121,7 @@ try {
                         'warning'
                     );
 
-                    // 2. Push bildirim gönder (başarısız olursa otomatik email fallback)
+                    // Push bildirim gönder
                     $payload = [
                         'title' => $title,
                         'body' => $body,
@@ -108,11 +130,8 @@ try {
                         'badge' => '/assets/images/logo-sm.png'
                     ];
 
-                    $pushService->sendToPersonel($userId, $payload);
-
-                    cronLog("  ✓ Görev #{$gorev->id} '{$gorev->baslik}' → Personel #{$userId} bildirim gönderildi.");
-                } else {
-                    cronLog("  ⚠ Görev #{$gorev->id} '{$gorev->baslik}' → Kullanıcı ID bulunamadı, atlanıyor.");
+                    $pushService->sendToUser($userId, $payload);
+                    cronLog("  ✓ Görev #{$gorev->id} '{$gorev->baslik}' → Kullanıcı #{$userId} bildirim gönderildi.");
                 }
 
                 // 3. Flag'i güncelle (kullanıcı bulunamasa bile tekrar denememek için)
