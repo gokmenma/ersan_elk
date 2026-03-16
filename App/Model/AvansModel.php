@@ -110,7 +110,7 @@ class AvansModel extends Model
     public function getButunBekleyenAvanslar()
     {
         $sql = $this->db->prepare("
-            SELECT pa.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, p.maas_tutari
+            SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev, p.maas_tutari
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
             WHERE pa.durum = 'beklemede' AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
@@ -127,9 +127,10 @@ class AvansModel extends Model
     {
         $limit = (int) $limit;
         $sql = $this->db->prepare("
-            SELECT pa.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, p.maas_tutari
+            SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev, p.maas_tutari, u.adi_soyadi as solver_name
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
+            LEFT JOIN users u ON pa.onaylayan_id = u.id
             WHERE pa.durum IN ('onaylandi', 'reddedildi') AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
             ORDER BY pa.onay_tarihi DESC
             LIMIT {$limit}

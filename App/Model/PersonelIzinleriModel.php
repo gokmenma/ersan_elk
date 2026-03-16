@@ -127,7 +127,7 @@ class PersonelIzinleriModel extends Model
     public function getButunBekleyenIzinler()
     {
         $sql = $this->db->prepare("
-            SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
+            SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
@@ -145,10 +145,19 @@ class PersonelIzinleriModel extends Model
     {
         $limit = (int) $limit;
         $sql = $this->db->prepare("
-            SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
+            SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi,
+                   u.adi_soyadi as solver_name, io.onay_tarihi as islem_tarihi
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            LEFT JOIN (
+                SELECT io1.izin_id, io1.onaylayan_id, io1.onay_tarihi
+                FROM izin_onaylari io1
+                INNER JOIN (
+                    SELECT MAX(id) as max_id FROM izin_onaylari GROUP BY izin_id
+                ) io2 ON io1.id = io2.max_id
+            ) io ON io.izin_id = pi.id
+            LEFT JOIN users u ON io.onaylayan_id = u.id
             WHERE pi.onay_durumu IN ('Onaylandı', 'Reddedildi') AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
             AND pi.id NOT IN (
                 SELECT izin_id FROM izin_onaylari 

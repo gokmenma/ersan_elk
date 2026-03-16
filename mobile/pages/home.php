@@ -114,21 +114,21 @@ if (\App\Service\Gate::allows("personel_listesi")) {
         </div>
         <!-- Stats -->
         <div class="grid grid-cols-3 gap-1">
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-1.5 p-1 active:bg-slate-50 dark:active:bg-slate-800 rounded-xl transition-colors cursor-pointer" onclick="openPersonelDetay('saha', 'Saha Görevlileri')">
                 <div class="w-1 h-8 bg-primary rounded-full flex-shrink-0"></div>
                 <div class="min-w-0">
                     <p class="text-[10px] text-slate-400 truncate">Saha Görevlisi</p>
                     <p class="font-bold text-slate-900 dark:text-white text-xs"><?= $calisan_p ?> Adet</p>
                 </div>
             </div>
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-1.5 p-1 active:bg-slate-50 dark:active:bg-slate-800 rounded-xl transition-colors cursor-pointer" onclick="openPersonelDetay('izinli', 'İzinli Personeller')">
                 <div class="w-1 h-8 bg-amber-400 rounded-full flex-shrink-0"></div>
                 <div class="min-w-0">
                     <p class="text-[10px] text-slate-400 truncate">İzinli</p>
                     <p class="font-bold text-slate-900 dark:text-white text-xs"><?= $izinli_p ?> Adet</p>
                 </div>
             </div>
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-1.5 p-1 active:bg-slate-50 dark:active:bg-slate-800 rounded-xl transition-colors cursor-pointer" onclick="openPersonelDetay('gec_kalan', 'Geç Kalan Personeller')">
                 <div class="w-1 h-8 bg-red-500 rounded-full flex-shrink-0"></div>
                 <div class="min-w-0">
                     <p class="text-[10px] text-slate-400 truncate">Geç Kalan</p>
@@ -660,4 +660,106 @@ $(document).ready(function() {
     }
 });
 </script>
+
+<!-- Personel Detay Bottom Sheet -->
+<div id="personel-detay-sheet" class="fixed inset-0 z-[70] pointer-events-none">
+    <div id="personel-detay-overlay" class="absolute inset-0 bg-black/50 opacity-0 transition-opacity duration-300" onclick="closePersonelDetay()"></div>
+    <div id="personel-detay-content" class="absolute bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-3xl transform translate-y-full transition-transform duration-300 shadow-2xl flex flex-col max-h-[85vh]">
+        <div class="flex justify-center pt-3 pb-2">
+            <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+        </div>
+        <div class="px-5 pb-8 overflow-y-auto">
+            <div class="flex items-center justify-between mb-4 sticky top-0 bg-white dark:bg-card-dark pt-1">
+                <h3 id="personel-detay-title" class="text-lg font-bold text-slate-900 dark:text-white">Personel Listesi</h3>
+                <button onclick="closePersonelDetay()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-base">close</span>
+                </button>
+            </div>
+            <div id="personel-detay-list" class="space-y-3">
+                <!-- Ajax ile dolacak -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openPersonelDetay(type, title) {
+    const sheet = document.getElementById('personel-detay-sheet');
+    const overlay = document.getElementById('personel-detay-overlay');
+    const content = document.getElementById('personel-detay-content');
+    const list = document.getElementById('personel-detay-list');
+    const titleEl = document.getElementById('personel-detay-title');
+
+    titleEl.innerText = title;
+    list.innerHTML = `<div class="flex justify-center py-10"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>`;
+    
+    sheet.classList.remove('pointer-events-none');
+    overlay.classList.add('opacity-100');
+    content.classList.remove('translate-y-full');
+
+    $.ajax({
+        url: '../views/personel-takip/api.php',
+        type: 'POST',
+        data: { action: 'getHomeStatsDetail', type: type },
+        success: function(res) {
+            if (res.success) {
+                if (res.data.length === 0) {
+                    list.innerHTML = `<p class="text-center py-10 text-slate-400">Kayıt bulunamadı.</p>`;
+                    return;
+                }
+                let html = '';
+                res.data.forEach(p => {
+                    const initials = p.adi_soyadi.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+                    let imgSrc = p.foto;
+                    if (imgSrc && !imgSrc.startsWith('http') && !imgSrc.startsWith('data:')) {
+                        imgSrc = '../' + imgSrc;
+                    }
+
+                    const imgHtml = imgSrc 
+                        ? `<img src="${imgSrc}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\'w-full h-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs\'>${initials}</div>'">` 
+                        : `<div class="w-full h-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">${initials}</div>`;
+                    
+                    html += `
+                        <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
+                            <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                                ${imgHtml}
+                            </div>
+                            <div class="min-w-0 flex-grow">
+                                <p class="font-bold text-slate-900 dark:text-white text-sm truncate">${p.adi_soyadi}</p>
+                                <p class="text-[10px] text-slate-400 truncate">${p.gorev || p.departman || '-'}</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                ${p.cep_telefonu ? `
+                                    <a href="tel:${p.cep_telefonu}" class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center active:scale-95 transition-transform">
+                                        <span class="material-symbols-outlined text-base">call</span>
+                                    </a>
+                                ` : ''}
+                                <a href="?p=personel-duzenle&id=${p.id_enc}" class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center active:scale-95 transition-transform">
+                                    <span class="material-symbols-outlined text-base">visibility</span>
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                });
+                list.innerHTML = html;
+            } else {
+                list.innerHTML = `<p class="text-center py-10 text-red-500">${res.message}</p>`;
+            }
+        }
+    });
+}
+
+function closePersonelDetay() {
+    const sheet = document.getElementById('personel-detay-sheet');
+    const overlay = document.getElementById('personel-detay-overlay');
+    const content = document.getElementById('personel-detay-content');
+    
+    overlay.classList.remove('opacity-100');
+    content.classList.add('translate-y-full');
+    setTimeout(() => {
+        sheet.classList.add('pointer-events-none');
+    }, 300);
+}
+</script>
+
 

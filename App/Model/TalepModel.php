@@ -117,7 +117,7 @@ class TalepModel extends Model
     public function getButunBekleyenTalepler()
     {
         $sql = $this->db->prepare("
-            SELECT pt.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev
+            SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
             WHERE pt.durum NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ?
@@ -133,14 +133,15 @@ class TalepModel extends Model
      */
     public function updateDurum($id, $durum, $cozum_aciklama = null)
     {
-        $cozum_tarihi = ($durum == 'cozuldu') ? date('Y-m-d H:i:s') : null;
+        $cozum_tarihi = ($durum == 'cozuldu' || $durum == 'iptal_edildi' || $durum == 'reddedildi') ? date('Y-m-d H:i:s') : null;
+        $islem_yapan_id = $_SESSION['user_id'] ?? null;
 
         $sql = $this->db->prepare("
             UPDATE {$this->table} 
-            SET durum = ?, cozum_aciklama = ?, cozum_tarihi = ?
+            SET durum = ?, cozum_aciklama = ?, cozum_tarihi = ?, islem_yapan_id = ?
             WHERE id = ?
         ");
-        return $sql->execute([$durum, $cozum_aciklama, $cozum_tarihi, $id]);
+        return $sql->execute([$durum, $cozum_aciklama, $cozum_tarihi, $islem_yapan_id, $id]);
     }
 
     /**
@@ -165,9 +166,10 @@ class TalepModel extends Model
     {
         $limit = (int) $limit;
         $sql = $this->db->prepare("
-            SELECT pt.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev
+            SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev, u.adi_soyadi as solver_name
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
+            LEFT JOIN users u ON pt.islem_yapan_id = u.id
             WHERE pt.durum IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ?
             AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
             ORDER BY pt.cozum_tarihi DESC

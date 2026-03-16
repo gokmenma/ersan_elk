@@ -522,6 +522,77 @@ try {
             response(true, $gec_kalanlar);
             break;
 
+        case 'getHomeStatsDetail':
+            $type = $_POST['type'] ?? 'saha';
+            $firma_id = $_SESSION['firma_id'] ?? null;
+            $bugun = date('Y-m-d');
+            $limit_saat = '08:30';
+            $data = [];
+
+            if ($type === 'izinli') {
+                $sql = "SELECT p.id, p.adi_soyadi, p.resim_yolu as foto, p.departman, p.gorev, p.cep_telefonu
+                        FROM personel_izinleri pi
+                        JOIN personel p ON pi.personel_id = p.id
+                        WHERE pi.baslangic_tarihi <= :bugun AND pi.bitis_tarihi >= :bugun 
+                        AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = :firma_id AND pi.silinme_tarihi IS NULL
+                        ORDER BY p.adi_soyadi ASC";
+                $stmt = $db->prepare($sql);
+                $stmt->execute([':bugun' => $bugun, ':firma_id' => $firma_id]);
+                $data = $stmt->fetchAll(PDO::FETCH_OBJ);
+            } elseif ($type === 'gec_kalan') {
+                // getGecKalanlar logic
+                $personeller = $HareketModel->getTumPersonelDurumu($firma_id, $bugun);
+                try {
+                    $limit_time = new DateTime($bugun . ' ' . $limit_saat);
+                } catch (Exception $e) {
+                    $limit_time = new DateTime($bugun . ' 08:30');
+                }
+                $now = new DateTime();
+
+                foreach ($personeller as $p) {
+                    $gec_kaldi = false;
+                    $has_valid_start = !empty($p->son_baslama) && $p->son_baslama !== '0000-00-00 00:00:00';
+                    if ($has_valid_start) {
+                        try {
+                            $baslama_dt = new DateTime($p->son_baslama);
+                            if ($baslama_dt->format('Y-m-d') === $bugun && $baslama_dt->format('H:i') > $limit_saat) {
+                                $gec_kaldi = true;
+                            }
+                        } catch (Exception $e) {}
+                    } else {
+                        if ($now > $limit_time) $gec_kaldi = true;
+                    }
+
+                    if ($gec_kaldi) {
+                        $p->foto = $p->foto;
+                        $p->gorev = $p->departman;
+                        $data[] = $p;
+                    }
+                }
+            } else {
+                // 'saha' - Aktif ama izinli değil
+                $sql = "SELECT p.id, p.adi_soyadi, p.resim_yolu as foto, p.departman, p.gorev, p.cep_telefonu
+                        FROM personel p
+                        WHERE p.aktif_mi = 1 AND p.silinme_tarihi IS NULL AND p.firma_id = :firma_id
+                        AND p.id NOT IN (
+                            SELECT personel_id FROM personel_izinleri 
+                            WHERE baslangic_tarihi <= :bugun AND bitis_tarihi >= :bugun 
+                            AND onay_durumu = 'Onaylandı' AND silinme_tarihi IS NULL
+                        )
+                        ORDER BY p.adi_soyadi ASC";
+                $stmt = $db->prepare($sql);
+                $stmt->execute([':bugun' => $bugun, ':firma_id' => $firma_id]);
+                $data = $stmt->fetchAll(PDO::FETCH_OBJ);
+            }
+
+            foreach($data as &$item) {
+                if (isset($item->personel_id) && !isset($item->id)) $item->id = $item->personel_id;
+                $item->id_enc = Security::encrypt($item->id);
+            }
+
+            response(true, $data);
+            break;
+
         default:
             response(false, null, 'Geçersiz işlem');
     }
