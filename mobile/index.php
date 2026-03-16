@@ -140,6 +140,16 @@ $isMoreActive = in_array($page, $more_pages);
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 
+    <!-- jQuery -->
+    <script src="../assets/libs/jquery/jquery.min.js"></script>
+
+    <!-- Select2 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <!-- Tema & Dark Mode ön yüklemesi (personel-pwa ile aynı) -->
     <script>
         (function () {
@@ -211,6 +221,86 @@ $isMoreActive = in_array($page, $more_pages);
             checkDesktopRedirect();
             window.addEventListener('resize', checkDesktopRedirect);
         })();
+
+        // ===== PWA UI Helpers (Alert & Loading) =====
+        const Loading = {
+            show() { document.body.classList.add('loading-active'); },
+            hide() { document.body.classList.remove('loading-active'); }
+        };
+
+        const Alert = {
+            async confirm(title, text, confirmText = "Evet", cancelText = "Vazgeç") {
+                const result = await Swal.fire({
+                    title: title, text: text, icon: "question", showCancelButton: true,
+                    confirmButtonText: confirmText, cancelButtonText: cancelText,
+                    buttonsStyling: false, reverseButtons: true, width: 320, padding: 0,
+                    customClass: {
+                        popup: "swal-custom-popup", title: "swal-custom-title",
+                        htmlContainer: "swal-custom-content", actions: "swal-custom-actions swal-actions-two",
+                        confirmButton: "swal-custom-confirm swal-confirm-primary",
+                        cancelButton: "swal-custom-cancel", icon: "swal-custom-icon swal-icon-question",
+                    },
+                });
+                return result.isConfirmed;
+            },
+            async confirmDelete(title, text, confirmText = "Evet, Sil", cancelText = "Vazgeç") {
+                const result = await Swal.fire({
+                    title: title, text: text, icon: "warning", showCancelButton: true,
+                    confirmButtonText: confirmText, cancelButtonText: cancelText,
+                    buttonsStyling: false, reverseButtons: true, width: 320, padding: 0,
+                    customClass: {
+                        popup: "swal-custom-popup", title: "swal-custom-title",
+                        htmlContainer: "swal-custom-content", actions: "swal-custom-actions swal-actions-two",
+                        confirmButton: "swal-custom-confirm swal-confirm-danger",
+                        cancelButton: "swal-custom-cancel", icon: "swal-custom-icon swal-icon-warning",
+                    },
+                });
+                return result.isConfirmed;
+            },
+            success(title, text) {
+                return Swal.fire({
+                    title: title, text: text, icon: "success",
+                    confirmButtonText: "Tamam", showCancelButton: false,
+                    buttonsStyling: false, width: 320, padding: 0,
+                    customClass: {
+                        popup: "swal-custom-popup", title: "swal-custom-title",
+                        htmlContainer: "swal-custom-content", actions: "swal-custom-actions",
+                        confirmButton: "swal-custom-confirm swal-confirm-primary swal-confirm-full",
+                        icon: "swal-custom-icon swal-icon-success",
+                    },
+                });
+            },
+            error(title, text) {
+                return Swal.fire({
+                    title: title, text: text, icon: "error",
+                    confirmButtonText: "Tamam", showCancelButton: false,
+                    buttonsStyling: false, width: 320, padding: 0,
+                    customClass: {
+                        popup: "swal-custom-popup", title: "swal-custom-title",
+                        htmlContainer: "swal-custom-content", actions: "swal-custom-actions",
+                        confirmButton: "swal-custom-confirm swal-confirm-danger swal-confirm-full",
+                        icon: "swal-custom-icon swal-icon-error",
+                    },
+                });
+            },
+            show(options) {
+                return Swal.fire({
+                    title: options.title || "",
+                    html: options.content || "",
+                    icon: options.icon || null,
+                    confirmButtonText: options.confirmButtonText || "Tamam",
+                    showCancelButton: options.showCancelButton || false,
+                    cancelButtonText: options.cancelButtonText || "Vazgeç",
+                    buttonsStyling: false, width: options.width || 320, padding: 0,
+                    customClass: {
+                        popup: "swal-custom-popup", title: "swal-custom-title",
+                        htmlContainer: "swal-custom-content", actions: "swal-custom-actions",
+                        confirmButton: "swal-custom-confirm swal-confirm-primary swal-confirm-full",
+                        cancelButton: "swal-custom-cancel",
+                    },
+                });
+            }
+        };
     </script>
 
     <!-- PWA stillerini personel-pwa'dan doğrudan yeniden kullan -->

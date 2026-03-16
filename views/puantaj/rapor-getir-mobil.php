@@ -362,6 +362,7 @@ foreach ($cards as $c) {
     ];
     
     $idx = 0;
+    $regionTotals = [];
     foreach ($groupedCards as $rName => $rCards) {
         $regTotal = 0;
         foreach($rCards as $cData) {
@@ -369,10 +370,13 @@ foreach ($cards as $c) {
                 $regTotal += $cData['totals']['A'] ?? 0;
             } elseif ($activeTab === 'kacakkontrol') {
                 $regTotal += $cData['totals']['Sayı'] ?? 0;
+            } elseif ($activeTab === 'muhurleme') {
+                $regTotal += $cData['totals']['Mühürleme'] ?? 0;
             } else {
                 $regTotal += array_sum($cData['totals']);
             }
         }
+        $regionTotals[$rName] = $regTotal;
         $chartLabels[] = mb_substr($rName, 0, 10, 'UTF-8') . (mb_strlen($rName, 'UTF-8') > 10 ? '..' : '');
         $chartData[] = $regTotal;
         $chartColors[] = $chartHexColors[$idx % count($chartHexColors)];
@@ -396,7 +400,16 @@ foreach ($cards as $c) {
     ?>
         <div class="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 shadow-sm relative">
             <div class="<?= $hClass ?> px-4 py-2 border-b backdrop-blur-sm sticky top-0 z-10">
-                <h3 class="text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">pin_drop</span> <?= htmlspecialchars($regionName) ?> <span class="ml-auto bg-white/50 dark:bg-black/20 px-1.5 py-0.5 rounded text-[9px]"><?= count($regionCards) ?> KİŞİ</span></h3>
+                <h3 class="text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[16px]">pin_drop</span> 
+                    <?= htmlspecialchars($regionName) ?> 
+                    <div class="ml-auto flex items-center gap-2">
+                        <span class="bg-primary/20 dark:bg-primary/30 px-2 py-0.5 rounded text-[10px] font-black text-primary dark:text-primary-400 border border-primary/20">
+                            <?= number_format($regionTotals[$regionName], 0, ',', '.') ?> <?= ($activeTab === 'okuma' ? 'İS' : 'İŞLEM') ?>
+                        </span>
+                        <span class="bg-white/50 dark:bg-black/20 px-1.5 py-0.5 rounded text-[9px]"><?= count($regionCards) ?> KİŞİ</span>
+                    </div>
+                </h3>
             </div>
             <div class="p-2 grid grid-cols-1 gap-2">
                 <?php foreach ($regionCards as $c): 

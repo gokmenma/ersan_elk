@@ -15,14 +15,24 @@ $dotenv->load();
 
 
 use App\Service\Gate;
+use App\Service\RequestPerformanceProfiler;
+
+RequestPerformanceProfiler::start('index.php', [
+    'script' => 'index.php',
+    'route' => $_GET['p'] ?? 'home'
+]);
 
 // Kullanıcı masaüstü kilidini kaldırmak isterse (?mobile=1) tekrar mobil yönlendirmeyi aç
 if (isset($_GET['mobile']) && $_GET['mobile'] === '1') {
     unset($_SESSION['force_desktop']);
 }
 
+if(Gate::isSuperAdmin()){
+    unset($_SESSION['force_desktop']);
+}
+
 // Mobil cihaz yönlendirmesi: herhangi bir HTML çıktısından önce yap, kullanıcı süper admin ise yönlendirme yapma
-if (!isset($_SESSION['force_desktop']) && Gate::isSuperAdmin() && $_SESSION["user_id"] == 62) {
+if (!isset($_SESSION['force_desktop'])) {
     $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
     $chMobile = $_SERVER['HTTP_SEC_CH_UA_MOBILE'] ?? '';
     $isMobileUa = preg_match('/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i', $ua);
@@ -122,7 +132,11 @@ if ($currentUserId <= 0 || !isset($_SESSION['firma_id'])) {
             ];
 
             if (!in_array($page, $publicPages, true)) {
-                $hasMenuAccess = $Menus->userCanAccessMenuLink($currentUserId, $page);
+                $hasMenuAccess = RequestPerformanceProfiler::measure(
+                    'index.menu_access_check',
+                    fn() => $Menus->userCanAccessMenuLink($currentUserId, $page),
+                    1
+                );
                 if (!$hasMenuAccess) {
 
                     echo "<script> window.location.href = 'unauthorize.php'; </script>";

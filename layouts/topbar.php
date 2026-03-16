@@ -3,12 +3,39 @@ use App\Helper\Helper;
 use App\Helper\Route;
 use App\Helper\Form;
 use App\Model\FirmaModel;
+use App\Service\RequestPerformanceProfiler;
 
-$FirmaModel = new FirmaModel();
+$currentUserId = (int) ($_SESSION['user_id'] ?? ($_SESSION['user']->id ?? 0));
+$cacheTtl = 300;
+$firma_option = [];
 
-//seçili firma
+if ($currentUserId > 0) {
+    $sessionCache = $_SESSION['topbar_firma_option_cache'][$currentUserId] ?? null;
+    $hasValidSessionCache = is_array($sessionCache)
+        && !empty($sessionCache['expires_at'])
+        && ($sessionCache['expires_at'] > time())
+        && is_array($sessionCache['data'] ?? null);
 
-$firma_option = $FirmaModel->optionByUserPermission();
+    if ($hasValidSessionCache) {
+        $firma_option = $sessionCache['data'];
+    } else {
+        $FirmaModel = new FirmaModel();
+        $firma_option = RequestPerformanceProfiler::measure(
+            'topbar.firma_option',
+            fn() => $FirmaModel->optionByUserPermission(),
+            1
+        );
+
+        $_SESSION['topbar_firma_option_cache'][$currentUserId] = [
+            'expires_at' => time() + $cacheTtl,
+            'data' => $firma_option
+        ];
+    }
+}
+
+if (!is_array($firma_option)) {
+    $firma_option = [];
+}
 
 //Helper::dd($firma_option);
 

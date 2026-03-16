@@ -14,6 +14,16 @@ use App\Helper\Date;
 
 $maintitle = "Personel Takip";
 $title = "Saha Personel Takibi";
+
+$db = (new \App\Core\Db())->db;
+$stmt = $db->prepare("SELECT DISTINCT departman FROM personel WHERE silinme_tarihi IS NULL AND departman IS NOT NULL AND departman != '' AND (saha_takibi = 1 OR disardan_sigortali = 0) ORDER BY departman ASC");
+$stmt->execute();
+$departmanlar = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+$departmanOptions = ['' => 'Tüm Departmanlar'];
+foreach ($departmanlar as $dept) {
+    $departmanOptions[$dept] = $dept;
+}
 ?>
 
 <!-- Leaflet CSS -->
@@ -138,18 +148,23 @@ $title = "Saha Personel Takibi";
                         <div class="tab-pane fade show active" id="tabListe" role="tabpanel">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h5 class="mb-0">Bugünkü Personel Durumları</h5>
-                                <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
-                                    <button type="button"
-                                        class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
-                                        onclick="yenile()">
-                                        <i class="mdi mdi-refresh fs-5 me-1"></i> Yenile
-                                    </button>
-                                    <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                                    <button type="button"
-                                        class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center"
-                                        id="exportExcel">
-                                        <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel
-                                    </button>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div style="width: 250px;">
+                                        <?= Form::FormSelect2("mainDepartmanFilter", $departmanOptions, "", "Departman", "bx bx-buildings", "key", "", "form-select select2 form-select-sm", false, "width:100%", 'onchange="yenile()"') ?>
+                                    </div>
+                                    <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1" style="height: 56px;">
+                                        <button type="button"
+                                            class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
+                                            onclick="yenile()">
+                                            <i class="mdi mdi-refresh fs-5 me-1"></i> Yenile
+                                        </button>
+                                        <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                                        <button type="button"
+                                            class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center"
+                                            id="exportExcel">
+                                            <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             <div class="table-responsive">
@@ -158,6 +173,7 @@ $title = "Saha Personel Takibi";
                                         <tr>
                                             <th style="width: 50px;">Foto</th>
                                             <th>Personel Adı</th>
+                                            <th>Departman</th>
                                             <th style="width: 120px;">Durum</th>
                                             <th style="width: 100px;">Başlama</th>
                                             <th style="width: 100px;">Bitiş</th>
@@ -176,29 +192,40 @@ $title = "Saha Personel Takibi";
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div class="d-flex align-items-center gap-3">
                                     <h5 class="mb-0">Personel Konum Haritası</h5>
-                                    <div class="input-group input-group-sm ms-2" style="width: 250px;">
-                                        <span class="input-group-text"><i class="bx bx-search"></i></span>
-                                        <input type="text" class="form-control" id="mapSearchInput" placeholder="Personel ara..." onkeyup="filterMapMarkers()">
-                                        <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('mapSearchInput').value=''; filterMapMarkers();">
-                                            <i class="bx bx-x"></i>
-                                        </button>
-                                    </div>
-                                    <div class="btn-group btn-group-sm" role="group">
-                                        <input type="radio" class="btn-check" name="haritaModu" id="modGorev" checked
-                                            onchange="loadHaritaVerileri()">
-                                        <label class="btn btn-outline-primary" for="modGorev"><i
-                                                class="bx bx-briefcase me-1"></i> Görev Konumları</label>
-
-                                        <input type="radio" class="btn-check" name="haritaModu" id="modAnlik"
-                                            onchange="loadHaritaVerileri(); autoIstekTumKonum()">
-                                        <label class="btn btn-outline-danger ms-2" for="modAnlik"><i
-                                                class="bx bx-target-lock me-1"></i> Anlık Konumlar</label>
+                                    <div class="d-flex gap-2" id="mapLegendFilters">
+                                        <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('aktif', this)">
+                                            <span class="badge bg-success-subtle text-success border border-success px-2 py-1"><i class="bx bxs-circle me-1"></i> Görevde</span>
+                                        </div>
+                                        <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('bitti', this)">
+                                            <span class="badge bg-dark-subtle text-dark border border-dark px-2 py-1"><i class="bx bxs-circle me-1"></i> Tamamladı</span>
+                                        </div>
+                                        <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('baslamadi', this)">
+                                            <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1"><i class="bx bxs-circle me-1"></i> Başlamadı</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="d-flex gap-2">
-                                    <span class="badge bg-success"><i class="bx bx-circle"></i> Görevde</span>
-                                    <span class="badge bg-primary"><i class="bx bx-circle"></i> Tamamladı</span>
-                                    <span class="badge bg-danger"><i class="bx bx-circle"></i> Başlamadı</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div style="width: 200px;">
+                                        <?= Form::FormFloatInput("text", "mapSearchInput", "", "Personel ara...", "Personel Ara", "bx bx-search", "form-control form-control-sm", false, null, "on", false, 'onkeyup="filterMapMarkers()"') ?>
+                                    </div>
+                                    <div style="width: 200px;">
+                                        <?= Form::FormSelect2("mapDepartmanFilter", $departmanOptions, "", "Departman", "bx bx-buildings", "key", "", "form-select select2 form-select-sm", false, "width:100%", 'onchange="loadHaritaVerileri()"') ?>
+                                    </div>
+                                    <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1" style="height: 56px;">
+                                        <div class="btn-group btn-group-sm h-100" role="group">
+                                            <input type="radio" class="btn-check" name="haritaModu" id="modGorev" checked onchange="loadHaritaVerileri()">
+                                            <label class="btn btn-outline-primary border-0 rounded d-flex align-items-center px-3" for="modGorev">
+                                                <i class="bx bx-briefcase me-1"></i> Görev
+                                            </label>
+
+                                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+
+                                            <input type="radio" class="btn-check" name="haritaModu" id="modAnlik" onchange="loadHaritaVerileri(); autoIstekTumKonum()">
+                                            <label class="btn btn-outline-danger border-0 rounded d-flex align-items-center px-3" for="modAnlik">
+                                                <i class="bx bx-target-lock me-1"></i> Anlık
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div id="personelHarita" style="height: 500px; border-radius: 8px;"></div>
@@ -419,6 +446,7 @@ $title = "Saha Personel Takibi";
     var haritaMap = null;
     var allMapData = []; // Store raw data for filtering
     var haritaMarkers = [];
+    var activeStatusFilters = ['aktif', 'bitti', 'baslamadi']; // Başlangıçta hepsi aktif
 
     document.addEventListener('DOMContentLoaded', function () {
         // İstatistikleri yükle
@@ -448,6 +476,30 @@ $title = "Saha Personel Takibi";
             loadOzet();
             loadPersonelDurumlari();
         }, 60000);
+
+        // Filtre senkronizasyonu
+        $('#mainDepartmanFilter').on('change', function() {
+            var val = $(this).val();
+            if ($('#mapDepartmanFilter').val() !== val) {
+                $('#mapDepartmanFilter').val(val).trigger('change.select2');
+            }
+        });
+
+        $('#mapDepartmanFilter').on('change', function() {
+            var val = $(this).val();
+            if ($('#mainDepartmanFilter').val() !== val) {
+                $('#mainDepartmanFilter').val(val).trigger('change.select2');
+                yenile(); // Listeyi de tazele
+            }
+        });
+
+        // Select2 Çakışma Önleyici (Eğer select2 yüklü değilse tekrar yüklemeye çalış)
+        if (typeof $.fn.select2 === 'undefined') {
+            console.warn('Select2 not found, retrying...');
+            // Head-style'da zaten var ama bazen çakışmalar JS temizliğine neden olabiliyor
+        } else {
+            $('.select2').select2({ width: '100%' });
+        }
 
         // Sayfa yenilendiğinde aktif olan tabın verisini yükle
         setTimeout(function () {
@@ -483,10 +535,11 @@ $title = "Saha Personel Takibi";
 
     async function loadOzet() {
         try {
+            const departman = document.getElementById('mainDepartmanFilter')?.value || '';
             const response = await fetch('views/personel-takip/api.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=getOzet'
+                body: 'action=getOzet&departman=' + encodeURIComponent(departman)
             });
             const result = await response.json();
 
@@ -503,10 +556,11 @@ $title = "Saha Personel Takibi";
 
     async function loadPersonelDurumlari() {
         try {
+            const departman = document.getElementById('mainDepartmanFilter')?.value || '';
             const response = await fetch('views/personel-takip/api.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=getPersonelDurumlari'
+                body: 'action=getPersonelDurumlari&departman=' + encodeURIComponent(departman)
             });
             const result = await response.json();
 
@@ -524,6 +578,7 @@ $title = "Saha Personel Takibi";
                     html += '<tr>';
                     html += '<td class="text-center">' + p.foto + '</td>';
                     html += '<td><strong>' + p.adi_soyadi + '</strong></td>';
+                    html += '<td>' + p.departman + '</td>';
                     html += '<td>' + p.durum + '</td>';
                     html += '<td class="text-center">' + p.baslama + '</td>';
                     html += '<td class="text-center">' + p.bitis + '</td>';
@@ -533,7 +588,7 @@ $title = "Saha Personel Takibi";
                 });
                 tbody.innerHTML = html;
             } else {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Henüz kayıt bulunmuyor</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Henüz kayıt bulunmuyor</td></tr>';
             }
 
             // DataTable'ı başlat (init fonksiyonunu kontrol et)
@@ -655,12 +710,13 @@ $title = "Saha Personel Takibi";
     async function loadHaritaVerileri() {
         try {
             const viewType = document.getElementById('modAnlik').checked ? 'anlik' : 'gorev';
+            const departman = document.getElementById('mapDepartmanFilter')?.value || '';
 
             // Tüm personelleri getir (konum olsun olmasın)
             const response = await fetch('views/personel-takip/api.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=getHaritaVerileri&tumPersoneller=1&viewType=' + viewType
+                body: 'action=getHaritaVerileri&tumPersoneller=1&viewType=' + viewType + '&departman=' + encodeURIComponent(departman)
             });
             const result = await response.json();
             allMapData = result.data || []; // Store for filtering
@@ -671,17 +727,32 @@ $title = "Saha Personel Takibi";
         }
     }
 
+    function toggleMapStatusFilter(status, el) {
+        const index = activeStatusFilters.indexOf(status);
+        if (index > -1) {
+            activeStatusFilters.splice(index, 1);
+            el.style.opacity = '0.4';
+        } else {
+            activeStatusFilters.push(status);
+            el.style.opacity = '1';
+        }
+        filterMapMarkers();
+    }
+
     function filterMapMarkers() {
         const searchText = document.getElementById('mapSearchInput').value.toLowerCase().trim();
         
-        if (!searchText) {
-            renderMapMarkers(allMapData);
-            return;
-        }
+        let filteredData = allMapData;
 
-        const filteredData = allMapData.filter(p => 
-            p.adi_soyadi.toLowerCase().includes(searchText)
-        );
+        // Status Filtreleme
+        filteredData = filteredData.filter(p => activeStatusFilters.includes(p.durum));
+
+        // Metin Filtreleme
+        if (searchText) {
+            filteredData = filteredData.filter(p => 
+                p.adi_soyadi.toLowerCase().includes(searchText)
+            );
+        }
 
         renderMapMarkers(filteredData);
     }
@@ -780,12 +851,13 @@ $title = "Saha Personel Takibi";
 
         const baslangic = normalizeToISO(baslangicRaw);
         const bitis = normalizeToISO(bitisRaw);
+        const departman = document.getElementById('mainDepartmanFilter')?.value || '';
 
         try {
             const response = await fetch('views/personel-takip/api.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=getCalismaRaporu&baslangic=' + baslangic + '&bitis=' + bitis
+                body: 'action=getCalismaRaporu&baslangic=' + baslangic + '&bitis=' + bitis + '&departman=' + encodeURIComponent(departman)
             });
             const result = await response.json();
 
@@ -871,12 +943,13 @@ $title = "Saha Personel Takibi";
         };
 
         const gecKalmaTarih = normalizeToISO(gecKalmaTarihRaw);
+        const departman = document.getElementById('mainDepartmanFilter')?.value || '';
 
         try {
             const response = await fetch('views/personel-takip/api.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=getGecKalanlar&limit_saat=' + gecKalmaSaati + '&tarih=' + gecKalmaTarih
+                body: 'action=getGecKalanlar&limit_saat=' + gecKalmaSaati + '&tarih=' + gecKalmaTarih + '&departman=' + encodeURIComponent(departman)
             });
             const result = await response.json();
 

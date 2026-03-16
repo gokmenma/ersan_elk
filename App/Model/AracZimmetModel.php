@@ -35,6 +35,30 @@ class AracZimmetModel extends Model
     }
 
     /**
+     * Tarih aralığına göre zimmet kayıtlarını getirir
+     */
+    public function getByDateRange($baslangic, $bitis)
+    {
+        $sql = $this->db->prepare("
+            SELECT az.*, 
+                   a.plaka, a.marka, a.model,
+                   p.adi_soyadi as personel_adi
+            FROM {$this->table} az
+            INNER JOIN araclar a ON az.arac_id = a.id
+            LEFT JOIN personel p ON az.personel_id = p.id
+            WHERE az.firma_id = :firma_id
+            AND az.zimmet_tarihi BETWEEN :baslangic AND :bitis
+            ORDER BY az.zimmet_tarihi DESC
+        ");
+        $sql->execute([
+            'firma_id' => $_SESSION['firma_id'],
+            'baslangic' => $baslangic,
+            'bitis' => $bitis
+        ]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
      * Aktif zimmetleri getirir
      */
     public function getAktifZimmetler()

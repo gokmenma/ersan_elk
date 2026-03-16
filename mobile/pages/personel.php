@@ -89,7 +89,7 @@ if (!function_exists('getInitials')) {
                 <div class="personel-card bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 transition-transform active:scale-[0.98] <?= $isAktif ? 'is-aktif' : 'is-pasif hidden' ?>" onclick="openMenu('<?= urlencode(\App\Helper\Security::encrypt($kisi->id)) ?>')">
                     <div class="flex items-center gap-3">
                         <div class="relative">
-                            <?php if (!empty($kisi->resim_yolu) && file_exists('../' . $kisi->resim_yolu)): ?>
+                            <?php if (!empty($kisi->resim_yolu) && file_exists($kisi->resim_yolu)): ?>
                                 <img src="../<?= htmlspecialchars($kisi->resim_yolu) ?>" class="w-12 h-12 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700">
                             <?php else: ?>
                                 <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-100 to-indigo-50 dark:from-indigo-900/40 dark:to-indigo-800/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-lg border-2 border-indigo-50 dark:border-slate-700">

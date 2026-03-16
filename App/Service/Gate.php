@@ -6,10 +6,15 @@ use App\Helper\Helper;
 use App\Helper\Alert;
 use App\Controllers\AuthController;
 use App\Model\PermissionsModel;
+use App\Service\RequestPerformanceProfiler;
 use Exception;
 
 class Gate
 {
+    private static array $requestPermissionSetCache = [];
+    private static array $requestAllowsCache = [];
+    private static ?bool $requestSuperAdminCache = null;
+
     /**
      * Mevcut kullanıcının belirli bir role sahip olup olmadığını kontrol eder.
      * 
@@ -44,32 +49,55 @@ class Gate
      */
     public static function allows(string $permissionName): bool
     {
-
-
         $user = AuthController::user();
         if (!$user) {
             return false;
         }
 
-        // Süper admin her şeye izinli olmalı (örn: rol adı 'Super Admin' ise)
-        // Bu, veritabanına sürekli sorgu atmayı engeller.
-        // if (isset($user->role_name) && $user->role_name === 'Super Admin') {
-        //     return true;
-        // }
+        $userId = (int) ($user->id ?? 0);
+        if ($userId <= 0) {
+            return false;
+        }
 
-        // /@/ Kullanıcının izinlerini alalım.
-        $permissionModel = new PermissionsModel();
-        // Bu metodu bir sonraki adımda güncelleyeceğiz.
-        $userPermissions = $permissionModel->getPermissionsForUser($user->id);
+        if (isset(self::$requestAllowsCache[$userId][$permissionName])) {
+            return self::$requestAllowsCache[$userId][$permissionName];
+        }
 
-        $userPermissions = array_flip(
-            array_filter(
-                $permissionModel->getPermissionsForUser($user->id)
-            )
-        );
+        if (self::isSuperAdmin()) {
+            self::$requestAllowsCache[$userId][$permissionName] = true;
+            return true;
+        }
 
+        if (!isset(self::$requestPermissionSetCache[$userId])) {
+            $sessionCache = $_SESSION['permission_cache'][$userId] ?? null;
+            $hasValidSessionCache = is_array($sessionCache)
+                && !empty($sessionCache['expires_at'])
+                && ($sessionCache['expires_at'] > time())
+                && is_array($sessionCache['permissions'] ?? null);
 
-        return isset($userPermissions[$permissionName]);
+            if ($hasValidSessionCache) {
+                self::$requestPermissionSetCache[$userId] = $sessionCache['permissions'];
+            } else {
+                $permissionModel = new PermissionsModel();
+                $permissionNames = RequestPerformanceProfiler::measure(
+                    'gate.permissions_for_user',
+                    fn() => $permissionModel->getPermissionsForUser($userId),
+                    2
+                );
+
+                $permissionSet = array_flip(array_filter($permissionNames));
+                self::$requestPermissionSetCache[$userId] = $permissionSet;
+                $_SESSION['permission_cache'][$userId] = [
+                    'expires_at' => time() + 300,
+                    'permissions' => $permissionSet
+                ];
+            }
+        }
+
+        $allowed = isset(self::$requestPermissionSetCache[$userId][$permissionName]);
+        self::$requestAllowsCache[$userId][$permissionName] = $allowed;
+
+        return $allowed;
     }
 
     /**
@@ -179,18 +207,35 @@ class Gate
      */
     public static function isSuperAdmin(): bool
     {
+        if (self::$requestSuperAdminCache !== null) {
+            return self::$requestSuperAdminCache;
+        }
+
         $user = AuthController::user();
         
         // Kullanıcının roles alanını alalım (uyumluluk için role_id'ye de bakıyoruz)
         $rolesStr = $user->roles ?? $user->role_id ?? null;
 
         if (!$user || empty($rolesStr)) {
+            self::$requestSuperAdminCache = false;
             return false;
+        }
+
+        $userId = (int) ($user->id ?? 0);
+        $sessionCache = $_SESSION['is_super_admin_cache'][$userId] ?? null;
+        if (is_array($sessionCache)
+            && !empty($sessionCache['expires_at'])
+            && ($sessionCache['expires_at'] > time())
+            && isset($sessionCache['value'])
+        ) {
+            self::$requestSuperAdminCache = (bool) $sessionCache['value'];
+            return self::$requestSuperAdminCache;
         }
 
         // Virgülle ayrılmış id'leri diziye çevirelim
         $rolesArray = array_filter(array_map('trim', explode(',', (string)$rolesStr)));
         if (empty($rolesArray)) {
+            self::$requestSuperAdminCache = false;
             return false;
         }
 
@@ -201,10 +246,26 @@ class Gate
         
         // Kullanıcının roles alanındaki id'lerden herhangi biri superadmin=1 olarak işaretlenmiş mi kontrol et
         $sql = "SELECT COUNT(*) FROM user_roles WHERE superadmin = 1 AND id IN ($placeholders)";
-        $stmt = $db->prepare($sql);
-        $stmt->execute($rolesArray);
-        
-        return $stmt->fetchColumn() > 0;
+        $isSuperAdmin = RequestPerformanceProfiler::measure(
+            'gate.superadmin_check',
+            function () use ($db, $sql, $rolesArray) {
+                $stmt = $db->prepare($sql);
+                $stmt->execute($rolesArray);
+                return $stmt->fetchColumn() > 0;
+            },
+            1
+        );
+
+        self::$requestSuperAdminCache = (bool) $isSuperAdmin;
+
+        if ($userId > 0) {
+            $_SESSION['is_super_admin_cache'][$userId] = [
+                'expires_at' => time() + 300,
+                'value' => self::$requestSuperAdminCache
+            ];
+        }
+
+        return self::$requestSuperAdminCache;
     }
 
 

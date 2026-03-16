@@ -1,7 +1,5 @@
 <!-- Required Vendor Scripts -->
 
-<!-- jquery -->
-
 
 <?php
 

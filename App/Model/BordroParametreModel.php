@@ -245,6 +245,47 @@ class BordroParametreModel extends Model
     }
 
     /**
+     * Tüm genel ayarları parametre_kodu => float map olarak döndürür.
+     * hesaplaMaas() gibi döngü içinde getGenelAyar() çağırmak yerine bu map kullanılır
+     * böylece tek sorguyla tüm ayarlar çekilir ve tekrar eden DB çağrıları engellenir.
+     */
+    public function getAllGenelAyarlarMap($tarih = null): array
+    {
+        $rows = $this->getAllGenelAyarlar($tarih);
+        $map = [];
+        foreach ($rows as $row) {
+            $map[$row->parametre_kodu] = floatval($row->deger);
+        }
+        return $map;
+    }
+
+    /**
+     * Tüm aktif bordro parametrelerini kod => parametre nesnesi map olarak döndürür.
+     * hesaplaMaas() içindeki ek_odeme/kesinti döngülerinde getByKod() yerine kullanılır.
+     */
+    public function getAllParametrelerMap($tarih = null): array
+    {
+        $tarih = $tarih ?? date('Y-m-d');
+        $sql = $this->db->prepare("
+            SELECT * FROM {$this->table}
+            WHERE aktif = 1
+            AND (gecerlilik_baslangic IS NULL OR gecerlilik_baslangic <= ?)
+            AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)
+            ORDER BY gecerlilik_baslangic DESC
+        ");
+        $sql->execute([$tarih, $tarih]);
+        $rows = $sql->fetchAll(PDO::FETCH_OBJ);
+        $map = [];
+        foreach ($rows as $row) {
+            // ORDER BY DESC: ilk gelen (en güncel) kayıt önceliklidir
+            if (!isset($map[$row->kod])) {
+                $map[$row->kod] = $row;
+            }
+        }
+        return $map;
+    }
+
+    /**
      * Tüm genel ayarları getirir (Yönetim ekranı için - Aktif/Pasif hepsi)
      */
     public function getAllGenelAyarlarListesi()

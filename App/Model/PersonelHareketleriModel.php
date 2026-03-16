@@ -350,7 +350,7 @@ class PersonelHareketleriModel extends Model
      * @param int|null $firma_id
      * @return array
      */
-    public function getTumPersonelDurumu($firma_id = null, $tarih = null)
+    public function getTumPersonelDurumu($firma_id = null, $tarih = null, $departman = null)
     {
         if (!$tarih) {
             $tarih = date('Y-m-d');
@@ -360,6 +360,7 @@ class PersonelHareketleriModel extends Model
                     p.id as personel_id,
                     p.adi_soyadi,
                     p.resim_yolu as foto,
+                    p.departman,
                     (SELECT ph.zaman FROM personel_hareketleri ph 
                      WHERE ph.personel_id = p.id AND ph.islem_tipi = 'BASLA' 
                      AND DATE(ph.zaman) = :tarih AND ph.silinme_tarihi IS NULL
@@ -384,6 +385,11 @@ class PersonelHareketleriModel extends Model
         if ($firma_id) {
             $sql .= " AND p.firma_id = :firma_id";
             $params[':firma_id'] = $firma_id;
+        }
+
+        if (!empty($departman)) {
+            $sql .= " AND p.departman = :departman";
+            $params[':departman'] = $departman;
         }
 
         $sql .= " ORDER BY p.adi_soyadi ASC";

@@ -4,6 +4,8 @@ use App\Model\AracZimmetModel;
 use App\Model\AracYakitModel;
 use App\Model\AracKmModel;
 use App\Model\AracServisModel;
+?>
+<?php
 
 $Arac = new AracModel();
 $Zimmet = new AracZimmetModel();
@@ -17,35 +19,46 @@ $zimmetliSayi = $Arac->getZimmetliAracSayisi();
 $servistekiSayi = $Arac->getServistekiAracSayisi();
 
 $araclar = $Arac->getAktifAraclar() ?? [];
-$zimmetler = $Zimmet->all() ?? [];
-$servisler = $Servis->all() ?? [];
 
-// Filtreleme Periyodu
-$period = $_GET['period'] ?? 'this_month';
-$selectedAy = $_GET['ay'] ?? date('m');
-$selectedYil = $_GET['yil'] ?? date('Y');
-
-$todayDate = date('Y-m-d');
-$firstDayOfMonth = date('Y-m-01');
-$lastDayOfMonth = date('Y-m-t');
-$firstDayOfLastMonth = date('Y-m-01', strtotime('first day of last month'));
-$lastDayOfLastMonth = date('Y-m-t', strtotime('last day of last month'));
-
-if ($period == 'today') {
-    $yakitlar = $Yakit->getByDateRange($todayDate, $todayDate);
-    $kmlar = $Km->getByDateRange($todayDate, $todayDate);
-} elseif ($period == 'this_month') {
-    $yakitlar = $Yakit->getByDateRange($firstDayOfMonth, $lastDayOfMonth);
-    $kmlar = $Km->getByDateRange($firstDayOfMonth, $lastDayOfMonth);
-} elseif ($period == 'custom') {
-    $firstDay = "$selectedYil-$selectedAy-01";
-    $lastDay = date('Y-m-t', strtotime($firstDay));
-    $yakitlar = $Yakit->getByDateRange($firstDay, $lastDay);
-    $kmlar = $Km->getByDateRange($firstDay, $lastDay);
-} else {
-    $yakitlar = $Yakit->all() ?? [];
-    $kmlar = $Km->all() ?? [];
+// Filtreleme Periyodu Yardımcı Fonksiyonu
+function getPeriodDates($p, $m, $y) {
+    $today = date('Y-m-d');
+    if ($p == 'today') return [$today, $today];
+    if ($p == 'this_month') return [date('Y-m-01'), date('Y-m-t')];
+    if ($p == 'custom') {
+        $first = "$y-$m-01";
+        return [$first, date('Y-m-t', strtotime($first))];
+    }
+    return [null, null];
 }
+
+// Zimmet Filtreleri
+$z_period = $_GET['z_p'] ?? 'this_month';
+$z_ay = $_GET['z_ay'] ?? date('m');
+$z_yil = $_GET['z_yil'] ?? date('Y');
+list($z1, $z2) = getPeriodDates($z_period, $z_ay, $z_yil);
+$zimmetler = ($z1) ? $Zimmet->getByDateRange($z1, $z2) : $Zimmet->all();
+
+// Yakıt Filtreleri
+$y_period = $_GET['y_p'] ?? 'this_month';
+$y_ay = $_GET['y_ay'] ?? date('m');
+$y_yil = $_GET['y_yil'] ?? date('Y');
+list($y1, $y2) = getPeriodDates($y_period, $y_ay, $y_yil);
+$yakitlar = ($y1) ? $Yakit->getByDateRange($y1, $y2) : $Yakit->all();
+
+// KM Filtreleri
+$k_period = $_GET['k_p'] ?? 'this_month';
+$k_ay = $_GET['k_ay'] ?? date('m');
+$k_yil = $_GET['k_yil'] ?? date('Y');
+list($k1, $k2) = getPeriodDates($k_period, $k_ay, $k_yil);
+$kmlar = ($k1) ? $Km->getByDateRange($k1, $k2) : $Km->all();
+
+// Servis Filtreleri
+$s_period = $_GET['s_p'] ?? 'this_month';
+$s_ay = $_GET['s_ay'] ?? date('m');
+$s_yil = $_GET['s_yil'] ?? date('Y');
+list($s1, $s2) = getPeriodDates($s_period, $s_ay, $s_yil);
+$servisler = ($s1) ? $Servis->getByDateRange($s1, $s2) : $Servis->all();
 
 // Toplamları hesapla (Slicedan önce)
 $totalYakitTutar = 0;
@@ -210,35 +223,35 @@ if (!function_exists('formatKmMobile')) {
         </div>
     </div>
 
-    <!-- Dönem Seçici -->
-    <div id="period-selector-area" class="flex gap-2 overflow-x-auto no-scrollbar py-1">
-        <?php
-        $periods = [
-            'today' => 'Bugün',
-            'this_month' => 'Bu Ay',
-            'all' => 'Tümü'
-        ];
-        foreach ($periods as $key => $label):
-            $isActive = ($period == $key);
-        ?>
-            <button onclick="changePeriod('<?= $key ?>')" 
-               class="flex-none px-4 py-1.5 rounded-full text-[11px] font-bold transition-all <?= $isActive ? 'bg-teal-500 text-white shadow-md' : 'bg-white dark:bg-card-dark text-slate-500 border border-slate-100 dark:border-slate-800' ?>">
-                <?= $label ?>
-            </button>
-        <?php endforeach; ?>
-        
-        <!-- Ay Seçimi -->
-        <?php
-        $monthNames = ['01' => 'Ocak', '02' => 'Şubat', '03' => 'Mart', '04' => 'Nisan', '05' => 'Mayıs', '06' => 'Haziran', '07' => 'Temmuz', '08' => 'Ağustos', '09' => 'Eylül', '10' => 'Ekim', '11' => 'Kasım', '12' => 'Aralık'];
-        $customLabel = $period == 'custom' ? ($monthNames[$selectedAy] . ' ' . $selectedYil) : 'Ay Seç';
-        $isCustomActive = ($period == 'custom');
-        ?>
-        <button onclick="openMonthPicker()" 
-           class="flex-none px-4 py-1.5 rounded-full text-[11px] font-bold transition-all flex items-center gap-1.5 <?= $isCustomActive ? 'bg-teal-500 text-white shadow-md' : 'bg-white dark:bg-card-dark text-slate-500 border border-slate-100 dark:border-slate-800' ?>">
-            <span class="material-symbols-outlined text-[16px]">calendar_month</span>
-            <?= $customLabel ?>
-        </button>
-    </div>
+    <?php
+    // Dönem Seçici UI Helper
+    if (!function_exists('renderPeriodSelector')) {
+        function renderPeriodSelector($currentP, $currentAy, $currentYil, $prefix) {
+            $periods = ['today' => 'Bugün', 'this_month' => 'Bu Ay', 'all' => 'Tümü'];
+            $monthNames = ['01' => 'Ocak', '02' => 'Şubat', '03' => 'Mart', '04' => 'Nisan', '05' => 'Mayıs', '06' => 'Haziran', '07' => 'Temmuz', '08' => 'Ağustos', '09' => 'Eylül', '10' => 'Ekim', '11' => 'Kasım', '12' => 'Aralık'];
+            $customLabel = $currentP == 'custom' ? ($monthNames[$currentAy] . ' ' . $currentYil) : 'Ay Seç';
+            $isCustomActive = ($currentP == 'custom');
+            
+            $html = '<div class="flex gap-2 overflow-x-auto no-scrollbar py-1 mt-1 mb-2">';
+            foreach ($periods as $key => $label) {
+                $isActive = ($currentP == $key);
+                $bgClass = $isActive ? 'bg-teal-500 text-white shadow-md' : 'bg-white dark:bg-card-dark text-slate-500 border border-slate-100 dark:border-slate-800';
+                $html .= "<button onclick=\"changeTabPeriod('{$prefix}', '{$key}')\" class=\"flex-none px-4 py-1.5 rounded-full text-[11px] font-bold transition-all {$bgClass}\">{$label}</button>";
+            }
+            
+            $customBgClass = $isCustomActive ? 'bg-teal-500 text-white shadow-md' : 'bg-white dark:bg-card-dark text-slate-500 border border-slate-100 dark:border-slate-800';
+            $html .= "<div class=\"relative flex-none\">
+                        <input type=\"month\" onchange=\"handleTabMonthChange(this, '{$prefix}')\" value=\"{$currentYil}-{$currentAy}\" class=\"absolute inset-0 opacity-0 cursor-pointer z-10 w-full\">
+                        <button class=\"px-4 py-1.5 rounded-full text-[11px] font-bold transition-all flex items-center gap-1.5 {$customBgClass}\">
+                            <span class=\"material-symbols-outlined text-[16px]\">calendar_month</span>
+                            {$customLabel}
+                        </button>
+                      </div>";
+            $html .= '</div>';
+            return $html;
+        }
+    }
+    ?>
 
     <!-- Arama Alanı -->
     <div class="relative">
@@ -366,6 +379,7 @@ if (!function_exists('formatKmMobile')) {
 
     <!-- ZİMMET TAB -->
     <div id="tab-content-zimmet" class="tab-content hidden space-y-3">
+        <?= renderPeriodSelector($z_period, $z_ay, $z_yil, 'z') ?>
         <?php if (empty($zimmetler)): ?>
             <div class="bg-white dark:bg-card-dark rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-800 shadow-sm mt-4">
                 <div class="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -408,6 +422,7 @@ if (!function_exists('formatKmMobile')) {
 
     <!-- YAKIT TAB -->
     <div id="tab-content-yakit" class="tab-content hidden space-y-3">
+        <?= renderPeriodSelector($y_period, $y_ay, $y_yil, 'y') ?>
         <?php if (empty($yakitlar_list)): ?>
              <div class="bg-white dark:bg-card-dark rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-800 shadow-sm mt-4">
                 <div class="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -453,6 +468,7 @@ if (!function_exists('formatKmMobile')) {
 
     <!-- KM TAB -->
     <div id="tab-content-km" class="tab-content hidden space-y-3">
+        <?= renderPeriodSelector($k_period, $k_ay, $k_yil, 'k') ?>
          <?php if (empty($kmlar_list)): ?>
              <div class="bg-white dark:bg-card-dark rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-800 shadow-sm mt-4">
                 <div class="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -495,6 +511,7 @@ if (!function_exists('formatKmMobile')) {
 
     <!-- SERVIS TAB -->
     <div id="tab-content-servis" class="tab-content hidden space-y-3">
+        <?= renderPeriodSelector($s_period, $s_ay, $s_yil, 's') ?>
          <?php if (empty($servisler)): ?>
              <div class="bg-white dark:bg-card-dark rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-800 shadow-sm mt-4">
                 <div class="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -578,39 +595,29 @@ if (!function_exists('formatKmMobile')) {
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-    function changePeriod(period) {
+    function changeTabPeriod(prefix, period) {
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set(prefix + '_p', period);
+        // Custom period'dan diğerlerine geçişte ay ve yıl parametrelerini temizle
+        if (period !== 'custom') {
+            urlParams.delete(prefix + '_ay');
+            urlParams.delete(prefix + '_yil');
+        }
         const hash = window.location.hash || '#araclar';
-        window.location.href = `?p=arac&period=${period}${hash}`;
+        window.location.href = `?${urlParams.toString()}${hash}`;
     }
 
-    function openMonthPicker() {
-        MobileSwal.fire({
-            title: 'Dönem Seçin',
-            html: `
-                <div class="p-2">
-                    <input type="month" id="swalMonth" 
-                        class="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white font-bold focus:ring-2 focus:ring-teal-500 outline-none" 
-                        value="<?= "$selectedYil-$selectedAy" ?>">
-                </div>
-            `,
-            showCancelButton: true,
-            confirmButtonText: 'Uygula',
-            cancelButtonText: 'İptal',
-            preConfirm: () => {
-                const val = document.getElementById('swalMonth').value;
-                if(!val) {
-                    Swal.showValidationMessage('Lütfen bir ay seçin');
-                    return false;
-                }
-                return val;
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const [year, month] = result.value.split('-');
-                const hash = window.location.hash || '#araclar';
-                window.location.href = `?p=arac&period=custom&ay=${month}&yil=${year}${hash}`;
-            }
-        });
+    function handleTabMonthChange(input, prefix) {
+        const val = input.value;
+        if (val) {
+            const [year, month] = val.split('-');
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set(prefix + '_p', 'custom');
+            urlParams.set(prefix + '_ay', month);
+            urlParams.set(prefix + '_yil', year);
+            const hash = window.location.hash || '#araclar';
+            window.location.href = `?${urlParams.toString()}${hash}`;
+        }
     }
 
     function toggleEvraklar(event, btn) {
@@ -628,6 +635,11 @@ if (!function_exists('formatKmMobile')) {
     }
 
     function switchTab(tabId) {
+        // Hash güncelle ki sayfa yenilenince bu tab kalsın
+        if (window.location.hash !== '#' + tabId) {
+            history.replaceState(null, null, '#' + tabId);
+        }
+
         // Hide all tabs
         document.querySelectorAll('.tab-content').forEach(el => {
             el.classList.add('hidden');
@@ -646,13 +658,8 @@ if (!function_exists('formatKmMobile')) {
         document.getElementById('tab-content-' + tabId).classList.remove('hidden');
         document.getElementById('tab-content-' + tabId).classList.add('block');
         
-        // Show/Hide period filter area
-        const filterArea = document.getElementById('period-selector-area');
-        if (tabId === 'araclar') {
-            filterArea.classList.add('hidden');
-        } else {
-            filterArea.classList.remove('hidden');
-        }
+        // Period Selector Area artık sekmelerin içinde, o yüzden global gizleme/gösterme yapmıyoruz
+        // Sadece genel summary alanlarını yönetiyoruz
         
         // Show active summary if exists
         const summaryEl = document.getElementById('summary-' + tabId);

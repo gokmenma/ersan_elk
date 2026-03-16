@@ -126,8 +126,11 @@ function formatDateOnlyMobile($dateStr) {
                 <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4">
                     <div class="flex items-start justify-between mb-3 border-b border-slate-100 dark:border-slate-800/60 pb-3">
                         <div class="flex items-center gap-3">
-                            <img src="<?= !empty($avans->resim_yolu) ? '../' . $avans->resim_yolu : '../assets/images/users/user-dummy-img.jpg' ?>" 
-                                 class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700" alt="Avatar">
+                            <?php if (!empty($avans->resim_yolu) && file_exists($avans->resim_yolu)): ?>
+                                <img src="../<?= htmlspecialchars($avans->resim_yolu) ?>" class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700">
+                            <?php else: ?>
+                                <img src="../assets/images/users/user-dummy-img.jpg" class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700" alt="Avatar">
+                            <?php endif; ?>
                             <div>
                                 <h3 class="font-bold text-slate-800 dark:text-white text-sm"><?= htmlspecialchars($avans->adi_soyadi) ?></h3>
                                 <p class="text-[11px] text-slate-500"><?= htmlspecialchars($avans->departman ?? 'Departman Yok') ?></p>
@@ -194,8 +197,11 @@ function formatDateOnlyMobile($dateStr) {
                 <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4">
                     <div class="flex items-start justify-between mb-3 border-b border-slate-100 dark:border-slate-800/60 pb-3">
                         <div class="flex items-center gap-3">
-                            <img src="<?= !empty($izin->resim_yolu) ? '../' . $izin->resim_yolu : '../assets/images/users/user-dummy-img.jpg' ?>" 
-                                 class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700" alt="Avatar">
+                            <?php if (!empty($izin->resim_yolu) && file_exists($izin->resim_yolu)): ?>
+                                <img src="../<?= htmlspecialchars($izin->resim_yolu) ?>" class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700">
+                            <?php else: ?>
+                                <img src="../assets/images/users/user-dummy-img.jpg" class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700" alt="Avatar">
+                            <?php endif; ?>
                             <div>
                                 <h3 class="font-bold text-slate-800 dark:text-white text-sm"><?= htmlspecialchars($izin->adi_soyadi) ?></h3>
                                 <div class="flex items-center gap-1.5 mt-0.5">
@@ -285,8 +291,11 @@ function formatDateOnlyMobile($dateStr) {
                 <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 cursor-pointer active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors" onclick="openTalepDetail(this.dataset.talep)" data-talep="<?= $talepJson ?>">
                     <div class="flex items-start justify-between mb-2">
                         <div class="flex items-center gap-3">
-                            <img src="<?= !empty($talep->resim_yolu) ? '../' . $talep->resim_yolu : '../assets/images/users/user-dummy-img.jpg' ?>" 
-                                 class="w-8 h-8 rounded-full object-cover border border-slate-200" alt="Avatar">
+                            <?php if (!empty($talep->resim_yolu) && file_exists($talep->resim_yolu)): ?>
+                                <img src="../<?= htmlspecialchars($talep->resim_yolu) ?>" class="w-8 h-8 rounded-full object-cover border border-slate-200" alt="Avatar">
+                            <?php else: ?>
+                                <img src="../assets/images/users/user-dummy-img.jpg" class="w-8 h-8 rounded-full object-cover border border-slate-200" alt="Avatar">
+                            <?php endif; ?>
                             <div>
                                 <h3 class="font-bold text-slate-800 dark:text-white text-xs"><?= htmlspecialchars($talep->adi_soyadi) ?></h3>
                                 <p class="text-[10px] text-slate-400"><?= formatDateMobile($talep->olusturma_tarihi) ?></p>

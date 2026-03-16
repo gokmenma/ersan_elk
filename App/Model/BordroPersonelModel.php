@@ -13,6 +13,27 @@ class BordroPersonelModel extends Model
     public $icra_uyarilari = [];
     public $gorev_gecmisi_eksik = [];
 
+    /** @var BordroParametreModel|null Tekil örnek — aynı istek içinde yeniden kullanılır */
+    private ?BordroParametreModel $cachedParametreModel = null;
+    /** @var array|null Genel ayarlar map (parametre_kodu => float) — dönem tarihine göre cache */
+    private ?array $genelAyarlarCache = null;
+    /** @var array|null Tüm bordro parametreleri (kod => nesne) — dönem tarihine göre cache */
+    private ?array $parametrelerCache = null;
+
+    /**
+     * Parametre cache'ini kullanarak getByKod() işlevi görür.
+     * hesaplaMaas() döngüsünde tekrar eden DB sorgularını önler.
+     */
+    private function getParametreCached(string $kod, string $tarih): ?object
+    {
+        if ($this->parametrelerCache !== null) {
+            return $this->parametrelerCache[$kod] ?? null;
+        }
+        // Cache dolmamışsa (standalone çağrı) doğrudan sorgula
+        $model = $this->cachedParametreModel ?? new BordroParametreModel();
+        return $model->getByKod($kod, $tarih);
+    }
+
     public function __construct()
     {
         parent::__construct($this->table);
@@ -78,16 +99,21 @@ class BordroPersonelModel extends Model
                 AND pg.firma_id = ?
                 GROUP BY pg.personel_id
             ) t_all ON p.id = t_all.personel_id
-            LEFT JOIN personel_gorev_gecmisi gg ON gg.personel_id = p.id
-                AND gg.id = (
-                    SELECT pgg2.id 
-                    FROM personel_gorev_gecmisi pgg2 
-                    WHERE pgg2.personel_id = p.id
-                    AND pgg2.baslangic_tarihi <= ?
-                    AND (pgg2.bitis_tarihi IS NULL OR pgg2.bitis_tarihi >= ?)
-                    ORDER BY pgg2.baslangic_tarihi DESC
-                    LIMIT 1
-                )
+            LEFT JOIN (
+                SELECT pgg.id, pgg.personel_id, pgg.maas_tutari, pgg.maas_durumu, pgg.gorev
+                FROM personel_gorev_gecmisi pgg
+                INNER JOIN (
+                    SELECT personel_id, MAX(baslangic_tarihi) AS latest_start
+                    FROM personel_gorev_gecmisi
+                    WHERE baslangic_tarihi <= ?
+                      AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
+                    GROUP BY personel_id
+                ) gg_latest ON pgg.personel_id = gg_latest.personel_id
+                          AND pgg.baslangic_tarihi = gg_latest.latest_start
+                WHERE pgg.baslangic_tarihi <= ?
+                  AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)
+                GROUP BY pgg.personel_id
+            ) gg ON p.id = gg.personel_id
             LEFT JOIN (
                 SELECT pgg.personel_id, 
                        SUM(DATEDIFF(LEAST(COALESCE(pgg.bitis_tarihi, ?), ?), GREATEST(pgg.baslangic_tarihi, ?)) + 1) as toplam_gun
@@ -114,13 +140,15 @@ class BordroPersonelModel extends Model
         // Parametreleri yeniden düzenle
         $sqlParams = [
             $firma_id,
-            $donemBitis,
-            $donemBaslangic,
-            $donemBitis,
-            $donemBitis,
-            $donemBaslangic,
-            $donemBitis,
-            $donemBaslangic, // gg_days için (5 adet)
+            $donemBitis,       // gg_latest inner: baslangic_tarihi <= ?
+            $donemBaslangic,   // gg_latest inner: bitis_tarihi >= ?
+            $donemBitis,       // gg outer WHERE: baslangic_tarihi <= ?
+            $donemBaslangic,   // gg outer WHERE: bitis_tarihi >= ?
+            $donemBitis,       // gg_days: LEAST(COALESCE(pgg.bitis_tarihi, ?), ?)
+            $donemBitis,       // gg_days: LEAST(..., ?)
+            $donemBaslangic,   // gg_days: GREATEST(pgg.baslangic_tarihi, ?)
+            $donemBitis,       // gg_days WHERE: baslangic_tarihi <= ?
+            $donemBaslangic,   // gg_days WHERE: bitis_tarihi >= ?
             $donem_id,
             $donem_id,
             $donem_id
@@ -938,10 +966,8 @@ class BordroPersonelModel extends Model
         }
 
         // 3. Ücretleri BordroParametreModel'den al
-        $paramModel = new \App\Model\BordroParametreModel();
-
-        $haftaIciParam = $paramModel->getByKod('hafta_ici_nobet', $baslangic_tarihi);
-        $haftaSonuParam = $paramModel->getByKod('hafta_sonu_nobet', $baslangic_tarihi);
+        $haftaIciParam  = $this->getParametreCached('hafta_ici_nobet', $baslangic_tarihi);
+        $haftaSonuParam = $this->getParametreCached('hafta_sonu_nobet', $baslangic_tarihi);
 
         $nobetUcretleri = [
             'standart' => floatval($haftaIciParam->varsayilan_tutar ?? 0),
@@ -1012,8 +1038,7 @@ class BordroPersonelModel extends Model
         $donemTarihi = $baslangic_tarihi;
 
         // 3. Bordro parametrelerinden kacak_kontrol_primi ayarlarını al
-        $parametreModel = new BordroParametreModel();
-        $kacakParam = $parametreModel->getByKod('kacak_kontrol_primi', $donemTarihi);
+        $kacakParam = $this->getParametreCached('kacak_kontrol_primi', $donemTarihi);
 
         if (!$kacakParam) {
             return $sonuc; // Parametre tanımlı değilse çık
@@ -1198,8 +1223,7 @@ class BordroPersonelModel extends Model
     public function olusturIcraKesintileri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
     {
         // İcra parametresini bul
-        $paramModel = new BordroParametreModel();
-        $param = $paramModel->getByKod('icra', $bitis_tarihi);
+        $param = $this->getParametreCached('icra', $bitis_tarihi);
         $paramId = $param ? $param->id : null;
 
         // Hesaplama tipi ve oran bilgisini al
@@ -1249,6 +1273,13 @@ class BordroPersonelModel extends Model
         foreach ($icralar as $icra) {
             $kalanBorc = $icraKalanBorclar[$icra->id];
 
+            // Borç bitmişse icrayı atla ve varsa bu dönem kaydını temizle
+            if ($kalanBorc <= 0) {
+                $this->db->prepare("UPDATE personel_kesintileri SET silinme_tarihi = NOW() WHERE personel_id = ? AND donem_id = ? AND icra_id = ? AND silinme_tarihi IS NULL")
+                    ->execute([$personel_id, $donem_id, $icra->id]);
+                continue;
+            }
+
             // Bireysel ayarlar var mı?
             $bizHTip = $icra->kesinti_tipi ?? 'tutar';
             $bizOran = floatval($icra->kesinti_orani ?? 0);
@@ -1264,23 +1295,17 @@ class BordroPersonelModel extends Model
                 $finalOran = 0;
             }
 
-            // Geriye dönük uyumluluk: Eğer icra dosyasında ayar yoksa (veya sabit ise) 
-            // ve küresel bir oran tanımı varsa, küresel olanı kullan? 
-            // Hayır, kullanıcı bireysel ayar istiyorsa onu kullanalım. 
-            // Ancak mevcut icralar 'tutar' olarak kaldı. Sabit modda aylık tutar kullanılır.
-
+            // Sabit tutarlı kesintilerde başlangıç tutarı
             $tutar = floatval($icra->aylik_kesinti_tutari);
 
             if ($finalHTip === 'oran_net' || $finalHTip === 'asgari_oran_net') {
-                $tutar = 0; // Placeholder
+                $tutar = 0; // Placeholder, hesaplaMaas içinde güncellenecek
             } else {
                 // Sabit tutarlı kesintilerde kalan borç kontrolü yap
                 if ($tutar <= 0)
                     continue;
 
-                if ($kalanBorc <= 0) {
-                    $tutar = 0;
-                } elseif ($tutar > $kalanBorc) {
+                if ($tutar > $kalanBorc) {
                     $tutar = $kalanBorc;
                 }
             }
@@ -1608,8 +1633,7 @@ class BordroPersonelModel extends Model
     public function olusturBesKesintisi($personel_id, $donem_id, $sgkMatrahi, $donemTarihi)
     {
         // Parametreyi getir
-        $parametreModel = new BordroParametreModel();
-        $besParam = $parametreModel->getByKod('bes_kesinti', $donemTarihi);
+        $besParam = $this->getParametreCached('bes_kesinti', $donemTarihi);
 
         $oran = 3; // Varsayılan %3
         if ($besParam && isset($besParam->oran) && $besParam->oran > 0) {
@@ -1686,8 +1710,11 @@ class BordroPersonelModel extends Model
      */
     public function hesaplaMaas($bordro_personel_id)
     {
-        // BordroParametreModel'i kullan
-        $parametreModel = new BordroParametreModel();
+        // BordroParametreModel'i tekil örnek olarak kullan (aynı istek boyunca yeniden kullanılır)
+        if ($this->cachedParametreModel === null) {
+            $this->cachedParametreModel = new BordroParametreModel();
+        }
+        $parametreModel = $this->cachedParametreModel;
 
         // Bordro kaydını ve personel detaylarını çek
         $sql = $this->db->prepare("
@@ -1706,6 +1733,14 @@ class BordroPersonelModel extends Model
         // Dönem tarihi - parametreleri bu tarihe göre çek
         $donemTarihi = $kayit->baslangic_tarihi ?? date('Y-m-d');
         $donemBitis = $kayit->bitis_tarihi ?? date('Y-m-t');
+
+        // Genel ayarlar ve bordro parametrelerini tek sorguda yükle (ilk personelde), sonrakiler cache'i kullanır
+        if ($this->genelAyarlarCache === null) {
+            $this->genelAyarlarCache = $parametreModel->getAllGenelAyarlarMap($donemTarihi);
+            $this->parametrelerCache = $parametreModel->getAllParametrelerMap($donemTarihi);
+        }
+        $genelAyarlarMap = $this->genelAyarlarCache;
+        $parametrelerMap = $this->parametrelerCache;
 
         // ---------------- GEÇİŞ SÜRECİ STRATEJİSİ VE PARÇALI MAAŞ HESAPLAMASI ----------------
         // Yeni görev (maaş) geçmişi tablosundan DÖNEM İÇİNDE GEÇERLİ OLAN TÜM KAYITLARI alıyoruz
@@ -1816,7 +1851,7 @@ class BordroPersonelModel extends Model
         // Net maaş veya Prim Usülü ise 0 olabilir, asgari ücrete çevirme
         // Sadece brüt maaş ve 0 ise asgari ücret kullan
         if ($brutMaas <= 0 && !$isNetMaas && !$isPrimUsulu) {
-            $brutMaas = $parametreModel->getGenelAyar('asgari_ucret_brut', $donemTarihi) ?? 33030.00;
+            $brutMaas = $genelAyarlarMap['asgari_ucret_brut'] ?? 33030.00;
         }
 
 
@@ -2016,7 +2051,7 @@ class BordroPersonelModel extends Model
         }
 
         // Çalışma günü sayısı (aylık varsayılan 26 gün) - BES hesabı için gerekli
-        $calismaGunuSayisi = $parametreModel->getGenelAyar('calisma_gunu_sayisi', $donemTarihi) ?? 26;
+        $calismaGunuSayisi = $genelAyarlarMap['calisma_gunu_sayisi'] ?? 26;
 
         // ========== BES KESİNTİSİ ==========
         if (!$isNetMaas && isset($kayit->bes_kesintisi_varmi) && $kayit->bes_kesintisi_varmi === 'Evet') {
@@ -2025,7 +2060,7 @@ class BordroPersonelModel extends Model
             $tempSgkMatrahEkleri = 0;
 
             foreach ($tempEkOdemeler as $odeme) {
-                $param = $parametreModel->getByKod($odeme->tur, $donemTarihi);
+                $param = $parametrelerMap[$odeme->tur] ?? null;
                 if ($param && $param->sgk_matrahi_dahil) {
                     $tutar = floatval($odeme->tutar);
                     // Muafiyet hesabı
@@ -2062,11 +2097,11 @@ class BordroPersonelModel extends Model
             $issizlikIsverenOrani = 0;
             $damgaVergisiOrani = 0;
         } else {
-            $sgkIsciOrani = ($parametreModel->getGenelAyar('sgk_isci_orani', $donemTarihi) ?? 14) / 100;
-            $issizlikIsciOrani = ($parametreModel->getGenelAyar('issizlik_isci_orani', $donemTarihi) ?? 1) / 100;
-            $sgkIsverenOrani = ($parametreModel->getGenelAyar('sgk_isveren_orani', $donemTarihi) ?? 20.5) / 100;
-            $issizlikIsverenOrani = ($parametreModel->getGenelAyar('issizlik_isveren_orani', $donemTarihi) ?? 2) / 100;
-            $damgaVergisiOrani = ($parametreModel->getGenelAyar('damga_vergisi_orani', $donemTarihi) ?? 0.759) / 100;
+            $sgkIsciOrani = ($genelAyarlarMap['sgk_isci_orani'] ?? 14) / 100;
+            $issizlikIsciOrani = ($genelAyarlarMap['issizlik_isci_orani'] ?? 1) / 100;
+            $sgkIsverenOrani = ($genelAyarlarMap['sgk_isveren_orani'] ?? 20.5) / 100;
+            $issizlikIsverenOrani = ($genelAyarlarMap['issizlik_isveren_orani'] ?? 2) / 100;
+            $damgaVergisiOrani = ($genelAyarlarMap['damga_vergisi_orani'] ?? 0.759) / 100;
         }
 
         // Ek Ödemeler ve Kesintileri detaylı çek (sürekli kayıtlar da artık dahil)
@@ -2088,7 +2123,7 @@ class BordroPersonelModel extends Model
         // Her ek ödemeyi parametresine göre işle
         foreach ($ekOdemeler as $odeme) {
             $tutar = floatval($odeme->tutar);
-            $parametre = $parametreModel->getByKod($odeme->tur, $donemTarihi);
+            $parametre = $parametrelerMap[$odeme->tur] ?? null;
 
             // Detay kaydı
             $detay = [
@@ -2276,7 +2311,7 @@ class BordroPersonelModel extends Model
 
         foreach ($kesintiler as $kesinti) {
             $tutar = floatval($kesinti->tutar);
-            $parametre = $parametreModel->getByKod($kesinti->tur, $donemTarihi);
+            $parametre = $parametrelerMap[$kesinti->tur] ?? null;
             $hesaplamaTipi = $kesinti->hesaplama_tipi ?? 'sabit';
 
             $detay = [
@@ -2362,17 +2397,37 @@ class BordroPersonelModel extends Model
         // ========== ORANLI KESİNTİLERİN HESAPLANMASI (NET ÜZERİNDEN) ==========
         // Oranlı kesintiler için temel net hakediş (icra vb. öncesi)
         if ($isNetMaas || $isPrimUsulu) {
-            // Prim Usülü / Net: Hakediş = brüt maaş + toplam ek ödemeler
+            // Prim Usülü / Net: Hakediş = brüt maaş + toplam ek ödemeler - diğer kesintiler
             // Ücretsiz izin zaten brüt maaştan düşülmüş durumda
-            $hakedisNet = $brutMaas + $toplamEkOdeme;
+            $hakedisNet = $brutMaas + $toplamEkOdeme - $digerKesintiler;
         } else {
-            // Brüt: Hakediş = brüt maaş - yasal kesintiler + ek ödemeler
+            // Brüt: Hakediş = brüt maaş - yasal kesintiler + ek ödemeler - diğer kesintiler
             // Ücretsiz izin zaten brüt maaştan düşülmüş durumda
             $hakedisNet = $brutMaas
                 - $sgkIsci - $issizlikIsci - $gelirVergisi - $damgaVergisi
                 + $netEkOdemeler
-                + $brutEkOdemeler;
+                + $brutEkOdemeler
+                - $digerKesintiler;
         }
+
+        // ========== ÖDEME DAĞILIMI ÖN HAZIRLIK ==========
+        // Fiili çalışma günü (30 günden ücretsiz ve ücretli izinler düşülmüş)
+        // NOT: Gün tüm maaş tipleri için düşer (banka/sodexo oranlaması için gerekli)
+        // Prim Usülü'de fark: toplam alacağı gün bazlı düşmez, ama banka/sodexo düşer
+        $fiiliCalismaGunu = $gunlukBase - $ucretsizIzinGunu - $ucretliIzinGunu;
+        // Puantaj kontrolü
+        if ($puantajGunSayisi > 0) {
+            // $puantajGunSayisi yukarıda zaten oranlanmış durumda
+            $fiiliCalismaGunu = min($fiiliCalismaGunu, $puantajGunSayisi);
+        }
+        if ($fiiliCalismaGunu < 0)
+            $fiiliCalismaGunu = 0;
+
+        // İcra Matrahı: personelin toplam hakedişi (alt sınır kontrolü için)
+        $icraMatrahi = max(0, $hakedisNet);
+
+        // Asgari ücret net tutarını al
+        $asgariUcretNet = $genelAyarlarMap['asgari_ucret_net'] ?? 17002.12;
 
         // İcra bazlı oranlı kesintileri ayır ve sıra numarasına göre dağıt
         $icraOranliKesintiler = [];
@@ -2400,21 +2455,9 @@ class BordroPersonelModel extends Model
                 ->execute([$tutar, $kesinti->id]);
         }
 
-        // ========== ÖDEME DAĞILIMI ÖN HAZIRLIK ==========
-        // Fiili çalışma günü (30 günden ücretsiz ve ücretli izinler düşülmüş)
-        // NOT: Gün tüm maaş tipleri için düşer (banka/sodexo oranlaması için gerekli)
-        // Prim Usülü'de fark: toplam alacağı gün bazlı düşmez, ama banka/sodexo düşer
-        $fiiliCalismaGunu = $gunlukBase - $ucretsizIzinGunu - $ucretliIzinGunu;
-        // Puantaj kontrolü
-        if ($puantajGunSayisi > 0) {
-            // $puantajGunSayisi yukarıda zaten oranlanmış durumda
-            $fiiliCalismaGunu = min($fiiliCalismaGunu, $puantajGunSayisi);
-        }
-        if ($fiiliCalismaGunu < 0)
-            $fiiliCalismaGunu = 0;
-
-        // Asgari ücret net tutarını al
-        $asgariUcretNet = $parametreModel->getGenelAyar('asgari_ucret_net', $donemTarihi) ?? 17002.12;
+        // ========== İCRA HESAPLAMA HAZIRLIK ==========
+        $icraMatrahi = max(0, $hakedisNet); // Stop-loss check for final distribution
+        // $asgariUcretNet yukarıda zaten cache'den alındı
 
         // İcra bazlı kesintileri SIRA NUMARASINA GÖRE DAĞIT
         if (!empty($icraOranliKesintiler)) {
@@ -2462,19 +2505,26 @@ class BordroPersonelModel extends Model
             }
 
             $toplamIcraBudget = 0;
-            if ($firstHTip === 'asgari_oran_net') {
-                // Net asgari ücretin yüzdesi (bankaya yatacak baz üzerinden)
+            // USER REQ: (Asgari Ücret / 30) * Çalışılan Gün
+            $asgariDaily = $asgariUcretNet / 30;
+            $asgariCalculatedBase = $asgariDaily * $fiiliCalismaGunu;
+
+            if ($firstHTip === 'asgari_oran_net' || $firstHTip === 'oran_net') {
+                // Her iki tip de artık aynı formülü takip ediyor (Image 1: 28.075,50 / 30 * 22 * 0.25)
                 $oranKullan = ($firstOran > 0) ? $firstOran : 25;
-                $toplamIcraBudget = round(min($hakedisNet, $bankaYatacakBaz) * ($oranKullan / 100), 2);
-            } elseif ($firstHTip === 'oran_net') {
-                // Net ücretin (toplam alacağı) yüzdesi
-                $oranKullan = ($firstOran > 0) ? $firstOran : 25;
-                $toplamIcraBudget = round(min($hakedisNet, $bankaYatacakBaz) * ($oranKullan / 100), 2);
+                $toplamIcraBudget = round($asgariCalculatedBase * ($oranKullan / 100), 2);
             } else {
-                // Sabit tutar: tüm icra dosyalarının aylik_kesinti_tutari toplamı
+                // Sabit tutar
+                $sabitToplam = 0;
                 foreach ($icraDetaylar as $d) {
-                    $toplamIcraBudget += floatval($d['icraData']->aylik_kesinti_tutari);
+                    $sabitToplam += floatval($d['icraData']->aylik_kesinti_tutari);
                 }
+                $toplamIcraBudget = $sabitToplam;
+            }
+
+            // Önemli: Kesinti toplamı personelin o anki alacağından ($icraMatrahi) fazla olamaz
+            if ($toplamIcraBudget > $icraMatrahi) {
+                $toplamIcraBudget = $icraMatrahi;
             }
 
             // 4) Bütçeyi sırasıyla dağıt
@@ -2528,8 +2578,14 @@ class BordroPersonelModel extends Model
                 $kesintiDetaylari[$index]['tutar'] = $tutar;
 
                 // Veritabanındaki tutarı güncelle
-                $this->db->prepare("UPDATE personel_kesintileri SET tutar = ?, updated_at = NOW() WHERE id = ?")
-                    ->execute([$tutar, $kesinti->id]);
+                if ($tutar > 0) {
+                    $this->db->prepare("UPDATE personel_kesintileri SET tutar = ?, updated_at = NOW() WHERE id = ?")
+                        ->execute([$tutar, $kesinti->id]);
+                } else {
+                    // Tutar 0 ise bu kesintiyi bu dönem için iptal et (soft delete)
+                    $this->db->prepare("UPDATE personel_kesintileri SET silinme_tarihi = NOW(), updated_at = NOW() WHERE id = ?")
+                        ->execute([$kesinti->id]);
+                }
             }
         }
 
@@ -2875,6 +2931,42 @@ class BordroPersonelModel extends Model
         ");
         $sql->execute([$personel_id, $donem_id]);
         return $sql->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Verilen bordro_personel id listesi için onay bekleyen kesintileri ve personel adlarını
+     * tek sorguda döndürür. api.php N+1 sorununu gidermek için kullanılır.
+     * @param int[] $bp_ids  bordro_personel.id değerleri
+     * @param int   $donem_id
+     * @return array  personel_id => {personel_id, adi_soyadi, onay_bekleyen_adet, onay_bekleyen_tutar}
+     */
+    public function getOnayBekleyenBatch(array $bp_ids, int $donem_id): array
+    {
+        if (empty($bp_ids)) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($bp_ids), '?'));
+        $sql = $this->db->prepare("
+            SELECT bp.id AS bp_id, bp.personel_id, p.adi_soyadi,
+                   COALESCE(pk.adet, 0)        AS onay_bekleyen_adet,
+                   COALESCE(pk.toplam_tutar, 0) AS onay_bekleyen_tutar
+            FROM bordro_personel bp
+            INNER JOIN personel p ON bp.personel_id = p.id
+            LEFT JOIN (
+                SELECT personel_id, COUNT(*) AS adet, SUM(tutar) AS toplam_tutar
+                FROM personel_kesintileri
+                WHERE donem_id = ? AND silinme_tarihi IS NULL AND durum = 'beklemede'
+                GROUP BY personel_id
+            ) pk ON bp.personel_id = pk.personel_id
+            WHERE bp.id IN ($placeholders)
+        ");
+        $sql->execute(array_merge([$donem_id], $bp_ids));
+        $rows = $sql->fetchAll(PDO::FETCH_OBJ);
+        $result = [];
+        foreach ($rows as $row) {
+            $result[$row->bp_id] = $row;
+        }
+        return $result;
     }
 
     /**

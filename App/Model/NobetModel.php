@@ -343,6 +343,8 @@ class NobetModel extends Model
                 WHERE n.firma_id = :firma_id 
                 AND n.silinme_tarihi IS NULL
                 AND n.nobet_tarihi = :tarih
+                AND (n.durum IS NULL OR n.durum NOT IN ('talep_edildi', 'reddedildi'))
+                AND n.yonetici_onayi = 1
                 ORDER BY n.baslangic_saati ASC";
 
         $query = $this->db->prepare($sql);
@@ -685,6 +687,7 @@ class NobetModel extends Model
                 WHERE n.firma_id = :firma_id 
                 AND n.silinme_tarihi IS NULL
                 AND n.bildirim_gonderildi = 0
+                AND n.yonetici_onayi = 1
                 AND CONCAT(n.nobet_tarihi, ' ', n.baslangic_saati) BETWEEN :now AND :future
                 ORDER BY n.nobet_tarihi ASC, n.baslangic_saati ASC";
 
@@ -1046,6 +1049,8 @@ class NobetModel extends Model
                 AND n.silinme_tarihi IS NULL
                 AND n.nobet_tarihi BETWEEN :baslangic AND :bitis
                 AND (n.bildirim_gonderildi = 0 OR n.bildirim_gonderildi IS NULL)
+                AND (n.durum IS NULL OR n.durum NOT IN ('reddedildi', 'iptal'))
+                AND n.yonetici_onayi = 1
                 ORDER BY n.nobet_tarihi ASC, n.baslangic_saati ASC";
 
         $query = $this->db->prepare($sql);
@@ -1121,7 +1126,7 @@ class NobetModel extends Model
     {
         $firma_id = $_SESSION['firma_id'] ?? null;
         $params = [':firma_id' => $firma_id];
-        $where = "WHERE n.firma_id = :firma_id AND n.silinme_tarihi IS NULL AND (n.yonetici_onayi = 0 OR n.yonetici_onayi IS NULL)";
+        $where = "WHERE n.firma_id = :firma_id AND n.silinme_tarihi IS NULL AND (n.yonetici_onayi = 0 OR n.yonetici_onayi IS NULL) AND (n.durum IS NULL OR n.durum NOT IN ('reddedildi', 'iptal'))";
 
         if ($ay > 0 && $yil > 0) {
             $where .= " AND MONTH(n.nobet_tarihi) = :ay AND YEAR(n.nobet_tarihi) = :yil";

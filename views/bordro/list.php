@@ -49,8 +49,8 @@ if ($selectedDonemId) {
     $_SESSION['selectedDonemId'] = $selectedDonemId;
 }
 
-/**Eğer seçil dönem veritabanında yoksa seçili dönem id session'a ata */
-$seciliDonemKontrol = $BordroDonem->find($selectedDonemId);
+/**Eğer seçil dönem veritabanında yoksa seçili dönem id sessionı sıfırla */
+$seciliDonemKontrol = $BordroDonem->getDonemById($selectedDonemId);
 if (!$seciliDonemKontrol) {
     $selectedDonemId = null;
 }
@@ -66,7 +66,10 @@ $personeller = [];
 
 
 if ($selectedDonemId) {
-    $selectedDonem = $BordroDonem->getDonemById($selectedDonemId);
+    // Dönem zaten yukarıda çekildi; sadece ilk dönem seçimi durumunda tekrar çek
+    $selectedDonem = ($seciliDonemKontrol && $seciliDonemKontrol->id == $selectedDonemId)
+        ? $seciliDonemKontrol
+        : $BordroDonem->getDonemById($selectedDonemId);
     if ($selectedDonem) {
         $_sqlStart = microtime(true);
         $personeller = $BordroPersonel->getPersonellerByDonem($selectedDonemId);

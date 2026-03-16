@@ -17,7 +17,7 @@ $stmt = $dbObj->getConnection()->query("SELECT
     SUM(CASE WHEN nobet_tipi = 'hafta_sonu' THEN 1 ELSE 0 END) as hafta_sonu_bekleyen,
     SUM(CASE WHEN nobet_tipi = 'resmi_tatil' THEN 1 ELSE 0 END) as resmi_tatil_bekleyen
 FROM nobetler 
-WHERE (yonetici_onayi = 0 OR yonetici_onayi IS NULL) AND silinme_tarihi IS NULL");
+WHERE (yonetici_onayi = 0 OR yonetici_onayi IS NULL) AND silinme_tarihi IS NULL AND (durum IS NULL OR durum NOT IN ('reddedildi', 'iptal'))");
 $stats = $stmt->fetch(PDO::FETCH_OBJ);
 ?>
 <link rel="stylesheet" href="views/nobet/assets/style.css?v=<?php echo filemtime('views/nobet/assets/style.css'); ?>">

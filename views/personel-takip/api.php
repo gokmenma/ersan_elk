@@ -39,7 +39,8 @@ try {
         // Özet istatistikler
         case 'getOzet':
             $firma_id = $_SESSION['firma_id'] ?? null;
-            $personeller = $HareketModel->getTumPersonelDurumu($firma_id);
+            $departman = $_POST['departman'] ?? null;
+            $personeller = $HareketModel->getTumPersonelDurumu($firma_id, null, $departman);
 
             $gorevde = 0;
             $tamamladi = 0;
@@ -93,7 +94,8 @@ try {
         // Tüm personel durumları (tablo için)
         case 'getPersonelDurumlari':
             $firma_id = $_SESSION['firma_id'] ?? null;
-            $personeller = $HareketModel->getTumPersonelDurumu($firma_id);
+            $departman = $_POST['departman'] ?? null;
+            $personeller = $HareketModel->getTumPersonelDurumu($firma_id, null, $departman);
 
             $data = [];
             foreach ($personeller as $p) {
@@ -126,6 +128,7 @@ try {
                     'id' => Security::encrypt($p->personel_id),
                     'foto' => $foto,
                     'adi_soyadi' => htmlspecialchars($p->adi_soyadi),
+                    'departman' => htmlspecialchars($p->departman ?? '-'),
                     'durum' => $durum_badge,
                     'baslama' => $baslama_saat,
                     'bitis' => $bitis_saat,
@@ -213,8 +216,9 @@ try {
             $firma_id = $_SESSION['firma_id'] ?? null;
             $tumPersoneller = $_POST['tumPersoneller'] ?? '0';
             $viewType = $_POST['viewType'] ?? 'gorev'; // gorev veya anlik
+            $departman = $_POST['departman'] ?? null;
 
-            $personeller = $HareketModel->getTumPersonelDurumu($firma_id);
+            $personeller = $HareketModel->getTumPersonelDurumu($firma_id, null, $departman);
 
             $markers = [];
             foreach ($personeller as $p) {
@@ -276,8 +280,8 @@ try {
             $zaten_var = 0;
 
             foreach ($personeller as $p) {
-                // Bekleyen işlem var mı kontrol et (son 5 dk)
-                $stmtCheck = $db->prepare("SELECT id FROM personel_konum_istekleri WHERE personel_id = :pid AND durum = 'BEKLIYOR' AND istek_zamani > DATE_SUB(NOW(), INTERVAL 5 MINUTE)");
+                // Bekleyen işlem var mı kontrol et (son 2 dk)
+                $stmtCheck = $db->prepare("SELECT id FROM personel_konum_istekleri WHERE personel_id = :pid AND durum = 'BEKLIYOR' AND istek_zamani > DATE_SUB(NOW(), INTERVAL 2 MINUTE)");
                 $stmtCheck->execute([':pid' => $p->id]);
                 if ($stmtCheck->fetch()) {
                     $zaten_var++;
@@ -299,8 +303,8 @@ try {
                 response(false, null, 'Personel seçilmedi');
             }
 
-            // Bekleyen işlem var mı kontrol et (tekrar tekrar istememek için son 5 dk)
-            $stmt = $db->prepare("SELECT id FROM personel_konum_istekleri WHERE personel_id = :pid AND durum = 'BEKLIYOR' AND istek_zamani > DATE_SUB(NOW(), INTERVAL 5 MINUTE)");
+            // Bekleyen işlem var mı kontrol et (tekrar tekrar istememek için son 2 dk)
+            $stmt = $db->prepare("SELECT id FROM personel_konum_istekleri WHERE personel_id = :pid AND durum = 'BEKLIYOR' AND istek_zamani > DATE_SUB(NOW(), INTERVAL 2 MINUTE)");
             $stmt->execute([':pid' => $personel_id]);
             if ($stmt->fetch()) {
                 response(false, null, 'Bu personel için zaten bekleyen bir konum isteği var.');
@@ -319,18 +323,21 @@ try {
             $baslangic = $_POST['baslangic'] ?? date('Y-m-d', strtotime('-7 days'));
             $bitis = $_POST['bitis'] ?? date('Y-m-d');
             $firma_id = $_SESSION['firma_id'] ?? null;
+            $departman = $_POST['departman'] ?? null;
 
             // Tüm sahada takip edilen aktif personelleri al
             $query = "SELECT id, adi_soyadi FROM personel WHERE silinme_tarihi IS NULL AND aktif_mi = 1 AND saha_takibi = 1 AND (disardan_sigortali = 0 OR FIND_IN_SET('takip', gorunum_modulleri))";
+            $params = [];
             if ($firma_id) {
                 $query .= " AND firma_id = :firma_id";
+                $params[':firma_id'] = $firma_id;
+            }
+            if (!empty($departman)) {
+                $query .= " AND departman = :departman";
+                $params[':departman'] = $departman;
             }
             $stmt = $db->prepare($query);
-            if ($firma_id) {
-                $stmt->execute([':firma_id' => $firma_id]);
-            } else {
-                $stmt->execute();
-            }
+            $stmt->execute($params);
             $personeller = $stmt->fetchAll(PDO::FETCH_OBJ);
 
             $data = [];
@@ -422,8 +429,9 @@ try {
             $limit_saat = $_POST['limit_saat'] ?? '08:30';
             $tarih_req = $_POST['tarih'] ?? date('Y-m-d');
             $firma_id = $_SESSION['firma_id'] ?? null;
+            $departman = $_POST['departman'] ?? null;
 
-            $personeller = $HareketModel->getTumPersonelDurumu($firma_id, $tarih_req);
+            $personeller = $HareketModel->getTumPersonelDurumu($firma_id, $tarih_req, $departman);
 
             $gec_kalanlar = [];
             $gun = $tarih_req;

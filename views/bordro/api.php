@@ -326,36 +326,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $hesaplananSayisi = 0;
+                $hesaplananIds = []; // Başarıyla hesaplanan bp_id'leri topla
                 $toplamOnayBekleyen = 0;
                 $toplamOnayBekleyenTutar = 0;
-                $onayBekleyenPersoneller = []; // Personel listesi
+                $onayBekleyenPersoneller = [];
 
                 $Personel = new PersonelModel();
 
                 foreach ($personel_ids as $bp_id) {
                     if ($BordroPersonel->hesaplaMaas(intval($bp_id))) {
                         $hesaplananSayisi++;
+                        $hesaplananIds[] = intval($bp_id);
+                    }
+                }
 
-                        // Bu personelin onay bekleyen kesintilerini kontrol et
-                        $bp = $BordroPersonel->find(intval($bp_id));
-                        if ($bp) {
-                            $onayBekleyen = $BordroPersonel->getOnayBekleyenKesintiler($bp->personel_id, $bp->donem_id);
-                            if ($onayBekleyen && $onayBekleyen->adet > 0) {
-                                $toplamOnayBekleyen += $onayBekleyen->adet;
-                                $toplamOnayBekleyenTutar += $onayBekleyen->toplam_tutar;
-
-                                // Personel adını al
-                                $personelData = $Personel->find($bp->personel_id);
-                                if ($personelData) {
-                                    $onayBekleyenPersoneller[] = [
-                                        'personel_id' => $bp->personel_id,
-                                        'adi_soyadi' => $personelData->adi_soyadi,
-                                        'kesinti_adet' => $onayBekleyen->adet,
-                                        'kesinti_tutar' => $onayBekleyen->toplam_tutar
-                                    ];
-                                }
-                            }
-                        }
+                // Onay bekleyen kesintileri tek sorguda toplu çek (N+1 önlemi)
+                $onayBekleyenMap = $BordroPersonel->getOnayBekleyenBatch($hesaplananIds, $donem_id);
+                foreach ($onayBekleyenMap as $bp_id => $row) {
+                    if ($row->onay_bekleyen_adet > 0) {
+                        $toplamOnayBekleyen += $row->onay_bekleyen_adet;
+                        $toplamOnayBekleyenTutar += $row->onay_bekleyen_tutar;
+                        $onayBekleyenPersoneller[] = [
+                            'personel_id' => $row->personel_id,
+                            'adi_soyadi' => $row->adi_soyadi,
+                            'kesinti_adet' => $row->onay_bekleyen_adet,
+                            'kesinti_tutar' => $row->onay_bekleyen_tutar
+                        ];
                     }
                 }
 

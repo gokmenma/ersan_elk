@@ -4,9 +4,7 @@ require_once dirname(__DIR__, 1) . '/Autoloader.php';
 
 use App\Helper\Security;
 use App\Model\PersonelModel;
-use App\Model\AvansModel;
 use App\Model\PersonelIzinleriModel;
-use App\Model\TalepModel;
 use App\Model\SystemLogModel;
 use App\Service\Gate;
 use App\Helper\Alert;
@@ -18,39 +16,54 @@ use App\Model\NobetModel;
 use App\Model\PersonelHareketleriModel;
 use App\Model\GorevModel;
 use App\Service\SayacDegisimService;
-
-$personelModel = new PersonelModel();
-$avansModel = new AvansModel();
-$izinModel = new PersonelIzinleriModel();
-$talepModel = new TalepModel();
-$systemLogModel = new SystemLogModel();
-$puantajModel = new PuantajModel();
-$endeksOkumaModel = new EndeksOkumaModel();
-$nobetModel = new NobetModel();
-$hareketModel = new PersonelHareketleriModel();
-$gorevModel = new GorevModel();
+use App\Service\RequestPerformanceProfiler;
 
 if (Gate::allows("ana_sayfa")) {
 
+    $personelModel = new PersonelModel();
+    $izinModel = new PersonelIzinleriModel();
+    $systemLogModel = new SystemLogModel();
+    $puantajModel = new PuantajModel();
+    $endeksOkumaModel = new EndeksOkumaModel();
+    $nobetModel = new NobetModel();
+    $hareketModel = new PersonelHareketleriModel();
+    $gorevModel = new GorevModel();
+
+    $measureDb = static function (string $segment, callable $callback, int $dbCount = 1) {
+        return RequestPerformanceProfiler::measure($segment, $callback, $dbCount);
+    };
+
     $bugun = date('Y-m-d');
-    $nobetciler = $nobetModel->getNobetlerByTarih($bugun);
-    $gec_kalan_sayisi = $hareketModel->getGecKalanlarCount($_SESSION['firma_id'] ?? null);
-    $yaklasan_gorevler = $gorevModel->getYaklasanGorevler($_SESSION['firma_id'] ?? 0, $_SESSION['user_id'] ?? 0, 5);
+    $nobetciler = $measureDb('home.nobetciler', fn() => $nobetModel->getNobetlerByTarih($bugun));
+    $gec_kalan_sayisi = $measureDb('home.gec_kalan_sayisi', fn() => $hareketModel->getGecKalanlarCount($_SESSION['firma_id'] ?? null));
+    $yaklasan_gorevler = $measureDb('home.yaklasan_gorevler', fn() => $gorevModel->getYaklasanGorevler($_SESSION['firma_id'] ?? 0, $_SESSION['user_id'] ?? 0, 5));
 
     // Dashboard Ayarlarını Çerezden Oku
-    $extraStats = $personelModel->getAdvancedDashboardStats();
-    $dailyWorkStats = $puantajModel->getDailyStats();
-    $dailyReadingTotal = $endeksOkumaModel->getDailyStats();
-    $monthlyWorkStats = $puantajModel->getMonthlyStats();
-    $monthlyReadingTotal = $endeksOkumaModel->getMonthlyStats();
-    $kacakDailyTotal = $puantajModel->getKacakDailyStats();
-    $kacakMonthlyTotal = $puantajModel->getKacakMonthlyStats();
-    $extraStatsMonthly = $personelModel->getMonthlyAdvancedDashboardStats();
+    $extraStats = $measureDb('home.extra_stats_daily', fn() => $personelModel->getAdvancedDashboardStats());
+
+    $dailyWorkStats = null;
+    $dailyReadingTotal = null;
+    $monthlyWorkStats = null;
+    $monthlyReadingTotal = null;
+    $kacakDailyTotal = null;
+    $kacakMonthlyTotal = null;
+
+    $measureDb('home.puantaj_endeks_bundle', function () use ($puantajModel, $endeksOkumaModel, &$dailyWorkStats, &$dailyReadingTotal, &$monthlyWorkStats, &$monthlyReadingTotal, &$kacakDailyTotal, &$kacakMonthlyTotal) {
+        $dailyWorkStats = $puantajModel->getDailyStats();
+        $dailyReadingTotal = $endeksOkumaModel->getDailyStats();
+        $monthlyWorkStats = $puantajModel->getMonthlyStats();
+        $monthlyReadingTotal = $endeksOkumaModel->getMonthlyStats();
+        $kacakDailyTotal = $puantajModel->getKacakDailyStats();
+        $kacakMonthlyTotal = $puantajModel->getKacakMonthlyStats();
+        return true;
+    }, 6);
+
+    $extraStatsMonthly = $measureDb('home.extra_stats_monthly', fn() => $personelModel->getMonthlyAdvancedDashboardStats());
 
     // Sayaç Değişim stats from unified service
     $sayacDegisimService = new SayacDegisimService();
-    $sayacDailyStats = $sayacDegisimService->getDailyStats();
-    $sayacMonthlyStats = $sayacDegisimService->getMonthlyStats();
+    $sayacDailyStats = $measureDb('home.sayac_daily', fn() => $sayacDegisimService->getDailyStats());
+    $sayacMonthlyStats = $measureDb('home.sayac_monthly', fn() => $sayacDegisimService->getMonthlyStats());
     if ($dailyWorkStats)
         $dailyWorkStats->sayac_degisimi = $sayacDailyStats->sayac_degisimi ?? 0;
     if ($monthlyWorkStats)
@@ -77,7 +90,9 @@ if (Gate::allows("ana_sayfa")) {
                  WHERE firma_id = :firma_id
                    AND created_at >= CURDATE()
                    AND created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)) AS last_update_sayac");
+        $updateQueryStart = microtime(true);
         $stmt_updates->execute([':firma_id' => $_SESSION['firma_id'] ?? 0]);
+        RequestPerformanceProfiler::addDbMetrics(round((microtime(true) - $updateQueryStart) * 1000, 2), 1);
         $updates = $stmt_updates->fetch(PDO::FETCH_ASSOC) ?: [];
         $last_update_endeks = $updates['last_update_endeks'] ?? null;
         $last_update_isler = $updates['last_update_isler'] ?? null;
@@ -158,7 +173,7 @@ if (Gate::allows("ana_sayfa")) {
 
     // Avanslar
     $stmt = $db->prepare("SELECT count(*) as count FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL");
-    $stmt->execute();
+    $measureDb('home.avans_count', fn() => $stmt->execute());
     $avans_count = $stmt->fetch(PDO::FETCH_OBJ)->count;
 
     // İzinler
@@ -170,7 +185,7 @@ if (Gate::allows("ana_sayfa")) {
 
     // Talepler
     $stmt = $db->prepare("SELECT count(*) as count FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL");
-    $stmt->execute();
+    $measureDb('home.talep_count', fn() => $stmt->execute());
     $talep_count = $stmt->fetch(PDO::FETCH_OBJ)->count;
 
     $personel_talep_sayisi = $avans_count + $izin_count + $talep_count;
@@ -178,7 +193,7 @@ if (Gate::allows("ana_sayfa")) {
     // Son Talepleri Listeleme
 // Avanslar
     $stmt = $db->prepare("SELECT 'Avans' as tip, id, personel_id, talep_tarihi as tarih, durum, tutar as detay FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL LIMIT 5");
-    $stmt->execute();
+    $measureDb('home.avans_list', fn() => $stmt->execute());
     $avanslar = $stmt->fetchAll(PDO::FETCH_OBJ);
 
     // İzinler
@@ -190,7 +205,7 @@ if (Gate::allows("ana_sayfa")) {
 
     // Talepler
     $stmt = $db->prepare("SELECT 'Talep' as tip, id, personel_id, olusturma_tarihi as tarih, durum, baslik as detay FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL LIMIT 5");
-    $stmt->execute();
+    $measureDb('home.talep_list', fn() => $stmt->execute());
     $talepler = $stmt->fetchAll(PDO::FETCH_OBJ);
 
     $all_requests = array_merge($avanslar, $izinler, $talepler);
@@ -211,7 +226,7 @@ if (Gate::allows("ana_sayfa")) {
         if (!empty($p_ids)) {
             $ids_str = implode(',', $p_ids);
             $stmt = $db->prepare("SELECT id, adi_soyadi, resim_yolu, departman FROM personel WHERE id IN ($ids_str)");
-            $stmt->execute();
+            $measureDb('home.personel_map', fn() => $stmt->execute());
             $personels = $stmt->fetchAll(PDO::FETCH_OBJ);
             foreach ($personels as $p) {
                 $personel_map[$p->id] = $p;
@@ -293,7 +308,7 @@ if (Gate::allows("ana_sayfa")) {
                   AND (etkinlik_tarihi IS NULL OR etkinlik_tarihi >= CURDATE())
                   ORDER BY id DESC LIMIT 5";
     $stmt = $db->prepare($duyuruSql);
-    $stmt->execute([':firma_id' => $_SESSION['firma_id']]);
+    $measureDb('home.duyuru_list', fn() => $stmt->execute([':firma_id' => $_SESSION['firma_id']]));
     $duyurular = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $gradients = [
@@ -418,7 +433,7 @@ if (Gate::allows("ana_sayfa")) {
                                 <i class='bx bx-grid-vertical drag-handle me-1 text-muted'></i> Personel Durumu
                             </h6>
                             <p class="text-muted mb-0 ms-4" style="font-size: 0.8rem;">Toplam Personel</p>
-                            <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $istatistik->toplam_personel ?? 0; ?> <span
+                            <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $istatistik->aktif_personel ?? 0; ?> <span
                                     style="font-size: 0.9rem; font-weight: normal; color: #6c757d;">adet</span></h4>
                         </div>
                         <a href="index.php?p=personel/list" class="text-primary fw-semibold small text-decoration-none"
@@ -426,17 +441,16 @@ if (Gate::allows("ana_sayfa")) {
                     </div>
 
                     <?php
-                    $toplam_p = ($istatistik->toplam_personel ?? 0) ?: 1;
                     $aktif_p = $istatistik->aktif_personel ?? 0;
+                    $toplam_p = $aktif_p ?: 1;
                     $saha_p = $extraStats->sahadaki_personel ?? 0;
                     $izinli_p = $extraStats->izinli_personel ?? 0;
                     $diger_p = max(0, $aktif_p - $saha_p - $izinli_p);
-                    $pasif_p = $istatistik->pasif_personel ?? 0;
+                    // $pasif_p = $istatistik->pasif_personel ?? 0; // Pasif artık toplamda yok
 
                     $s_rate = ($saha_p / $toplam_p) * 100;
                     $d_rate = ($diger_p / $toplam_p) * 100;
                     $i_rate = ($izinli_p / $toplam_p) * 100;
-                    $p_rate = ($pasif_p / $toplam_p) * 100;
                     ?>
                     <div class="progress mb-4" style="height: 20px; border-radius: 4px;">
                         <div class="progress-bar" role="progressbar"
@@ -448,9 +462,6 @@ if (Gate::allows("ana_sayfa")) {
                         <div class="progress-bar" role="progressbar"
                             style="width: <?php echo $i_rate; ?>%; background-color: #ffc107;"
                             title="İzinli: <?php echo $izinli_p; ?>"></div>
-                        <div class="progress-bar" role="progressbar"
-                            style="width: <?php echo $p_rate; ?>%; background-color: #adb5bd;"
-                            title="Pasif: <?php echo $pasif_p; ?>"></div>
                     </div>
 
                     <div class="row mt-auto">
@@ -483,10 +494,10 @@ if (Gate::allows("ana_sayfa")) {
                         </div>
                         <div class="col-6">
                             <div class="d-flex align-items-center">
-                                <div style="width: 3px; height: 32px; background-color: #adb5bd; margin-right: 12px;"></div>
+                                <div style="width: 3px; height: 32px; background-color: #f46a6a; margin-right: 12px;"></div>
                                 <div>
-                                    <p class="text-muted small mb-0 font-size-11">Pasif</p>
-                                    <h6 class="mb-0 fw-bold text-dark"><?php echo $pasif_p; ?> Adet</h6>
+                                    <p class="text-muted small mb-0 font-size-11">Geç Kalan</p>
+                                    <h6 class="mb-0 fw-bold text-dark"><?php echo $gec_kalan_sayisi; ?> Adet</h6>
                                 </div>
                             </div>
                         </div>
@@ -1161,7 +1172,7 @@ if (Gate::allows("ana_sayfa")) {
                 WHERE p.firma_id = :firma_id
                 ORDER BY pg.giris_tarihi DESC LIMIT 10
             ");
-                $personelStmt->execute(['firma_id' => $_SESSION['firma_id']]);
+                $measureDb('home.personel_login_logs', fn() => $personelStmt->execute(['firma_id' => $_SESSION['firma_id']]));
                 $personelLogs = $personelStmt->fetchAll(PDO::FETCH_OBJ);
             } catch (\Exception $e) {
                 // Hata durumunda boş dizi
@@ -1173,7 +1184,7 @@ if (Gate::allows("ana_sayfa")) {
                 FROM system_logs sl JOIN users u ON u.id = sl.user_id
                 WHERE sl.action_type = 'Başarılı Giriş' AND FIND_IN_SET(:firma_id, u.firma_ids) ORDER BY sl.created_at DESC LIMIT 10
             ");
-                $kullaniciStmt->execute(['firma_id' => $_SESSION['firma_id']]);
+                $measureDb('home.user_login_logs', fn() => $kullaniciStmt->execute(['firma_id' => $_SESSION['firma_id']]));
                 $kullaniciLogs = $kullaniciStmt->fetchAll(PDO::FETCH_OBJ);
             } catch (\Exception $e) {
                 // Hata durumunda boş dizi
