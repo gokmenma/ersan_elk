@@ -65,7 +65,7 @@ if (!function_exists('formatMoneyCariTakip')) {
     </div>
 
     <!-- Cari Listesi -->
-    <div class="space-y-2" id="cariList">
+    <div class="space-y-3" id="cariList">
         <?php foreach ($cariler as $cari): 
             $bakiye = $cari->bakiye ?? 0;
             $bakiyeColor = $bakiye < 0 ? 'text-rose-600' : ($bakiye > 0 ? 'text-emerald-600' : 'text-slate-700 dark:text-slate-300');
@@ -74,32 +74,42 @@ if (!function_exists('formatMoneyCariTakip')) {
             $encId = Security::encrypt($cari->id);
             $searchString = mb_strtolower($cari->CariAdi . ' ' . $cari->Telefon . ' ' . $cari->Email, 'UTF-8');
         ?>
-        <div class="bg-white dark:bg-card-dark rounded-xl shadow-sm p-3 border border-slate-100 dark:border-slate-700/50 flex items-center active:scale-95 transition-transform cari-item" data-search="<?= htmlspecialchars($searchString) ?>" onclick="location.href='?p=hesap-hareketleri&id=<?= $encId ?>'">
-            <!-- Icon -->
-            <div class="w-10 h-10 rounded-[10px] bg-[#f8fbff] dark:bg-slate-800 text-primary uppercase font-bold text-lg flex items-center justify-center shrink-0 border border-primary/10 dark:border-slate-700">
-                <?= $initial ?>
+        <div class="relative cari-item-container overflow-hidden rounded-xl shadow-sm">
+            <!-- Delete Action (revealed on swipe right) -->
+            <div class="absolute left-0 top-0 bottom-0 w-[70px] bg-rose-500 flex items-center justify-center text-white cursor-pointer swipe-action opacity-0" 
+                 onclick="event.stopPropagation(); window.deleteCari('<?= $encId ?>', '<?= addslashes($cari->CariAdi) ?>')">
+                <span class="material-symbols-outlined text-[24px]">delete</span>
             </div>
-            
-            <!-- Info -->
-            <div class="ml-3 flex-1 min-w-0">
-                <h4 class="font-semibold text-[13px] text-slate-900 dark:text-white truncate pb-0.5"><?= htmlspecialchars($cari->CariAdi) ?></h4>
-                <div class="flex items-center text-[10px] text-slate-500 dark:text-slate-400 gap-1 truncate font-medium">
-                    <span class="material-symbols-outlined text-[12px]">call</span>
-                    <?= htmlspecialchars($cari->Telefon ?: '-') ?>
+
+            <div class="bg-white dark:bg-card-dark p-3 border border-slate-100 dark:border-slate-700/50 flex items-center transition-transform duration-200 swipe-content cari-item" 
+                 data-search="<?= htmlspecialchars($searchString) ?>" 
+                 onclick="if(this.style.transform === 'translateX(70px)') { this.style.transform = 'translateX(0)'; this.previousElementSibling.style.opacity='0'; return; } location.href='?p=hesap-hareketleri&id=<?= $encId ?>'">
+                <!-- Icon -->
+                <div class="w-10 h-10 rounded-[10px] bg-[#f8fbff] dark:bg-slate-800 text-primary uppercase font-bold text-lg flex items-center justify-center shrink-0 border border-primary/10 dark:border-slate-700">
+                    <?= $initial ?>
                 </div>
-            </div>
-            
-            <!-- Right Actions -->
-            <div class="flex flex-col items-end shrink-0 pl-2">
-                <span class="font-bold text-xs <?= $bakiyeColor ?>"><?= absMoneyCariTakip($bakiye) ?></span>
-                <span class="text-[8px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5"><?= $bakiyeLabel ?></span>
-                <div class="mt-1 flex items-center gap-1">
-                    <button type="button" class="w-7 h-7 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-lg flex items-center justify-center active:bg-emerald-100" data-id="<?= $encId ?>" onclick="event.stopPropagation(); window.openHizliIslem('<?= $encId ?>');">
-                        <span class="material-symbols-outlined text-[18px]">add_circle</span>
-                    </button>
-                    <span class="w-6 h-6 flex items-center justify-center text-slate-300">
-                        <span class="material-symbols-outlined text-[20px]">chevron_right</span>
-                    </span>
+                
+                <!-- Info -->
+                <div class="ml-3 flex-1 min-w-0">
+                    <h4 class="font-semibold text-[13px] text-slate-900 dark:text-white truncate pb-0.5"><?= htmlspecialchars($cari->CariAdi) ?></h4>
+                    <div class="flex items-center text-[10px] text-slate-500 dark:text-slate-400 gap-1 truncate font-medium">
+                        <span class="material-symbols-outlined text-[12px]">call</span>
+                        <?= htmlspecialchars($cari->Telefon ?: '-') ?>
+                    </div>
+                </div>
+                
+                <!-- Right Actions -->
+                <div class="flex flex-col items-end shrink-0 pl-2">
+                    <span class="font-bold text-xs <?= $bakiyeColor ?>"><?= absMoneyCariTakip($bakiye) ?></span>
+                    <span class="text-[8px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5"><?= $bakiyeLabel ?></span>
+                    <div class="mt-1 flex items-center gap-1">
+                        <button type="button" class="w-7 h-7 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-lg flex items-center justify-center active:bg-emerald-100" data-id="<?= $encId ?>" onclick="event.stopPropagation(); window.openHizliIslem('<?= $encId ?>');">
+                            <span class="material-symbols-outlined text-[18px]">add_circle</span>
+                        </button>
+                        <span class="w-6 h-6 flex items-center justify-center text-slate-300">
+                            <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -263,6 +273,98 @@ if (!function_exists('formatMoneyCariTakip')) {
 </div>
 
 <script>
+// Swipe Functionality
+(function() {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isMoving = false;
+
+    document.addEventListener('touchstart', e => {
+        const container = e.target.closest('.cari-item-container');
+        if (!container) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        isMoving = false;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', e => {
+        const container = e.target.closest('.cari-item-container');
+        if (!container) return;
+        const currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+        const diffX = currentX - touchStartX;
+        const diffY = currentY - touchStartY;
+        
+        if (Math.abs(diffX) > Math.abs(diffY)) {
+            isMoving = true;
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchend', e => {
+        const container = e.target.closest('.cari-item-container');
+        if (!container) return;
+        const touchEndX = e.changedTouches[0].clientX;
+        const diffX = touchEndX - touchStartX;
+        
+        if (isMoving && diffX > 60) {
+            // Swipe Right
+            container.querySelector('.swipe-content').style.transform = 'translateX(70px)';
+            container.querySelector('.swipe-action').style.opacity = '1';
+        } else if (isMoving && diffX < -30) {
+            // Swipe Left (close)
+            container.querySelector('.swipe-content').style.transform = 'translateX(0)';
+            container.querySelector('.swipe-action').style.opacity = '0';
+        }
+    }, { passive: true });
+})();
+
+window.deleteCari = async function(id, name) {
+    const result = await Swal.fire({
+        title: 'Cari Silinecek',
+        html: `<div class="mb-4 text-center"><strong>${name}</strong> kaydını silmek istediğinize emin misiniz?</div>` +
+              `<div class="flex items-center justify-center p-3 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-900/20">` +
+              `<input type="checkbox" id="deleteMovements" class="w-4 h-4 text-rose-600 rounded focus:ring-rose-500 border-rose-300">` +
+              `<label for="deleteMovements" class="ml-2 text-sm font-medium text-rose-700 dark:text-rose-400 cursor-pointer">Hesap hareketlerini de sil</label>` +
+              `</div>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Evet, Sil',
+        cancelButtonText: 'Vazgeç',
+        buttonsStyling: false,
+        customClass: {
+            popup: "swal-custom-popup",
+            title: "swal-custom-title",
+            htmlContainer: "swal-custom-content",
+            actions: "swal-custom-actions swal-actions-two",
+            confirmButton: "swal-custom-confirm swal-confirm-danger",
+            cancelButton: "swal-custom-cancel",
+            icon: "swal-custom-icon swal-icon-warning",
+        }
+    });
+
+    if (result.isConfirmed) {
+        const deleteMovements = document.getElementById('deleteMovements').checked;
+        const formData = new FormData();
+        formData.append('action', 'cari-sil');
+        formData.append('cari_id', id);
+        if (deleteMovements) formData.append('delete_movements', '1');
+
+        fetch('../views/cari/api.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                window.location.reload();
+            } else {
+                Alert.error("Hata", data.message);
+            }
+        })
+        .catch(() => Alert.error("Hata", "Sunucu ile bağlantı kurulamadı."));
+    }
+};
+
 // Search Functionality
 document.getElementById('cariSearch').addEventListener('input', function() {
     const term = this.value.toLowerCase().trim();

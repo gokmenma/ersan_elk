@@ -101,8 +101,15 @@ if ($action == "cari-getir") {
 // Cari Sil
 if ($action == "cari-sil") {
     $id = $_POST["cari_id"];
+    $deleteMovements = isset($_POST["delete_movements"]) && $_POST["delete_movements"] == "1";
     try {
-        $Cari->softDelete(Security::decrypt($id));
+        $decId = Security::decrypt($id);
+        $Cari->softDelete($decId);
+        if ($deleteMovements) {
+            $db = $Cari->getDb();
+            $stmt = $db->prepare("UPDATE cari_hareketleri SET silinme_tarihi = NOW() WHERE cari_id = ? AND silinme_tarihi IS NULL");
+            $stmt->execute([$decId]);
+        }
         echo json_encode(["status" => "success", "message" => "Cari başarıyla silindi."]);
     } catch (Exception $e) {
         echo json_encode(["status" => "error", "message" => $e->getMessage()]);

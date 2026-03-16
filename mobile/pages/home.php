@@ -166,21 +166,21 @@ if (\App\Service\Gate::allows("arac_takip_yonetim")) {
         </div>
         <!-- Stats -->
         <div class="grid grid-cols-3 gap-2">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 p-1 active:bg-slate-50 dark:active:bg-slate-800 rounded-xl transition-colors cursor-pointer" onclick="openAracDetay('saha', 'Saha Araçları')">
                 <div class="w-1 h-8 bg-emerald-500 rounded-full flex-shrink-0"></div>
                 <div>
                     <p class="text-[11px] text-slate-400">Saha Aracı</p>
                     <p class="font-bold text-slate-900 dark:text-white text-sm"><?= $saha_arac ?> Adet</p>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 p-1 active:bg-slate-50 dark:active:bg-slate-800 rounded-xl transition-colors cursor-pointer" onclick="openAracDetay('servis', 'Servisteki Araçlar')">
                 <div class="w-1 h-8 bg-red-500 rounded-full flex-shrink-0"></div>
                 <div>
                     <p class="text-[11px] text-slate-400">Serviste</p>
                     <p class="font-bold text-slate-900 dark:text-white text-sm"><?= $servisteki_arac ?> Adet</p>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 p-1 active:bg-slate-50 dark:active:bg-slate-800 rounded-xl transition-colors cursor-pointer" onclick="openAracDetay('bosta', 'Boştaki Araçlar')">
                 <div class="w-1 h-8 bg-amber-400 rounded-full flex-shrink-0"></div>
                 <div>
                     <p class="text-[11px] text-slate-400">Boşta</p>
@@ -768,6 +768,59 @@ function closePersonelDetay() {
         sheet.classList.add('pointer-events-none');
     }, 300);
 }
+
+function openAracDetay(type, title) {
+    const sheet = document.getElementById('personel-detay-sheet');
+    const overlay = document.getElementById('personel-detay-overlay');
+    const content = document.getElementById('personel-detay-content');
+    const list = document.getElementById('personel-detay-list');
+    const titleEl = document.getElementById('personel-detay-title');
+
+    titleEl.innerText = title;
+    list.innerHTML = `<div class="flex justify-center py-10"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>`;
+    
+    sheet.classList.remove('pointer-events-none');
+    overlay.classList.add('opacity-100');
+    content.classList.remove('translate-y-full');
+
+    $.ajax({
+        url: '../views/personel-takip/api.php',
+        type: 'POST',
+        data: { action: 'getHomeAracStatsDetail', type: type },
+        success: function(res) {
+            if (res.success) {
+                if (res.data.length === 0) {
+                    list.innerHTML = `<p class="text-center py-10 text-slate-400">Kayıt bulunamadı.</p>`;
+                    return;
+                }
+                let html = '';
+                res.data.forEach(v => {
+                    html += `
+                        <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
+                            <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
+                                <span class="material-symbols-outlined text-slate-500">directions_car</span>
+                            </div>
+                            <div class="min-w-0 flex-grow">
+                                <p class="font-bold text-slate-900 dark:text-white text-sm truncate">${v.adi_soyadi}</p>
+                                <p class="text-[10px] text-slate-400 truncate">${v.detay}</p>
+                                <p class="text-[9px] text-primary font-bold mt-0.5"><i class="bx bx-subdirectory-right me-1"></i>${v.sub_detay}</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <a href="?p=arac&id=${v.id_enc}" class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center active:scale-95 transition-transform">
+                                    <span class="material-symbols-outlined text-base">visibility</span>
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                });
+                list.innerHTML = html;
+            } else {
+                list.innerHTML = `<p class="text-center py-10 text-red-500">${res.message}</p>`;
+            }
+        }
+    });
+}
 </script>
+
 
 

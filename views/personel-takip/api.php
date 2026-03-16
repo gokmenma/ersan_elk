@@ -12,6 +12,8 @@ require_once dirname(dirname(__DIR__)) . '/Autoloader.php';
 
 use App\Model\PersonelHareketleriModel;
 use App\Model\PersonelModel;
+use App\Model\AracModel;
+use App\Model\AracHareketleriModel;
 use App\Helper\Security;
 
 // Response helper
@@ -588,6 +590,39 @@ try {
 
             foreach($data as &$item) {
                 if (isset($item->personel_id) && !isset($item->id)) $item->id = $item->personel_id;
+                $item->id_enc = Security::encrypt($item->id);
+            }
+
+            response(true, $data);
+            break;
+
+        case 'getHomeAracStatsDetail':
+            $type = $_POST['type'] ?? 'saha';
+            $AracModel = new AracModel();
+            $data = [];
+
+            if ($type === 'servis') {
+                $data = $AracModel->getServistekiAraclar();
+                foreach($data as &$v) $v->durum_text = 'Serviste';
+            } elseif ($type === 'bosta') {
+                $data = $AracModel->getBostaAraclar();
+                foreach($data as &$v) $v->durum_text = 'Boşta (Zimmetsiz)';
+            } else {
+                // saha - Zimmetli olup serviste olmayanlar
+                $all_zimmetli = $AracModel->getZimmetliAraclar();
+                foreach ($all_zimmetli as $v) {
+                    if (!$v->serviste_mi) {
+                        $v->durum_text = 'Saha Görevinde';
+                        $data[] = $v;
+                    }
+                }
+            }
+
+            foreach($data as &$item) {
+                // Marka model birleştirme
+                $item->adi_soyadi = $item->plaka; // Başlık olarak plaka
+                $item->detay = ($item->marka ? $item->marka . ' ' : '') . ($item->model ?? '');
+                $item->sub_detay = $item->zimmetli_personel_adi ?? $item->durum_text;
                 $item->id_enc = Security::encrypt($item->id);
             }
 
